@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // User profile photos
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isImageType() && isUnder5MB();
+    }
+
+    // Provider photos (profile, cover, portfolio)
+    match /providers/{providerId}/{allPaths=**} {
+      allow read: if true;
+      // Write requires being the provider admin - checked via Firestore rules
+      allow write: if isAuthenticated() && isImageType() && isUnder5MB();
+    }
+  }
+}

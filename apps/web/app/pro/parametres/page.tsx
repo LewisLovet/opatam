@@ -1,0 +1,178 @@
+'use client';
+
+import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardHeader, CardBody, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
+import {
+  User,
+  Image,
+  Share2,
+  Globe,
+  Eye,
+  Settings,
+} from 'lucide-react';
+import {
+  ProfileForm,
+  PhotoUpload,
+  CoverPhotoUpload,
+  PortfolioUpload,
+  SocialLinksForm,
+  PublicationSection,
+} from './components';
+
+export default function SettingsPage() {
+  const { provider } = useAuth();
+  const [activeTab, setActiveTab] = useState('profile');
+
+  const tabs = [
+    { id: 'profile', label: 'Profil', icon: <User className="w-4 h-4" /> },
+    { id: 'photos', label: 'Photos', icon: <Image className="w-4 h-4" /> },
+    { id: 'social', label: 'Reseaux sociaux', icon: <Share2 className="w-4 h-4" /> },
+    { id: 'publication', label: 'Publication', icon: <Globe className="w-4 h-4" /> },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+          Parametres
+        </h1>
+        <p className="mt-1 text-gray-600 dark:text-gray-400">
+          Gerez votre profil et vos preferences
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
+        {/* Tab List */}
+        <TabsList className="w-fit">
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2">
+              {tab.icon}
+              <span className="hidden sm:inline">{tab.label}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {/* Profile Tab */}
+        <TabsContent value="profile" className="mt-6">
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Main Form */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Informations generales
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Ces informations seront visibles sur votre page publique
+                  </p>
+                </CardHeader>
+                <CardBody>
+                  <ProfileForm />
+                </CardBody>
+              </Card>
+            </div>
+
+            {/* Profile Photo */}
+            <div>
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Photo de profil
+                  </h2>
+                </CardHeader>
+                <CardBody>
+                  <PhotoUpload />
+                </CardBody>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Photos Tab */}
+        <TabsContent value="photos" className="mt-6 space-y-6">
+          {/* Cover Photo */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Photo de couverture
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Image affichee en banniere sur votre page publique
+              </p>
+            </CardHeader>
+            <CardBody>
+              <CoverPhotoUpload />
+            </CardBody>
+          </Card>
+
+          {/* Portfolio */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Portfolio
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Montrez vos realisations aux clients potentiels
+              </p>
+            </CardHeader>
+            <CardBody>
+              <PortfolioUpload />
+            </CardBody>
+          </Card>
+        </TabsContent>
+
+        {/* Social Links Tab */}
+        <TabsContent value="social" className="mt-6">
+          <Card className="max-w-2xl">
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Reseaux sociaux
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Ajoutez vos liens pour permettre aux clients de vous suivre
+              </p>
+            </CardHeader>
+            <CardBody>
+              <SocialLinksForm />
+            </CardBody>
+          </Card>
+        </TabsContent>
+
+        {/* Publication Tab */}
+        <TabsContent value="publication" className="mt-6">
+          <Card className="max-w-2xl">
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Publication
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Controlez la visibilite de votre page
+              </p>
+            </CardHeader>
+            <CardBody>
+              <PublicationSection />
+            </CardBody>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Preview Link */}
+      {provider?.slug && (
+        <div className="fixed bottom-6 right-6 z-10">
+          <a
+            href={`/${provider.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-full shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="text-sm font-medium">Apercu</span>
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}

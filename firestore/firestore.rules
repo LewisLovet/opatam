@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // === HELPERS ===
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isProviderAdmin(providerId) {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/providers/$(providerId)).data.userId == request.auth.uid;
+    }
+
+    function isBookingParticipant(booking) {
+      return booking.clientId == request.auth.uid ||
+        isProviderAdmin(booking.providerId);
+    }
+
+    // === USERS ===
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // === PROVIDERS ===
+
+    match /providers/{providerId} {
+      // Lecture publique (fiches prestataires)
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isProviderAdmin(providerId);
+      allow delete: if false;
+
+      // --- MEMBERS ---
+      match /members/{memberId} {
+        // Lecture publique (pour afficher les membres sur la fiche)
+        allow read: if true;
+        allow write: if isProviderAdmin(providerId);
+      }
+
+      // --- LOCATIONS ---
+      match /locations/{locationId} {
+        allow read: if true;
+        allow write: if isProviderAdmin(providerId);
+      }
+
+      // --- SERVICES ---
+      match /services/{serviceId} {
+        allow read: if true;
+        allow write: if isProviderAdmin(providerId);
+      }
+
+      // --- AVAILABILITY ---
+      match /availability/{availabilityId} {
+        allow read: if true;
+        allow write: if isProviderAdmin(providerId);
+      }
+
+      // --- BLOCKED SLOTS ---
+      match /blockedSlots/{slotId} {
+        allow read: if isProviderAdmin(providerId);
+        allow write: if isProviderAdmin(providerId);
+      }
+    }
+
+    // === BOOKINGS ===
+
+    match /bookings/{bookingId} {
+      // Lecture : client concerné ou admin du provider
+      allow read: if isAuthenticated() && isBookingParticipant(resource.data);
+
+      // Création : tout le monde (réservation web sans compte)
+      allow create: if true;
+
+      // Mise à jour : participant uniquement
+      allow update: if isAuthenticated() && isBookingParticipant(resource.data);
+
+      allow delete: if false;
+    }
+
+    // === REVIEWS ===
+
+    match /reviews/{reviewId} {
+      // Lecture : client ou admin
+      allow read: if isAuthenticated() && (
+        resource.data.clientId == request.auth.uid ||
+        isProviderAdmin(resource.data.providerId)
+      );
+
+      // Création : client authentifié uniquement
+      allow create: if isAuthenticated() &&
+        request.resource.data.clientId == request.auth.uid;
+
+      allow update, delete: if false;
+    }
+
+    // === CONVERSATIONS ===
+
+    match /conversations/{conversationId} {
+      function isConversationParticipant() {
+        return resource.data.clientId == request.auth.uid ||
+          isProviderAdmin(resource.data.providerId);
+      }
+
+      allow read: if isAuthenticated() && isConversationParticipant();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && isConversationParticipant();
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() &&
+          isConversationParticipant();
+        allow create: if isAuthenticated();
+        allow update, delete: if false;
+      }
+    }
+  }
+}
