@@ -7,12 +7,8 @@ import {
   Home,
   Calendar,
   List,
-  Scissors,
-  Users,
-  MapPin,
-  Clock,
+  Briefcase,
   Star,
-  MessageSquare,
   Settings,
   LogOut,
   Menu,
@@ -28,21 +24,29 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
-  requiresTeam?: boolean;
-  comingSoon?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { label: 'Tableau de bord', href: '/pro', icon: <Home className="w-5 h-5" /> },
-  { label: 'Calendrier', href: '/pro/calendrier', icon: <Calendar className="w-5 h-5" /> },
-  { label: 'Reservations', href: '/pro/reservations', icon: <List className="w-5 h-5" /> },
-  { label: 'Prestations', href: '/pro/prestations', icon: <Scissors className="w-5 h-5" /> },
-  { label: 'Equipe', href: '/pro/equipe', icon: <Users className="w-5 h-5" />, requiresTeam: true },
-  { label: 'Lieux', href: '/pro/lieux', icon: <MapPin className="w-5 h-5" /> },
-  { label: 'Disponibilites', href: '/pro/disponibilites', icon: <Clock className="w-5 h-5" /> },
-  { label: 'Avis', href: '/pro/avis', icon: <Star className="w-5 h-5" /> },
-  { label: 'Messages', href: '/pro/messages', icon: <MessageSquare className="w-5 h-5" />, comingSoon: true },
-  { label: 'Parametres', href: '/pro/parametres', icon: <Settings className="w-5 h-5" /> },
+interface NavGroup {
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+  // Groupe 1: Gestion quotidienne
+  {
+    items: [
+      { label: 'Tableau de bord', href: '/pro', icon: <Home className="w-5 h-5" /> },
+      { label: 'Calendrier', href: '/pro/calendrier', icon: <Calendar className="w-5 h-5" /> },
+      { label: 'Reservations', href: '/pro/reservations', icon: <List className="w-5 h-5" /> },
+    ],
+  },
+  // Groupe 2: Configuration et feedback
+  {
+    items: [
+      { label: 'Mon activite', href: '/pro/activite', icon: <Briefcase className="w-5 h-5" /> },
+      { label: 'Avis', href: '/pro/avis', icon: <Star className="w-5 h-5" /> },
+      { label: 'Parametres', href: '/pro/parametres', icon: <Settings className="w-5 h-5" /> },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -56,8 +60,6 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   const { user, provider, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [loggingOut, setLoggingOut] = useState(false);
-
-  const isTeamPlan = provider?.plan === 'team';
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -78,11 +80,6 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
     return pathname.startsWith(href);
   };
 
-  const filteredNavItems = navItems.filter((item) => {
-    if (item.requiresTeam && !isTeamPlan) return false;
-    return true;
-  });
-
   return (
     <aside
       className={`
@@ -93,7 +90,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
       `}
     >
       {/* Logo */}
-      <div className="p-4 border-b border-gray-800/50/50">
+      <div className="p-4 border-b border-gray-800/50">
         <Link href="/pro" className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-5 h-5 text-white" />
@@ -109,39 +106,32 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        <ul className="space-y-1">
-          {filteredNavItems.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.comingSoon ? '#' : item.href}
-                className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                  ${collapsed ? 'justify-center' : ''}
-                  ${
-                    isActive(item.href)
-                      ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  }
-                  ${item.comingSoon ? 'opacity-50 cursor-not-allowed' : ''}
-                `}
-                onClick={item.comingSoon ? (e) => e.preventDefault() : undefined}
-                title={collapsed ? item.label : undefined}
-              >
-                {item.icon}
-                {!collapsed && (
-                  <>
-                    <span className="flex-1">{item.label}</span>
-                    {item.comingSoon && (
-                      <span className="text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded">
-                        Bientot
-                      </span>
-                    )}
-                  </>
-                )}
-              </Link>
-            </li>
+        <div className="space-y-6">
+          {navGroups.map((group, groupIndex) => (
+            <ul key={groupIndex} className="space-y-1">
+              {group.items.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={`
+                      flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                      ${collapsed ? 'justify-center' : ''}
+                      ${
+                        isActive(item.href)
+                          ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30'
+                          : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      }
+                    `}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    {item.icon}
+                    {!collapsed && <span className="flex-1">{item.label}</span>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           ))}
-        </ul>
+        </div>
       </nav>
 
       {/* Bottom section */}
@@ -221,8 +211,6 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
   const { isDark, toggleTheme } = useTheme();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const isTeamPlan = provider?.plan === 'team';
-
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
@@ -242,11 +230,6 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
     }
     return pathname.startsWith(href);
   };
-
-  const filteredNavItems = navItems.filter((item) => {
-    if (item.requiresTeam && !isTeamPlan) return false;
-    return true;
-  });
 
   return (
     <>
@@ -281,39 +264,31 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
-          <ul className="space-y-1">
-            {filteredNavItems.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.comingSoon ? '#' : item.href}
-                  className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                    ${
-                      isActive(item.href)
-                        ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                    }
-                    ${item.comingSoon ? 'opacity-50 cursor-not-allowed' : ''}
-                  `}
-                  onClick={(e) => {
-                    if (item.comingSoon) {
-                      e.preventDefault();
-                    } else {
-                      onClose();
-                    }
-                  }}
-                >
-                  {item.icon}
-                  <span className="flex-1">{item.label}</span>
-                  {item.comingSoon && (
-                    <span className="text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded">
-                      Bientot
-                    </span>
-                  )}
-                </Link>
-              </li>
+          <div className="space-y-6">
+            {navGroups.map((group, groupIndex) => (
+              <ul key={groupIndex} className="space-y-1">
+                {group.items.map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`
+                        flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                        ${
+                          isActive(item.href)
+                            ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                        }
+                      `}
+                      onClick={onClose}
+                    >
+                      {item.icon}
+                      <span className="flex-1">{item.label}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             ))}
-          </ul>
+          </div>
         </nav>
 
         {/* Bottom section */}

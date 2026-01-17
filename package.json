@@ -15,11 +15,14 @@
     "firebase:deploy:rules": "firebase deploy --only firestore:rules",
     "firebase:deploy:functions": "firebase deploy --only functions"
   },
+  "dependencies": {
+    "next": "15.1.3"
+  },
   "devDependencies": {
     "turbo": "^2.3.3",
     "typescript": "^5.7.2"
   },
-  "packageManager": "pnpm@9.15.2",
+  "packageManager": "pnpm@10.0.0",
   "engines": {
     "node": ">=18.0.0"
   }

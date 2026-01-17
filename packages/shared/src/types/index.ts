@@ -87,6 +87,8 @@ export interface Member {
 }
 
 // Location types
+export type LocationType = 'fixed' | 'mobile';
+
 export interface Location {
   name: string;
   address: string;
@@ -94,6 +96,8 @@ export interface Location {
   postalCode: string;
   geopoint: { latitude: number; longitude: number } | null;
   description: string | null;
+  type: LocationType;
+  travelRadius: number | null;
   isDefault: boolean;
   isActive: boolean;
   createdAt: Date;

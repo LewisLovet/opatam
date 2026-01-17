@@ -13,9 +13,22 @@ import {
   serverTimestamp,
   type Firestore,
 } from 'firebase/firestore';
-import type { Location } from '@booking-app/shared';
+import type { Location, LocationType } from '@booking-app/shared';
 import { getFirebaseApp } from '../lib/config';
 import { convertTimestamps, removeUndefined, type WithId } from './base.repository';
+
+/**
+ * Normalize location data to ensure new fields have default values
+ * This handles backwards compatibility for documents created before type/travelRadius fields
+ */
+function normalizeLocation(data: Record<string, unknown>): Location {
+  const location = convertTimestamps<Location>(data);
+  return {
+    ...location,
+    type: (location.type as LocationType) || 'fixed',
+    travelRadius: location.travelRadius ?? null,
+  };
+}
 
 /**
  * Repository for locations subcollection (providers/{providerId}/locations)
@@ -71,7 +84,7 @@ export class LocationRepository {
 
     return {
       id: docSnap.id,
-      ...convertTimestamps<Location>(docSnap.data()),
+      ...normalizeLocation(docSnap.data()),
     };
   }
 
@@ -87,7 +100,7 @@ export class LocationRepository {
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
-      ...convertTimestamps<Location>(docSnap.data()),
+      ...normalizeLocation(docSnap.data()),
     }));
   }
 
@@ -104,7 +117,7 @@ export class LocationRepository {
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
-      ...convertTimestamps<Location>(docSnap.data()),
+      ...normalizeLocation(docSnap.data()),
     }));
   }
 
@@ -125,7 +138,7 @@ export class LocationRepository {
     const docSnap = querySnapshot.docs[0];
     return {
       id: docSnap.id,
-      ...convertTimestamps<Location>(docSnap.data()),
+      ...normalizeLocation(docSnap.data()),
     };
   }
 
@@ -142,7 +155,7 @@ export class LocationRepository {
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
-      ...convertTimestamps<Location>(docSnap.data()),
+      ...normalizeLocation(docSnap.data()),
     }));
   }
 

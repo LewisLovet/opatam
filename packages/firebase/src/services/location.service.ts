@@ -23,11 +23,13 @@ export class LocationService {
     // Create location
     const locationId = await locationRepository.create(providerId, {
       name: validated.name,
-      address: validated.address,
+      address: validated.address || '',
       city: validated.city,
       postalCode: validated.postalCode,
       geopoint: validated.geopoint || null,
       description: validated.description || null,
+      type: validated.type,
+      travelRadius: validated.travelRadius ?? null,
       isDefault,
       isActive: true,
     });

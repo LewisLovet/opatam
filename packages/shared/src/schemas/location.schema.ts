@@ -6,6 +6,9 @@ const frenchPostalCodeRegex = /^\d{5}$/;
 // French phone regex: starts with 0, then 6 or 7, then 8 digits (mobile) or 01-05, 09 (landline)
 const frenchPhoneRegex = /^0[1-79]\d{8}$/;
 
+// Location type enum
+export const locationTypeSchema = z.enum(['fixed', 'mobile']);
+
 // Geopoint schema
 export const geopointSchema = z.object({
   latitude: z
@@ -25,9 +28,10 @@ export const createLocationSchema = z.object({
     .min(2, { message: 'Le nom doit contenir au moins 2 caractères' })
     .max(100, { message: 'Le nom ne peut pas dépasser 100 caractères' }),
   address: z
-    .string({ required_error: 'L\'adresse est requise' })
-    .min(5, { message: 'L\'adresse doit contenir au moins 5 caractères' })
-    .max(200, { message: 'L\'adresse ne peut pas dépasser 200 caractères' }),
+    .string()
+    .max(200, { message: 'L\'adresse ne peut pas dépasser 200 caractères' })
+    .optional()
+    .default(''),
   city: z
     .string({ required_error: 'La ville est requise' })
     .min(2, { message: 'La ville doit contenir au moins 2 caractères' })
@@ -59,7 +63,39 @@ export const createLocationSchema = z.object({
     .max(10, { message: 'Maximum 10 photos autorisées' })
     .optional()
     .default([]),
-});
+  type: locationTypeSchema.default('fixed'),
+  travelRadius: z
+    .number()
+    .min(1, { message: 'Le rayon doit être d\'au moins 1 km' })
+    .max(100, { message: 'Le rayon ne peut pas dépasser 100 km' })
+    .nullable()
+    .optional()
+    .default(null),
+}).refine(
+  (data) => {
+    // If type is mobile, travelRadius must be set
+    if (data.type === 'mobile' && (data.travelRadius === null || data.travelRadius === undefined)) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Le rayon de déplacement est requis pour un lieu de type déplacement',
+    path: ['travelRadius'],
+  }
+).refine(
+  (data) => {
+    // If type is fixed, address is required
+    if (data.type === 'fixed' && (!data.address || data.address.length < 5)) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'L\'adresse est requise pour un lieu fixe (minimum 5 caractères)',
+    path: ['address'],
+  }
+);
 
 // Update location schema
 export const updateLocationSchema = z.object({
@@ -70,7 +106,6 @@ export const updateLocationSchema = z.object({
     .optional(),
   address: z
     .string()
-    .min(5, { message: 'L\'adresse doit contenir au moins 5 caractères' })
     .max(200, { message: 'L\'adresse ne peut pas dépasser 200 caractères' })
     .optional(),
   city: z
@@ -104,6 +139,13 @@ export const updateLocationSchema = z.object({
     .max(10, { message: 'Maximum 10 photos autorisées' })
     .optional(),
   isActive: z.boolean().optional(),
+  type: locationTypeSchema.optional(),
+  travelRadius: z
+    .number()
+    .min(1, { message: 'Le rayon doit être d\'au moins 1 km' })
+    .max(100, { message: 'Le rayon ne peut pas dépasser 100 km' })
+    .nullable()
+    .optional(),
 });
 
 // Export types

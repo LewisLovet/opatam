@@ -53,6 +53,8 @@ export default function LocationsTestPage() {
         description: null,
         isDefault: false,
         isActive: true,
+        type: 'fixed',
+        travelRadius: null,
       });
       return { id, message: 'Location creee avec succes' };
     });

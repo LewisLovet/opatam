@@ -323,6 +323,8 @@ export default function RegisterPage() {
       description: null,
       isDefault: true,
       isActive: true,
+      type: 'fixed',
+      travelRadius: null,
     });
 
     // Create Service
