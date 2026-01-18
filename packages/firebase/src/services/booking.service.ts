@@ -41,13 +41,25 @@ export class BookingService {
       throw new Error('Lieu non trouvé');
     }
 
-    // Get member if specified
+    // NOUVEAU MODÈLE: memberId est requis pour la vérification de disponibilité
+    // Si non fourni, on trouve le membre par défaut du lieu sélectionné
     let member = null;
+    let effectiveMemberId = validated.memberId;
+
     if (validated.memberId) {
       member = await memberRepository.getById(validated.providerId, validated.memberId);
       if (!member) {
         throw new Error('Membre non trouvé');
       }
+    } else {
+      // Find default member for this location
+      const members = await memberRepository.getByLocation(validated.providerId, validated.locationId);
+      const defaultMember = members.find((m) => m.isDefault) || members[0];
+      if (!defaultMember) {
+        throw new Error('Aucun membre trouvé pour ce lieu');
+      }
+      member = defaultMember;
+      effectiveMemberId = defaultMember.id;
     }
 
     // Calculate total duration including buffer
@@ -56,8 +68,7 @@ export class BookingService {
     // Check slot availability
     const isAvailable = await schedulingService.isSlotAvailable({
       providerId: validated.providerId,
-      memberId: validated.memberId || null,
-      locationId: validated.locationId,
+      memberId: effectiveMemberId as string, // Now guaranteed to be non-null
       datetime: validated.datetime,
       duration: totalDuration,
     });
@@ -79,7 +90,7 @@ export class BookingService {
     const bookingId = await bookingRepository.create({
       providerId: validated.providerId,
       clientId: null, // Will be set if user is logged in
-      memberId: validated.memberId || null,
+      memberId: effectiveMemberId || null, // Use effective member ID
       providerName: provider.businessName,
       providerPhoto: provider.photoURL,
       memberName: member?.name || null,

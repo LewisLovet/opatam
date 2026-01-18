@@ -1,4 +1,4 @@
-import { locationRepository, bookingRepository, memberRepository } from '../repositories';
+import { locationRepository, bookingRepository, memberRepository, availabilityRepository } from '../repositories';
 import type { Location } from '@booking-app/shared';
 import {
   createLocationSchema,
@@ -88,11 +88,26 @@ export class LocationService {
       );
     }
 
-    // Remove location from all members that have it
+    // NOUVEAU MODÈLE: Check if any members are assigned to this location
+    // In the new model, members have a single locationId, so we can't just remove it
     const members = await memberRepository.getByLocation(providerId, locationId);
-    for (const member of members) {
-      const updatedLocationIds = member.locationIds.filter((id) => id !== locationId);
-      await memberRepository.update(providerId, member.id, { locationIds: updatedLocationIds });
+    if (members.length > 0) {
+      // Get other locations to potentially reassign members
+      const otherLocations = await locationRepository.getByProvider(providerId);
+      const availableLocation = otherLocations.find((l) => l.id !== locationId && l.isActive);
+
+      if (availableLocation) {
+        // Reassign members to another location
+        for (const member of members) {
+          await memberRepository.update(providerId, member.id, { locationId: availableLocation.id });
+          // Also update their availability records
+          await availabilityRepository.updateLocationForMember(providerId, member.id, availableLocation.id);
+        }
+      } else {
+        throw new Error(
+          'Impossible de supprimer ce lieu car des membres y sont assignés et aucun autre lieu n\'est disponible.'
+        );
+      }
     }
 
     // If this was the default location, make another one default

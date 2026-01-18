@@ -14,12 +14,12 @@ export default function MembersServiceTestPage() {
   const [providerId, setProviderId] = useState('');
   const [memberId, setMemberId] = useState('');
 
-  // Create form - locationIds maintenant optionnel (default [])
+  // Create form - NOUVEAU MODÈLE: locationId obligatoire (1 membre = 1 lieu)
   const [createName, setCreateName] = useState('Marie Dupont');
   const [createEmail, setCreateEmail] = useState('marie@salon.com');
   const [createPhone, setCreatePhone] = useState('0612345678');
   const [createRole, setCreateRole] = useState('Coiffeuse');
-  const [createLocationIds, setCreateLocationIds] = useState(''); // Optionnel maintenant
+  const [createLocationId, setCreateLocationId] = useState(''); // Obligatoire maintenant
   const [createColor, setCreateColor] = useState('#FF5733');
 
   // Update form
@@ -47,19 +47,18 @@ export default function MembersServiceTestPage() {
     }
   };
 
+  // NOUVEAU MODÈLE: locationId est obligatoire (1 membre = 1 lieu)
   const handleCreateMember = () =>
     executeAction('CREATE MEMBER', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      // locationIds est maintenant optionnel (default [])
-      const locationIds = createLocationIds
-        ? createLocationIds.split(',').map((id) => id.trim()).filter(Boolean)
-        : [];
+      if (!createLocationId) throw new Error('Location ID requis (nouveau modele: 1 membre = 1 lieu)');
 
       const member = await memberService.createMember(providerId, {
         name: createName,
         email: createEmail,
         phone: createPhone || undefined,
-        locationIds,
+        locationId: createLocationId, // NOUVEAU: un seul lieu
+        isDefault: false,
         serviceIds: [],
         color: createColor || undefined,
       });
@@ -164,10 +163,10 @@ export default function MembersServiceTestPage() {
           id: m.id,
           name: m.name,
           email: m.email,
-          // role removed from Member type
           accessCode: m.accessCode,
           isActive: m.isActive,
-          locationIds: m.locationIds,
+          isDefault: m.isDefault,
+          locationId: m.locationId, // NOUVEAU MODÈLE: un seul lieu
         })),
       };
     });
@@ -218,29 +217,17 @@ export default function MembersServiceTestPage() {
       };
     });
 
-  const handleAddLocation = () =>
-    executeAction('ADD LOCATION', async () => {
+  // NOUVEAU MODÈLE: changeLocation au lieu de add/remove
+  const handleChangeLocation = () =>
+    executeAction('CHANGE LOCATION', async () => {
       if (!providerId) throw new Error('Provider ID requis');
       if (!memberId) throw new Error('Member ID requis');
       if (!searchLocationId) throw new Error('Location ID requis');
-      await memberService.addLocation(providerId, memberId, searchLocationId);
+      await memberService.changeLocation(providerId, memberId, searchLocationId);
       const member = await memberRepository.getById(providerId, memberId);
       return {
-        message: 'Location ajoutee',
-        locationIds: member?.locationIds,
-      };
-    });
-
-  const handleRemoveLocation = () =>
-    executeAction('REMOVE LOCATION', async () => {
-      if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis');
-      if (!searchLocationId) throw new Error('Location ID requis');
-      await memberService.removeLocation(providerId, memberId, searchLocationId);
-      const member = await memberRepository.getById(providerId, memberId);
-      return {
-        message: 'Location retiree',
-        locationIds: member?.locationIds,
+        message: 'Location changee (disponibilites mises a jour)',
+        locationId: member?.locationId,
       };
     });
 
@@ -311,11 +298,11 @@ export default function MembersServiceTestPage() {
               hint="Ex: Coiffeuse, Barbier, Manager"
             />
             <Input
-              label="Location IDs"
-              value={createLocationIds}
-              onChange={(e) => setCreateLocationIds(e.target.value)}
-              placeholder="location-1, location-2"
-              hint="Separes par virgule (requis)"
+              label="Location ID (requis)"
+              value={createLocationId}
+              onChange={(e) => setCreateLocationId(e.target.value)}
+              placeholder="location-1"
+              hint="1 membre = 1 lieu"
             />
             <Input
               label="Couleur (optionnel)"
@@ -329,7 +316,7 @@ export default function MembersServiceTestPage() {
             <Button
               onClick={handleCreateMember}
               loading={loading && lastAction === 'CREATE MEMBER'}
-              disabled={!providerId}
+              disabled={!providerId || !createLocationId}
             >
               Creer Membre
             </Button>
@@ -433,13 +420,13 @@ export default function MembersServiceTestPage() {
         </CardBody>
       </Card>
 
-      {/* Location Management */}
+      {/* Location Management - NOUVEAU MODÈLE */}
       <Card>
-        <CardHeader title="Gestion des Locations" />
+        <CardHeader title="Gestion de la Location (1 membre = 1 lieu)" />
         <CardBody>
           <div className="flex gap-3 items-end flex-wrap">
             <Input
-              label="Location ID"
+              label="Nouvelle Location ID"
               value={searchLocationId}
               onChange={(e) => setSearchLocationId(e.target.value)}
               placeholder="location-1"
@@ -447,19 +434,11 @@ export default function MembersServiceTestPage() {
             />
             <Button
               variant="outline"
-              onClick={handleAddLocation}
-              loading={loading && lastAction === 'ADD LOCATION'}
+              onClick={handleChangeLocation}
+              loading={loading && lastAction === 'CHANGE LOCATION'}
               disabled={!providerId || !memberId || !searchLocationId}
             >
-              Ajouter Location
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleRemoveLocation}
-              loading={loading && lastAction === 'REMOVE LOCATION'}
-              disabled={!providerId || !memberId || !searchLocationId}
-            >
-              Retirer Location
+              Changer Location
             </Button>
             <Button
               variant="outline"
@@ -470,6 +449,9 @@ export default function MembersServiceTestPage() {
               Membres par Location
             </Button>
           </div>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Le changement de location met automatiquement a jour les disponibilites du membre.
+          </p>
         </CardBody>
       </Card>
 

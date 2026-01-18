@@ -23,9 +23,10 @@ export const timeSlotSchema = z.object({
 );
 
 // Availability schema (for a day of week)
+// Centré sur le membre : 1 membre = 1 lieu = 1 agenda
 export const availabilitySchema = z.object({
-  memberId: z.string().nullable().optional(),
-  locationId: z.string({ required_error: 'Le lieu est requis' }),
+  memberId: z.string({ required_error: 'Le membre est requis' }),
+  locationId: z.string({ required_error: 'Le lieu est requis' }), // Dénormalisé depuis member.locationId
   dayOfWeek: z
     .number({ required_error: 'Le jour de la semaine est requis' })
     .int()
@@ -37,8 +38,8 @@ export const availabilitySchema = z.object({
 
 // Set availability schema (for multiple days)
 export const setAvailabilitySchema = z.object({
-  memberId: z.string().nullable().optional(),
-  locationId: z.string({ required_error: 'Le lieu est requis' }),
+  memberId: z.string({ required_error: 'Le membre est requis' }),
+  locationId: z.string({ required_error: 'Le lieu est requis' }), // Dénormalisé depuis member.locationId
   schedule: z.array(
     z.object({
       dayOfWeek: z
@@ -53,9 +54,10 @@ export const setAvailabilitySchema = z.object({
 });
 
 // Blocked slot schema (vacation, break, etc.)
+// Centré sur le membre
 export const blockedSlotSchema = z.object({
-  memberId: z.string().nullable().optional(),
-  locationId: z.string().nullable().optional(),
+  memberId: z.string({ required_error: 'Le membre est requis' }),
+  locationId: z.string({ required_error: 'Le lieu est requis' }), // Dénormalisé depuis member.locationId
   startDate: z.coerce.date({ required_error: 'La date de début est requise' }),
   endDate: z.coerce.date({ required_error: 'La date de fin est requise' }),
   allDay: z.boolean().default(false),
@@ -91,8 +93,8 @@ export const blockedSlotSchema = z.object({
 
 // Exception slot schema (one-time override)
 export const exceptionSlotSchema = z.object({
-  memberId: z.string().nullable().optional(),
-  locationId: z.string({ required_error: 'Le lieu est requis' }),
+  memberId: z.string({ required_error: 'Le membre est requis' }),
+  locationId: z.string({ required_error: 'Le lieu est requis' }), // Dénormalisé depuis member.locationId
   date: z.coerce.date({ required_error: 'La date est requise' }),
   slots: z.array(timeSlotSchema),
   isOpen: z.boolean().default(true),

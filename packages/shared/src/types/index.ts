@@ -79,7 +79,8 @@ export interface Member {
   phone: string | null;
   photoURL: string | null;
   accessCode: string;
-  locationIds: string[];
+  locationId: string;        // UN seul lieu par membre
+  isDefault: boolean;        // true = membre principal (créé auto à l'inscription)
   isActive: boolean;
   sortOrder: number;
   createdAt: Date;
@@ -120,10 +121,11 @@ export interface Service {
 }
 
 // Availability types
+// Disponibilités centrées sur le membre (1 membre = 1 lieu = 1 agenda)
 export interface Availability {
-  memberId: string | null;
-  locationId: string;
-  dayOfWeek: number;
+  memberId: string;          // Obligatoire - clé principale
+  locationId: string;        // Dénormalisé depuis member.locationId pour perf
+  dayOfWeek: number;         // 0=Dim, 1=Lun, 2=Mar, 3=Mer, 4=Jeu, 5=Ven, 6=Sam
   slots: TimeSlot[];
   isOpen: boolean;
   updatedAt: Date;
@@ -135,14 +137,15 @@ export interface TimeSlot {
 }
 
 // Blocked slot types
+// Périodes bloquées (vacances, absences, etc.)
 export interface BlockedSlot {
-  memberId: string | null;
-  locationId: string | null;
+  memberId: string;          // Obligatoire - lié au membre
+  locationId: string;        // Dénormalisé depuis member.locationId
   startDate: Date;
   endDate: Date;
   allDay: boolean;
-  startTime: string | null;
-  endTime: string | null;
+  startTime: string | null;  // Si allDay=false
+  endTime: string | null;    // Si allDay=false
   reason: string | null;
   createdAt: Date;
 }

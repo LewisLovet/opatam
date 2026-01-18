@@ -14,19 +14,24 @@ import {
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 
+/**
+ * NOUVEAU MODÈLE: Centré sur le membre (1 membre = 1 lieu = 1 agenda)
+ * - memberId est maintenant OBLIGATOIRE pour toutes les opérations
+ * - Plus de fallback location-level
+ * - locationId est dénormalisé depuis member.locationId
+ */
+
 interface AvailableSlotsParams {
   providerId: string;
   serviceId: string;
-  locationId: string;
-  memberId?: string | null;
+  memberId: string; // Obligatoire maintenant
   startDate: Date;
   endDate: Date;
 }
 
 interface SlotCheckParams {
   providerId: string;
-  memberId?: string | null;
-  locationId: string;
+  memberId: string; // Obligatoire maintenant
   datetime: Date;
   duration: number;
 }
@@ -41,7 +46,8 @@ interface TimeSlotWithDate {
 
 export class SchedulingService {
   /**
-   * Set availability for a specific day/member/location
+   * Set availability for a specific day/member
+   * memberId est maintenant obligatoire
    */
   async setAvailability(providerId: string, input: AvailabilityInput): Promise<string> {
     // Validate input
@@ -64,8 +70,8 @@ export class SchedulingService {
     }
 
     return availabilityRepository.set(providerId, {
+      memberId: validated.memberId,
       locationId: validated.locationId,
-      memberId: validated.memberId || null,
       dayOfWeek: validated.dayOfWeek,
       slots: validated.slots,
       isOpen: validated.isOpen,
@@ -73,30 +79,31 @@ export class SchedulingService {
   }
 
   /**
-   * Set weekly schedule for a location/member
+   * Set weekly schedule for a member
+   * Nouveau modèle : memberId obligatoire, locationId dénormalisé
    */
   async setWeeklySchedule(
     providerId: string,
+    memberId: string,
     locationId: string,
-    memberId: string | null,
     schedule: Array<{ dayOfWeek: number; slots: TimeSlot[]; isOpen: boolean }>
   ): Promise<void> {
-    await availabilityRepository.setWeeklySchedule(providerId, locationId, memberId, schedule);
+    await availabilityRepository.setWeeklySchedule(providerId, memberId, locationId, schedule);
   }
 
   /**
-   * Get weekly schedule
+   * Get weekly schedule for a member
    */
   async getWeeklySchedule(
     providerId: string,
-    locationId: string,
-    memberId: string | null
+    memberId: string
   ): Promise<WithId<Availability>[]> {
-    return availabilityRepository.getWeeklySchedule(providerId, locationId, memberId);
+    return availabilityRepository.getWeeklySchedule(providerId, memberId);
   }
 
   /**
    * Block a period (vacation, absence, etc.)
+   * memberId est maintenant obligatoire
    */
   async blockPeriod(providerId: string, input: BlockedSlotInput): Promise<string> {
     // Validate input
@@ -118,8 +125,8 @@ export class SchedulingService {
     }
 
     return blockedSlotRepository.create(providerId, {
-      memberId: validated.memberId || null,
-      locationId: validated.locationId || null,
+      memberId: validated.memberId,
+      locationId: validated.locationId,
       startDate: validated.startDate,
       endDate: validated.endDate,
       allDay: validated.allDay,
@@ -144,6 +151,13 @@ export class SchedulingService {
   }
 
   /**
+   * Get blocked slots for a member
+   */
+  async getBlockedSlotsByMember(providerId: string, memberId: string): Promise<WithId<BlockedSlot>[]> {
+    return blockedSlotRepository.getByMember(providerId, memberId);
+  }
+
+  /**
    * Get upcoming blocked slots
    */
   async getUpcomingBlockedSlots(providerId: string): Promise<WithId<BlockedSlot>[]> {
@@ -152,9 +166,10 @@ export class SchedulingService {
 
   /**
    * Calculate available time slots for booking
+   * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
    */
   async getAvailableSlots(params: AvailableSlotsParams): Promise<TimeSlotWithDate[]> {
-    const { providerId, serviceId, locationId, memberId, startDate, endDate } = params;
+    const { providerId, serviceId, memberId, startDate, endDate } = params;
 
     // Get service duration
     const service = await serviceRepository.getById(providerId, serviceId);
@@ -179,13 +194,16 @@ export class SchedulingService {
     while (currentDate <= endDateNormalized) {
       const dayOfWeek = currentDate.getDay();
 
-      // Get availability for this day
+      // Get availability for this member on this day
+      // Plus de fallback - direct lookup par memberId
       const availability = await availabilityRepository.get(
         providerId,
-        locationId,
-        memberId || null,
+        memberId,
         dayOfWeek
       );
+
+      console.log('[Scheduling] Day', dayOfWeek, '- Member', memberId, ':',
+        availability ? `${availability.slots?.length} slots, isOpen: ${availability.isOpen}` : 'NOT FOUND');
 
       if (availability && availability.isOpen && availability.slots.length > 0) {
         // Get blocked slots for this date range
@@ -195,11 +213,9 @@ export class SchedulingService {
           new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)
         );
 
-        // Filter blocked slots for this member/location
+        // Filter blocked slots for this member
         const relevantBlockedSlots = blockedSlots.filter(
-          (bs) =>
-            (!bs.memberId || bs.memberId === memberId) &&
-            (!bs.locationId || bs.locationId === locationId)
+          (bs) => bs.memberId === memberId
         );
 
         // Get existing bookings for this date
@@ -211,8 +227,7 @@ export class SchedulingService {
         const relevantBookings = existingBookings.filter(
           (b) =>
             b.providerId === providerId &&
-            b.locationId === locationId &&
-            (!memberId || b.memberId === memberId) &&
+            b.memberId === memberId &&
             (b.status === 'confirmed' || b.status === 'pending')
         );
 
@@ -226,6 +241,9 @@ export class SchedulingService {
           );
 
           // Filter out blocked and booked slots
+          let filteredCount = 0;
+          const now = new Date();
+
           for (const genSlot of generatedSlots) {
             const isBlocked = this.isTimeBlockedBySlots(
               genSlot.datetime,
@@ -239,12 +257,16 @@ export class SchedulingService {
               relevantBookings
             );
 
-            // Only include future slots
-            const now = new Date();
-            if (!isBlocked && !isBooked && genSlot.datetime > now) {
+            const isPast = genSlot.datetime <= now;
+
+            if (!isBlocked && !isBooked && !isPast) {
               availableSlots.push(genSlot);
+            } else {
+              filteredCount++;
             }
           }
+
+          console.log('[Scheduling] Window', slot.start, '-', slot.end, ':', generatedSlots.length, 'generated,', filteredCount, 'filtered out');
         }
       }
 
@@ -257,18 +279,19 @@ export class SchedulingService {
 
   /**
    * Check if a specific time slot is available
+   * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
    */
   async isSlotAvailable(params: SlotCheckParams): Promise<boolean> {
-    const { providerId, memberId, locationId, datetime, duration } = params;
+    const { providerId, memberId, datetime, duration } = params;
 
     const endDatetime = new Date(datetime.getTime() + duration * 60 * 1000);
     const dayOfWeek = datetime.getDay();
 
-    // Check availability for this day
+    // Check availability for this member on this day
+    // Plus de fallback
     const availability = await availabilityRepository.get(
       providerId,
-      locationId,
-      memberId || null,
+      memberId,
       dayOfWeek
     );
 
@@ -296,8 +319,7 @@ export class SchedulingService {
 
     const isBlocked = blockedSlots.some(
       (bs) =>
-        (!bs.memberId || bs.memberId === memberId) &&
-        (!bs.locationId || bs.locationId === locationId) &&
+        bs.memberId === memberId &&
         this.isTimeBlockedBySlot(datetime, endDatetime, bs)
     );
 
@@ -310,8 +332,7 @@ export class SchedulingService {
     const hasConflict = existingBookings.some(
       (b) =>
         b.providerId === providerId &&
-        b.locationId === locationId &&
-        (!memberId || b.memberId === memberId) &&
+        b.memberId === memberId &&
         (b.status === 'confirmed' || b.status === 'pending') &&
         this.timesOverlap(datetime, endDatetime, b.datetime, b.endDatetime)
     );

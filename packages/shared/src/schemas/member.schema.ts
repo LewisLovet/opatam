@@ -4,6 +4,7 @@ import { z } from 'zod';
 const frenchPhoneRegex = /^0[67]\d{8}$/;
 
 // Create member schema - MINIMUM requis
+// 1 membre = 1 lieu (pas de tableau locationIds)
 export const createMemberSchema = z.object({
   name: z
     .string({ required_error: 'Le nom est requis' })
@@ -21,10 +22,8 @@ export const createMemberSchema = z.object({
     .string()
     .max(50, { message: 'Le rôle ne peut pas dépasser 50 caractères' })
     .optional(),
-  locationIds: z
-    .array(z.string())
-    .optional()
-    .default([]),
+  locationId: z
+    .string({ required_error: 'Le lieu est requis' }),
   serviceIds: z
     .array(z.string())
     .optional()
@@ -38,6 +37,10 @@ export const createMemberSchema = z.object({
     .url({ message: 'URL de la photo invalide' })
     .nullable()
     .optional(),
+  isDefault: z
+    .boolean()
+    .optional()
+    .default(false),
 });
 
 // Update member schema - Tout optionnel
@@ -60,8 +63,8 @@ export const updateMemberSchema = z.object({
     .string()
     .max(50, { message: 'Le rôle ne peut pas dépasser 50 caractères' })
     .optional(),
-  locationIds: z
-    .array(z.string())
+  locationId: z
+    .string()
     .optional(),
   serviceIds: z
     .array(z.string())
@@ -76,6 +79,7 @@ export const updateMemberSchema = z.object({
     .nullable()
     .optional(),
   isActive: z.boolean().optional(),
+  isDefault: z.boolean().optional(),
   accessCode: z.string().optional(),
 });
 

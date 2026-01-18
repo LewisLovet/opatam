@@ -55,13 +55,15 @@ export default function AvailabilityTestPage() {
   };
 
   // Availability actions
+  // NOUVEAU MODÈLE: memberId est obligatoire
   const handleSetAvailability = () =>
     executeAction('SET AVAILABILITY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
       if (!locationId) throw new Error('Location ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
       const id = await availabilityRepository.set(providerId, {
         locationId,
-        memberId: memberId || null,
+        memberId,
         dayOfWeek: parseInt(dayOfWeek, 10),
         slots: [{ start: startTime, end: endTime }],
         isOpen,
@@ -69,14 +71,14 @@ export default function AvailabilityTestPage() {
       return { id, message: 'Disponibilite definie avec succes' };
     });
 
+  // NOUVEAU MODÈLE: get prend (providerId, memberId, dayOfWeek)
   const handleGetAvailability = () =>
     executeAction('GET AVAILABILITY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!locationId) throw new Error('Location ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
       const availability = await availabilityRepository.get(
         providerId,
-        locationId,
-        memberId || null,
+        memberId,
         parseInt(dayOfWeek, 10)
       );
       return availability || { message: 'Aucune disponibilite trouvee' };
@@ -97,21 +99,23 @@ export default function AvailabilityTestPage() {
       return { count: availabilities.length, availabilities };
     });
 
+  // NOUVEAU MODÈLE: getWeeklySchedule prend (providerId, memberId)
   const handleGetWeeklySchedule = () =>
     executeAction('GET WEEKLY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!locationId) throw new Error('Location ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
       const schedule = await availabilityRepository.getWeeklySchedule(
         providerId,
-        locationId,
-        memberId || null
+        memberId
       );
       return { count: schedule.length, schedule };
     });
 
+  // NOUVEAU MODÈLE: setWeeklySchedule prend (providerId, memberId, locationId, schedule)
   const handleSetWeeklySchedule = () =>
     executeAction('SET WEEKLY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
       if (!locationId) throw new Error('Location ID requis');
 
       // Create a default week schedule (Mon-Fri 9-18, Sat 9-12, Sun closed)
@@ -127,22 +131,25 @@ export default function AvailabilityTestPage() {
 
       await availabilityRepository.setWeeklySchedule(
         providerId,
+        memberId,
         locationId,
-        memberId || null,
         schedule
       );
       return { message: 'Emploi du temps hebdomadaire defini', schedule };
     });
 
   // Blocked slot actions
+  // NOUVEAU MODÈLE: memberId et locationId sont obligatoires
   const handleCreateBlockedSlot = () =>
     executeAction('CREATE BLOCKED', async () => {
       if (!providerId) throw new Error('Provider ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!locationId) throw new Error('Location ID requis (nouveau modele)');
       if (!blockStartDate || !blockEndDate) throw new Error('Dates requises');
 
       const id = await blockedSlotRepository.create(providerId, {
-        memberId: memberId || null,
-        locationId: locationId || null,
+        memberId,
+        locationId,
         startDate: new Date(blockStartDate),
         endDate: new Date(blockEndDate),
         allDay: blockAllDay,

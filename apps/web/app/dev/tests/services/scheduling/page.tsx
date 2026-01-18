@@ -132,14 +132,16 @@ export default function SchedulingServiceTestPage() {
     }
   };
 
+  // NOUVEAU MODÈLE: memberId est obligatoire (1 membre = 1 lieu = 1 agenda)
   const handleSetAvailability = () =>
     executeAction('SET AVAILABILITY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele: 1 membre = 1 agenda)');
       if (!locationId) throw new Error('Location ID requis');
 
       const availabilityId = await schedulingService.setAvailability(providerId, {
         locationId,
-        memberId: memberId || null,
+        memberId, // Obligatoire maintenant
         dayOfWeek: availDayOfWeek,
         slots: availIsOpen ? [{ start: availStartTime, end: availEndTime }] : [],
         isOpen: availIsOpen,
@@ -149,15 +151,17 @@ export default function SchedulingServiceTestPage() {
         availabilityId,
         day: DAYS_OF_WEEK.find((d) => d.value === availDayOfWeek)?.label,
         locationId,
-        memberId: memberId || null,
+        memberId,
         isOpen: availIsOpen,
         slots: availIsOpen ? [{ start: availStartTime, end: availEndTime }] : [],
       };
     });
 
+  // NOUVEAU MODÈLE: memberId obligatoire
   const handleSetWeeklySchedule = () =>
     executeAction('SET WEEKLY SCHEDULE', async () => {
       if (!providerId) throw new Error('Provider ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
       if (!locationId) throw new Error('Location ID requis');
 
       // Define Mon-Sat schedule (Dimanche ferme)
@@ -173,27 +177,30 @@ export default function SchedulingServiceTestPage() {
 
       await schedulingService.setWeeklySchedule(
         providerId,
+        memberId, // NOUVEAU: memberId obligatoire
         locationId,
-        memberId || null,
         schedule
       );
       return {
         message: 'Planning hebdomadaire defini (Lun-Sam)',
         locationId,
-        memberId: memberId || null,
+        memberId,
         horaires: `${weeklyStartTime} - ${weeklyEndTime}`,
         dimancheFerme: true,
       };
     });
 
+  // NOUVEAU MODÈLE: memberId et locationId obligatoires
   const handleBlockPeriod = () =>
     executeAction('BLOCK PERIOD', async () => {
       if (!providerId) throw new Error('Provider ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!locationId) throw new Error('Location ID requis (nouveau modele)');
       if (!blockStartDate || !blockEndDate) throw new Error('Dates requises');
 
       const blockedId = await schedulingService.blockPeriod(providerId, {
-        memberId: memberId || null,
-        locationId: locationId || null,
+        memberId, // Obligatoire
+        locationId, // Obligatoire
         startDate: new Date(blockStartDate),
         endDate: new Date(blockEndDate),
         allDay: blockAllDay,
@@ -225,18 +232,18 @@ export default function SchedulingServiceTestPage() {
       };
     });
 
+  // NOUVEAU MODÈLE: memberId obligatoire
   const handleGetAvailableSlots = () =>
     executeAction('GET AVAILABLE SLOTS', async () => {
       if (!providerId) throw new Error('Provider ID requis');
       if (!serviceId) throw new Error('Service ID requis');
-      if (!locationId) throw new Error('Location ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
       if (!slotStartDate || !slotEndDate) throw new Error('Dates requises');
 
       const slots = await schedulingService.getAvailableSlots({
         providerId,
         serviceId,
-        locationId,
-        memberId: memberId || null,
+        memberId, // Obligatoire
         startDate: new Date(slotStartDate),
         endDate: new Date(slotEndDate),
       });
@@ -246,8 +253,7 @@ export default function SchedulingServiceTestPage() {
         params: {
           providerId,
           serviceId,
-          locationId,
-          memberId: memberId || null,
+          memberId,
         },
         slotsCount: slots.length,
         slots: slots.slice(0, 20).map((s) => ({
@@ -259,17 +265,17 @@ export default function SchedulingServiceTestPage() {
       };
     });
 
+  // NOUVEAU MODÈLE: memberId obligatoire
   const handleIsSlotAvailable = () =>
     executeAction('IS SLOT AVAILABLE', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!locationId) throw new Error('Location ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
       if (!slotStartDate) throw new Error('Date requise');
 
       const datetime = new Date(`${slotStartDate}T${availStartTime}`);
       const isAvailable = await schedulingService.isSlotAvailable({
         providerId,
-        memberId: memberId || null,
-        locationId,
+        memberId, // Obligatoire
         datetime,
         duration: 60, // 1h par defaut
       });
@@ -281,18 +287,18 @@ export default function SchedulingServiceTestPage() {
       };
     });
 
+  // NOUVEAU MODÈLE: memberId obligatoire
   const handleGetWeeklySchedule = () =>
     executeAction('GET WEEKLY SCHEDULE', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!locationId) throw new Error('Location ID requis');
+      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
 
       const schedule = await schedulingService.getWeeklySchedule(
         providerId,
-        locationId,
-        memberId || null
+        memberId // Obligatoire
       );
       return {
-        params: { providerId, locationId, memberId: memberId || null },
+        params: { providerId, memberId },
         count: schedule.length,
         schedule: schedule.map((a) => ({
           id: a.id,
@@ -425,24 +431,37 @@ export default function SchedulingServiceTestPage() {
               )}
             </div>
 
-            {/* Member */}
+            {/* Member - NOUVEAU MODÈLE: obligatoire */}
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Membre (optionnel)
+                Membre * (1 membre = 1 agenda)
               </label>
               <select
                 value={memberId}
-                onChange={(e) => setMemberId(e.target.value)}
+                onChange={(e) => {
+                  setMemberId(e.target.value);
+                  // Auto-select location from member
+                  const member = members.find((m) => m.id === e.target.value);
+                  if (member) {
+                    setLocationId(member.locationId);
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 disabled={!providerId}
               >
-                <option value="">-- Aucun (provider) --</option>
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
+                <option value="">-- Selectionner --</option>
+                {members.map((m) => {
+                  const loc = locations.find((l) => l.id === m.locationId);
+                  return (
+                    <option key={m.id} value={m.id}>
+                      {m.name} {loc ? `(${loc.name})` : ''}
+                    </option>
+                  );
+                })}
               </select>
+              {members.length === 0 && providerId && (
+                <p className="text-xs text-amber-600">Aucun membre.</p>
+              )}
             </div>
           </div>
 
@@ -509,7 +528,7 @@ export default function SchedulingServiceTestPage() {
             <Button
               onClick={handleSetAvailability}
               loading={loading && lastAction === 'SET AVAILABILITY'}
-              disabled={!providerId || !locationId}
+              disabled={!providerId || !memberId || !locationId}
             >
               Definir Disponibilite
             </Button>
@@ -543,7 +562,7 @@ export default function SchedulingServiceTestPage() {
               variant="outline"
               onClick={handleSetWeeklySchedule}
               loading={loading && lastAction === 'SET WEEKLY SCHEDULE'}
-              disabled={!providerId || !locationId}
+              disabled={!providerId || !memberId || !locationId}
             >
               Appliquer Planning
             </Button>
@@ -551,7 +570,7 @@ export default function SchedulingServiceTestPage() {
               variant="ghost"
               onClick={handleGetWeeklySchedule}
               loading={loading && lastAction === 'GET WEEKLY SCHEDULE'}
-              disabled={!providerId || !locationId}
+              disabled={!providerId || !memberId}
             >
               Voir Planning
             </Button>
@@ -619,7 +638,7 @@ export default function SchedulingServiceTestPage() {
             <Button
               onClick={handleBlockPeriod}
               loading={loading && lastAction === 'BLOCK PERIOD'}
-              disabled={!providerId}
+              disabled={!providerId || !memberId || !locationId}
             >
               Bloquer
             </Button>
@@ -667,7 +686,7 @@ export default function SchedulingServiceTestPage() {
             <Button
               onClick={handleGetAvailableSlots}
               loading={loading && lastAction === 'GET AVAILABLE SLOTS'}
-              disabled={!providerId || !serviceId || !locationId}
+              disabled={!providerId || !serviceId || !memberId}
             >
               Obtenir Creneaux
             </Button>
@@ -675,7 +694,7 @@ export default function SchedulingServiceTestPage() {
               variant="outline"
               onClick={handleIsSlotAvailable}
               loading={loading && lastAction === 'IS SLOT AVAILABLE'}
-              disabled={!providerId || !locationId}
+              disabled={!providerId || !memberId}
             >
               Verifier {slotStartDate || today} {availStartTime}
             </Button>
@@ -692,7 +711,7 @@ export default function SchedulingServiceTestPage() {
               variant="outline"
               onClick={handleGetWeeklySchedule}
               loading={loading && lastAction === 'GET WEEKLY SCHEDULE'}
-              disabled={!providerId || !locationId}
+              disabled={!providerId || !memberId}
             >
               Planning Hebdo
             </Button>

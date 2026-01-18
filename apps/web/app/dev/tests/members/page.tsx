@@ -18,6 +18,8 @@ export default function MembersTestPage() {
   const [createEmail, setCreateEmail] = useState('jean@example.com');
   const [createPhone, setCreatePhone] = useState('0612345678');
 
+  const [createLocationId, setCreateLocationId] = useState('');
+
   const [searchMemberId, setSearchMemberId] = useState('');
   const [searchAccessCode, setSearchAccessCode] = useState('');
   const [searchLocationId, setSearchLocationId] = useState('');
@@ -45,9 +47,11 @@ export default function MembersTestPage() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
+  // NOUVEAU MODÈLE: locationId est obligatoire (1 membre = 1 lieu)
   const handleCreate = () =>
     executeAction('CREATE', async () => {
       if (!providerId) throw new Error('Provider ID requis');
+      if (!createLocationId) throw new Error('Location ID requis (nouveau modele: 1 membre = 1 lieu)');
       const accessCode = generateAccessCode();
       const id = await memberRepository.create(providerId, {
         name: createName,
@@ -55,7 +59,8 @@ export default function MembersTestPage() {
         phone: createPhone,
         photoURL: null,
         accessCode,
-        locationIds: [],
+        locationId: createLocationId,
+        isDefault: false,
         isActive: true,
         sortOrder: 0,
       });
@@ -161,7 +166,7 @@ export default function MembersTestPage() {
       <Card>
         <CardHeader title="Creer un Member" />
         <CardBody>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Input
               label="Nom"
               value={createName}
@@ -180,12 +185,19 @@ export default function MembersTestPage() {
               onChange={(e) => setCreatePhone(e.target.value)}
               placeholder="0612345678"
             />
+            <Input
+              label="Location ID (requis)"
+              value={createLocationId}
+              onChange={(e) => setCreateLocationId(e.target.value)}
+              placeholder="ID du lieu"
+              hint="1 membre = 1 lieu"
+            />
           </div>
           <div className="mt-4">
             <Button
               onClick={handleCreate}
               loading={loading && lastAction === 'CREATE'}
-              disabled={!providerId}
+              disabled={!providerId || !createLocationId}
             >
               Creer Member
             </Button>

@@ -26,6 +26,7 @@ import {
   locationRepository,
   serviceRepository,
   schedulingService,
+  memberService,
 } from '@booking-app/firebase';
 import { CATEGORIES, DAYS_OF_WEEK } from '@booking-app/shared';
 
@@ -327,6 +328,15 @@ export default function RegisterPage() {
       travelRadius: null,
     });
 
+    // Create default member (represents the provider owner)
+    // NOUVEAU MODÈLE: 1 membre = 1 lieu = 1 agenda
+    const defaultMember = await memberService.createDefaultMember(
+      provider.id,
+      data.displayName || data.businessName,
+      data.email,
+      locationId
+    );
+
     // Create Service
     await serviceRepository.create(provider.id, {
       name: data.serviceName,
@@ -336,18 +346,18 @@ export default function RegisterPage() {
       bufferTime: 0,
       isActive: true,
       locationIds: [locationId],
-      memberIds: null,
+      memberIds: [defaultMember.id], // Associate with default member
       sortOrder: 0,
     });
 
-    // Create Availability
+    // Create Availability for the default member
     const schedule = Object.entries(data.availability).map(([dayOfWeek, dayData]) => ({
       dayOfWeek: parseInt(dayOfWeek),
       isOpen: dayData.isOpen,
       slots: dayData.isOpen ? [{ start: dayData.start, end: dayData.end }] : [],
     }));
 
-    await schedulingService.setWeeklySchedule(provider.id, locationId, null, schedule);
+    await schedulingService.setWeeklySchedule(provider.id, defaultMember.id, locationId, schedule);
 
     return provider;
   };

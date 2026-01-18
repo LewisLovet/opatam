@@ -17,7 +17,11 @@ import { convertTimestamps, removeUndefined, type WithId } from './base.reposito
 
 /**
  * Repository for availability subcollection (providers/{providerId}/availability)
- * Uses composite document IDs: {locationId}_{memberId}_{dayOfWeek} or {locationId}_null_{dayOfWeek}
+ *
+ * NOUVEAU MODÈLE: Centré sur le membre (1 membre = 1 lieu = 1 agenda)
+ * Document ID format: {memberId}_{dayOfWeek}
+ *
+ * Le locationId est dénormalisé depuis member.locationId pour performance
  */
 export class AvailabilityRepository {
   private db: Firestore;
@@ -35,9 +39,10 @@ export class AvailabilityRepository {
 
   /**
    * Generate document ID from availability data
+   * Nouveau format: {memberId}_{dayOfWeek}
    */
-  private generateDocId(locationId: string, memberId: string | null, dayOfWeek: number): string {
-    return `${locationId}_${memberId || 'null'}_${dayOfWeek}`;
+  private generateDocId(memberId: string, dayOfWeek: number): string {
+    return `${memberId}_${dayOfWeek}`;
   }
 
   /**
@@ -49,12 +54,13 @@ export class AvailabilityRepository {
 
   /**
    * Set availability (create or update)
+   * memberId est maintenant obligatoire
    */
   async set(
     providerId: string,
     data: Omit<Availability, 'updatedAt'>
   ): Promise<string> {
-    const docId = this.generateDocId(data.locationId, data.memberId, data.dayOfWeek);
+    const docId = this.generateDocId(data.memberId, data.dayOfWeek);
     const docRef = this.getDocRef(providerId, docId);
 
     const docData = removeUndefined({
@@ -68,15 +74,14 @@ export class AvailabilityRepository {
   }
 
   /**
-   * Get availability by composite key
+   * Get availability by member and day
    */
   async get(
     providerId: string,
-    locationId: string,
-    memberId: string | null,
+    memberId: string,
     dayOfWeek: number
   ): Promise<WithId<Availability> | null> {
-    const docId = this.generateDocId(locationId, memberId, dayOfWeek);
+    const docId = this.generateDocId(memberId, dayOfWeek);
     const docRef = this.getDocRef(providerId, docId);
     const docSnap = await getDoc(docRef);
 
@@ -103,7 +108,7 @@ export class AvailabilityRepository {
   }
 
   /**
-   * Get availability by location
+   * Get availability by location (via le champ dénormalisé)
    */
   async getByLocation(providerId: string, locationId: string): Promise<WithId<Availability>[]> {
     const q = query(
@@ -119,7 +124,7 @@ export class AvailabilityRepository {
   }
 
   /**
-   * Get availability by member
+   * Get availability by member (principal use case)
    */
   async getByMember(providerId: string, memberId: string): Promise<WithId<Availability>[]> {
     const q = query(
@@ -135,7 +140,7 @@ export class AvailabilityRepository {
   }
 
   /**
-   * Get availability for a specific day
+   * Get availability for a specific day (all members)
    */
   async getByDay(providerId: string, dayOfWeek: number): Promise<WithId<Availability>[]> {
     const q = query(
@@ -151,51 +156,39 @@ export class AvailabilityRepository {
   }
 
   /**
-   * Get availability for location and member on a specific day
+   * Get availability for member on a specific day
    */
   async getForDay(
     providerId: string,
-    locationId: string,
-    memberId: string | null,
+    memberId: string,
     dayOfWeek: number
   ): Promise<WithId<Availability> | null> {
-    return this.get(providerId, locationId, memberId, dayOfWeek);
+    return this.get(providerId, memberId, dayOfWeek);
   }
 
   /**
-   * Get weekly availability for location and member
+   * Get weekly schedule for a member (7 days)
    */
   async getWeeklySchedule(
     providerId: string,
-    locationId: string,
-    memberId: string | null
+    memberId: string
   ): Promise<WithId<Availability>[]> {
-    const q = query(
-      this.getCollectionRef(providerId),
-      where('locationId', '==', locationId),
-      where('memberId', '==', memberId)
-    );
-    const querySnapshot = await getDocs(q);
-
-    return querySnapshot.docs.map((docSnap) => ({
-      id: docSnap.id,
-      ...convertTimestamps<Availability>(docSnap.data()),
-    }));
+    return this.getByMember(providerId, memberId);
   }
 
   /**
-   * Set weekly schedule (7 days)
+   * Set weekly schedule for a member (7 days)
    */
   async setWeeklySchedule(
     providerId: string,
+    memberId: string,
     locationId: string,
-    memberId: string | null,
     schedule: Array<{ dayOfWeek: number; slots: Availability['slots']; isOpen: boolean }>
   ): Promise<void> {
     const updates = schedule.map((day) =>
       this.set(providerId, {
-        locationId,
         memberId,
+        locationId,
         dayOfWeek: day.dayOfWeek,
         slots: day.slots,
         isOpen: day.isOpen,
@@ -206,15 +199,14 @@ export class AvailabilityRepository {
   }
 
   /**
-   * Delete availability
+   * Delete availability for a member on a specific day
    */
   async delete(
     providerId: string,
-    locationId: string,
-    memberId: string | null,
+    memberId: string,
     dayOfWeek: number
   ): Promise<void> {
-    const docId = this.generateDocId(locationId, memberId, dayOfWeek);
+    const docId = this.generateDocId(memberId, dayOfWeek);
     const docRef = this.getDocRef(providerId, docId);
     await deleteDoc(docRef);
   }
@@ -239,6 +231,30 @@ export class AvailabilityRepository {
       deleteDoc(this.getDocRef(providerId, av.id))
     );
     await Promise.all(deletes);
+  }
+
+  /**
+   * Update locationId for all availabilities of a member
+   * (À utiliser quand un membre change de lieu)
+   */
+  async updateLocationForMember(
+    providerId: string,
+    memberId: string,
+    newLocationId: string
+  ): Promise<void> {
+    const availabilities = await this.getByMember(providerId, memberId);
+
+    const updates = availabilities.map((av) =>
+      this.set(providerId, {
+        memberId: av.memberId,
+        locationId: newLocationId,
+        dayOfWeek: av.dayOfWeek,
+        slots: av.slots,
+        isOpen: av.isOpen,
+      })
+    );
+
+    await Promise.all(updates);
   }
 }
 

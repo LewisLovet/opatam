@@ -141,12 +141,12 @@ export class MemberRepository {
   }
 
   /**
-   * Get members by location
+   * Get members by location (1 membre = 1 lieu)
    */
   async getByLocation(providerId: string, locationId: string): Promise<WithId<Member>[]> {
     const q = query(
       this.getCollectionRef(providerId),
-      where('locationIds', 'array-contains', locationId),
+      where('locationId', '==', locationId),
       where('isActive', '==', true)
     );
     const querySnapshot = await getDocs(q);
@@ -155,6 +155,28 @@ export class MemberRepository {
       id: docSnap.id,
       ...convertTimestamps<Member>(docSnap.data()),
     }));
+  }
+
+  /**
+   * Get the default member for a provider (créé automatiquement à l'inscription)
+   */
+  async getDefaultMember(providerId: string): Promise<WithId<Member> | null> {
+    const q = query(
+      this.getCollectionRef(providerId),
+      where('isDefault', '==', true),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      return null;
+    }
+
+    const docSnap = querySnapshot.docs[0];
+    return {
+      id: docSnap.id,
+      ...convertTimestamps<Member>(docSnap.data()),
+    };
   }
 
   /**

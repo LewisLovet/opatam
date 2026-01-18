@@ -6,12 +6,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { Scissors, MapPin, Users, Clock } from 'lucide-react';
 import { PrestationsTab } from './components/PrestationsTab';
 import { LieuxTab } from './components/LieuxTab';
+import { EquipeTab } from './components/EquipeTab';
+import { DisponibilitesTab } from './components/DisponibilitesTab';
 
 export default function ActivityPage() {
   const { provider } = useAuth();
   const [activeTab, setActiveTab] = useState('prestations');
 
-  const isTeamPlan = provider?.plan === 'team';
+  const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
 
   const tabs = [
     { id: 'prestations', label: 'Prestations', icon: <Scissors className="w-4 h-4" /> },
@@ -58,30 +60,15 @@ export default function ActivityPage() {
         {/* Equipe Tab (Teams only) */}
         {isTeamPlan && (
           <TabsContent value="equipe" className="mt-6">
-            <PlaceholderTab title="Equipe" description="La gestion de l'equipe arrive bientot." />
+            <EquipeTab />
           </TabsContent>
         )}
 
         {/* Disponibilites Tab */}
         <TabsContent value="disponibilites" className="mt-6">
-          <PlaceholderTab
-            title="Disponibilites"
-            description="La gestion des disponibilites arrive bientot."
-          />
+          <DisponibilitesTab />
         </TabsContent>
       </Tabs>
-    </div>
-  );
-}
-
-// Placeholder component for tabs not yet implemented
-function PlaceholderTab({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-      <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
-        <p className="text-gray-500 dark:text-gray-400">{description}</p>
-      </div>
     </div>
   );
 }

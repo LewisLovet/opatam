@@ -1,4 +1,4 @@
-import { memberRepository, bookingRepository } from '../repositories';
+import { memberRepository, bookingRepository, availabilityRepository } from '../repositories';
 import type { Member } from '@booking-app/shared';
 import {
   createMemberSchema,
@@ -8,9 +8,15 @@ import {
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 
+/**
+ * NOUVEAU MODÈLE: 1 membre = 1 lieu = 1 agenda
+ * - locationId (singulier) remplace locationIds (pluriel)
+ * - Changement de lieu = mise à jour des disponibilités
+ */
 export class MemberService {
   /**
    * Create a new team member
+   * Un membre est maintenant associé à UN seul lieu
    */
   async createMember(providerId: string, input: CreateMemberInput): Promise<WithId<Member>> {
     // Validate input
@@ -23,14 +29,15 @@ export class MemberService {
     const existingMembers = await memberRepository.getByProvider(providerId);
     const sortOrder = existingMembers.length;
 
-    // Create member
+    // Create member with single locationId
     const memberId = await memberRepository.create(providerId, {
       name: validated.name,
       email: validated.email,
       phone: validated.phone || null,
       photoURL: null,
       accessCode,
-      locationIds: validated.locationIds,
+      locationId: validated.locationId,
+      isDefault: false, // Les membres créés manuellement ne sont pas par défaut
       isActive: true,
       sortOrder,
     });
@@ -41,6 +48,47 @@ export class MemberService {
     }
 
     return member;
+  }
+
+  /**
+   * Create default member at registration
+   * Ce membre représente le propriétaire du compte
+   */
+  async createDefaultMember(
+    providerId: string,
+    name: string,
+    email: string,
+    locationId: string
+  ): Promise<WithId<Member>> {
+    // Generate unique access code
+    const accessCode = await this.generateUniqueAccessCode(name);
+
+    // Create default member
+    const memberId = await memberRepository.create(providerId, {
+      name,
+      email,
+      phone: null,
+      photoURL: null,
+      accessCode,
+      locationId,
+      isDefault: true, // Membre par défaut
+      isActive: true,
+      sortOrder: 0,
+    });
+
+    const member = await memberRepository.getById(providerId, memberId);
+    if (!member) {
+      throw new Error('Erreur lors de la création du membre par défaut');
+    }
+
+    return member;
+  }
+
+  /**
+   * Get the default member for a provider
+   */
+  async getDefaultMember(providerId: string): Promise<WithId<Member> | null> {
+    return memberRepository.getDefaultMember(providerId);
   }
 
   /**
@@ -64,12 +112,48 @@ export class MemberService {
   }
 
   /**
+   * Change member location
+   * Met à jour le lieu ET synchronise les disponibilités
+   */
+  async changeLocation(
+    providerId: string,
+    memberId: string,
+    newLocationId: string
+  ): Promise<void> {
+    const member = await memberRepository.getById(providerId, memberId);
+    if (!member) {
+      throw new Error('Membre non trouvé');
+    }
+
+    if (member.locationId === newLocationId) {
+      return; // Pas de changement
+    }
+
+    // Update member's locationId
+    await memberRepository.update(providerId, memberId, {
+      locationId: newLocationId,
+    });
+
+    // Update locationId in all availability records for this member
+    await availabilityRepository.updateLocationForMember(
+      providerId,
+      memberId,
+      newLocationId
+    );
+  }
+
+  /**
    * Deactivate member (soft delete)
    */
   async deactivateMember(providerId: string, memberId: string): Promise<void> {
     const member = await memberRepository.getById(providerId, memberId);
     if (!member) {
       throw new Error('Membre non trouvé');
+    }
+
+    // On ne peut pas désactiver le membre par défaut
+    if (member.isDefault) {
+      throw new Error('Impossible de désactiver le membre principal');
     }
 
     await memberRepository.toggleActive(providerId, memberId, false);
@@ -91,6 +175,16 @@ export class MemberService {
    * Delete member permanently
    */
   async deleteMember(providerId: string, memberId: string): Promise<void> {
+    const member = await memberRepository.getById(providerId, memberId);
+    if (!member) {
+      throw new Error('Membre non trouvé');
+    }
+
+    // On ne peut pas supprimer le membre par défaut
+    if (member.isDefault) {
+      throw new Error('Impossible de supprimer le membre principal');
+    }
+
     // Check for future confirmed bookings
     const futureBookings = await bookingRepository.getByMember(providerId, memberId);
     const now = new Date();
@@ -104,6 +198,10 @@ export class MemberService {
       );
     }
 
+    // Delete member's availability
+    await availabilityRepository.deleteByMember(providerId, memberId);
+
+    // Delete member
     await memberRepository.delete(providerId, memberId);
   }
 
@@ -151,7 +249,7 @@ export class MemberService {
   }
 
   /**
-   * Get members by location
+   * Get members by location (1 membre = 1 lieu)
    */
   async getByLocation(providerId: string, locationId: string): Promise<WithId<Member>[]> {
     return memberRepository.getByLocation(providerId, locationId);
@@ -172,36 +270,6 @@ export class MemberService {
    */
   async updatePhoto(providerId: string, memberId: string, photoURL: string): Promise<void> {
     await memberRepository.update(providerId, memberId, { photoURL });
-  }
-
-  /**
-   * Add location to member
-   */
-  async addLocation(providerId: string, memberId: string, locationId: string): Promise<void> {
-    const member = await memberRepository.getById(providerId, memberId);
-    if (!member) {
-      throw new Error('Membre non trouvé');
-    }
-
-    if (!member.locationIds.includes(locationId)) {
-      await memberRepository.update(providerId, memberId, {
-        locationIds: [...member.locationIds, locationId],
-      });
-    }
-  }
-
-  /**
-   * Remove location from member
-   */
-  async removeLocation(providerId: string, memberId: string, locationId: string): Promise<void> {
-    const member = await memberRepository.getById(providerId, memberId);
-    if (!member) {
-      throw new Error('Membre non trouvé');
-    }
-
-    await memberRepository.update(providerId, memberId, {
-      locationIds: member.locationIds.filter((id) => id !== locationId),
-    });
   }
 
   /**

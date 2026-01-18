@@ -133,8 +133,9 @@ export default function BookingsServiceTestPage() {
   }, [providerId]);
 
   // Load available slots when selection changes
+  // NOUVEAU MODÈLE: memberId est obligatoire (1 membre = 1 lieu = 1 agenda)
   const loadAvailableSlots = async () => {
-    if (!providerId || !serviceId || !locationId || !searchStartDate || !searchEndDate) {
+    if (!providerId || !serviceId || !memberId || !searchStartDate || !searchEndDate) {
       return;
     }
 
@@ -147,8 +148,7 @@ export default function BookingsServiceTestPage() {
       const slots = await schedulingService.getAvailableSlots({
         providerId,
         serviceId,
-        locationId,
-        memberId: memberId || null,
+        memberId, // Obligatoire dans le nouveau modèle
         startDate: new Date(searchStartDate),
         endDate: new Date(searchEndDate),
       });
@@ -470,28 +470,39 @@ export default function BookingsServiceTestPage() {
               )}
             </div>
 
-            {/* Member */}
+            {/* Member - NOUVEAU MODÈLE: obligatoire */}
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Membre (optionnel)
+                Membre * (1 membre = 1 agenda)
               </label>
               <select
                 value={memberId}
                 onChange={(e) => {
                   setMemberId(e.target.value);
+                  // Auto-select location from member
+                  const member = members.find((m) => m.id === e.target.value);
+                  if (member) {
+                    setLocationId(member.locationId);
+                  }
                   setAvailableSlots([]);
                   setSelectedSlot(null);
                 }}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 disabled={!providerId}
               >
-                <option value="">-- Aucun --</option>
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
+                <option value="">-- Selectionner --</option>
+                {members.map((m) => {
+                  const loc = locations.find((l) => l.id === m.locationId);
+                  return (
+                    <option key={m.id} value={m.id}>
+                      {m.name} {loc ? `(${loc.name})` : ''}
+                    </option>
+                  );
+                })}
               </select>
+              {members.length === 0 && providerId && (
+                <p className="text-xs text-amber-600">Aucun membre. Creez-en dans Members.</p>
+              )}
             </div>
 
             {/* Date range */}
@@ -521,7 +532,7 @@ export default function BookingsServiceTestPage() {
               <Button
                 onClick={loadAvailableSlots}
                 loading={loadingSlots}
-                disabled={!providerId || !serviceId || !locationId}
+                disabled={!providerId || !serviceId || !memberId}
                 variant="outline"
               >
                 Chercher creneaux
