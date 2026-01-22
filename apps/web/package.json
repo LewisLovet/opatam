@@ -20,7 +20,8 @@
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "lucide-react": "^0.562.0",
-    "resend": "^4.0.0"
+    "resend": "^4.0.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
