@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import { authService } from '@booking-app/firebase';
+import { ArrowLeft, CheckCircle, Mail } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
 // Map Firebase errors to user-friendly messages
 function getErrorMessage(error: unknown): string {
