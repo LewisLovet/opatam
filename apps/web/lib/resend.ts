@@ -1,7 +1,23 @@
 import { Resend } from 'resend';
 
-// Singleton instance of Resend client
-export const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy singleton instance of Resend client (initialized on first use, not at build time)
+let resendInstance: Resend | null = null;
+
+export function getResend(): Resend {
+  if (!resendInstance) {
+    resendInstance = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendInstance;
+}
+
+// For backward compatibility - use getResend() for new code
+export const resend = {
+  emails: {
+    send: async (...args: Parameters<Resend['emails']['send']>) => {
+      return getResend().emails.send(...args);
+    },
+  },
+};
 
 // Email configuration
 export const emailConfig = {
