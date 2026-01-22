@@ -179,12 +179,45 @@ export function BookingFilters({
   // Update parent with calculated dates when period changes
   useEffect(() => {
     if (filters.periodType !== 'custom') {
-      const { start, end } = getDateRange();
+      const today = new Date();
+      let baseDate = today;
+
+      // Apply offset
+      if (filters.periodType === 'today') {
+        baseDate = addDays(today, filters.periodOffset);
+      } else if (filters.periodType === 'week') {
+        baseDate = addWeeks(today, filters.periodOffset);
+      } else if (filters.periodType === 'month') {
+        baseDate = addMonths(today, filters.periodOffset);
+      }
+
+      let calculatedStart: Date;
+      let calculatedEnd: Date;
+
+      switch (filters.periodType) {
+        case 'today':
+          calculatedStart = getStartOfDay(baseDate);
+          calculatedEnd = getEndOfDay(baseDate);
+          break;
+        case 'week':
+          calculatedStart = getStartOfWeek(baseDate);
+          calculatedEnd = getEndOfWeek(baseDate);
+          break;
+        case 'month':
+          calculatedStart = getStartOfMonth(baseDate);
+          calculatedEnd = getEndOfMonth(baseDate);
+          break;
+        default:
+          calculatedStart = getStartOfDay(today);
+          calculatedEnd = getEndOfDay(today);
+      }
+
       onChange({
-        startDate: toISODateString(start),
-        endDate: toISODateString(end),
+        startDate: toISODateString(calculatedStart),
+        endDate: toISODateString(calculatedEnd),
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.periodType, filters.periodOffset]);
 
   // Close date picker when clicking outside
@@ -219,7 +252,6 @@ export function BookingFilters({
   };
 
   const handleCustomDateChange = (date: string) => {
-    const selectedDate = new Date(date);
     onChange({
       startDate: date,
       endDate: date,
