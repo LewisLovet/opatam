@@ -4,6 +4,8 @@ import {
   locationRepository,
   serviceRepository,
   availabilityRepository,
+  memberRepository,
+  blockedSlotRepository,
 } from '../repositories';
 import type { Provider, ProviderPlan } from '@booking-app/shared';
 import {
@@ -86,6 +88,10 @@ export class ProviderService {
         requiresConfirmation: false,
         defaultBufferTime: 15,
         timezone: 'Europe/Paris',
+        minBookingNotice: 2,
+        maxBookingAdvance: 60,
+        allowClientCancellation: true,
+        cancellationDeadline: 24,
       },
       subscription: {
         plan: 'trial',
@@ -399,6 +405,62 @@ export class ProviderService {
     }
 
     return slug;
+  }
+
+  /**
+   * Delete provider and all associated data
+   * WARNING: This is an irreversible operation
+   * Deletes: Members, Locations, Services, Availabilities, BlockedSlots
+   * Note: Bookings and Reviews are kept for historical purposes
+   */
+  async deleteProvider(providerId: string): Promise<void> {
+    const provider = await providerRepository.getById(providerId);
+    if (!provider) {
+      throw new Error('Prestataire non trouve');
+    }
+
+    // Delete all subcollections in parallel
+    const [members, locations, services, availabilities, blockedSlots] = await Promise.all([
+      memberRepository.getByProvider(providerId),
+      locationRepository.getByProvider(providerId),
+      serviceRepository.getByProvider(providerId),
+      availabilityRepository.getByProvider(providerId),
+      blockedSlotRepository.getByProvider(providerId),
+    ]);
+
+    // Delete members
+    const memberDeletes = members.map((m) => memberRepository.delete(providerId, m.id));
+
+    // Delete locations
+    const locationDeletes = locations.map((l) => locationRepository.delete(providerId, l.id));
+
+    // Delete services
+    const serviceDeletes = services.map((s) => serviceRepository.delete(providerId, s.id));
+
+    // Delete availabilities
+    const availabilityDeletes = availabilities.map((a) =>
+      availabilityRepository.delete(providerId, a.memberId, a.dayOfWeek)
+    );
+
+    // Delete blocked slots
+    const blockedSlotDeletes = blockedSlots.map((b) =>
+      blockedSlotRepository.delete(providerId, b.id)
+    );
+
+    // Execute all deletes in parallel
+    await Promise.all([
+      ...memberDeletes,
+      ...locationDeletes,
+      ...serviceDeletes,
+      ...availabilityDeletes,
+      ...blockedSlotDeletes,
+    ]);
+
+    // Delete the provider document itself
+    await providerRepository.delete(providerId);
+
+    // Update user to remove provider reference
+    await userRepository.update(providerId, { providerId: null, role: 'client' });
   }
 }
 

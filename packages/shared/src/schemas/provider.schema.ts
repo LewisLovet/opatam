@@ -14,6 +14,26 @@ export const providerSettingsSchema = z.object({
   requiresConfirmation: z.boolean(),
   defaultBufferTime: z.number().int().min(0).max(120),
   timezone: z.string(),
+  // Reservation policy settings
+  minBookingNotice: z
+    .number()
+    .int()
+    .min(0, { message: 'Le délai minimum doit être positif' })
+    .max(168, { message: 'Le délai minimum ne peut pas dépasser 168 heures (7 jours)' })
+    .default(2),
+  maxBookingAdvance: z
+    .number()
+    .int()
+    .min(1, { message: 'Le délai maximum doit être d\'au moins 1 jour' })
+    .max(365, { message: 'Le délai maximum ne peut pas dépasser 365 jours' })
+    .default(60),
+  allowClientCancellation: z.boolean().default(true),
+  cancellationDeadline: z
+    .number()
+    .int()
+    .min(0, { message: 'Le délai d\'annulation doit être positif' })
+    .max(168, { message: 'Le délai d\'annulation ne peut pas dépasser 168 heures (7 jours)' })
+    .default(24),
 });
 
 // Create provider schema - MINIMUM requis pour creer un provider

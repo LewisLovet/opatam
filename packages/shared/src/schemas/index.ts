@@ -69,6 +69,7 @@ export {
   setAvailabilitySchema,
   blockedSlotSchema,
   exceptionSlotSchema,
+  availabilityConflictSchema,
 } from './availability.schema';
 export type {
   TimeSlotInput,
@@ -76,6 +77,7 @@ export type {
   SetAvailabilityInput,
   BlockedSlotInput,
   ExceptionSlotInput,
+  AvailabilityConflictInput,
 } from './availability.schema';
 
 // Booking schemas

@@ -53,18 +53,32 @@ export class AvailabilityRepository {
   }
 
   /**
+   * Generate document ID for scheduled availability change
+   * Format: {memberId}_{dayOfWeek}_{effectiveFrom timestamp}
+   */
+  private generateScheduledDocId(memberId: string, dayOfWeek: number, effectiveFrom: Date): string {
+    return `${memberId}_${dayOfWeek}_${effectiveFrom.getTime()}`;
+  }
+
+  /**
    * Set availability (create or update)
    * memberId est maintenant obligatoire
+   * Si effectiveFrom est fourni, crée un changement planifié
    */
   async set(
     providerId: string,
     data: Omit<Availability, 'updatedAt'>
   ): Promise<string> {
-    const docId = this.generateDocId(data.memberId, data.dayOfWeek);
+    // Si effectiveFrom est fourni et dans le futur, utiliser un ID différent
+    const isScheduled = data.effectiveFrom && data.effectiveFrom > new Date();
+    const docId = isScheduled
+      ? this.generateScheduledDocId(data.memberId, data.dayOfWeek, data.effectiveFrom!)
+      : this.generateDocId(data.memberId, data.dayOfWeek);
     const docRef = this.getDocRef(providerId, docId);
 
     const docData = removeUndefined({
       ...data,
+      effectiveFrom: data.effectiveFrom || null,
       updatedAt: serverTimestamp(),
     } as Record<string, unknown>);
 
@@ -192,6 +206,7 @@ export class AvailabilityRepository {
         dayOfWeek: day.dayOfWeek,
         slots: day.slots,
         isOpen: day.isOpen,
+        effectiveFrom: null,
       })
     );
 
@@ -251,10 +266,99 @@ export class AvailabilityRepository {
         dayOfWeek: av.dayOfWeek,
         slots: av.slots,
         isOpen: av.isOpen,
+        effectiveFrom: av.effectiveFrom || null,
       })
     );
 
     await Promise.all(updates);
+  }
+
+  /**
+   * Get scheduled (future) availability changes for a member
+   */
+  async getScheduledChanges(
+    providerId: string,
+    memberId: string
+  ): Promise<WithId<Availability>[]> {
+    const q = query(
+      this.getCollectionRef(providerId),
+      where('memberId', '==', memberId),
+      where('effectiveFrom', '>', new Date())
+    );
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...convertTimestamps<Availability>(docSnap.data()),
+    }));
+  }
+
+  /**
+   * Get all scheduled (future) availability changes for a provider
+   */
+  async getAllScheduledChanges(providerId: string): Promise<WithId<Availability>[]> {
+    const q = query(
+      this.getCollectionRef(providerId),
+      where('effectiveFrom', '>', new Date())
+    );
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...convertTimestamps<Availability>(docSnap.data()),
+    }));
+  }
+
+  /**
+   * Delete a scheduled availability change
+   */
+  async deleteScheduledChange(providerId: string, docId: string): Promise<void> {
+    const docRef = this.getDocRef(providerId, docId);
+    await deleteDoc(docRef);
+  }
+
+  /**
+   * Apply scheduled changes that have become effective
+   * Call this periodically to apply changes when their effectiveFrom date is reached
+   */
+  async applyDueScheduledChanges(providerId: string): Promise<number> {
+    const now = new Date();
+    const allAvailabilities = await this.getByProvider(providerId);
+
+    // Find scheduled changes that are now due (effectiveFrom <= now)
+    const dueChanges = allAvailabilities.filter(
+      (av) => av.effectiveFrom && av.effectiveFrom <= now
+    );
+
+    let appliedCount = 0;
+
+    for (const change of dueChanges) {
+      // Get the current (non-scheduled) availability for this day
+      const currentDocId = this.generateDocId(change.memberId, change.dayOfWeek);
+      const currentDocRef = this.getDocRef(providerId, currentDocId);
+
+      // Replace current with scheduled
+      const docData = removeUndefined({
+        memberId: change.memberId,
+        locationId: change.locationId,
+        dayOfWeek: change.dayOfWeek,
+        slots: change.slots,
+        isOpen: change.isOpen,
+        effectiveFrom: null, // Clear effectiveFrom since it's now active
+        updatedAt: serverTimestamp(),
+      } as Record<string, unknown>);
+
+      await setDoc(currentDocRef, docData);
+
+      // Delete the scheduled change document
+      if (change.id !== currentDocId) {
+        await deleteDoc(this.getDocRef(providerId, change.id));
+      }
+
+      appliedCount++;
+    }
+
+    return appliedCount;
   }
 }
 

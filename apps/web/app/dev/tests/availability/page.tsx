@@ -67,6 +67,7 @@ export default function AvailabilityTestPage() {
         dayOfWeek: parseInt(dayOfWeek, 10),
         slots: [{ start: startTime, end: endTime }],
         isOpen,
+        effectiveFrom: null,
       });
       return { id, message: 'Disponibilite definie avec succes' };
     });

@@ -8,6 +8,11 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithCredential,
+  updateEmail as firebaseUpdateEmail,
+  updatePassword as firebaseUpdatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  deleteUser as firebaseDeleteUser,
   type Auth,
   type User,
   type UserCredential,
@@ -79,10 +84,51 @@ export function getCurrentUser(): User | null {
   return auth.currentUser;
 }
 
+/**
+ * Update user email (requires recent authentication)
+ */
+export async function updateUserEmail(newEmail: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('No user logged in');
+  return firebaseUpdateEmail(user, newEmail);
+}
+
+/**
+ * Update user password (requires recent authentication)
+ */
+export async function updateUserPassword(newPassword: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('No user logged in');
+  return firebaseUpdatePassword(user, newPassword);
+}
+
+/**
+ * Reauthenticate user with email/password (required before sensitive operations)
+ */
+export async function reauthenticateUser(
+  currentPassword: string
+): Promise<UserCredential> {
+  const user = auth.currentUser;
+  if (!user || !user.email) throw new Error('No user logged in');
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  return reauthenticateWithCredential(user, credential);
+}
+
+/**
+ * Delete the current user account (requires recent authentication)
+ */
+export async function deleteCurrentUser(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('No user logged in');
+  return firebaseDeleteUser(user);
+}
+
 // Re-export types and functions for convenience
 export {
   GoogleAuthProvider,
   signInWithCredential,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   type User,
   type UserCredential,
 };

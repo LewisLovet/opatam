@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { Button, Input, Checkbox } from '@/components/ui';
 import { authService } from '@booking-app/firebase';
 
@@ -57,8 +57,10 @@ function getErrorMessage(error: unknown): string {
   return 'Une erreur est survenue';
 }
 
-export default function LoginPage() {
+// Inner component that uses useSearchParams
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -66,6 +68,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Check for registration success message
+  useEffect(() => {
+    if (searchParams.get('registered') === 'true') {
+      setSuccessMessage('Compte cree avec succes ! Connectez-vous pour continuer.');
+      // Clean URL without reloading
+      window.history.replaceState({}, '', '/login');
+    }
+  }, [searchParams]);
 
   const validateForm = (): boolean => {
     if (!email.trim()) {
@@ -136,6 +148,14 @@ export default function LoginPage() {
           Connectez-vous pour acceder a votre espace
         </p>
       </div>
+
+      {/* Success message (after registration) */}
+      {successMessage && (
+        <div className="mb-6 p-4 rounded-lg bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-success-600 dark:text-success-400 flex-shrink-0" />
+          <p className="text-sm text-success-700 dark:text-success-400">{successMessage}</p>
+        </div>
+      )}
 
       {/* Error message */}
       {error && (
@@ -241,6 +261,32 @@ export default function LoginPage() {
           Creer un compte
         </Link>
       </p>
+    </div>
+  );
+}
+
+// Main component with Suspense boundary (required for useSearchParams in Next.js 15)
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageSkeleton />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+// Loading skeleton for Suspense fallback
+function LoginPageSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="mb-8">
+        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+      </div>
+      <div className="space-y-5">
+        <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded" />
+      </div>
     </div>
   );
 }

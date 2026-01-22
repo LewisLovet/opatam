@@ -70,17 +70,24 @@ export function FilterChip({
 
   return (
     <div className="relative" ref={containerRef}>
-      {/* Chip button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
+      {/* Chip - use div to avoid nested button issue */}
+      <div
         className={`
           inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium
-          transition-all duration-200 border
+          transition-all duration-200 border cursor-pointer select-none
           ${isFiltered
             ? 'bg-primary-500 text-white border-primary-500 hover:bg-primary-600'
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}
         `}
+        role="combobox"
+        tabIndex={0}
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
       >
@@ -100,7 +107,7 @@ export function FilterChip({
         ) : (
           <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         )}
-      </button>
+      </div>
 
       {/* Dropdown */}
       {isOpen && (

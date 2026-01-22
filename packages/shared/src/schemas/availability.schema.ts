@@ -34,6 +34,16 @@ export const availabilitySchema = z.object({
     .max(6, { message: 'Le jour doit être entre 0 (dimanche) et 6 (samedi)' }),
   slots: z.array(timeSlotSchema),
   isOpen: z.boolean().default(true),
+  effectiveFrom: z.coerce.date().nullable().optional(), // Date d'effet pour changements planifiés
+});
+
+// Availability conflict schema (for conflict detection)
+export const availabilityConflictSchema = z.object({
+  bookingId: z.string(),
+  bookingDate: z.coerce.date(),
+  clientName: z.string(),
+  serviceName: z.string(),
+  conflictType: z.enum(['reduced_hours', 'day_closed']),
 });
 
 // Set availability schema (for multiple days)
@@ -111,3 +121,4 @@ export type AvailabilityInput = z.infer<typeof availabilitySchema>;
 export type SetAvailabilityInput = z.infer<typeof setAvailabilitySchema>;
 export type BlockedSlotInput = z.infer<typeof blockedSlotSchema>;
 export type ExceptionSlotInput = z.infer<typeof exceptionSlotSchema>;
+export type AvailabilityConflictInput = z.infer<typeof availabilityConflictSchema>;

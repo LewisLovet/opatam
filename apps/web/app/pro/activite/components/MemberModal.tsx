@@ -161,7 +161,8 @@ export function MemberModal({
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value || null,
+      // Only use null for phone field when empty, keep empty string for other fields
+      [name]: name === 'phone' ? (value || null) : value,
     }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
@@ -328,8 +329,8 @@ export function MemberModal({
     { id: 'code', label: 'Code', icon: <Key className="w-4 h-4" /> },
   ];
 
-  // Content components
-  const InfoContent = () => (
+  // JSX for Info section (inline to preserve focus)
+  const infoContent = (
     <div className="space-y-4">
       {/* Name */}
       <Input
@@ -368,7 +369,8 @@ export function MemberModal({
     </div>
   );
 
-  const AssignmentsContent = () => (
+  // JSX for Assignments section (inline to preserve focus)
+  const assignmentsContent = (
     <div className="space-y-5">
       {/* Location single select (NOUVEAU MODÈLE: 1 membre = 1 lieu) */}
       <div>
@@ -429,7 +431,7 @@ export function MemberModal({
           <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center flex items-center justify-center gap-2">
               <Scissors className="w-4 h-4" />
-              Selectionnez d'abord un lieu
+              Selectionnez d&apos;abord un lieu
             </p>
           </div>
         ) : availableServices.length === 0 ? (
@@ -480,7 +482,8 @@ export function MemberModal({
     </div>
   );
 
-  const CodeContent = () => (
+  // JSX for Code section (inline to preserve focus)
+  const codeContent = (
     <div className="space-y-4">
       {currentCode ? (
         <>
@@ -560,14 +563,14 @@ export function MemberModal({
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Ce code permet au membre d'acceder a son planning sur la page /planning
+            Ce code permet au membre d&apos;acceder a son planning sur la page /planning
           </p>
         </>
       ) : (
         <div className="p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 text-center">
           <Key className="w-8 h-8 text-gray-400 mx-auto mb-2" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Le code d'acces sera genere automatiquement lors de la creation
+            Le code d&apos;acces sera genere automatiquement lors de la creation
           </p>
         </div>
       )}
@@ -602,9 +605,9 @@ export function MemberModal({
 
           {/* Tab content */}
           <div className="min-h-[280px]">
-            {activeTab === 'info' && <InfoContent />}
-            {activeTab === 'assignments' && <AssignmentsContent />}
-            {activeTab === 'code' && <CodeContent />}
+            {activeTab === 'info' && infoContent}
+            {activeTab === 'assignments' && assignmentsContent}
+            {activeTab === 'code' && codeContent}
           </div>
         </>
       );
@@ -636,8 +639,8 @@ export function MemberModal({
 
           {/* Step content */}
           <div className="min-h-[240px]">
-            {creationStep === 1 && <InfoContent />}
-            {creationStep === 2 && <AssignmentsContent />}
+            {creationStep === 1 && infoContent}
+            {creationStep === 2 && assignmentsContent}
           </div>
         </>
       );

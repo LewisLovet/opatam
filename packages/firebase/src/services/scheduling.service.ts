@@ -5,7 +5,7 @@ import {
   serviceRepository,
   providerRepository,
 } from '../repositories';
-import type { Availability, BlockedSlot, TimeSlot } from '@booking-app/shared';
+import type { Availability, AvailabilityConflict, BlockedSlot, TimeSlot } from '@booking-app/shared';
 import {
   availabilitySchema,
   blockedSlotSchema,
@@ -75,6 +75,7 @@ export class SchedulingService {
       dayOfWeek: validated.dayOfWeek,
       slots: validated.slots,
       isOpen: validated.isOpen,
+      effectiveFrom: null,
     });
   }
 
@@ -89,6 +90,157 @@ export class SchedulingService {
     schedule: Array<{ dayOfWeek: number; slots: TimeSlot[]; isOpen: boolean }>
   ): Promise<void> {
     await availabilityRepository.setWeeklySchedule(providerId, memberId, locationId, schedule);
+  }
+
+  /**
+   * Set availability with effective date (scheduled change)
+   * If effectiveFrom is in the future, creates a scheduled change
+   */
+  async setScheduledAvailability(
+    providerId: string,
+    input: AvailabilityInput & { effectiveFrom: Date }
+  ): Promise<{ id: string; conflicts: AvailabilityConflict[] }> {
+    // Validate input
+    const validated = availabilitySchema.parse(input);
+
+    // Validate time slots
+    for (const slot of validated.slots) {
+      if (slot.start >= slot.end) {
+        throw new Error(`Créneau invalide : ${slot.start} doit être avant ${slot.end}`);
+      }
+    }
+
+    // Check for overlapping slots
+    for (let i = 0; i < validated.slots.length; i++) {
+      for (let j = i + 1; j < validated.slots.length; j++) {
+        if (this.slotsOverlap(validated.slots[i], validated.slots[j])) {
+          throw new Error('Les créneaux ne peuvent pas se chevaucher');
+        }
+      }
+    }
+
+    // Detect conflicts with existing bookings
+    const conflicts = await this.detectConflicts(
+      providerId,
+      validated.memberId,
+      validated.dayOfWeek,
+      validated.slots,
+      validated.isOpen,
+      input.effectiveFrom
+    );
+
+    // Create the scheduled availability
+    const id = await availabilityRepository.set(providerId, {
+      memberId: validated.memberId,
+      locationId: validated.locationId,
+      dayOfWeek: validated.dayOfWeek,
+      slots: validated.slots,
+      isOpen: validated.isOpen,
+      effectiveFrom: input.effectiveFrom,
+    });
+
+    return { id, conflicts };
+  }
+
+  /**
+   * Detect booking conflicts for a scheduled availability change
+   */
+  async detectConflicts(
+    providerId: string,
+    memberId: string,
+    dayOfWeek: number,
+    newSlots: TimeSlot[],
+    isOpen: boolean,
+    effectiveFrom: Date
+  ): Promise<AvailabilityConflict[]> {
+    const conflicts: AvailabilityConflict[] = [];
+
+    // Get upcoming bookings for this member from effectiveFrom date
+    const farFuture = new Date(effectiveFrom);
+    farFuture.setDate(farFuture.getDate() + 365); // Check up to 1 year ahead
+
+    const bookings = await bookingRepository.getUpcomingByProvider(
+      providerId,
+      effectiveFrom,
+      farFuture
+    );
+
+    // Filter bookings for this member and active status
+    const relevantBookings = bookings.filter(
+      (b) =>
+        b.memberId === memberId &&
+        (b.status === 'confirmed' || b.status === 'pending')
+    );
+
+    for (const booking of relevantBookings) {
+      const bookingDayOfWeek = booking.datetime.getDay();
+
+      // Only check bookings on the affected day of week
+      if (bookingDayOfWeek !== dayOfWeek) continue;
+
+      // Check if the day is closed
+      if (!isOpen) {
+        conflicts.push({
+          bookingId: booking.id || '',
+          bookingDate: booking.datetime,
+          clientName: booking.clientInfo.name,
+          serviceName: booking.serviceName,
+          conflictType: 'day_closed',
+        });
+        continue;
+      }
+
+      // Check if booking time falls within any of the new slots
+      const bookingStartTime = this.formatTime(booking.datetime);
+      const bookingEndTime = this.formatTime(booking.endDatetime);
+
+      const isWithinNewSlots = newSlots.some(
+        (slot) => slot.start <= bookingStartTime && slot.end >= bookingEndTime
+      );
+
+      if (!isWithinNewSlots) {
+        conflicts.push({
+          bookingId: booking.id || '',
+          bookingDate: booking.datetime,
+          clientName: booking.clientInfo.name,
+          serviceName: booking.serviceName,
+          conflictType: 'reduced_hours',
+        });
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Get scheduled availability changes for a member
+   */
+  async getScheduledChanges(
+    providerId: string,
+    memberId: string
+  ): Promise<WithId<Availability>[]> {
+    return availabilityRepository.getScheduledChanges(providerId, memberId);
+  }
+
+  /**
+   * Get all scheduled availability changes for a provider
+   */
+  async getAllScheduledChanges(providerId: string): Promise<WithId<Availability>[]> {
+    return availabilityRepository.getAllScheduledChanges(providerId);
+  }
+
+  /**
+   * Delete a scheduled availability change
+   */
+  async deleteScheduledChange(providerId: string, docId: string): Promise<void> {
+    await availabilityRepository.deleteScheduledChange(providerId, docId);
+  }
+
+  /**
+   * Apply scheduled changes that have become effective
+   */
+  async applyDueScheduledChanges(providerId: string): Promise<number> {
+    return availabilityRepository.applyDueScheduledChanges(providerId);
   }
 
   /**

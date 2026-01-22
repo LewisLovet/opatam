@@ -17,6 +17,8 @@ import {
   ChevronRight,
   Check,
   Phone,
+  Plus,
+  X,
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import { StepIndicator } from '@/components/common/StepIndicator';
@@ -53,6 +55,18 @@ const STEPS = [
   { label: 'Compte' },
 ];
 
+// Time slot interface for multiple slots per day
+interface TimeSlot {
+  start: string;
+  end: string;
+}
+
+// Day availability with multiple slots
+interface DayAvailability {
+  isOpen: boolean;
+  slots: TimeSlot[];
+}
+
 // Wizard data interface
 interface WizardData {
   // Step 1 - Business
@@ -69,9 +83,9 @@ interface WizardData {
   serviceDuration: number;
   servicePrice: number;
   serviceDescription: string;
-  // Step 4 - Availability
+  // Step 4 - Availability (supports multiple slots per day)
   availability: {
-    [key: number]: { isOpen: boolean; start: string; end: string };
+    [key: number]: DayAvailability;
   };
   // Step 6 - Account
   displayName: string;
@@ -82,14 +96,14 @@ interface WizardData {
   acceptTerms: boolean;
 }
 
-const DEFAULT_AVAILABILITY = {
-  0: { isOpen: false, start: '09:00', end: '18:00' },
-  1: { isOpen: true, start: '09:00', end: '18:00' },
-  2: { isOpen: true, start: '09:00', end: '18:00' },
-  3: { isOpen: true, start: '09:00', end: '18:00' },
-  4: { isOpen: true, start: '09:00', end: '18:00' },
-  5: { isOpen: true, start: '09:00', end: '18:00' },
-  6: { isOpen: false, start: '09:00', end: '18:00' },
+const DEFAULT_AVAILABILITY: { [key: number]: DayAvailability } = {
+  0: { isOpen: false, slots: [{ start: '09:00', end: '18:00' }] },
+  1: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+  2: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+  3: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+  4: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+  5: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+  6: { isOpen: false, slots: [{ start: '09:00', end: '18:00' }] },
 };
 
 const DEFAULT_DATA: WizardData = {
@@ -169,13 +183,49 @@ export default function RegisterPage() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
 
+  // Migrate old availability format to new slots format
+  const migrateAvailability = (availability: Record<number, unknown>): { [key: number]: DayAvailability } => {
+    const migrated: { [key: number]: DayAvailability } = {};
+    for (let day = 0; day <= 6; day++) {
+      const dayData = availability[day];
+      if (!dayData || typeof dayData !== 'object') {
+        // Missing day data, use default
+        migrated[day] = DEFAULT_AVAILABILITY[day];
+      } else {
+        const d = dayData as Record<string, unknown>;
+        // Check if it's old format (has start/end but no slots)
+        if ('start' in d && 'end' in d && !('slots' in d)) {
+          migrated[day] = {
+            isOpen: d.isOpen as boolean ?? true,
+            slots: [{ start: d.start as string, end: d.end as string }],
+          };
+        } else if ('slots' in d && Array.isArray(d.slots)) {
+          // New format, keep as is
+          migrated[day] = {
+            isOpen: d.isOpen as boolean ?? true,
+            slots: d.slots.length > 0 ? d.slots : [{ start: '09:00', end: '18:00' }],
+          };
+        } else {
+          // Unknown format, use default
+          migrated[day] = DEFAULT_AVAILABILITY[day];
+        }
+      }
+    }
+    return migrated;
+  };
+
   // Load data from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setData({ ...DEFAULT_DATA, ...parsed.data });
+        const loadedData = { ...DEFAULT_DATA, ...parsed.data };
+        // Migrate availability if needed
+        if (loadedData.availability) {
+          loadedData.availability = migrateAvailability(loadedData.availability);
+        }
+        setData(loadedData);
         if (parsed.step) {
           setCurrentStep(parsed.step);
         }
@@ -351,10 +401,11 @@ export default function RegisterPage() {
     });
 
     // Create Availability for the default member
+    // Supports multiple slots per day (ex: 8h-12h, 14h-19h)
     const schedule = Object.entries(data.availability).map(([dayOfWeek, dayData]) => ({
       dayOfWeek: parseInt(dayOfWeek),
       isOpen: dayData.isOpen,
-      slots: dayData.isOpen ? [{ start: dayData.start, end: dayData.end }] : [],
+      slots: dayData.isOpen ? dayData.slots : [],
     }));
 
     await schedulingService.setWeeklySchedule(provider.id, defaultMember.id, locationId, schedule);
@@ -379,9 +430,15 @@ export default function RegisterPage() {
       });
 
       await createProviderWithData(user.id);
+
+      // Sign out after registration so user must log in
+      await authService.logout();
+
       localStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem('register-step');
-      router.push('/pro');
+
+      // Redirect to login with success message
+      router.push('/login?registered=true');
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -584,29 +641,77 @@ export default function RegisterPage() {
     </div>
   );
 
+  // Helper functions for availability management
+  const addSlotToDay = (dayValue: number) => {
+    const dayData = data.availability[dayValue];
+    const lastSlot = dayData.slots[dayData.slots.length - 1];
+    // Default new slot starts 1 hour after last slot ends
+    const newStart = lastSlot?.end || '14:00';
+    const newEnd = '19:00';
+    updateData({
+      availability: {
+        ...data.availability,
+        [dayValue]: {
+          ...dayData,
+          slots: [...dayData.slots, { start: newStart, end: newEnd }],
+        },
+      },
+    });
+  };
+
+  const removeSlotFromDay = (dayValue: number, slotIndex: number) => {
+    const dayData = data.availability[dayValue];
+    if (dayData.slots.length <= 1) return; // Keep at least one slot
+    updateData({
+      availability: {
+        ...data.availability,
+        [dayValue]: {
+          ...dayData,
+          slots: dayData.slots.filter((_, i) => i !== slotIndex),
+        },
+      },
+    });
+  };
+
+  const updateSlot = (dayValue: number, slotIndex: number, field: 'start' | 'end', value: string) => {
+    const dayData = data.availability[dayValue];
+    const newSlots = dayData.slots.map((slot, i) =>
+      i === slotIndex ? { ...slot, [field]: value } : slot
+    );
+    updateData({
+      availability: {
+        ...data.availability,
+        [dayValue]: { ...dayData, slots: newSlots },
+      },
+    });
+  };
+
   // Step 4 - Availability
   const renderStep4 = () => (
-    <div className="space-y-5">
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-100 dark:bg-primary-900/30 mb-3">
-          <Clock className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+    <div className="space-y-4">
+      <div className="text-center mb-4">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 mb-2">
+          <Clock className="w-6 h-6 text-primary-600 dark:text-primary-400" />
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-          Quand etes-vous disponible ?
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+          Vos horaires
         </h1>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Definissez vos horaires d'ouverture
+        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+          Cliquez sur + pour ajouter une pause dejeuner
         </p>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {DAYS_OF_WEEK.map((day) => {
-          const dayData = data.availability[day.value];
+          // Ensure dayData and slots always exist (fallback to default)
+          const dayData = data.availability[day.value] || DEFAULT_AVAILABILITY[day.value];
+          const slots = dayData.slots || [{ start: '09:00', end: '18:00' }];
           return (
             <div
               key={day.value}
-              className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+              className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-gray-50 dark:bg-gray-800/50"
             >
+              {/* Toggle */}
               <button
                 type="button"
                 onClick={() =>
@@ -617,51 +722,66 @@ export default function RegisterPage() {
                     },
                   })
                 }
-                className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
+                className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${
                   dayData.isOpen ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                    dayData.isOpen ? 'left-[18px]' : 'left-0.5'
+                  className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${
+                    dayData.isOpen ? 'left-[14px]' : 'left-0.5'
                   }`}
                 />
               </button>
-              <span className="w-20 text-sm font-medium text-gray-900 dark:text-white">
-                {day.label}
+
+              {/* Day name */}
+              <span className="w-12 text-xs font-medium text-gray-900 dark:text-white truncate">
+                {day.label.slice(0, 3)}
               </span>
-              {dayData.isOpen ? (
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <input
-                    type="time"
-                    value={dayData.start}
-                    onChange={(e) =>
-                      updateData({
-                        availability: {
-                          ...data.availability,
-                          [day.value]: { ...dayData, start: e.target.value },
-                        },
-                      })
-                    }
-                    className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-xs"
-                  />
-                  <span className="text-gray-400 text-xs">-</span>
-                  <input
-                    type="time"
-                    value={dayData.end}
-                    onChange={(e) =>
-                      updateData({
-                        availability: {
-                          ...data.availability,
-                          [day.value]: { ...dayData, end: e.target.value },
-                        },
-                      })
-                    }
-                    className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-xs"
-                  />
-                </div>
+
+              {/* Time slots or "Ferme" */}
+              {!dayData.isOpen ? (
+                <span className="text-xs text-gray-400 ml-auto">Ferme</span>
               ) : (
-                <span className="text-xs text-gray-500 ml-auto">Ferme</span>
+                <div className="flex items-center gap-1 flex-1 flex-wrap">
+                  {slots.map((slot, slotIndex) => (
+                    <div key={slotIndex} className="flex items-center gap-0.5">
+                      {slotIndex > 0 && <span className="text-gray-300 text-xs mx-0.5">|</span>}
+                      <input
+                        type="time"
+                        value={slot.start}
+                        onChange={(e) => updateSlot(day.value, slotIndex, 'start', e.target.value)}
+                        className="w-[70px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-[11px] text-gray-900 dark:text-gray-100"
+                      />
+                      <span className="text-gray-400 text-[10px]">-</span>
+                      <input
+                        type="time"
+                        value={slot.end}
+                        onChange={(e) => updateSlot(day.value, slotIndex, 'end', e.target.value)}
+                        className="w-[70px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-[11px] text-gray-900 dark:text-gray-100"
+                      />
+                      {/* Remove slot button (only if more than one slot) */}
+                      {slots.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeSlotFromDay(day.value, slotIndex)}
+                          className="p-0.5 text-gray-400 hover:text-error-500 transition-colors"
+                          title="Supprimer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {/* Add slot button */}
+                  <button
+                    type="button"
+                    onClick={() => addSlotToDay(day.value)}
+                    className="p-0.5 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors ml-1"
+                    title="Ajouter un creneau"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
               )}
             </div>
           );

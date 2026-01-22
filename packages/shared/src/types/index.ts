@@ -61,6 +61,11 @@ export interface ProviderSettings {
   requiresConfirmation: boolean;
   defaultBufferTime: number;
   timezone: string;
+  // Reservation policy settings
+  minBookingNotice: number;          // Minimum hours before appointment (default: 2)
+  maxBookingAdvance: number;         // Maximum days in advance (default: 60)
+  allowClientCancellation: boolean;  // Allow clients to cancel (default: true)
+  cancellationDeadline: number;      // Hours before appointment for cancellation (default: 24)
 }
 
 export interface Subscription {
@@ -128,7 +133,17 @@ export interface Availability {
   dayOfWeek: number;         // 0=Dim, 1=Lun, 2=Mar, 3=Mer, 4=Jeu, 5=Ven, 6=Sam
   slots: TimeSlot[];
   isOpen: boolean;
+  effectiveFrom: Date | null; // Date d'effet pour changements planifiés (null = immédiat)
   updatedAt: Date;
+}
+
+// Conflict detection for scheduled availability changes
+export interface AvailabilityConflict {
+  bookingId: string;
+  bookingDate: Date;
+  clientName: string;
+  serviceName: string;
+  conflictType: 'reduced_hours' | 'day_closed';
 }
 
 export interface TimeSlot {

@@ -16,6 +16,7 @@ import {
   Sun,
   Moon,
   Sparkles,
+  UserCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -43,6 +44,7 @@ const navGroups: NavGroup[] = [
   {
     items: [
       { label: 'Mon activite', href: '/pro/activite', icon: <Briefcase className="w-5 h-5" /> },
+      { label: 'Profil public', href: '/pro/profil', icon: <UserCircle className="w-5 h-5" /> },
       { label: 'Avis', href: '/pro/avis', icon: <Star className="w-5 h-5" /> },
       { label: 'Parametres', href: '/pro/parametres', icon: <Settings className="w-5 h-5" /> },
     ],

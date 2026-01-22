@@ -68,6 +68,10 @@ export default function ProvidersTestPage() {
           requiresConfirmation: false,
           defaultBufferTime: 15,
           timezone: 'Europe/Paris',
+          minBookingNotice: 2,
+          maxBookingAdvance: 60,
+          allowClientCancellation: true,
+          cancellationDeadline: 24,
         },
         subscription: {
           plan: createPlan,

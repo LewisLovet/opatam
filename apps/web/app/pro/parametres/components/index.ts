@@ -1,6 +1,4 @@
-export { ProfileForm } from './ProfileForm';
-export { PhotoUpload } from './PhotoUpload';
-export { CoverPhotoUpload } from './CoverPhotoUpload';
-export { PortfolioUpload } from './PortfolioUpload';
-export { SocialLinksForm } from './SocialLinksForm';
-export { PublicationSection } from './PublicationSection';
+export { ReservationSettingsForm } from './ReservationSettingsForm';
+export { NotificationsForm } from './NotificationsForm';
+export { AccountForm } from './AccountForm';
+export { SubscriptionSection } from './SubscriptionSection';

@@ -75,7 +75,7 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
   };
 
   const publicUrl = provider?.slug
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${provider.slug}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${provider.slug}`
     : null;
 
   return (
@@ -124,7 +124,7 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
             </code>
             {provider.isPublished && (
               <a
-                href={`/${provider.slug}`}
+                href={`/p/${provider.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
