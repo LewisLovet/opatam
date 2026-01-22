@@ -1,7 +1,24 @@
 import { z } from 'zod';
 
-// French phone regex: starts with 0, then 6 or 7, then 8 digits
-const frenchPhoneRegex = /^0[67]\d{8}$/;
+// Phone validation: accepts international formats
+// - Minimum 8 digits, maximum 15 digits (E.164 standard)
+// - Allows: +, spaces, dots, dashes, parentheses as formatting
+// Examples: 0612345678, +33612345678, +33 6 12 34 56 78, +1 (555) 123-4567
+const isValidPhone = (phone: string): boolean => {
+  // Remove all formatting characters
+  const cleaned = phone.replace(/[\s.\-()]/g, '');
+  
+  // Check if it starts with + or digits only
+  if (!/^(\+)?[0-9]+$/.test(cleaned)) {
+    return false;
+  }
+  
+  // Count only digits (exclude +)
+  const digitCount = cleaned.replace(/\D/g, '').length;
+  
+  // E.164 standard: 8-15 digits
+  return digitCount >= 8 && digitCount <= 15;
+};
 
 // Client info schema (for non-logged-in users)
 export const clientInfoSchema = z.object({
@@ -14,7 +31,7 @@ export const clientInfoSchema = z.object({
     .email({ message: 'Format d\'email invalide' }),
   phone: z
     .string({ required_error: 'Le numéro de téléphone est requis' })
-    .regex(frenchPhoneRegex, { message: 'Numéro de téléphone invalide (format: 06/07 + 8 chiffres)' }),
+    .refine(isValidPhone, { message: 'Numéro de téléphone invalide' }),
 });
 
 // Create booking schema

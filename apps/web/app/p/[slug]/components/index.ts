@@ -3,7 +3,7 @@ export { ProviderHero } from './ProviderHero';
 export { ProviderNav } from './ProviderNav';
 export { ServicesSection } from './ServicesSection';
 export { ServiceItem } from './ServiceItem';
-export { AboutSection } from './AboutSection';
+export { PortfolioSection } from './PortfolioSection';
 export { PortfolioGallery } from './PortfolioGallery';
 export { SocialLinks } from './SocialLinks';
 export { ReviewsSection } from './ReviewsSection';

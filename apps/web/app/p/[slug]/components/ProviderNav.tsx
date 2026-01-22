@@ -1,8 +1,8 @@
 'use client';
 
-import { Briefcase, User, Star, MapPin } from 'lucide-react';
+import { Briefcase, Images, Star, MapPin } from 'lucide-react';
 
-type SectionId = 'prestations' | 'apropos' | 'avis' | 'infos';
+type SectionId = 'prestations' | 'portfolio' | 'avis' | 'infos';
 
 interface NavItem {
   id: SectionId;
@@ -14,25 +14,21 @@ interface ProviderNavProps {
   activeSection: SectionId;
   onSectionClick: (sectionId: SectionId) => void;
   visible: boolean;
-  hasAboutContent: boolean;
-  hasReviews: boolean;
+  hasPortfolio: boolean;
 }
 
 export function ProviderNav({
   activeSection,
   onSectionClick,
   visible,
-  hasAboutContent,
-  hasReviews,
+  hasPortfolio,
 }: ProviderNavProps) {
   const navItems: NavItem[] = [
     { id: 'prestations', label: 'Prestations', icon: <Briefcase className="w-4 h-4" /> },
-    ...(hasAboutContent
-      ? [{ id: 'apropos' as SectionId, label: 'A propos', icon: <User className="w-4 h-4" /> }]
+    ...(hasPortfolio
+      ? [{ id: 'portfolio' as SectionId, label: 'Portfolio', icon: <Images className="w-4 h-4" /> }]
       : []),
-    ...(hasReviews
-      ? [{ id: 'avis' as SectionId, label: 'Avis', icon: <Star className="w-4 h-4" /> }]
-      : []),
+    { id: 'avis', label: 'Avis', icon: <Star className="w-4 h-4" /> },
     { id: 'infos', label: 'Infos', icon: <MapPin className="w-4 h-4" /> },
   ];
 

@@ -7,7 +7,7 @@ import type { Booking, Member, Location, Availability, BlockedSlot } from '@book
 import { CalendarHeader } from './components/CalendarHeader';
 import { DayView } from './components/DayView';
 import { WeekView } from './components/WeekView';
-import { BookingDetailModal } from './components/BookingDetailModal';
+import { BookingDetailModal } from '@/components/booking';
 import { CreateBookingModal } from './components/CreateBookingModal';
 import { Loader2 } from 'lucide-react';
 

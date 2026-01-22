@@ -3,8 +3,9 @@
 import { useRef, useState, useEffect } from 'react';
 import { ProviderHero } from './ProviderHero';
 import { ProviderNav } from './ProviderNav';
+import { SocialLinks } from './SocialLinks';
 import { ServicesSection } from './ServicesSection';
-import { AboutSection } from './AboutSection';
+import { PortfolioSection } from './PortfolioSection';
 import { ReviewsSection } from './ReviewsSection';
 import { InfosSection } from './InfosSection';
 import { MobileBookingBar } from './MobileBookingBar';
@@ -119,7 +120,7 @@ interface ProviderPageClientProps {
   minPrice: number | null;
 }
 
-type SectionId = 'prestations' | 'apropos' | 'avis' | 'infos';
+type SectionId = 'prestations' | 'portfolio' | 'avis' | 'infos';
 
 export function ProviderPageClient({
   provider,
@@ -135,10 +136,16 @@ export function ProviderPageClient({
 
   // Section refs for scroll spy
   const prestationsRef = useRef<HTMLDivElement>(null);
-  const aproposRef = useRef<HTMLDivElement>(null);
+  const portfolioRef = useRef<HTMLDivElement>(null);
   const avisRef = useRef<HTMLDivElement>(null);
   const infosRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
+
+  // Check if has portfolio photos
+  const hasPortfolio = provider.portfolioPhotos.length > 0;
+
+  // Check if has social links
+  const hasSocials = hasSocialLinks(provider.socialLinks);
 
   // Scroll spy effect
   useEffect(() => {
@@ -152,7 +159,7 @@ export function ProviderPageClient({
       // Determine active section
       const sections = [
         { id: 'prestations' as SectionId, ref: prestationsRef },
-        { id: 'apropos' as SectionId, ref: aproposRef },
+        ...(hasPortfolio ? [{ id: 'portfolio' as SectionId, ref: portfolioRef }] : []),
         { id: 'avis' as SectionId, ref: avisRef },
         { id: 'infos' as SectionId, ref: infosRef },
       ];
@@ -175,12 +182,12 @@ export function ProviderPageClient({
     handleScroll(); // Initial check
 
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [hasPortfolio]);
 
   const scrollToSection = (sectionId: SectionId) => {
     const refs: Record<SectionId, React.RefObject<HTMLDivElement | null>> = {
       prestations: prestationsRef,
-      apropos: aproposRef,
+      portfolio: portfolioRef,
       avis: avisRef,
       infos: infosRef,
     };
@@ -196,10 +203,6 @@ export function ProviderPageClient({
   // Check if provider has team plan (more than 1 member)
   const isTeam = provider.plan === 'team' && members.length > 1;
 
-  // Check if there's content for about section
-  const hasAboutContent =
-    !!provider.description || provider.portfolioPhotos.length > 0 || hasSocialLinks(provider.socialLinks);
-
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 pb-24">
       {/* Hero Section */}
@@ -207,13 +210,21 @@ export function ProviderPageClient({
         <ProviderHero provider={provider} />
       </div>
 
+      {/* Social Links - Just after hero, before nav */}
+      {hasSocials && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+          <div className="flex justify-center">
+            <SocialLinks links={provider.socialLinks} />
+          </div>
+        </div>
+      )}
+
       {/* Sticky Navigation */}
       <ProviderNav
         activeSection={activeSection}
         onSectionClick={scrollToSection}
         visible={showNav}
-        hasAboutContent={hasAboutContent}
-        hasReviews={reviews.length > 0 || provider.rating.count > 0}
+        hasPortfolio={hasPortfolio}
       />
 
       {/* Main Content */}
@@ -223,18 +234,14 @@ export function ProviderPageClient({
           <ServicesSection services={services} slug={provider.slug} />
         </div>
 
-        {/* About Section */}
-        {hasAboutContent && (
-          <div ref={aproposRef} id="apropos">
-            <AboutSection
-              description={provider.description}
-              portfolioPhotos={provider.portfolioPhotos}
-              socialLinks={provider.socialLinks}
-            />
+        {/* Portfolio Section (only if has photos) */}
+        {hasPortfolio && (
+          <div ref={portfolioRef} id="portfolio">
+            <PortfolioSection photos={provider.portfolioPhotos} />
           </div>
         )}
 
-        {/* Reviews Section */}
+        {/* Reviews Section (always visible with distribution) */}
         <div ref={avisRef} id="avis">
           <ReviewsSection reviews={reviews} rating={provider.rating} />
         </div>
@@ -250,7 +257,7 @@ export function ProviderPageClient({
         </div>
       </div>
 
-      {/* Mobile Booking Bar */}
+      {/* Sticky Booking Bar (all screens) */}
       <MobileBookingBar
         slug={provider.slug}
         minPrice={minPrice}

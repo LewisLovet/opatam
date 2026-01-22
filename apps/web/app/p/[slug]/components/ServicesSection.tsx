@@ -19,7 +19,7 @@ interface ServicesSectionProps {
 export function ServicesSection({ services, slug }: ServicesSectionProps) {
   if (services.length === 0) {
     return (
-      <section className="py-10">
+      <section className="pt-6 pb-10">
         <div className="flex items-center gap-2 mb-6">
           <Sparkles className="w-6 h-6 text-primary-500" />
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -36,7 +36,7 @@ export function ServicesSection({ services, slug }: ServicesSectionProps) {
   }
 
   return (
-    <section className="py-10">
+    <section className="pt-6 pb-10">
       <div className="flex items-center gap-2 mb-6">
         <Sparkles className="w-6 h-6 text-primary-500" />
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">

@@ -17,6 +17,7 @@ interface ConfirmationEmailRequest {
   duration: number;
   price: number;
   providerName?: string;
+  providerSlug?: string;
   locationName?: string;
   locationAddress?: string;
   memberName?: string;
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
       duration,
       price,
       providerName,
+      providerSlug,
       locationName,
       locationAddress,
       memberName,
@@ -68,6 +70,32 @@ export async function POST(request: NextRequest) {
     const formattedPrice = formatPriceFr(price);
 
     const businessName = providerName || appConfig.name;
+
+    // Generate Google Calendar URL
+    const formatGoogleDate = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    };
+    const eventTitle = encodeURIComponent(`RDV - ${serviceName} chez ${businessName}`);
+    const eventLocation = encodeURIComponent(locationAddress || '');
+    const eventDescription = encodeURIComponent(memberName ? `Avec ${memberName}` : `Chez ${businessName}`);
+    const eventDates = `${formatGoogleDate(dateObj)}/${formatGoogleDate(endDate)}`;
+    const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${eventDates}&location=${eventLocation}&details=${eventDescription}`;
+
+    // Generate ICS file URL (base64 encoded)
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//BookingApp//FR
+BEGIN:VEVENT
+DTSTAMP:${formatGoogleDate(new Date())}
+DTSTART:${formatGoogleDate(dateObj)}
+DTEND:${formatGoogleDate(endDate)}
+SUMMARY:RDV - ${serviceName} chez ${businessName}
+DESCRIPTION:${memberName ? `Avec ${memberName}` : `Chez ${businessName}`}
+LOCATION:${locationAddress || ''}
+END:VEVENT
+END:VCALENDAR`;
+    const icsBase64 = Buffer.from(icsContent).toString('base64');
+    const icsDataUrl = `data:text/calendar;base64,${icsBase64}`;
 
     // Send email via Resend
     const { error } = await resend.emails.send({
@@ -157,16 +185,39 @@ export async function POST(request: NextRequest) {
                         Nous vous attendons avec impatience. Si vous avez besoin de modifier ou annuler votre rendez-vous, veuillez nous contacter.
                       </p>
 
+                      <!-- Add to Calendar Section -->
+                      <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                        <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">
+                          Ajouter a votre calendrier
+                        </p>
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td style="padding-right: 8px; width: 50%;">
+                              <a href="${googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 16px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">
+                                Google Calendar
+                              </a>
+                            </td>
+                            <td style="padding-left: 8px; width: 50%;">
+                              <a href="${icsDataUrl}" download="rendez-vous.ics" style="display: block; padding: 10px 16px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">
+                                Apple / Outlook
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                      </div>
+
                       <!-- CTA Button -->
+                      ${providerSlug ? `
                       <table role="presentation" style="width: 100%; border-collapse: collapse;">
                         <tr>
                           <td align="center">
-                            <a href="${appConfig.url}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">
-                              Voir mes rendez-vous
+                            <a href="${appConfig.url}/p/${providerSlug}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">
+                              Reprendre rendez-vous
                             </a>
                           </td>
                         </tr>
                       </table>
+                      ` : ''}
                     </td>
                   </tr>
 
@@ -206,6 +257,9 @@ ${locationName ? `- Lieu : ${locationName}` : ''}
 ${locationAddress ? `- Adresse : ${locationAddress}` : ''}
 ${memberName ? `- Avec : ${memberName}` : ''}
 - Prix : ${formattedPrice}
+
+Ajouter a votre calendrier :
+- Google Calendar : ${googleCalendarUrl}
 
 Nous vous attendons avec impatience. Si vous avez besoin de modifier ou annuler votre rendez-vous, veuillez nous contacter.
 
