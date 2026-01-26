@@ -22,12 +22,6 @@ export const statusConfig: Record<
     bgColor: 'bg-gray-100 dark:bg-gray-800',
     dotColor: 'bg-gray-400',
   },
-  completed: {
-    label: 'Terminé',
-    color: 'text-primary-700 dark:text-primary-300',
-    bgColor: 'bg-primary-100 dark:bg-primary-900/30',
-    dotColor: 'bg-primary-500',
-  },
   noshow: {
     label: 'Absent',
     color: 'text-error-700 dark:text-error-300',

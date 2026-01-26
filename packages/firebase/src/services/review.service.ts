@@ -13,7 +13,7 @@ import type { WithId } from '../repositories/base.repository';
 
 export class ReviewService {
   /**
-   * Submit a review for a completed booking
+   * Submit a review for a past booking (authenticated client)
    */
   async submitReview(clientId: string, input: CreateReviewInput): Promise<WithId<Review>> {
     // Validate input
@@ -25,9 +25,9 @@ export class ReviewService {
       throw new Error('Réservation non trouvée');
     }
 
-    // Verify booking is completed
-    if (booking.status !== 'completed') {
-      throw new Error('Vous ne pouvez donner un avis que sur une réservation terminée');
+    // Verify booking date has passed
+    if (booking.datetime > new Date()) {
+      throw new Error('Vous ne pouvez donner un avis qu\'après votre rendez-vous');
     }
 
     // Verify client owns the booking
@@ -141,6 +141,62 @@ export class ReviewService {
   }
 
   /**
+   * Submit a review by booking ID (for non-authenticated clients)
+   * Uses the booking's clientInfo for the reviewer name
+   */
+  async submitReviewByBooking(
+    bookingId: string,
+    rating: number,
+    comment?: string
+  ): Promise<WithId<Review>> {
+    // Get the booking
+    const booking = await bookingRepository.getById(bookingId);
+    if (!booking) {
+      throw new Error('Réservation non trouvée');
+    }
+
+    // Verify booking date has passed
+    const now = new Date();
+    if (booking.datetime > now) {
+      throw new Error('Vous ne pouvez donner un avis qu\'après votre rendez-vous');
+    }
+
+    // Check if review already exists for this booking
+    const existingReview = await reviewRepository.getByBooking(bookingId);
+    if (existingReview) {
+      throw new Error('Un avis a déjà été déposé pour cette réservation');
+    }
+
+    // Validate rating
+    if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+      throw new Error('La note doit être un nombre entier entre 1 et 5');
+    }
+
+    // Create review with clientId: null (anonymous)
+    const reviewId = await reviewRepository.create({
+      providerId: booking.providerId,
+      bookingId,
+      clientId: null,
+      memberId: booking.memberId,
+      clientName: booking.clientInfo.name,
+      clientPhoto: null,
+      rating,
+      comment: comment || null,
+      isPublic: true,
+    });
+
+    const review = await reviewRepository.getById(reviewId);
+    if (!review) {
+      throw new Error('Erreur lors de la création de l\'avis');
+    }
+
+    // Recalculate provider rating
+    await this.recalculateProviderRating(booking.providerId);
+
+    return review;
+  }
+
+  /**
    * Get review by ID
    */
   async getById(reviewId: string): Promise<WithId<Review> | null> {
@@ -156,8 +212,8 @@ export class ReviewService {
       return false;
     }
 
-    // Must be completed
-    if (booking.status !== 'completed') {
+    // Must be past
+    if (booking.datetime > new Date()) {
       return false;
     }
 

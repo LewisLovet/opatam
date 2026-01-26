@@ -1,8 +1,9 @@
-import { locationRepository, bookingRepository, memberRepository, availabilityRepository } from '../repositories';
+import { locationRepository, bookingRepository, memberRepository, availabilityRepository, providerRepository } from '../repositories';
 import type { Location } from '@booking-app/shared';
 import {
   createLocationSchema,
   updateLocationSchema,
+  normalizeCity,
   type CreateLocationInput,
   type UpdateLocationInput,
 } from '@booking-app/shared';
@@ -39,6 +40,9 @@ export class LocationService {
       throw new Error('Erreur lors de la création du lieu');
     }
 
+    // Update provider's cities
+    await this.updateProviderCities(providerId);
+
     return location;
   }
 
@@ -60,6 +64,11 @@ export class LocationService {
     }
 
     await locationRepository.update(providerId, locationId, validated);
+
+    // Update provider's cities if city or isActive changed
+    if (validated.city !== undefined || validated.isActive !== undefined) {
+      await this.updateProviderCities(providerId);
+    }
   }
 
   /**
@@ -120,6 +129,9 @@ export class LocationService {
     }
 
     await locationRepository.delete(providerId, locationId);
+
+    // Update provider's cities
+    await this.updateProviderCities(providerId);
   }
 
   /**
@@ -161,6 +173,9 @@ export class LocationService {
     }
 
     await locationRepository.toggleActive(providerId, locationId, false);
+
+    // Update provider's cities
+    await this.updateProviderCities(providerId);
   }
 
   /**
@@ -173,6 +188,9 @@ export class LocationService {
     }
 
     await locationRepository.toggleActive(providerId, locationId, true);
+
+    // Update provider's cities
+    await this.updateProviderCities(providerId);
   }
 
   /**
@@ -226,6 +244,25 @@ export class LocationService {
    */
   async countByProvider(providerId: string): Promise<number> {
     return locationRepository.countByProvider(providerId);
+  }
+
+  /**
+   * Recalculate and update provider's cities array
+   * Called after location create/update/delete
+   */
+  async updateProviderCities(providerId: string): Promise<void> {
+    const activeLocations = await locationRepository.getActiveByProvider(providerId);
+
+    // Extract and normalize unique cities
+    const citiesSet = new Set<string>();
+    for (const location of activeLocations) {
+      if (location.city) {
+        citiesSet.add(normalizeCity(location.city));
+      }
+    }
+
+    const cities = Array.from(citiesSet).sort();
+    await providerRepository.update(providerId, { cities });
   }
 }
 

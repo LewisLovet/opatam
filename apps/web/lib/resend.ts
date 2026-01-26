@@ -28,7 +28,7 @@ export const emailConfig = {
 // App configuration
 export const appConfig = {
   name: 'Opatam',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'https://kamerleontech.com',
+  url: process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.vercel.app',
 } as const;
 
 // Helper to format date in French

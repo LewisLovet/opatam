@@ -1,6 +1,13 @@
-import { where, limit, orderBy } from 'firebase/firestore';
+import { where, limit, orderBy, type QueryConstraint } from 'firebase/firestore';
 import type { Provider } from '@booking-app/shared';
+import { normalizeCity } from '@booking-app/shared';
 import { BaseRepository, type WithId } from './base.repository';
+
+export interface ProviderSearchFilters {
+  category?: string;
+  city?: string;
+  query?: string;
+}
 
 /**
  * Repository for providers collection
@@ -113,6 +120,45 @@ export class ProviderRepository extends BaseRepository<Provider> {
    */
   async togglePublished(id: string, isPublished: boolean): Promise<void> {
     await this.update(id, { isPublished });
+  }
+
+  /**
+   * Search providers for public page
+   * Filters on isPublished: true, category, and city
+   * Text search (query) is handled client-side for MVP
+   */
+  async searchProviders(filters: ProviderSearchFilters): Promise<WithId<Provider>[]> {
+    const constraints: QueryConstraint[] = [
+      where('isPublished', '==', true),
+    ];
+
+    // Filter by category if provided
+    if (filters.category) {
+      constraints.push(where('category', '==', filters.category));
+    }
+
+    // Filter by city if provided (uses array-contains on normalized cities)
+    if (filters.city) {
+      const normalizedCity = normalizeCity(filters.city);
+      constraints.push(where('cities', 'array-contains', normalizedCity));
+    }
+
+    // Order by rating
+    constraints.push(orderBy('rating.average', 'desc'));
+
+    let results = await this.query(constraints);
+
+    // Client-side text search for MVP (searches in businessName and description)
+    if (filters.query) {
+      const queryLower = filters.query.toLowerCase();
+      results = results.filter(
+        (provider) =>
+          provider.businessName.toLowerCase().includes(queryLower) ||
+          provider.description.toLowerCase().includes(queryLower)
+      );
+    }
+
+    return results;
   }
 }
 

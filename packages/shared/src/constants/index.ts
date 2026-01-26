@@ -28,7 +28,6 @@ export const BOOKING_STATUS = {
   pending: { label: 'En attente', color: 'warning' },
   confirmed: { label: 'Confirme', color: 'success' },
   cancelled: { label: 'Annule', color: 'error' },
-  completed: { label: 'Termine', color: 'gray' },
   noshow: { label: 'Absent', color: 'error' },
 } as const;
 

@@ -5,7 +5,7 @@ export { BaseRepository, convertTimestamps, type WithId } from './base.repositor
 export { UserRepository, userRepository } from './user.repository';
 
 // Provider repository
-export { ProviderRepository, providerRepository } from './provider.repository';
+export { ProviderRepository, providerRepository, type ProviderSearchFilters } from './provider.repository';
 
 // Member repository (subcollection)
 export { MemberRepository, memberRepository } from './member.repository';

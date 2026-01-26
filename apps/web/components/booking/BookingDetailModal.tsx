@@ -35,6 +35,8 @@ import {
   X,
   AlertTriangle,
   Ban,
+  Star,
+  CheckCircle,
 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -56,6 +58,7 @@ export function BookingDetailModal({
   const toast = useToast();
 
   const [loading, setLoading] = useState(false);
+  const [reviewRequestLoading, setReviewRequestLoading] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showNoShowConfirm, setShowNoShowConfirm] = useState(false);
   const [cancelReasonType, setCancelReasonType] = useState('');
@@ -128,21 +131,6 @@ export function BookingDetailModal({
     }
   };
 
-  const handleComplete = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      await bookingService.completeBooking(booking.id, user.id);
-      toast.success('Rendez-vous marqué comme terminé');
-      onUpdate();
-    } catch (error) {
-      console.error('Error completing booking:', error);
-      toast.error('Erreur lors de la mise à jour');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleNoShow = async () => {
     if (!user) return;
     setLoading(true);
@@ -164,6 +152,46 @@ export function BookingDetailModal({
     setShowNoShowConfirm(false);
     setCancelReasonType('');
     setCancelReasonCustom('');
+  };
+
+  const handleReviewRequest = async () => {
+    if (!user) return;
+    setReviewRequestLoading(true);
+    try {
+      const response = await fetch('/api/bookings/review-request-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Erreur lors de l'envoi");
+      }
+
+      toast.success("Demande d'avis envoyée");
+      onUpdate();
+    } catch (error) {
+      console.error('Error sending review request:', error);
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'envoi");
+    } finally {
+      setReviewRequestLoading(false);
+    }
+  };
+
+  // Check if booking is past and eligible for review request
+  const isPastBooking = new Date(booking.datetime) < new Date();
+  const canRequestReview = isPastBooking && booking.status === 'confirmed' && !booking.reviewRequestSentAt;
+  const reviewRequestAlreadySent = !!booking.reviewRequestSentAt;
+
+  const formatReviewRequestDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -336,6 +364,48 @@ export function BookingDetailModal({
             </div>
           </div>
         )}
+
+        {/* Review request section - only for past confirmed bookings */}
+        {canRequestReview && !showCancelConfirm && !showNoShowConfirm && (
+          <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl space-y-3 border border-primary-200 dark:border-primary-800">
+            <div className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              <span className="font-medium text-primary-700 dark:text-primary-300">
+                Demander un avis
+              </span>
+            </div>
+            <p className="text-sm text-primary-600 dark:text-primary-400">
+              Envoyer un email à {booking.clientInfo.name} pour lui demander de noter sa prestation.
+            </p>
+            <Button
+              onClick={handleReviewRequest}
+              disabled={reviewRequestLoading}
+              className="w-full"
+            >
+              {reviewRequestLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Mail className="w-4 h-4 mr-2" />
+              )}
+              Envoyer la demande d'avis
+            </Button>
+          </div>
+        )}
+
+        {/* Review request already sent */}
+        {reviewRequestAlreadySent && isPastBooking && booking.status === 'confirmed' && (
+          <div className="p-4 bg-success-50 dark:bg-success-900/20 rounded-xl border border-success-200 dark:border-success-800">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-success-600 dark:text-success-400" />
+              <span className="font-medium text-success-700 dark:text-success-300">
+                Demande d'avis envoyée
+              </span>
+            </div>
+            <p className="text-sm text-success-600 dark:text-success-400 mt-1">
+              le {formatReviewRequestDate(booking.reviewRequestSentAt!)}
+            </p>
+          </div>
+        )}
       </ModalBody>
 
       <ModalFooter>
@@ -362,7 +432,7 @@ export function BookingDetailModal({
           </>
         )}
 
-        {booking.status === 'confirmed' && !showCancelConfirm && !showNoShowConfirm && (
+        {booking.status === 'confirmed' && !showCancelConfirm && !showNoShowConfirm && !isPastBooking && (
           <>
             <Button
               variant="outline"
@@ -382,20 +452,12 @@ export function BookingDetailModal({
               <Ban className="w-4 h-4 mr-2" />
               Absent
             </Button>
-            <Button onClick={handleComplete} disabled={loading}>
-              {loading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Check className="w-4 h-4 mr-2" />
-              )}
-              Terminé
-            </Button>
           </>
         )}
 
-        {(booking.status === 'completed' ||
-          booking.status === 'cancelled' ||
-          booking.status === 'noshow') && (
+        {(booking.status === 'cancelled' ||
+          booking.status === 'noshow' ||
+          (booking.status === 'confirmed' && isPastBooking)) && (
           <Button variant="outline" onClick={onClose}>
             Fermer
           </Button>

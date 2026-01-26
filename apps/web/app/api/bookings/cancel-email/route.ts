@@ -20,13 +20,23 @@ interface CancelEmailRequest {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('[CANCEL-EMAIL] ========== START ==========');
+
   try {
     const body: CancelEmailRequest = await request.json();
+    console.log('[CANCEL-EMAIL] Request body received:', {
+      bookingId: body.bookingId,
+      clientEmail: body.clientEmail,
+      clientName: body.clientName,
+      serviceName: body.serviceName,
+      reason: body.reason || 'NOT PROVIDED',
+    });
 
     const { clientEmail, clientName, serviceName, datetime, reason, providerName, locationName } = body;
 
     // Validate required fields
     if (!clientEmail || !clientName || !serviceName || !datetime) {
+      console.log('[CANCEL-EMAIL] ERROR: Missing required fields');
       return NextResponse.json(
         { message: 'Donnees manquantes' },
         { status: 400 }
@@ -35,6 +45,7 @@ export async function POST(request: NextRequest) {
 
     // Validate email format
     if (!isValidEmail(clientEmail)) {
+      console.log('[CANCEL-EMAIL] ERROR: Invalid email format');
       return NextResponse.json(
         { message: 'Email invalide' },
         { status: 400 }
@@ -46,6 +57,7 @@ export async function POST(request: NextRequest) {
     const formattedTime = formatTimeFr(datetime);
 
     const businessName = providerName || appConfig.name;
+    console.log('[CANCEL-EMAIL] Sending cancellation email to:', clientEmail);
 
     // Send email via Resend
     const { error } = await resend.emails.send({
@@ -177,16 +189,18 @@ ${businessName}
     });
 
     if (error) {
-      console.error('Resend error:', error);
+      console.error('[CANCEL-EMAIL] ERROR from Resend:', error);
       return NextResponse.json(
         { message: 'Erreur lors de l\'envoi de l\'email' },
         { status: 500 }
       );
     }
 
+    console.log('[CANCEL-EMAIL] SUCCESS - Cancellation email sent to:', clientEmail);
+    console.log('[CANCEL-EMAIL] ========== END ==========');
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Send cancellation email error:', error);
+    console.error('[CANCEL-EMAIL] EXCEPTION:', error);
     return NextResponse.json(
       { message: 'Erreur interne du serveur' },
       { status: 500 }

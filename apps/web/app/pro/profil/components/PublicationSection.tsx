@@ -102,7 +102,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
   };
 
   const publicUrl = provider?.slug
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${provider.slug}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${provider.slug}`
     : null;
 
   const requirementItems = [
@@ -155,11 +155,11 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
             Votre page est accessible a l'adresse:
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-sm bg-white dark:bg-gray-800 px-3 py-2 rounded border border-success-200 dark:border-success-700 truncate">
+            <code className="flex-1 text-sm bg-white dark:bg-gray-800 px-3 py-2 rounded border border-success-200 dark:border-success-700 truncate text-gray-900 dark:text-gray-100">
               {publicUrl}
             </code>
             <a
-              href={`/${provider.slug}`}
+              href={`/p/${provider.slug}`}
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 text-success-600 hover:text-success-700 dark:text-success-400 dark:hover:text-success-300 transition-colors"

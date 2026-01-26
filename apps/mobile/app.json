@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "BookingApp",
-    "slug": "booking-app",
+    "name": "Opatam",
+    "slug": "opatam",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "bookingapp",
+    "scheme": "opatam",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,14 +15,15 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bookingapp.mobile"
+      "bundleIdentifier": "com.opatam.mobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.bookingapp.mobile"
+      "package": "com.opatam.mobile",
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "bundler": "metro",

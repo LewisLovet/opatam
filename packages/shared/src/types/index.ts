@@ -33,6 +33,9 @@ export interface Provider {
   subscription: Subscription;
   isPublished: boolean;
   isVerified: boolean;
+  // Denormalized fields for search optimization
+  cities: string[];              // Normalized cities from active locations
+  minPrice: number | null;       // Minimum price from active services (in centimes)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -166,7 +169,7 @@ export interface BlockedSlot {
 }
 
 // Booking types
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'noshow';
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'noshow';
 
 export interface Booking {
   providerId: string;
@@ -192,6 +195,7 @@ export interface Booking {
   cancelReason: string | null;
   cancelToken: string | null;
   remindersSent: Date[];
+  reviewRequestSentAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -206,7 +210,7 @@ export interface ClientInfo {
 export interface Review {
   providerId: string;
   bookingId: string;
-  clientId: string;
+  clientId: string | null;  // null for anonymous reviews (from email link)
   memberId: string | null;
   clientName: string;
   clientPhoto: string | null;

@@ -111,6 +111,7 @@ export class BookingService {
       cancelReason: null,
       cancelToken,
       remindersSent: [],
+      reviewRequestSentAt: null,
     });
 
     const booking = await bookingRepository.getById(bookingId);
@@ -167,10 +168,6 @@ export class BookingService {
       throw new Error('Cette réservation est déjà annulée');
     }
 
-    if (booking.status === 'completed') {
-      throw new Error('Impossible d\'annuler une réservation terminée');
-    }
-
     await bookingRepository.updateStatus(bookingId, 'cancelled', {
       cancelledBy,
       cancelReason: reason,
@@ -195,10 +192,6 @@ export class BookingService {
       throw new Error('Cette réservation est déjà annulée');
     }
 
-    if (booking.status === 'completed') {
-      throw new Error('Impossible d\'annuler une réservation terminée');
-    }
-
     // Check if booking is in the past
     if (booking.datetime < new Date()) {
       throw new Error('Impossible d\'annuler une réservation passée');
@@ -208,24 +201,6 @@ export class BookingService {
       cancelledBy: 'client',
       cancelReason: reason || 'Annulé via lien',
     });
-  }
-
-  /**
-   * Mark booking as completed
-   */
-  async completeBooking(bookingId: string, adminUserId: string): Promise<void> {
-    const booking = await bookingRepository.getById(bookingId);
-    if (!booking) {
-      throw new Error('Réservation non trouvée');
-    }
-
-    await this.verifyProviderAccess(booking.providerId, adminUserId);
-
-    if (booking.status !== 'confirmed') {
-      throw new Error(`Impossible de terminer une réservation ${this.getStatusLabel(booking.status)}`);
-    }
-
-    await bookingRepository.updateStatus(bookingId, 'completed');
   }
 
   /**
@@ -303,7 +278,6 @@ export class BookingService {
     total: number;
     pending: number;
     confirmed: number;
-    completed: number;
     cancelled: number;
     noshow: number;
   }> {
@@ -377,10 +351,39 @@ export class BookingService {
       pending: 'en attente',
       confirmed: 'confirmée',
       cancelled: 'annulée',
-      completed: 'terminée',
       noshow: 'absence',
     };
     return labels[status];
+  }
+
+  /**
+   * Send review request email and mark as sent
+   */
+  async sendReviewRequest(bookingId: string, adminUserId: string): Promise<void> {
+    const booking = await bookingRepository.getById(bookingId);
+    if (!booking) {
+      throw new Error('Réservation non trouvée');
+    }
+
+    await this.verifyProviderAccess(booking.providerId, adminUserId);
+
+    // Verify booking is past and confirmed
+    if (booking.datetime > new Date()) {
+      throw new Error('Le rendez-vous n\'est pas encore passé');
+    }
+
+    if (booking.status !== 'confirmed') {
+      throw new Error('Impossible de demander un avis pour cette réservation');
+    }
+
+    if (booking.reviewRequestSentAt) {
+      throw new Error('La demande d\'avis a déjà été envoyée');
+    }
+
+    // Mark as sent (the actual email is sent by the API route)
+    await bookingRepository.update(bookingId, {
+      reviewRequestSentAt: new Date(),
+    });
   }
 }
 

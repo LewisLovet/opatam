@@ -21,11 +21,24 @@ interface ConfirmationEmailRequest {
   locationName?: string;
   locationAddress?: string;
   memberName?: string;
+  cancelToken?: string;
+  bookingId?: string;
 }
 
 export async function POST(request: NextRequest) {
+  console.log('[CONFIRMATION-EMAIL] ========== START ==========');
+
   try {
     const body: ConfirmationEmailRequest = await request.json();
+    console.log('[CONFIRMATION-EMAIL] Request body received:', {
+      clientEmail: body.clientEmail,
+      clientName: body.clientName,
+      serviceName: body.serviceName,
+      datetime: body.datetime,
+      bookingId: body.bookingId || 'NOT PROVIDED',
+      cancelToken: body.cancelToken ? 'PROVIDED' : 'NOT PROVIDED',
+      providerSlug: body.providerSlug || 'NOT PROVIDED',
+    });
 
     const {
       clientEmail,
@@ -39,10 +52,13 @@ export async function POST(request: NextRequest) {
       locationName,
       locationAddress,
       memberName,
+      cancelToken,
+      bookingId,
     } = body;
 
     // Validate required fields
     if (!clientEmail || !clientName || !serviceName || !datetime) {
+      console.log('[CONFIRMATION-EMAIL] ERROR: Missing required fields');
       return NextResponse.json(
         { message: 'Donnees manquantes' },
         { status: 400 }
@@ -51,6 +67,7 @@ export async function POST(request: NextRequest) {
 
     // Validate email format
     if (!isValidEmail(clientEmail)) {
+      console.log('[CONFIRMATION-EMAIL] ERROR: Invalid email format');
       return NextResponse.json(
         { message: 'Email invalide' },
         { status: 400 }
@@ -71,37 +88,86 @@ export async function POST(request: NextRequest) {
 
     const businessName = providerName || appConfig.name;
 
+    // Generate URLs
+    const cancelUrl = cancelToken ? `${appConfig.url}/reservation/annuler/${cancelToken}` : null;
+    const reviewUrl = bookingId ? `${appConfig.url}/avis/${bookingId}` : null;
+    const icsUrl = bookingId ? `${appConfig.url}/api/calendar/${bookingId}` : null;
+
+    console.log('[CONFIRMATION-EMAIL] Generated URLs:', {
+      cancelUrl: cancelUrl || 'NONE (no cancelToken)',
+      reviewUrl: reviewUrl || 'NONE (no bookingId)',
+      icsUrl: icsUrl || 'NONE (no bookingId)',
+      appConfigUrl: appConfig.url,
+    });
+
     // Generate Google Calendar URL
     const formatGoogleDate = (date: Date) => {
       return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
     };
     const eventTitle = encodeURIComponent(`RDV - ${serviceName} chez ${businessName}`);
     const eventLocation = encodeURIComponent(locationAddress || '');
-    const eventDescription = encodeURIComponent(memberName ? `Avec ${memberName}` : `Chez ${businessName}`);
+    const eventDescription = encodeURIComponent(
+      `${memberName ? `Avec ${memberName}` : `Chez ${businessName}`}${cancelUrl ? `\n\nPour annuler : ${cancelUrl}` : ''}`
+    );
     const eventDates = `${formatGoogleDate(dateObj)}/${formatGoogleDate(endDate)}`;
     const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${eventDates}&location=${eventLocation}&details=${eventDescription}`;
 
-    // Generate ICS file URL (base64 encoded)
-    const icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//BookingApp//FR
-BEGIN:VEVENT
-DTSTAMP:${formatGoogleDate(new Date())}
-DTSTART:${formatGoogleDate(dateObj)}
-DTEND:${formatGoogleDate(endDate)}
-SUMMARY:RDV - ${serviceName} chez ${businessName}
-DESCRIPTION:${memberName ? `Avec ${memberName}` : `Chez ${businessName}`}
-LOCATION:${locationAddress || ''}
-END:VEVENT
-END:VCALENDAR`;
-    const icsBase64 = Buffer.from(icsContent).toString('base64');
-    const icsDataUrl = `data:text/calendar;base64,${icsBase64}`;
+    // Generate ICS file content with cancel URL in description
+    // RFC 5545 escaping: backslashes, commas, semicolons, and newlines
+    const escapeIcs = (str: string) =>
+      str
+        .replace(/\\/g, '\\\\')
+        .replace(/,/g, '\\,')
+        .replace(/;/g, '\\;')
+        .replace(/\n/g, '\\n');
 
-    // Send email via Resend
+    const icsDescriptionParts = [memberName ? `Avec ${memberName}` : `Chez ${businessName}`];
+    if (cancelUrl) {
+      icsDescriptionParts.push('');
+      icsDescriptionParts.push(`Pour annuler : ${cancelUrl}`);
+    }
+    const icsDescription = escapeIcs(icsDescriptionParts.join('\n'));
+    const icsSummary = escapeIcs(`RDV - ${serviceName} chez ${businessName}`);
+    const icsLocation = escapeIcs(locationAddress || '');
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Opatam//Booking//FR',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${bookingId || Date.now()}@opatam.com`,
+      `DTSTAMP:${formatGoogleDate(new Date())}`,
+      `DTSTART:${formatGoogleDate(dateObj)}`,
+      `DTEND:${formatGoogleDate(endDate)}`,
+      `SUMMARY:${icsSummary}`,
+      `DESCRIPTION:${icsDescription}`,
+      `LOCATION:${icsLocation}`,
+      'STATUS:CONFIRMED',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+    const icsBuffer = Buffer.from(icsContent, 'utf-8');
+
+    console.log('[CONFIRMATION-EMAIL] ICS file generated:', {
+      icsDescription,
+      icsLocation,
+      hasAttachment: true,
+    });
+
+    // Send email via Resend with ICS attachment
     const { error } = await resend.emails.send({
       from: emailConfig.from,
       to: clientEmail,
       subject: `Confirmation de votre rendez-vous - ${serviceName}`,
+      attachments: [
+        {
+          filename: 'rendez-vous.ics',
+          content: icsBuffer,
+          contentType: 'text/calendar; method=PUBLISH',
+        },
+      ],
       html: `
         <!DOCTYPE html>
         <html>
@@ -181,10 +247,6 @@ END:VCALENDAR`;
                         </table>
                       </div>
 
-                      <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
-                        Nous vous attendons avec impatience. Si vous avez besoin de modifier ou annuler votre rendez-vous, veuillez nous contacter.
-                      </p>
-
                       <!-- Add to Calendar Section -->
                       <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                         <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">
@@ -192,19 +254,32 @@ END:VCALENDAR`;
                         </p>
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
-                            <td style="padding-right: 8px; width: 50%;">
-                              <a href="${googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 16px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">
-                                Google Calendar
+                            <td style="padding-right: 6px; width: 50%;">
+                              <a href="${googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">
+                                Google
                               </a>
                             </td>
-                            <td style="padding-left: 8px; width: 50%;">
-                              <a href="${icsDataUrl}" download="rendez-vous.ics" style="display: block; padding: 10px 16px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">
+                            <td style="padding-left: 6px; width: 50%;">
+                              <a href="${icsUrl || googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">
                                 Apple / Outlook
                               </a>
                             </td>
                           </tr>
                         </table>
                       </div>
+
+                      <!-- Cancel Button -->
+                      ${cancelUrl ? `
+                      <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+                        <tr>
+                          <td align="center">
+                            <a href="${cancelUrl}" style="display: inline-block; padding: 12px 24px; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 8px;">
+                              Annuler le rendez-vous
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                      ` : ''}
 
                       <!-- CTA Button -->
                       ${providerSlug ? `
@@ -228,6 +303,11 @@ END:VCALENDAR`;
                         A bientot,<br>
                         <strong>${businessName}</strong>
                       </p>
+                      ${reviewUrl ? `
+                      <p style="margin: 16px 0 0; font-size: 13px; color: #a1a1aa; text-align: center;">
+                        Apres votre rendez-vous, <a href="${reviewUrl}" style="color: #6366f1; text-decoration: underline;">donnez-nous votre avis</a>
+                      </p>
+                      ` : ''}
                     </td>
                   </tr>
                 </table>
@@ -260,8 +340,11 @@ ${memberName ? `- Avec : ${memberName}` : ''}
 
 Ajouter a votre calendrier :
 - Google Calendar : ${googleCalendarUrl}
+${icsUrl ? `- Apple / Outlook : ${icsUrl}` : ''}
 
-Nous vous attendons avec impatience. Si vous avez besoin de modifier ou annuler votre rendez-vous, veuillez nous contacter.
+${cancelUrl ? `Annuler le rendez-vous : ${cancelUrl}` : ''}
+
+${reviewUrl ? `Apres votre rendez-vous, donnez-nous votre avis : ${reviewUrl}` : ''}
 
 A bientot,
 ${businessName}
@@ -269,16 +352,18 @@ ${businessName}
     });
 
     if (error) {
-      console.error('Resend error:', error);
+      console.error('[CONFIRMATION-EMAIL] ERROR from Resend:', error);
       return NextResponse.json(
         { message: 'Erreur lors de l\'envoi de l\'email' },
         { status: 500 }
       );
     }
 
+    console.log('[CONFIRMATION-EMAIL] SUCCESS - Email sent to:', clientEmail);
+    console.log('[CONFIRMATION-EMAIL] ========== END ==========');
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Send confirmation email error:', error);
+    console.error('[CONFIRMATION-EMAIL] EXCEPTION:', error);
     return NextResponse.json(
       { message: 'Erreur interne du serveur' },
       { status: 500 }

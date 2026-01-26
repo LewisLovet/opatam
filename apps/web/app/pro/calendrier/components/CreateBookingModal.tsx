@@ -365,10 +365,15 @@ export function CreateBookingModal({
         },
       };
 
-      await bookingService.createBooking(bookingData);
+      const booking = await bookingService.createBooking(bookingData);
 
-      // Send confirmation email
+      // Send confirmation email with bookingId and cancelToken for cancel/review links
       try {
+        console.log('[CreateBookingModal] Sending confirmation email with:', {
+          bookingId: booking.id,
+          cancelToken: booking.cancelToken ? 'EXISTS' : 'NOT SET',
+        });
+
         await fetch('/api/bookings/confirmation-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -380,13 +385,17 @@ export function CreateBookingModal({
             duration: selectedService?.duration || 0,
             price: selectedService?.price || 0,
             providerName: provider.businessName || '',
+            providerSlug: provider.slug,
             locationName: selectedLocation?.name || '',
             locationAddress: selectedLocation?.address || '',
             memberName: selectedMember?.name,
+            // IMPORTANT: Ces paramètres sont nécessaires pour les liens d'annulation et d'avis
+            bookingId: booking.id,
+            cancelToken: booking.cancelToken,
           }),
         });
       } catch (emailError) {
-        console.error('Error sending confirmation email:', emailError);
+        console.error('[CreateBookingModal] Error sending confirmation email:', emailError);
         // Don't fail the booking creation if email fails
       }
 

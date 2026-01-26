@@ -83,6 +83,8 @@ export default function ProvidersTestPage() {
         },
         isPublished: false,
         isVerified: false,
+        cities: [],
+        minPrice: null,
       });
       return { id, slug, message: 'Provider cree avec succes' };
     });

@@ -103,6 +103,8 @@ export class ProviderService {
       },
       isPublished: false,
       isVerified: false,
+      cities: [],
+      minPrice: null,
     });
 
     // Update user with providerId (= userId)

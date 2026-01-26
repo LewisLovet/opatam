@@ -133,3 +133,21 @@ export function calculateEndTime(
   endTime.setMinutes(endTime.getMinutes() + durationMinutes + bufferMinutes);
   return endTime;
 }
+
+/**
+ * Normalize city name for search optimization
+ * - Trim whitespace
+ * - Convert to lowercase
+ * - Remove accents (é → e, etc.)
+ * - Replace multiple spaces with single space
+ * @param city - City name to normalize
+ * @returns Normalized city name
+ */
+export function normalizeCity(city: string): string {
+  return city
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}

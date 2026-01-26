@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { Scissors, MapPin, Users, Clock } from 'lucide-react';
@@ -10,8 +11,20 @@ import { EquipeTab } from './components/EquipeTab';
 import { DisponibilitesTab } from './components/DisponibilitesTab';
 
 export default function ActivityPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { provider } = useAuth();
-  const [activeTab, setActiveTab] = useState('prestations');
+
+  const activeTab = searchParams.get('tab') || 'prestations';
+
+  const setActiveTab = useCallback(
+    (tab: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', tab);
+      router.push(`/pro/activite?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
 
   const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
 

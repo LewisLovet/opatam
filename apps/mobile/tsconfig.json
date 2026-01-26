@@ -7,11 +7,7 @@
       "@booking-app/shared": ["../../packages/shared/src"],
       "@booking-app/shared/*": ["../../packages/shared/src/*"],
       "@booking-app/theme": ["../../packages/theme/src"],
-      "@booking-app/theme/*": ["../../packages/theme/src/*"],
-      "@booking-app/firebase": ["../../packages/firebase/src"],
-      "@booking-app/firebase/*": ["../../packages/firebase/src/*"],
-      "@booking-app/ui": ["../../packages/ui/src"],
-      "@booking-app/ui/*": ["../../packages/ui/src/*"]
+      "@booking-app/theme/*": ["../../packages/theme/src/*"]
     }
   },
   "include": [
@@ -19,6 +15,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ],
-  "exclude": ["node_modules"]
+  ]
 }

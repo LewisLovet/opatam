@@ -22,6 +22,12 @@ export async function POST(request: NextRequest) {
 
     // Send confirmation email (fire and forget)
     try {
+      console.log('[BOOKINGS-API] Sending confirmation email with:', {
+        bookingId: booking.id,
+        cancelToken: booking.cancelToken ? 'EXISTS' : 'NOT SET',
+        providerSlug: body.providerSlug || 'NOT PROVIDED',
+      });
+
       const emailResponse = await fetch(
         new URL('/api/bookings/confirmation-email', request.url).toString(),
         {
@@ -39,15 +45,20 @@ export async function POST(request: NextRequest) {
             locationName: booking.locationName,
             locationAddress: booking.locationAddress,
             memberName: booking.memberName,
+            // IMPORTANT: Ces paramètres sont nécessaires pour les liens d'annulation et d'avis
+            bookingId: booking.id,
+            cancelToken: booking.cancelToken,
           }),
         }
       );
 
       if (!emailResponse.ok) {
-        console.error('Failed to send confirmation email:', await emailResponse.text());
+        console.error('[BOOKINGS-API] Failed to send confirmation email:', await emailResponse.text());
+      } else {
+        console.log('[BOOKINGS-API] Confirmation email sent successfully');
       }
     } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
+      console.error('[BOOKINGS-API] Error sending confirmation email:', emailError);
     }
 
     return NextResponse.json({ bookingId: booking.id }, { status: 201 });

@@ -1,115 +1,55 @@
 'use client';
 
-import { useMemo } from 'react';
-import Link from 'next/link';
-import {
-  Calendar,
-  Clock,
-  Users,
-  Star,
-  ChevronRight,
-  AlertCircle,
-  Camera,
-  Globe,
-  Bell,
-} from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { Calendar, Clock, AlertCircle, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui';
+import {
+  bookingService,
+  memberService,
+  locationService,
+  catalogService,
+} from '@booking-app/firebase';
+import type { Booking, Member, Location, Service } from '@booking-app/shared';
+import { BookingDetailModal } from '@/components/booking';
+import { CreateBookingModal } from './calendrier/components/CreateBookingModal';
+import {
+  StatCard,
+  AlertCard,
+  TodayBookings,
+  RecentActivity,
+  QuickActions,
+  type Alert,
+} from './components';
+import { getStartOfWeek, getEndOfWeek, getDaysRemaining, formatFullDate } from '@/lib/date-utils';
 
-// Mock data for demonstration
-const mockStats = {
-  todayAppointments: 5,
-  weekAppointments: 23,
-  pendingAppointments: 3,
-  averageRating: 4.8,
-  totalReviews: 127,
-};
-
-const mockUpcomingBookings = [
-  {
-    id: '1',
-    time: '09:00',
-    clientName: 'Marie Dupont',
-    service: 'Coupe femme',
-    status: 'confirmed',
-  },
-  {
-    id: '2',
-    time: '10:30',
-    clientName: 'Jean Martin',
-    service: 'Coupe homme',
-    status: 'confirmed',
-  },
-  {
-    id: '3',
-    time: '11:00',
-    clientName: 'Sophie Leroy',
-    service: 'Coloration',
-    status: 'pending',
-  },
-  {
-    id: '4',
-    time: '14:00',
-    clientName: 'Pierre Bernard',
-    service: 'Barbe',
-    status: 'confirmed',
-  },
-  {
-    id: '5',
-    time: '15:30',
-    clientName: 'Camille Moreau',
-    service: 'Brushing',
-    status: 'confirmed',
-  },
-];
-
-interface QuickAction {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  href: string;
-  priority: 'high' | 'medium' | 'low';
-}
-
-function getStatusBadge(status: string) {
-  switch (status) {
-    case 'confirmed':
-      return (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-success-100 text-success-700 dark:bg-success-900/20 dark:text-success-400">
-          Confirme
-        </span>
-      );
-    case 'pending':
-      return (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-warning-100 text-warning-700 dark:bg-warning-900/20 dark:text-warning-400">
-          En attente
-        </span>
-      );
-    case 'cancelled':
-      return (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-error-100 text-error-700 dark:bg-error-900/20 dark:text-error-400">
-          Annule
-        </span>
-      );
-    default:
-      return null;
-  }
-}
-
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
+type WithId<T> = { id: string } & T;
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, provider } = useAuth();
 
-  const today = useMemo(() => new Date(), []);
+  // Data states
+  const [todayBookings, setTodayBookings] = useState<WithId<Booking>[]>([]);
+  const [upcomingBookings, setUpcomingBookings] = useState<WithId<Booking>[]>([]);
+  const [recentCancellations, setRecentCancellations] = useState<WithId<Booking>[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [weekBookingsCount, setWeekBookingsCount] = useState(0);
+  const [members, setMembers] = useState<WithId<Member>[]>([]);
+  const [locations, setLocations] = useState<WithId<Location>[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+
+  // Loading state
+  const [loading, setLoading] = useState(true);
+
+  // Modal states
+  const [selectedBooking, setSelectedBooking] = useState<WithId<Booking> | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
+
+  // Greeting based on time of day
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Bonjour';
@@ -117,263 +57,353 @@ export default function DashboardPage() {
     return 'Bonsoir';
   }, []);
 
-  // Determine quick actions based on profile completeness
-  const quickActions = useMemo<QuickAction[]>(() => {
-    const actions: QuickAction[] = [];
+  // Build alerts based on provider state and data
+  const buildAlerts = useCallback(
+    (
+      pendingBookings: WithId<Booking>[],
+      locationsData: WithId<Location>[],
+      servicesData: WithId<Service>[]
+    ): Alert[] => {
+      if (!provider) return [];
 
-    if (!provider?.photoURL) {
-      actions.push({
-        id: 'photo',
-        title: 'Ajoutez une photo de profil',
-        description: 'Les clients aiment voir qui ils contactent',
-        icon: <Camera className="w-5 h-5" />,
-        href: '/pro/parametres',
-        priority: 'high',
+      const alerts: Alert[] = [];
+
+      // 1. Pending bookings
+      if (pendingBookings.length > 0) {
+        alerts.push({
+          id: 'pending',
+          message: `${pendingBookings.length} RDV en attente de confirmation`,
+          action: 'Voir les reservations',
+          href: '/pro/reservations?status=pending',
+          priority: 'high',
+        });
+      }
+
+      // 2. Trial period
+      if (provider.subscription?.plan === 'trial' && provider.subscription?.validUntil) {
+        const daysRemaining = getDaysRemaining(provider.subscription.validUntil);
+        if (daysRemaining <= 14) {
+          alerts.push({
+            id: 'trial',
+            message: `Periode d'essai : ${daysRemaining} jours restants`,
+            action: 'Voir les offres',
+            href: '/pro/parametres?tab=abonnement',
+            priority: daysRemaining <= 3 ? 'high' : 'medium',
+          });
+        }
+      }
+
+      // 3. Profile not published
+      if (!provider.isPublished) {
+        alerts.push({
+          id: 'unpublished',
+          message: "Votre profil n'est pas encore publie",
+          action: 'Publier',
+          href: '/pro/profil?tab=publication',
+          priority: 'high',
+        });
+      }
+
+      // 4. No profile photo
+      if (!provider.photoURL) {
+        alerts.push({
+          id: 'no-photo',
+          message: 'Ajoutez une photo de profil',
+          action: 'Ajouter',
+          href: '/pro/profil?tab=photos',
+          priority: 'medium',
+        });
+      }
+
+      // 5. No portfolio photos
+      if (!provider.portfolioPhotos || provider.portfolioPhotos.length === 0) {
+        alerts.push({
+          id: 'no-portfolio',
+          message: 'Ajoutez des photos a votre portfolio',
+          action: 'Ajouter',
+          href: '/pro/profil?tab=photos',
+          priority: 'low',
+        });
+      }
+
+      // 6. No locations
+      if (locationsData.length === 0) {
+        alerts.push({
+          id: 'no-location',
+          message: 'Ajoutez un lieu pour recevoir des reservations',
+          action: 'Configurer',
+          href: '/pro/activite?tab=lieux',
+          priority: 'high',
+        });
+      }
+
+      // 7. No services
+      if (servicesData.length === 0) {
+        alerts.push({
+          id: 'no-service',
+          message: 'Creez votre premiere prestation',
+          action: 'Creer',
+          href: '/pro/activite?tab=prestations',
+          priority: 'high',
+        });
+      }
+
+      return alerts;
+    },
+    [provider]
+  );
+
+  // Load dashboard data
+  const loadDashboardData = useCallback(async () => {
+    if (!provider) return;
+
+    setLoading(true);
+    try {
+      const today = new Date();
+      const startOfToday = new Date(today);
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const endOfToday = new Date(today);
+      endOfToday.setHours(23, 59, 59, 999);
+
+      const startOfWeek = getStartOfWeek(today);
+      const endOfWeek = getEndOfWeek(today);
+
+      // Load all data in parallel
+      const [
+        todayData,
+        pendingData,
+        weekData,
+        upcomingData,
+        cancellationsData,
+        membersData,
+        locationsData,
+        servicesData,
+      ] = await Promise.all([
+        bookingService.getTodayBookings(provider.id),
+        bookingService.getPendingBookings(provider.id),
+        bookingService.getProviderBookings(provider.id, {
+          startDate: startOfWeek,
+          endDate: endOfWeek,
+          status: ['pending', 'confirmed'],
+        }),
+        bookingService.getProviderBookings(provider.id, {
+          startDate: endOfToday,
+          limit: 5,
+          status: ['pending', 'confirmed'],
+        }),
+        bookingService.getProviderBookings(provider.id, {
+          status: ['cancelled'],
+          limit: 5,
+        }),
+        isTeamPlan ? memberService.getByProvider(provider.id) : Promise.resolve([]),
+        locationService.getByProvider(provider.id),
+        catalogService.getByProvider(provider.id),
+      ]);
+
+      // Filter today's bookings to exclude cancelled
+      const activeTodayBookings = todayData.filter(
+        (b: WithId<Booking>) => b.status === 'pending' || b.status === 'confirmed'
+      );
+
+      // Filter upcoming to exclude today's bookings
+      const futureBookings = upcomingData.filter((b: WithId<Booking>) => {
+        const bookingDate = new Date(b.datetime);
+        return bookingDate > endOfToday;
       });
-    }
 
-    if (!provider?.isPublished) {
-      actions.push({
-        id: 'publish',
-        title: 'Publiez votre profil',
-        description: 'Rendez-vous visible pour les clients',
-        icon: <Globe className="w-5 h-5" />,
-        href: '/pro/parametres',
-        priority: 'high',
+      // Sort cancellations by cancellation date (most recent first)
+      const sortedCancellations = cancellationsData.sort((a: WithId<Booking>, b: WithId<Booking>) => {
+        const dateA = a.cancelledAt ? new Date(a.cancelledAt).getTime() : 0;
+        const dateB = b.cancelledAt ? new Date(b.cancelledAt).getTime() : 0;
+        return dateB - dateA;
       });
-    }
 
-    if (provider?.settings?.reminderTimes?.length === 0) {
-      actions.push({
-        id: 'reminders',
-        title: 'Configurez les rappels',
-        description: 'Reduisez les absences avec des notifications',
-        icon: <Bell className="w-5 h-5" />,
-        href: '/pro/parametres',
-        priority: 'medium',
-      });
-    }
+      setTodayBookings(activeTodayBookings);
+      setUpcomingBookings(futureBookings);
+      setRecentCancellations(sortedCancellations.slice(0, 3));
+      setPendingCount(pendingData.length);
+      setWeekBookingsCount(weekData.length);
+      setMembers(membersData.filter((m: WithId<Member>) => m.isActive));
+      setLocations(locationsData.filter((l: WithId<Location>) => l.isActive));
 
-    return actions;
-  }, [provider]);
+      // Build alerts (servicesData used for alerts, not stored in state)
+      const builtAlerts = buildAlerts(pendingData, locationsData, servicesData);
+      setAlerts(builtAlerts);
+    } catch (error) {
+      console.error('[Dashboard] Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [provider, isTeamPlan, buildAlerts]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // Handlers
+  const handleBookingClick = (booking: WithId<Booking>) => {
+    setSelectedBooking(booking);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleBookingUpdate = async () => {
+    await loadDashboardData();
+    setIsDetailModalOpen(false);
+    setSelectedBooking(null);
+  };
+
+  const handleCreateBooking = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleBookingCreated = async () => {
+    await loadDashboardData();
+    setIsCreateModalOpen(false);
+  };
+
+  const handleBlockSlot = () => {
+    router.push('/pro/activite?tab=disponibilites');
+  };
+
+  // Loading skeleton
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        {/* Header skeleton */}
+        <div>
+          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-5 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mt-2" />
+        </div>
+
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+                <div className="flex-1">
+                  <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="h-8 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mt-1" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Content skeleton */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 h-64 animate-pulse" />
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 h-64 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Welcome header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-          {greeting}, {user?.displayName?.split(' ')[0] || 'Prestataire'}
-        </h1>
-        <p className="mt-1 text-gray-600 dark:text-gray-400 capitalize">
-          {formatDate(today)}
-        </p>
-      </div>
-
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Today's appointments */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Aujourd&apos;hui</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {mockStats.todayAppointments}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Week's appointments */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-success-100 dark:bg-success-900/30 text-success-600 dark:text-success-400">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Cette semaine</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {mockStats.weekAppointments}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Pending appointments */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-warning-100 dark:bg-warning-900/30 text-warning-600 dark:text-warning-400">
-              <Users className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-500 dark:text-gray-400">En attente</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {mockStats.pendingAppointments}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Average rating */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400">
-              <Star className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Note moyenne</p>
-              <div className="flex items-baseline gap-1">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mockStats.averageRating}
-                </p>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  ({mockStats.totalReviews})
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Upcoming bookings */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Prochains rendez-vous
-              </h2>
-              <Link
-                href="/pro/reservations"
-                className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 flex items-center gap-1"
-              >
-                Voir tout
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
-
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {mockUpcomingBookings.map((booking) => (
-              <div
-                key={booking.id}
-                className="p-4 sm:px-6 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              >
-                {/* Time */}
-                <div className="text-center min-w-[60px]">
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {booking.time}
-                  </p>
-                </div>
-
-                {/* Client info */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 dark:text-white truncate">
-                    {booking.clientName}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                    {booking.service}
-                  </p>
-                </div>
-
-                {/* Status */}
-                {getStatusBadge(booking.status)}
-              </div>
-            ))}
-
-            {mockUpcomingBookings.length === 0 && (
-              <div className="p-8 text-center">
-                <Calendar className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  Aucun rendez-vous a venir
-                </p>
-              </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            {greeting}, {user?.displayName?.split(' ')[0] || 'Prestataire'}
+          </h1>
+          <p className="mt-1 text-gray-600 dark:text-gray-400">
+            {provider?.businessName && (
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {provider.businessName}
+              </span>
             )}
-          </div>
+            {provider?.businessName && ' • '}
+            <span className="capitalize">{formatFullDate(new Date())}</span>
+          </p>
         </div>
 
-        {/* Quick actions */}
-        <div className="space-y-6">
-          {quickActions.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-              <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-warning-500" />
-                  Actions recommandees
-                </h2>
-              </div>
-
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {quickActions.map((action) => (
-                  <Link
-                    key={action.id}
-                    href={action.href}
-                    className="block p-4 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`p-2 rounded-lg ${
-                          action.priority === 'high'
-                            ? 'bg-warning-100 dark:bg-warning-900/30 text-warning-600 dark:text-warning-400'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        {action.icon}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {action.title}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {action.description}
-                        </p>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick stats */}
-          <div className="bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl p-6 text-white">
-            <h3 className="font-semibold mb-2">Conseil du jour</h3>
-            <p className="text-sm text-primary-100 mb-4">
-              Ajoutez des photos de vos realisations pour attirer plus de clients.
-              Les profils avec photos recoivent 3x plus de reservations.
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="bg-white text-primary-700 hover:bg-primary-50"
-            >
-              Ajouter des photos
-            </Button>
-          </div>
-
-          {/* Trial banner (if applicable) */}
-          {provider?.plan === 'trial' && (
-            <div className="bg-gradient-to-br from-warning-500 to-warning-600 rounded-xl p-6 text-white">
-              <h3 className="font-semibold mb-2">Periode d&apos;essai</h3>
-              <p className="text-sm text-white/90 mb-4">
-                Votre periode d&apos;essai expire bientot. Passez a un abonnement
-                pour continuer a utiliser toutes les fonctionnalites.
-              </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-white text-warning-700 hover:bg-warning-50"
-              >
-                Voir les offres
-              </Button>
-            </div>
-          )}
-        </div>
+        {/* Quick Actions */}
+        <QuickActions onCreateBooking={handleCreateBooking} onBlockSlot={handleBlockSlot} />
       </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={<Calendar className="w-5 h-5" />}
+          label="Aujourd'hui"
+          value={todayBookings.length}
+          sublabel="rendez-vous"
+          href="/pro/calendrier"
+          variant="primary"
+        />
+        <StatCard
+          icon={<Clock className="w-5 h-5" />}
+          label="Cette semaine"
+          value={weekBookingsCount}
+          sublabel="rendez-vous"
+          href="/pro/reservations"
+          variant="success"
+        />
+        <StatCard
+          icon={<AlertCircle className="w-5 h-5" />}
+          label="En attente"
+          value={pendingCount}
+          sublabel="a confirmer"
+          href="/pro/reservations?status=pending"
+          variant={pendingCount > 0 ? 'warning' : 'default'}
+        />
+        <StatCard
+          icon={<Star className="w-5 h-5" />}
+          label="Note moyenne"
+          value={provider?.rating?.average?.toFixed(1) || '-'}
+          sublabel={provider?.rating?.count ? `(${provider.rating.count} avis)` : ''}
+          variant="default"
+        />
+      </div>
+
+      {/* Alerts */}
+      <AlertCard alerts={alerts} />
+
+      {/* Main Content Grid */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Today's Bookings */}
+        <TodayBookings
+          bookings={todayBookings}
+          members={members}
+          isTeamPlan={isTeamPlan}
+          onBookingClick={handleBookingClick}
+        />
+
+        {/* Recent Activity */}
+        <RecentActivity
+          upcomingBookings={upcomingBookings}
+          recentCancellations={recentCancellations}
+          members={members}
+          isTeamPlan={isTeamPlan}
+          onBookingClick={handleBookingClick}
+        />
+      </div>
+
+      {/* Booking Detail Modal */}
+      <BookingDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedBooking(null);
+        }}
+        booking={selectedBooking}
+        onUpdate={handleBookingUpdate}
+      />
+
+      {/* Create Booking Modal */}
+      <CreateBookingModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        members={members}
+        locations={locations}
+        isTeamPlan={isTeamPlan}
+        onCreated={handleBookingCreated}
+      />
     </div>
   );
 }

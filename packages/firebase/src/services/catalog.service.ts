@@ -1,4 +1,4 @@
-import { serviceRepository, bookingRepository } from '../repositories';
+import { serviceRepository, bookingRepository, providerRepository } from '../repositories';
 import type { Service } from '@booking-app/shared';
 import {
   createServiceSchema,
@@ -38,6 +38,9 @@ export class CatalogService {
       throw new Error('Erreur lors de la création de la prestation');
     }
 
+    // Update provider's minPrice
+    await this.updateProviderMinPrice(providerId);
+
     return service;
   }
 
@@ -59,6 +62,11 @@ export class CatalogService {
     }
 
     await serviceRepository.update(providerId, serviceId, validated);
+
+    // Update provider's minPrice if price or isActive changed
+    if (validated.price !== undefined || validated.isActive !== undefined) {
+      await this.updateProviderMinPrice(providerId);
+    }
   }
 
   /**
@@ -88,6 +96,9 @@ export class CatalogService {
     }
 
     await serviceRepository.delete(providerId, serviceId);
+
+    // Update provider's minPrice
+    await this.updateProviderMinPrice(providerId);
   }
 
   /**
@@ -100,6 +111,9 @@ export class CatalogService {
     }
 
     await serviceRepository.toggleActive(providerId, serviceId, false);
+
+    // Update provider's minPrice
+    await this.updateProviderMinPrice(providerId);
   }
 
   /**
@@ -112,6 +126,9 @@ export class CatalogService {
     }
 
     await serviceRepository.toggleActive(providerId, serviceId, true);
+
+    // Update provider's minPrice
+    await this.updateProviderMinPrice(providerId);
   }
 
   /**
@@ -278,6 +295,21 @@ export class CatalogService {
     }
 
     return newService;
+  }
+
+  /**
+   * Recalculate and update provider's minPrice
+   * Called after service create/update/delete
+   */
+  async updateProviderMinPrice(providerId: string): Promise<void> {
+    const activeServices = await serviceRepository.getActiveByProvider(providerId);
+
+    let minPrice: number | null = null;
+    if (activeServices.length > 0) {
+      minPrice = Math.min(...activeServices.map((s) => s.price));
+    }
+
+    await providerRepository.update(providerId, { minPrice });
   }
 }
 

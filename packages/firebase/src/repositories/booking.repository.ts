@@ -246,7 +246,6 @@ export class BookingRepository extends BaseRepository<Booking> {
     total: number;
     pending: number;
     confirmed: number;
-    completed: number;
     cancelled: number;
     noshow: number;
   }> {
@@ -256,7 +255,6 @@ export class BookingRepository extends BaseRepository<Booking> {
       total: bookings.length,
       pending: bookings.filter((b) => b.status === 'pending').length,
       confirmed: bookings.filter((b) => b.status === 'confirmed').length,
-      completed: bookings.filter((b) => b.status === 'completed').length,
       cancelled: bookings.filter((b) => b.status === 'cancelled').length,
       noshow: bookings.filter((b) => b.status === 'noshow').length,
     };

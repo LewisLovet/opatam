@@ -83,6 +83,7 @@ export {
   // Provider
   ProviderRepository,
   providerRepository,
+  type ProviderSearchFilters,
   // Member (subcollection)
   MemberRepository,
   memberRepository,
