@@ -1,10 +1,9 @@
 /**
- * Client Layout
- * Main layout for client-facing screens with tab navigation
+ * Client Registration Layout
  */
 
 import { Stack } from 'expo-router';
-import { useTheme } from '../../theme';
+import { useTheme } from '../../../theme';
 
 export default function ClientLayout() {
   const { colors } = useTheme();
@@ -17,13 +16,8 @@ export default function ClientLayout() {
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="provider/[slug]"
-        options={{
-          headerShown: false,
-        }}
-      />
+      <Stack.Screen name="index" />
+      <Stack.Screen name="email-form" />
     </Stack>
   );
 }

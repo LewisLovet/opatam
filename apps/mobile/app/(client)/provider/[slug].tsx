@@ -1,23 +1,27 @@
 /**
  * Provider Detail Screen
  * Full provider profile with services, reviews, and booking CTA
- * TODO: Connect to Firebase when ready
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
   RefreshControl,
+  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
 import {
   Text,
   Card,
+  Skeleton,
   ProviderHeader,
+  ProviderHeaderSkeleton,
   ProviderInfo,
   ServiceCategory,
   RatingStats,
@@ -27,233 +31,49 @@ import {
   EmptyState,
   useToast,
 } from '../../../components';
-import type { Rating } from '@booking-app/shared';
+import { useProvider, useServices, useReviews, useLocations } from '../../../hooks';
+import type { Service } from '@booking-app/shared';
+import type { WithId } from '@booking-app/firebase';
 
-// Mock types
-interface MockProvider {
-  id: string;
-  slug: string;
-  businessName: string;
-  description: string;
-  category: string;
-  photoURL: string | null;
-  coverPhotoURL: string | null;
-  rating: Rating;
-  address: string;
-  city: string;
-  phone: string | null;
-}
+// Group services (Service type doesn't have category, so we group all together)
+function groupServices(services: WithId<Service>[]): { title: string; services: WithId<Service>[] }[] {
+  if (services.length === 0) return [];
 
-interface MockService {
-  id: string;
-  name: string;
-  description: string | null;
-  duration: number;
-  price: number;
-  category: string;
-}
-
-interface MockReview {
-  id: string;
-  authorName: string;
-  rating: number;
-  comment: string | null;
-  date: Date;
-}
-
-// Mock data
-const mockProvidersData: Record<string, MockProvider> = {
-  'studio-beaute-paris': {
-    id: '1',
-    slug: 'studio-beaute-paris',
-    businessName: 'Studio Beauté Paris',
-    description: 'Studio de coiffure et beauté situé au coeur de Paris. Notre équipe de professionnels vous accueille dans un cadre chaleureux et moderne pour toutes vos envies capillaires.',
-    category: 'Coiffure',
-    photoURL: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
-    coverPhotoURL: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800',
-    rating: { average: 4.8, count: 124, distribution: { 1: 2, 2: 3, 3: 8, 4: 25, 5: 86 } },
-    address: '15 Rue de la Paix',
-    city: 'Paris 75002',
-    phone: '+33 1 42 68 53 00',
-  },
-  'zen-massage': {
-    id: '2',
-    slug: 'zen-massage',
-    businessName: 'Zen Massage',
-    description: 'Centre de massage et bien-être. Découvrez nos soins relaxants pour retrouver sérénité et équilibre.',
-    category: 'Massage',
-    photoURL: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400',
-    coverPhotoURL: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800',
-    rating: { average: 4.9, count: 89, distribution: { 1: 1, 2: 1, 3: 5, 4: 12, 5: 70 } },
-    address: '28 Avenue Victor Hugo',
-    city: 'Paris 75016',
-    phone: '+33 1 45 00 12 34',
-  },
-  'coach-fitness-pro': {
-    id: '3',
-    slug: 'coach-fitness-pro',
-    businessName: 'Coach Fitness Pro',
-    description: 'Coaching sportif personnalisé. Atteignez vos objectifs avec un accompagnement sur mesure.',
-    category: 'Coaching',
-    photoURL: null,
-    coverPhotoURL: null,
-    rating: { average: 4.7, count: 56, distribution: { 1: 0, 2: 2, 3: 4, 4: 15, 5: 35 } },
-    address: '5 Place Bellecour',
-    city: 'Lyon 69002',
-    phone: '+33 4 78 00 00 00',
-  },
-  'beaute-naturelle': {
-    id: '4',
-    slug: 'beaute-naturelle',
-    businessName: 'Beauté Naturelle',
-    description: 'Institut de beauté bio et naturel. Soins du visage et du corps avec des produits 100% naturels.',
-    category: 'Beauté',
-    photoURL: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400',
-    coverPhotoURL: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800',
-    rating: { average: 4.6, count: 78, distribution: { 1: 1, 2: 2, 3: 6, 4: 20, 5: 49 } },
-    address: '12 Rue de la République',
-    city: 'Lyon 69001',
-    phone: '+33 4 72 00 00 00',
-  },
-  'spa-wellness': {
-    id: '5',
-    slug: 'spa-wellness',
-    businessName: 'Spa & Wellness',
-    description: 'Spa haut de gamme proposant une gamme complète de soins relaxants et revitalisants.',
-    category: 'Massage',
-    photoURL: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400',
-    coverPhotoURL: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800',
-    rating: { average: 4.5, count: 45, distribution: { 1: 0, 2: 1, 3: 4, 4: 15, 5: 25 } },
-    address: '45 Boulevard Longchamp',
-    city: 'Marseille 13001',
-    phone: '+33 4 91 00 00 00',
-  },
-};
-
-const mockServicesData: Record<string, MockService[]> = {
-  'studio-beaute-paris': [
-    { id: '1', name: 'Coupe femme', description: 'Coupe, shampoing et brushing', duration: 45, price: 3500, category: 'Coupes' },
-    { id: '2', name: 'Coupe homme', description: 'Coupe classique', duration: 30, price: 2500, category: 'Coupes' },
-    { id: '3', name: 'Coloration', description: 'Coloration complète avec soin', duration: 90, price: 6500, category: 'Couleurs' },
-    { id: '4', name: 'Mèches', description: 'Mèches ou balayage', duration: 120, price: 8500, category: 'Couleurs' },
-    { id: '5', name: 'Brushing', description: null, duration: 30, price: 2000, category: 'Coiffage' },
-  ],
-  'zen-massage': [
-    { id: '1', name: 'Massage relaxant', description: 'Massage du corps entier aux huiles essentielles', duration: 60, price: 7000, category: 'Massages' },
-    { id: '2', name: 'Massage sportif', description: 'Massage profond pour sportifs', duration: 45, price: 6000, category: 'Massages' },
-    { id: '3', name: 'Réflexologie', description: 'Massage des pieds et zones réflexes', duration: 45, price: 5500, category: 'Soins' },
-  ],
-  'coach-fitness-pro': [
-    { id: '1', name: 'Séance individuelle', description: 'Coaching personnalisé 1h', duration: 60, price: 5000, category: 'Coaching' },
-    { id: '2', name: 'Programme mensuel', description: '4 séances par mois', duration: 60, price: 18000, category: 'Forfaits' },
-  ],
-  'beaute-naturelle': [
-    { id: '1', name: 'Soin visage', description: 'Nettoyage et hydratation bio', duration: 60, price: 5500, category: 'Visage' },
-    { id: '2', name: 'Gommage corps', description: 'Exfoliation naturelle', duration: 45, price: 4500, category: 'Corps' },
-  ],
-  'spa-wellness': [
-    { id: '1', name: 'Forfait détente', description: 'Accès spa + massage', duration: 120, price: 12000, category: 'Forfaits' },
-    { id: '2', name: 'Soin signature', description: 'Notre soin exclusif', duration: 90, price: 9500, category: 'Soins' },
-  ],
-};
-
-const mockReviewsData: Record<string, MockReview[]> = {
-  'studio-beaute-paris': [
-    { id: '1', authorName: 'Marie Dupont', rating: 5, comment: "Excellente prestation ! Sophie est très professionnelle et à l'écoute.", date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-    { id: '2', authorName: 'Jean Martin', rating: 4, comment: "Très bon service, juste un peu d'attente à l'arrivée.", date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-    { id: '3', authorName: 'Lucie Bernard', rating: 5, comment: null, date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
-  ],
-  'zen-massage': [
-    { id: '1', authorName: 'Pierre Leroy', rating: 5, comment: 'Un moment de pure détente. Je recommande vivement !', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
-    { id: '2', authorName: 'Sophie Martin', rating: 5, comment: 'Excellent massage, très relaxant.', date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) },
-  ],
-  'coach-fitness-pro': [
-    { id: '1', authorName: 'Thomas Durand', rating: 5, comment: "Super coach ! J'ai atteint mes objectifs.", date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
-  ],
-  'beaute-naturelle': [
-    { id: '1', authorName: 'Emma Petit', rating: 4, comment: 'Très bons produits naturels.', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) },
-  ],
-  'spa-wellness': [
-    { id: '1', authorName: 'Claire Moreau', rating: 5, comment: 'Une expérience incroyable !', date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) },
-  ],
-};
-
-// Group services by category
-function groupServicesByCategory(services: MockService[]): { title: string; services: MockService[] }[] {
-  const grouped: Record<string, MockService[]> = {};
-
-  for (const service of services) {
-    const category = service.category || 'Autres';
-    if (!grouped[category]) {
-      grouped[category] = [];
-    }
-    grouped[category].push(service);
-  }
-
-  return Object.entries(grouped).map(([title, services]) => ({
-    title,
+  return [{
+    title: 'Prestations',
     services,
-  }));
+  }];
 }
 
 export default function ProviderDetailScreen() {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
+  const insets = useSafeAreaInsets();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const { showToast } = useToast();
 
-  // Data state
-  const [provider, setProvider] = useState<MockProvider | null>(null);
-  const [services, setServices] = useState<MockService[]>([]);
-  const [reviews, setReviews] = useState<MockReview[]>([]);
+  // Fetch provider data
+  const { provider, loading: loadingProvider, error: providerError, refresh: refreshProvider } = useProvider(slug);
+
+  // Fetch related data (only when provider is loaded)
+  const { services, loading: loadingServices, refresh: refreshServices } = useServices(provider?.id);
+  const { reviews, loading: loadingReviews, refresh: refreshReviews } = useReviews(provider?.id);
+  const { locations, refresh: refreshLocations } = useLocations(provider?.id);
+
+  // Selected service state
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-
-  // Loading state
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Load provider data (mock)
-  const loadData = useCallback(async (isRefresh = false) => {
-    if (!slug) return;
-
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Get mock data
-      const providerData = mockProvidersData[slug];
-      if (!providerData) {
-        setError('Prestataire non trouvé');
-        return;
-      }
-      setProvider(providerData);
-      setServices(mockServicesData[slug] || []);
-      setReviews(mockReviewsData[slug] || []);
-    } catch (err) {
-      console.error('Error loading provider:', err);
-      setError('Erreur lors du chargement');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [slug]);
-
-  // Initial load
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
 
   // Handle refresh
-  const handleRefresh = () => {
-    loadData(true);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      refreshProvider(),
+      refreshServices(),
+      refreshReviews(),
+      refreshLocations(),
+    ]);
+    setRefreshing(false);
   };
 
   // Handle service selection
@@ -278,32 +98,100 @@ export default function ProviderDetailScreen() {
     });
   };
 
-  // Group services by category
-  const serviceCategories = groupServicesByCategory(services);
+  // Get primary location for display
+  const primaryLocation = locations[0];
+
+  // Group services
+  const serviceCategories = groupServices(services);
 
   // Get selected service
   const selectedService = services.find((s) => s.id === selectedServiceId);
 
-  // Loading state
-  if (loading) {
+  // Loading state - show skeleton while data is loading
+  if (loadingProvider) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text variant="body" color="textSecondary" style={{ marginTop: spacing.md }}>
-          Chargement...
-        </Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Floating Back Button - positioned in safe area over image */}
+        <Pressable
+          onPress={() => router.back()}
+          style={[
+            styles.backButton,
+            {
+              top: insets.top + 10,
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              borderRadius: radius.full,
+            },
+          ]}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </Pressable>
+
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Header skeleton */}
+          <ProviderHeaderSkeleton />
+
+          {/* Provider Info skeleton */}
+          <View style={{ padding: spacing.lg }}>
+            <Card padding="md" shadow="sm">
+              <View style={{ gap: spacing.sm }}>
+                <Skeleton width="100%" height={16} />
+                <Skeleton width="90%" height={16} />
+                <Skeleton width="60%" height={14} style={{ marginTop: spacing.xs }} />
+              </View>
+            </Card>
+          </View>
+
+          {/* Services skeleton */}
+          <View style={{ paddingHorizontal: spacing.lg }}>
+            <Skeleton width={120} height={24} style={{ marginBottom: spacing.md }} />
+            <Card padding="md" shadow="sm">
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={{ marginBottom: i < 3 ? spacing.md : 0 }}>
+                  <Skeleton width="70%" height={18} />
+                  <Skeleton width="50%" height={14} style={{ marginTop: spacing.xs }} />
+                  <Skeleton width="30%" height={14} style={{ marginTop: spacing.xs }} />
+                </View>
+              ))}
+            </Card>
+          </View>
+
+          {/* Reviews skeleton */}
+          <View style={{ padding: spacing.lg }}>
+            <Skeleton width={60} height={24} style={{ marginBottom: spacing.md }} />
+            <Card padding="lg" shadow="sm">
+              <View style={{ alignItems: 'center', gap: spacing.sm }}>
+                <Skeleton width={80} height={32} />
+                <Skeleton width={120} height={16} />
+              </View>
+            </Card>
+          </View>
+        </ScrollView>
       </View>
     );
   }
 
   // Error state
-  if (error || !provider) {
+  if (providerError || !provider) {
     return (
       <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+        {/* Back button for error state */}
+        <Pressable
+          onPress={() => router.back()}
+          style={[
+            styles.backButton,
+            {
+              top: insets.top + 10,
+              backgroundColor: colors.surface,
+              borderRadius: radius.full,
+            },
+          ]}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </Pressable>
         <EmptyState
           icon="alert-circle-outline"
           title="Erreur"
-          description={error || 'Prestataire non trouvé'}
+          description={providerError || 'Prestataire non trouvé'}
           actionLabel="Retour"
           onAction={() => router.back()}
         />
@@ -313,6 +201,21 @@ export default function ProviderDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Floating Back Button - positioned in safe area over image */}
+      <Pressable
+        onPress={() => router.back()}
+        style={[
+          styles.backButton,
+          {
+            top: insets.top + 10,
+            backgroundColor: 'rgba(255,255,255,0.9)',
+            borderRadius: radius.full,
+          },
+        ]}
+      >
+        <Ionicons name="chevron-back" size={24} color={colors.text} />
+      </Pressable>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -338,9 +241,9 @@ export default function ProviderDetailScreen() {
           <Card padding="md" shadow="sm">
             <ProviderInfo
               description={provider.description}
-              address={provider.address}
-              city={provider.city}
-              phone={provider.phone}
+              address={primaryLocation?.address || ''}
+              city={primaryLocation ? `${primaryLocation.city} ${primaryLocation.postalCode}` : provider.cities[0] || ''}
+              phone={null}
             />
           </Card>
         </View>
@@ -350,7 +253,11 @@ export default function ProviderDetailScreen() {
           <Text variant="h2" style={{ marginBottom: spacing.md }}>
             Prestations
           </Text>
-          {services.length === 0 ? (
+          {loadingServices ? (
+            <View style={styles.sectionLoading}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : services.length === 0 ? (
             <Card padding="lg" shadow="sm">
               <EmptyState
                 icon="cut-outline"
@@ -399,7 +306,11 @@ export default function ProviderDetailScreen() {
           )}
 
           {/* Reviews List */}
-          {reviews.length === 0 ? (
+          {loadingReviews ? (
+            <View style={styles.sectionLoading}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : reviews.length === 0 ? (
             <Card padding="lg" shadow="sm">
               <EmptyState
                 icon="chatbubble-outline"
@@ -412,10 +323,10 @@ export default function ProviderDetailScreen() {
               {reviews.map((review) => (
                 <ReviewCard
                   key={review.id}
-                  authorName={review.authorName}
+                  authorName={review.clientName}
                   rating={review.rating}
                   comment={review.comment}
-                  date={review.date}
+                  date={review.createdAt}
                 />
               ))}
             </View>
@@ -452,16 +363,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   errorContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+  },
+  sectionLoading: {
+    padding: 40,
+    alignItems: 'center',
   },
   footerContent: {
     // Dynamic styles

@@ -62,5 +62,8 @@ export {
   type ToastVariant,
 } from './Toast';
 
+// LoadingScreen
+export { LoadingScreen } from './LoadingScreen';
+
 // Business Components
 export * from './business';

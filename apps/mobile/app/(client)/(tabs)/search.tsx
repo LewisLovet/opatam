@@ -1,18 +1,16 @@
 /**
  * Search Tab Screen
  * Search providers with filters
- * TODO: Connect to Firebase when ready
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   FlatList,
   StyleSheet,
-  SafeAreaView,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../../theme';
 import {
@@ -21,9 +19,12 @@ import {
   CategoryPills,
   CitySelect,
   ProviderCard,
+  ProviderCardSkeleton,
   EmptyState,
 } from '../../../components';
-import type { Rating } from '@booking-app/shared';
+import { useProviders, useNavigateToProvider } from '../../../hooks';
+import type { Provider } from '@booking-app/shared';
+import type { WithId } from '@booking-app/firebase';
 
 // Categories list
 const categories = [
@@ -37,76 +38,11 @@ const categories = [
 // Cities list
 const cities = ['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Lille', 'Toulouse', 'Nice'];
 
-// Mock provider type for display
-interface ProviderDisplay {
-  id: string;
-  slug: string;
-  photoURL: string | null;
-  businessName: string;
-  category: string;
-  city: string;
-  rating: Rating;
-  minPrice: number | null;
-}
-
-// Mock data (will be replaced with Firebase)
-const mockProviders: ProviderDisplay[] = [
-  {
-    id: '1',
-    slug: 'studio-beaute-paris',
-    photoURL: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
-    businessName: 'Studio Beauté Paris',
-    category: 'Coiffure',
-    city: 'Paris',
-    rating: { average: 4.8, count: 124, distribution: { 1: 2, 2: 3, 3: 8, 4: 25, 5: 86 } },
-    minPrice: 2500,
-  },
-  {
-    id: '2',
-    slug: 'zen-massage',
-    photoURL: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400',
-    businessName: 'Zen Massage',
-    category: 'Massage',
-    city: 'Paris',
-    rating: { average: 4.9, count: 89, distribution: { 1: 1, 2: 1, 3: 5, 4: 12, 5: 70 } },
-    minPrice: 4500,
-  },
-  {
-    id: '3',
-    slug: 'coach-fitness-pro',
-    photoURL: null,
-    businessName: 'Coach Fitness Pro',
-    category: 'Coaching',
-    city: 'Lyon',
-    rating: { average: 4.7, count: 56, distribution: { 1: 0, 2: 2, 3: 4, 4: 15, 5: 35 } },
-    minPrice: 5000,
-  },
-  {
-    id: '4',
-    slug: 'beaute-naturelle',
-    photoURL: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400',
-    businessName: 'Beauté Naturelle',
-    category: 'Beauté',
-    city: 'Lyon',
-    rating: { average: 4.6, count: 78, distribution: { 1: 1, 2: 2, 3: 6, 4: 20, 5: 49 } },
-    minPrice: 3000,
-  },
-  {
-    id: '5',
-    slug: 'spa-wellness',
-    photoURL: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400',
-    businessName: 'Spa & Wellness',
-    category: 'Massage',
-    city: 'Marseille',
-    rating: { average: 4.5, count: 45, distribution: { 1: 0, 2: 1, 3: 4, 4: 15, 5: 25 } },
-    minPrice: 6000,
-  },
-];
-
 export default function SearchScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ category?: string }>();
+  const { navigateToProvider, isLoading } = useNavigateToProvider();
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -115,75 +51,18 @@ export default function SearchScreen() {
   );
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
 
-  // Data state
-  const [providers, setProviders] = useState<ProviderDisplay[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Debounce ref
+  // Debounced query for API calls
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load providers (mock implementation)
-  const loadProviders = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Filter mock data
-      let results = [...mockProviders];
-
-      if (selectedCategory) {
-        results = results.filter(
-          (p) => p.category.toLowerCase() === selectedCategory.toLowerCase()
-        );
-      }
-
-      if (selectedCity) {
-        results = results.filter(
-          (p) => p.city.toLowerCase() === selectedCity.toLowerCase()
-        );
-      }
-
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        results = results.filter(
-          (p) =>
-            p.businessName.toLowerCase().includes(query) ||
-            p.category.toLowerCase().includes(query)
-        );
-      }
-
-      setProviders(results);
-    } catch (err) {
-      console.error('Error loading providers:', err);
-      setError('Erreur lors du chargement des prestataires');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [selectedCategory, selectedCity, searchQuery]);
-
-  // Initial load
-  useEffect(() => {
-    loadProviders();
-  }, [selectedCategory, selectedCity]);
-
-  // Debounced search
+  // Debounce search query
   useEffect(() => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
     debounceRef.current = setTimeout(() => {
-      loadProviders();
+      setDebouncedQuery(searchQuery);
     }, 300);
 
     return () => {
@@ -193,32 +72,39 @@ export default function SearchScreen() {
     };
   }, [searchQuery]);
 
-  // Handle refresh
-  const handleRefresh = () => {
-    loadProviders(true);
-  };
+  // Fetch providers with filters
+  const { providers, loading, error, refresh } = useProviders({
+    category: selectedCategory,
+    city: selectedCity,
+    query: debouncedQuery || null,
+    limit: 50,
+  });
 
-  // Handle provider press
-  const handleProviderPress = (slug: string) => {
-    router.push(`/(client)/provider/${slug}`);
+  // Handle refresh
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
   };
 
   // Handle search submit
   const handleSearchSubmit = () => {
-    loadProviders();
+    setDebouncedQuery(searchQuery);
   };
 
   // Render provider item
-  const renderProvider = ({ item }: { item: ProviderDisplay }) => (
+  const renderProvider = ({ item }: { item: WithId<Provider> }) => (
     <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
       <ProviderCard
-        photoURL={item.photoURL}
+        photoURL={item.coverPhotoURL || item.photoURL}
         businessName={item.businessName}
         category={item.category}
-        city={item.city}
+        city={item.cities[0] || ''}
         rating={item.rating}
         minPrice={item.minPrice}
-        onPress={() => handleProviderPress(item.slug)}
+        onPress={() => navigateToProvider(item.slug)}
+        isLoading={isLoading(item.slug)}
       />
     </View>
   );
@@ -278,7 +164,7 @@ export default function SearchScreen() {
             title="Erreur"
             description={error}
             actionLabel="Réessayer"
-            onAction={() => loadProviders()}
+            onAction={refresh}
           />
         </View>
       );
@@ -293,6 +179,7 @@ export default function SearchScreen() {
           actionLabel="Effacer les filtres"
           onAction={() => {
             setSearchQuery('');
+            setDebouncedQuery('');
             setSelectedCategory(null);
             setSelectedCity(null);
           }}
@@ -301,13 +188,14 @@ export default function SearchScreen() {
     );
   };
 
-  // Render loading
+  // Render loading skeletons
   const renderLoading = () => (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color={colors.primary} />
-      <Text variant="body" color="textSecondary" style={{ marginTop: spacing.md }}>
-        Chargement...
-      </Text>
+    <View style={{ paddingHorizontal: spacing.lg }}>
+      {[1, 2, 3, 4].map((i) => (
+        <View key={i} style={{ marginBottom: spacing.md }}>
+          <ProviderCardSkeleton />
+        </View>
+      ))}
     </View>
   );
 
@@ -345,12 +233,6 @@ const styles = StyleSheet.create({
   },
   header: {
     // Dynamic styles
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
   },
   emptyContainer: {
     flex: 1,

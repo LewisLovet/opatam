@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../../theme';
 import {
@@ -12,8 +13,10 @@ import {
   Card,
   CategoryCard,
   ProviderCard,
+  ProviderCardSkeleton,
   EmptyState,
 } from '../../../components';
+import { useTopProviders, useNavigateToProvider } from '../../../hooks';
 
 // Category images from Unsplash
 const categoryImages: Record<string, string> = {
@@ -35,53 +38,19 @@ const categories = [
   { id: 'bien-etre', label: 'Bien-être' },
 ];
 
-// Mock suggestions (will be replaced with Firebase data later)
-const mockSuggestions = [
-  {
-    id: '1',
-    slug: 'studio-beaute-paris',
-    photoURL: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
-    businessName: 'Studio Beauté Paris',
-    category: 'Coiffure',
-    city: 'Paris',
-    rating: { average: 4.8, count: 124, distribution: { 1: 2, 2: 3, 3: 8, 4: 25, 5: 86 } },
-    minPrice: 2500,
-  },
-  {
-    id: '2',
-    slug: 'zen-massage',
-    photoURL: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400',
-    businessName: 'Zen Massage',
-    category: 'Massage',
-    city: 'Paris',
-    rating: { average: 4.9, count: 89, distribution: { 1: 1, 2: 1, 3: 5, 4: 12, 5: 70 } },
-    minPrice: 4500,
-  },
-  {
-    id: '3',
-    slug: 'coach-fitness-pro',
-    photoURL: null,
-    businessName: 'Coach Fitness Pro',
-    category: 'Coaching',
-    city: 'Lyon',
-    rating: { average: 4.7, count: 56, distribution: { 1: 0, 2: 2, 3: 4, 4: 15, 5: 35 } },
-    minPrice: 5000,
-  },
-];
-
 export default function HomeScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+  const { navigateToProvider, isLoading } = useNavigateToProvider();
+
+  // Fetch top rated providers for suggestions
+  const { providers: suggestions, loading: loadingSuggestions } = useTopProviders(5);
 
   const handleCategoryPress = (categoryId: string) => {
     router.push({
       pathname: '/(client)/(tabs)/search',
       params: { category: categoryId },
     });
-  };
-
-  const handleProviderPress = (slug: string) => {
-    router.push(`/(client)/provider/${slug}`);
   };
 
   return (
@@ -147,20 +116,38 @@ export default function HomeScreen() {
           <Text variant="h3" style={{ marginBottom: spacing.md }}>
             Suggestions
           </Text>
-          <View style={{ gap: spacing.md }}>
-            {mockSuggestions.map((provider) => (
-              <ProviderCard
-                key={provider.id}
-                photoURL={provider.photoURL}
-                businessName={provider.businessName}
-                category={provider.category}
-                city={provider.city}
-                rating={provider.rating}
-                minPrice={provider.minPrice}
-                onPress={() => handleProviderPress(provider.slug)}
+
+          {loadingSuggestions ? (
+            <View style={{ gap: spacing.md }}>
+              {[1, 2, 3].map((i) => (
+                <ProviderCardSkeleton key={i} />
+              ))}
+            </View>
+          ) : suggestions.length === 0 ? (
+            <Card padding="lg" shadow="sm">
+              <EmptyState
+                icon="storefront-outline"
+                title="Aucune suggestion"
+                description="Aucun prestataire disponible pour le moment"
               />
-            ))}
-          </View>
+            </Card>
+          ) : (
+            <View style={{ gap: spacing.md }}>
+              {suggestions.map((provider) => (
+                <ProviderCard
+                  key={provider.id}
+                  photoURL={provider.coverPhotoURL || provider.photoURL}
+                  businessName={provider.businessName}
+                  category={provider.category}
+                  city={provider.cities[0] || ''}
+                  rating={provider.rating}
+                  minPrice={provider.minPrice}
+                  onPress={() => navigateToProvider(provider.slug)}
+                  isLoading={isLoading(provider.slug)}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

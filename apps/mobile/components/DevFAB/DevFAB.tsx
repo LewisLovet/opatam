@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
 import { ThemeConfigurator } from './ThemeConfigurator';
+import { resetOnboarding } from '../../utils';
 
 interface MenuItem {
   icon: keyof typeof Ionicons.glyphMap;
@@ -67,6 +68,15 @@ export function DevFAB() {
       action: () => {
         setIsMenuOpen(false);
         setIsConfiguratorOpen(true);
+      },
+    },
+    {
+      icon: 'refresh-outline',
+      label: 'Reset Onboarding',
+      action: async () => {
+        await resetOnboarding();
+        setIsMenuOpen(false);
+        router.replace('/');
       },
     },
   ];

@@ -1,12 +1,13 @@
 /**
  * ProviderHeader Component
- * Hero section for provider detail page
- * Design: Cover with rounded bottom, avatar with white border
+ * Hero section with smooth image loading via expo-image
  */
 
 import React from 'react';
-import { View, Image, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Rating } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
@@ -33,6 +34,9 @@ const AVATAR_SIZE = 80;
 const AVATAR_BORDER_WIDTH = 3;
 const AVATAR_OVERLAP = 40;
 
+// Placeholder blur hash
+const PLACEHOLDER_BLURHASH = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4';
+
 export function ProviderHeader({
   coverPhotoURL,
   avatarURL,
@@ -41,18 +45,20 @@ export function ProviderHeader({
   rating,
   onRatingPress,
 }: ProviderHeaderProps) {
-  const { colors, spacing, radius, shadows } = useTheme();
+  const { colors, spacing, shadows } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const hasRating = rating.count > 0;
+  const coverHeight = COVER_HEIGHT + insets.top;
 
   return (
     <View style={styles.container}>
-      {/* Cover Photo - with rounded bottom corners */}
+      {/* Cover Photo */}
       <View
         style={[
           styles.coverContainer,
           {
-            height: COVER_HEIGHT,
+            height: coverHeight,
             borderBottomLeftRadius: COVER_BORDER_RADIUS,
             borderBottomRightRadius: COVER_BORDER_RADIUS,
           },
@@ -62,7 +68,10 @@ export function ProviderHeader({
           <Image
             source={{ uri: coverPhotoURL }}
             style={styles.coverImage}
-            resizeMode="cover"
+            contentFit="cover"
+            placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+            transition={400}
+            cachePolicy="memory-disk"
           />
         ) : (
           <View style={[styles.coverPlaceholder, { backgroundColor: colors.primaryLight }]}>
@@ -73,7 +82,7 @@ export function ProviderHeader({
 
       {/* Content with Avatar */}
       <View style={[styles.content, { paddingHorizontal: spacing.lg }]}>
-        {/* Avatar - positioned to overlap cover with white border */}
+        {/* Avatar */}
         <View
           style={[
             styles.avatarContainer,
@@ -93,6 +102,10 @@ export function ProviderHeader({
                 styles.avatar,
                 { borderRadius: (AVATAR_SIZE - AVATAR_BORDER_WIDTH * 2) / 2 },
               ]}
+              contentFit="cover"
+              placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+              transition={300}
+              cachePolicy="memory-disk"
             />
           ) : (
             <Avatar size="xl" name={businessName} />
@@ -100,30 +113,18 @@ export function ProviderHeader({
         </View>
 
         {/* Name */}
-        <Text
-          variant="h2"
-          align="center"
-          style={{ marginTop: spacing.md }}
-        >
+        <Text variant="h2" align="center" style={{ marginTop: spacing.md }}>
           {businessName}
         </Text>
 
         {/* Category */}
-        <Text
-          variant="caption"
-          color="textSecondary"
-          align="center"
-          style={{ marginTop: spacing.xs }}
-        >
+        <Text variant="caption" color="textSecondary" align="center" style={{ marginTop: spacing.xs }}>
           {category}
         </Text>
 
         {/* Rating */}
-        {hasRating && (
-          <Pressable
-            onPress={onRatingPress}
-            style={[styles.ratingContainer, { marginTop: spacing.sm }]}
-          >
+        {hasRating ? (
+          <Pressable onPress={onRatingPress} style={[styles.ratingContainer, { marginTop: spacing.sm }]}>
             <Ionicons name="star" size={16} color="#FBBF24" />
             <Text variant="body" style={styles.ratingText}>
               {rating.average.toFixed(1)}
@@ -132,15 +133,8 @@ export function ProviderHeader({
               ({rating.count} avis)
             </Text>
           </Pressable>
-        )}
-
-        {!hasRating && (
-          <Text
-            variant="bodySmall"
-            color="textMuted"
-            align="center"
-            style={{ marginTop: spacing.sm }}
-          >
+        ) : (
+          <Text variant="bodySmall" color="textMuted" align="center" style={{ marginTop: spacing.sm }}>
             Pas encore d'avis
           </Text>
         )}

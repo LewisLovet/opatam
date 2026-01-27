@@ -1,10 +1,11 @@
 /**
  * ProviderCard Component
- * Card displaying provider info for search results and suggestions
+ * Card displaying provider info with smooth image loading via expo-image
  */
 
 import React from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Rating } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
@@ -26,7 +27,12 @@ export interface ProviderCardProps {
   minPrice: number | null;
   /** Press handler */
   onPress: () => void;
+  /** Show loading overlay (for navigation preloading) */
+  isLoading?: boolean;
 }
+
+// Placeholder blur hash (gray blur)
+const PLACEHOLDER_BLURHASH = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4';
 
 /**
  * Format price from centimes to euros
@@ -44,20 +50,32 @@ export function ProviderCard({
   rating,
   minPrice,
   onPress,
+  isLoading = false,
 }: ProviderCardProps) {
   const { colors, spacing, radius } = useTheme();
 
   const hasRating = rating.count > 0;
+  const hasValidPrice = minPrice != null && !isNaN(minPrice) && minPrice > 0;
 
   return (
-    <Card padding="none" shadow="md" onPress={onPress} style={styles.card}>
+    <Card padding="none" shadow="md" onPress={onPress} style={[styles.card, isLoading && styles.cardLoading]}>
+      {/* Loading overlay */}
+      {isLoading && (
+        <View style={[styles.loadingOverlay, { borderRadius: radius.lg }]}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      )}
+
       {/* Photo container */}
       <View style={styles.imageContainer}>
         {photoURL ? (
           <Image
             source={{ uri: photoURL }}
             style={styles.image}
-            resizeMode="cover"
+            contentFit="cover"
+            placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+            transition={300}
+            cachePolicy="memory-disk"
           />
         ) : (
           <View style={[styles.imagePlaceholder, { backgroundColor: colors.surfaceSecondary }]}>
@@ -65,7 +83,7 @@ export function ProviderCard({
           </View>
         )}
 
-        {/* Rating badge overlay - now includes review count */}
+        {/* Rating badge overlay */}
         {hasRating && (
           <View
             style={[
@@ -100,7 +118,7 @@ export function ProviderCard({
         </Text>
 
         <View style={[styles.footer, { marginTop: spacing.sm }]}>
-          {minPrice !== null ? (
+          {hasValidPrice ? (
             <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>
               À partir de {formatPrice(minPrice)} €
             </Text>
@@ -118,6 +136,16 @@ export function ProviderCard({
 const styles = StyleSheet.create({
   card: {
     overflow: 'hidden',
+  },
+  cardLoading: {
+    opacity: 0.7,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   imageContainer: {
     position: 'relative',
@@ -145,9 +173,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontWeight: '600',
   },
-  content: {
-    // padding applied dynamically
-  },
+  content: {},
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
