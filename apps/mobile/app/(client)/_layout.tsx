@@ -24,6 +24,18 @@ export default function ClientLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="edit-profile"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="booking/[providerId]"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

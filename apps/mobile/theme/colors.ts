@@ -4,19 +4,19 @@
  */
 
 export const palette = {
-  // Primary (Blue - Brand Color)
+  // Primary (Black Pearl - Brand Color)
   primary: {
-    50: '#eff6ff',
-    100: '#dbeafe',
-    200: '#bfdbfe',
-    300: '#93c5fd',
-    400: '#60a5fa',
-    500: '#3b82f6',
-    600: '#2563eb',
-    700: '#1d4ed8',
-    800: '#1e40af',
-    900: '#1e3a8a',
-    950: '#172554',
+    50: '#f2f8fd',
+    100: '#e4effa',
+    200: '#c2def5',
+    300: '#8cc4ed',
+    400: '#4fa5e1',
+    500: '#298bce',
+    600: '#1a6daf',
+    700: '#16578e',
+    800: '#164a76',
+    900: '#184062',
+    950: '#0b1c2d',
   },
 
   // Gray (Neutral Base)
@@ -79,19 +79,19 @@ export const palette = {
     950: '#450a0a',
   },
 
-  // Info (Blue - same as primary)
+  // Info (Black Pearl - same as primary)
   info: {
-    50: '#eff6ff',
-    100: '#dbeafe',
-    200: '#bfdbfe',
-    300: '#93c5fd',
-    400: '#60a5fa',
-    500: '#3b82f6',
-    600: '#2563eb',
-    700: '#1d4ed8',
-    800: '#1e40af',
-    900: '#1e3a8a',
-    950: '#172554',
+    50: '#f2f8fd',
+    100: '#e4effa',
+    200: '#c2def5',
+    300: '#8cc4ed',
+    400: '#4fa5e1',
+    500: '#298bce',
+    600: '#1a6daf',
+    700: '#16578e',
+    800: '#164a76',
+    900: '#184062',
+    950: '#0b1c2d',
   },
 
   // Pure colors
@@ -104,8 +104,8 @@ export const palette = {
  * Semantic colors for light theme (mobile-first)
  */
 export const colors = {
-  // Primary (using darker blue for better visibility)
-  primary: palette.primary[700],
+  // Primary (Black Pearl - using 600 for good balance)
+  primary: palette.primary[600],
   primaryLight: palette.primary[50],
   primaryDark: palette.primary[900],
 
@@ -127,7 +127,7 @@ export const colors = {
 
   // Borders & Dividers
   border: palette.gray[200],
-  borderFocused: palette.primary[600],
+  borderFocused: palette.primary[500],
   divider: palette.gray[100],
 
   // Semantic

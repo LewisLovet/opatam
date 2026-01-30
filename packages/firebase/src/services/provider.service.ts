@@ -11,6 +11,7 @@ import type { Provider, ProviderPlan } from '@booking-app/shared';
 import {
   createProviderSchema,
   updateProviderSchema,
+  generateSearchTokens,
   type CreateProviderInput,
   type UpdateProviderInput,
 } from '@booking-app/shared';
@@ -61,6 +62,9 @@ export class ProviderService {
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + TRIAL_DURATION_DAYS);
 
+    // Generate search tokens from business name
+    const searchTokens = generateSearchTokens(validated.businessName);
+
     // Create provider with userId as document ID (Provider.id === User.id)
     await providerRepository.createWithId(userId, {
       userId,
@@ -105,6 +109,7 @@ export class ProviderService {
       isVerified: false,
       cities: [],
       minPrice: null,
+      searchTokens,
     });
 
     // Update user with providerId (= userId)
@@ -131,10 +136,11 @@ export class ProviderService {
       throw new Error('Prestataire non trouvé');
     }
 
-    // If business name changed, check if we need to update slug
+    // If business name changed, update slug and search tokens
     if (validated.businessName && validated.businessName !== provider.businessName) {
       const newSlug = await this.generateUniqueSlug(validated.businessName);
-      await providerRepository.update(providerId, { ...validated, slug: newSlug } as Parameters<typeof providerRepository.update>[1]);
+      const searchTokens = generateSearchTokens(validated.businessName);
+      await providerRepository.update(providerId, { ...validated, slug: newSlug, searchTokens } as Parameters<typeof providerRepository.update>[1]);
     } else {
       await providerRepository.update(providerId, validated as Parameters<typeof providerRepository.update>[1]);
     }
@@ -334,43 +340,14 @@ export class ProviderService {
 
   /**
    * Search providers with filters
+   * Uses Firestore queries for category/city, client-side for text search
    */
   async search(filters: SearchFilters): Promise<WithId<Provider>[]> {
-    let providers = await providerRepository.getPublished(filters.limit || 50);
-
-    // Filter by category
-    if (filters.category) {
-      providers = providers.filter((p) => p.category === filters.category);
-    }
-
-    // Filter by city (check locations)
-    if (filters.city) {
-      const cityLower = filters.city.toLowerCase();
-      const filteredProviders: WithId<Provider>[] = [];
-
-      for (const provider of providers) {
-        const locations = await locationRepository.getByProvider(provider.id);
-        const hasCity = locations.some((l) =>
-          l.city.toLowerCase().includes(cityLower)
-        );
-        if (hasCity) {
-          filteredProviders.push(provider);
-        }
-      }
-      providers = filteredProviders;
-    }
-
-    // Filter by query (search in business name and description)
-    if (filters.query) {
-      const queryLower = filters.query.toLowerCase();
-      providers = providers.filter(
-        (p) =>
-          p.businessName.toLowerCase().includes(queryLower) ||
-          p.description.toLowerCase().includes(queryLower)
-      );
-    }
-
-    return providers;
+    return providerRepository.searchProviders({
+      category: filters.category,
+      city: filters.city,
+      query: filters.query,
+    });
   }
 
   /**

@@ -14,21 +14,22 @@ import * as admin from 'firebase-admin';
 admin.initializeApp();
 
 // Export triggers
+export { onBookingWrite } from './triggers/onBookingWrite';
 // export { onBookingCreate } from './triggers/onBookingCreate';
 // export { onBookingUpdate } from './triggers/onBookingUpdate';
 // export { onReviewCreate } from './triggers/onReviewCreate';
 // export { onMessageCreate } from './triggers/onMessageCreate';
 
 // Export scheduled functions
+export { recalculateExpiredSlots } from './scheduled/recalculateExpiredSlots';
 // export { sendReminders } from './scheduled/sendReminders';
 // export { completeBookings } from './scheduled/completeBookings';
 // export { sendMemberDigest } from './scheduled/sendMemberDigest';
 
 // Export callable functions
+export { testFunction } from './callable/testFunction';
+export { recalculateNextSlot } from './callable/recalculateNextSlot';
+export { testCalculateNextSlot } from './callable/testCalculateNextSlot';
+export { recalculateAllProviders } from './callable/recalculateAllProviders';
 // export { cancelBooking } from './callable/cancelBooking';
 // export { getMemberPlanning } from './callable/getMemberPlanning';
-
-// Placeholder export for initial setup
-export const placeholder = () => {
-  console.log('Cloud Functions initialized');
-};

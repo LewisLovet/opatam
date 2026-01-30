@@ -16,6 +16,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { getFirebaseApp } from '../lib/config';
+import { firestoreTracker } from '../utils/firestoreTracker';
 
 /**
  * Check if a value is a Firestore special object (Timestamp, FieldValue, etc.)
@@ -133,6 +134,7 @@ export abstract class BaseRepository<T> {
     } as Record<string, unknown>);
 
     const docRef = await addDoc(this.getCollectionRef(), docData);
+    firestoreTracker.trackWrite(this.collectionName, docRef.id);
     return docRef.id;
   }
 
@@ -148,6 +150,7 @@ export abstract class BaseRepository<T> {
     } as Record<string, unknown>);
 
     await setDoc(docRef, docData);
+    firestoreTracker.trackWrite(this.collectionName, id);
   }
 
   /**
@@ -156,6 +159,7 @@ export abstract class BaseRepository<T> {
   async getById(id: string): Promise<WithId<T> | null> {
     const docRef = this.getDocRef(id);
     const docSnap = await getDoc(docRef);
+    firestoreTracker.trackRead(this.collectionName, id);
 
     if (!docSnap.exists()) {
       return null;
@@ -172,6 +176,7 @@ export abstract class BaseRepository<T> {
    */
   async getAll(): Promise<WithId<T>[]> {
     const querySnapshot = await getDocs(this.getCollectionRef());
+    firestoreTracker.trackReadMultiple(this.collectionName, querySnapshot.size);
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
@@ -185,6 +190,7 @@ export abstract class BaseRepository<T> {
   async query(constraints: QueryConstraint[]): Promise<WithId<T>[]> {
     const q = query(this.getCollectionRef(), ...constraints);
     const querySnapshot = await getDocs(q);
+    firestoreTracker.trackReadMultiple(this.collectionName, querySnapshot.size);
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
@@ -203,6 +209,7 @@ export abstract class BaseRepository<T> {
     } as Record<string, unknown>);
 
     await updateDoc(docRef, docData);
+    firestoreTracker.trackWrite(this.collectionName, id);
   }
 
   /**
@@ -211,6 +218,7 @@ export abstract class BaseRepository<T> {
   async delete(id: string): Promise<void> {
     const docRef = this.getDocRef(id);
     await deleteDoc(docRef);
+    firestoreTracker.trackDelete(this.collectionName, id);
   }
 
   /**
@@ -219,6 +227,7 @@ export abstract class BaseRepository<T> {
   async exists(id: string): Promise<boolean> {
     const docRef = this.getDocRef(id);
     const docSnap = await getDoc(docRef);
+    firestoreTracker.trackRead(this.collectionName, id);
     return docSnap.exists();
   }
 }

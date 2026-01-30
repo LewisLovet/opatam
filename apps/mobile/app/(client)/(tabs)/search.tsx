@@ -3,12 +3,13 @@
  * Search providers with filters
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   FlatList,
   StyleSheet,
   RefreshControl,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -91,10 +92,11 @@ export default function SearchScreen() {
   // Handle search submit
   const handleSearchSubmit = () => {
     setDebouncedQuery(searchQuery);
+    Keyboard.dismiss();
   };
 
-  // Render provider item
-  const renderProvider = ({ item }: { item: WithId<Provider> }) => (
+  // Memoized render functions to prevent re-renders
+  const renderProvider = useCallback(({ item }: { item: WithId<Provider> }) => (
     <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
       <ProviderCard
         photoURL={item.coverPhotoURL || item.photoURL}
@@ -107,50 +109,7 @@ export default function SearchScreen() {
         isLoading={isLoading(item.slug)}
       />
     </View>
-  );
-
-  // Render header (search + filters)
-  const renderHeader = () => (
-    <View style={[styles.header, { backgroundColor: colors.background }]}>
-      {/* Search Bar */}
-      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Rechercher un prestataire..."
-          onSubmit={handleSearchSubmit}
-        />
-      </View>
-
-      {/* Category Pills */}
-      <View style={{ marginTop: spacing.md }}>
-        <CategoryPills
-          categories={categories}
-          selectedId={selectedCategory}
-          onSelect={setSelectedCategory}
-          showAll
-        />
-      </View>
-
-      {/* City Select */}
-      <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.md }}>
-        <CitySelect
-          value={selectedCity}
-          cities={cities}
-          onChange={setSelectedCity}
-        />
-      </View>
-
-      {/* Results count */}
-      {!loading && !error && (
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
-          <Text variant="caption" color="textSecondary">
-            {providers.length} prestataire{providers.length !== 1 ? 's' : ''} trouvé{providers.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
+  ), [spacing.lg, spacing.md, navigateToProvider, isLoading]);
 
   // Render empty state
   const renderEmpty = () => {
@@ -199,13 +158,56 @@ export default function SearchScreen() {
     </View>
   );
 
+  // Render filters (categories, city, results count) - inside FlatList header
+  const renderFilters = () => (
+    <View style={[styles.filtersContainer, { backgroundColor: colors.background }]}>
+      {/* Category Pills */}
+      <View style={{ marginTop: spacing.sm }}>
+        <CategoryPills
+          categories={categories}
+          selectedId={selectedCategory}
+          onSelect={setSelectedCategory}
+          showAll
+        />
+      </View>
+
+      {/* City Select */}
+      <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.md }}>
+        <CitySelect
+          value={selectedCity}
+          cities={cities}
+          onChange={setSelectedCity}
+        />
+      </View>
+
+      {/* Results count */}
+      {!loading && !error && (
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
+          <Text variant="caption" color="textSecondary">
+            {providers.length} prestataire{providers.length !== 1 ? 's' : ''} trouvé{providers.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Search Bar - Outside FlatList to prevent focus loss on re-render */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.background }}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Rechercher un prestataire..."
+          onSubmit={handleSearchSubmit}
+        />
+      </View>
+
       <FlatList
         data={loading && !refreshing ? [] : providers}
         renderItem={renderProvider}
         keyExtractor={(item) => item.id}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderFilters}
         ListEmptyComponent={loading && !refreshing ? renderLoading : renderEmpty}
         refreshControl={
           <RefreshControl
@@ -221,7 +223,8 @@ export default function SearchScreen() {
             : { paddingBottom: spacing['3xl'] }
         }
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[0]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       />
     </SafeAreaView>
   );
@@ -231,8 +234,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    // Dynamic styles
+  filtersContainer: {
+    // Dynamic styles applied inline
   },
   emptyContainer: {
     flex: 1,

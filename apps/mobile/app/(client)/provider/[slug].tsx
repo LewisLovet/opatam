@@ -31,7 +31,7 @@ import {
   EmptyState,
   useToast,
 } from '../../../components';
-import { useProvider, useServices, useReviews, useLocations } from '../../../hooks';
+import { useProvider, useServices, useReviews, useLocations, useNextAvailableDate } from '../../../hooks';
 import type { Service } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
@@ -59,6 +59,7 @@ export default function ProviderDetailScreen() {
   const { services, loading: loadingServices, refresh: refreshServices } = useServices(provider?.id);
   const { reviews, loading: loadingReviews, refresh: refreshReviews } = useReviews(provider?.id);
   const { locations, refresh: refreshLocations } = useLocations(provider?.id);
+  const { formattedDate: nextAvailableFormatted, loading: loadingAvailability, refresh: refreshAvailability } = useNextAvailableDate(provider?.id);
 
   // Selected service state
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -72,6 +73,7 @@ export default function ProviderDetailScreen() {
       refreshServices(),
       refreshReviews(),
       refreshLocations(),
+      refreshAvailability(),
     ]);
     setRefreshing(false);
   };
@@ -91,10 +93,15 @@ export default function ProviderDetailScreen() {
       return;
     }
 
-    // For now, show login message
-    showToast({
-      variant: 'info',
-      message: 'Connectez-vous pour réserver',
+    if (!provider) return;
+
+    // Navigate to booking flow with provider and service
+    router.push({
+      pathname: '/(client)/booking/[providerId]',
+      params: {
+        providerId: provider.id,
+        serviceId: selectedServiceId,
+      },
     });
   };
 
@@ -246,6 +253,16 @@ export default function ProviderDetailScreen() {
               phone={null}
             />
           </Card>
+
+          {/* Next Available Date Badge */}
+          {!loadingAvailability && nextAvailableFormatted && (
+            <View style={[styles.availabilityBadge, { backgroundColor: colors.primaryLight || '#e4effa', marginTop: spacing.md }]}>
+              <Ionicons name="calendar-outline" size={16} color={colors.primary} style={{ marginRight: spacing.xs }} />
+              <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+                Prochaine dispo : {nextAvailableFormatted}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Services */}
@@ -389,5 +406,13 @@ const styles = StyleSheet.create({
   },
   footerContent: {
     // Dynamic styles
+  },
+  availabilityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
   },
 });

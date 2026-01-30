@@ -172,8 +172,8 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
   // Search providers with cache
   const searchProviders = useCallback(
     async (params: SearchParams, forceRefresh = false): Promise<WithId<Provider>[]> => {
-      // Check if we already have results for these params
-      if (!forceRefresh && areParamsEqual(state.searchParams, params) && state.searchResults.length > 0) {
+      // Check if we already have results for these params (even if empty)
+      if (!forceRefresh && areParamsEqual(state.searchParams, params)) {
         return state.searchResults;
       }
 
@@ -196,7 +196,8 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
         return result;
       } catch (err) {
         console.error('Error searching providers:', err);
-        dispatch({ type: 'SEARCH_ERROR', payload: 'Erreur lors du chargement des prestataires' });
+        const errorMessage = 'Erreur lors du chargement des prestataires';
+        dispatch({ type: 'SEARCH_ERROR', payload: errorMessage });
         return [];
       }
     },

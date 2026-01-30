@@ -27,6 +27,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, displayName: string, phone?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  refreshUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -108,6 +109,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Refresh user data from Firestore
+  const refreshUserData = async () => {
+    if (!user?.uid) return;
+    try {
+      const data = await userRepository.getById(user.uid);
+      setUserData(data);
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -119,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         resetPassword,
+        refreshUserData,
       }}
     >
       {children}

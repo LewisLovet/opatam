@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { APP_CONFIG } from '@booking-app/shared';
+import { DevTools } from '@/components/dev/DevTools';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="fr" className={inter.variable}>
       <body className="antialiased">
         <Providers>{children}</Providers>
+        <DevTools />
       </body>
     </html>
   );

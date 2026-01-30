@@ -151,3 +151,21 @@ export function normalizeCity(city: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ');
 }
+
+/**
+ * Generate search tokens from a business name
+ * - Splits into words
+ * - Normalizes each word (lowercase, no accents)
+ * - Filters out empty strings and words < 2 chars
+ * @param businessName - Business name to tokenize
+ * @returns Array of normalized search tokens
+ */
+export function generateSearchTokens(businessName: string): string[] {
+  return businessName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .split(/\s+/) // Split on whitespace
+    .map((word) => word.replace(/[^a-z0-9]/g, '')) // Keep only alphanumeric
+    .filter((word) => word.length >= 2); // Filter short words
+}

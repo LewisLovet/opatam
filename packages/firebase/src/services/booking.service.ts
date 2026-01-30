@@ -89,7 +89,7 @@ export class BookingService {
     // Create booking
     const bookingId = await bookingRepository.create({
       providerId: validated.providerId,
-      clientId: null, // Will be set if user is logged in
+      clientId: validated.clientId || null, // Set if user is logged in
       memberId: effectiveMemberId || null, // Use effective member ID
       providerName: provider.businessName,
       providerPhoto: provider.photoURL,

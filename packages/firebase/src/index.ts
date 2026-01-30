@@ -114,6 +114,17 @@ export {
   messageRepository,
 } from './repositories';
 
+// Utils
+export { firestoreTracker } from './utils/firestoreTracker';
+export type {
+  Operation as TrackerOperation,
+  CollectionStats,
+  ContextStats,
+  OperationType,
+  TrackerSummary,
+  TrackerListener,
+} from './utils/firestoreTracker';
+
 // Services
 export {
   // Auth

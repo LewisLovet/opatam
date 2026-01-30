@@ -125,7 +125,7 @@ export class ProviderRepository extends BaseRepository<Provider> {
   /**
    * Search providers for public page
    * Filters on isPublished: true, category, and city
-   * Text search (query) is handled client-side for MVP
+   * Text search uses array-contains on searchTokens for word-based matching
    */
   async searchProviders(filters: ProviderSearchFilters): Promise<WithId<Provider>[]> {
     const constraints: QueryConstraint[] = [
@@ -137,28 +137,42 @@ export class ProviderRepository extends BaseRepository<Provider> {
       constraints.push(where('category', '==', filters.category));
     }
 
+    // Normalize search query token
+    const searchToken = filters.query && filters.query.length >= 3
+      ? filters.query
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]/g, '')
+      : null;
+
+    // Note: Firestore can only have ONE array-contains per query
+    // If we have both city and search query, we need to do client-side filtering for one of them
+    if (filters.city && searchToken) {
+      // Use searchTokens for query, filter city client-side
+      constraints.push(where('searchTokens', 'array-contains', searchToken));
+      constraints.push(orderBy('rating.average', 'desc'));
+
+      const results = await this.query(constraints);
+      const normalizedCity = normalizeCity(filters.city);
+      return results.filter((provider) => provider.cities.includes(normalizedCity));
+    }
+
     // Filter by city if provided (uses array-contains on normalized cities)
     if (filters.city) {
       const normalizedCity = normalizeCity(filters.city);
       constraints.push(where('cities', 'array-contains', normalizedCity));
     }
 
+    // If query provided, use array-contains on searchTokens
+    if (searchToken) {
+      constraints.push(where('searchTokens', 'array-contains', searchToken));
+    }
+
     // Order by rating
     constraints.push(orderBy('rating.average', 'desc'));
 
-    let results = await this.query(constraints);
-
-    // Client-side text search for MVP (searches in businessName and description)
-    if (filters.query) {
-      const queryLower = filters.query.toLowerCase();
-      results = results.filter(
-        (provider) =>
-          provider.businessName.toLowerCase().includes(queryLower) ||
-          provider.description.toLowerCase().includes(queryLower)
-      );
-    }
-
-    return results;
+    return this.query(constraints);
   }
 }
 

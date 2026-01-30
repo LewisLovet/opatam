@@ -36,6 +36,9 @@ export interface Provider {
   // Denormalized fields for search optimization
   cities: string[];              // Normalized cities from active locations
   minPrice: number | null;       // Minimum price from active services (in centimes)
+  searchTokens: string[];        // Normalized words from businessName for search (e.g., ["salon", "hugo"])
+  // Availability cache (computed by Cloud Functions)
+  nextAvailableSlot: Date | null; // Next available booking slot (null if none or not computed)
   createdAt: Date;
   updatedAt: Date;
 }

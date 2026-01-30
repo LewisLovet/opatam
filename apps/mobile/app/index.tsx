@@ -30,11 +30,9 @@ export default function Index() {
     );
   }
 
-  // Authenticated → redirect based on role
+  // Authenticated → redirect to client interface
+  // TODO: Add /(pro) route for providers when ready
   if (isAuthenticated) {
-    if (userData?.role === 'provider') {
-      return <Redirect href="/(pro)" />;
-    }
     return <Redirect href="/(client)/(tabs)" />;
   }
 

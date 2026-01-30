@@ -25,10 +25,13 @@ export * from './BookingStatusBadge';
 export * from './BookingCard';
 export * from './BookingDetail';
 export * from './BookingRecap';
+export * from './BookingSummary';
+export * from './StickyConfirmButton';
 
 // Lot 2 - Calendar & Time
 export * from './CalendarStrip';
 export * from './TimeSlotGrid';
+export * from './TimeSlotSection';
 
 // Lot 2 - Members
 export * from './MemberCard';

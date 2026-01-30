@@ -4,9 +4,10 @@
  */
 
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import {
   Text,
@@ -16,7 +17,8 @@ import {
   ProviderCardSkeleton,
   EmptyState,
 } from '../../../components';
-import { useTopProviders, useNavigateToProvider } from '../../../hooks';
+import { useTopProviders, useNavigateToProvider, useNextBooking } from '../../../hooks';
+import { useAuth } from '../../../contexts';
 
 // Category images from Unsplash
 const categoryImages: Record<string, string> = {
@@ -38,10 +40,45 @@ const categories = [
   { id: 'bien-etre', label: 'Bien-être' },
 ];
 
+// Helper to format booking date
+function formatBookingDate(datetime: Date | any): string {
+  const date = datetime instanceof Date
+    ? datetime
+    : datetime?.toDate?.() || new Date(datetime);
+
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const isToday = date.toDateString() === now.toDateString();
+  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+  const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+  if (isToday) {
+    return `Aujourd'hui à ${timeStr}`;
+  }
+  if (isTomorrow) {
+    return `Demain à ${timeStr}`;
+  }
+
+  const dateStr = date.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  return `${dateStr} à ${timeStr}`;
+}
+
 export default function HomeScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const { navigateToProvider, isLoading } = useNavigateToProvider();
+  const { userData, isAuthenticated } = useAuth();
+  const { nextBooking, loading: loadingNextBooking } = useNextBooking();
+
+  // Get user's first name
+  const firstName = userData?.displayName?.split(' ')[0] || '';
 
   // Fetch top rated providers for suggestions
   const { providers: suggestions, loading: loadingSuggestions } = useTopProviders(5);
@@ -61,7 +98,9 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { padding: spacing.lg }]}>
-          <Text variant="h1">Bonjour</Text>
+          <Text variant="h1">
+            {isAuthenticated && firstName ? `Bonjour ${firstName}` : 'Bonjour'}
+          </Text>
           <Text variant="body" color="textSecondary" style={{ marginTop: spacing.xs }}>
             Trouvez votre prochain rendez-vous
           </Text>
@@ -100,15 +139,53 @@ export default function HomeScreen() {
           <Text variant="h3" style={{ marginBottom: spacing.md }}>
             Prochain RDV
           </Text>
-          <Card padding="lg" shadow="sm">
-            <EmptyState
-              icon="calendar-outline"
-              title="Pas de RDV à venir"
-              description="Réservez votre prochain rendez-vous"
-              actionLabel="Rechercher"
-              onAction={() => router.push('/(client)/(tabs)/search')}
-            />
-          </Card>
+          {loadingNextBooking ? (
+            <Card padding="lg" shadow="sm">
+              <View style={styles.bookingCardSkeleton}>
+                <View style={[styles.skeletonLine, { width: '60%', backgroundColor: colors.surfaceSecondary }]} />
+                <View style={[styles.skeletonLine, { width: '80%', backgroundColor: colors.surfaceSecondary, marginTop: 8 }]} />
+                <View style={[styles.skeletonLine, { width: '40%', backgroundColor: colors.surfaceSecondary, marginTop: 8 }]} />
+              </View>
+            </Card>
+          ) : nextBooking ? (
+            <Card padding="lg" shadow="sm">
+              <View style={styles.bookingCard}>
+                <View style={[styles.bookingIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
+                  <Ionicons name="calendar" size={24} color={colors.primary} />
+                </View>
+                <View style={styles.bookingInfo}>
+                  <Text variant="body" style={{ fontWeight: '600' }}>
+                    {nextBooking.serviceName}
+                  </Text>
+                  <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                    {nextBooking.providerName}
+                  </Text>
+                  <Text variant="caption" color="primary" style={{ marginTop: 4, fontWeight: '500' }}>
+                    {formatBookingDate(nextBooking.datetime)}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => router.push('/(client)/(tabs)/bookings')}
+                  style={({ pressed }) => [
+                    styles.bookingArrow,
+                    { backgroundColor: colors.surfaceSecondary, opacity: pressed ? 0.7 : 1 },
+                  ]}
+                >
+                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                </Pressable>
+              </View>
+            </Card>
+          ) : (
+            <Card padding="lg" shadow="sm">
+              <EmptyState
+                icon="calendar-outline"
+                title="Pas de RDV à venir"
+                description="Réservez votre prochain rendez-vous"
+                actionLabel="Rechercher"
+                onAction={() => router.push('/(client)/(tabs)/search')}
+              />
+            </Card>
+          )}
         </View>
 
         {/* Suggestions */}
@@ -160,5 +237,34 @@ const styles = StyleSheet.create({
   },
   header: {
     // Dynamic styles applied inline
+  },
+  bookingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bookingIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  bookingInfo: {
+    flex: 1,
+  },
+  bookingArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookingCardSkeleton: {
+    paddingVertical: 8,
+  },
+  skeletonLine: {
+    height: 14,
+    borderRadius: 4,
   },
 });
