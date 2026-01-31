@@ -110,6 +110,7 @@ export class ProviderService {
       cities: [],
       minPrice: null,
       searchTokens,
+      nextAvailableSlot: null,
     });
 
     // Update user with providerId (= userId)
@@ -348,6 +349,31 @@ export class ProviderService {
       city: filters.city,
       query: filters.query,
     });
+  }
+
+  /**
+   * Search providers with pagination support for infinite scroll
+   */
+  async searchPaginated(
+    filters: SearchFilters,
+    pageSize: number = 10,
+    cursor?: unknown
+  ): Promise<{ items: WithId<Provider>[]; cursor: unknown; hasMore: boolean }> {
+    const result = await providerRepository.searchProvidersPaginated(
+      {
+        category: filters.category,
+        city: filters.city,
+        query: filters.query,
+      },
+      pageSize,
+      cursor as any
+    );
+
+    return {
+      items: result.items,
+      cursor: result.lastDoc,
+      hasMore: result.hasMore,
+    };
   }
 
   /**

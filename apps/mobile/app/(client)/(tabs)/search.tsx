@@ -1,6 +1,6 @@
 /**
  * Search Tab Screen
- * Search providers with filters
+ * Search providers with filters and infinite scroll
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   RefreshControl,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -26,6 +27,8 @@ import {
 import { useProviders, useNavigateToProvider } from '../../../hooks';
 import type { Provider } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+
+const PAGE_SIZE = 10;
 
 // Categories list
 const categories = [
@@ -73,12 +76,12 @@ export default function SearchScreen() {
     };
   }, [searchQuery]);
 
-  // Fetch providers with filters
-  const { providers, loading, error, refresh } = useProviders({
+  // Fetch providers with filters and pagination
+  const { providers, loading, loadingMore, hasMore, error, refresh, loadMore } = useProviders({
     category: selectedCategory,
     city: selectedCity,
     query: debouncedQuery || null,
-    limit: 50,
+    pageSize: PAGE_SIZE,
   });
 
   // Handle refresh
@@ -185,11 +188,30 @@ export default function SearchScreen() {
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
           <Text variant="caption" color="textSecondary">
             {providers.length} prestataire{providers.length !== 1 ? 's' : ''} trouvé{providers.length !== 1 ? 's' : ''}
+            {hasMore && ' (affichage partiel)'}
           </Text>
         </View>
       )}
     </View>
   );
+
+  // Render footer (loading indicator for infinite scroll)
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  };
+
+  // Handle end reached for infinite scroll
+  const handleEndReached = useCallback(() => {
+    if (!loading && !loadingMore && hasMore) {
+      loadMore();
+    }
+  }, [loading, loadingMore, hasMore, loadMore]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -209,6 +231,7 @@ export default function SearchScreen() {
         keyExtractor={(item) => item.id}
         ListHeaderComponent={renderFilters}
         ListEmptyComponent={loading && !refreshing ? renderLoading : renderEmpty}
+        ListFooterComponent={renderFooter}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -217,6 +240,8 @@ export default function SearchScreen() {
             colors={[colors.primary]}
           />
         }
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
         contentContainerStyle={
           providers.length === 0 && !loading
             ? styles.emptyListContent
@@ -236,6 +261,10 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     // Dynamic styles applied inline
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
   emptyContainer: {
     flex: 1,

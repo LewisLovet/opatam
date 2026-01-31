@@ -16,6 +16,7 @@ interface CancelEmailRequest {
   datetime: string | Date;
   reason?: string;
   providerName?: string;
+  providerSlug?: string;
   locationName?: string;
 }
 
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       reason: body.reason || 'NOT PROVIDED',
     });
 
-    const { clientEmail, clientName, serviceName, datetime, reason, providerName, locationName } = body;
+    const { clientEmail, clientName, serviceName, datetime, reason, providerName, providerSlug, locationName } = body;
 
     // Validate required fields
     if (!clientEmail || !clientName || !serviceName || !datetime) {
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
     const formattedTime = formatTimeFr(datetime);
 
     const businessName = providerName || appConfig.name;
+    const rebookUrl = providerSlug ? `${appConfig.url}/p/${providerSlug}` : appConfig.url;
     console.log('[CANCEL-EMAIL] Sending cancellation email to:', clientEmail);
 
     // Send email via Resend
@@ -137,7 +139,7 @@ export async function POST(request: NextRequest) {
                       <table role="presentation" style="width: 100%; border-collapse: collapse;">
                         <tr>
                           <td align="center">
-                            <a href="${appConfig.url}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">
+                            <a href="${rebookUrl}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">
                               Reprendre rendez-vous
                             </a>
                           </td>
@@ -180,7 +182,7 @@ Details du rendez-vous annule :
 ${locationName ? `- Lieu : ${locationName}` : ''}
 ${reason ? `- Motif : ${reason}` : ''}
 
-Si vous souhaitez reprendre un nouveau rendez-vous, n'hesitez pas a nous contacter ou a reserver en ligne sur ${appConfig.url}
+Si vous souhaitez reprendre un nouveau rendez-vous, n'hesitez pas a nous contacter ou a reserver en ligne sur ${rebookUrl}
 
 Nous nous excusons pour la gene occasionnee.
 

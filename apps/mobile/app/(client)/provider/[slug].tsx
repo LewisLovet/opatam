@@ -29,11 +29,17 @@ import {
   StickyFooter,
   Button,
   EmptyState,
+  SocialLinks,
   useToast,
 } from '../../../components';
 import { useProvider, useServices, useReviews, useLocations, useNextAvailableDate } from '../../../hooks';
-import type { Service } from '@booking-app/shared';
+import type { Service, SocialLinks as SocialLinksType } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+
+// Check if provider has any social links
+function hasSocialLinks(socialLinks: SocialLinksType): boolean {
+  return !!(socialLinks.instagram || socialLinks.facebook || socialLinks.tiktok || socialLinks.website);
+}
 
 // Group services (Service type doesn't have category, so we group all together)
 function groupServices(services: WithId<Service>[]): { title: string; services: WithId<Service>[] }[] {
@@ -261,6 +267,13 @@ export default function ProviderDetailScreen() {
               <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
                 Prochaine dispo : {nextAvailableFormatted}
               </Text>
+            </View>
+          )}
+
+          {/* Social Links */}
+          {hasSocialLinks(provider.socialLinks) && (
+            <View style={{ marginTop: spacing.md }}>
+              <SocialLinks links={provider.socialLinks} />
             </View>
           )}
         </View>

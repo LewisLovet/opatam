@@ -89,7 +89,7 @@ interface SerializedReview {
   id: string;
   providerId: string;
   bookingId: string;
-  clientId: string;
+  clientId: string | null;
   memberId: string | null;
   clientName: string;
   clientPhoto: string | null;
@@ -118,6 +118,7 @@ interface ProviderPageClientProps {
   reviews: SerializedReview[];
   availabilities: SerializedAvailability[];
   minPrice: number | null;
+  nextAvailableDate: string | null;
 }
 
 type SectionId = 'prestations' | 'portfolio' | 'avis' | 'infos';
@@ -130,6 +131,7 @@ export function ProviderPageClient({
   reviews,
   availabilities,
   minPrice,
+  nextAvailableDate,
 }: ProviderPageClientProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('prestations');
   const [showNav, setShowNav] = useState(false);
@@ -207,7 +209,7 @@ export function ProviderPageClient({
     <div className="min-h-screen bg-white dark:bg-gray-900 pb-24">
       {/* Hero Section */}
       <div ref={heroRef}>
-        <ProviderHero provider={provider} />
+        <ProviderHero provider={provider} nextAvailableDate={nextAvailableDate} />
       </div>
 
       {/* Social Links - Just after hero, before nav */}

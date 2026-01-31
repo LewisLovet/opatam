@@ -188,6 +188,14 @@ export function BookingFlow({
     }
   }, [isTeam, selectedService, members, state.memberId]);
 
+  // Get open days for selected member (days where isOpen=true and has slots)
+  const openDays = useMemo(() => {
+    if (!state.memberId) return [];
+    return availabilities
+      .filter((a) => a.memberId === state.memberId && a.isOpen && a.slots.length > 0)
+      .map((a) => a.dayOfWeek);
+  }, [state.memberId, availabilities]);
+
   // Steps configuration
   const steps: { id: BookingStep; label: string }[] = useMemo(() => {
     const baseSteps: { id: BookingStep; label: string }[] = [
@@ -411,6 +419,7 @@ export function BookingFlow({
                 selectedSlot={state.slot}
                 onSelect={handleSlotSelect}
                 onBack={handleBack}
+                openDays={openDays}
               />
             )}
 

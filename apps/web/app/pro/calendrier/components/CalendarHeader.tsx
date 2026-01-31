@@ -235,8 +235,8 @@ export function CalendarHeader({
 
       {/* Line 2: Filters and actions */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        {/* View toggle */}
-        <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800">
+        {/* View toggle - hidden on mobile since week view doesn't fit */}
+        <div className="hidden md:flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800">
           <button
             onClick={() => onViewModeChange('day')}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${

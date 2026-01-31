@@ -20,7 +20,6 @@ interface SearchParams {
   category?: string | null;
   city?: string | null;
   query?: string | null;
-  limit?: number;
 }
 
 interface CacheState {
@@ -30,10 +29,15 @@ interface CacheState {
   searchResults: WithId<Provider>[];
   /** Search params that generated searchResults */
   searchParams: SearchParams | null;
+  /** Pagination cursor for next page */
+  searchCursor: unknown;
+  /** Whether there are more results to load */
+  hasMore: boolean;
   /** Top providers (suggestions) */
   topProviders: WithId<Provider>[];
   /** Loading states */
   loadingSearch: boolean;
+  loadingMore: boolean;
   loadingTop: boolean;
   /** Error states */
   errorSearch: string | null;
@@ -42,8 +46,11 @@ interface CacheState {
 
 type CacheAction =
   | { type: 'SEARCH_START' }
-  | { type: 'SEARCH_SUCCESS'; payload: { providers: WithId<Provider>[]; params: SearchParams } }
+  | { type: 'SEARCH_SUCCESS'; payload: { providers: WithId<Provider>[]; params: SearchParams; cursor: unknown; hasMore: boolean } }
   | { type: 'SEARCH_ERROR'; payload: string }
+  | { type: 'LOAD_MORE_START' }
+  | { type: 'LOAD_MORE_SUCCESS'; payload: { providers: WithId<Provider>[]; cursor: unknown; hasMore: boolean } }
+  | { type: 'LOAD_MORE_ERROR'; payload: string }
   | { type: 'TOP_START' }
   | { type: 'TOP_SUCCESS'; payload: WithId<Provider>[] }
   | { type: 'TOP_ERROR'; payload: string }
@@ -53,8 +60,10 @@ type CacheAction =
 interface ProvidersCacheContextValue {
   /** Current state */
   state: CacheState;
-  /** Search providers (uses cache if same params) */
-  searchProviders: (params: SearchParams, forceRefresh?: boolean) => Promise<WithId<Provider>[]>;
+  /** Search providers with pagination (uses cache if same params) */
+  searchProviders: (params: SearchParams, pageSize?: number, forceRefresh?: boolean) => Promise<WithId<Provider>[]>;
+  /** Load more providers (next page) */
+  loadMoreProviders: () => Promise<WithId<Provider>[]>;
   /** Load top rated providers */
   loadTopProviders: (limit?: number, forceRefresh?: boolean) => Promise<WithId<Provider>[]>;
   /** Get provider from cache by slug (returns null if not cached) */
@@ -75,8 +84,11 @@ const initialState: CacheState = {
   providersBySlug: {},
   searchResults: [],
   searchParams: null,
+  searchCursor: null,
+  hasMore: false,
   topProviders: [],
   loadingSearch: false,
+  loadingMore: false,
   loadingTop: false,
   errorSearch: null,
   errorTop: null,
@@ -98,12 +110,36 @@ function cacheReducer(state: CacheState, action: CacheAction): CacheState {
         loadingSearch: false,
         searchResults: action.payload.providers,
         searchParams: action.payload.params,
+        searchCursor: action.payload.cursor,
+        hasMore: action.payload.hasMore,
         providersBySlug: newProvidersBySlug,
       };
     }
 
     case 'SEARCH_ERROR':
-      return { ...state, loadingSearch: false, errorSearch: action.payload };
+      return { ...state, loadingSearch: false, errorSearch: action.payload, hasMore: false };
+
+    case 'LOAD_MORE_START':
+      return { ...state, loadingMore: true };
+
+    case 'LOAD_MORE_SUCCESS': {
+      // Add new providers to the slug cache
+      const newProvidersBySlug = { ...state.providersBySlug };
+      action.payload.providers.forEach((provider) => {
+        newProvidersBySlug[provider.slug] = provider;
+      });
+      return {
+        ...state,
+        loadingMore: false,
+        searchResults: [...state.searchResults, ...action.payload.providers],
+        searchCursor: action.payload.cursor,
+        hasMore: action.payload.hasMore,
+        providersBySlug: newProvidersBySlug,
+      };
+    }
+
+    case 'LOAD_MORE_ERROR':
+      return { ...state, loadingMore: false };
 
     case 'TOP_START':
       return { ...state, loadingTop: true, errorTop: null };
@@ -157,8 +193,7 @@ function areParamsEqual(a: SearchParams | null, b: SearchParams): boolean {
   return (
     (a.category ?? null) === (b.category ?? null) &&
     (a.city ?? null) === (b.city ?? null) &&
-    (a.query ?? null) === (b.query ?? null) &&
-    (a.limit ?? 20) === (b.limit ?? 20)
+    (a.query ?? null) === (b.query ?? null)
   );
 }
 
@@ -169,9 +204,9 @@ function areParamsEqual(a: SearchParams | null, b: SearchParams): boolean {
 export function ProvidersCacheProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cacheReducer, initialState);
 
-  // Search providers with cache
+  // Search providers with pagination
   const searchProviders = useCallback(
-    async (params: SearchParams, forceRefresh = false): Promise<WithId<Provider>[]> => {
+    async (params: SearchParams, pageSize = 10, forceRefresh = false): Promise<WithId<Provider>[]> => {
       // Check if we already have results for these params (even if empty)
       if (!forceRefresh && areParamsEqual(state.searchParams, params)) {
         return state.searchResults;
@@ -184,16 +219,23 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
           category?: string;
           city?: string;
           query?: string;
-          limit: number;
-        } = { limit: params.limit ?? 20 };
+        } = {};
 
         if (params.category) filters.category = params.category;
         if (params.city) filters.city = params.city;
         if (params.query) filters.query = params.query;
 
-        const result = await providerService.search(filters);
-        dispatch({ type: 'SEARCH_SUCCESS', payload: { providers: result, params } });
-        return result;
+        const result = await providerService.searchPaginated(filters, pageSize);
+        dispatch({
+          type: 'SEARCH_SUCCESS',
+          payload: {
+            providers: result.items,
+            params,
+            cursor: result.cursor,
+            hasMore: result.hasMore,
+          },
+        });
+        return result.items;
       } catch (err) {
         console.error('Error searching providers:', err);
         const errorMessage = 'Erreur lors du chargement des prestataires';
@@ -203,6 +245,43 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
     },
     [state.searchParams, state.searchResults]
   );
+
+  // Load more providers (next page)
+  const loadMoreProviders = useCallback(async (): Promise<WithId<Provider>[]> => {
+    // Don't load more if already loading, no more results, or no previous search
+    if (state.loadingMore || !state.hasMore || !state.searchParams || !state.searchCursor) {
+      return [];
+    }
+
+    dispatch({ type: 'LOAD_MORE_START' });
+
+    try {
+      const filters: {
+        category?: string;
+        city?: string;
+        query?: string;
+      } = {};
+
+      if (state.searchParams.category) filters.category = state.searchParams.category;
+      if (state.searchParams.city) filters.city = state.searchParams.city;
+      if (state.searchParams.query) filters.query = state.searchParams.query;
+
+      const result = await providerService.searchPaginated(filters, 10, state.searchCursor);
+      dispatch({
+        type: 'LOAD_MORE_SUCCESS',
+        payload: {
+          providers: result.items,
+          cursor: result.cursor,
+          hasMore: result.hasMore,
+        },
+      });
+      return result.items;
+    } catch (err) {
+      console.error('Error loading more providers:', err);
+      dispatch({ type: 'LOAD_MORE_ERROR', payload: 'Erreur lors du chargement' });
+      return [];
+    }
+  }, [state.loadingMore, state.hasMore, state.searchParams, state.searchCursor]);
 
   // Load top providers with cache
   const loadTopProviders = useCallback(
@@ -273,13 +352,14 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
     () => ({
       state,
       searchProviders,
+      loadMoreProviders,
       loadTopProviders,
       getCachedProvider,
       fetchProviderBySlug,
       addToCache,
       clearCache,
     }),
-    [state, searchProviders, loadTopProviders, getCachedProvider, fetchProviderBySlug, addToCache, clearCache]
+    [state, searchProviders, loadMoreProviders, loadTopProviders, getCachedProvider, fetchProviderBySlug, addToCache, clearCache]
   );
 
   return (

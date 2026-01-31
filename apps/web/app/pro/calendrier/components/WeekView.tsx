@@ -1,10 +1,101 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
+import { Plus } from 'lucide-react';
 import type { Booking, Member, Availability, BlockedSlot } from '@booking-app/shared';
 import { TimeGrid, calculateBlockPosition, calculatePositionFromTimeString, getTimeFromPosition } from './TimeGrid';
 import { BookingBlock } from './BookingBlock';
 import { SelectMemberPrompt } from './SelectMemberPrompt';
+import { DayHeaderCompact } from './DayHeaderWithGauge';
+import { PastTimeOverlay, BlockedSlotZone } from './UnavailableZone';
+import { NowIndicator } from './NowIndicator';
+
+// Component for availability slot with hover indicator at mouse position
+function AvailabilitySlotWithHover({
+  top,
+  height,
+  slotHeight,
+  date,
+  slotStartHour,
+  startHour,
+}: {
+  top: number;
+  height: number;
+  slotHeight: number;
+  date: Date;
+  slotStartHour: number; // Hour when this availability slot starts (e.g., 9 for 9:00)
+  startHour: number; // Calendar start hour (e.g., 6)
+}) {
+  const [hoverY, setHoverY] = useState<number | null>(null);
+
+  // Check if a specific time slot is in the past
+  const isSlotInPast = useCallback((yPosition: number) => {
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const slotDate = new Date(date);
+    slotDate.setHours(0, 0, 0, 0);
+
+    // If the day is in the past, all slots are past
+    if (slotDate < today) return true;
+
+    // If the day is in the future, no slots are past
+    if (slotDate > today) return false;
+
+    // Same day - check the time
+    // Calculate the hour from the Y position within this availability slot
+    const hoursFromSlotStart = yPosition / slotHeight;
+    const absoluteHour = slotStartHour + hoursFromSlotStart;
+    const slotHour = Math.floor(absoluteHour);
+    const slotMinutes = (absoluteHour - slotHour) * 60;
+
+    const slotTime = new Date(date);
+    slotTime.setHours(slotHour, slotMinutes, 0, 0);
+
+    return slotTime < now;
+  }, [date, slotHeight, slotStartHour]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    // Snap to slot intervals (every slotHeight/2 pixels = 30 min)
+    const snappedY = Math.floor(y / (slotHeight / 2)) * (slotHeight / 2);
+
+    // Only show indicator if slot is not in the past
+    if (!isSlotInPast(snappedY)) {
+      setHoverY(snappedY);
+    } else {
+      setHoverY(null);
+    }
+  }, [slotHeight, isSlotInPast]);
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverY(null);
+  }, []);
+
+  return (
+    <div
+      className="absolute left-0 right-0 bg-success-50 dark:bg-success-900/20 hover:bg-success-100 dark:hover:bg-success-900/40 transition-colors"
+      style={{ top: `${top}px`, height: `${height}px` }}
+      title="Cliquer pour créer un RDV"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Hover indicator at mouse position */}
+      {hoverY !== null && (
+        <div
+          className="absolute left-0 right-0 flex items-center justify-center pointer-events-none transition-all duration-75"
+          style={{ top: `${hoverY}px`, height: `${slotHeight / 2}px` }}
+        >
+          <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center shadow-sm">
+            <Plus className="w-4 h-4 text-white" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type WithId<T> = { id: string } & T;
 
@@ -111,35 +202,33 @@ export function WeekView({
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[600px]">
-        {/* Day headers */}
+        {/* Day headers with gauges */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-20">
           {/* Time label spacer */}
           <div className="flex-shrink-0 w-12 sm:w-14" />
-          {/* Day headers */}
-          {days.map((day, idx) => (
-            <button
-              key={idx}
-              onClick={() => onDayClick(day)}
-              className={`
-                flex-1 min-w-[80px] py-2 text-center border-l border-gray-200 dark:border-gray-700
-                hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
-              `}
-            >
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {DAY_NAMES[idx]}
-              </div>
-              <div
-                className={`
-                  text-lg font-semibold mt-0.5
-                  ${isToday(day)
-                    ? 'w-8 h-8 mx-auto flex items-center justify-center bg-primary-500 text-white rounded-full'
-                    : 'text-gray-900 dark:text-white'}
-                `}
-              >
-                {day.getDate()}
-              </div>
-            </button>
-          ))}
+          {/* Day headers with booking count gauge */}
+          {days.map((day, idx) => {
+            const getLocalDateKey = (date: Date) => {
+              const year = date.getFullYear();
+              const month = (date.getMonth() + 1).toString().padStart(2, '0');
+              const d = date.getDate().toString().padStart(2, '0');
+              return `${year}-${month}-${d}`;
+            };
+            const dayKey = getLocalDateKey(day);
+            const dayBookings = bookingsByDay[dayKey] || [];
+            const activeBookings = dayBookings.filter(
+              (b) => b.status === 'pending' || b.status === 'confirmed'
+            );
+            return (
+              <DayHeaderCompact
+                key={idx}
+                date={day}
+                bookingCount={activeBookings.length}
+                expectedCapacity={8}
+                onClick={() => onDayClick(day)}
+              />
+            );
+          })}
         </div>
 
         {/* Time grid */}
@@ -228,7 +317,7 @@ export function WeekView({
                   className={`absolute inset-0 ${isClosed ? 'bg-gray-100 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-900'}`}
                 />
 
-                {/* Availability slots background - green for open hours */}
+                {/* Availability slots background - green for open hours with hover effect */}
                 {availability?.isOpen && availability.slots.map((slot, slotIdx) => {
                   const { top, height } = calculatePositionFromTimeString(
                     slot.start,
@@ -236,11 +325,17 @@ export function WeekView({
                     START_HOUR,
                     SLOT_HEIGHT
                   );
+                  // Parse slot start hour (e.g., "09:00" -> 9)
+                  const slotStartHour = parseInt(slot.start.split(':')[0], 10);
                   return (
-                    <div
+                    <AvailabilitySlotWithHover
                       key={slotIdx}
-                      className="absolute left-0 right-0 bg-success-50 dark:bg-success-900/20"
-                      style={{ top: `${top}px`, height: `${height}px` }}
+                      top={top}
+                      height={height}
+                      slotHeight={SLOT_HEIGHT}
+                      date={day}
+                      slotStartHour={slotStartHour}
+                      startHour={START_HOUR}
                     />
                   );
                 })}
@@ -271,18 +366,22 @@ export function WeekView({
                   }
 
                   return (
-                    <div
+                    <BlockedSlotZone
                       key={blocked.id}
-                      className="absolute left-0 right-0 bg-error-50/80 dark:bg-error-900/30"
-                      style={{
-                        top: `${top}px`,
-                        height: `${height}px`,
-                        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(239, 68, 68, 0.15) 4px, rgba(239, 68, 68, 0.15) 8px)',
-                      }}
-                      title={blocked.reason || 'Bloqué'}
+                      top={top}
+                      height={height}
+                      reason={blocked.reason ?? undefined}
+                      isAllDay={blocked.allDay}
                     />
                   );
                 })}
+
+                {/* Past time overlay for today */}
+                <PastTimeOverlay
+                  date={day}
+                  startHour={START_HOUR}
+                  slotHeight={SLOT_HEIGHT}
+                />
 
                 {/* Hour lines */}
                 {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => (
@@ -316,33 +415,16 @@ export function WeekView({
                 })}
 
                 {/* Current time indicator */}
-                {isToday(day) && <CurrentTimeIndicator />}
+                <NowIndicator
+                  startHour={START_HOUR}
+                  endHour={END_HOUR}
+                  slotHeight={SLOT_HEIGHT}
+                  isTodayVisible={isToday(day)}
+                />
               </div>
             );
           })}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function CurrentTimeIndicator() {
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-
-  if (currentHour < START_HOUR || currentHour >= END_HOUR) return null;
-
-  const top = ((currentHour - START_HOUR) * 60 + currentMinute) / 60 * SLOT_HEIGHT;
-
-  return (
-    <div
-      className="absolute left-0 right-0 z-10 pointer-events-none"
-      style={{ top: `${top}px` }}
-    >
-      <div className="relative">
-        <div className="absolute -left-1 -top-1 w-2 h-2 bg-error-500 rounded-full" />
-        <div className="h-0.5 bg-error-500" />
       </div>
     </div>
   );

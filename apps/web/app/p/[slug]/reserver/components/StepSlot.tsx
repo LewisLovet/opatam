@@ -20,6 +20,7 @@ interface StepSlotProps {
   selectedSlot: TimeSlotWithDate | null;
   onSelect: (slot: TimeSlotWithDate) => void;
   onBack: () => void;
+  openDays: number[]; // Array of open day numbers (0=Sunday, 1=Monday, etc.)
 }
 
 const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
@@ -37,6 +38,7 @@ export function StepSlot({
   selectedSlot,
   onSelect,
   onBack,
+  openDays,
 }: StepSlotProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -77,11 +79,13 @@ export function StepSlot({
     return days;
   }, [currentMonth]);
 
-  // Check if a date is in range
-  const isDateInRange = (date: Date): boolean => {
+  // Check if a date is selectable (in range AND on an open day)
+  const isDateSelectable = (date: Date): boolean => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
-    return d >= dateRange.min && d <= dateRange.max;
+    const inRange = d >= dateRange.min && d <= dateRange.max;
+    const isOpenDay = openDays.includes(d.getDay());
+    return inRange && isOpenDay;
   };
 
   // Fetch available slots when date changes
@@ -135,10 +139,10 @@ export function StepSlot({
   };
 
   const goToNextMonth = () => {
-    const next = new Date(currentMonth);
-    next.setMonth(next.getMonth() + 1);
-    if (next <= dateRange.max) {
-      setCurrentMonth(next);
+    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    const maxMonth = new Date(dateRange.max.getFullYear(), dateRange.max.getMonth(), 1);
+    if (nextMonth <= maxMonth) {
+      setCurrentMonth(nextMonth);
     }
   };
 
@@ -150,9 +154,9 @@ export function StepSlot({
   }, [currentMonth, dateRange.min]);
 
   const canGoNext = useMemo(() => {
-    const next = new Date(currentMonth);
-    next.setMonth(next.getMonth() + 1);
-    return next <= dateRange.max;
+    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    const maxMonth = new Date(dateRange.max.getFullYear(), dateRange.max.getMonth(), 1);
+    return nextMonth <= maxMonth;
   }, [currentMonth, dateRange.max]);
 
   // Format date for comparison
@@ -228,7 +232,7 @@ export function StepSlot({
               return <div key={`empty-${index}`} className="aspect-square" />;
             }
 
-            const inRange = isDateInRange(date);
+            const inRange = isDateSelectable(date);
             const isToday = formatDateKey(date) === formatDateKey(new Date());
             const selected = isDateSelected(date);
 

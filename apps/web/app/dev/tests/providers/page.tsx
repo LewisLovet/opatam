@@ -85,6 +85,8 @@ export default function ProvidersTestPage() {
         isVerified: false,
         cities: [],
         minPrice: null,
+        searchTokens: [],
+        nextAvailableSlot: null,
       });
       return { id, slug, message: 'Provider cree avec succes' };
     });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   ModalHeader,
@@ -12,7 +12,7 @@ import {
   useToast,
 } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingService } from '@booking-app/firebase';
+import { bookingService, schedulingService } from '@booking-app/firebase';
 import type { Booking, BookingStatus } from '@booking-app/shared';
 import {
   statusConfig,
@@ -37,15 +37,93 @@ import {
   Ban,
   Star,
   CheckCircle,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Sun,
+  Sunset,
+  Moon,
 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
+
+// Period configuration for grouping slots
+type Period = 'morning' | 'afternoon' | 'evening';
+
+interface PeriodConfig {
+  key: Period;
+  label: string;
+  icon: typeof Sun;
+  bgColor: string;
+  textColor: string;
+  iconColor: string;
+}
+
+const PERIODS_CONFIG: PeriodConfig[] = [
+  {
+    key: 'morning',
+    label: 'Matin',
+    icon: Sun,
+    bgColor: 'bg-amber-50 dark:bg-amber-900/20',
+    textColor: 'text-amber-800 dark:text-amber-200',
+    iconColor: 'text-amber-500',
+  },
+  {
+    key: 'afternoon',
+    label: 'Après-midi',
+    icon: Sunset,
+    bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+    textColor: 'text-orange-800 dark:text-orange-200',
+    iconColor: 'text-orange-500',
+  },
+  {
+    key: 'evening',
+    label: 'Soir',
+    icon: Moon,
+    bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
+    textColor: 'text-indigo-800 dark:text-indigo-200',
+    iconColor: 'text-indigo-500',
+  },
+];
+
+interface TimeSlot {
+  time: string;
+  datetime: Date;
+}
+
+interface GroupedSlots {
+  morning: TimeSlot[];
+  afternoon: TimeSlot[];
+  evening: TimeSlot[];
+}
+
+function groupSlotsByPeriod(slots: TimeSlot[]): GroupedSlots {
+  const grouped: GroupedSlots = {
+    morning: [],
+    afternoon: [],
+    evening: [],
+  };
+
+  for (const slot of slots) {
+    const hour = parseInt(slot.time.split(':')[0], 10);
+    if (hour >= 0 && hour < 12) {
+      grouped.morning.push(slot);
+    } else if (hour >= 12 && hour < 18) {
+      grouped.afternoon.push(slot);
+    } else {
+      grouped.evening.push(slot);
+    }
+  }
+
+  return grouped;
+}
 
 interface BookingDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: WithId<Booking> | null;
   onUpdate: () => void;
+  providerSlug?: string;
 }
 
 export function BookingDetailModal({
@@ -53,8 +131,9 @@ export function BookingDetailModal({
   onClose,
   booking,
   onUpdate,
+  providerSlug,
 }: BookingDetailModalProps) {
-  const { user } = useAuth();
+  const { user, provider } = useAuth();
   const toast = useToast();
 
   const [loading, setLoading] = useState(false);
@@ -63,6 +142,91 @@ export function BookingDetailModal({
   const [showNoShowConfirm, setShowNoShowConfirm] = useState(false);
   const [cancelReasonType, setCancelReasonType] = useState('');
   const [cancelReasonCustom, setCancelReasonCustom] = useState('');
+
+  // Reschedule state
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<string>('');
+  const [rescheduleTime, setRescheduleTime] = useState<string>('');
+  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<Period, boolean>>({
+    morning: true,
+    afternoon: false,
+    evening: false,
+  });
+
+  // Group slots by period
+  const groupedSlots = useMemo(() => groupSlotsByPeriod(availableSlots), [availableSlots]);
+
+  // Toggle section expand/collapse
+  const toggleSection = (period: Period) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [period]: !prev[period],
+    }));
+  };
+
+  // Load available slots when date changes
+  useEffect(() => {
+    if (!showReschedule || !rescheduleDate || !booking || !provider) return;
+
+    const loadSlots = async () => {
+      setLoadingSlots(true);
+      try {
+        const date = new Date(rescheduleDate);
+        // memberId is required - if not available, we can't reschedule
+        if (!booking.memberId) {
+          toast.error('Impossible de reprogrammer sans membre assigné');
+          setShowReschedule(false);
+          setLoadingSlots(false);
+          return;
+        }
+        const slots = await schedulingService.getAvailableSlots({
+          providerId: provider.id,
+          memberId: booking.memberId,
+          serviceId: booking.serviceId,
+          startDate: date,
+          endDate: date,
+        });
+
+        // Convert to TimeSlot format
+        const timeSlots: TimeSlot[] = slots.map((slot) => ({
+          time: slot.start,
+          datetime: slot.datetime,
+        }));
+
+        setAvailableSlots(timeSlots);
+
+        // Auto-expand the section that has the most slots
+        const grouped = groupSlotsByPeriod(timeSlots);
+        if (grouped.morning.length > 0) {
+          setExpandedSections({ morning: true, afternoon: false, evening: false });
+        } else if (grouped.afternoon.length > 0) {
+          setExpandedSections({ morning: false, afternoon: true, evening: false });
+        } else if (grouped.evening.length > 0) {
+          setExpandedSections({ morning: false, afternoon: false, evening: true });
+        }
+      } catch (error) {
+        console.error('Error loading slots:', error);
+        toast.error('Erreur lors du chargement des créneaux');
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+
+    loadSlots();
+  }, [showReschedule, rescheduleDate, booking, provider, toast]);
+
+  // Reset reschedule state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShowReschedule(false);
+      setRescheduleDate('');
+      setRescheduleTime('');
+      setAvailableSlots([]);
+    }
+  }, [isOpen]);
 
   if (!booking) return null;
 
@@ -111,6 +275,7 @@ export function BookingDetailModal({
             datetime: booking.datetime,
             reason: reason,
             providerName: booking.providerName,
+            providerSlug: providerSlug || provider?.slug,
             locationName: booking.locationName,
           }),
         });
@@ -150,8 +315,81 @@ export function BookingDetailModal({
   const resetConfirmations = () => {
     setShowCancelConfirm(false);
     setShowNoShowConfirm(false);
+    setShowReschedule(false);
     setCancelReasonType('');
     setCancelReasonCustom('');
+    setRescheduleDate('');
+    setRescheduleTime('');
+    setAvailableSlots([]);
+  };
+
+  const handleReschedule = async () => {
+    if (!user || !rescheduleTime) return;
+
+    const selectedSlot = availableSlots.find((s) => s.time === rescheduleTime);
+    if (!selectedSlot) {
+      toast.error('Veuillez sélectionner un créneau');
+      return;
+    }
+
+    setRescheduleLoading(true);
+    try {
+      const result = await bookingService.rescheduleBooking(
+        booking.id,
+        selectedSlot.datetime,
+        user.id
+      );
+
+      // Send reschedule email via API route
+      try {
+        await fetch('/api/bookings/reschedule-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientEmail: booking.clientInfo.email,
+            clientName: booking.clientInfo.name,
+            serviceName: booking.serviceName,
+            oldDatetime: result.oldDatetime,
+            newDatetime: result.newDatetime,
+            duration: booking.duration,
+            price: booking.price,
+            providerName: booking.providerName,
+            providerSlug: providerSlug || provider?.slug,
+            locationName: booking.locationName,
+            locationAddress: booking.locationAddress,
+            memberName: booking.memberName,
+            cancelToken: booking.cancelToken,
+            bookingId: booking.id,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Error sending reschedule email:', emailError);
+      }
+
+      toast.success('Rendez-vous reprogrammé');
+      resetConfirmations();
+      onUpdate();
+    } catch (error) {
+      console.error('Error rescheduling booking:', error);
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la reprogrammation');
+    } finally {
+      setRescheduleLoading(false);
+    }
+  };
+
+  const formatDateForInput = (date: Date) => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const handleStartReschedule = () => {
+    // Set initial date to booking date or today if past
+    const bookingDate = new Date(booking.datetime);
+    const today = new Date();
+    const initialDate = bookingDate > today ? bookingDate : today;
+    setRescheduleDate(formatDateForInput(initialDate));
+    setShowReschedule(true);
+    setShowCancelConfirm(false);
+    setShowNoShowConfirm(false);
   };
 
   const handleReviewRequest = async () => {
@@ -365,8 +603,146 @@ export function BookingDetailModal({
           </div>
         )}
 
+        {/* Reschedule section */}
+        {showReschedule && (
+          <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl space-y-4 border border-primary-200 dark:border-primary-800">
+            <div className="flex items-center gap-2 text-primary-700 dark:text-primary-300">
+              <CalendarClock className="w-5 h-5" />
+              <span className="font-medium">Modifier le créneau</span>
+            </div>
+
+            {/* Date picker */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Nouvelle date
+              </label>
+              <input
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => {
+                  setRescheduleDate(e.target.value);
+                  setRescheduleTime('');
+                }}
+                min={formatDateForInput(new Date())}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Time slots */}
+            {rescheduleDate && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Nouveau créneau
+                </label>
+                {loadingSlots ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary-500" />
+                    <span className="ml-2 text-sm text-gray-500">Chargement...</span>
+                  </div>
+                ) : availableSlots.length > 0 ? (
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {PERIODS_CONFIG.map((period) => {
+                      const periodSlots = groupedSlots[period.key];
+                      if (periodSlots.length === 0) return null;
+
+                      const Icon = period.icon;
+                      const isExpanded = expandedSections[period.key];
+                      const hasSelectedSlot = periodSlots.some((s) => s.time === rescheduleTime);
+
+                      return (
+                        <div key={period.key} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                          {/* Section header */}
+                          <button
+                            type="button"
+                            onClick={() => toggleSection(period.key)}
+                            className={`w-full flex items-center justify-between px-3 py-2 transition-colors ${period.bgColor}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon className={`w-4 h-4 ${period.iconColor}`} />
+                              <span className={`font-medium text-sm ${period.textColor}`}>
+                                {period.label}
+                              </span>
+                              <span className={`text-xs ${period.textColor} opacity-75`}>
+                                ({periodSlots.length})
+                              </span>
+                              {hasSelectedSlot && !isExpanded && (
+                                <span className="ml-2 px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full">
+                                  {rescheduleTime}
+                                </span>
+                              )}
+                            </div>
+                            <ChevronRight
+                              className={`w-4 h-4 ${period.textColor} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                            />
+                          </button>
+
+                          {/* Section content */}
+                          {isExpanded && (
+                            <div className="p-2 bg-white dark:bg-gray-800 grid grid-cols-4 gap-1.5">
+                              {periodSlots.map((slot) => (
+                                <button
+                                  key={slot.time}
+                                  type="button"
+                                  onClick={() => setRescheduleTime(slot.time)}
+                                  className={`
+                                    px-2 py-1.5 rounded-md border text-center transition-all text-sm
+                                    ${rescheduleTime === slot.time
+                                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 ring-1 ring-primary-500'
+                                      : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600'}
+                                  `}
+                                >
+                                  <span className="block font-medium text-gray-900 dark:text-white">
+                                    {slot.time}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                    Aucun créneau disponible pour cette date
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetConfirmations}
+                disabled={rescheduleLoading}
+                className="flex-1"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Retour
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleReschedule}
+                disabled={rescheduleLoading || !rescheduleTime}
+                className="flex-1"
+              >
+                {rescheduleLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 mr-1" />
+                    Confirmer
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Review request section - only for past confirmed bookings */}
-        {canRequestReview && !showCancelConfirm && !showNoShowConfirm && (
+        {canRequestReview && !showCancelConfirm && !showNoShowConfirm && !showReschedule && (
           <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl space-y-3 border border-primary-200 dark:border-primary-800">
             <div className="flex items-center gap-2">
               <Star className="w-5 h-5 text-primary-600 dark:text-primary-400" />
@@ -410,7 +786,7 @@ export function BookingDetailModal({
 
       <ModalFooter>
         {/* Actions based on status */}
-        {booking.status === 'pending' && !showCancelConfirm && !showNoShowConfirm && (
+        {booking.status === 'pending' && !showCancelConfirm && !showNoShowConfirm && !showReschedule && (
           <>
             <Button
               variant="outline"
@@ -420,6 +796,14 @@ export function BookingDetailModal({
             >
               <X className="w-4 h-4 mr-2" />
               Annuler
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleStartReschedule}
+              disabled={loading}
+            >
+              <CalendarClock className="w-4 h-4 mr-2" />
+              Modifier
             </Button>
             <Button onClick={handleConfirm} disabled={loading}>
               {loading ? (
@@ -432,7 +816,7 @@ export function BookingDetailModal({
           </>
         )}
 
-        {booking.status === 'confirmed' && !showCancelConfirm && !showNoShowConfirm && !isPastBooking && (
+        {booking.status === 'confirmed' && !showCancelConfirm && !showNoShowConfirm && !showReschedule && !isPastBooking && (
           <>
             <Button
               variant="outline"
@@ -442,6 +826,14 @@ export function BookingDetailModal({
             >
               <X className="w-4 h-4 mr-2" />
               Annuler
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleStartReschedule}
+              disabled={loading}
+            >
+              <CalendarClock className="w-4 h-4 mr-2" />
+              Modifier
             </Button>
             <Button
               variant="outline"

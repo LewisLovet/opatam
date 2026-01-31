@@ -254,7 +254,7 @@ export default function DashboardPage() {
   };
 
   const handleCreateBooking = () => {
-    setIsCreateModalOpen(true);
+    router.push('/pro/calendrier');
   };
 
   const handleBookingCreated = async () => {

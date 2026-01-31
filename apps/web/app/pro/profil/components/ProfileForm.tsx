@@ -114,12 +114,12 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
 
       {/* Slug Preview */}
       {provider?.slug && (
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-hidden">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             URL de votre page publique
           </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-sm text-primary-600 dark:text-primary-400 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-gray-200 dark:border-gray-700 truncate">
+          <div className="flex items-center gap-2 min-w-0">
+            <code className="flex-1 min-w-0 text-sm text-primary-600 dark:text-primary-400 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-gray-200 dark:border-gray-700 truncate block overflow-hidden">
               {publicUrl}
             </code>
             {provider.isPublished && (

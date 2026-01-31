@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Input, Select, Switch, Button } from '@/components/ui';
+import { Select, Button } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
-import { Loader2, Clock, Calendar, XCircle, Info } from 'lucide-react';
+import { Loader2, Clock, Calendar, Info } from 'lucide-react';
 
 interface ReservationSettingsFormProps {
   onSuccess?: () => void;
@@ -33,18 +33,6 @@ const MAX_BOOKING_ADVANCE_OPTIONS = [
   { value: '365', label: '365 jours (1 an)' },
 ];
 
-const CANCELLATION_DEADLINE_OPTIONS = [
-  { value: '0', label: 'Jusqu\'au dernier moment' },
-  { value: '1', label: '1 heure avant' },
-  { value: '2', label: '2 heures avant' },
-  { value: '4', label: '4 heures avant' },
-  { value: '6', label: '6 heures avant' },
-  { value: '12', label: '12 heures avant' },
-  { value: '24', label: '24 heures avant (1 jour)' },
-  { value: '48', label: '48 heures avant (2 jours)' },
-  { value: '72', label: '72 heures avant (3 jours)' },
-];
-
 export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormProps) {
   const { provider, refreshProvider } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -54,8 +42,6 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
   const [formData, setFormData] = useState({
     minBookingNotice: 2,
     maxBookingAdvance: 60,
-    allowClientCancellation: true,
-    cancellationDeadline: 24,
   });
 
   // Initialize form with provider data
@@ -64,8 +50,6 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
       setFormData({
         minBookingNotice: provider.settings.minBookingNotice ?? 2,
         maxBookingAdvance: provider.settings.maxBookingAdvance ?? 60,
-        allowClientCancellation: provider.settings.allowClientCancellation ?? true,
-        cancellationDeadline: provider.settings.cancellationDeadline ?? 24,
       });
     }
   }, [provider]);
@@ -73,12 +57,6 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: parseInt(value, 10) }));
-    setError(null);
-    setSuccess(false);
-  };
-
-  const handleSwitchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, allowClientCancellation: e.target.checked }));
     setError(null);
     setSuccess(false);
   };
@@ -97,8 +75,9 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           ...provider.settings,
           minBookingNotice: formData.minBookingNotice,
           maxBookingAdvance: formData.maxBookingAdvance,
-          allowClientCancellation: formData.allowClientCancellation,
-          cancellationDeadline: formData.cancellationDeadline,
+          // Always allow cancellation (no deadline restriction)
+          allowClientCancellation: true,
+          cancellationDeadline: 0,
         },
       });
 
@@ -147,35 +126,6 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           options={MAX_BOOKING_ADVANCE_OPTIONS}
           hint="Jusqu'a combien de temps a l'avance un client peut reserver"
         />
-      </div>
-
-      {/* Allow Client Cancellation */}
-      <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <XCircle className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Autoriser les annulations par les clients
-            </span>
-          </div>
-          <Switch
-            checked={formData.allowClientCancellation}
-            onChange={handleSwitchChange}
-          />
-        </div>
-
-        {formData.allowClientCancellation && (
-          <div className="pl-6 border-l-2 border-gray-200 dark:border-gray-700">
-            <Select
-              label="Delai d'annulation"
-              name="cancellationDeadline"
-              value={formData.cancellationDeadline.toString()}
-              onChange={handleSelectChange}
-              options={CANCELLATION_DEADLINE_OPTIONS}
-              hint="Jusqu'a quand un client peut annuler"
-            />
-          </div>
-        )}
       </div>
 
       {/* Info Box */}

@@ -110,6 +110,12 @@ export default function CalendarPage() {
         if (activeLocations.length === 1) {
           setSelectedLocationId(activeLocations[0].id);
         }
+
+        // Set default member if only one (skip member selection)
+        const activeMembers = membersData.filter((m) => m.isActive);
+        if (activeMembers.length === 1) {
+          setSelectedMemberId(activeMembers[0].id);
+        }
       } catch (error) {
         console.error('[Calendar] Error loading initial data:', error);
       } finally {
@@ -290,7 +296,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0">
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
@@ -322,7 +328,7 @@ export default function CalendarPage() {
       />
 
       {/* Calendar View */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0">
         {loadingBookings && (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center z-10">
             <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -372,6 +378,7 @@ export default function CalendarPage() {
         }}
         booking={selectedBooking}
         onUpdate={handleBookingUpdate}
+        providerSlug={provider?.slug}
       />
 
       {/* Create Booking Modal */}

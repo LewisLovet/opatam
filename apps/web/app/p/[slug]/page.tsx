@@ -8,7 +8,49 @@ import {
   reviewRepository,
   availabilityRepository,
 } from '@booking-app/firebase';
+import type { WithId } from '@booking-app/firebase';
+import type { Availability, Member } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
+
+/**
+ * Calculate the next available date based on availabilities
+ * Returns the next date where at least one member has availability
+ */
+function calculateNextAvailableDate(
+  availabilities: WithId<Availability>[],
+  members: WithId<Member>[]
+): string | null {
+  // Get open days (days where at least one member is available)
+  const openDays = new Set<number>();
+
+  // Get default or first member
+  const defaultMember = members.find((m) => m.isDefault) || members[0];
+  if (!defaultMember) return null;
+
+  // Get availabilities for default member
+  const memberAvailabilities = availabilities.filter(
+    (a) => a.memberId === defaultMember.id && a.isOpen && a.slots.length > 0
+  );
+
+  if (memberAvailabilities.length === 0) return null;
+
+  memberAvailabilities.forEach((a) => openDays.add(a.dayOfWeek));
+
+  // Find next available date starting from today
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < 60; i++) { // Check up to 60 days ahead
+    const checkDate = new Date(today);
+    checkDate.setDate(checkDate.getDate() + i);
+
+    if (openDays.has(checkDate.getDay())) {
+      return checkDate.toISOString();
+    }
+  }
+
+  return null;
+}
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -70,6 +112,9 @@ export default async function ProviderPage({ params }: PageProps) {
   // Calculate min price from services
   const minPrice = services.length > 0 ? Math.min(...services.map((s) => s.price)) : null;
 
+  // Calculate next available date based on availabilities
+  const nextAvailableDate = calculateNextAvailableDate(availabilities, members);
+
   // Serialize dates for client component
   const serializedProvider = {
     ...provider,
@@ -119,6 +164,7 @@ export default async function ProviderPage({ params }: PageProps) {
       reviews={serializedReviews}
       availabilities={serializedAvailabilities}
       minPrice={minPrice}
+      nextAvailableDate={nextAvailableDate}
     />
   );
 }

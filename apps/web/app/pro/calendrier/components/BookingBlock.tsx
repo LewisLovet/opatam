@@ -1,7 +1,8 @@
 'use client';
 
-import type { Booking, BookingStatus } from '@booking-app/shared';
+import type { Booking } from '@booking-app/shared';
 import { Clock, User, Scissors } from 'lucide-react';
+import { SlotPopover, getVisualStatus, type VisualStatus } from './SlotPopover';
 
 type WithId<T> = { id: string } & T;
 
@@ -14,12 +15,35 @@ interface BookingBlockProps {
   compact?: boolean;
 }
 
-const statusColors: Record<BookingStatus, { bg: string; border: string; text: string; badge: string }> = {
-  pending: {
-    bg: 'bg-warning-50 dark:bg-warning-900/20',
-    border: 'border-warning-300 dark:border-warning-700',
-    text: 'text-warning-800 dark:text-warning-200',
-    badge: 'bg-warning-500',
+/**
+ * Visual styles based on temporal status (not just booking status)
+ * - past: Grey, reduced opacity
+ * - ongoing: Blue with glow effect
+ * - confirmed: Green
+ * - pending: Yellow/amber
+ * - cancelled: Red, strikethrough, 50% opacity
+ * - noshow: Red, 60% opacity
+ */
+const visualStatusStyles: Record<VisualStatus, {
+  bg: string;
+  border: string;
+  text: string;
+  badge: string;
+  extra?: string;
+}> = {
+  past: {
+    bg: 'bg-gray-100 dark:bg-gray-800/60',
+    border: 'border-gray-300 dark:border-gray-600',
+    text: 'text-gray-500 dark:text-gray-400',
+    badge: 'bg-gray-400',
+    extra: 'opacity-70',
+  },
+  ongoing: {
+    bg: 'bg-primary-50 dark:bg-primary-900/30',
+    border: 'border-primary-400 dark:border-primary-500',
+    text: 'text-primary-800 dark:text-primary-200',
+    badge: 'bg-primary-500',
+    extra: 'shadow-md shadow-primary-200 dark:shadow-primary-900/50 ring-1 ring-primary-200 dark:ring-primary-700',
   },
   confirmed: {
     bg: 'bg-success-50 dark:bg-success-900/20',
@@ -27,31 +51,34 @@ const statusColors: Record<BookingStatus, { bg: string; border: string; text: st
     text: 'text-success-800 dark:text-success-200',
     badge: 'bg-success-500',
   },
-  cancelled: {
-    bg: 'bg-gray-50 dark:bg-gray-800/50',
-    border: 'border-gray-300 dark:border-gray-600',
-    text: 'text-gray-500 dark:text-gray-400 line-through',
-    badge: 'bg-gray-400',
+  pending: {
+    bg: 'bg-warning-50 dark:bg-warning-900/20',
+    border: 'border-warning-400 dark:border-warning-600',
+    text: 'text-warning-800 dark:text-warning-200',
+    badge: 'bg-warning-500',
   },
-  completed: {
-    bg: 'bg-primary-50 dark:bg-primary-900/20',
-    border: 'border-primary-300 dark:border-primary-700',
-    text: 'text-primary-800 dark:text-primary-200',
-    badge: 'bg-primary-500',
+  cancelled: {
+    bg: 'bg-error-50/50 dark:bg-error-900/10',
+    border: 'border-error-300 dark:border-error-800',
+    text: 'text-error-600 dark:text-error-400 line-through',
+    badge: 'bg-error-400',
+    extra: 'opacity-50',
   },
   noshow: {
     bg: 'bg-error-50 dark:bg-error-900/20',
     border: 'border-error-300 dark:border-error-700',
-    text: 'text-error-800 dark:text-error-200',
+    text: 'text-error-700 dark:text-error-300',
     badge: 'bg-error-500',
+    extra: 'opacity-60',
   },
 };
 
-const statusLabels: Record<BookingStatus, string> = {
-  pending: 'En attente',
+const statusLabels: Record<VisualStatus, string> = {
+  past: 'Passe',
+  ongoing: 'En cours',
   confirmed: 'Confirme',
+  pending: 'En attente',
   cancelled: 'Annule',
-  completed: 'Termine',
   noshow: 'Absent',
 };
 
@@ -63,10 +90,13 @@ export function BookingBlock({
   showMemberName = false,
   compact = false,
 }: BookingBlockProps) {
-  const colors = statusColors[booking.status];
-  const minHeightForDetails = 40;
+  const visualStatus = getVisualStatus(booking);
+  const styles = visualStatusStyles[visualStatus];
+
+  // Height thresholds for showing different elements
+  const minHeightForClientName = 40;
   const minHeightForService = 60;
-  const minHeightForServiceCompact = 48;
+  const minHeightForClientCompact = 48;
 
   const formatTime = (date: Date | string) => {
     return new Date(date).toLocaleTimeString('fr-FR', {
@@ -83,43 +113,46 @@ export function BookingBlock({
   const startTime = formatTime(booking.datetime);
   const endTime = formatTime(booking.endDatetime);
 
-  return (
+  const blockContent = (
     <button
       onClick={handleClick}
       className={`
         absolute left-1 right-1 rounded-lg border overflow-hidden
         cursor-pointer transition-all hover:shadow-md hover:z-10
-        ${colors.bg} ${colors.border}
+        ${styles.bg} ${styles.border} ${styles.extra || ''}
       `}
       style={{ top: `${top}px`, height: `${height}px`, minHeight: '24px' }}
-      title={`${startTime} - ${endTime} | ${booking.serviceName} | ${booking.clientInfo.name}`}
+      title={`${startTime} - ${endTime} | ${booking.clientInfo.name} | ${booking.serviceName}`}
     >
-      <div className={`h-full p-1.5 sm:p-2 flex flex-col ${colors.text}`}>
+      <div className={`h-full p-1.5 sm:p-2 flex flex-col ${styles.text}`}>
         {/* Time range - always visible */}
         <div className="flex items-center gap-1 text-xs font-medium">
           <Clock className="w-3 h-3 flex-shrink-0" />
           <span className="truncate">{startTime} - {endTime}</span>
           {/* Status badge */}
-          <span className={`ml-auto w-2 h-2 rounded-full flex-shrink-0 ${colors.badge}`} title={statusLabels[booking.status]} />
+          <span
+            className={`ml-auto w-2 h-2 rounded-full flex-shrink-0 ${styles.badge}`}
+            title={statusLabels[visualStatus]}
+          />
         </div>
 
-        {/* Compact mode: show service name if enough space */}
-        {compact && height >= minHeightForServiceCompact && (
-          <div className="flex items-center gap-1 text-xs mt-0.5 truncate opacity-80">
-            <Scissors className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate">{booking.serviceName}</span>
-          </div>
-        )}
-
-        {/* Client name - if enough space (non-compact) */}
-        {height >= minHeightForDetails && !compact && (
+        {/* Compact mode: show client name if enough space */}
+        {compact && height >= minHeightForClientCompact && (
           <div className="flex items-center gap-1 text-xs mt-0.5 truncate">
             <User className="w-3 h-3 flex-shrink-0" />
             <span className="truncate">{booking.clientInfo.name}</span>
           </div>
         )}
 
-        {/* Service name - if even more space (non-compact) */}
+        {/* Client name - priority, shown if enough space (non-compact) */}
+        {height >= minHeightForClientName && !compact && (
+          <div className="flex items-center gap-1 text-xs mt-0.5 truncate">
+            <User className="w-3 h-3 flex-shrink-0" />
+            <span className="truncate">{booking.clientInfo.name}</span>
+          </div>
+        )}
+
+        {/* Service name - secondary, shown only if lots of space (non-compact) */}
         {height >= minHeightForService && !compact && (
           <div className="flex items-center gap-1 text-xs mt-0.5 truncate opacity-75">
             <Scissors className="w-3 h-3 flex-shrink-0" />
@@ -128,13 +161,20 @@ export function BookingBlock({
         )}
 
         {/* Member name - for week view with all members */}
-        {showMemberName && booking.memberName && height >= minHeightForDetails && (
+        {showMemberName && booking.memberName && height >= minHeightForClientName && (
           <div className="text-xs mt-auto opacity-75 truncate">
             {booking.memberName}
           </div>
         )}
       </div>
     </button>
+  );
+
+  // Wrap with tooltip
+  return (
+    <SlotPopover booking={booking}>
+      {blockContent}
+    </SlotPopover>
   );
 }
 
@@ -148,7 +188,8 @@ export function BookingBlockCompact({
   booking: WithId<Booking>;
   onClick: () => void;
 }) {
-  const colors = statusColors[booking.status];
+  const visualStatus = getVisualStatus(booking);
+  const styles = visualStatusStyles[visualStatus];
 
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString('fr-FR', {
@@ -163,18 +204,20 @@ export function BookingBlockCompact({
   };
 
   return (
-    <button
-      onClick={handleClick}
-      className={`
-        w-full text-left px-2 py-1 rounded border text-xs
-        truncate transition-colors hover:brightness-95
-        ${colors.bg} ${colors.border} ${colors.text}
-      `}
-      title={`${formatTime(booking.datetime)} - ${booking.clientInfo.name} - ${booking.serviceName}`}
-    >
-      <span className="font-medium">{formatTime(booking.datetime)}</span>
-      <span className="mx-1">-</span>
-      <span className="truncate">{booking.clientInfo.name}</span>
-    </button>
+    <SlotPopover booking={booking}>
+      <button
+        onClick={handleClick}
+        className={`
+          w-full text-left px-2 py-1 rounded border text-xs
+          truncate transition-colors hover:brightness-95
+          ${styles.bg} ${styles.border} ${styles.text} ${styles.extra || ''}
+        `}
+        title={`${formatTime(booking.datetime)} - ${booking.clientInfo.name} - ${booking.serviceName}`}
+      >
+        <span className="font-medium">{formatTime(booking.datetime)}</span>
+        <span className="mx-1">-</span>
+        <span className="truncate">{booking.clientInfo.name}</span>
+      </button>
+    </SlotPopover>
   );
 }

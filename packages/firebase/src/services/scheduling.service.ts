@@ -34,6 +34,7 @@ interface SlotCheckParams {
   memberId: string; // Obligatoire maintenant
   datetime: Date;
   duration: number;
+  excludeBookingId?: string; // Pour reschedule: exclure le booking actuel de la vérification
 }
 
 interface TimeSlotWithDate {
@@ -434,7 +435,7 @@ export class SchedulingService {
    * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
    */
   async isSlotAvailable(params: SlotCheckParams): Promise<boolean> {
-    const { providerId, memberId, datetime, duration } = params;
+    const { providerId, memberId, datetime, duration, excludeBookingId } = params;
 
     const endDatetime = new Date(datetime.getTime() + duration * 60 * 1000);
     const dayOfWeek = datetime.getDay();
@@ -483,6 +484,7 @@ export class SchedulingService {
     const existingBookings = await bookingRepository.getUpcoming(datetime, endDatetime);
     const hasConflict = existingBookings.some(
       (b) =>
+        b.id !== excludeBookingId && // Exclure le booking actuel (pour reschedule)
         b.providerId === providerId &&
         b.memberId === memberId &&
         (b.status === 'confirmed' || b.status === 'pending') &&

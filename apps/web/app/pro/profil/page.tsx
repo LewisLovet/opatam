@@ -31,7 +31,7 @@ export default function ProfilPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
@@ -56,10 +56,10 @@ export default function ProfilPage() {
 
         {/* Infos Tab */}
         <TabsContent value="infos" className="mt-6">
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-3 gap-6 min-w-0">
             {/* Main Form */}
-            <div className="lg:col-span-2">
-              <Card>
+            <div className="lg:col-span-2 min-w-0">
+              <Card className="min-w-0 overflow-hidden">
                 <CardHeader>
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                     Informations generales
@@ -160,15 +160,15 @@ export default function ProfilPage() {
 
       {/* Preview Link */}
       {provider?.slug && (
-        <div className="fixed bottom-6 right-6 z-10">
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-10">
           <a
             href={`/p/${provider.slug}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-full shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-full shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
           >
             <Eye className="w-4 h-4" />
-            <span className="text-sm font-medium">Apercu</span>
+            <span className="text-sm font-medium hidden sm:inline">Apercu</span>
           </a>
         </div>
       )}

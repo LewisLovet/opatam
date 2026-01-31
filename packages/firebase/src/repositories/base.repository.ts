@@ -12,7 +12,10 @@ import {
   QueryConstraint,
   serverTimestamp,
   Timestamp,
+  startAfter,
+  limit as firestoreLimit,
   type DocumentData,
+  type DocumentSnapshot,
   type Firestore,
 } from 'firebase/firestore';
 import { getFirebaseApp } from '../lib/config';
@@ -97,6 +100,11 @@ export function convertTimestamps<T>(data: DocumentData): T {
  * Entity with ID
  */
 export type WithId<T> = T & { id: string };
+
+/**
+ * Re-export DocumentSnapshot for pagination cursors
+ */
+export type { DocumentSnapshot };
 
 /**
  * Abstract base repository for Firestore collections
@@ -196,6 +204,40 @@ export abstract class BaseRepository<T> {
       id: docSnap.id,
       ...convertTimestamps<T>(docSnap.data()),
     }));
+  }
+
+  /**
+   * Paginated result type
+   */
+  /**
+   * Query documents with pagination support
+   * Returns results and a cursor for the next page
+   */
+  async queryPaginated(
+    constraints: QueryConstraint[],
+    pageSize: number,
+    cursor?: DocumentSnapshot
+  ): Promise<{ items: WithId<T>[]; lastDoc: DocumentSnapshot | null; hasMore: boolean }> {
+    const paginatedConstraints = [...constraints, firestoreLimit(pageSize + 1)];
+
+    if (cursor) {
+      paginatedConstraints.push(startAfter(cursor));
+    }
+
+    const q = query(this.getCollectionRef(), ...paginatedConstraints);
+    const querySnapshot = await getDocs(q);
+    firestoreTracker.trackReadMultiple(this.collectionName, querySnapshot.size);
+
+    const docs = querySnapshot.docs;
+    const hasMore = docs.length > pageSize;
+    const items = docs.slice(0, pageSize).map((docSnap) => ({
+      id: docSnap.id,
+      ...convertTimestamps<T>(docSnap.data()),
+    }));
+
+    const lastDoc = items.length > 0 ? docs[items.length - 1] : null;
+
+    return { items, lastDoc, hasMore };
   }
 
   /**

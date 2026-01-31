@@ -156,16 +156,27 @@ export function normalizeCity(city: string): string {
  * Generate search tokens from a business name
  * - Splits into words
  * - Normalizes each word (lowercase, no accents)
- * - Filters out empty strings and words < 2 chars
+ * - Generates all prefixes of each word (min 3 chars) for prefix search
  * @param businessName - Business name to tokenize
- * @returns Array of normalized search tokens
+ * @returns Array of normalized search tokens including prefixes
  */
 export function generateSearchTokens(businessName: string): string[] {
-  return businessName
+  const words = businessName
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // Remove accents
     .split(/\s+/) // Split on whitespace
     .map((word) => word.replace(/[^a-z0-9]/g, '')) // Keep only alphanumeric
-    .filter((word) => word.length >= 2); // Filter short words
+    .filter((word) => word.length >= 3); // Filter short words
+
+  const tokens = new Set<string>();
+
+  for (const word of words) {
+    // Add all prefixes from 3 chars to full word
+    for (let i = 3; i <= word.length; i++) {
+      tokens.add(word.slice(0, i));
+    }
+  }
+
+  return Array.from(tokens);
 }

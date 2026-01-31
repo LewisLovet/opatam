@@ -198,16 +198,10 @@ export default function ReservationsPage() {
     }
   };
 
-  const handleCompleteBooking = async (booking: WithId<Booking>) => {
-    if (!user) return;
-    try {
-      await bookingService.completeBooking(booking.id, user.id);
-      toast.success('Réservation marquée comme terminée');
-      loadBookings();
-    } catch (error) {
-      console.error('Error completing booking:', error);
-      toast.error('Erreur lors de la mise à jour');
-    }
+  // Note: completeBooking n'existe pas encore dans le service
+  // Pour l'instant, on utilise une fonction vide
+  const handleCompleteBooking = async (_booking: WithId<Booking>) => {
+    toast.info('Fonctionnalité "Terminer" en cours de développement');
   };
 
   const handleNoShowBooking = async (booking: WithId<Booking>) => {
@@ -280,9 +274,10 @@ export default function ReservationsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Page {currentPage} sur {totalPages} ({totalCount} résultats)
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+              <span className="hidden sm:inline">Page </span>{currentPage}/{totalPages}
+              <span className="hidden sm:inline"> ({totalCount} résultats)</span>
             </p>
             <div className="flex items-center gap-2">
               <button

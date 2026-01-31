@@ -1,7 +1,13 @@
-import { where, limit, orderBy, type QueryConstraint } from 'firebase/firestore';
+import { where, limit, orderBy, type QueryConstraint, type DocumentSnapshot } from 'firebase/firestore';
 import type { Provider } from '@booking-app/shared';
 import { normalizeCity } from '@booking-app/shared';
 import { BaseRepository, type WithId } from './base.repository';
+
+export interface PaginatedResult<T> {
+  items: WithId<T>[];
+  lastDoc: DocumentSnapshot | null;
+  hasMore: boolean;
+}
 
 export interface ProviderSearchFilters {
   category?: string;
@@ -173,6 +179,74 @@ export class ProviderRepository extends BaseRepository<Provider> {
     constraints.push(orderBy('rating.average', 'desc'));
 
     return this.query(constraints);
+  }
+
+  /**
+   * Search providers with pagination support
+   * Returns paginated results with cursor for infinite scroll
+   */
+  async searchProvidersPaginated(
+    filters: ProviderSearchFilters,
+    pageSize: number = 10,
+    cursor?: DocumentSnapshot
+  ): Promise<PaginatedResult<Provider>> {
+    const constraints: QueryConstraint[] = [
+      where('isPublished', '==', true),
+    ];
+
+    // Filter by category if provided
+    if (filters.category) {
+      constraints.push(where('category', '==', filters.category));
+    }
+
+    // Normalize search query token
+    const searchToken = filters.query && filters.query.length >= 3
+      ? filters.query
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]/g, '')
+      : null;
+
+    // Note: Firestore can only have ONE array-contains per query
+    // If we have both city and search query, we need to fetch more and filter client-side
+    if (filters.city && searchToken) {
+      // Use searchTokens for query, filter city client-side
+      // Fetch more to compensate for client-side filtering
+      constraints.push(where('searchTokens', 'array-contains', searchToken));
+      constraints.push(orderBy('rating.average', 'desc'));
+
+      // Fetch extra to have enough after filtering
+      const fetchSize = pageSize * 3;
+      const result = await this.queryPaginated(constraints, fetchSize, cursor);
+      const normalizedCity = normalizeCity(filters.city);
+      const filteredItems = result.items.filter((provider) =>
+        provider.cities.includes(normalizedCity)
+      );
+
+      // Take only pageSize items
+      const items = filteredItems.slice(0, pageSize);
+      // hasMore is true if we got more filtered results OR if there are more unfiltered results
+      const hasMore = filteredItems.length > pageSize || result.hasMore;
+
+      return { items, lastDoc: result.lastDoc, hasMore };
+    }
+
+    // Filter by city if provided (uses array-contains on normalized cities)
+    if (filters.city) {
+      const normalizedCity = normalizeCity(filters.city);
+      constraints.push(where('cities', 'array-contains', normalizedCity));
+    }
+
+    // If query provided, use array-contains on searchTokens
+    if (searchToken) {
+      constraints.push(where('searchTokens', 'array-contains', searchToken));
+    }
+
+    // Order by rating
+    constraints.push(orderBy('rating.average', 'desc'));
+
+    return this.queryPaginated(constraints, pageSize, cursor);
   }
 }
 

@@ -1,7 +1,5 @@
 import {
   getAuth,
-  initializeAuth,
-  getReactNativePersistence,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
@@ -23,26 +21,9 @@ import { app } from './config';
 
 /**
  * Firebase Auth instance
- * Uses AsyncStorage for persistence on React Native
+ * Note: React Native persistence is handled separately in the mobile app
  */
 function getAuthInstance(): Auth {
-  // Check if we're in React Native environment
-  const isReactNative = typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
-
-  if (isReactNative) {
-    // Dynamically require AsyncStorage for React Native
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      return initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage),
-      });
-    } catch (e) {
-      console.warn('AsyncStorage not available, falling back to default auth');
-      return getAuth(app);
-    }
-  }
-
   return getAuth(app);
 }
 

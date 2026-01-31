@@ -1,5 +1,6 @@
 'use client';
 
+import { Calendar } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { RatingDisplay } from '@/components/review/RatingDisplay';
@@ -18,9 +19,44 @@ interface ProviderHeroProps {
     };
     isVerified: boolean;
   };
+  nextAvailableDate: string | null;
 }
 
-export function ProviderHero({ provider }: ProviderHeroProps) {
+/**
+ * Format the next available date for display
+ * Returns: "Aujourd'hui", "Demain", or "Lun. 3 février"
+ */
+function formatNextAvailableDate(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (dateOnly.getTime() === today.getTime()) {
+    return "Aujourd'hui";
+  }
+
+  if (dateOnly.getTime() === tomorrow.getTime()) {
+    return 'Demain';
+  }
+
+  // Format as "Lun. 3 février"
+  const days = ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'];
+  const months = [
+    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+  ];
+
+  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+}
+
+export function ProviderHero({ provider, nextAvailableDate }: ProviderHeroProps) {
+  const formattedDate = formatNextAvailableDate(nextAvailableDate);
   return (
     <div className="overflow-hidden">
       {/* Cover Photo */}
@@ -87,6 +123,16 @@ export function ProviderHero({ provider }: ProviderHeroProps) {
                 <p className="mt-3 text-gray-600 dark:text-gray-400 line-clamp-1">
                   {provider.description}
                 </p>
+              )}
+
+              {/* Next Available Date Badge */}
+              {formattedDate && (
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
+                  <Calendar className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                  <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                    Prochaine dispo : {formattedDate}
+                  </span>
+                </div>
               )}
             </div>
           </div>

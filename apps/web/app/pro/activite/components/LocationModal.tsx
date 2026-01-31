@@ -211,7 +211,7 @@ export function LocationModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-lg">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden max-h-[inherit]">
         <ModalHeader
           title={isEditing ? 'Modifier le lieu' : 'Nouveau lieu'}
           onClose={onClose}

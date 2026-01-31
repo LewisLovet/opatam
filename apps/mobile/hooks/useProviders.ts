@@ -1,6 +1,6 @@
 /**
  * useProviders Hook
- * Fetch and search providers using the cache context
+ * Fetch and search providers using the cache context with pagination support
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -12,18 +12,21 @@ export interface UseProvidersOptions {
   category?: string | null;
   city?: string | null;
   query?: string | null;
-  limit?: number;
+  pageSize?: number;
 }
 
 export interface UseProvidersResult {
   providers: WithId<Provider>[];
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  loadMore: () => Promise<void>;
 }
 
 export function useProviders(options: UseProvidersOptions = {}): UseProvidersResult {
-  const { searchProviders } = useProvidersCache();
+  const { searchProviders, loadMoreProviders, state } = useProvidersCache();
   const [providers, setProviders] = useState<WithId<Provider>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +35,7 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
 
-  const { category = null, city = null, query = null, limit = 20 } = options;
+  const { category = null, city = null, query = null, pageSize = 10 } = options;
 
   // Only search if query is null/empty or has at least 3 characters
   const effectiveQuery = query && query.length >= 3 ? query : null;
@@ -54,7 +57,8 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
 
       try {
         const result = await searchProviders(
-          { category, city, query: effectiveQuery, limit },
+          { category, city, query: effectiveQuery },
+          pageSize,
           forceRefresh
         );
 
@@ -75,7 +79,7 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
         }
       }
     },
-    [searchProviders, category, city, query, limit]
+    [searchProviders, category, city, query, pageSize]
   );
 
   // Load on mount and when filters change
@@ -86,24 +90,50 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
     return () => {
       mountedRef.current = false;
     };
-  }, [category, city, effectiveQuery, limit]); // Don't include loadProviders to avoid infinite loop
+  }, [category, city, effectiveQuery, pageSize]); // Don't include loadProviders to avoid infinite loop
+
+  // Sync local state with cache state
+  useEffect(() => {
+    setProviders(state.searchResults);
+  }, [state.searchResults]);
 
   const refresh = useCallback(async () => {
     await loadProviders(true);
   }, [loadProviders]);
 
+  const loadMore = useCallback(async () => {
+    if (!state.hasMore || state.loadingMore) return;
+
+    try {
+      await loadMoreProviders();
+    } catch (err) {
+      console.error('Error loading more providers:', err);
+    }
+  }, [loadMoreProviders, state.hasMore, state.loadingMore]);
+
   return {
     providers,
     loading,
+    loadingMore: state.loadingMore,
+    hasMore: state.hasMore,
     error,
     refresh,
+    loadMore,
   };
+}
+
+export interface UseTopProvidersResult {
+  providers: WithId<Provider>[];
+  loading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
 }
 
 /**
  * Hook for fetching top rated providers (suggestions)
+ * No pagination needed for top providers
  */
-export function useTopProviders(limit: number = 5): UseProvidersResult {
+export function useTopProviders(limit: number = 5): UseTopProvidersResult {
   const { loadTopProviders } = useProvidersCache();
   const [providers, setProviders] = useState<WithId<Provider>[]>([]);
   const [loading, setLoading] = useState(true);

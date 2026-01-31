@@ -18,6 +18,7 @@ import {
   Loader2,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   User,
   MapPin,
   Calendar,
@@ -26,9 +27,79 @@ import {
   AlertTriangle,
   Check,
   Users,
+  Sun,
+  Sunset,
+  Moon,
 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
+
+// Period configuration for grouping slots
+type Period = 'morning' | 'afternoon' | 'evening';
+
+interface PeriodConfig {
+  key: Period;
+  label: string;
+  icon: typeof Sun;
+  bgColor: string;
+  textColor: string;
+  iconColor: string;
+}
+
+const PERIODS_CONFIG: PeriodConfig[] = [
+  {
+    key: 'morning',
+    label: 'Matin',
+    icon: Sun,
+    bgColor: 'bg-amber-50 dark:bg-amber-900/20',
+    textColor: 'text-amber-800 dark:text-amber-200',
+    iconColor: 'text-amber-500',
+  },
+  {
+    key: 'afternoon',
+    label: 'Après-midi',
+    icon: Sunset,
+    bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+    textColor: 'text-orange-800 dark:text-orange-200',
+    iconColor: 'text-orange-500',
+  },
+  {
+    key: 'evening',
+    label: 'Soir',
+    icon: Moon,
+    bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
+    textColor: 'text-indigo-800 dark:text-indigo-200',
+    iconColor: 'text-indigo-500',
+  },
+];
+
+// Group slots by period
+interface GroupedSlots {
+  morning: SlotWithMembers[];
+  afternoon: SlotWithMembers[];
+  evening: SlotWithMembers[];
+}
+
+function groupSlotsByPeriod(slots: SlotWithMembers[]): GroupedSlots {
+  const grouped: GroupedSlots = {
+    morning: [],
+    afternoon: [],
+    evening: [],
+  };
+
+  for (const slot of slots) {
+    const hour = parseInt(slot.time.split(':')[0], 10);
+    if (hour >= 0 && hour < 12) {
+      grouped.morning.push(slot);
+    } else if (hour >= 12 && hour < 18) {
+      grouped.afternoon.push(slot);
+    } else {
+      grouped.evening.push(slot);
+    }
+  }
+
+  return grouped;
+}
 
 interface CreateBookingModalProps {
   isOpen: boolean;
@@ -95,6 +166,24 @@ export function CreateBookingModal({
     clientPhone: '',
     notes: '',
   });
+
+  // Expanded sections state for time slot periods
+  const [expandedSections, setExpandedSections] = useState<Record<Period, boolean>>({
+    morning: true,
+    afternoon: false,
+    evening: false,
+  });
+
+  // Group available slots by period
+  const groupedSlots = useMemo(() => groupSlotsByPeriod(availableSlots), [availableSlots]);
+
+  // Toggle section expand/collapse
+  const toggleSection = (period: Period) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [period]: !prev[period],
+    }));
+  };
 
   // Reset form when modal opens
   useEffect(() => {
@@ -534,38 +623,77 @@ export function CreateBookingModal({
                 </p>
               </div>
 
-              {/* Time slots */}
+              {/* Time slots grouped by period */}
               {loadingSlots ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
                   <span className="ml-2 text-gray-500">Chargement des créneaux...</span>
                 </div>
               ) : availableSlots.length > 0 ? (
-                <div className="grid grid-cols-3 gap-2 max-h-[240px] overflow-y-auto">
-                  {availableSlots.map((slot) => (
-                    <button
-                      key={slot.time}
-                      type="button"
-                      onClick={() => handleSelectSlot(slot)}
-                      className={`
-                        p-2 rounded-lg border text-center transition-all
-                        ${formData.time === slot.time
-                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600'}
-                      `}
-                    >
-                      <span className="block font-medium text-gray-900 dark:text-white">
-                        {slot.label}
-                      </span>
-                      {isTeamPlan && slot.memberNames.length > 0 && (
-                        <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                          {slot.memberNames.length === 1
-                            ? slot.memberNames[0]
-                            : `${slot.memberNames.length} dispos`}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                  {PERIODS_CONFIG.map((period) => {
+                    const periodSlots = groupedSlots[period.key];
+                    if (periodSlots.length === 0) return null;
+
+                    const Icon = period.icon;
+                    const isExpanded = expandedSections[period.key];
+                    const hasSelectedSlot = periodSlots.some(s => s.time === formData.time);
+
+                    return (
+                      <div key={period.key} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        {/* Section header */}
+                        <button
+                          type="button"
+                          onClick={() => toggleSection(period.key)}
+                          className={`
+                            w-full flex items-center justify-between px-3 py-2.5 transition-colors
+                            ${period.bgColor}
+                          `}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon className={`w-4 h-4 ${period.iconColor}`} />
+                            <span className={`font-medium text-sm ${period.textColor}`}>
+                              {period.label}
+                            </span>
+                            <span className={`text-xs ${period.textColor} opacity-75`}>
+                              ({periodSlots.length} créneaux)
+                            </span>
+                            {hasSelectedSlot && !isExpanded && (
+                              <span className="ml-2 px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full">
+                                {formData.time}
+                              </span>
+                            )}
+                          </div>
+                          <ChevronDown
+                            className={`w-4 h-4 ${period.textColor} transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+
+                        {/* Section content */}
+                        {isExpanded && (
+                          <div className="p-2 bg-white dark:bg-gray-800 grid grid-cols-4 gap-1.5">
+                            {periodSlots.map((slot) => (
+                              <button
+                                key={slot.time}
+                                type="button"
+                                onClick={() => handleSelectSlot(slot)}
+                                className={`
+                                  px-2 py-1.5 rounded-md border text-center transition-all text-sm
+                                  ${formData.time === slot.time
+                                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 ring-1 ring-primary-500'
+                                    : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600'}
+                                `}
+                              >
+                                <span className="block font-medium text-gray-900 dark:text-white">
+                                  {slot.label}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="p-4 bg-warning-50 dark:bg-warning-900/20 text-warning-700 dark:text-warning-300 rounded-lg text-center">
@@ -778,7 +906,13 @@ export function CreateBookingModal({
               <ChevronLeft className="w-4 h-4 mr-1" />
               Retour
             </Button>
-            {/* No next button - clicking a slot advances */}
+            {/* Show next button when a slot is already selected */}
+            {formData.time && (
+              <Button type="button" onClick={() => handleSelectSlot(availableSlots.find(s => s.time === formData.time)!)}>
+                Suivant
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
           </>
         )}
 
@@ -788,7 +922,13 @@ export function CreateBookingModal({
               <ChevronLeft className="w-4 h-4 mr-1" />
               Retour
             </Button>
-            {/* No next button - clicking a member advances */}
+            {/* Show next button when a member is already selected */}
+            {formData.memberId && (
+              <Button type="button" onClick={() => handleSelectMember(formData.memberId)}>
+                Suivant
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
           </>
         )}
 

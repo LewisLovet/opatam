@@ -267,17 +267,6 @@ export default function BookingsServiceTestPage() {
       };
     });
 
-  const handleCompleteBooking = () =>
-    executeAction('COMPLETE BOOKING', async () => {
-      if (!bookingId) throw new Error('Booking ID requis');
-      await bookingService.completeBooking(bookingId, providerId);
-      const booking = await bookingRepository.getById(bookingId);
-      return {
-        message: 'Reservation terminee',
-        status: booking?.status,
-      };
-    });
-
   const handleMarkNoShow = () =>
     executeAction('MARK NO SHOW', async () => {
       if (!bookingId) throw new Error('Booking ID requis');
@@ -738,14 +727,6 @@ export default function BookingsServiceTestPage() {
               disabled={!bookingId}
             >
               Confirmer
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleCompleteBooking}
-              loading={loading && lastAction === 'COMPLETE BOOKING'}
-              disabled={!bookingId}
-            >
-              Terminer
             </Button>
             <Button
               variant="outline"

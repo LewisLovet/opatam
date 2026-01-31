@@ -385,6 +385,82 @@ export class BookingService {
       reviewRequestSentAt: new Date(),
     });
   }
+
+  /**
+   * Reschedule a booking to a new datetime
+   * Returns the old datetime for email notification purposes
+   */
+  async rescheduleBooking(
+    bookingId: string,
+    newDatetime: Date,
+    adminUserId: string
+  ): Promise<{ oldDatetime: Date; newDatetime: Date; booking: WithId<Booking> }> {
+    const booking = await bookingRepository.getById(bookingId);
+    if (!booking) {
+      throw new Error('Réservation non trouvée');
+    }
+
+    // Verify admin has access to this provider
+    await this.verifyProviderAccess(booking.providerId, adminUserId);
+
+    // Cannot reschedule cancelled or noshow bookings
+    if (booking.status === 'cancelled') {
+      throw new Error('Impossible de reprogrammer une réservation annulée');
+    }
+    if (booking.status === 'noshow') {
+      throw new Error('Impossible de reprogrammer une réservation marquée comme absence');
+    }
+
+    // Cannot reschedule to the past
+    if (newDatetime < new Date()) {
+      throw new Error('Impossible de reprogrammer vers une date passée');
+    }
+
+    // Get service to calculate total duration
+    const service = await serviceRepository.getById(booking.providerId, booking.serviceId);
+    if (!service) {
+      throw new Error('Prestation non trouvée');
+    }
+
+    const totalDuration = service.duration + service.bufferTime;
+
+    // Check if new slot is available (excluding current booking)
+    const isAvailable = await schedulingService.isSlotAvailable({
+      providerId: booking.providerId,
+      memberId: booking.memberId as string,
+      datetime: newDatetime,
+      duration: totalDuration,
+      excludeBookingId: bookingId,
+    });
+
+    if (!isAvailable) {
+      throw new Error('Ce créneau n\'est plus disponible');
+    }
+
+    // Calculate new end datetime
+    const newEndDatetime = new Date(newDatetime.getTime() + booking.duration * 60 * 1000);
+
+    // Store old datetime for email
+    const oldDatetime = booking.datetime;
+
+    // Update booking
+    await bookingRepository.update(bookingId, {
+      datetime: newDatetime,
+      endDatetime: newEndDatetime,
+    });
+
+    // Get updated booking
+    const updatedBooking = await bookingRepository.getById(bookingId);
+    if (!updatedBooking) {
+      throw new Error('Erreur lors de la mise à jour de la réservation');
+    }
+
+    return {
+      oldDatetime,
+      newDatetime,
+      booking: updatedBooking,
+    };
+  }
 }
 
 // Singleton instance

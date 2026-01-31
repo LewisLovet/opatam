@@ -15,6 +15,7 @@ export * from './CategoryCard';
 export * from './CitySelect';
 export * from './EmptyState';
 export * from './ScreenHeader';
+export * from './SocialLinks';
 
 // Lot 2 - Services
 export * from './ServiceCard';

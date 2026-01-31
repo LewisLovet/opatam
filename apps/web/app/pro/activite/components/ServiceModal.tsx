@@ -218,7 +218,7 @@ export function ServiceModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-xl">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden max-h-[inherit]">
         <ModalHeader
           title={isEditing ? 'Modifier la prestation' : 'Nouvelle prestation'}
           onClose={onClose}

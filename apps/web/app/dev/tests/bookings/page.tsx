@@ -96,6 +96,7 @@ export default function BookingsTestPage() {
         cancelReason: null,
         cancelToken: generateCancelToken(),
         remindersSent: [],
+        reviewRequestSentAt: null,
       });
       return { id, message: 'Reservation creee avec succes' };
     });

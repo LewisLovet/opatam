@@ -1,9 +1,97 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState, useCallback } from 'react';
+import { Plus } from 'lucide-react';
 import type { Booking, Member, Availability, BlockedSlot } from '@booking-app/shared';
 import { TimeGrid, calculateBlockPosition, calculatePositionFromTimeString, getTimeFromPosition } from './TimeGrid';
 import { BookingBlock } from './BookingBlock';
+import { PastTimeOverlay, BlockedSlotZone } from './UnavailableZone';
+import { NowIndicator } from './NowIndicator';
+
+// Component for availability slot with hover indicator at mouse position
+function AvailabilitySlotWithHover({
+  top,
+  height,
+  slotHeight,
+  date,
+  slotStartHour,
+}: {
+  top: number;
+  height: number;
+  slotHeight: number;
+  date: Date;
+  slotStartHour: number; // Hour when this availability slot starts (e.g., 9 for 9:00)
+}) {
+  const [hoverY, setHoverY] = useState<number | null>(null);
+
+  // Check if a specific time slot is in the past
+  const isSlotInPast = useCallback((yPosition: number) => {
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const slotDate = new Date(date);
+    slotDate.setHours(0, 0, 0, 0);
+
+    // If the day is in the past, all slots are past
+    if (slotDate < today) return true;
+
+    // If the day is in the future, no slots are past
+    if (slotDate > today) return false;
+
+    // Same day - check the time
+    // Calculate the hour from the Y position within this availability slot
+    const hoursFromSlotStart = yPosition / slotHeight;
+    const absoluteHour = slotStartHour + hoursFromSlotStart;
+    const slotHour = Math.floor(absoluteHour);
+    const slotMinutes = (absoluteHour - slotHour) * 60;
+
+    const slotTime = new Date(date);
+    slotTime.setHours(slotHour, slotMinutes, 0, 0);
+
+    return slotTime < now;
+  }, [date, slotHeight, slotStartHour]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    // Snap to 30-minute intervals
+    const snappedY = Math.floor(y / (slotHeight / 2)) * (slotHeight / 2);
+
+    // Only show indicator if slot is not in the past
+    if (!isSlotInPast(snappedY)) {
+      setHoverY(snappedY);
+    } else {
+      setHoverY(null);
+    }
+  }, [slotHeight, isSlotInPast]);
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverY(null);
+  }, []);
+
+  return (
+    <div
+      className="absolute left-0 right-0 bg-success-50 dark:bg-success-900/20 hover:bg-success-100 dark:hover:bg-success-900/40 transition-colors"
+      style={{ top: `${top}px`, height: `${height}px` }}
+      title="Cliquer pour créer un RDV"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Hover indicator at mouse position */}
+      {hoverY !== null && (
+        <div
+          className="absolute left-0 right-0 flex items-center justify-center pointer-events-none transition-all duration-75"
+          style={{ top: `${hoverY}px`, height: `${slotHeight / 2}px` }}
+        >
+          <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center shadow-sm">
+            <Plus className="w-5 h-5 text-white" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type WithId<T> = { id: string } & T;
 
@@ -183,7 +271,7 @@ function DayColumn({
         className={`absolute inset-0 ${isClosed ? 'bg-gray-100 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-900'}`}
       />
 
-      {/* Availability slots background - green for open hours */}
+      {/* Availability slots background - green for open hours with hover effect */}
       {availability?.isOpen && availability.slots.map((slot, idx) => {
         const { top, height } = calculatePositionFromTimeString(
           slot.start,
@@ -191,11 +279,16 @@ function DayColumn({
           START_HOUR,
           SLOT_HEIGHT
         );
+        // Parse slot start hour (e.g., "09:00" -> 9)
+        const slotStartHour = parseInt(slot.start.split(':')[0], 10);
         return (
-          <div
+          <AvailabilitySlotWithHover
             key={idx}
-            className="absolute left-0 right-0 bg-success-50 dark:bg-success-900/20"
-            style={{ top: `${top}px`, height: `${height}px` }}
+            top={top}
+            height={height}
+            slotHeight={SLOT_HEIGHT}
+            date={date}
+            slotStartHour={slotStartHour}
           />
         );
       })}
@@ -268,18 +361,22 @@ function DayColumn({
         }
 
         return (
-          <div
+          <BlockedSlotZone
             key={blocked.id}
-            className="absolute left-0 right-0 bg-error-50/80 dark:bg-error-900/30"
-            style={{
-              top: `${top}px`,
-              height: `${height}px`,
-              backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(239, 68, 68, 0.15) 4px, rgba(239, 68, 68, 0.15) 8px)',
-            }}
-            title={blocked.reason || 'Bloqué'}
+            top={top}
+            height={height}
+            reason={blocked.reason ?? undefined}
+            isAllDay={blocked.allDay}
           />
         );
       })}
+
+      {/* Past time overlay for today */}
+      <PastTimeOverlay
+        date={date}
+        startHour={START_HOUR}
+        slotHeight={SLOT_HEIGHT}
+      />
 
       {/* Hour lines */}
       {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => (
@@ -320,36 +417,21 @@ function DayColumn({
       })}
 
       {/* Current time indicator */}
-      <CurrentTimeIndicator date={date} />
+      <NowIndicator
+        startHour={START_HOUR}
+        endHour={END_HOUR}
+        slotHeight={SLOT_HEIGHT}
+        isTodayVisible={isToday(date)}
+      />
     </div>
   );
 }
 
-function CurrentTimeIndicator({ date }: { date: Date }) {
+function isToday(date: Date): boolean {
   const now = new Date();
-  const isToday =
+  return (
     date.getDate() === now.getDate() &&
     date.getMonth() === now.getMonth() &&
-    date.getFullYear() === now.getFullYear();
-
-  if (!isToday) return null;
-
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-
-  if (currentHour < START_HOUR || currentHour >= END_HOUR) return null;
-
-  const top = ((currentHour - START_HOUR) * 60 + currentMinute) / 60 * SLOT_HEIGHT;
-
-  return (
-    <div
-      className="absolute left-0 right-0 z-10 pointer-events-none"
-      style={{ top: `${top}px` }}
-    >
-      <div className="relative">
-        <div className="absolute -left-1 -top-1.5 w-3 h-3 bg-error-500 rounded-full" />
-        <div className="h-0.5 bg-error-500" />
-      </div>
-    </div>
+    date.getFullYear() === now.getFullYear()
   );
 }

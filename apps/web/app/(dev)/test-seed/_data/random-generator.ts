@@ -279,11 +279,11 @@ const SCHEDULE_TEMPLATES = [
 ];
 
 // Utilitaires
-function randomItem<T>(array: T[]): T {
+function randomItem<T>(array: readonly T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function randomItems<T>(array: T[], count: number): T[] {
+function randomItems<T>(array: readonly T[], count: number): T[] {
   const shuffled = [...array].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
