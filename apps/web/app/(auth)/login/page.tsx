@@ -105,10 +105,15 @@ function LoginContent() {
     try {
       const { user } = await authService.login({ email, password });
 
-      // Redirect based on provider status
-      if (user.providerId) {
+      // Redirect based on user role
+      if (user.role === 'client') {
+        // Clients should use the mobile app
+        router.push('/telechargement');
+      } else if (user.providerId) {
+        // Provider with completed setup
         router.push('/pro');
       } else {
+        // Provider without setup
         router.push('/pro/onboarding');
       }
     } catch (err) {
@@ -124,10 +129,15 @@ function LoginContent() {
     try {
       const { user } = await authService.loginWithGoogle();
 
-      // Redirect based on provider status
-      if (user.providerId) {
+      // Redirect based on user role
+      if (user.role === 'client') {
+        // Clients should use the mobile app
+        router.push('/telechargement');
+      } else if (user.providerId) {
+        // Provider with completed setup
         router.push('/pro');
       } else {
+        // Provider without setup
         router.push('/pro/onboarding');
       }
     } catch (err) {

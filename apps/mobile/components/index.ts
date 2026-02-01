@@ -67,3 +67,6 @@ export { LoadingScreen } from './LoadingScreen';
 
 // Business Components
 export * from './business';
+
+// Notification Initializer
+export { NotificationInitializer } from './NotificationInitializer';

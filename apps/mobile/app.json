@@ -36,6 +36,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7888b402-9fbd-40fb-a64f-146f27c140d6"
+      }
+    },
+    "owner": "kamerleontech"
   }
 }

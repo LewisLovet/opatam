@@ -115,7 +115,7 @@ interface WeekViewProps {
 }
 
 const START_HOUR = 6;
-const END_HOUR = 22;
+const END_HOUR = 24; // Midnight
 const SLOT_HEIGHT = 48; // Smaller for week view
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
@@ -235,15 +235,20 @@ export function WeekView({
         <div className="flex">
           {/* Time labels */}
           <div className="flex-shrink-0 w-12 sm:w-14 relative" style={{ height: `${totalHeight}px` }}>
-            {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => (
-              <div
-                key={i}
-                className="absolute right-1 sm:right-2 -translate-y-1/2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400"
-                style={{ top: `${i * SLOT_HEIGHT}px` }}
-              >
-                {(START_HOUR + i).toString().padStart(2, '0')}:00
-              </div>
-            ))}
+            {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => {
+              const hour = START_HOUR + i;
+              // Display "00:00" for midnight instead of "24:00"
+              const displayHour = hour === 24 ? 0 : hour;
+              return (
+                <div
+                  key={i}
+                  className="absolute right-1 sm:right-2 -translate-y-1/2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400"
+                  style={{ top: `${i * SLOT_HEIGHT}px` }}
+                >
+                  {displayHour.toString().padStart(2, '0')}:00
+                </div>
+              );
+            })}
           </div>
 
           {/* Day columns */}
@@ -312,9 +317,13 @@ export function WeekView({
                 style={{ height: `${totalHeight}px` }}
                 onClick={(e) => handleSlotClick(e, day)}
               >
-                {/* Base background - gray for closed, white for open */}
+                {/* Base background - gray with hatching for closed, white for open */}
                 <div
                   className={`absolute inset-0 ${isClosed ? 'bg-gray-100 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-900'}`}
+                  style={isClosed ? {
+                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156, 163, 175, 0.3) 4px, rgba(156, 163, 175, 0.3) 8px)',
+                  } : undefined}
+                  title={isClosed ? 'Fermé' : undefined}
                 />
 
                 {/* Availability slots background - green for open hours with hover effect */}
@@ -340,12 +349,17 @@ export function WeekView({
                   );
                 })}
 
-                {/* Closed hours overlay - gray for hours outside availability */}
+                {/* Closed hours overlay - gray with hatching for hours outside availability */}
                 {getClosedSections().map((section, sectionIdx) => (
                   <div
                     key={`closed-${sectionIdx}`}
                     className="absolute left-0 right-0 bg-gray-100 dark:bg-gray-800/50"
-                    style={{ top: `${section.top}px`, height: `${section.height}px` }}
+                    style={{
+                      top: `${section.top}px`,
+                      height: `${section.height}px`,
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156, 163, 175, 0.3) 4px, rgba(156, 163, 175, 0.3) 8px)',
+                    }}
+                    title="Fermé"
                   />
                 ))}
 

@@ -10,6 +10,7 @@ export interface User {
   birthYear: number | null;
   gender: 'male' | 'female' | 'other' | null;
   cancellationCount: number;
+  pushTokens: string[]; // Expo push tokens for notifications (device-specific)
   createdAt: Date;
   updatedAt: Date;
 }

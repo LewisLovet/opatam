@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '../theme';
-import { DevFAB, ToastProvider } from '../components';
+import { ToastProvider, NotificationInitializer } from '../components';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
 import { useAppReady } from '../hooks';
 
@@ -22,6 +22,7 @@ export default function RootLayout() {
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <ThemeProvider>
         <AuthProvider>
+          <NotificationInitializer />
           <ProvidersCacheProvider>
             <ToastProvider>
             <StatusBar style="auto" />
@@ -44,7 +45,8 @@ export default function RootLayout() {
                 }}
               />
             </Stack>
-            <DevFAB />
+            {/* DevFAB désactivé pour l'instant */}
+            {/* <DevFAB /> */}
             </ToastProvider>
           </ProvidersCacheProvider>
         </AuthProvider>

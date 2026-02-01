@@ -74,13 +74,16 @@ export function TimeSlotSection({
     outputRange: ['0deg', '180deg'],
   });
 
+  // Deduplicate slots to avoid key conflicts
+  const uniqueSlots = [...new Set(slots)];
+
   // Don't render section if no slots
-  if (slots.length === 0) {
+  if (uniqueSlots.length === 0) {
     return null;
   }
 
   // Calculate dimensions
-  const numRows = Math.ceil(slots.length / 4);
+  const numRows = Math.ceil(uniqueSlots.length / 4);
   const needsScroll = numRows > MAX_VISIBLE_ROWS;
   const contentHeight = numRows * ROW_HEIGHT + spacing.md;
   const maxVisibleHeight = MAX_VISIBLE_ROWS * ROW_HEIGHT + spacing.md;
@@ -123,7 +126,7 @@ export function TimeSlotSection({
               {title}
             </Text>
             <Text variant="caption" style={{ color: accentColor, opacity: 0.7 }}>
-              {slots.length} créneau{slots.length > 1 ? 'x' : ''}
+              {uniqueSlots.length} créneau{uniqueSlots.length > 1 ? 'x' : ''}
             </Text>
           </View>
         </View>
@@ -163,7 +166,7 @@ export function TimeSlotSection({
           ]}
         >
           <View style={[styles.slotsGrid, { gap: 8 }]}>
-            {slots.map((time) => {
+            {uniqueSlots.map((time) => {
               const isSelected = selectedSlot === time;
               return (
                 <Pressable

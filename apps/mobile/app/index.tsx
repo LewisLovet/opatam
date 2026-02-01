@@ -1,6 +1,6 @@
 /**
  * App Entry Point
- * Redirects to the appropriate interface based on auth and onboarding state
+ * Redirects to the appropriate interface based on auth, role and onboarding state
  */
 
 import { useState, useEffect } from 'react';
@@ -22,7 +22,8 @@ export default function Index() {
   }, []);
 
   // Show loading while checking auth or onboarding state
-  if (authLoading || onboardingSeen === null) {
+  // Also wait for userData to be loaded to check role
+  if (authLoading || onboardingSeen === null || (isAuthenticated && !userData)) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -30,9 +31,13 @@ export default function Index() {
     );
   }
 
-  // Authenticated → redirect to client interface
-  // TODO: Add /(pro) route for providers when ready
-  if (isAuthenticated) {
+  // Authenticated → redirect based on role
+  if (isAuthenticated && userData) {
+    // Providers go to Pro interface, clients go to Client interface
+    // 'both' role goes to client by default (can switch later)
+    if (userData.role === 'provider') {
+      return <Redirect href="/(pro)" />;
+    }
     return <Redirect href="/(client)/(tabs)" />;
   }
 

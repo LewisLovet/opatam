@@ -12,7 +12,10 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, requireProvider = true }: AuthGuardProps) {
   const router = useRouter();
-  const { isAuthenticated, hasCompletedOnboarding, loading } = useAuth();
+  const { isAuthenticated, hasCompletedOnboarding, loading, user } = useAuth();
+
+  // Check if user is a client only (not provider or 'both')
+  const isClientOnly = user?.role === 'client';
 
   useEffect(() => {
     if (loading) return;
@@ -23,12 +26,18 @@ export function AuthGuard({ children, requireProvider = true }: AuthGuardProps) 
       return;
     }
 
+    // Client trying to access /pro routes -> redirect to download app page
+    if (requireProvider && isClientOnly) {
+      router.replace('/telechargement');
+      return;
+    }
+
     // Authenticated but no provider setup (for /pro routes)
     if (requireProvider && !hasCompletedOnboarding) {
       router.replace('/register');
       return;
     }
-  }, [isAuthenticated, hasCompletedOnboarding, loading, requireProvider, router]);
+  }, [isAuthenticated, hasCompletedOnboarding, loading, requireProvider, isClientOnly, router]);
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -42,8 +51,8 @@ export function AuthGuard({ children, requireProvider = true }: AuthGuardProps) 
     );
   }
 
-  // Not authenticated or needs onboarding - render nothing while redirecting
-  if (!isAuthenticated || (requireProvider && !hasCompletedOnboarding)) {
+  // Not authenticated, is client only, or needs onboarding - render nothing while redirecting
+  if (!isAuthenticated || (requireProvider && isClientOnly) || (requireProvider && !hasCompletedOnboarding)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-col items-center gap-4">

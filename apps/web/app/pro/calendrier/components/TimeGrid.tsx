@@ -32,15 +32,19 @@ export function TimeGrid({
       {/* Time labels */}
       {showLabels && (
         <div className="flex-shrink-0 w-14 sm:w-16 relative">
-          {hours.map((hour) => (
-            <div
-              key={hour}
-              className="absolute right-2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400"
-              style={{ top: `${(hour - startHour) * slotHeight}px` }}
-            >
-              {hour.toString().padStart(2, '0')}:00
-            </div>
-          ))}
+          {hours.map((hour) => {
+            // Display "00:00" for midnight instead of "24:00"
+            const displayHour = hour === 24 ? 0 : hour;
+            return (
+              <div
+                key={hour}
+                className="absolute right-2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400"
+                style={{ top: `${(hour - startHour) * slotHeight}px` }}
+              >
+                {displayHour.toString().padStart(2, '0')}:00
+              </div>
+            );
+          })}
         </div>
       )}
 

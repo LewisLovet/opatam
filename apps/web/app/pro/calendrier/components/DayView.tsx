@@ -109,7 +109,7 @@ interface DayViewProps {
 }
 
 const START_HOUR = 6;
-const END_HOUR = 22;
+const END_HOUR = 24; // Midnight
 const SLOT_HEIGHT = 60;
 
 export function DayView({
@@ -266,9 +266,13 @@ function DayColumn({
       style={{ height: `${totalHeight}px` }}
       onClick={onSlotClick}
     >
-      {/* Base background - gray for closed, white for open */}
+      {/* Base background - gray with hatching for closed, white for open */}
       <div
         className={`absolute inset-0 ${isClosed ? 'bg-gray-100 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-900'}`}
+        style={isClosed ? {
+          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156, 163, 175, 0.3) 4px, rgba(156, 163, 175, 0.3) 8px)',
+        } : undefined}
+        title={isClosed ? 'Fermé' : undefined}
       />
 
       {/* Availability slots background - green for open hours with hover effect */}
@@ -339,7 +343,12 @@ function DayColumn({
           <div
             key={`closed-${idx}`}
             className="absolute left-0 right-0 bg-gray-100 dark:bg-gray-800/50"
-            style={{ top: `${section.top}px`, height: `${section.height}px` }}
+            style={{
+              top: `${section.top}px`,
+              height: `${section.height}px`,
+              backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156, 163, 175, 0.3) 4px, rgba(156, 163, 175, 0.3) 8px)',
+            }}
+            title="Fermé"
           />
         ));
       })()}

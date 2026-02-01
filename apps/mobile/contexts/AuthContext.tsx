@@ -64,8 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sign in
   const signIn = async (email: string, password: string) => {
     try {
-      const { user: userData } = await authService.login({ email, password });
-      setUserData(userData);
+      const { user: returnedUserData } = await authService.login({ email, password });
+      setUserData(returnedUserData);
+      // Also update the Firebase user state immediately (onAuthChange will also fire but this is faster)
+      setUser(auth.currentUser);
     } catch (error: any) {
       const code = error?.code || '';
       throw new Error(getFirebaseErrorMessage(code));
@@ -75,14 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sign up
   const signUp = async (email: string, password: string, displayName: string, phone?: string) => {
     try {
-      const { user: userData } = await authService.registerClient({
+      const { user: returnedUserData } = await authService.registerClient({
         email,
         password,
         confirmPassword: password,
         displayName,
         phone,
       });
-      setUserData(userData);
+      setUserData(returnedUserData);
+      // Also update the Firebase user state immediately
+      setUser(auth.currentUser);
     } catch (error: any) {
       const code = error?.code || '';
       throw new Error(getFirebaseErrorMessage(code));

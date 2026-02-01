@@ -211,13 +211,13 @@ export default function LoginScreen() {
 
     try {
       await signIn(email.trim(), password);
-      router.replace('/(client)/(tabs)');
+      // Navigation is handled reactively by the auth layout guard
+      // when AuthContext updates with the authenticated user
     } catch (error: any) {
       showToast({
         variant: 'error',
         message: error.message || 'Erreur de connexion',
       });
-    } finally {
       setIsSubmitting(false);
     }
   };

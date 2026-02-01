@@ -97,6 +97,17 @@ interface TestDetailedResponse {
   message: string;
 }
 
+// Types pour testPushNotification
+interface TestPushNotificationResponse {
+  success: boolean;
+  message: string;
+  details: {
+    sentCount: number;
+    failedCount: number;
+    invalidTokens: string[];
+  };
+}
+
 // Types pour recalculateAllProviders
 interface ProviderResult {
   providerId: string;
@@ -124,10 +135,14 @@ export default function TestFunctionsPage() {
   const [recalculateResult, setRecalculateResult] = useState<RecalculateResponse | null>(null);
   const [detailedResult, setDetailedResult] = useState<TestDetailedResponse | null>(null);
   const [allProvidersResult, setAllProvidersResult] = useState<RecalculateAllResponse | null>(null);
+  const [pushResult, setPushResult] = useState<TestPushNotificationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [isEmulator, setIsEmulator] = useState(false);
   const [providerId, setProviderId] = useState('');
+  const [pushUserId, setPushUserId] = useState('');
+  const [pushTitle, setPushTitle] = useState('Test Notification');
+  const [pushBody, setPushBody] = useState('Ceci est une notification de test depuis Opatam!');
   const emulatorConnected = useRef(false);
 
   useEffect(() => {
@@ -279,6 +294,36 @@ export default function TestFunctionsPage() {
     });
   };
 
+  const runTestPushNotification = async () => {
+    if (!pushUserId.trim()) {
+      setError('Veuillez entrer un userId');
+      return;
+    }
+
+    const functions = getFunctions(app);
+    setLoading('push');
+    setError(null);
+    setPushResult(null);
+
+    try {
+      const pushFn = httpsCallable<
+        { userId: string; title?: string; body?: string },
+        TestPushNotificationResponse
+      >(functions, 'testPushNotification');
+      const response = await pushFn({
+        userId: pushUserId.trim(),
+        title: pushTitle.trim() || undefined,
+        body: pushBody.trim() || undefined,
+      });
+      setPushResult(response.data);
+    } catch (err) {
+      console.error('Error calling testPushNotification:', err);
+      handleError(err);
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="py-12 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -409,6 +454,92 @@ export default function TestFunctionsPage() {
                   </summary>
                   <pre className="text-xs overflow-auto max-h-60 mt-2 text-gray-700 dark:text-gray-300">
                     {JSON.stringify(allProvidersResult, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Test Push Notification */}
+        <Card>
+          <CardHeader
+            title="Test Push Notification"
+            description="Envoyer une notification push de test à un utilisateur"
+            action={
+              <Badge variant={isEmulator ? 'info' : 'success'}>
+                {isEmulator ? 'Émulateur' : 'Production'}
+              </Badge>
+            }
+          />
+          <CardBody className="space-y-4">
+            <Input
+              label="User ID"
+              value={pushUserId}
+              onChange={(e) => setPushUserId(e.target.value)}
+              placeholder="ID de l'utilisateur (Firebase Auth UID)"
+            />
+            <Input
+              label="Titre (optionnel)"
+              value={pushTitle}
+              onChange={(e) => setPushTitle(e.target.value)}
+              placeholder="Titre de la notification"
+            />
+            <Input
+              label="Message (optionnel)"
+              value={pushBody}
+              onChange={(e) => setPushBody(e.target.value)}
+              placeholder="Corps de la notification"
+            />
+
+            <Button
+              onClick={runTestPushNotification}
+              loading={loading === 'push'}
+              disabled={!pushUserId.trim()}
+              fullWidth
+              variant="primary"
+            >
+              Envoyer la notification
+            </Button>
+
+            {pushResult && (
+              <div className="space-y-3">
+                <div className={`p-4 rounded-lg border ${
+                  pushResult.success
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                    : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
+                }`}>
+                  <Badge variant={pushResult.success ? 'success' : 'warning'}>
+                    {pushResult.success ? 'Succès' : 'Erreur'}
+                  </Badge>
+                  <p className="text-sm mt-2 text-gray-800 dark:text-gray-200">{pushResult.message}</p>
+
+                  <div className="flex flex-wrap gap-4 mt-3">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">{pushResult.details.sentCount}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Envoyées</div>
+                    </div>
+                    {pushResult.details.failedCount > 0 && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">{pushResult.details.failedCount}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Échouées</div>
+                      </div>
+                    )}
+                    {pushResult.details.invalidTokens.length > 0 && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{pushResult.details.invalidTokens.length}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Tokens invalides</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <details className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <summary className="text-sm font-medium cursor-pointer text-gray-900 dark:text-gray-100">
+                    Voir la réponse JSON complète
+                  </summary>
+                  <pre className="text-xs overflow-auto max-h-40 mt-2 text-gray-700 dark:text-gray-300">
+                    {JSON.stringify(pushResult, null, 2)}
                   </pre>
                 </details>
               </div>

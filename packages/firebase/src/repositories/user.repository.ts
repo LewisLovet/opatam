@@ -1,4 +1,4 @@
-import { where, limit } from 'firebase/firestore';
+import { where, limit, arrayUnion, arrayRemove, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { User } from '@booking-app/shared';
 import { BaseRepository, type WithId } from './base.repository';
 
@@ -56,6 +56,29 @@ export class UserRepository extends BaseRepository<User> {
         cancellationCount: user.cancellationCount + 1,
       });
     }
+  }
+
+  /**
+   * Add a push token to user's pushTokens array
+   * Uses arrayUnion to avoid duplicates
+   */
+  async addPushToken(userId: string, token: string): Promise<void> {
+    const docRef = this.getDocRef(userId);
+    await updateDoc(docRef, {
+      pushTokens: arrayUnion(token),
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  /**
+   * Remove a push token from user's pushTokens array
+   */
+  async removePushToken(userId: string, token: string): Promise<void> {
+    const docRef = this.getDocRef(userId);
+    await updateDoc(docRef, {
+      pushTokens: arrayRemove(token),
+      updatedAt: serverTimestamp(),
+    });
   }
 }
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { Booking } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -54,41 +56,138 @@ function formatPrice(cents: number): string {
   }).format(cents / 100);
 }
 
+interface TooltipPosition {
+  top: number;
+  left: number;
+}
+
+// Delay before showing tooltip (in ms) - instant for fast feedback
+const TOOLTIP_DELAY = 100;
+
 /**
- * Simple CSS tooltip component that shows booking details on hover
- * Actions are handled via the modal on click, not in the tooltip
+ * Simple tooltip component that shows booking details on hover
+ * Uses portal to avoid positioning issues with overflow containers
  */
 export function SlotPopover({
   booking,
   children,
   disabled = false,
 }: SlotTooltipProps) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [position, setPosition] = useState<TooltipPosition | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const tooltipWidth = 200; // max-w-[200px]
+    const tooltipHeight = 80; // approximate height
+    const padding = 8;
+
+    // Default: position to the right
+    let left = rect.right + padding;
+    let top = rect.top + rect.height / 2;
+
+    // Check if tooltip would go off the right edge of the screen
+    if (left + tooltipWidth > window.innerWidth - padding) {
+      // Position to the left instead
+      left = rect.left - tooltipWidth - padding;
+    }
+
+    // Check if tooltip would go off the top of the screen
+    if (top - tooltipHeight / 2 < padding) {
+      top = padding + tooltipHeight / 2;
+    }
+
+    // Check if tooltip would go off the bottom of the screen
+    if (top + tooltipHeight / 2 > window.innerHeight - padding) {
+      top = window.innerHeight - padding - tooltipHeight / 2;
+    }
+
+    setPosition({ top, left });
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    updatePosition();
+    // Show tooltip after a short delay
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(true);
+    }, TOOLTIP_DELAY);
+  }, [updatePosition]);
+
+  const handleMouseLeave = useCallback(() => {
+    // Clear any pending timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsVisible(false);
+  }, []);
+
   if (disabled) {
     return <>{children}</>;
   }
 
-  const tooltipContent = [
-    booking.serviceName,
-    formatPrice(booking.price),
-    booking.clientInfo.phone,
-  ].filter(Boolean).join(' • ');
+  const showTooltip = isVisible && position && mounted;
+  const isPositionedLeft = position && triggerRef.current &&
+    position.left < triggerRef.current.getBoundingClientRect().left;
 
   return (
-    <div className="group/tooltip relative contents">
-      {children}
-      <div
-        className="pointer-events-none absolute left-full ml-2 top-1/2 -translate-y-1/2 z-[100] px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg shadow-lg max-w-[200px] opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-opacity duration-150 whitespace-nowrap"
-        role="tooltip"
+    <>
+      <span
+        ref={triggerRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className="contents"
       >
-        <p className="font-medium truncate">{booking.serviceName}</p>
-        <p className="text-gray-300 dark:text-gray-400">{formatPrice(booking.price)}</p>
-        {booking.clientInfo.phone && (
-          <p className="text-gray-300 dark:text-gray-400">{booking.clientInfo.phone}</p>
-        )}
-        {/* Arrow */}
-        <div className="absolute right-full top-1/2 -translate-y-1/2 border-8 border-transparent border-r-gray-900 dark:border-r-gray-700" />
-      </div>
-    </div>
+        {children}
+      </span>
+      {showTooltip && createPortal(
+        <div
+          ref={tooltipRef}
+          className="fixed z-[9999] px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg shadow-lg max-w-[200px] pointer-events-none"
+          style={{
+            top: position.top,
+            left: position.left,
+            transform: 'translateY(-50%)',
+          }}
+          role="tooltip"
+        >
+          <p className="font-medium truncate">{booking.serviceName}</p>
+          {booking.price > 0 && (
+            <p className="text-emerald-400 font-semibold">{formatPrice(booking.price)}</p>
+          )}
+          {booking.price === 0 && (
+            <p className="text-emerald-400 font-semibold">Gratuit</p>
+          )}
+          {booking.clientInfo.phone && (
+            <p className="text-gray-300 dark:text-gray-400 text-xs">{booking.clientInfo.phone}</p>
+          )}
+          {/* Arrow */}
+          <div
+            className={`absolute top-1/2 -translate-y-1/2 border-8 border-transparent ${
+              isPositionedLeft
+                ? 'left-full border-l-gray-900 dark:border-l-gray-700'
+                : 'right-full border-r-gray-900 dark:border-r-gray-700'
+            }`}
+          />
+        </div>,
+        document.body
+      )}
+    </>
   );
 }
 

@@ -36,6 +36,12 @@ export default function ClientLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="booking-detail/[bookingId]"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

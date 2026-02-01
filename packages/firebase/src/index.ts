@@ -71,6 +71,18 @@ export {
   type UploadTask,
 } from './lib/storage';
 
+// Functions (Cloud Functions callables)
+export {
+  functions,
+  getFirebaseFunctions,
+  callTestPushNotification,
+  httpsCallable,
+  type Functions,
+  type HttpsCallableResult,
+  type TestPushNotificationRequest,
+  type TestPushNotificationResponse,
+} from './lib/functions';
+
 // Repositories
 export {
   // Base

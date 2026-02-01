@@ -3,7 +3,7 @@
  * User's appointments list with upcoming/past tabs
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -13,7 +13,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import { Text, Card, EmptyState } from '../../../components';
@@ -71,43 +71,54 @@ function getStatusConfig(status: BookingStatus): { label: string; color: string;
 }
 
 // Booking card component
-function BookingCard({ booking, colors }: { booking: WithId<Booking>; colors: any }) {
+function BookingCard({
+  booking,
+  colors,
+  onPress,
+}: {
+  booking: WithId<Booking>;
+  colors: any;
+  onPress: () => void;
+}) {
   const statusConfig = getStatusConfig(booking.status);
 
   return (
-    <Card padding="md" shadow="sm" style={{ marginBottom: 12 }}>
-      <View style={styles.bookingCard}>
-        <View style={[styles.bookingIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
-          <Ionicons name="calendar" size={22} color={colors.primary} />
-        </View>
-        <View style={styles.bookingInfo}>
-          <Text variant="body" style={{ fontWeight: '600' }}>
-            {booking.serviceName}
-          </Text>
-          <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-            {booking.providerName}
-          </Text>
-          <View style={styles.bookingMeta}>
-            <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>
-              {formatBookingDate(booking.datetime)}
+    <Pressable onPress={onPress}>
+      <Card padding="md" shadow="sm" style={{ marginBottom: 12 }}>
+        <View style={styles.bookingCard}>
+          <View style={[styles.bookingIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
+            <Ionicons name="calendar" size={22} color={colors.primary} />
+          </View>
+          <View style={styles.bookingInfo}>
+            <Text variant="body" style={{ fontWeight: '600' }}>
+              {booking.serviceName}
             </Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-              <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                {statusConfig.label}
+            <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+              {booking.providerName}
+            </Text>
+            <View style={styles.bookingMeta}>
+              <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>
+                {formatBookingDate(booking.datetime)}
               </Text>
+              <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                  {statusConfig.label}
+                </Text>
+              </View>
             </View>
           </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </View>
-      </View>
-      {booking.locationName && (
-        <View style={[styles.locationRow, { borderTopColor: colors.border }]}>
-          <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-          <Text variant="caption" color="textSecondary" style={{ marginLeft: 4 }}>
-            {booking.locationName}
-          </Text>
-        </View>
-      )}
-    </Card>
+        {(booking.locationAddress || booking.locationName) && (
+          <View style={[styles.locationRow, { borderTopColor: colors.border }]}>
+            <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+            <Text variant="caption" color="textSecondary" style={{ marginLeft: 4 }} numberOfLines={1}>
+              {booking.locationAddress || booking.locationName}
+            </Text>
+          </View>
+        )}
+      </Card>
+    </Pressable>
   );
 }
 
@@ -134,6 +145,15 @@ export default function BookingsScreen() {
   const { upcoming, past, loading, error, refresh } = useClientBookings();
   const [activeTab, setActiveTab] = useState<TabType>('upcoming');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Refresh bookings when screen comes into focus (e.g., after cancellation)
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        refresh();
+      }
+    }, [isAuthenticated, refresh])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -272,7 +292,12 @@ export default function BookingsScreen() {
         ) : (
           // Bookings list
           currentBookings.map((booking) => (
-            <BookingCard key={booking.id} booking={booking} colors={colors} />
+            <BookingCard
+              key={booking.id}
+              booking={booking}
+              colors={colors}
+              onPress={() => router.push(`/(client)/booking-detail/${booking.id}`)}
+            />
           ))
         )}
       </ScrollView>
