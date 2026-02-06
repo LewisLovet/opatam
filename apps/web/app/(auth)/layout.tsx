@@ -15,6 +15,7 @@ import {
   Gift,
   Sparkles,
 } from 'lucide-react';
+import { LogoWhite } from '@/components/ui';
 
 // Step-based content for register wizard
 const REGISTER_STEP_CONTENT = [
@@ -206,14 +207,8 @@ function InfoPanel({ isRight, registerStep }: InfoPanelProps) {
 
       {/* Logo */}
       <div className="relative z-10">
-        <Link href="/" className="inline-flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-            <Calendar className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-xl font-bold">Opatam</span>
-            <span className="block text-xs text-primary-100">Espace Professionnel</span>
-          </div>
+        <Link href="/">
+          <LogoWhite size="lg" variant="light" subtitle="Espace Professionnel" />
         </Link>
       </div>
 
@@ -266,14 +261,8 @@ function InfoPanel({ isRight, registerStep }: InfoPanelProps) {
 function MobileHeader() {
   return (
     <div className="lg:hidden flex items-center justify-center py-6 bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-700 dark:to-primary-800">
-      <Link href="/" className="inline-flex items-center gap-2 text-white">
-        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-          <Calendar className="w-6 h-6" />
-        </div>
-        <div>
-          <span className="text-xl font-bold">Opatam</span>
-          <span className="block text-xs text-primary-200">Espace Professionnel</span>
-        </div>
+      <Link href="/">
+        <LogoWhite size="lg" variant="light" subtitle="Espace Professionnel" />
       </Link>
     </div>
   );

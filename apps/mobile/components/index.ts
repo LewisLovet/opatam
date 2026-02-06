@@ -70,3 +70,6 @@ export * from './business';
 
 // Notification Initializer
 export { NotificationInitializer } from './NotificationInitializer';
+
+// Logo
+export { Logo, LogoWhite } from './Logo';

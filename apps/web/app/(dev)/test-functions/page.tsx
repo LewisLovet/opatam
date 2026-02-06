@@ -98,15 +98,63 @@ interface TestDetailedResponse {
 }
 
 // Types pour testPushNotification
+type NotificationType =
+  | 'simple'
+  | 'new_booking'
+  | 'booking_confirmed'
+  | 'booking_cancelled_by_client'
+  | 'booking_cancelled_by_provider'
+  | 'booking_rescheduled';
+
 interface TestPushNotificationResponse {
   success: boolean;
   message: string;
+  notificationType: NotificationType;
   details: {
     sentCount: number;
     failedCount: number;
     invalidTokens: string[];
   };
 }
+
+const NOTIFICATION_TYPES: { value: NotificationType; label: string }[] = [
+  { value: 'simple', label: 'Test simple' },
+  { value: 'new_booking', label: 'Nouveau RDV (provider)' },
+  { value: 'booking_confirmed', label: 'RDV confirmé (client)' },
+  { value: 'booking_cancelled_by_client', label: 'Annulé par client (provider)' },
+  { value: 'booking_cancelled_by_provider', label: 'Annulé par provider (client)' },
+  { value: 'booking_rescheduled', label: 'RDV modifié (client)' },
+];
+
+// Types pour testCreateBooking
+type BookingTestScenario =
+  | 'create'
+  | 'confirm'
+  | 'cancel_by_client'
+  | 'cancel_by_provider'
+  | 'reschedule';
+
+interface TestCreateBookingResponse {
+  success: boolean;
+  bookingId: string;
+  scenario: BookingTestScenario;
+  message: string;
+  steps: string[];
+}
+
+interface TestCleanupBookingsResponse {
+  success: boolean;
+  deletedCount: number;
+  message: string;
+}
+
+const BOOKING_SCENARIOS: { value: BookingTestScenario; label: string; description: string }[] = [
+  { value: 'create', label: 'Création', description: 'Crée un booking pending → notifie le provider' },
+  { value: 'confirm', label: 'Confirmation', description: 'Crée puis confirme → notifie le client' },
+  { value: 'cancel_by_client', label: 'Annulation client', description: 'Crée confirmé puis annule par client → notifie le provider' },
+  { value: 'cancel_by_provider', label: 'Annulation provider', description: 'Crée confirmé puis annule par provider → notifie le client' },
+  { value: 'reschedule', label: 'Replanification', description: 'Crée confirmé puis change la date → notifie le client' },
+];
 
 // Types pour recalculateAllProviders
 interface ProviderResult {
@@ -141,8 +189,13 @@ export default function TestFunctionsPage() {
   const [isEmulator, setIsEmulator] = useState(false);
   const [providerId, setProviderId] = useState('');
   const [pushUserId, setPushUserId] = useState('');
-  const [pushTitle, setPushTitle] = useState('Test Notification');
-  const [pushBody, setPushBody] = useState('Ceci est une notification de test depuis Opatam!');
+  const [pushNotifType, setPushNotifType] = useState<NotificationType>('simple');
+  // Test booking states
+  const [bookingProviderId, setBookingProviderId] = useState('');
+  const [bookingClientId, setBookingClientId] = useState('');
+  const [bookingScenario, setBookingScenario] = useState<BookingTestScenario>('create');
+  const [bookingResult, setBookingResult] = useState<TestCreateBookingResponse | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<TestCleanupBookingsResponse | null>(null);
   const emulatorConnected = useRef(false);
 
   useEffect(() => {
@@ -307,17 +360,67 @@ export default function TestFunctionsPage() {
 
     try {
       const pushFn = httpsCallable<
-        { userId: string; title?: string; body?: string },
+        { userId: string; type?: NotificationType },
         TestPushNotificationResponse
       >(functions, 'testPushNotification');
       const response = await pushFn({
         userId: pushUserId.trim(),
-        title: pushTitle.trim() || undefined,
-        body: pushBody.trim() || undefined,
+        type: pushNotifType,
       });
       setPushResult(response.data);
     } catch (err) {
       console.error('Error calling testPushNotification:', err);
+      handleError(err);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const runTestCreateBooking = async () => {
+    if (!bookingProviderId.trim()) {
+      setError('Veuillez entrer un providerId');
+      return;
+    }
+
+    const functions = getFunctions(app);
+    setLoading('createBooking');
+    setError(null);
+    setBookingResult(null);
+
+    try {
+      const createBookingFn = httpsCallable<
+        { providerId: string; clientId?: string; scenario: BookingTestScenario },
+        TestCreateBookingResponse
+      >(functions, 'testCreateBooking');
+      const response = await createBookingFn({
+        providerId: bookingProviderId.trim(),
+        clientId: bookingClientId.trim() || undefined,
+        scenario: bookingScenario,
+      });
+      setBookingResult(response.data);
+    } catch (err) {
+      console.error('Error calling testCreateBooking:', err);
+      handleError(err);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const runTestCleanupBookings = async () => {
+    const functions = getFunctions(app);
+    setLoading('cleanup');
+    setError(null);
+    setCleanupResult(null);
+
+    try {
+      const cleanupFn = httpsCallable<void, TestCleanupBookingsResponse>(
+        functions,
+        'testCleanupBookings'
+      );
+      const response = await cleanupFn();
+      setCleanupResult(response.data);
+    } catch (err) {
+      console.error('Error calling testCleanupBookings:', err);
       handleError(err);
     } finally {
       setLoading(null);
@@ -479,18 +582,23 @@ export default function TestFunctionsPage() {
               onChange={(e) => setPushUserId(e.target.value)}
               placeholder="ID de l'utilisateur (Firebase Auth UID)"
             />
-            <Input
-              label="Titre (optionnel)"
-              value={pushTitle}
-              onChange={(e) => setPushTitle(e.target.value)}
-              placeholder="Titre de la notification"
-            />
-            <Input
-              label="Message (optionnel)"
-              value={pushBody}
-              onChange={(e) => setPushBody(e.target.value)}
-              placeholder="Corps de la notification"
-            />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Type de notification
+              </label>
+              <select
+                value={pushNotifType}
+                onChange={(e) => setPushNotifType(e.target.value as NotificationType)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {NOTIFICATION_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <Button
               onClick={runTestPushNotification}
@@ -509,10 +617,15 @@ export default function TestFunctionsPage() {
                     ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
                     : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
                 }`}>
-                  <Badge variant={pushResult.success ? 'success' : 'warning'}>
-                    {pushResult.success ? 'Succès' : 'Erreur'}
-                  </Badge>
-                  <p className="text-sm mt-2 text-gray-800 dark:text-gray-200">{pushResult.message}</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant={pushResult.success ? 'success' : 'warning'}>
+                      {pushResult.success ? 'Succès' : 'Erreur'}
+                    </Badge>
+                    <Badge variant="info">
+                      {NOTIFICATION_TYPES.find(t => t.value === pushResult.notificationType)?.label || pushResult.notificationType}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-800 dark:text-gray-200">{pushResult.message}</p>
 
                   <div className="flex flex-wrap gap-4 mt-3">
                     <div className="text-center">
@@ -540,6 +653,129 @@ export default function TestFunctionsPage() {
                   </summary>
                   <pre className="text-xs overflow-auto max-h-40 mt-2 text-gray-700 dark:text-gray-300">
                     {JSON.stringify(pushResult, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Test onBookingWrite Trigger */}
+        <Card>
+          <CardHeader
+            title="Test onBookingWrite (Trigger)"
+            description="Crée un booking de test pour déclencher le trigger et tester les notifications"
+            action={
+              <Badge variant={isEmulator ? 'info' : 'success'}>
+                {isEmulator ? 'Émulateur' : 'Production'}
+              </Badge>
+            }
+          />
+          <CardBody className="space-y-4">
+            <Input
+              label="Provider ID"
+              value={bookingProviderId}
+              onChange={(e) => setBookingProviderId(e.target.value)}
+              placeholder="ID du provider (doit avoir des pushTokens)"
+            />
+
+            <Input
+              label="Client ID (optionnel)"
+              value={bookingClientId}
+              onChange={(e) => setBookingClientId(e.target.value)}
+              placeholder="ID du client (pour tester les notifs client)"
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Scénario de test
+              </label>
+              <select
+                value={bookingScenario}
+                onChange={(e) => setBookingScenario(e.target.value as BookingTestScenario)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {BOOKING_SCENARIOS.map((scenario) => (
+                  <option key={scenario.value} value={scenario.value}>
+                    {scenario.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {BOOKING_SCENARIOS.find(s => s.value === bookingScenario)?.description}
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={runTestCreateBooking}
+                loading={loading === 'createBooking'}
+                disabled={!bookingProviderId.trim()}
+                className="flex-1"
+                variant="primary"
+              >
+                Créer booking de test
+              </Button>
+              <Button
+                onClick={runTestCleanupBookings}
+                loading={loading === 'cleanup'}
+                variant="secondary"
+              >
+                Nettoyer
+              </Button>
+            </div>
+
+            {cleanupResult && (
+              <div className={`p-3 rounded-lg border ${
+                cleanupResult.success
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+                  : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
+              }`}>
+                <p className="text-sm text-gray-800 dark:text-gray-200">{cleanupResult.message}</p>
+              </div>
+            )}
+
+            {bookingResult && (
+              <div className="space-y-3">
+                <div className={`p-4 rounded-lg border ${
+                  bookingResult.success
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                    : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant={bookingResult.success ? 'success' : 'warning'}>
+                      {bookingResult.success ? 'Succès' : 'Erreur'}
+                    </Badge>
+                    <Badge variant="info">
+                      {BOOKING_SCENARIOS.find(s => s.value === bookingResult.scenario)?.label || bookingResult.scenario}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-2">{bookingResult.message}</p>
+
+                  {bookingResult.bookingId && (
+                    <p className="text-xs font-mono text-gray-600 dark:text-gray-400 mb-3">
+                      Booking ID: {bookingResult.bookingId}
+                    </p>
+                  )}
+
+                  {bookingResult.steps.length > 0 && (
+                    <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Étapes exécutées :</p>
+                      <ol className="list-decimal list-inside text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                        {bookingResult.steps.map((step, i) => (
+                          <li key={i}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </div>
+
+                <details className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <summary className="text-sm font-medium cursor-pointer text-gray-900 dark:text-gray-100">
+                    Voir la réponse JSON complète
+                  </summary>
+                  <pre className="text-xs overflow-auto max-h-40 mt-2 text-gray-700 dark:text-gray-300">
+                    {JSON.stringify(bookingResult, null, 2)}
                   </pre>
                 </details>
               </div>

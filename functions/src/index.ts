@@ -32,5 +32,7 @@ export { recalculateNextSlot } from './callable/recalculateNextSlot';
 export { testCalculateNextSlot } from './callable/testCalculateNextSlot';
 export { recalculateAllProviders } from './callable/recalculateAllProviders';
 export { testPushNotification } from './callable/testPushNotification';
+export { testCreateBooking } from './callable/testCreateBooking';
+export { testCleanupBookings } from './callable/testCleanupBookings';
 // export { cancelBooking } from './callable/cancelBooking';
 // export { getMemberPlanning } from './callable/getMemberPlanning';

@@ -69,3 +69,6 @@ export type {
 // ThemeSwitcher
 export { ThemeSwitcher, colorPalettes } from './ThemeSwitcher';
 export type { ColorPalette } from './ThemeSwitcher';
+
+// Logo
+export { Logo, LogoWhite } from './Logo';

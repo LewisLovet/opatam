@@ -1,16 +1,25 @@
 /**
  * Callable: testPushNotification
  *
- * Test function to send a push notification to a specific user.
- * Used for testing the Expo Push notification system.
+ * Test function to send push notifications to a specific user.
+ * Supports different notification types to test all booking scenarios.
  */
 
 import { onCall, CallableRequest, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { sendNotificationToUser, PushNotificationPayload } from '../utils/expoPushService';
 
+type NotificationType =
+  | 'simple'
+  | 'new_booking'
+  | 'booking_confirmed'
+  | 'booking_cancelled_by_client'
+  | 'booking_cancelled_by_provider'
+  | 'booking_rescheduled';
+
 interface TestPushNotificationData {
   userId: string;
+  type?: NotificationType;
   title?: string;
   body?: string;
 }
@@ -18,11 +27,64 @@ interface TestPushNotificationData {
 interface TestPushNotificationResponse {
   success: boolean;
   message: string;
+  notificationType: NotificationType;
   details: {
     sentCount: number;
     failedCount: number;
     invalidTokens: string[];
   };
+}
+
+/**
+ * Get notification content based on type
+ */
+function getNotificationContent(type: NotificationType): { title: string; body: string } {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  const timeStr = `${now.getHours()}h${now.getMinutes().toString().padStart(2, '0')}`;
+
+  switch (type) {
+    case 'new_booking':
+      return {
+        title: 'Nouveau rendez-vous',
+        body: `Marie Dupont - Coupe femme le ${dateStr} à ${timeStr}`,
+      };
+
+    case 'booking_confirmed':
+      return {
+        title: 'Rendez-vous confirmé',
+        body: `Votre RDV Coupe femme est confirmé pour le ${dateStr} à ${timeStr}`,
+      };
+
+    case 'booking_cancelled_by_client':
+      return {
+        title: 'Rendez-vous annulé',
+        body: `Marie Dupont a annulé son RDV du ${dateStr} à ${timeStr}`,
+      };
+
+    case 'booking_cancelled_by_provider':
+      return {
+        title: 'Rendez-vous annulé',
+        body: `Votre RDV Coupe femme du ${dateStr} a été annulé par Salon Hugo`,
+      };
+
+    case 'booking_rescheduled':
+      return {
+        title: 'Rendez-vous modifié',
+        body: `Votre RDV Coupe femme a été déplacé au ${dateStr} à ${timeStr}`,
+      };
+
+    case 'simple':
+    default:
+      return {
+        title: 'Test Notification',
+        body: 'Ceci est une notification de test depuis Opatam!',
+      };
+  }
 }
 
 export const testPushNotification = onCall(
@@ -34,7 +96,7 @@ export const testPushNotification = onCall(
       throw new HttpsError('unauthenticated', 'Vous devez être connecté pour envoyer une notification.');
     }
 
-    const { userId, title, body } = request.data;
+    const { userId, type = 'simple', title, body } = request.data;
 
     if (!userId) {
       throw new HttpsError('invalid-argument', 'userId est requis.');
@@ -57,6 +119,7 @@ export const testPushNotification = onCall(
         return {
           success: false,
           message: 'Aucun token push enregistré pour cet utilisateur.',
+          notificationType: type,
           details: {
             sentCount: 0,
             failedCount: 0,
@@ -67,16 +130,21 @@ export const testPushNotification = onCall(
 
       console.log(`Found ${pushTokens.length} push tokens for user ${userId}`);
 
-      // Prepare notification payload
+      // Get notification content based on type
+      const defaultContent = getNotificationContent(type);
+
+      // Prepare notification payload (custom title/body override defaults)
       const payload: PushNotificationPayload = {
-        title: title || 'Test Notification',
-        body: body || 'Ceci est une notification de test depuis Opatam!',
+        title: title || defaultContent.title,
+        body: body || defaultContent.body,
         data: {
-          type: 'test',
+          type,
           timestamp: new Date().toISOString(),
         },
         sound: 'default',
       };
+
+      console.log('Sending notification:', payload);
 
       // Send notification
       const result = await sendNotificationToUser(pushTokens, payload);
@@ -96,8 +164,9 @@ export const testPushNotification = onCall(
       return {
         success: result.success,
         message: result.success
-          ? `Notification envoyée avec succès à ${result.sentCount} appareil(s).`
+          ? `Notification "${type}" envoyée avec succès à ${result.sentCount} appareil(s).`
           : `Échec de l'envoi: ${result.errors.join(', ')}`,
+        notificationType: type,
         details: {
           sentCount: result.sentCount,
           failedCount: result.failedCount,

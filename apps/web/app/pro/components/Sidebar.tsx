@@ -15,11 +15,11 @@ import {
   X,
   Sun,
   Moon,
-  Sparkles,
   UserCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
+import { Logo, LogoWhite } from '@/components/ui';
 
 interface NavItem {
   label: string;
@@ -93,16 +93,13 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
     >
       {/* Logo */}
       <div className="p-4 border-b border-gray-800/50">
-        <Link href="/pro" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          {!collapsed && (
-            <div>
-              <h1 className="text-lg font-bold text-white">Opatam</h1>
-              <p className="text-xs text-gray-400">Espace Pro</p>
-            </div>
-          )}
+        <Link href="/pro">
+          <LogoWhite
+            size="lg"
+            variant="light"
+            showText={!collapsed}
+            subtitle={collapsed ? undefined : 'Espace Pro'}
+          />
         </Link>
       </div>
 
@@ -247,14 +244,8 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
       >
         {/* Header */}
         <div className="p-4 border-b border-gray-800/50 flex items-center justify-between">
-          <Link href="/pro" className="flex items-center gap-3" onClick={onClose}>
-            <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">Opatam</h1>
-              <p className="text-xs text-gray-400">Espace Pro</p>
-            </div>
+          <Link href="/pro" onClick={onClose}>
+            <LogoWhite size="lg" variant="light" subtitle="Espace Pro" />
           </Link>
           <button
             onClick={onClose}
@@ -363,11 +354,8 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
       </button>
 
       {/* Logo */}
-      <Link href="/pro" className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-          <Sparkles className="w-4 h-4 text-white" />
-        </div>
-        <span className="text-lg font-bold text-white">Opatam</span>
+      <Link href="/pro">
+        <LogoWhite size="md" variant="light" />
       </Link>
 
       {/* User avatar */}

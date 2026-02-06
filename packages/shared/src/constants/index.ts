@@ -89,6 +89,7 @@ export const DAYS_OF_WEEK = [
  */
 export const APP_CONFIG = {
   name: 'OPATAM',
+  url: 'https://opatam.com',
   trialDays: 7,
   maxPortfolioPhotos: 10,
   maxMemberPhotoSize: 5 * 1024 * 1024, // 5MB
@@ -96,3 +97,44 @@ export const APP_CONFIG = {
   defaultBufferTime: 15, // minutes
   slotInterval: 30, // minutes
 } as const;
+
+/**
+ * Firebase Storage bucket URL
+ */
+const STORAGE_BUCKET = 'opatam-da04b.firebasestorage.app';
+const ASSETS_BASE_URL = `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o`;
+
+/**
+ * Asset URLs configuration
+ * All logos are stored in Firebase Storage for centralized access
+ *
+ * Usage:
+ * - ASSETS.logos.default - Main logo (fallback)
+ * - ASSETS.logos.light - Logo for light backgrounds
+ * - ASSETS.logos.dark - Logo for dark backgrounds
+ * - ASSETS.logos.email - Optimized logo for emails (smaller, PNG)
+ *
+ * Helper function:
+ * - getLogo('light') - Returns light logo, falls back to default if not available
+ */
+export const ASSETS = {
+  logos: {
+    default: `${ASSETS_BASE_URL}/assets%2Flogos%2Flogo-default.png?alt=media`,
+    light: `${ASSETS_BASE_URL}/assets%2Flogos%2Flogo-light.png?alt=media`,
+    dark: `${ASSETS_BASE_URL}/assets%2Flogos%2Flogo-dark.png?alt=media`,
+    email: `${ASSETS_BASE_URL}/assets%2Flogos%2Flogo-email.png?alt=media`,
+  },
+} as const;
+
+/**
+ * Get logo URL with fallback to default
+ * @param variant - 'light' | 'dark' | 'email' | 'default'
+ * @param fallbackToDefault - If true, returns default logo URL as fallback
+ */
+export function getLogo(
+  variant: 'light' | 'dark' | 'email' | 'default' = 'default',
+  fallbackToDefault = true
+): string {
+  const logo = ASSETS.logos[variant];
+  return fallbackToDefault ? logo || ASSETS.logos.default : logo;
+}

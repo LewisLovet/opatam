@@ -10,7 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
-import { Text } from '../../components';
+import { Text, Logo } from '../../components';
+import { APP_CONFIG } from '@booking-app/shared/constants';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -199,19 +200,10 @@ export default function WelcomeGateScreen() {
             },
           ]}
         >
-          <LinearGradient
-            colors={['#3B82F6', '#06B6D4']}
-            style={styles.logoContainer}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text variant="h1" style={styles.logoText}>
-              OPATAM
-            </Text>
-          </LinearGradient>
+          <Logo size="3xl" showText={false} />
 
           <Text variant="h1" style={[styles.title, { marginTop: spacing.xl }]}>
-            Bienvenue sur Opatam
+            Bienvenue sur {APP_CONFIG.name}
           </Text>
 
           <Text
