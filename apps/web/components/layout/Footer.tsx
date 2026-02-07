@@ -21,11 +21,11 @@ interface FooterSection {
 
 const footerSections: FooterSection[] = [
   {
-    title: 'Decouvrir',
+    title: 'Produit',
     links: [
-      { href: '/search', label: 'Rechercher' },
-      { href: '/categories', label: 'Categories' },
-      { href: '/villes', label: 'Villes' },
+      { href: '/#fonctionnalites', label: 'Fonctionnalites' },
+      { href: '/#tarifs', label: 'Tarifs' },
+      { href: '/#temoignages', label: 'Temoignages' },
     ],
   },
   {

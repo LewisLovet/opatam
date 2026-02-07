@@ -25,13 +25,13 @@ export default function ServicesTestLayout({
       <div className="flex items-center gap-4">
         <Link
           href="/dev/tests"
-          className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+          className="text-slate-400 hover:text-slate-200 transition-colors"
         >
           &larr; Retour aux tests
         </Link>
       </div>
 
-      <nav className="flex flex-wrap gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+      <nav className="flex flex-wrap gap-2 p-2 bg-slate-800/50 border border-slate-700/50 rounded-lg">
         {serviceTestPages.map((page) => {
           const isActive = pathname === page.href;
           return (
@@ -40,8 +40,8 @@ export default function ServicesTestLayout({
               href={page.href}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-purple-500/20 text-purple-300'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
               {page.label}

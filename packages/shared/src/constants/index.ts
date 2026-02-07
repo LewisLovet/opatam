@@ -36,29 +36,54 @@ export const BOOKING_STATUS = {
  */
 export const SUBSCRIPTION_PLANS = {
   solo: {
-    name: 'Solo',
-    monthlyPrice: 1500, // cents
-    yearlyPrice: 10000, // cents
+    name: 'Pro',
+    description: "L'essentiel pour les independants. Gerez vos rendez-vous et developpez votre activite — sans commission.",
+    monthlyPrice: 1490, // 14,90€ TTC
+    yearlyPrice: 11900, // 119€ TTC (9,92€/mois — economie 33%)
     features: [
-      '1 agenda',
-      'Reservations illimitees',
-      'Notifications email et push',
-      'Page publique personnalisee',
+      'Reservations illimitees, 0% de commission',
+      'Votre vitrine en ligne professionnelle',
+      'Rappels automatiques email et push',
+      'Agenda accessible partout, 24h/24',
+      'Pret en 5 minutes, sans formation',
     ],
   },
   team: {
-    name: 'Team',
-    baseMonthlyPrice: 1500, // cents
-    memberMonthlyPrice: 1000, // cents per member
-    baseYearlyPrice: 10000, // cents
-    memberYearlyPrice: 8000, // cents per member per year
+    name: 'Studio',
+    description: 'La solution complete pour les equipes. Coordonnez vos agendas, gerez plusieurs lieux et offrez une experience pro.',
+    baseMonthlyPrice: 2990, // 29,90€ TTC (inclut 1 membre)
+    memberMonthlyPrice: 990, // +9,90€/membre supplementaire
+    baseYearlyPrice: 23900, // 239€ TTC/an (19,92€/mois — economie 33%)
+    memberYearlyPrice: 7900, // +79€/membre sup./an (6,58€/mois — economie 34%)
     features: [
-      'Multi-agendas',
-      'Gestion des membres',
-      'Assignation des prestations',
-      'Planning individuel par membre',
+      'Jusqu\'a 5 agendas synchronises',
+      '0% de commission, meme en equipe',
+      'Assignation des prestations par membre',
+      'Multi-lieux (jusqu\'a 5 adresses)',
+      'Page publique d\'equipe professionnelle',
+      'Tout le plan Pro inclus',
     ],
   },
+  test: {
+    name: 'Test',
+    description: 'Plan de test pour verifier le flow de paiement. Acces complet, 0€.',
+    monthlyPrice: 0, // Free plan for testing
+    yearlyPrice: 0,
+    features: [
+      'Plan de test (0€)',
+      'Verification du flow de paiement',
+      'Acces complet temporaire',
+    ],
+  },
+} as const;
+
+/**
+ * Plan member limits
+ */
+export const PLAN_LIMITS = {
+  solo: { maxMembers: 1, maxLocations: 1 },
+  team: { maxMembers: 5, maxLocations: 5 },
+  test: { maxMembers: 5, maxLocations: 5 },
 } as const;
 
 /**

@@ -283,6 +283,48 @@ export async function notifyClientBookingRescheduled(
 }
 
 /**
+ * Send reminder notification to client before their booking
+ */
+export async function notifyClientBookingReminder(
+  booking: BookingData,
+  reminderType: '2h' | '24h'
+): Promise<void> {
+  console.log('notifyClientBookingReminder:', booking.clientId, reminderType);
+
+  if (!booking.clientId) {
+    console.log('No clientId (guest booking), skipping push notification');
+    return;
+  }
+
+  const pushTokens = await getUserPushTokens(booking.clientId);
+  if (pushTokens.length === 0) {
+    console.log('Client has no push tokens, skipping notification');
+    return;
+  }
+
+  const datetime = booking.datetime.toDate();
+  const dateStr = formatDateFr(datetime);
+
+  const body = reminderType === '24h'
+    ? `Rappel : votre RDV ${booking.serviceName} est demain, le ${dateStr}`
+    : `Rappel : votre RDV ${booking.serviceName} est dans 2 heures (${dateStr})`;
+
+  const result = await sendPushNotifications(pushTokens, {
+    title: 'Rappel de rendez-vous',
+    body,
+    data: {
+      type: 'booking_reminder',
+    },
+  });
+
+  console.log('notifyClientBookingReminder result:', result);
+
+  if (result.invalidTokens.length > 0) {
+    await removeInvalidTokens(booking.clientId, result.invalidTokens);
+  }
+}
+
+/**
  * Process booking write event and send appropriate notifications
  * This is the main entry point called from onBookingWrite trigger
  *

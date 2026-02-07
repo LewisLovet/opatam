@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Check } from 'lucide-react';
+import { generateDemoSlots } from '../../demoData';
 
 interface TimeSlotWithDate {
   date: string;
@@ -21,6 +22,7 @@ interface StepSlotProps {
   onSelect: (slot: TimeSlotWithDate) => void;
   onBack: () => void;
   openDays: number[]; // Array of open day numbers (0=Sunday, 1=Monday, etc.)
+  isDemo?: boolean;
 }
 
 const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
@@ -39,6 +41,7 @@ export function StepSlot({
   onSelect,
   onBack,
   openDays,
+  isDemo = false,
 }: StepSlotProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -92,6 +95,17 @@ export function StepSlot({
   useEffect(() => {
     if (!selectedDate) return;
 
+    // Demo mode — generate mock slots locally
+    if (isDemo) {
+      setLoading(true);
+      // Small delay for realism
+      const timer = setTimeout(() => {
+        setSlots(generateDemoSlots(selectedDate, serviceDuration));
+        setLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+
     const fetchSlots = async () => {
       setLoading(true);
       setError(null);
@@ -127,7 +141,7 @@ export function StepSlot({
     };
 
     fetchSlots();
-  }, [selectedDate, providerId, serviceId, memberId]);
+  }, [selectedDate, providerId, serviceId, memberId, isDemo, serviceDuration]);
 
   // Navigate months
   const goToPreviousMonth = () => {

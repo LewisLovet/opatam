@@ -13,6 +13,7 @@ import { Loader2, Users, Plus } from 'lucide-react';
 import { MemberCard } from './MemberCard';
 import { MemberModal, type MemberFormData } from './MemberModal';
 import type { Member, Location, Service } from '@booking-app/shared';
+import { PLAN_LIMITS } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -28,6 +29,14 @@ export function EquipeTab() {
   const [selectedMember, setSelectedMember] = useState<WithId<Member> | null>(null);
   const [selectedMemberServiceIds, setSelectedMemberServiceIds] = useState<string[]>([]);
   const [upcomingBookingsCount, setUpcomingBookingsCount] = useState(0);
+
+  // Plan member limit check (no limit during trial — enforced at plan selection)
+  const plan = provider?.plan || 'trial';
+  const planLimits = plan !== 'trial' ? PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] : null;
+  const maxMembers = planLimits?.maxMembers ?? Infinity;
+  const activeMembers = members.filter((m) => m.isActive);
+  const isAtMemberLimit = plan !== 'trial' && activeMembers.length >= maxMembers;
+  const isSoloPlan = plan === 'solo';
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -207,6 +216,15 @@ export function EquipeTab() {
 
     try {
       if (isActive) {
+        // Check plan limit before reactivating
+        if (isAtMemberLimit) {
+          toast.error(
+            isSoloPlan
+              ? 'Passez au plan Studio pour reactiver ce membre'
+              : `Limite de ${maxMembers} membres actifs atteinte`
+          );
+          return;
+        }
         await memberService.reactivateMember(provider.id, memberId);
         toast.success('Membre active');
       } else {
@@ -283,10 +301,19 @@ export function EquipeTab() {
           </p>
         </div>
 
-        <Button onClick={handleOpenCreate}>
-          <Plus className="w-4 h-4 mr-2" />
-          Ajouter
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button onClick={handleOpenCreate} disabled={isAtMemberLimit}>
+            <Plus className="w-4 h-4 mr-2" />
+            Ajouter
+          </Button>
+          {isAtMemberLimit && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              {isSoloPlan
+                ? 'Passez au plan Studio pour ajouter des membres'
+                : `Limite de ${maxMembers} membres atteinte`}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Members list */}
@@ -299,7 +326,7 @@ export function EquipeTab() {
           <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
             Ajoutez votre premier membre pour gerer plusieurs agendas et permettre a votre equipe d'acceder a leur planning.
           </p>
-          <Button onClick={handleOpenCreate} className="mt-6">
+          <Button onClick={handleOpenCreate} className="mt-6" disabled={isAtMemberLimit}>
             <Plus className="w-4 h-4 mr-2" />
             Ajouter un membre
           </Button>

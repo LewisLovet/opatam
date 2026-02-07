@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, AlertCircle, Star } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, Star, Globe, GlobeLock } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   bookingService,
@@ -97,8 +98,8 @@ export default function DashboardPage() {
       if (!provider.isPublished) {
         alerts.push({
           id: 'unpublished',
-          message: "Votre profil n'est pas encore publie",
-          action: 'Publier',
+          message: "Votre page n'est pas encore active",
+          action: 'Activer',
           href: '/pro/profil?tab=publication',
           priority: 'high',
         });
@@ -311,15 +312,31 @@ export default function DashboardPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             {greeting}, {user?.displayName?.split(' ')[0] || 'Prestataire'}
           </h1>
-          <p className="mt-1 text-gray-600 dark:text-gray-400">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-600 dark:text-gray-400">
             {provider?.businessName && (
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 {provider.businessName}
               </span>
             )}
-            {provider?.businessName && ' • '}
+            {provider?.businessName && <span>•</span>}
             <span className="capitalize">{formatFullDate(new Date())}</span>
-          </p>
+            <span>•</span>
+            <Link
+              href="/pro/profil?tab=publication"
+              className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                provider?.isPublished
+                  ? 'text-success-600 dark:text-success-400 hover:text-success-700 dark:hover:text-success-300'
+                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              {provider?.isPublished ? (
+                <Globe className="w-3.5 h-3.5" />
+              ) : (
+                <GlobeLock className="w-3.5 h-3.5" />
+              )}
+              {provider?.isPublished ? 'Page active' : 'Page inactive'}
+            </Link>
+          </div>
         </div>
 
         {/* Quick Actions */}

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardHeader, CardBody, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import {
@@ -19,15 +20,35 @@ import {
   PublicationSection,
 } from './components';
 
+const TAB_IDS = ['infos', 'photos', 'reseaux', 'publication'] as const;
+
 export default function ProfilPage() {
   const { provider } = useAuth();
-  const [activeTab, setActiveTab] = useState('infos');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    TAB_IDS.includes(tabFromUrl as typeof TAB_IDS[number]) ? tabFromUrl! : 'infos'
+  );
+
+  // Sync URL → state
+  useEffect(() => {
+    if (tabFromUrl && TAB_IDS.includes(tabFromUrl as typeof TAB_IDS[number])) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    router.replace(`/pro/profil?tab=${tabId}`, { scroll: false });
+  };
 
   const tabs = [
     { id: 'infos', label: 'Infos', icon: <User className="w-4 h-4" /> },
     { id: 'photos', label: 'Photos', icon: <Image className="w-4 h-4" /> },
     { id: 'reseaux', label: 'Reseaux', icon: <Share2 className="w-4 h-4" /> },
-    { id: 'publication', label: 'Publication', icon: <Globe className="w-4 h-4" /> },
+    { id: 'publication', label: 'Visibilite', icon: <Globe className="w-4 h-4" /> },
   ];
 
   return (
@@ -43,7 +64,7 @@ export default function ProfilPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="infos" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="infos" value={activeTab} onValueChange={handleTabChange}>
         {/* Tab List */}
         <TabsList className="w-fit">
           {tabs.map((tab) => (
@@ -140,12 +161,12 @@ export default function ProfilPage() {
           </Card>
         </TabsContent>
 
-        {/* Publication Tab */}
+        {/* Visibilite Tab */}
         <TabsContent value="publication" className="mt-6">
           <Card className="max-w-2xl">
             <CardHeader>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Publication
+                Visibilite
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Controlez la visibilite de votre page

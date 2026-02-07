@@ -22,7 +22,7 @@ export { onBookingWrite } from './triggers/onBookingWrite';
 
 // Export scheduled functions
 export { recalculateExpiredSlots } from './scheduled/recalculateExpiredSlots';
-// export { sendReminders } from './scheduled/sendReminders';
+export { sendBookingReminders } from './scheduled/sendBookingReminders';
 // export { completeBookings } from './scheduled/completeBookings';
 // export { sendMemberDigest } from './scheduled/sendMemberDigest';
 

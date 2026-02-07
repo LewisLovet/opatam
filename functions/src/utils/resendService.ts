@@ -400,6 +400,125 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
   }
 }
 
+/**
+ * Send reminder email to client
+ */
+export async function sendReminderEmail(
+  data: BookingEmailData,
+  reminderType: '2h' | '24h'
+): Promise<EmailResult> {
+  console.log('[EMAIL] Sending reminder email to:', data.clientEmail);
+
+  if (!isValidEmail(data.clientEmail)) {
+    console.log('[EMAIL] Invalid email format');
+    return { success: false, error: 'Invalid email format' };
+  }
+
+  try {
+    const formattedDate = formatDateFr(data.datetime);
+    const formattedTime = formatTimeFr(data.datetime);
+    const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
+    const formattedEndTime = formatTimeFr(endDate);
+    const formattedPrice = formatPriceFr(data.price);
+    const businessName = data.providerName || appConfig.name;
+
+    // Generate URLs
+    const cancelUrl = data.cancelToken ? `${appConfig.url}/reservation/annuler/${data.cancelToken}` : null;
+    const icsUrl = data.bookingId ? `${appConfig.url}/api/calendar/${data.bookingId}` : null;
+
+    // Google Calendar URL
+    const eventTitle = encodeURIComponent(`RDV - ${data.serviceName} chez ${businessName}`);
+    const eventLocation = encodeURIComponent(data.locationAddress || '');
+    const eventDescription = encodeURIComponent(
+      `${data.memberName ? `Avec ${data.memberName}` : `Chez ${businessName}`}${cancelUrl ? `\n\nPour annuler : ${cancelUrl}` : ''}`
+    );
+    const eventDates = `${formatGoogleDate(data.datetime)}/${formatGoogleDate(endDate)}`;
+    const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${eventDates}&location=${eventLocation}&details=${eventDescription}`;
+
+    // ICS content
+    const icsDescriptionParts = [data.memberName ? `Avec ${data.memberName}` : `Chez ${businessName}`];
+    if (cancelUrl) {
+      icsDescriptionParts.push('');
+      icsDescriptionParts.push(`Pour annuler : ${cancelUrl}`);
+    }
+    const icsDescription = escapeIcs(icsDescriptionParts.join('\n'));
+    const icsSummary = escapeIcs(`RDV - ${data.serviceName} chez ${businessName}`);
+    const icsLocation = escapeIcs(data.locationAddress || '');
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Opatam//Booking//FR',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${data.bookingId || Date.now()}@opatam.com`,
+      `DTSTAMP:${formatGoogleDate(new Date())}`,
+      `DTSTART:${formatGoogleDate(data.datetime)}`,
+      `DTEND:${formatGoogleDate(endDate)}`,
+      `SUMMARY:${icsSummary}`,
+      `DESCRIPTION:${icsDescription}`,
+      `LOCATION:${icsLocation}`,
+      'STATUS:CONFIRMED',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+    const icsBuffer = Buffer.from(icsContent, 'utf-8');
+
+    const subject = reminderType === '24h'
+      ? `Rappel : votre rendez-vous demain - ${data.serviceName}`
+      : `Rappel : votre rendez-vous dans 2h - ${data.serviceName}`;
+
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.clientEmail,
+      subject,
+      attachments: [
+        {
+          filename: 'rendez-vous.ics',
+          content: icsBuffer,
+          contentType: 'text/calendar; method=PUBLISH',
+        },
+      ],
+      html: generateReminderHtml({
+        ...data,
+        formattedDate,
+        formattedTime,
+        formattedEndTime,
+        formattedPrice,
+        businessName,
+        cancelUrl,
+        icsUrl,
+        googleCalendarUrl,
+        reminderType,
+      }),
+      text: generateReminderText({
+        ...data,
+        formattedDate,
+        formattedTime,
+        formattedEndTime,
+        formattedPrice,
+        businessName,
+        cancelUrl,
+        icsUrl,
+        googleCalendarUrl,
+        reminderType,
+      }),
+    });
+
+    if (error) {
+      console.error('[EMAIL] Resend error:', error);
+      return { success: false, error: String(error) };
+    }
+
+    console.log('[EMAIL] Reminder email sent successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAIL] Exception:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
 // HTML Template generators
 interface ConfirmationTemplateData extends BookingEmailData {
   formattedDate: string;
@@ -688,6 +807,115 @@ ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
 Mettre a jour votre calendrier :
+- Google Calendar : ${data.googleCalendarUrl}
+${data.icsUrl ? `- Apple / Outlook : ${data.icsUrl}` : ''}
+
+${data.cancelUrl ? `Annuler le rendez-vous : ${data.cancelUrl}` : ''}
+
+A bientot,
+${data.businessName}
+  `.trim();
+}
+
+interface ReminderTemplateData extends BookingEmailData {
+  formattedDate: string;
+  formattedTime: string;
+  formattedEndTime: string;
+  formattedPrice: string;
+  businessName: string;
+  cancelUrl: string | null;
+  icsUrl: string | null;
+  googleCalendarUrl: string;
+  reminderType: '2h' | '24h';
+}
+
+function generateReminderHtml(data: ReminderTemplateData): string {
+  const introText = data.reminderType === '24h'
+    ? `Nous vous rappelons que votre rendez-vous a lieu <strong style="color: #2563eb;">demain</strong>.`
+    : `Nous vous rappelons que votre rendez-vous a lieu <strong style="color: #2563eb;">dans 2 heures</strong>.`;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" style="max-width: 480px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <tr>
+                <td style="padding: 32px 32px 24px; text-align: center;">
+                  <img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height: 48px; max-width: 200px;" />
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0 32px 24px;">
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${introText}</p>
+                  <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px;">Rappel de rendez-vous</p>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Duree</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
+                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
+                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>` : ''}
+                      ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
+                    </table>
+                  </div>
+                  <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Ajouter a votre calendrier</p>
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Google</a></td>
+                        <td style="padding-left: 6px; width: 50%;"><a href="${data.icsUrl || data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Apple / Outlook</a></td>
+                      </tr>
+                    </table>
+                  </div>
+                  ${data.cancelUrl ? `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.cancelUrl}" style="display: inline-block; padding: 12px 24px; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 8px;">Annuler le rendez-vous</a></td></tr></table>` : ''}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">A bientot,<br><strong>${data.businessName}</strong></p>
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a ete envoye automatiquement par ${appConfig.name}.<br>Si vous n'etes pas concerne, veuillez ignorer ce message.</p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+function generateReminderText(data: ReminderTemplateData): string {
+  const introText = data.reminderType === '24h'
+    ? 'Nous vous rappelons que votre rendez-vous a lieu demain.'
+    : 'Nous vous rappelons que votre rendez-vous a lieu dans 2 heures.';
+
+  return `
+Bonjour ${data.clientName},
+
+${introText}
+
+Details de votre rendez-vous :
+- Prestation : ${data.serviceName}
+- Date : ${data.formattedDate}
+- Heure : ${data.formattedTime} - ${data.formattedEndTime}
+- Duree : ${data.duration} min
+${data.locationName ? `- Lieu : ${data.locationName}` : ''}
+${data.locationAddress ? `- Adresse : ${data.locationAddress}` : ''}
+${data.memberName ? `- Avec : ${data.memberName}` : ''}
+- Prix : ${data.formattedPrice}
+
+Ajouter a votre calendrier :
 - Google Calendar : ${data.googleCalendarUrl}
 ${data.icsUrl ? `- Apple / Outlook : ${data.icsUrl}` : ''}
 

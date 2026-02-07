@@ -16,7 +16,7 @@ export interface User {
 }
 
 // Provider types
-export type ProviderPlan = 'trial' | 'solo' | 'team';
+export type ProviderPlan = 'trial' | 'solo' | 'team' | 'test';
 
 export interface Provider {
   userId: string;
@@ -82,6 +82,9 @@ export interface Subscription {
   validUntil: Date;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
+  status: 'trialing' | 'active' | 'past_due' | 'cancelled' | 'incomplete';
+  currentPeriodEnd: Date | null;
+  cancelAtPeriodEnd: boolean;
 }
 
 // Member types (Teams)

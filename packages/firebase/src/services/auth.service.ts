@@ -49,6 +49,7 @@ export class AuthService {
       birthYear: null,
       gender: null,
       cancellationCount: 0,
+      pushTokens: [],
     });
 
     const user = await userRepository.getById(userId);
@@ -89,6 +90,7 @@ export class AuthService {
       birthYear: null,
       gender: null,
       cancellationCount: 0,
+      pushTokens: [],
     });
 
     const user = await userRepository.getById(userId);
@@ -128,6 +130,7 @@ export class AuthService {
         birthYear: null,
         gender: null,
         cancellationCount: 0,
+        pushTokens: [],
       });
 
       const newUser = await userRepository.getById(credential.user.uid);
@@ -165,6 +168,7 @@ export class AuthService {
         birthYear: null,
         gender: null,
         cancellationCount: 0,
+        pushTokens: [],
       });
 
       user = await userRepository.getById(userId);

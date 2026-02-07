@@ -51,6 +51,7 @@ export default function UsersTestPage() {
         birthYear: null,
         gender: null,
         cancellationCount: 0,
+        pushTokens: [],
       });
       return { id, message: 'User cree avec succes' };
     });

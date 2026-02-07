@@ -8,6 +8,7 @@ import { Plus, MapPin, Loader2 } from 'lucide-react';
 import { LocationCard } from './LocationCard';
 import { LocationModal, type LocationFormData } from './LocationModal';
 import type { Location } from '@booking-app/shared';
+import { PLAN_LIMITS } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -20,6 +21,14 @@ export function LieuxTab() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<WithId<Location> | null>(null);
+
+  // Plan location limit check (no limit during trial — enforced at plan selection)
+  const plan = provider?.plan || 'trial';
+  const planLimits = plan !== 'trial' ? PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] : null;
+  const maxLocations = planLimits?.maxLocations ?? Infinity;
+  const activeLocations = locations.filter((l) => l.isActive);
+  const isAtLocationLimit = plan !== 'trial' && activeLocations.length >= maxLocations;
+  const isSoloPlan = plan === 'solo';
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -51,6 +60,16 @@ export function LieuxTab() {
   // Toggle active status
   const handleToggleActive = async (locationId: string, isActive: boolean) => {
     if (!provider) return;
+
+    // Check plan limit before reactivating
+    if (isActive && isAtLocationLimit) {
+      toast.error(
+        isSoloPlan
+          ? 'Passez au plan Studio pour reactiver ce lieu'
+          : `Limite de ${maxLocations} lieux actifs atteinte`
+      );
+      return;
+    }
 
     // Optimistic update
     setLocations((prev) =>
@@ -180,15 +199,24 @@ export function LieuxTab() {
             Gerez les adresses ou vous exercez
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="w-4 h-4 mr-2" />
-          Ajouter
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button onClick={handleCreate} disabled={isAtLocationLimit}>
+            <Plus className="w-4 h-4 mr-2" />
+            Ajouter
+          </Button>
+          {isAtLocationLimit && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              {isSoloPlan
+                ? 'Passez au plan Studio pour ajouter des lieux'
+                : `Limite de ${maxLocations} lieux atteinte`}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Locations list */}
       {locations.length === 0 ? (
-        <EmptyState onAdd={handleCreate} />
+        <EmptyState onAdd={handleCreate} disabled={isAtLocationLimit} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {locations.map((location) => (
@@ -216,7 +244,7 @@ export function LieuxTab() {
 }
 
 // Empty state component
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ onAdd, disabled }: { onAdd: () => void; disabled?: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
       <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-4">
@@ -228,7 +256,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <p className="text-gray-500 dark:text-gray-400 text-center mb-6 max-w-sm">
         Ajoutez votre premier lieu pour indiquer ou vous exercez vos prestations.
       </p>
-      <Button onClick={onAdd}>
+      <Button onClick={onAdd} disabled={disabled}>
         <Plus className="w-4 h-4 mr-2" />
         Ajouter mon premier lieu
       </Button>

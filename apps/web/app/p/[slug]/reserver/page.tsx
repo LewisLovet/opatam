@@ -8,6 +8,13 @@ import {
   availabilityRepository,
 } from '@booking-app/firebase';
 import { BookingFlow } from './components/BookingFlow';
+import {
+  demoBookingProvider,
+  demoBookingServices,
+  demoBookingLocations,
+  demoBookingMembers,
+  demoBookingAvailabilities,
+} from '../demoData';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -16,6 +23,14 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+
+  if (slug === 'demo') {
+    return {
+      title: 'Demo — Réserver chez Studio Beauté Élégance | OPATAM',
+      description: 'Testez le parcours de réservation OPATAM avec cette boutique de démonstration.',
+    };
+  }
+
   const provider = await providerRepository.getBySlug(slug);
 
   if (!provider || !provider.isPublished) {
@@ -33,6 +48,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function BookingPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const { service: preselectedServiceId } = await searchParams;
+
+  // Demo booking page — serve mock data, no Firestore
+  if (slug === 'demo') {
+    return (
+      <BookingFlow
+        provider={demoBookingProvider}
+        services={demoBookingServices}
+        locations={demoBookingLocations}
+        members={demoBookingMembers}
+        availabilities={demoBookingAvailabilities}
+        isTeam={demoBookingMembers.length > 1}
+        preselectedServiceId={preselectedServiceId}
+        isDemo
+      />
+    );
+  }
 
   // Fetch provider by slug
   const provider = await providerRepository.getBySlug(slug);

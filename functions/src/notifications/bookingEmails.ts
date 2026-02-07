@@ -9,6 +9,7 @@ import {
   sendConfirmationEmail,
   sendCancellationEmail,
   sendRescheduleEmail,
+  sendReminderEmail,
   type BookingEmailData,
 } from '../utils/resendService';
 
@@ -142,6 +143,23 @@ export async function emailClientBookingRescheduled(
   });
 
   console.log('[EMAIL] Reschedule email result:', result);
+}
+
+/**
+ * Send reminder email to client before their booking
+ */
+export async function emailClientBookingReminder(
+  booking: BookingData,
+  bookingId: string,
+  reminderType: '2h' | '24h'
+): Promise<void> {
+  console.log('[EMAIL] emailClientBookingReminder:', booking.clientInfo?.email, reminderType);
+
+  const emailData = await toEmailData(booking, bookingId);
+  if (!emailData) return;
+
+  const result = await sendReminderEmail(emailData, reminderType);
+  console.log('[EMAIL] Reminder email result:', result);
 }
 
 /**

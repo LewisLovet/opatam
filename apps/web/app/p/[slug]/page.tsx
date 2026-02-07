@@ -11,6 +11,15 @@ import {
 import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
+import {
+  demoProvider,
+  demoServices,
+  demoLocations,
+  demoMembers,
+  demoReviews,
+  demoAvailabilities,
+  getDemoNextAvailableDate,
+} from './demoData';
 
 /**
  * Calculate the next available date based on availabilities
@@ -59,6 +68,16 @@ interface PageProps {
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+
+  // Demo page metadata
+  if (slug === 'demo') {
+    return {
+      title: 'Demo — Studio Beauté Élégance | OPATAM',
+      description:
+        'Découvrez à quoi ressemble une page de réservation OPATAM. Exemple avec un salon de coiffure et esthétique.',
+    };
+  }
+
   const provider = await providerRepository.getBySlug(slug);
 
   if (!provider || !provider.isPublished) {
@@ -92,6 +111,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ProviderPage({ params }: PageProps) {
   const { slug } = await params;
 
+  // Demo page — serve mock data without any Firestore call
+  if (slug === 'demo') {
+    const minPrice = Math.min(...demoServices.map((s) => s.price));
+    return (
+      <ProviderPageClient
+        provider={demoProvider}
+        services={demoServices}
+        locations={demoLocations}
+        members={demoMembers}
+        reviews={demoReviews}
+        availabilities={demoAvailabilities}
+        minPrice={minPrice}
+        nextAvailableDate={getDemoNextAvailableDate()}
+        isDemo
+      />
+    );
+  }
+
   // Fetch provider by slug
   const provider = await providerRepository.getBySlug(slug);
 
@@ -123,6 +160,7 @@ export default async function ProviderPage({ params }: PageProps) {
     subscription: {
       ...provider.subscription,
       validUntil: provider.subscription.validUntil.toISOString(),
+      currentPeriodEnd: provider.subscription.currentPeriodEnd?.toISOString() ?? null,
     },
   };
 

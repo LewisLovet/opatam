@@ -1,122 +1,172 @@
 'use client';
 
-import { useState } from 'react';
-import { Card, CardHeader, CardBody, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Calendar,
   Bell,
   User,
   CreditCard,
+  QrCode,
+  Settings,
 } from 'lucide-react';
 import {
   ReservationSettingsForm,
   NotificationsForm,
   AccountForm,
   SubscriptionSection,
+  ShareSection,
 } from './components';
 
-export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('reservation');
+const tabs = [
+  {
+    id: 'reservation',
+    label: 'Reservations',
+    description: 'Regles de prise de rendez-vous',
+    icon: Calendar,
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    description: 'Rappels automatiques clients',
+    icon: Bell,
+  },
+  {
+    id: 'compte',
+    label: 'Compte',
+    description: 'Email, mot de passe, suppression',
+    icon: User,
+  },
+  {
+    id: 'abonnement',
+    label: 'Abonnement',
+    description: 'Plan, facturation, portail',
+    icon: CreditCard,
+  },
+  {
+    id: 'partage',
+    label: 'Partage',
+    description: 'QR code, liens, partage',
+    icon: QrCode,
+  },
+];
 
-  const tabs = [
-    { id: 'reservation', label: 'Reservation', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
-    { id: 'compte', label: 'Compte', icon: <User className="w-4 h-4" /> },
-    { id: 'abonnement', label: 'Abonnement', icon: <CreditCard className="w-4 h-4" /> },
-  ];
+export default function SettingsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const tabFromUrl = searchParams.get('tab');
+  const validTab = tabs.find((t) => t.id === tabFromUrl);
+  const [activeTab, setActiveTab] = useState(validTab?.id || 'reservation');
+
+  // Sync URL → state
+  useEffect(() => {
+    if (tabFromUrl && tabs.some((t) => t.id === tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    router.replace(`/pro/parametres?tab=${tabId}`, { scroll: false });
+  };
+
+  const currentTab = tabs.find((t) => t.id === activeTab) ?? tabs[0];
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-          Parametres
-        </h1>
-        <p className="mt-1 text-gray-600 dark:text-gray-400">
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-1">
+          <Settings className="w-6 h-6 text-gray-400" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Parametres
+          </h1>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 ml-9">
           Configurez votre activite et votre compte
         </p>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="reservation" value={activeTab} onValueChange={setActiveTab}>
-        {/* Tab List */}
-        <TabsList className="w-fit">
-          {tabs.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2">
-              {tab.icon}
-              <span className="hidden sm:inline">{tab.label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/* Settings panel: sidebar + content */}
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
+        <div className="flex flex-col lg:flex-row">
+          {/* Sidebar navigation */}
+          <nav className="lg:w-60 flex-shrink-0 bg-gray-50 dark:bg-gray-800/50 lg:border-r border-b lg:border-b-0 border-gray-200 dark:border-gray-700">
+            <ul className="flex lg:flex-col gap-0 overflow-x-auto lg:overflow-x-visible p-2 lg:p-3">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <li key={tab.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange(tab.id)}
+                      className={`
+                        relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm font-medium
+                        transition-all whitespace-nowrap
+                        ${
+                          isActive
+                            ? 'bg-white dark:bg-gray-700 text-primary-700 dark:text-primary-300 shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-gray-200'
+                        }
+                      `}
+                    >
+                      {/* Active indicator bar (desktop only) */}
+                      {isActive && (
+                        <span className="hidden lg:block absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary-600 dark:bg-primary-400" />
+                      )}
+                      {/* Active indicator bar (mobile: bottom) */}
+                      {isActive && (
+                        <span className="lg:hidden absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] w-5 rounded-t-full bg-primary-600 dark:bg-primary-400" />
+                      )}
+                      <Icon
+                        className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
+                          isActive
+                            ? 'text-primary-600 dark:text-primary-400'
+                            : 'text-gray-400 dark:text-gray-500'
+                        }`}
+                      />
+                      <div className="min-w-0">
+                        <div>{tab.label}</div>
+                        <div
+                          className={`text-xs font-normal hidden lg:block ${
+                            isActive
+                              ? 'text-primary-600/70 dark:text-primary-400/70'
+                              : 'text-gray-400 dark:text-gray-500'
+                          }`}
+                        >
+                          {tab.description}
+                        </div>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
 
-        {/* Reservation Tab */}
-        <TabsContent value="reservation" className="mt-6">
-          <Card className="max-w-2xl">
-            <CardHeader>
+          {/* Content area */}
+          <div className="flex-1 min-w-0 bg-white dark:bg-gray-800 p-5 sm:p-6 lg:p-8">
+            {/* Section header */}
+            <div className="mb-5 pb-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Parametres de reservation
+                {currentTab.label}
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Definissez les regles de reservation pour vos clients
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {currentTab.description}
               </p>
-            </CardHeader>
-            <CardBody>
-              <ReservationSettingsForm />
-            </CardBody>
-          </Card>
-        </TabsContent>
+            </div>
 
-        {/* Notifications Tab */}
-        <TabsContent value="notifications" className="mt-6">
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Notifications et rappels
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Configurez les rappels automatiques envoyes a vos clients
-              </p>
-            </CardHeader>
-            <CardBody>
-              <NotificationsForm />
-            </CardBody>
-          </Card>
-        </TabsContent>
-
-        {/* Account Tab */}
-        <TabsContent value="compte" className="mt-6">
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Informations du compte
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Gerez vos identifiants de connexion
-              </p>
-            </CardHeader>
-            <CardBody>
-              <AccountForm />
-            </CardBody>
-          </Card>
-        </TabsContent>
-
-        {/* Subscription Tab */}
-        <TabsContent value="abonnement" className="mt-6">
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Abonnement
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Gerez votre abonnement et vos factures
-              </p>
-            </CardHeader>
-            <CardBody>
-              <SubscriptionSection />
-            </CardBody>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            {/* Section content */}
+            {activeTab === 'reservation' && <ReservationSettingsForm />}
+            {activeTab === 'notifications' && <NotificationsForm />}
+            {activeTab === 'compte' && <AccountForm />}
+            {activeTab === 'abonnement' && <SubscriptionSection />}
+            {activeTab === 'partage' && <ShareSection />}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

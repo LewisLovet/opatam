@@ -431,8 +431,8 @@ export default function TestFunctionsPage() {
     <div className="py-12 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Back link */}
-        <Link href="/dev-tools" className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-          ← Retour aux outils de dev
+        <Link href="/dev" className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+          &larr; Retour au Dev Hub
         </Link>
 
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">

@@ -2,88 +2,137 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import {
+  Home,
+  Package,
+  Blocks,
+  Database,
+  Settings,
+  CreditCard,
+  Zap,
+  Sprout,
+  ArrowLeft,
+  Code2,
+  Menu,
+  X,
+  Lock,
+  ChevronDown,
+  Flame,
+  Terminal,
+  Sparkles,
+} from 'lucide-react';
 
 interface NavItem {
   href: string;
   label: string;
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
   children?: NavItem[];
 }
 
-const navItems: NavItem[] = [
+const navSections: { title: string; items: NavItem[] }[] = [
   {
-    href: '/dev',
-    label: 'Accueil',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-      </svg>
-    ),
-  },
-  {
-    href: '/dev/components',
-    label: 'UI Components',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/dev/components-metier',
-    label: 'Composants Métier',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-      </svg>
-    ),
-  },
-  {
-    href: '/dev/tests',
-    label: 'Tests Repositories',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-      </svg>
-    ),
-    children: [
-      { href: '/dev/tests/firebase-connection', label: 'Firebase' },
-      { href: '/dev/tests/users', label: 'Users' },
-      { href: '/dev/tests/providers', label: 'Providers' },
-      { href: '/dev/tests/prestations', label: 'Prestations' },
-      { href: '/dev/tests/availability', label: 'Availability' },
+    title: '',
+    items: [
+      {
+        href: '/dev',
+        label: 'Accueil',
+        icon: <Home className="w-4 h-4" />,
+      },
     ],
   },
   {
-    href: '/dev/tests/services',
-    label: 'Tests Services',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
-    children: [
-      { href: '/dev/tests/services/auth', label: 'Auth' },
-      { href: '/dev/tests/services/provider', label: 'Provider' },
-      { href: '/dev/tests/services/members', label: 'Members' },
-      { href: '/dev/tests/services/catalog', label: 'Catalog' },
-      { href: '/dev/tests/services/scheduling', label: 'Scheduling' },
-      { href: '/dev/tests/services/bookings', label: 'Bookings' },
+    title: 'Composants',
+    items: [
+      {
+        href: '/dev/components',
+        label: 'UI Components',
+        icon: <Package className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/components-metier',
+        label: 'Composants Metier',
+        icon: <Blocks className="w-4 h-4" />,
+      },
+    ],
+  },
+  {
+    title: 'Tests',
+    items: [
+      {
+        href: '/dev/tests/firebase-connection',
+        label: 'Firebase Connection',
+        icon: <Flame className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/tests',
+        label: 'Repositories',
+        icon: <Database className="w-4 h-4" />,
+        children: [
+          { href: '/dev/tests/users', label: 'Users', icon: <></> },
+          { href: '/dev/tests/providers', label: 'Providers', icon: <></> },
+          { href: '/dev/tests/members', label: 'Members', icon: <></> },
+          { href: '/dev/tests/locations', label: 'Locations', icon: <></> },
+          { href: '/dev/tests/prestations', label: 'Prestations', icon: <></> },
+          { href: '/dev/tests/availability', label: 'Availability', icon: <></> },
+          { href: '/dev/tests/bookings', label: 'Bookings', icon: <></> },
+        ],
+      },
+      {
+        href: '/dev/tests/services',
+        label: 'Services',
+        icon: <Settings className="w-4 h-4" />,
+        children: [
+          { href: '/dev/tests/services/auth', label: 'Auth', icon: <></> },
+          { href: '/dev/tests/services/provider', label: 'Provider', icon: <></> },
+          { href: '/dev/tests/services/members', label: 'Members', icon: <></> },
+          { href: '/dev/tests/services/catalog', label: 'Catalog', icon: <></> },
+          { href: '/dev/tests/services/scheduling', label: 'Scheduling', icon: <></> },
+          { href: '/dev/tests/services/bookings', label: 'Bookings', icon: <></> },
+        ],
+      },
+      {
+        href: '/dev/tests/stripe',
+        label: 'Stripe',
+        icon: <CreditCard className="w-4 h-4" />,
+      },
+    ],
+  },
+  {
+    title: 'Outils',
+    items: [
+      {
+        href: '/dev/tools/functions',
+        label: 'Cloud Functions',
+        icon: <Zap className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/tools/seed',
+        label: 'Donnees de test',
+        icon: <Sprout className="w-4 h-4" />,
+      },
     ],
   },
 ];
 
-function NavLink({ item, isActive, depth = 0 }: { item: NavItem; isActive: boolean; depth?: number }) {
+function NavLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = useState(
-    item.children?.some((child) => pathname.startsWith(child.href)) || false
-  );
-
   const hasChildren = item.children && item.children.length > 0;
+
   const isExactActive = pathname === item.href;
-  const isChildActive = item.children?.some((child) => pathname === child.href);
+  const isChildActive = item.children?.some(
+    (child) => pathname === child.href || pathname.startsWith(child.href + '/')
+  );
+  const isActive = isExactActive || isChildActive;
+
+  const [isOpen, setIsOpen] = useState(isActive || false);
+
+  // Keep expanded if a child becomes active (e.g. from navigation)
+  useEffect(() => {
+    if (isChildActive) {
+      setIsOpen(true);
+    }
+  }, [isChildActive]);
 
   if (hasChildren) {
     return (
@@ -91,35 +140,27 @@ function NavLink({ item, isActive, depth = 0 }: { item: NavItem; isActive: boole
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={`
-            w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg transition-colors
-            ${isActive || isChildActive
-              ? 'bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            group w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg transition-all duration-200
+            ${isActive
+              ? 'bg-gradient-to-r from-purple-500/15 to-pink-500/10 text-purple-300 dark:text-purple-300 shadow-[inset_0_1px_0_rgba(168,85,247,0.2)]'
+              : 'text-slate-400 dark:text-slate-400 hover:bg-white/5 dark:hover:bg-white/5 hover:text-slate-200 dark:hover:text-slate-200'
             }
           `}
         >
-          <div className="flex items-center gap-2">
-            {item.icon}
-            <span>{item.label}</span>
+          <div className="flex items-center gap-2.5">
+            <span className={`transition-colors duration-200 ${isActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-slate-300'}`}>
+              {item.icon}
+            </span>
+            <span className="font-medium">{item.label}</span>
           </div>
-          <svg
-            className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          />
         </button>
         {isOpen && item.children && (
-          <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+          <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-700/50 dark:border-slate-700/50 pl-2">
             {item.children.map((child) => (
-              <NavLink
-                key={child.href}
-                item={child}
-                isActive={pathname === child.href}
-                depth={depth + 1}
-              />
+              <NavLink key={child.href} item={child} depth={depth + 1} />
             ))}
           </div>
         )}
@@ -131,47 +172,104 @@ function NavLink({ item, isActive, depth = 0 }: { item: NavItem; isActive: boole
     <Link
       href={item.href}
       className={`
-        flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors
+        group flex items-center gap-2.5 px-3 text-sm rounded-lg transition-all duration-200
+        ${depth > 0 ? 'py-1.5' : 'py-2'}
         ${isExactActive
-          ? 'bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300 font-medium'
-          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+          ? 'bg-gradient-to-r from-purple-500/15 to-pink-500/10 text-white dark:text-white font-medium shadow-[inset_0_1px_0_rgba(168,85,247,0.2)]'
+          : 'text-slate-400 dark:text-slate-400 hover:bg-white/5 dark:hover:bg-white/5 hover:text-slate-200 dark:hover:text-slate-200'
         }
       `}
     >
-      {item.icon}
+      {depth === 0 && (
+        <span className={`transition-colors duration-200 ${isExactActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-slate-300'}`}>
+          {item.icon}
+        </span>
+      )}
+      {depth > 0 && (
+        <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-200 ${isExactActive ? 'bg-purple-400' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
+      )}
       <span>{item.label}</span>
     </Link>
   );
 }
 
 export default function DevLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close mobile sidebar on navigation
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  // Force dark background on body for dev pages (overrides globals.css --background: #ffffff)
+  useEffect(() => {
+    const prev = document.body.style.background;
+    document.body.style.background = '#020617'; // slate-950
+    return () => {
+      document.body.style.background = prev;
+    };
+  }, []);
+
+  // Production guard
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    const isDev =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.includes('vercel.app') ||
+      hostname.includes('local');
+    setIsAllowed(isDev);
+  }, []);
+
+  // Loading state
+  if (isAllowed === null) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+          <span className="text-slate-400 text-sm">Chargement...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Blocked in production
+  if (!isAllowed) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center p-8">
+          <div className="w-16 h-16 mx-auto mb-4 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-700/50 shadow-lg shadow-slate-900/50">
+            <Lock className="w-8 h-8 text-slate-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            Acces non autorise
+          </h1>
+          <p className="text-slate-400">
+            Cette page n&apos;est disponible qu&apos;en environnement de developpement.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-slate-950 dark:bg-slate-950">
       {/* Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+      <header className="lg:hidden sticky top-0 z-40 bg-slate-900/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/50">
         <div className="flex items-center justify-between px-4 h-14">
-          <Link href="/dev" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
+          <Link href="/dev" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/25">
+              <Code2 className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-gray-900 dark:text-white">Dev Hub</span>
+            <span className="font-bold text-white">Dev Hub</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="p-2 rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-white transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {sidebarOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
+            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </header>
@@ -180,50 +278,85 @@ export default function DevLayout({ children }: { children: React.ReactNode }) {
         {/* Sidebar */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800
+            fixed inset-y-0 left-0 z-30 w-64
+            bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950
+            dark:bg-gradient-to-b dark:from-slate-900 dark:via-slate-900 dark:to-slate-950
+            border-r border-slate-800/50
             transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            flex flex-col
           `}
         >
           {/* Logo (Desktop) */}
-          <div className="hidden lg:flex items-center gap-2 px-4 h-16 border-b border-gray-200 dark:border-gray-800">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
+          <div className="hidden lg:flex items-center gap-3 px-5 h-16 border-b border-slate-800/50">
+            <div className="relative">
+              <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/25">
+                <Code2 className="w-5 h-5 text-white" />
+              </div>
+              <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900" />
             </div>
-            <span className="font-bold text-gray-900 dark:text-white">Dev Hub</span>
+            <div>
+              <span className="font-bold text-white text-base tracking-tight">Dev Hub</span>
+              <p className="text-[10px] text-slate-500 -mt-0.5 font-medium">Opatam Platform</p>
+            </div>
+          </div>
+
+          {/* Dev Mode Badge */}
+          <div className="px-4 py-3">
+            <div className="relative overflow-hidden px-3 py-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 text-amber-400/90 text-xs font-semibold rounded-lg text-center">
+              <Sparkles className="w-3 h-3 inline-block mr-1.5 -mt-0.5" />
+              Mode Developpement
+              <div className="absolute top-0 right-0 w-2 h-2 bg-amber-400 rounded-full m-1.5 animate-pulse" />
+            </div>
           </div>
 
           {/* Navigation */}
-          <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)]">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.href}
-                item={item}
-                isActive={pathname === item.href}
-              />
+          <nav className="flex-1 px-3 pb-4 space-y-5 overflow-y-auto">
+            {navSections.map((section, sectionIndex) => (
+              <div key={sectionIndex}>
+                {section.title && (
+                  <div className="flex items-center gap-2 px-3 mb-2">
+                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-widest">
+                      {section.title}
+                    </p>
+                    <div className="flex-1 h-px bg-gradient-to-r from-slate-800 to-transparent" />
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  {section.items.map((item) => (
+                    <NavLink key={item.href + item.label} item={item} />
+                  ))}
+                </div>
+              </div>
             ))}
 
             {/* Back to App */}
-            <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="pt-4 mt-4 border-t border-slate-800/50">
               <Link
                 href="/"
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="group flex items-center gap-2.5 px-3 py-2 text-sm text-slate-500 hover:text-slate-300 rounded-lg hover:bg-white/5 transition-all duration-200"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                </svg>
-                <span>Retour à l'app</span>
+                <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+                <span>Retour a l&apos;app</span>
               </Link>
             </div>
           </nav>
+
+          {/* Footer */}
+          <div className="px-4 py-3 border-t border-slate-800/50 bg-slate-950/50">
+            <div className="flex items-center gap-2.5 text-[11px] text-slate-600">
+              <Terminal className="w-3.5 h-3.5" />
+              <span>v0.1.0-dev</span>
+              <span className="text-slate-800">|</span>
+              <span>Next.js 15</span>
+            </div>
+          </div>
         </aside>
 
         {/* Backdrop (Mobile) */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-20 bg-black/60 backdrop-blur-sm lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}

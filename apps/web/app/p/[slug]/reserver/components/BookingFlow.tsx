@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check, CalendarCheck, Sparkles, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { APP_CONFIG } from '@booking-app/shared/constants';
 import { StepService } from './StepService';
 import { StepMember } from './StepMember';
 import { StepSlot } from './StepSlot';
@@ -82,9 +83,10 @@ interface BookingFlowProps {
   availabilities: Availability[];
   isTeam: boolean;
   preselectedServiceId?: string;
+  isDemo?: boolean;
 }
 
-export type BookingStep = 'service' | 'member' | 'slot' | 'confirm';
+export type BookingStep = 'service' | 'member' | 'slot' | 'confirm' | 'demo-success';
 
 interface BookingState {
   serviceId: string | null;
@@ -112,6 +114,7 @@ export function BookingFlow({
   availabilities,
   isTeam,
   preselectedServiceId,
+  isDemo = false,
 }: BookingFlowProps) {
   const router = useRouter();
 
@@ -280,6 +283,16 @@ export function BookingFlow({
       return;
     }
 
+    // Demo mode — skip real API, show success screen
+    if (isDemo) {
+      setIsSubmitting(true);
+      // Brief delay to simulate submission feel
+      await new Promise((r) => setTimeout(r, 800));
+      setIsSubmitting(false);
+      setCurrentStep('demo-success');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -331,6 +344,7 @@ export function BookingFlow({
       </header>
 
       {/* Progress Steps */}
+      {currentStep !== 'demo-success' && (
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -379,6 +393,7 @@ export function BookingFlow({
           </div>
         </div>
       </div>
+      )}
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-6">
@@ -420,6 +435,7 @@ export function BookingFlow({
                 onSelect={handleSlotSelect}
                 onBack={handleBack}
                 openDays={openDays}
+                isDemo={isDemo}
               />
             )}
 
@@ -433,9 +449,75 @@ export function BookingFlow({
                 requiresConfirmation={provider.settings.requiresConfirmation}
               />
             )}
+
+            {/* Demo success screen */}
+            {currentStep === 'demo-success' && (
+              <div className="text-center py-12">
+                <div className="mx-auto w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-6">
+                  <CalendarCheck className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Reservation confirmee !
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-sm mx-auto">
+                  C&apos;est exactement ce que vos clients verront apres avoir reserve chez vous.
+                </p>
+
+                {/* Recap */}
+                {selectedService && state.slot && (
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 mb-8 max-w-sm mx-auto text-left">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedService.name}</p>
+                    {selectedMember && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">avec {selectedMember.name}</p>
+                    )}
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {new Date(state.slot.datetime).toLocaleDateString('fr-FR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                      })} a {state.slot.start}
+                    </p>
+                  </div>
+                )}
+
+                {/* CTA */}
+                <div className="flex flex-col items-center gap-3">
+                  <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl px-5 py-4 max-w-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                      <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                        Cette page pourrait etre la votre
+                      </p>
+                    </div>
+                    <p className="text-xs text-primary-600/80 dark:text-primary-400/80">
+                      Configurez votre page de reservation en 5 minutes. Vos clients pourront reserver 24h/24.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/register"
+                    className="inline-flex items-center gap-2 bg-primary-600 text-white hover:bg-primary-700 px-6 py-3 text-sm font-semibold rounded-lg transition-colors"
+                  >
+                    Creer ma page gratuitement
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    {APP_CONFIG.trialDays} jours gratuits, sans carte bancaire
+                  </p>
+
+                  <Link
+                    href="/p/demo"
+                    className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 mt-2"
+                  >
+                    ← Retour a la boutique demo
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Recap Sidebar */}
+          {currentStep !== 'demo-success' && (
           <div className="hidden lg:block">
             <BookingRecap
               service={selectedService}
@@ -445,11 +527,12 @@ export function BookingFlow({
               provider={provider}
             />
           </div>
+          )}
         </div>
       </div>
 
       {/* Mobile Recap */}
-      {selectedService && (
+      {selectedService && currentStep !== 'demo-success' && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 z-30">
           <BookingRecap
             service={selectedService}

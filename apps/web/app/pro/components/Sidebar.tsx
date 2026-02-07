@@ -16,8 +16,11 @@ import {
   Sun,
   Moon,
   UserCircle,
+  Clock,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDaysRemaining } from '@/lib/date-utils';
 import { useTheme } from '@/hooks/useTheme';
 import { Logo, LogoWhite } from '@/components/ui';
 
@@ -50,6 +53,69 @@ const navGroups: NavGroup[] = [
     ],
   },
 ];
+
+function TrialBanner({ collapsed, provider }: { collapsed?: boolean; provider: any }) {
+  if (provider?.plan !== 'trial' || !provider?.subscription?.validUntil) return null;
+
+  const daysLeft = getDaysRemaining(provider.subscription.validUntil);
+  const totalDays = 7;
+  const progress = Math.max(0, Math.min(100, (daysLeft / totalDays) * 100));
+  const isUrgent = daysLeft <= 2;
+  const isWarning = daysLeft <= 4;
+  const isExpired = daysLeft === 0;
+
+  // Color based on urgency
+  const barColor = isExpired ? 'bg-red-500' : isUrgent ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500';
+  const textColor = isExpired ? 'text-red-400' : isUrgent ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-emerald-400';
+
+  if (collapsed) {
+    return (
+      <Link
+        href="/pro/parametres?tab=abonnement"
+        className={`flex items-center justify-center p-2 mx-1 rounded-xl ${isExpired || isUrgent ? 'bg-red-500/10' : isWarning ? 'bg-amber-500/10' : 'bg-emerald-500/10'}`}
+        title={isExpired ? 'Essai expire' : `${daysLeft}j restants`}
+      >
+        <div className={`text-sm font-bold ${textColor}`}>
+          {isExpired ? '!' : `${daysLeft}j`}
+        </div>
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href="/pro/parametres?tab=abonnement"
+      className={`block p-3 mx-1 rounded-xl transition-colors ${isExpired || isUrgent ? 'bg-red-500/10 hover:bg-red-500/15' : isWarning ? 'bg-amber-500/10 hover:bg-amber-500/15' : 'bg-emerald-500/10 hover:bg-emerald-500/15'}`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <Clock className={`w-3.5 h-3.5 ${textColor}`} />
+          <span className={`text-xs font-semibold ${textColor}`}>
+            {isExpired ? 'Essai termine' : 'Essai gratuit'}
+          </span>
+        </div>
+        <span className={`text-xs font-bold ${textColor}`}>
+          {isExpired ? 'Expire' : `${daysLeft}j`}
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden mb-2">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-gray-400">
+          {isExpired ? 'Souscrivez un plan' : 'Choisir un plan'}
+        </span>
+        <ArrowRight className="w-3 h-3 text-gray-500" />
+      </div>
+    </Link>
+  );
+}
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -135,6 +201,9 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
 
       {/* Bottom section */}
       <div className="border-t border-gray-800/50 p-4 space-y-4">
+        {/* Trial banner */}
+        <TrialBanner collapsed={collapsed} provider={provider} />
+
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
@@ -286,6 +355,9 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
 
         {/* Bottom section */}
         <div className="border-t border-gray-800/50 p-4 space-y-4">
+          {/* Trial banner */}
+          <TrialBanner provider={provider} />
+
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}

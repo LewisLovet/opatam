@@ -3,6 +3,7 @@ import type { Member } from '@booking-app/shared';
 import {
   createMemberSchema,
   updateMemberSchema,
+  PLAN_LIMITS,
   type CreateMemberInput,
   type UpdateMemberInput,
 } from '@booking-app/shared';
@@ -18,9 +19,22 @@ export class MemberService {
    * Create a new team member
    * Un membre est maintenant associé à UN seul lieu
    */
-  async createMember(providerId: string, input: CreateMemberInput): Promise<WithId<Member>> {
+  async createMember(providerId: string, input: CreateMemberInput, providerPlan?: string): Promise<WithId<Member>> {
     // Validate input
     const validated = createMemberSchema.parse(input);
+
+    // Check plan member limit
+    if (providerPlan) {
+      const limits = PLAN_LIMITS[providerPlan as keyof typeof PLAN_LIMITS];
+      if (limits) {
+        const activeMembers = await memberRepository.getActiveByProvider(providerId);
+        if (activeMembers.length >= limits.maxMembers) {
+          throw new Error(
+            `Votre plan ${providerPlan} est limite a ${limits.maxMembers} membre(s) actif(s). Passez au plan superieur pour ajouter plus de membres.`
+          );
+        }
+      }
+    }
 
     // Generate unique access code
     const accessCode = await this.generateUniqueAccessCode(validated.name);
@@ -162,10 +176,23 @@ export class MemberService {
   /**
    * Reactivate member
    */
-  async reactivateMember(providerId: string, memberId: string): Promise<void> {
+  async reactivateMember(providerId: string, memberId: string, providerPlan?: string): Promise<void> {
     const member = await memberRepository.getById(providerId, memberId);
     if (!member) {
       throw new Error('Membre non trouvé');
+    }
+
+    // Check plan member limit before reactivating
+    if (providerPlan) {
+      const limits = PLAN_LIMITS[providerPlan as keyof typeof PLAN_LIMITS];
+      if (limits) {
+        const activeMembers = await memberRepository.getActiveByProvider(providerId);
+        if (activeMembers.length >= limits.maxMembers) {
+          throw new Error(
+            `Votre plan ${providerPlan} est limite a ${limits.maxMembers} membre(s) actif(s). Passez au plan superieur pour reactiver ce membre.`
+          );
+        }
+      }
     }
 
     await memberRepository.toggleActive(providerId, memberId, true);

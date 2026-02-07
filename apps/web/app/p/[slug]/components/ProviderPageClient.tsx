@@ -9,6 +9,7 @@ import { PortfolioSection } from './PortfolioSection';
 import { ReviewsSection } from './ReviewsSection';
 import { InfosSection } from './InfosSection';
 import { MobileBookingBar } from './MobileBookingBar';
+import { DemoBanner } from './DemoBanner';
 
 // Serialized types (dates as strings from server)
 interface SerializedProvider {
@@ -119,6 +120,7 @@ interface ProviderPageClientProps {
   availabilities: SerializedAvailability[];
   minPrice: number | null;
   nextAvailableDate: string | null;
+  isDemo?: boolean;
 }
 
 type SectionId = 'prestations' | 'portfolio' | 'avis' | 'infos';
@@ -132,6 +134,7 @@ export function ProviderPageClient({
   availabilities,
   minPrice,
   nextAvailableDate,
+  isDemo = false,
 }: ProviderPageClientProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('prestations');
   const [showNav, setShowNav] = useState(false);
@@ -207,6 +210,9 @@ export function ProviderPageClient({
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 pb-24">
+      {/* Demo welcome modal */}
+      {isDemo && <DemoBanner />}
+
       {/* Hero Section */}
       <div ref={heroRef}>
         <ProviderHero provider={provider} nextAvailableDate={nextAvailableDate} />

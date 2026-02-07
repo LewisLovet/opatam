@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Badge } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
+import { QRCodeCanvas } from 'qrcode.react';
 import {
   Loader2,
   Globe,
@@ -12,6 +13,11 @@ import {
   XCircle,
   AlertCircle,
   ExternalLink,
+  Copy,
+  Check,
+  Download,
+  Printer,
+  QrCode,
 } from 'lucide-react';
 
 interface PublicationSectionProps {
@@ -36,6 +42,8 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
   const [checkingRequirements, setCheckingRequirements] = useState(true);
   const [requirements, setRequirements] = useState<RequirementCheck | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   // Check requirements on mount and when provider changes
   useEffect(() => {
@@ -69,7 +77,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
 
       if (!result.canPublish) {
         setRequirements(result);
-        setError('Veuillez completer tous les elements requis avant de publier');
+        setError('Veuillez completer tous les elements requis avant d\'activer votre page');
         return;
       }
 
@@ -77,7 +85,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
       onSuccess?.();
     } catch (err) {
       console.error('Publish error:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors de la publication');
+      setError(err instanceof Error ? err.message : 'Erreur lors de l\'activation');
     } finally {
       setLoading(false);
     }
@@ -95,7 +103,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
       onSuccess?.();
     } catch (err) {
       console.error('Unpublish error:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors de la depublication');
+      setError(err instanceof Error ? err.message : 'Erreur lors de la desactivation');
     } finally {
       setLoading(false);
     }
@@ -104,6 +112,67 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
   const publicUrl = provider?.slug
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${provider.slug}`
     : null;
+
+  const bookingUrl = provider?.slug
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${provider.slug}/reserver`
+    : null;
+
+  const handleCopy = useCallback(async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = url;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, []);
+
+  const handleDownloadQr = useCallback(() => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (!canvas) return;
+
+    const downloadCanvas = document.createElement('canvas');
+    const size = 1024;
+    const padding = 80;
+    downloadCanvas.width = size + padding * 2;
+    downloadCanvas.height = size + padding * 2 + 60;
+    const ctx = downloadCanvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, downloadCanvas.width, downloadCanvas.height);
+    ctx.drawImage(canvas, padding, padding, size, size);
+
+    ctx.fillStyle = '#374151';
+    ctx.font = '600 28px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(
+      `Scannez pour reserver chez ${provider?.businessName || ''}`,
+      downloadCanvas.width / 2,
+      size + padding + 48
+    );
+
+    const link = document.createElement('a');
+    link.download = `qrcode-${provider?.slug || 'reservation'}.png`;
+    link.href = downloadCanvas.toDataURL('image/png');
+    link.click();
+  }, [provider?.businessName, provider?.slug]);
+
+  const handlePrintQr = useCallback(() => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (!canvas) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>QR Code - ${provider?.businessName || ''}</title><style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui,-apple-system,sans-serif}img{max-width:400px;width:100%}h2{margin-top:24px;color:#111827;font-size:20px}p{color:#6b7280;font-size:14px;margin-top:8px}</style></head><body><img src="${canvas.toDataURL('image/png')}" alt="QR Code"/><h2>${provider?.businessName || ''}</h2><p>Scannez ce QR code pour reserver en ligne</p><p style="font-size:12px;color:#9ca3af;margin-top:16px">${bookingUrl || ''}</p><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}};</script></body></html>`);
+    printWindow.document.close();
+  }, [provider?.businessName, bookingUrl]);
 
   const requirementItems = [
     { key: 'hasBusinessName', label: 'Nom de l\'entreprise', href: '#profile' },
@@ -134,39 +203,105 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-gray-900 dark:text-white">
-              {provider?.isPublished ? 'Page publiee' : 'Page non publiee'}
+              {provider?.isPublished ? 'Page active' : 'Page inactive'}
             </h3>
             <Badge variant={provider?.isPublished ? 'success' : 'default'}>
-              {provider?.isPublished ? 'En ligne' : 'Hors ligne'}
+              {provider?.isPublished ? 'Active' : 'Inactive'}
             </Badge>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {provider?.isPublished
-              ? 'Votre page est visible par les clients'
+              ? 'Votre page est visible et accessible par les clients'
               : 'Votre page n\'est pas visible par les clients'}
           </p>
         </div>
       </div>
 
-      {/* Public URL (if published) */}
+      {/* Public URL + QR Code (if published) */}
       {provider?.isPublished && publicUrl && (
-        <div className="p-4 bg-success-50 dark:bg-success-900/10 border border-success-200 dark:border-success-800 rounded-lg">
-          <p className="text-sm font-medium text-success-700 dark:text-success-400 mb-2">
-            Votre page est accessible a l'adresse:
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-sm bg-white dark:bg-gray-800 px-3 py-2 rounded border border-success-200 dark:border-success-700 truncate text-gray-900 dark:text-gray-100">
-              {publicUrl}
-            </code>
-            <a
-              href={`/p/${provider.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-success-600 hover:text-success-700 dark:text-success-400 dark:hover:text-success-300 transition-colors"
-              title="Voir la page"
-            >
-              <ExternalLink className="w-5 h-5" />
-            </a>
+        <div className="space-y-4">
+          {/* URL */}
+          <div className="p-4 bg-success-50 dark:bg-success-900/10 border border-success-200 dark:border-success-800 rounded-lg">
+            <p className="text-sm font-medium text-success-700 dark:text-success-400 mb-2">
+              Votre page est accessible a l&apos;adresse :
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-sm bg-white dark:bg-gray-800 px-3 py-2 rounded border border-success-200 dark:border-success-700 truncate text-gray-900 dark:text-gray-100">
+                {publicUrl}
+              </code>
+              <button
+                onClick={() => handleCopy(publicUrl)}
+                className="p-2 text-success-600 hover:text-success-700 dark:text-success-400 dark:hover:text-success-300 transition-colors"
+                title="Copier le lien"
+              >
+                {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+              </button>
+              <a
+                href={`/p/${provider.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-success-600 hover:text-success-700 dark:text-success-400 dark:hover:text-success-300 transition-colors"
+                title="Voir la page"
+              >
+                <ExternalLink className="w-5 h-5" />
+              </a>
+            </div>
+          </div>
+
+          {/* QR Code */}
+          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="flex flex-col sm:flex-row gap-5">
+              {/* QR visual */}
+              <div
+                ref={qrRef}
+                className="flex-shrink-0 bg-white p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm self-start"
+              >
+                <QRCodeCanvas
+                  value={bookingUrl || ''}
+                  size={140}
+                  level="H"
+                  marginSize={0}
+                  imageSettings={{
+                    src: '/favicon.ico',
+                    height: 24,
+                    width: 24,
+                    excavate: true,
+                  }}
+                />
+              </div>
+
+              {/* Info + actions */}
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 text-sm">
+                  <QrCode className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                  QR code de reservation
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Affichez-le dans votre etablissement ou sur vos supports de communication. Vos clients scannent et reservent directement.
+                </p>
+
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button
+                    onClick={handleDownloadQr}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Telecharger
+                  </button>
+                  <button
+                    onClick={handlePrintQr}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Imprimer
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 truncate">
+                  {bookingUrl}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -176,7 +311,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
         <div className="space-y-4">
           <h4 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-warning-500" />
-            Elements requis pour la publication
+            Elements requis pour l&apos;activation
           </h4>
 
           {checkingRequirements ? (
@@ -241,12 +376,12 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Depublication...
+                Desactivation...
               </>
             ) : (
               <>
                 <GlobeLock className="w-4 h-4 mr-2" />
-                Depublier
+                Desactiver
               </>
             )}
           </Button>
@@ -259,12 +394,12 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Publication...
+                Activation...
               </>
             ) : (
               <>
                 <Globe className="w-4 h-4 mr-2" />
-                Publier ma page
+                Activer ma page
               </>
             )}
           </Button>

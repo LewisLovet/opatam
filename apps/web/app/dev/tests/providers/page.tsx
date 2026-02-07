@@ -80,6 +80,9 @@ export default function ProvidersTestPage() {
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           stripeCustomerId: null,
           stripeSubscriptionId: null,
+          status: 'trialing',
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
         },
         isPublished: false,
         isVerified: false,
@@ -195,8 +198,8 @@ export default function ProvidersTestPage() {
               value={createPlan}
               onChange={(e) => setCreatePlan(e.target.value as 'solo' | 'team')}
               options={[
-                { value: 'solo', label: 'Solo' },
-                { value: 'team', label: 'Team' },
+                { value: 'solo', label: 'Pro' },
+                { value: 'team', label: 'Studio' },
               ]}
             />
           </div>
