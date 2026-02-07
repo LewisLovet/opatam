@@ -13,6 +13,12 @@ dist
 .env.local
 .env.*.local
 *.local
+functions/.env.*
+!functions/.env.example
+
+# Secrets / credentials
+service-account.json
+*-credentials.json
 
 # IDE
 .idea

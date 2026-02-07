@@ -28,13 +28,13 @@ export function CoverPhotoUpload({ onSuccess }: CoverPhotoUploadProps) {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('Veuillez selectionner une image');
+      setError('Veuillez sélectionner une image');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > APP_CONFIG.maxMemberPhotoSize) {
-      setError('L\'image ne doit pas depasser 5 Mo');
+      setError('L\'image ne doit pas dépasser 5 Mo');
       return;
     }
 

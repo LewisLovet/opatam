@@ -140,9 +140,9 @@ export function DayHeaderCompact({
     <button
       onClick={onClick}
       className={`
-        flex-1 min-w-[80px] py-2 text-center border-l border-gray-200 dark:border-gray-700
+        flex-1 min-w-[80px] py-2 text-center rounded-t-xl
         hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
-        ${isToday ? 'bg-primary-50/50 dark:bg-primary-900/20' : ''}
+        ${isToday ? 'bg-primary-50/50 dark:bg-primary-900/20' : 'bg-white dark:bg-gray-800/60'}
       `}
     >
       <div className={`

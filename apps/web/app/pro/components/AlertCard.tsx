@@ -34,7 +34,7 @@ export function AlertCard({ alerts }: AlertCardProps) {
               Tout est en ordre !
             </p>
             <p className="text-sm text-success-600 dark:text-success-500">
-              Votre profil est complet et pret a recevoir des reservations.
+              Votre profil est complet et prêt à recevoir des réservations.
             </p>
           </div>
         </div>

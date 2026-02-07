@@ -287,7 +287,8 @@ export async function notifyClientBookingRescheduled(
  */
 export async function notifyClientBookingReminder(
   booking: BookingData,
-  reminderType: '2h' | '24h'
+  reminderType: '2h' | '24h',
+  minutesUntil?: number
 ): Promise<void> {
   console.log('notifyClientBookingReminder:', booking.clientId, reminderType);
 
@@ -305,9 +306,25 @@ export async function notifyClientBookingReminder(
   const datetime = booking.datetime.toDate();
   const dateStr = formatDateFr(datetime);
 
+  // Dynamic timing label
+  let timeLabel: string;
+  if (reminderType === '24h') {
+    timeLabel = 'demain';
+  } else if (minutesUntil != null) {
+    if (minutesUntil < 60) {
+      const mins = Math.round(minutesUntil);
+      timeLabel = mins <= 1 ? 'dans 1 minute' : `dans ${mins} minutes`;
+    } else {
+      const hours = Math.round(minutesUntil / 60);
+      timeLabel = hours === 1 ? 'dans 1 heure' : `dans ${hours} heures`;
+    }
+  } else {
+    timeLabel = 'dans 2 heures';
+  }
+
   const body = reminderType === '24h'
     ? `Rappel : votre RDV ${booking.serviceName} est demain, le ${dateStr}`
-    : `Rappel : votre RDV ${booking.serviceName} est dans 2 heures (${dateStr})`;
+    : `Rappel : votre RDV ${booking.serviceName} est ${timeLabel} (${dateStr})`;
 
   const result = await sendPushNotifications(pushTokens, {
     title: 'Rappel de rendez-vous',

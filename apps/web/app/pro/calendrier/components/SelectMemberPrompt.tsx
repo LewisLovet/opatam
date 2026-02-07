@@ -20,12 +20,12 @@ export function SelectMemberPrompt({ members, onSelect }: SelectMemberPromptProp
 
       {/* Title */}
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-        Selectionnez un membre
+        Sélectionnez un membre
       </h3>
 
       {/* Subtitle */}
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-md mb-8">
-        Choisissez un membre de l&apos;equipe pour afficher son planning de la semaine
+        Choisissez un membre de l&apos;équipe pour afficher son planning de la semaine
       </p>
 
       {/* Members grid */}

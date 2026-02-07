@@ -96,12 +96,12 @@ export function PrestationsTab() {
       } else {
         await catalogService.deactivateService(provider.id, serviceId);
       }
-      toast.success(isActive ? 'Prestation activee' : 'Prestation desactivee');
+      toast.success(isActive ? 'Prestation activée' : 'Prestation désactivée');
     } catch (error) {
       console.error('Toggle error:', error);
       // Revert on error
       setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, isActive: !isActive } : s)));
-      toast.error(error instanceof Error ? error.message : 'Erreur lors de la mise a jour');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la mise à jour');
     }
   };
 
@@ -112,7 +112,7 @@ export function PrestationsTab() {
     if (editingService) {
       // Update
       await catalogService.updateService(provider.id, editingService.id, data);
-      toast.success('Prestation mise a jour');
+      toast.success('Prestation mise à jour');
     } else {
       // Create - add required default values
       await catalogService.createService(provider.id, {
@@ -120,7 +120,7 @@ export function PrestationsTab() {
         isOnline: false,
         requiresDeposit: false,
       });
-      toast.success('Prestation creee');
+      toast.success('Prestation créée');
     }
 
     await fetchData();
@@ -131,7 +131,7 @@ export function PrestationsTab() {
     if (!provider) return;
 
     await catalogService.deleteService(provider.id, serviceId);
-    toast.success('Prestation supprimee');
+    toast.success('Prestation supprimée');
     await fetchData();
   };
 
@@ -168,7 +168,7 @@ export function PrestationsTab() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Vos prestations</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Gerez les services que vous proposez
+            Gérez les services que vous proposez
           </p>
         </div>
         <Button onClick={handleCreate}>
@@ -225,11 +225,11 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         Aucune prestation
       </h3>
       <p className="text-gray-500 dark:text-gray-400 text-center mb-6 max-w-sm">
-        Commencez par creer votre premiere prestation pour que vos clients puissent reserver.
+        Commencez par créer votre première prestation pour que vos clients puissent réserver.
       </p>
       <Button onClick={onAdd}>
         <Plus className="w-4 h-4 mr-2" />
-        Creer ma premiere prestation
+        Créer ma première prestation
       </Button>
     </div>
   );

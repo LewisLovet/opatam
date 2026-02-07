@@ -21,7 +21,7 @@ import { LogoWhite } from '@/components/ui';
 const REGISTER_STEP_CONTENT = [
   {
     // Step 1 - Business
-    title: 'Gerez vos reservations en toute simplicite',
+    title: 'Gérez vos réservations en toute simplicité',
     benefits: [
       {
         icon: Calendar,
@@ -31,7 +31,7 @@ const REGISTER_STEP_CONTENT = [
       {
         icon: Clock,
         title: 'Rappels automatiques',
-        description: 'Reduisez les no-shows',
+        description: 'Réduisez les no-shows',
       },
       {
         icon: BadgePercent,
@@ -46,7 +46,7 @@ const REGISTER_STEP_CONTENT = [
     benefits: [
       {
         icon: MapPin,
-        title: 'Visibilite locale',
+        title: 'Visibilité locale',
         description: 'Apparaissez dans les recherches',
       },
       {
@@ -126,7 +126,7 @@ const REGISTER_STEP_CONTENT = [
   },
   {
     // Step 6 - Account
-    title: "Plus qu'une etape !",
+    title: "Plus qu'une étape !",
     benefits: [
       {
         icon: Gift,
@@ -135,12 +135,12 @@ const REGISTER_STEP_CONTENT = [
       },
       {
         icon: ShieldCheck,
-        title: 'Donnees securisees',
+        title: 'Données sécurisées',
         description: 'Protection maximale',
       },
       {
         icon: Rocket,
-        title: 'Support reactif',
+        title: 'Support réactif',
         description: 'On vous accompagne',
       },
     ],
@@ -157,7 +157,7 @@ const DEFAULT_BENEFITS = [
   {
     icon: Clock,
     title: 'Rappels automatiques',
-    description: 'Reduisez les no-shows',
+    description: 'Réduisez les no-shows',
   },
   {
     icon: BadgePercent,
@@ -177,7 +177,7 @@ function InfoPanel({ isRight, registerStep }: InfoPanelProps) {
     ? REGISTER_STEP_CONTENT[registerStep - 1] || REGISTER_STEP_CONTENT[0]
     : null;
 
-  const title = stepContent?.title || 'Gerez vos reservations en toute simplicite';
+  const title = stepContent?.title || 'Gérez vos réservations en toute simplicité';
   const benefits = stepContent?.benefits || DEFAULT_BENEFITS;
 
   return (

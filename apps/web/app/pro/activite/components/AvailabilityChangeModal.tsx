@@ -211,7 +211,7 @@ export function AvailabilityChangeModal({
         {step === 'date' && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Selectionnez la date a partir de laquelle les nouveaux horaires seront appliques.
+              Sélectionnez la date à partir de laquelle les nouveaux horaires seront appliqués.
             </p>
             <Input
               type="date"
@@ -219,7 +219,7 @@ export function AvailabilityChangeModal({
               value={effectiveDate}
               onChange={(e) => setEffectiveDate(e.target.value)}
               min={getMinDate()}
-              hint="Le changement sera actif a partir de cette date"
+              hint="Le changement sera actif à partir de cette date"
             />
           </div>
         )}
@@ -231,10 +231,10 @@ export function AvailabilityChangeModal({
               <AlertTriangle className="w-5 h-5 text-warning-600 dark:text-warning-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-warning-800 dark:text-warning-200">
-                  {conflicts.length} reservation(s) en conflit
+                  {conflicts.length} réservation(s) en conflit
                 </p>
                 <p className="text-sm text-warning-700 dark:text-warning-300 mt-1">
-                  Ces reservations tombent en dehors des nouveaux horaires.
+                  Ces réservations tombent en dehors des nouveaux horaires.
                   Vous devrez les replanifier ou les annuler manuellement.
                 </p>
               </div>
@@ -260,11 +260,11 @@ export function AvailabilityChangeModal({
                         ? 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-400'
                         : 'bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400'
                     }`}>
-                      {conflict.conflictType === 'day_closed' ? 'Jour ferme' : 'Hors horaires'}
+                      {conflict.conflictType === 'day_closed' ? 'Jour fermé' : 'Hors horaires'}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    {formatDate(conflict.bookingDate)} a {formatTime(conflict.bookingDate)}
+                    {formatDate(conflict.bookingDate)} à {formatTime(conflict.bookingDate)}
                   </p>
                 </div>
               ))}
@@ -279,10 +279,10 @@ export function AvailabilityChangeModal({
               <Calendar className="w-5 h-5 text-success-600 dark:text-success-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-success-800 dark:text-success-200">
-                  Aucun conflit detecte
+                  Aucun conflit détecté
                 </p>
                 <p className="text-sm text-success-700 dark:text-success-300 mt-1">
-                  Le changement peut etre planifie sans affecter les reservations existantes.
+                  Le changement peut être planifié sans affecter les réservations existantes.
                 </p>
               </div>
             </div>

@@ -86,18 +86,18 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
         name="businessName"
         value={formData.businessName}
         onChange={handleChange}
-        placeholder="Ex: Salon de beaute Marie"
+        placeholder="Ex: Salon de beauté Marie"
         required
       />
 
       {/* Category */}
       <Select
-        label="Categorie"
+        label="Catégorie"
         name="category"
         value={formData.category}
         onChange={handleChange}
         options={categoryOptions}
-        placeholder="Selectionnez une categorie"
+        placeholder="Sélectionnez une catégorie"
         required
       />
 

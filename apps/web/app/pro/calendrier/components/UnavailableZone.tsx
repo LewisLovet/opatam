@@ -17,14 +17,18 @@ interface UnavailableZoneProps {
 const zoneStyles: Record<UnavailableZoneProps['type'], {
   bg: string;
   pattern?: string;
+  patternSize?: string;
   opacity?: string;
 }> = {
   closed: {
-    bg: 'bg-gray-100 dark:bg-gray-800/50',
+    bg: 'bg-gray-50 dark:bg-gray-800/40',
+    pattern: 'radial-gradient(circle, rgba(156, 163, 175, 0.2) 1px, transparent 1px)',
+    patternSize: '8px 8px',
   },
   blocked: {
     bg: 'bg-error-50/80 dark:bg-error-900/30',
-    pattern: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(239, 68, 68, 0.2) 4px, rgba(239, 68, 68, 0.2) 8px)',
+    pattern: 'radial-gradient(circle, rgba(239, 68, 68, 0.15) 1px, transparent 1px)',
+    patternSize: '6px 6px',
   },
   break: {
     bg: 'bg-gray-100 dark:bg-gray-800/40',
@@ -55,6 +59,7 @@ export function UnavailableZone({
         top: `${top}px`,
         height: `${height}px`,
         backgroundImage: styles.pattern,
+        backgroundSize: styles.patternSize,
       }}
       title={reason || getDefaultTitle(type)}
     />
@@ -109,7 +114,7 @@ export function PastTimeOverlay({
 
   return (
     <div
-      className="absolute left-0 right-0 top-0 bg-gray-100/50 dark:bg-gray-800/30 pointer-events-none z-[5]"
+      className="absolute left-0 right-0 top-0 bg-gray-50/60 dark:bg-gray-800/20 pointer-events-none z-[5]"
       style={{ height: `${height}px` }}
     />
   );
@@ -135,7 +140,8 @@ export function BlockedSlotZone({
       style={{
         top: `${top}px`,
         height: `${height}px`,
-        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(239, 68, 68, 0.15) 4px, rgba(239, 68, 68, 0.15) 8px)',
+        backgroundImage: 'radial-gradient(circle, rgba(239, 68, 68, 0.15) 1px, transparent 1px)',
+        backgroundSize: '6px 6px',
       }}
       title={reason || (isAllDay ? 'Journée bloquée' : 'Créneau bloqué')}
     >

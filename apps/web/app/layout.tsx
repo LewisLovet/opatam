@@ -13,8 +13,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: `${APP_CONFIG.name} - Reservez en ligne`,
-  description: 'Plateforme de reservation multi-secteurs pour prestataires de services',
+  title: `${APP_CONFIG.name} - Réservez en ligne`,
+  description: 'Plateforme de réservation multi-secteurs pour prestataires de services',
 };
 
 export default function RootLayout({

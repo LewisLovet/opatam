@@ -151,14 +151,15 @@ export async function emailClientBookingRescheduled(
 export async function emailClientBookingReminder(
   booking: BookingData,
   bookingId: string,
-  reminderType: '2h' | '24h'
+  reminderType: '2h' | '24h',
+  minutesUntil?: number
 ): Promise<void> {
   console.log('[EMAIL] emailClientBookingReminder:', booking.clientInfo?.email, reminderType);
 
   const emailData = await toEmailData(booking, bookingId);
   if (!emailData) return;
 
-  const result = await sendReminderEmail(emailData, reminderType);
+  const result = await sendReminderEmail(emailData, reminderType, minutesUntil);
   console.log('[EMAIL] Reminder email result:', result);
 }
 

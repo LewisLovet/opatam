@@ -130,10 +130,6 @@ async function handleCheckoutCompleted(
 
   console.log(`[STRIPE-WEBHOOK] Stripe subscription status: ${stripeSubscription.status}`);
 
-  // Determine the plan from subscription metadata (set during checkout)
-  const plan = stripeSubscription.metadata?.plan || 'solo';
-  console.log(`[STRIPE-WEBHOOK] Plan from metadata: ${stripeSubscription.metadata?.plan ?? 'MISSING'} → using: ${plan}`);
-
   const providerRef = db.collection('providers').doc(providerId);
   const providerDoc = await providerRef.get();
   if (!providerDoc.exists) {
@@ -141,12 +137,17 @@ async function handleCheckoutCompleted(
     return;
   }
 
+  // Determine the plan: prefer Stripe metadata, fall back to existing Firestore value
+  const existingData = providerDoc.data();
+  const existingPlan = existingData?.plan ?? 'solo';
+  const plan = stripeSubscription.metadata?.plan || existingPlan;
+  console.log(`[STRIPE-WEBHOOK] Plan from metadata: ${stripeSubscription.metadata?.plan ?? 'MISSING'}, existing: ${existingPlan} → using: ${plan}`);
+
   const rawEnd = getSubscriptionPeriodEnd(stripeSubscription);
   const periodEnd = rawEnd ? new Date(rawEnd * 1000) : null;
   console.log(`[STRIPE-WEBHOOK] periodEnd: ${periodEnd?.toISOString() ?? 'null'}`);
 
   // Determine validUntil: take the latest between existing validUntil (trial) and Stripe periodEnd
-  const existingData = providerDoc.data();
   const existingValidUntil = existingData?.subscription?.validUntil?.toDate?.() ?? null;
   let newValidUntil = periodEnd;
   if (existingValidUntil && periodEnd) {

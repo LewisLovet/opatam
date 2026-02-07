@@ -96,7 +96,7 @@ export function PortfolioGallery({ photos }: PortfolioGalleryProps) {
                   goToPrevious();
                 }}
                 className="absolute left-4 p-2 text-white/80 hover:text-white transition-colors z-10"
-                aria-label="Photo precedente"
+                aria-label="Photo précédente"
               >
                 <ChevronLeft className="w-10 h-10" />
               </button>

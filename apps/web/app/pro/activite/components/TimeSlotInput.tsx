@@ -95,7 +95,7 @@ export function TimeSlotInput({
             type="button"
             onClick={onRemove}
             className="p-2 text-gray-400 hover:text-error-500 dark:hover:text-error-400 transition-colors"
-            aria-label="Supprimer ce creneau"
+            aria-label="Supprimer ce créneau"
           >
             <X className="w-4 h-4" />
           </button>

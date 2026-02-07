@@ -500,14 +500,14 @@ export default function RegisterPage() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-          Categorie
+          Catégorie
         </label>
         <select
           value={data.category}
           onChange={(e) => updateData({ category: e.target.value })}
           className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
-          <option value="">Selectionnez une categorie</option>
+          <option value="">Sélectionnez une catégorie</option>
           {CATEGORIES.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.label}
@@ -523,7 +523,7 @@ export default function RegisterPage() {
         <textarea
           value={data.description}
           onChange={(e) => updateData({ description: e.target.value.slice(0, 500) })}
-          placeholder="Decrivez votre activite en quelques mots..."
+          placeholder="Décrivez votre activité en quelques mots..."
           rows={3}
           className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
         />
@@ -777,7 +777,7 @@ export default function RegisterPage() {
                     type="button"
                     onClick={() => addSlotToDay(day.value)}
                     className="p-0.5 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors ml-1"
-                    title="Ajouter un creneau"
+                    title="Ajouter un créneau"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -845,7 +845,7 @@ export default function RegisterPage() {
                 <span>
                   {openDays.length > 0
                     ? `${openDays[0]?.label} - ${openDays[openDays.length - 1]?.label}`
-                    : 'Horaires a definir'}
+                    : 'Horaires à définir'}
                 </span>
               </div>
             </div>
@@ -853,7 +853,7 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          Il ne reste plus qu'une etape : creer votre compte !
+          Il ne reste plus qu'une étape : créer votre compte !
         </p>
       </div>
     );
@@ -903,7 +903,7 @@ export default function RegisterPage() {
         <div className="relative">
           <Input
             type="tel"
-            label="Telephone"
+            label="Téléphone"
             placeholder="0612345678"
             value={data.phone}
             onChange={(e) => updateData({ phone: e.target.value })}
@@ -917,7 +917,7 @@ export default function RegisterPage() {
           <Input
             type={showPassword ? 'text' : 'password'}
             label="Mot de passe"
-            placeholder="Minimum 6 caracteres"
+            placeholder="Minimum 6 caractères"
             value={data.password}
             onChange={(e) => updateData({ password: e.target.value })}
             disabled={loading || googleLoading}

@@ -80,7 +80,7 @@ const PLAN_META: Record<
     accentText: 'text-violet-700',
     gradient: 'from-violet-500 to-purple-600',
     ring: 'ring-violet-500/20',
-    badge: 'Recommande',
+    badge: 'Recommandé',
     badgeStyle:
       'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/25',
     cardStyle: 'border-violet-300 shadow-xl shadow-violet-500/10 ring-1 ring-violet-200',
@@ -105,20 +105,20 @@ const PLAN_META: Record<
 
 const FAQ_ITEMS = [
   {
-    q: "Que se passe-t-il a la fin de l'essai gratuit ?",
-    a: "A la fin des 7 jours d'essai, votre abonnement commence automatiquement. Vous ne serez debite qu'apres la periode d'essai. Vous pouvez annuler a tout moment avant la fin de l'essai sans etre facture.",
+    q: "Que se passe-t-il à la fin de l'essai gratuit ?",
+    a: "À la fin des 7 jours d'essai, votre abonnement commence automatiquement. Vous ne serez débité qu'après la période d'essai. Vous pouvez annuler à tout moment avant la fin de l'essai sans être facturé.",
   },
   {
-    q: 'Puis-je changer de plan a tout moment ?',
-    a: "Oui, vous pouvez passer d'un plan Pro a un plan Studio (ou inversement) a tout moment depuis votre espace professionnel. Le changement est effectif immediatement et la facturation est ajustee au prorata.",
+    q: 'Puis-je changer de plan à tout moment ?',
+    a: "Oui, vous pouvez passer d'un plan Pro à un plan Studio (ou inversement) à tout moment depuis votre espace professionnel. Le changement est effectif immédiatement et la facturation est ajustée au prorata.",
   },
   {
     q: 'Comment fonctionne la facturation annuelle ?',
-    a: "Avec la facturation annuelle, vous payez une seule fois pour 12 mois d'utilisation et vous beneficiez d'une reduction significative par rapport au tarif mensuel. Le montant est debite en une seule fois au debut de la periode.",
+    a: "Avec la facturation annuelle, vous payez une seule fois pour 12 mois d'utilisation et vous bénéficiez d'une réduction significative par rapport au tarif mensuel. Le montant est débité en une seule fois au début de la période.",
   },
   {
-    q: "Y a-t-il des frais supplementaires ou des commissions ?",
-    a: "Non. Opatam fonctionne avec un prix fixe mensuel ou annuel, sans aucune commission sur vos reservations. Pas de frais caches, pas de surprises. Vous gardez 100% de vos revenus.",
+    q: "Y a-t-il des frais supplémentaires ou des commissions ?",
+    a: "Non. Opatam fonctionne avec un prix fixe mensuel ou annuel, sans aucune commission sur vos réservations. Pas de frais cachés, pas de surprises. Vous gardez 100% de vos revenus.",
   },
 ];
 
@@ -153,7 +153,7 @@ function StatusBanner() {
         <div className="flex items-center gap-3 px-5 py-4 rounded-xl bg-emerald-50 border border-emerald-200">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
           <div>
-            <p className="font-semibold text-emerald-900">Paiement reussi !</p>
+            <p className="font-semibold text-emerald-900">Paiement réussi !</p>
             <p className="text-sm text-emerald-700">
               Votre abonnement est maintenant actif. Bienvenue sur Opatam !
             </p>
@@ -169,9 +169,9 @@ function StatusBanner() {
         <div className="flex items-center gap-3 px-5 py-4 rounded-xl bg-amber-50 border border-amber-200">
           <XCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
           <div>
-            <p className="font-semibold text-amber-900">Paiement annule</p>
+            <p className="font-semibold text-amber-900">Paiement annulé</p>
             <p className="text-sm text-amber-700">
-              Vous avez annule le paiement. N&apos;hesitez pas a reessayer lorsque vous serez pret.
+              Vous avez annulé le paiement. N&apos;hésitez pas à réessayer lorsque vous serez prêt.
             </p>
           </div>
         </div>
@@ -315,7 +315,7 @@ function PlanCard({
           </p>
         )}
         {isTest && !price.planDescription && (
-          <p className="text-xs text-gray-400 mb-6 min-h-[2.5rem]">Verification du flow de paiement</p>
+          <p className="text-xs text-gray-400 mb-6 min-h-[2.5rem]">Vérification du flow de paiement</p>
         )}
 
         {/* Price */}
@@ -540,7 +540,7 @@ function PricingPageContent() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setCheckoutError("Pas d'URL de checkout recu");
+        setCheckoutError("Pas d'URL de checkout reçu");
       }
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : 'Erreur inconnue');
@@ -651,13 +651,13 @@ function PricingPageContent() {
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 tracking-tight max-w-2xl mx-auto">
           Choisissez le plan{' '}
           <span className="bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
-            ideal
+            idéal
           </span>{' '}
-          pour votre activite
+          pour votre activité
         </h1>
         <p className="mt-4 sm:mt-6 text-base sm:text-lg text-gray-500 max-w-xl mx-auto leading-relaxed">
           Lancez-vous avec {APP_CONFIG.trialDays} jours d&apos;essai gratuit.
-          Sans engagement, sans commission sur vos reservations.
+          Sans engagement, sans commission sur vos réservations.
         </p>
 
         {/* Billing Toggle */}
@@ -739,7 +739,7 @@ function PricingPageContent() {
                 onClick={() => window.location.reload()}
                 className="px-6 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
               >
-                Reessayer
+                Réessayer
               </button>
             </div>
           )}
@@ -754,7 +754,7 @@ function PricingPageContent() {
                 Aucun plan disponible
               </h3>
               <p className="text-gray-500">
-                Les plans tarifaires ne sont pas encore configures. Revenez bientot.
+                Les plans tarifaires ne sont pas encore configurés. Revenez bientôt.
               </p>
             </div>
           )}
@@ -795,7 +795,7 @@ function PricingPageContent() {
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 mb-3">
                 <Shield className="w-6 h-6 text-blue-600" />
               </div>
-              <h4 className="font-semibold text-gray-900 mb-1">Paiement securise</h4>
+              <h4 className="font-semibold text-gray-900 mb-1">Paiement sécurisé</h4>
               <p className="text-sm text-gray-500">
                 Via Stripe, leader mondial du paiement en ligne
               </p>
@@ -806,7 +806,7 @@ function PricingPageContent() {
               </div>
               <h4 className="font-semibold text-gray-900 mb-1">{APP_CONFIG.trialDays}j d&apos;essai gratuit</h4>
               <p className="text-sm text-gray-500">
-                Testez toutes les fonctionnalites sans engagement
+                Testez toutes les fonctionnalités sans engagement
               </p>
             </div>
             <div className="text-center">
@@ -826,7 +826,7 @@ function PricingPageContent() {
       <section className="pb-20 sm:pb-28 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-2">
-            Questions frequentes
+            Questions fréquentes
           </h2>
           <p className="text-center text-gray-500 mb-10">
             Tout ce que vous devez savoir avant de commencer
@@ -848,7 +848,7 @@ function PricingPageContent() {
             </div>
             <span className="font-semibold text-gray-500">{APP_CONFIG.name}</span>
           </div>
-          <p>&copy; {new Date().getFullYear()} {APP_CONFIG.name}. Tous droits reserves.</p>
+          <p>&copy; {new Date().getFullYear()} {APP_CONFIG.name}. Tous droits réservés.</p>
         </div>
       </footer>
     </div>

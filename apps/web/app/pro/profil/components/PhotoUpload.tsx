@@ -28,13 +28,13 @@ export function PhotoUpload({ onSuccess }: PhotoUploadProps) {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('Veuillez selectionner une image');
+      setError('Veuillez sélectionner une image');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > APP_CONFIG.maxMemberPhotoSize) {
-      setError('L\'image ne doit pas depasser 5 Mo');
+      setError('L\'image ne doit pas dépasser 5 Mo');
       return;
     }
 
@@ -138,7 +138,7 @@ export function PhotoUpload({ onSuccess }: PhotoUploadProps) {
 
       {/* Hint */}
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        Photo de profil visible par vos clients. Format recommande: carre, minimum 200x200 pixels.
+        Photo de profil visible par vos clients. Format recommandé: carré, minimum 200x200 pixels.
       </p>
 
       {/* Error */}

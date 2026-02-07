@@ -58,12 +58,14 @@ export const sendBookingReminders = onSchedule(
         id: string;
         data: FirebaseFirestore.DocumentData;
         reminderType: '2h' | '24h';
+        minutesUntil: number;
       }> = [];
 
       for (const doc of snapshot.docs) {
         const data = doc.data();
         const bookingDatetime = data.datetime.toDate();
-        const hoursUntil = (bookingDatetime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const minutesUntil = (bookingDatetime.getTime() - now.getTime()) / (1000 * 60);
+        const hoursUntil = minutesUntil / 60;
 
         // Determine reminder type
         let reminderType: '2h' | '24h' | null = null;
@@ -81,7 +83,7 @@ export const sendBookingReminders = onSchedule(
           continue;
         }
 
-        bookingsToRemind.push({ id: doc.id, data, reminderType });
+        bookingsToRemind.push({ id: doc.id, data, reminderType, minutesUntil });
       }
 
       const skipped = snapshot.size - bookingsToRemind.length;
@@ -92,8 +94,9 @@ export const sendBookingReminders = onSchedule(
         id: string;
         data: FirebaseFirestore.DocumentData;
         reminderType: '2h' | '24h';
+        minutesUntil: number;
       }): Promise<ReminderResult> {
-        const { id, data, reminderType } = booking;
+        const { id, data, reminderType, minutesUntil } = booking;
         const clientName = data.clientInfo?.name || 'Client';
 
         let pushSent = false;
@@ -112,7 +115,8 @@ export const sendBookingReminders = onSchedule(
                 providerName: data.providerName,
                 status: data.status,
               },
-              reminderType
+              reminderType,
+              minutesUntil
             );
             pushSent = true;
           } catch (pushError) {
@@ -138,7 +142,8 @@ export const sendBookingReminders = onSchedule(
                 memberName: data.memberName,
               },
               id,
-              reminderType
+              reminderType,
+              minutesUntil
             );
             emailSent = true;
           } catch (emailError) {

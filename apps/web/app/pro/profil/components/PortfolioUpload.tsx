@@ -46,11 +46,11 @@ export function PortfolioUpload({ onSuccess }: PortfolioUploadProps) {
     // Validate all files
     for (const file of filesToUpload) {
       if (!file.type.startsWith('image/')) {
-        setError('Veuillez selectionner uniquement des images');
+        setError('Veuillez sélectionner uniquement des images');
         return;
       }
       if (file.size > APP_CONFIG.maxMemberPhotoSize) {
-        setError('Chaque image ne doit pas depasser 5 Mo');
+        setError('Chaque image ne doit pas dépasser 5 Mo');
         return;
       }
     }

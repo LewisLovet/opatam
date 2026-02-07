@@ -153,7 +153,7 @@ export function RecentActivity({
                       <span className="text-gray-600 dark:text-gray-300">{booking.serviceName}</span>
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Annule {booking.cancelledBy === 'client' ? 'par le client' : 'par vous'}
+                      Annulé {booking.cancelledBy === 'client' ? 'par le client' : 'par vous'}
                       {' • '}
                       {formatRelativeTime(new Date(booking.cancelledAt || booking.updatedAt))}
                     </p>

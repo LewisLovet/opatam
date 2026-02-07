@@ -157,15 +157,15 @@ export function LocationModal({
     if (!formData.city?.trim()) {
       newErrors.city = 'La ville est requise';
     } else if (formData.city.length < 2) {
-      newErrors.city = 'La ville doit contenir au moins 2 caracteres';
+      newErrors.city = 'La ville doit contenir au moins 2 caractères';
     }
 
     // Travel radius required for mobile type
     if (formData.type === 'mobile') {
       if (!formData.travelRadius || formData.travelRadius < 1) {
-        newErrors.travelRadius = 'Le rayon de deplacement est requis';
+        newErrors.travelRadius = 'Le rayon de déplacement est requis';
       } else if (formData.travelRadius > 100) {
-        newErrors.travelRadius = 'Le rayon ne peut pas depasser 100 km';
+        newErrors.travelRadius = 'Le rayon ne peut pas dépasser 100 km';
       }
     }
 

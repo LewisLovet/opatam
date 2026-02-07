@@ -82,7 +82,7 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
           </label>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Selectionnez quand envoyer des rappels par email aux clients avant leur rendez-vous.
+          Sélectionnez quand envoyer des rappels par email aux clients avant leur rendez-vous.
         </p>
 
         <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
@@ -106,7 +106,7 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
 
         {reminderTimes.length === 0 && (
           <p className="text-sm text-warning-600 dark:text-warning-400">
-            Aucun rappel ne sera envoye aux clients.
+            Aucun rappel ne sera envoyé aux clients.
           </p>
         )}
       </div>
@@ -115,10 +115,10 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
       <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
         <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-blue-700 dark:text-blue-300">
-          <p className="font-medium">A propos des rappels</p>
+          <p className="font-medium">À propos des rappels</p>
           <p className="mt-1 text-blue-600 dark:text-blue-400">
-            Les rappels sont envoyes automatiquement par email aux clients.
-            Vous recevez egalement une notification pour chaque nouvelle reservation.
+            Les rappels sont envoyés automatiquement par email aux clients.
+            Vous recevez également une notification pour chaque nouvelle réservation.
           </p>
         </div>
       </div>
@@ -133,7 +133,7 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
       {/* Success Message */}
       {success && (
         <div className="p-4 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400 rounded-lg text-sm">
-          Parametres de notifications mis a jour avec succes
+          Paramètres de notifications mis à jour avec succès
         </div>
       )}
 

@@ -103,7 +103,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
       onSuccess?.();
     } catch (err) {
       console.error('Unpublish error:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors de la desactivation');
+      setError(err instanceof Error ? err.message : 'Erreur lors de la désactivation');
     } finally {
       setLoading(false);
     }
@@ -152,7 +152,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
     ctx.font = '600 28px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(
-      `Scannez pour reserver chez ${provider?.businessName || ''}`,
+      `Scannez pour réserver chez ${provider?.businessName || ''}`,
       downloadCanvas.width / 2,
       size + padding + 48
     );
@@ -170,7 +170,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>QR Code - ${provider?.businessName || ''}</title><style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui,-apple-system,sans-serif}img{max-width:400px;width:100%}h2{margin-top:24px;color:#111827;font-size:20px}p{color:#6b7280;font-size:14px;margin-top:8px}</style></head><body><img src="${canvas.toDataURL('image/png')}" alt="QR Code"/><h2>${provider?.businessName || ''}</h2><p>Scannez ce QR code pour reserver en ligne</p><p style="font-size:12px;color:#9ca3af;margin-top:16px">${bookingUrl || ''}</p><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}};</script></body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>QR Code - ${provider?.businessName || ''}</title><style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui,-apple-system,sans-serif}img{max-width:400px;width:100%}h2{margin-top:24px;color:#111827;font-size:20px}p{color:#6b7280;font-size:14px;margin-top:8px}</style></head><body><img src="${canvas.toDataURL('image/png')}" alt="QR Code"/><h2>${provider?.businessName || ''}</h2><p>Scannez ce QR code pour réserver en ligne</p><p style="font-size:12px;color:#9ca3af;margin-top:16px">${bookingUrl || ''}</p><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}};</script></body></html>`);
     printWindow.document.close();
   }, [provider?.businessName, bookingUrl]);
 
@@ -274,10 +274,10 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
               <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 text-sm">
                   <QrCode className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                  QR code de reservation
+                  QR code de réservation
                 </h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Affichez-le dans votre etablissement ou sur vos supports de communication. Vos clients scannent et reservent directement.
+                  Affichez-le dans votre établissement ou sur vos supports de communication. Vos clients scannent et réservent directement.
                 </p>
 
                 <div className="flex flex-wrap gap-2 mt-3">

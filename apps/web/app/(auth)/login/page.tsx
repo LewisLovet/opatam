@@ -39,17 +39,17 @@ function getErrorMessage(error: unknown): string {
       case 'auth/invalid-email':
         return 'Adresse email invalide';
       case 'auth/user-disabled':
-        return 'Ce compte a ete desactive';
+        return 'Ce compte a été désactivé';
       case 'auth/user-not-found':
-        return 'Aucun compte trouve avec cet email';
+        return 'Aucun compte trouvé avec cet email';
       case 'auth/wrong-password':
         return 'Mot de passe incorrect';
       case 'auth/invalid-credential':
         return 'Email ou mot de passe incorrect';
       case 'auth/too-many-requests':
-        return 'Trop de tentatives. Veuillez reessayer plus tard';
+        return 'Trop de tentatives. Veuillez réessayer plus tard';
       case 'auth/popup-closed-by-user':
-        return 'Connexion annulee';
+        return 'Connexion annulée';
       default:
         return error.message || 'Une erreur est survenue';
     }

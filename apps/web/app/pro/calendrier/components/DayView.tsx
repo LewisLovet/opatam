@@ -72,7 +72,7 @@ function AvailabilitySlotWithHover({
 
   return (
     <div
-      className="absolute left-0 right-0 bg-success-50 dark:bg-success-900/20 hover:bg-success-100 dark:hover:bg-success-900/40 transition-colors"
+      className="absolute left-1.5 right-1.5 bg-primary-50/40 dark:bg-primary-900/10 hover:bg-primary-100/60 dark:hover:bg-primary-900/25 transition-colors rounded-lg"
       style={{ top: `${top}px`, height: `${height}px` }}
       title="Cliquer pour créer un RDV"
       onMouseMove={handleMouseMove}
@@ -176,14 +176,14 @@ export function DayView({
       <div className="min-w-[300px]">
         {/* Column headers (only for multi-column view) */}
         {columns.length > 1 && (
-          <div className="flex border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-20">
+          <div className="flex gap-1.5 sticky top-0 bg-gray-100/50 dark:bg-gray-900/50 z-20 px-1.5 pt-1.5">
             {/* Time label spacer */}
             <div className="flex-shrink-0 w-14 sm:w-16" />
             {/* Member headers */}
             {columns.map((col) => (
               <div
                 key={col.id}
-                className="flex-1 min-w-[120px] px-2 py-3 text-center text-sm font-medium text-gray-900 dark:text-white border-l border-gray-200 dark:border-gray-700"
+                className="flex-1 min-w-[120px] px-2 py-3 text-center text-sm font-medium text-gray-900 dark:text-white rounded-t-xl bg-white dark:bg-gray-800/60"
               >
                 {col.name}
               </div>
@@ -204,7 +204,7 @@ export function DayView({
           </TimeGrid>
 
           {/* Columns */}
-          <div className="flex flex-1">
+          <div className="flex flex-1 gap-1.5 px-1.5 pb-1.5">
             {columns.map((col, colIndex) => (
               <DayColumn
                 key={col.id}
@@ -262,15 +262,16 @@ function DayColumn({
 
   return (
     <div
-      className={`flex-1 min-w-[120px] relative cursor-pointer ${!isFirst ? 'border-l border-gray-200 dark:border-gray-700' : ''}`}
+      className="flex-1 min-w-[120px] relative cursor-pointer rounded-xl overflow-hidden shadow-sm ring-1 ring-gray-200/80 dark:ring-gray-700/50"
       style={{ height: `${totalHeight}px` }}
       onClick={onSlotClick}
     >
-      {/* Base background - gray with hatching for closed, white for open */}
+      {/* Base background - subtle dot pattern for closed, white for open */}
       <div
-        className={`absolute inset-0 ${isClosed ? 'bg-gray-100 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-900'}`}
+        className={`absolute inset-0 ${isClosed ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800/60'}`}
         style={isClosed ? {
-          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156, 163, 175, 0.3) 4px, rgba(156, 163, 175, 0.3) 8px)',
+          backgroundImage: 'radial-gradient(circle, rgba(156, 163, 175, 0.15) 1px, transparent 1px)',
+          backgroundSize: '10px 10px',
         } : undefined}
         title={isClosed ? 'Fermé' : undefined}
       />
@@ -342,11 +343,12 @@ function DayColumn({
         return closedSections.map((section, idx) => (
           <div
             key={`closed-${idx}`}
-            className="absolute left-0 right-0 bg-gray-100 dark:bg-gray-800/50"
+            className="absolute left-0 right-0 bg-gray-50/80 dark:bg-gray-800/40"
             style={{
               top: `${section.top}px`,
               height: `${section.height}px`,
-              backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156, 163, 175, 0.3) 4px, rgba(156, 163, 175, 0.3) 8px)',
+              backgroundImage: 'radial-gradient(circle, rgba(156, 163, 175, 0.12) 1px, transparent 1px)',
+              backgroundSize: '10px 10px',
             }}
             title="Fermé"
           />
@@ -391,7 +393,7 @@ function DayColumn({
       {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => (
         <div
           key={i}
-          className="absolute left-0 right-0 border-t border-gray-200 dark:border-gray-700"
+          className="absolute left-0 right-0 border-t border-gray-100/80 dark:border-gray-800/50"
           style={{ top: `${i * SLOT_HEIGHT}px` }}
         />
       ))}
@@ -400,7 +402,7 @@ function DayColumn({
       {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
         <div
           key={`half-${i}`}
-          className="absolute left-0 right-0 border-t border-gray-100 dark:border-gray-800 border-dashed"
+          className="absolute left-0 right-0 border-t border-gray-100/40 dark:border-gray-800/30 border-dashed"
           style={{ top: `${i * SLOT_HEIGHT + SLOT_HEIGHT / 2}px` }}
         />
       ))}

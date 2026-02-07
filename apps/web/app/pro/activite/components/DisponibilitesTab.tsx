@@ -192,7 +192,7 @@ export function DisponibilitesTab() {
 
     try {
       await schedulingService.unblockPeriod(provider.id, slotId);
-      toast.success('Periode de fermeture supprimee');
+      toast.success('Période de fermeture supprimée');
       setBlockedSlots((prev) => prev.filter((s) => s.id !== slotId));
     } catch (error) {
       console.error('Delete blocked slot error:', error);
@@ -214,10 +214,10 @@ export function DisponibilitesTab() {
       <div className="text-center py-16 px-4">
         <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          Aucun membre configure
+          Aucun membre configuré
         </h3>
         <p className="text-gray-500 dark:text-gray-400">
-          Ajoutez d'abord un membre dans l'onglet "Equipe" pour definir vos disponibilites.
+          Ajoutez d'abord un membre dans l'onglet "Équipe" pour définir vos disponibilités.
         </p>
       </div>
     );
@@ -228,10 +228,10 @@ export function DisponibilitesTab() {
       <div className="text-center py-16 px-4">
         <Clock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          Aucun lieu configure
+          Aucun lieu configuré
         </h3>
         <p className="text-gray-500 dark:text-gray-400">
-          Ajoutez d'abord un lieu dans l'onglet "Lieux" pour definir vos disponibilites.
+          Ajoutez d'abord un lieu dans l'onglet "Lieux" pour définir vos disponibilités.
         </p>
       </div>
     );
@@ -243,13 +243,13 @@ export function DisponibilitesTab() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            Vos disponibilites
+            Vos disponibilités
             {saving && (
               <Loader2 className="w-4 h-4 text-primary-600 animate-spin" />
             )}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {isEditing ? 'Modifiez vos horaires d\'ouverture' : 'Definissez vos horaires d\'ouverture'}
+            {isEditing ? 'Modifiez vos horaires d\'ouverture' : 'Définissez vos horaires d\'ouverture'}
           </p>
         </div>
 

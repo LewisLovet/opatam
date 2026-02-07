@@ -74,7 +74,7 @@ export default function DashboardPage() {
         alerts.push({
           id: 'pending',
           message: `${pendingBookings.length} RDV en attente de confirmation`,
-          action: 'Voir les reservations',
+          action: 'Voir les réservations',
           href: '/pro/reservations?status=pending',
           priority: 'high',
         });
@@ -86,7 +86,7 @@ export default function DashboardPage() {
         if (daysRemaining <= 14) {
           alerts.push({
             id: 'trial',
-            message: `Periode d'essai : ${daysRemaining} jours restants`,
+            message: `Période d'essai : ${daysRemaining} jours restants`,
             action: 'Voir les offres',
             href: '/pro/parametres?tab=abonnement',
             priority: daysRemaining <= 3 ? 'high' : 'medium',

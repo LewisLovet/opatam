@@ -76,7 +76,7 @@ function AvailabilitySlotWithHover({
 
   return (
     <div
-      className="absolute left-0 right-0 bg-success-50 dark:bg-success-900/20 hover:bg-success-100 dark:hover:bg-success-900/40 transition-colors"
+      className="absolute left-1 right-1 bg-primary-50/40 dark:bg-primary-900/10 hover:bg-primary-100/60 dark:hover:bg-primary-900/25 transition-colors rounded-lg"
       style={{ top: `${top}px`, height: `${height}px` }}
       title="Cliquer pour créer un RDV"
       onMouseMove={handleMouseMove}
@@ -203,7 +203,7 @@ export function WeekView({
     <div className="overflow-x-auto">
       <div className="min-w-[600px]">
         {/* Day headers with gauges */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-20">
+        <div className="flex gap-1.5 sticky top-0 bg-gray-100/50 dark:bg-gray-900/50 z-20 px-1.5 pt-1.5">
           {/* Time label spacer */}
           <div className="flex-shrink-0 w-12 sm:w-14" />
           {/* Day headers with booking count gauge */}
@@ -232,7 +232,7 @@ export function WeekView({
         </div>
 
         {/* Time grid */}
-        <div className="flex">
+        <div className="flex gap-1.5 px-1.5 pb-1.5">
           {/* Time labels */}
           <div className="flex-shrink-0 w-12 sm:w-14 relative" style={{ height: `${totalHeight}px` }}>
             {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => {
@@ -313,15 +313,16 @@ export function WeekView({
             return (
               <div
                 key={idx}
-                className="flex-1 min-w-[80px] relative border-l border-gray-200 dark:border-gray-700 cursor-pointer"
+                className="flex-1 min-w-[80px] relative rounded-xl overflow-hidden shadow-sm cursor-pointer ring-1 ring-gray-200/80 dark:ring-gray-700/50"
                 style={{ height: `${totalHeight}px` }}
                 onClick={(e) => handleSlotClick(e, day)}
               >
-                {/* Base background - gray with hatching for closed, white for open */}
+                {/* Base background - subtle for closed, white for open */}
                 <div
-                  className={`absolute inset-0 ${isClosed ? 'bg-gray-100 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-900'}`}
+                  className={`absolute inset-0 ${isClosed ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800/60'}`}
                   style={isClosed ? {
-                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156, 163, 175, 0.3) 4px, rgba(156, 163, 175, 0.3) 8px)',
+                    backgroundImage: 'radial-gradient(circle, rgba(156, 163, 175, 0.15) 1px, transparent 1px)',
+                    backgroundSize: '10px 10px',
                   } : undefined}
                   title={isClosed ? 'Fermé' : undefined}
                 />
@@ -349,15 +350,16 @@ export function WeekView({
                   );
                 })}
 
-                {/* Closed hours overlay - gray with hatching for hours outside availability */}
+                {/* Closed hours overlay - subtle dot pattern for hours outside availability */}
                 {getClosedSections().map((section, sectionIdx) => (
                   <div
                     key={`closed-${sectionIdx}`}
-                    className="absolute left-0 right-0 bg-gray-100 dark:bg-gray-800/50"
+                    className="absolute left-0 right-0 bg-gray-50/80 dark:bg-gray-800/40"
                     style={{
                       top: `${section.top}px`,
                       height: `${section.height}px`,
-                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156, 163, 175, 0.3) 4px, rgba(156, 163, 175, 0.3) 8px)',
+                      backgroundImage: 'radial-gradient(circle, rgba(156, 163, 175, 0.12) 1px, transparent 1px)',
+                      backgroundSize: '10px 10px',
                     }}
                     title="Fermé"
                   />
@@ -401,7 +403,7 @@ export function WeekView({
                 {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => (
                   <div
                     key={i}
-                    className="absolute left-0 right-0 border-t border-gray-200 dark:border-gray-700"
+                    className="absolute left-0 right-0 border-t border-gray-100/80 dark:border-gray-800/50"
                     style={{ top: `${i * SLOT_HEIGHT}px` }}
                   />
                 ))}

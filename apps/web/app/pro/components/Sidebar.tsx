@@ -40,16 +40,16 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Tableau de bord', href: '/pro', icon: <Home className="w-5 h-5" /> },
       { label: 'Calendrier', href: '/pro/calendrier', icon: <Calendar className="w-5 h-5" /> },
-      { label: 'Reservations', href: '/pro/reservations', icon: <List className="w-5 h-5" /> },
+      { label: 'Réservations', href: '/pro/reservations', icon: <List className="w-5 h-5" /> },
     ],
   },
   // Groupe 2: Configuration et feedback
   {
     items: [
-      { label: 'Mon activite', href: '/pro/activite', icon: <Briefcase className="w-5 h-5" /> },
+      { label: 'Mon activité', href: '/pro/activite', icon: <Briefcase className="w-5 h-5" /> },
       { label: 'Profil public', href: '/pro/profil', icon: <UserCircle className="w-5 h-5" /> },
       { label: 'Avis', href: '/pro/avis', icon: <Star className="w-5 h-5" /> },
-      { label: 'Parametres', href: '/pro/parametres', icon: <Settings className="w-5 h-5" /> },
+      { label: 'Paramètres', href: '/pro/parametres', icon: <Settings className="w-5 h-5" /> },
     ],
   },
 ];

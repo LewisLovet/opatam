@@ -21,8 +21,8 @@ import {
 const tabs = [
   {
     id: 'reservation',
-    label: 'Reservations',
-    description: 'Regles de prise de rendez-vous',
+    label: 'Réservations',
+    description: 'Règles de prise de rendez-vous',
     icon: Calendar,
   },
   {
@@ -80,11 +80,11 @@ export default function SettingsPage() {
         <div className="flex items-center gap-3 mb-1">
           <Settings className="w-6 h-6 text-gray-400" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Parametres
+            Paramètres
           </h1>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 ml-9">
-          Configurez votre activite et votre compte
+          Configurez votre activité et votre compte
         </p>
       </div>
 

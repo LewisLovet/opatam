@@ -73,6 +73,18 @@ export function formatPriceFr(priceInCentimes: number): string {
   }).format(priceInEuros);
 }
 
+// Helper to format relative time in French ("dans 30 minutes", "dans 1 heure", "demain")
+export function formatTimeUntilFr(minutesUntil: number): string {
+  if (minutesUntil < 60) {
+    const mins = Math.round(minutesUntil);
+    return mins <= 1 ? 'dans 1 minute' : `dans ${mins} minutes`;
+  }
+  const hours = Math.round(minutesUntil / 60);
+  if (hours === 1) return 'dans 1 heure';
+  if (hours < 24) return `dans ${hours} heures`;
+  return 'demain';
+}
+
 // Validate email format
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -405,7 +417,8 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
  */
 export async function sendReminderEmail(
   data: BookingEmailData,
-  reminderType: '2h' | '24h'
+  reminderType: '2h' | '24h',
+  minutesUntil?: number
 ): Promise<EmailResult> {
   console.log('[EMAIL] Sending reminder email to:', data.clientEmail);
 
@@ -465,9 +478,12 @@ export async function sendReminderEmail(
     ].join('\r\n');
     const icsBuffer = Buffer.from(icsContent, 'utf-8');
 
+    const timeLabel = minutesUntil != null
+      ? formatTimeUntilFr(minutesUntil)
+      : (reminderType === '24h' ? 'demain' : 'dans 2 heures');
     const subject = reminderType === '24h'
       ? `Rappel : votre rendez-vous demain - ${data.serviceName}`
-      : `Rappel : votre rendez-vous dans 2h - ${data.serviceName}`;
+      : `Rappel : votre rendez-vous ${timeLabel} - ${data.serviceName}`;
 
     const { error } = await getResend().emails.send({
       from: emailConfig.from,
@@ -491,6 +507,7 @@ export async function sendReminderEmail(
         icsUrl,
         googleCalendarUrl,
         reminderType,
+        timeLabel,
       }),
       text: generateReminderText({
         ...data,
@@ -503,6 +520,7 @@ export async function sendReminderEmail(
         icsUrl,
         googleCalendarUrl,
         reminderType,
+        timeLabel,
       }),
     });
 
@@ -553,14 +571,14 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
               <tr>
                 <td style="padding: 0 32px 24px;">
                   <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
-                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous a bien ete <strong style="color: #16a34a;">confirme</strong>.</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous a bien été <strong style="color: #16a34a;">confirmé</strong>.</p>
                   <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Votre rendez-vous</p>
                     <table style="width: 100%; border-collapse: collapse;">
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Duree</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
@@ -568,7 +586,7 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                     </table>
                   </div>
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Ajouter a votre calendrier</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Ajouter à votre calendrier</p>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
                       <tr>
                         <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Google</a></td>
@@ -582,12 +600,12 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
               </tr>
               <tr>
                 <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">A bientot,<br><strong>${data.businessName}</strong></p>
-                  ${data.reviewUrl ? `<p style="margin: 16px 0 0; font-size: 13px; color: #a1a1aa; text-align: center;">Apres votre rendez-vous, <a href="${data.reviewUrl}" style="color: #6366f1; text-decoration: underline;">donnez-nous votre avis</a></p>` : ''}
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>${data.businessName}</strong></p>
+                  ${data.reviewUrl ? `<p style="margin: 16px 0 0; font-size: 13px; color: #a1a1aa; text-align: center;">Après votre rendez-vous, <a href="${data.reviewUrl}" style="color: #6366f1; text-decoration: underline;">donnez-nous votre avis</a></p>` : ''}
                 </td>
               </tr>
             </table>
-            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a ete envoye automatiquement par ${appConfig.name}.<br>Si vous n'etes pas concerne, veuillez ignorer ce message.</p>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
           </td>
         </tr>
       </table>
@@ -600,27 +618,27 @@ function generateConfirmationText(data: ConfirmationTemplateData): string {
   return `
 Bonjour ${data.clientName},
 
-Votre rendez-vous a bien ete confirme.
+Votre rendez-vous a bien été confirmé.
 
-Details de votre rendez-vous :
+Détails de votre rendez-vous :
 - Prestation : ${data.serviceName}
 - Date : ${data.formattedDate}
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
-- Duree : ${data.duration} min
+- Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${data.locationAddress ? `- Adresse : ${data.locationAddress}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
-Ajouter a votre calendrier :
+Ajouter à votre calendrier :
 - Google Calendar : ${data.googleCalendarUrl}
 ${data.icsUrl ? `- Apple / Outlook : ${data.icsUrl}` : ''}
 
 ${data.cancelUrl ? `Annuler le rendez-vous : ${data.cancelUrl}` : ''}
 
-${data.reviewUrl ? `Apres votre rendez-vous, donnez-nous votre avis : ${data.reviewUrl}` : ''}
+${data.reviewUrl ? `Après votre rendez-vous, donnez-nous votre avis : ${data.reviewUrl}` : ''}
 
-A bientot,
+À bientôt,
 ${data.businessName}
   `.trim();
 }
@@ -657,9 +675,9 @@ function generateCancellationHtml(data: CancellationTemplateData): string {
               <tr>
                 <td style="padding: 0 32px 24px;">
                   <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
-                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Nous vous informons que votre rendez-vous a ete <strong style="color: #dc2626;">annule</strong>.</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Nous vous informons que votre rendez-vous a été <strong style="color: #dc2626;">annulé</strong>.</p>
                   <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Rendez-vous annule</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Rendez-vous annulé</p>
                     <table style="width: 100%; border-collapse: collapse;">
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
@@ -668,17 +686,17 @@ function generateCancellationHtml(data: CancellationTemplateData): string {
                       ${data.reason ? `<tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a; vertical-align: top;">Motif</td><td style="padding: 8px 0 4px; font-size: 14px; color: #18181b;">${data.reason}</td></tr>` : ''}
                     </table>
                   </div>
-                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Si vous souhaitez reprendre un nouveau rendez-vous, n'hesitez pas a nous contacter ou a reserver en ligne.</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Si vous souhaitez reprendre un nouveau rendez-vous, n'hésitez pas à nous contacter ou à réserver en ligne.</p>
                   <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr><td align="center"><a href="${data.rebookUrl}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Reprendre rendez-vous</a></td></tr></table>
                 </td>
               </tr>
               <tr>
                 <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">Nous nous excusons pour la gene occasionnee.<br><strong>${data.businessName}</strong></p>
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">Nous nous excusons pour la gêne occasionnée.<br><strong>${data.businessName}</strong></p>
                 </td>
               </tr>
             </table>
-            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a ete envoye automatiquement par ${appConfig.name}.<br>Si vous n'etes pas concerne, veuillez ignorer ce message.</p>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
           </td>
         </tr>
       </table>
@@ -691,18 +709,18 @@ function generateCancellationText(data: CancellationTemplateData): string {
   return `
 Bonjour ${data.clientName},
 
-Nous vous informons que votre rendez-vous a ete annule.
+Nous vous informons que votre rendez-vous a été annulé.
 
-Details du rendez-vous annule :
+Détails du rendez-vous annulé :
 - Prestation : ${data.serviceName}
 - Date : ${data.formattedDate}
 - Heure : ${data.formattedTime}
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${data.reason ? `- Motif : ${data.reason}` : ''}
 
-Si vous souhaitez reprendre un nouveau rendez-vous, n'hesitez pas a nous contacter ou a reserver en ligne sur ${data.rebookUrl}
+Si vous souhaitez reprendre un nouveau rendez-vous, n'hésitez pas à nous contacter ou à réserver en ligne sur ${data.rebookUrl}
 
-Nous nous excusons pour la gene occasionnee.
+Nous nous excusons pour la gêne occasionnée.
 
 ${data.businessName}
   `.trim();
@@ -742,18 +760,18 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
               <tr>
                 <td style="padding: 0 32px 24px;">
                   <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
-                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous a ete <strong style="color: #2563eb;">modifie</strong>.</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous a été <strong style="color: #2563eb;">modifié</strong>.</p>
                   <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 16px; opacity: 0.8;">
-                    <p style="margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Ancien creneau</p>
+                    <p style="margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Ancien créneau</p>
                     <p style="margin: 0; font-size: 14px; color: #71717a; text-decoration: line-through;"><span style="text-transform: capitalize;">${data.formattedOldDate}</span> a ${data.formattedOldTime}</p>
                   </div>
                   <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Nouveau creneau</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Nouveau créneau</p>
                     <table style="width: 100%; border-collapse: collapse;">
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedNewDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedNewTime} - ${data.formattedNewEndTime}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Duree</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
@@ -761,7 +779,7 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
                     </table>
                   </div>
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Mettre a jour votre calendrier</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Mettre à jour votre calendrier</p>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
                       <tr>
                         <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Google</a></td>
@@ -775,11 +793,11 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
               </tr>
               <tr>
                 <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">A bientot,<br><strong>${data.businessName}</strong></p>
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>${data.businessName}</strong></p>
                 </td>
               </tr>
             </table>
-            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a ete envoye automatiquement par ${appConfig.name}.<br>Si vous n'etes pas concerne, veuillez ignorer ce message.</p>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
           </td>
         </tr>
       </table>
@@ -792,27 +810,27 @@ function generateRescheduleText(data: RescheduleTemplateData): string {
   return `
 Bonjour ${data.clientName},
 
-Votre rendez-vous a ete modifie.
+Votre rendez-vous a été modifié.
 
-Ancien creneau : ${data.formattedOldDate} a ${data.formattedOldTime}
+Ancien créneau : ${data.formattedOldDate} a ${data.formattedOldTime}
 
-Nouveau creneau :
+Nouveau créneau :
 - Prestation : ${data.serviceName}
 - Date : ${data.formattedNewDate}
 - Heure : ${data.formattedNewTime} - ${data.formattedNewEndTime}
-- Duree : ${data.duration} min
+- Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${data.locationAddress ? `- Adresse : ${data.locationAddress}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
-Mettre a jour votre calendrier :
+Mettre à jour votre calendrier :
 - Google Calendar : ${data.googleCalendarUrl}
 ${data.icsUrl ? `- Apple / Outlook : ${data.icsUrl}` : ''}
 
 ${data.cancelUrl ? `Annuler le rendez-vous : ${data.cancelUrl}` : ''}
 
-A bientot,
+À bientôt,
 ${data.businessName}
   `.trim();
 }
@@ -827,12 +845,11 @@ interface ReminderTemplateData extends BookingEmailData {
   icsUrl: string | null;
   googleCalendarUrl: string;
   reminderType: '2h' | '24h';
+  timeLabel: string;
 }
 
 function generateReminderHtml(data: ReminderTemplateData): string {
-  const introText = data.reminderType === '24h'
-    ? `Nous vous rappelons que votre rendez-vous a lieu <strong style="color: #2563eb;">demain</strong>.`
-    : `Nous vous rappelons que votre rendez-vous a lieu <strong style="color: #2563eb;">dans 2 heures</strong>.`;
+  const introText = `Nous vous rappelons que votre rendez-vous a lieu <strong style="color: #2563eb;">${data.timeLabel}</strong>.`;
 
   return `
     <!DOCTYPE html>
@@ -861,7 +878,7 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Duree</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
@@ -869,7 +886,7 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                     </table>
                   </div>
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Ajouter a votre calendrier</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Ajouter à votre calendrier</p>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
                       <tr>
                         <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Google</a></td>
@@ -882,11 +899,11 @@ function generateReminderHtml(data: ReminderTemplateData): string {
               </tr>
               <tr>
                 <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">A bientot,<br><strong>${data.businessName}</strong></p>
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>${data.businessName}</strong></p>
                 </td>
               </tr>
             </table>
-            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a ete envoye automatiquement par ${appConfig.name}.<br>Si vous n'etes pas concerne, veuillez ignorer ce message.</p>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
           </td>
         </tr>
       </table>
@@ -896,32 +913,30 @@ function generateReminderHtml(data: ReminderTemplateData): string {
 }
 
 function generateReminderText(data: ReminderTemplateData): string {
-  const introText = data.reminderType === '24h'
-    ? 'Nous vous rappelons que votre rendez-vous a lieu demain.'
-    : 'Nous vous rappelons que votre rendez-vous a lieu dans 2 heures.';
+  const introText = `Nous vous rappelons que votre rendez-vous a lieu ${data.timeLabel}.`;
 
   return `
 Bonjour ${data.clientName},
 
 ${introText}
 
-Details de votre rendez-vous :
+Détails de votre rendez-vous :
 - Prestation : ${data.serviceName}
 - Date : ${data.formattedDate}
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
-- Duree : ${data.duration} min
+- Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${data.locationAddress ? `- Adresse : ${data.locationAddress}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
-Ajouter a votre calendrier :
+Ajouter à votre calendrier :
 - Google Calendar : ${data.googleCalendarUrl}
 ${data.icsUrl ? `- Apple / Outlook : ${data.icsUrl}` : ''}
 
 ${data.cancelUrl ? `Annuler le rendez-vous : ${data.cancelUrl}` : ''}
 
-A bientot,
+À bientôt,
 ${data.businessName}
   `.trim();
 }

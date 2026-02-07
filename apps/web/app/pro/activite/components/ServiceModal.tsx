@@ -162,15 +162,15 @@ export function ServiceModal({
     if (!formData.name.trim()) {
       newErrors.name = 'Le nom est requis';
     } else if (formData.name.length < 2) {
-      newErrors.name = 'Le nom doit contenir au moins 2 caracteres';
+      newErrors.name = 'Le nom doit contenir au moins 2 caractères';
     }
 
     if (formData.price < 0) {
-      newErrors.price = 'Le prix ne peut pas etre negatif';
+      newErrors.price = 'Le prix ne peut pas être négatif';
     }
 
     if (formData.locationIds.length === 0) {
-      newErrors.locationIds = 'Selectionnez au moins un lieu';
+      newErrors.locationIds = 'Sélectionnez au moins un lieu';
     }
 
     setErrors(newErrors);
@@ -242,15 +242,15 @@ export function ServiceModal({
             name="description"
             value={formData.description || ''}
             onChange={handleChange}
-            placeholder="Decrivez cette prestation..."
+            placeholder="Décrivez cette prestation..."
             rows={3}
-            hint="Optionnel - visible par les clients lors de la reservation"
+            hint="Optionnel - visible par les clients lors de la réservation"
           />
 
           {/* Duration & Price */}
           <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Duree"
+              label="Durée"
               name="duration"
               value={formData.duration.toString()}
               onChange={handleChange}

@@ -32,9 +32,9 @@ export default function ActivityPage() {
     { id: 'prestations', label: 'Prestations', icon: <Scissors className="w-4 h-4" /> },
     { id: 'lieux', label: 'Lieux', icon: <MapPin className="w-4 h-4" /> },
     ...(isTeamPlan
-      ? [{ id: 'equipe', label: 'Equipe', icon: <Users className="w-4 h-4" /> }]
+      ? [{ id: 'equipe', label: 'Équipe', icon: <Users className="w-4 h-4" /> }]
       : []),
-    { id: 'disponibilites', label: 'Disponibilites', icon: <Clock className="w-4 h-4" /> },
+    { id: 'disponibilites', label: 'Disponibilités', icon: <Clock className="w-4 h-4" /> },
   ];
 
   return (
@@ -42,10 +42,10 @@ export default function ActivityPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-          Mon activite
+          Mon activité
         </h1>
         <p className="mt-1 text-gray-600 dark:text-gray-400">
-          Gerez vos prestations, lieux et disponibilites
+          Gérez vos prestations, lieux et disponibilités
         </p>
       </div>
 

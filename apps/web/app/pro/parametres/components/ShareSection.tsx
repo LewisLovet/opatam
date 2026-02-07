@@ -71,7 +71,7 @@ export function ShareSection() {
     ctx.font = '600 28px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(
-      `Scannez pour reserver chez ${provider?.businessName || ''}`,
+      `Scannez pour réserver chez ${provider?.businessName || ''}`,
       downloadCanvas.width / 2,
       size + padding + 48
     );
@@ -112,7 +112,7 @@ export function ShareSection() {
         <body>
           <img src="${canvas.toDataURL('image/png')}" alt="QR Code" />
           <h2>${provider?.businessName || ''}</h2>
-          <p>Scannez ce QR code pour reserver en ligne</p>
+          <p>Scannez ce QR code pour réserver en ligne</p>
           <p style="font-size: 12px; color: #9ca3af; margin-top: 16px;">${bookingUrl || ''}</p>
           <script>
             window.onload = function() {
@@ -184,10 +184,10 @@ export function ShareSection() {
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <QrCode className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-              Votre QR code de reservation
+              Votre QR code de réservation
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Imprimez-le ou affichez-le dans votre etablissement pour que vos clients puissent reserver directement en scannant.
+              Imprimez-le ou affichez-le dans votre établissement pour que vos clients puissent réserver directement en scannant.
             </p>
           </div>
 
@@ -197,7 +197,7 @@ export function ShareSection() {
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-sm font-medium transition-colors"
             >
               <Download className="w-4 h-4" />
-              Telecharger
+              Télécharger
             </button>
             <button
               onClick={handlePrint}
@@ -209,7 +209,7 @@ export function ShareSection() {
           </div>
 
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            Le QR code redirige vers votre page de reservation : {bookingUrl}
+            Le QR code redirige vers votre page de réservation : {bookingUrl}
           </p>
         </div>
       </div>
@@ -257,7 +257,7 @@ export function ShareSection() {
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5 mb-1.5">
               <LinkIcon className="w-3.5 h-3.5" />
-              Lien de reservation direct
+              Lien de réservation direct
             </label>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-sm bg-gray-50 dark:bg-gray-900 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 truncate text-gray-900 dark:text-gray-100">
@@ -278,13 +278,13 @@ export function ShareSection() {
       {/* Tips */}
       <div className="bg-primary-50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-800 rounded-xl p-4">
         <h4 className="text-sm font-semibold text-primary-700 dark:text-primary-400 mb-2">
-          Conseils pour maximiser vos reservations
+          Conseils pour maximiser vos réservations
         </h4>
         <ul className="text-sm text-primary-600/80 dark:text-primary-400/70 space-y-1.5">
-          <li>Affichez le QR code a l&apos;accueil de votre etablissement</li>
-          <li>Ajoutez le lien de reservation dans votre bio Instagram</li>
-          <li>Partagez le lien par SMS ou WhatsApp a vos clients reguliers</li>
-          <li>Integrez le QR code sur vos cartes de visite</li>
+          <li>Affichez le QR code à l&apos;accueil de votre établissement</li>
+          <li>Ajoutez le lien de réservation dans votre bio Instagram</li>
+          <li>Partagez le lien par SMS ou WhatsApp à vos clients réguliers</li>
+          <li>Intégrez le QR code sur vos cartes de visite</li>
         </ul>
       </div>
     </div>

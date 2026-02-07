@@ -126,10 +126,10 @@ function CurrentStatusCard() {
   };
 
   const getBadgeLabel = () => {
-    if (status === 'cancelled') return 'Annule';
+    if (status === 'cancelled') return 'Annulé';
     if (status === 'past_due') return 'Paiement en attente';
     if (plan === 'trial') {
-      return daysRemaining > 0 ? 'En cours' : 'Expire';
+      return daysRemaining > 0 ? 'En cours' : 'Expiré';
     }
     if (status === 'active') return 'Actif';
     if (isPaidPlan && status === 'trialing') return 'Actif';
@@ -465,8 +465,8 @@ function ChoosePlanSection({
       </div>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
         {mode === 'change'
-          ? 'Selectionnez le nouveau plan. La difference sera calculee au prorata.'
-          : 'Selectionnez le plan adapte a votre activite.'}
+          ? 'Sélectionnez le nouveau plan. La différence sera calculée au prorata.'
+          : 'Sélectionnez le plan adapté à votre activité.'}
       </p>
 
       {/* Success message */}
@@ -702,10 +702,10 @@ function ChoosePlanSection({
                       </button>
                       <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
                         {isMemberLimitExceeded && isLocationLimitExceeded
-                          ? `Vous avez ${activeMemberCount} membres et ${activeLocationCount} lieux actifs. Reduisez pour passer en Pro.`
+                          ? `Vous avez ${activeMemberCount} membres et ${activeLocationCount} lieux actifs. Réduisez pour passer en Pro.`
                           : isMemberLimitExceeded
-                            ? `Vous avez ${activeMemberCount} membres actifs. Desactivez-en pour passer en Pro.`
-                            : `Vous avez ${activeLocationCount} lieux actifs. Desactivez-en pour passer en Pro.`}
+                            ? `Vous avez ${activeMemberCount} membres actifs. Désactivez-en pour passer en Pro.`
+                            : `Vous avez ${activeLocationCount} lieux actifs. Désactivez-en pour passer en Pro.`}
                       </p>
                     </div>
                   ) : (
@@ -784,11 +784,11 @@ function ManageSubscriptionSection({ onChangePlan }: { onChangePlan?: () => void
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-        Gerer mon abonnement
+        Gérer mon abonnement
       </h3>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-        Modifiez votre moyen de paiement, consultez vos factures ou gerez votre
-        abonnement via notre portail securise.
+        Modifiez votre moyen de paiement, consultez vos factures ou gérez votre
+        abonnement via notre portail sécurisé.
       </p>
 
       {error && (
@@ -813,7 +813,7 @@ function ManageSubscriptionSection({ onChangePlan }: { onChangePlan?: () => void
           ) : (
             <>
               <ExternalLink className="w-4 h-4" />
-              Gerer mon abonnement
+              Gérer mon abonnement
             </>
           )}
         </button>

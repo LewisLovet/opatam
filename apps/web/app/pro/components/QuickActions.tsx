@@ -70,7 +70,7 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
     ctx.font = '600 28px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(
-      `Scannez pour reserver chez ${provider?.businessName || ''}`,
+      `Scannez pour réserver chez ${provider?.businessName || ''}`,
       downloadCanvas.width / 2,
       size + padding + 48
     );
@@ -85,11 +85,11 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
     <div className="flex flex-wrap gap-3">
       <Button onClick={onCreateBooking} className="flex items-center gap-2">
         <Plus className="w-4 h-4" />
-        Creer un RDV
+        Créer un RDV
       </Button>
       <Button variant="outline" onClick={onBlockSlot} className="flex items-center gap-2">
         <CalendarOff className="w-4 h-4" />
-        Bloquer un creneau
+        Bloquer un créneau
       </Button>
 
       {/* Share button with popover */}
@@ -109,7 +109,7 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
               {/* Link copy */}
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">
-                  Lien de reservation
+                  Lien de réservation
                 </label>
                 <div className="flex items-center gap-1.5">
                   <code className="flex-1 text-xs bg-gray-50 dark:bg-gray-900 px-2.5 py-2 rounded-lg border border-gray-200 dark:border-gray-700 truncate text-gray-900 dark:text-gray-100">
@@ -154,14 +154,14 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
                       QR code
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Affichez-le dans votre etablissement
+                      Affichez-le dans votre établissement
                     </p>
                     <button
                       onClick={handleDownloadQr}
                       className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-xs font-medium transition-colors"
                     >
                       <Download className="w-3 h-3" />
-                      Telecharger
+                      Télécharger
                     </button>
                   </div>
                 </div>

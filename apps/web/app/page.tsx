@@ -1,35 +1,35 @@
 'use client';
 
-import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
-import { SUBSCRIPTION_PLANS, APP_CONFIG } from '@booking-app/shared/constants';
+import { Header } from '@/components/layout/Header';
+import { APP_CONFIG, SUBSCRIPTION_PLANS } from '@booking-app/shared/constants';
 import {
-  CalendarCheck,
-  BadgePercent,
-  CreditCard,
-  Calendar,
-  Bell,
-  UserPlus,
-  Globe,
-  Zap,
-  Smartphone,
-  Lock,
-  Star,
-  ChevronDown,
-  Check,
-  Quote,
-  LayoutDashboard,
-  Users,
-  BarChart3,
-  Settings,
-  Home,
   ArrowRight,
+  BadgePercent,
+  BarChart3,
+  Bell,
+  Calendar,
+  CalendarCheck,
+  Check,
+  ChevronDown,
+  CreditCard,
+  Globe,
+  Home,
+  LayoutDashboard,
+  Lock,
   QrCode,
+  Quote,
+  Settings,
   Share2,
+  Smartphone,
+  Star,
+  UserPlus,
+  Users,
+  Zap,
 } from 'lucide-react';
+import Link from 'next/link';
+import { QRCodeSVG } from 'qrcode.react';
+import { useEffect, useRef, useState } from 'react';
 
 // ─── Helpers ────────────────────────────────────────────────────────
 function formatPrice(cents: number): string {
@@ -39,75 +39,75 @@ function formatPrice(cents: number): string {
 // ─── FAQ Data ───────────────────────────────────────────────────────
 const faqItems = [
   {
-    question: 'Est-ce que je dois payer une commission sur les reservations ?',
+    question: 'Est-ce que je dois payer une commission sur les réservations ?',
     answer:
-      'Non, jamais. OPATAM fonctionne avec un abonnement mensuel fixe (a partir de 14,90\u20AC/mois). Vous ne payez aucune commission sur vos reservations, quel que soit le nombre de clients ou le montant des prestations. C\'est notre engagement fondamental.',
+      'Non, jamais. OPATAM fonctionne avec un abonnement mensuel fixe (à partir de 14,90\u20AC/mois). Vous ne payez aucune commission sur vos réservations, quel que soit le nombre de clients ou le montant des prestations. C\'est notre engagement fondamental.',
   },
   {
     question: 'Combien de temps faut-il pour configurer mon profil ?',
     answer:
-      'En moyenne, 5 minutes. Vous renseignez votre activite, vos prestations et vos horaires, et votre page de reservation est en ligne immediatement. Notre assistant vous guide pas a pas. Aucune competence technique n\'est requise.',
+      'En moyenne, 5 minutes. Vous renseignez votre activité, vos prestations et vos horaires, et votre page de réservation est en ligne immédiatement. Notre assistant vous guide pas à pas. Aucune compétence technique n\'est requise.',
   },
   {
-    question: 'Mes clients doivent-ils creer un compte pour reserver ?',
+    question: 'Mes clients doivent-ils créer un compte pour réserver ?',
     answer:
-      'Non. Vos clients reservent en renseignant simplement leur nom, email et telephone. Pas de compte a creer, pas de mot de passe a retenir. C\'est rapide et sans friction pour eux.',
+      'Non. Vos clients réservent en renseignant simplement leur nom, email et téléphone. Pas de compte à créer, pas de mot de passe à retenir. C\'est rapide et sans friction pour eux.',
   },
   {
-    question: 'Est-ce que je peux annuler mon abonnement a tout moment ?',
+    question: 'Est-ce que je peux annuler mon abonnement à tout moment ?',
     answer:
-      'Oui, sans aucune condition. Il n\'y a aucun engagement de duree. Vous pouvez annuler votre abonnement en un clic depuis votre espace, et il reste actif jusqu\'a la fin de la periode en cours.',
+      'Oui, sans aucune condition. Il n\'y a aucun engagement de durée. Vous pouvez annuler votre abonnement en un clic depuis votre espace, et il reste actif jusqu\'à la fin de la période en cours.',
   },
   {
-    question: 'Comment mes clients trouvent-ils ma page de reservation ?',
+    question: 'Comment mes clients trouvent-ils ma page de réservation ?',
     answer:
-      'Vous recevez un lien unique (par exemple : opatam.com/p/votre-nom) et un QR code personnalise que vous pouvez partager par SMS, email, WhatsApp, reseaux sociaux, ou afficher dans votre etablissement. Vos clients scannent le QR code ou cliquent sur le lien pour reserver directement.',
+      'Vous recevez un lien unique (par exemple : opatam.com/p/votre-nom) et un QR code personnalisé que vous pouvez partager par SMS, email, WhatsApp, réseaux sociaux, ou afficher dans votre établissement. Vos clients scannent le QR code ou cliquent sur le lien pour réserver directement.',
   },
   {
-    question: 'OPATAM est-il adapte a une equipe de plusieurs personnes ?',
+    question: 'OPATAM est-il adapté à une équipe de plusieurs personnes ?',
     answer:
-      'Oui. Le plan Studio (29,90\u20AC/mois) est concu pour les equipes. Vous pouvez gerer jusqu\'a 5 agendas synchronises, assigner des prestations a chaque membre, et gerer plusieurs lieux. Des membres supplementaires peuvent etre ajoutes pour 9,90\u20AC/mois chacun.',
+      'Oui. Le plan Studio (29,90\u20AC/mois) est conçu pour les équipes. Vous pouvez gérer jusqu\'à 5 agendas synchronisés, assigner des prestations à chaque membre, et gérer plusieurs lieux. Des membres supplémentaires peuvent être ajoutés pour 9,90\u20AC/mois chacun.',
   },
   {
     question: 'Que se passe-t-il a la fin de l\'essai gratuit ?',
     answer:
-      'Rien d\'automatique. A la fin des 7 jours d\'essai, vous choisissez librement de vous abonner ou non. Aucune carte bancaire n\'est demandee a l\'inscription, donc aucun prelevement surprise. Vos donnees restent accessibles.',
+      'Rien d\'automatique. À la fin des 7 jours d\'essai, vous choisissez librement de vous abonner ou non. Aucune carte bancaire n\'est demandée à l\'inscription, donc aucun prélèvement surprise. Vos données restent accessibles.',
   },
 ];
 
 // ─── Comparison Data ────────────────────────────────────────────────
 const comparisonRows = [
-  { label: 'Tarif mensuel', opatam: '14,90\u20AC', others: 'De 0\u20AC* a 90\u20AC/mois' },
-  { label: 'Commissions sur vos reservations', opatam: '0%', others: "Jusqu'a 20% ou 1\u20AC par RDV" },
-  { label: "Periode d'essai", opatam: '7 jours gratuits', others: 'Souvent limitee ou absente' },
+  { label: 'Tarif mensuel', opatam: '14,90\u20AC', others: 'De 0\u20AC* à 90\u20AC/mois' },
+  { label: 'Commissions sur vos réservations', opatam: '0%', others: "Jusqu'à 20% ou 1\u20AC par RDV" },
+  { label: "Période d'essai", opatam: '7 jours gratuits', others: 'Souvent limitée ou absente' },
   { label: 'Rappels automatiques', opatam: 'Inclus', others: 'Parfois en option payante' },
-  { label: 'Vitrine en ligne personnalisee', opatam: 'Inclus', others: 'Incluse mais modeles limites' },
+  { label: 'Vitrine en ligne personnalisée', opatam: 'Inclus', others: 'Incluse mais modèles limités' },
   { label: 'Engagement', opatam: 'Sans engagement', others: "Variable selon l'offre" },
-  { label: 'Cout reel annuel (exemple)', opatam: '178,80\u20AC', others: 'De 300\u20AC a 1 080\u20AC**' },
+  { label: 'Coût réel annuel (exemple)', opatam: '178,80\u20AC', others: 'De 300\u20AC à 1 080\u20AC**' },
 ];
 
 // ─── Testimonials Data ──────────────────────────────────────────────
 const testimonials = [
   {
     name: 'Marie L.',
-    role: 'Coiffeuse independante',
+    role: 'Coiffeuse indépendante',
     city: 'Lyon',
     initials: 'ML',
-    text: "Depuis que j'utilise OPATAM, mes no-shows ont baisse de 60%. Les rappels automatiques changent tout. Et surtout, 0% de commission, c'est ce qui m'a convaincu de quitter Planity.",
+    text: "Depuis que j'utilise OPATAM, mes no-shows ont baissé de 60%. Les rappels automatiques changent tout. Et surtout, 0% de commission, c'est ce qui m'a convaincu de quitter Planity.",
   },
   {
     name: 'Karim B.',
     role: 'Barbier',
     city: 'Paris',
     initials: 'KB',
-    text: "J'ai configure mon profil en 10 minutes. Le soir meme, j'avais deja 3 reservations. L'interface est claire, mes clients adorent pouvoir reserver en ligne a n'importe quelle heure.",
+    text: "J'ai configuré mon profil en 10 minutes. Le soir même, j'avais déjà 3 réservations. L'interface est claire, mes clients adorent pouvoir réserver en ligne à n'importe quelle heure.",
   },
   {
     name: 'Sophie D.',
-    role: "Gerante d'institut de beaute",
+    role: "Gérante d'institut de beauté",
     city: 'Marseille',
     initials: 'SD',
-    text: "On est 3 dans mon institut et OPATAM Studio nous permet de gerer les agendas de toute l'equipe. Le rapport qualite-prix est imbattable par rapport a ce qu'on payait avant.",
+    text: "On est 3 dans mon institut et OPATAM Studio nous permet de gérer les agendas de toute l'équipe. Le rapport qualité-prix est imbattable par rapport à ce qu'on payait avant.",
   },
 ];
 
@@ -195,19 +195,19 @@ export default function LandingPage() {
               {/* Left: Copy */}
               <div className="text-center lg:text-left max-w-2xl mx-auto lg:mx-0">
                 <h1 className="animate-fade-in-up text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white tracking-tight">
-                  Gerez vos rendez-vous en ligne, sans commission
+                  Gérez vos rendez-vous en ligne, sans commission
                 </h1>
                 <p className="animate-fade-in-up animation-delay-150 mt-6 text-lg sm:text-xl text-gray-600 dark:text-gray-400">
-                  {APP_CONFIG.name} est la plateforme de reservation en ligne pour les professionnels de services. Vos
-                  clients reservent 24h/24, vous recevez des rappels automatiques et vous ne payez aucune commission.
-                  Pret en 5 minutes.
+                  {APP_CONFIG.name} est la plateforme de réservation en ligne pour les professionnels de services. Vos
+                  clients réservent 24h/24, vous recevez des rappels automatiques et vous ne payez aucune commission.
+                  Prêt en 5 minutes.
                 </p>
 
                 {/* Trust bar */}
                 <div className="animate-fade-in-up animation-delay-300 mt-8 flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3 text-sm font-medium text-gray-600 dark:text-gray-400">
                   <span className="flex items-center gap-2">
                     <CalendarCheck className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                    Pret en 5 min
+                    Prêt en 5 min
                   </span>
                   <span className="flex items-center gap-2">
                     <BadgePercent className="w-5 h-5 text-primary-600 dark:text-primary-400" />
@@ -215,7 +215,7 @@ export default function LandingPage() {
                   </span>
                   <span className="flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                    Des {proMonthly}&euro;/mois
+                    Dès {proMonthly}&euro;/mois
                   </span>
                 </div>
 
@@ -225,13 +225,13 @@ export default function LandingPage() {
                     href="/register"
                     className="inline-flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 hover:shadow-lg hover:shadow-primary-600/25 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-200 w-full sm:w-auto"
                   >
-                    Demarrer mon essai gratuit
+                    Démarrer mon essai gratuit
                   </Link>
                   <Link
                     href="/p/demo"
                     className="inline-flex items-center justify-center border border-primary-300 dark:border-primary-700 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-200 w-full sm:w-auto"
                   >
-                    Voir une demo
+                    Voir une démo
                   </Link>
                 </div>
                 <p className="animate-fade-in animation-delay-700 mt-4 text-sm text-gray-500 dark:text-gray-500 text-center lg:text-left">
@@ -351,11 +351,11 @@ export default function LandingPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                Tout ce dont vous avez besoin pour gerer vos rendez-vous
+                Tout ce dont vous avez besoin pour gérer vos rendez-vous
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Fini les appels manques, les no-shows et les agendas papier. {APP_CONFIG.name} automatise la gestion de
-                vos reservations pour que vous puissiez vous concentrer sur votre metier.
+                Fini les appels manqués, les no-shows et les agendas papier. {APP_CONFIG.name} automatise la gestion de
+                vos réservations pour que vous puissiez vous concentrer sur votre métier.
               </p>
             </div>
 
@@ -367,7 +367,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Agenda en ligne 24h/24</h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Vos clients reservent directement en ligne, meme a 23h, meme le dimanche. Fini les appels en pleine
+                  Vos clients réservent directement en ligne, même à 23h, même le dimanche. Fini les appels en pleine
                   prestation. Votre agenda se remplit tout seul.
                 </p>
               </div>
@@ -379,8 +379,8 @@ export default function LandingPage() {
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Rappels automatiques</h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Vos clients recoivent un rappel par email et notification push avant chaque rendez-vous. Resultat :
-                  jusqu&apos;a 75% de no-shows en moins.
+                  Vos clients reçoivent un rappel par email et notification push avant chaque rendez-vous. Résultat :
+                  jusqu&apos;à 75% de no-shows en moins.
                 </p>
               </div>
 
@@ -393,7 +393,7 @@ export default function LandingPage() {
                   0% de commission, toujours
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Contrairement a Planity ou Fresha, {APP_CONFIG.name} ne prend aucune commission sur vos reservations.
+                  Contrairement à Planity ou Fresha, {APP_CONFIG.name} ne prend aucune commission sur vos réservations.
                   Vous payez un prix fixe, point final. Pas de mauvaise surprise sur votre chiffre d&apos;affaires.
                 </p>
               </div>
@@ -406,11 +406,11 @@ export default function LandingPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                Pret en 5 minutes, en 3 etapes
+                Prêt en 5 minutes, en 3 étapes
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Pas de formation, pas de technicien a appeler. Vous creez votre page et recevez vos premieres
-                reservations aujourd&apos;hui.
+                Pas de formation, pas de technicien à appeler. Vous créez votre page et recevez vos premières
+                réservations aujourd&apos;hui.
               </p>
             </div>
 
@@ -418,21 +418,21 @@ export default function LandingPage() {
               {[
                 {
                   icon: UserPlus,
-                  title: 'Creez votre profil',
+                  title: 'Créez votre profil',
                   description:
-                    'Renseignez votre activite, vos prestations et vos horaires. Notre assistant vous guide pas a pas.',
+                    'Renseignez votre activité, vos prestations et vos horaires. Notre assistant vous guide pas à pas.',
                 },
                 {
                   icon: Globe,
                   title: 'Publiez votre vitrine',
                   description:
-                    'Votre page professionnelle est en ligne en un clic. Partagez le lien a vos clients par SMS, email ou reseaux sociaux.',
+                    'Votre page professionnelle est en ligne en un clic. Partagez le lien à vos clients par SMS, email ou réseaux sociaux.',
                 },
                 {
                   icon: CalendarCheck,
-                  title: 'Recevez des reservations',
+                  title: 'Recevez des réservations',
                   description:
-                    'Vos clients reservent en autonomie, 24h/24. Vous recevez une notification a chaque nouveau rendez-vous.',
+                    'Vos clients réservent en autonomie, 24h/24. Vous recevez une notification à chaque nouveau rendez-vous.',
                 },
               ].map((step, index) => {
                 const Icon = step.icon;
@@ -463,7 +463,7 @@ export default function LandingPage() {
                 href="/register"
                 className="inline-flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 px-8 py-4 text-lg font-semibold rounded-lg transition-colors"
               >
-                Creer mon profil gratuitement
+                Créer mon profil gratuitement
               </Link>
               <p className="mt-4 text-sm text-gray-500 dark:text-gray-500">
                 Essai gratuit {APP_CONFIG.trialDays} jours — Aucune carte bancaire requise
@@ -497,7 +497,7 @@ export default function LandingPage() {
                         <div className="absolute inset-x-3 h-0.5 bg-primary-500/60 animate-pulse top-1/2" />
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
-                        Scanner pour reserver
+                        Scanner pour réserver
                       </p>
                     </div>
                     {/* Page preview below */}
@@ -528,17 +528,17 @@ export default function LandingPage() {
                   Nouveau
                 </div>
                 <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                  Un QR code pour reserver en un scan
+                  Un QR code pour réserver en un scan
                 </h2>
                 <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                  Generez votre QR code personnalise et affichez-le dans votre etablissement, sur vos cartes de visite ou vos reseaux sociaux. Vos clients scannent et reservent instantanement.
+                  Générez votre QR code personnalisé et affichez-le dans votre établissement, sur vos cartes de visite ou vos réseaux sociaux. Vos clients scannent et réservent instantanément.
                 </p>
 
                 <ul className="mt-6 space-y-3 text-left">
                   {[
-                    { icon: QrCode, text: 'QR code genere automatiquement pour votre page' },
-                    { icon: Share2, text: 'Telechargez, imprimez ou partagez en un clic' },
-                    { icon: Smartphone, text: 'Vos clients reservent depuis leur telephone' },
+                    { icon: QrCode, text: 'QR code généré automatiquement pour votre page' },
+                    { icon: Share2, text: 'Téléchargez, imprimez ou partagez en un clic' },
+                    { icon: Smartphone, text: 'Vos clients réservent depuis leur téléphone' },
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -557,7 +557,7 @@ export default function LandingPage() {
                     href="/register"
                     className="inline-flex items-center gap-2 bg-primary-600 text-white hover:bg-primary-700 px-6 py-3 font-semibold rounded-lg transition-colors"
                   >
-                    Creer mon QR code
+                    Créer mon QR code
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
@@ -574,14 +574,14 @@ export default function LandingPage() {
                 Un outil simple et puissant
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Decouvrez l&apos;interface que des centaines de professionnels utilisent chaque jour pour gerer leur
-                activite.
+                Découvrez l&apos;interface que des centaines de professionnels utilisent chaque jour pour gérer leur
+                activité.
               </p>
               <Link
                 href="/p/demo"
                 className="mt-4 inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 font-medium hover:underline"
               >
-                Voir la page de reservation en live
+                Voir la page de réservation en live
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -605,7 +605,7 @@ export default function LandingPage() {
                       <LayoutDashboard className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">Agenda</span>
                     </div>
-                    <span className="text-xs text-gray-500">Semaine du 3 fevrier</span>
+                    <span className="text-xs text-gray-500">Semaine du 3 février</span>
                   </div>
                   <div className="grid grid-cols-5 gap-1.5 sm:gap-2 h-[calc(100%-2.5rem)]">
                     {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'].map((day, i) => (
@@ -745,7 +745,7 @@ export default function LandingPage() {
                       {APP_CONFIG.name}
                     </th>
                     <th className="py-4 px-4 font-semibold text-gray-500 dark:text-gray-400">
-                      Autres solutions
+                      Autres applications
                     </th>
                   </tr>
                 </thead>
@@ -779,7 +779,7 @@ export default function LandingPage() {
                       <p className="font-semibold text-primary-700 dark:text-primary-300">{row.opatam}</p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-2.5 text-center">
-                      <p className="text-xs text-gray-500 mb-0.5">Autres solutions</p>
+                      <p className="text-xs text-gray-500 mb-0.5">Autres applications</p>
                       <p className="font-medium text-gray-600 dark:text-gray-300">{row.others}</p>
                     </div>
                   </div>
@@ -789,9 +789,9 @@ export default function LandingPage() {
 
             {/* Footnote */}
             <p className="mt-6 text-xs text-gray-500 dark:text-gray-500 text-center max-w-2xl mx-auto">
-              * Les offres &laquo; gratuites &raquo; incluent generalement des commissions prelevees sur chaque
-              reservation, des fonctionnalites limitees ou du support restreint. ** Estimation basee sur un tarif moyen
-              de 25&euro; a 90&euro;/mois, hors commissions additionnelles.
+              * Les offres &laquo; gratuites &raquo; incluent généralement des commissions prélevées sur chaque
+              réservation, des fonctionnalités limitées ou du support restreint. ** Estimation basée sur un tarif moyen
+              de 25&euro; à 90&euro;/mois, hors commissions additionnelles.
             </p>
           </div>
         </section>
@@ -804,7 +804,7 @@ export default function LandingPage() {
                 Un prix juste, sans surprise
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Deux plans simples. Pas de commission cachee. Pas de frais supplementaires. Annulez quand vous voulez.
+                Deux plans simples. Pas de commission cachée. Pas de frais supplémentaires. Annulez quand vous voulez.
               </p>
             </div>
 
@@ -831,7 +831,7 @@ export default function LandingPage() {
               </span>
               {isYearly && (
                 <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                  Economisez 33%
+                  Économisez 33%
                 </span>
               )}
             </div>
@@ -861,7 +861,7 @@ export default function LandingPage() {
                   </div>
                   {isYearly && (
                     <p className="text-sm text-gray-500 mt-1">
-                      Facture {proYearlyTotal}&euro;/an
+                      Facturé {proYearlyTotal}&euro;/an
                     </p>
                   )}
                 </div>
@@ -883,7 +883,7 @@ export default function LandingPage() {
                   href="/register"
                   className="mt-8 block w-full text-center bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 px-6 py-3.5 font-semibold rounded-xl transition-all duration-200 hover:shadow-lg"
                 >
-                  Demarrer l&apos;essai gratuit
+                  Démarrer l&apos;essai gratuit
                 </Link>
               </div>
 
@@ -920,11 +920,11 @@ export default function LandingPage() {
                     </div>
                     {isYearly && (
                       <p className="text-sm text-gray-500 mt-1">
-                        Facture {studioYearlyTotal}&euro;/an
+                        Facturé {studioYearlyTotal}&euro;/an
                       </p>
                     )}
                     <p className="text-xs text-primary-600/80 dark:text-primary-400/80 font-medium mt-1.5">
-                      +{memberMonthly}&euro;/mois par membre supplementaire
+                      +{memberMonthly}&euro;/mois par membre supplémentaire
                     </p>
                   </div>
 
@@ -945,7 +945,7 @@ export default function LandingPage() {
                     href="/register"
                     className="mt-8 block w-full text-center bg-primary-600 text-white hover:bg-primary-700 px-6 py-3.5 font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30"
                   >
-                    Demarrer l&apos;essai gratuit
+                    Démarrer l&apos;essai gratuit
                   </Link>
                 </div>
               </div>
@@ -962,7 +962,7 @@ export default function LandingPage() {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                Questions frequentes
+                Questions fréquentes
               </h2>
             </div>
 
@@ -1000,10 +1000,10 @@ export default function LandingPage() {
         {/* ── Section 11 - Final CTA ─────────────────────────────────── */}
         <section className="py-16 sm:py-24 bg-primary-600">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Pret a remplir votre agenda ?</h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Prêt à remplir votre agenda ?</h2>
             <p className="mt-4 text-lg text-white/80">
-              Rejoignez les professionnels qui ont choisi la simplicite et la transparence. Votre premiere reservation
-              est a 5 minutes.
+              Rejoignez les professionnels qui ont choisi la simplicité et la transparence. Votre première réservation
+              est à 5 minutes.
             </p>
 
             <div className="mt-10">
@@ -1011,7 +1011,7 @@ export default function LandingPage() {
                 href="/register"
                 className="inline-flex items-center justify-center bg-white text-primary-700 hover:bg-gray-50 px-8 py-4 text-lg font-semibold shadow-lg rounded-lg transition-colors"
               >
-                Demarrer mon essai gratuit
+                Démarrer mon essai gratuit
               </Link>
             </div>
             <p className="mt-4 text-sm text-white/80">
@@ -1024,7 +1024,7 @@ export default function LandingPage() {
         <section className="py-8 bg-gray-50 dark:bg-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Vous cherchez un professionnel pres de chez vous ?{' '}
+              Vous cherchez un professionnel près de chez vous ?{' '}
               <Link
                 href="/recherche"
                 className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium inline-flex items-center gap-1 transition-colors"

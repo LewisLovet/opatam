@@ -2,18 +2,18 @@
  * Business categories for providers
  */
 export const CATEGORIES = [
-  { id: 'beauty', label: 'Beaute & Esthetique', icon: 'sparkles' },
-  { id: 'wellness', label: 'Bien-etre & Sante douce', icon: 'heart' },
+  { id: 'beauty', label: 'Beauté & Esthétique', icon: 'sparkles' },
+  { id: 'wellness', label: 'Bien-être & Santé douce', icon: 'heart' },
   { id: 'sport', label: 'Sport & Coaching', icon: 'dumbbell' },
-  { id: 'coaching', label: 'Coaching & Developpement personnel', icon: 'lightbulb' },
-  { id: 'audiovisual', label: 'Creation & Audiovisuel', icon: 'camera' },
+  { id: 'coaching', label: 'Coaching & Développement personnel', icon: 'lightbulb' },
+  { id: 'audiovisual', label: 'Création & Audiovisuel', icon: 'camera' },
   { id: 'digital', label: 'Digital & Informatique', icon: 'laptop' },
   { id: 'artisan', label: 'Artisans & Services techniques', icon: 'wrench' },
-  { id: 'home', label: 'Services a domicile', icon: 'home' },
+  { id: 'home', label: 'Services à domicile', icon: 'home' },
   { id: 'training', label: 'Formation & Cours', icon: 'book' },
-  { id: 'events', label: 'Evenementiel', icon: 'music' },
+  { id: 'events', label: 'Événementiel', icon: 'music' },
   { id: 'consulting', label: 'Conseil & Services professionnels', icon: 'briefcase' },
-  { id: 'mobility', label: 'Mobilite & Auto', icon: 'car' },
+  { id: 'mobility', label: 'Mobilité & Auto', icon: 'car' },
   { id: 'pets', label: 'Animaux', icon: 'paw' },
   { id: 'arts', label: 'Art & Loisirs', icon: 'palette' },
   { id: 'other', label: 'Autres services', icon: 'more-horizontal' },
@@ -26,8 +26,8 @@ export type CategoryId = (typeof CATEGORIES)[number]['id'];
  */
 export const BOOKING_STATUS = {
   pending: { label: 'En attente', color: 'warning' },
-  confirmed: { label: 'Confirme', color: 'success' },
-  cancelled: { label: 'Annule', color: 'error' },
+  confirmed: { label: 'Confirmé', color: 'success' },
+  cancelled: { label: 'Annulé', color: 'error' },
   noshow: { label: 'Absent', color: 'error' },
 } as const;
 
@@ -37,42 +37,42 @@ export const BOOKING_STATUS = {
 export const SUBSCRIPTION_PLANS = {
   solo: {
     name: 'Pro',
-    description: "L'essentiel pour les independants. Gerez vos rendez-vous et developpez votre activite — sans commission.",
+    description: "L'essentiel pour les indépendants. Gérez vos rendez-vous et développez votre activité — sans commission.",
     monthlyPrice: 1490, // 14,90€ TTC
-    yearlyPrice: 11900, // 119€ TTC (9,92€/mois — economie 33%)
+    yearlyPrice: 11900, // 119€ TTC (9,92€/mois — économie 33%)
     features: [
-      'Reservations illimitees, 0% de commission',
+      'Réservations illimitées, 0% de commission',
       'Votre vitrine en ligne professionnelle',
       'Rappels automatiques email et push',
       'Agenda accessible partout, 24h/24',
-      'Pret en 5 minutes, sans formation',
+      'Prêt en 5 minutes, sans formation',
     ],
   },
   team: {
     name: 'Studio',
-    description: 'La solution complete pour les equipes. Coordonnez vos agendas, gerez plusieurs lieux et offrez une experience pro.',
+    description: 'La solution complète pour les équipes. Coordonnez vos agendas, gérez plusieurs lieux et offrez une expérience pro.',
     baseMonthlyPrice: 2990, // 29,90€ TTC (inclut 1 membre)
-    memberMonthlyPrice: 990, // +9,90€/membre supplementaire
-    baseYearlyPrice: 23900, // 239€ TTC/an (19,92€/mois — economie 33%)
-    memberYearlyPrice: 7900, // +79€/membre sup./an (6,58€/mois — economie 34%)
+    memberMonthlyPrice: 990, // +9,90€/membre supplémentaire
+    baseYearlyPrice: 23900, // 239€ TTC/an (19,92€/mois — économie 33%)
+    memberYearlyPrice: 7900, // +79€/membre sup./an (6,58€/mois — économie 34%)
     features: [
-      'Jusqu\'a 5 agendas synchronises',
-      '0% de commission, meme en equipe',
+      'Jusqu\'à 5 agendas synchronisés',
+      '0% de commission, même en équipe',
       'Assignation des prestations par membre',
-      'Multi-lieux (jusqu\'a 5 adresses)',
-      'Page publique d\'equipe professionnelle',
+      'Multi-lieux (jusqu\'à 5 adresses)',
+      'Page publique d\'équipe professionnelle',
       'Tout le plan Pro inclus',
     ],
   },
   test: {
     name: 'Test',
-    description: 'Plan de test pour verifier le flow de paiement. Acces complet, 0€.',
+    description: 'Plan de test pour vérifier le flow de paiement. Accès complet, 0€.',
     monthlyPrice: 0, // Free plan for testing
     yearlyPrice: 0,
     features: [
       'Plan de test (0€)',
-      'Verification du flow de paiement',
-      'Acces complet temporaire',
+      'Vérification du flow de paiement',
+      'Accès complet temporaire',
     ],
   },
 } as const;

@@ -84,7 +84,7 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
       // Update email
       await updateUserEmail(emailForm.newEmail);
 
-      setSuccess('Adresse email mise a jour avec succes');
+      setSuccess('Adresse email mise à jour avec succès');
       setEmailForm({ newEmail: '', currentPassword: '' });
       setActiveSection(null);
       onSuccess?.();
@@ -94,7 +94,7 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
       if (error.code === 'auth/wrong-password') {
         setError('Mot de passe actuel incorrect');
       } else if (error.code === 'auth/email-already-in-use') {
-        setError('Cette adresse email est deja utilisee');
+        setError('Cette adresse email est déjà utilisée');
       } else if (error.code === 'auth/invalid-email') {
         setError('Adresse email invalide');
       } else {
@@ -117,7 +117,7 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
 
     // Validate password length
     if (passwordForm.newPassword.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caracteres');
+      setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
 
@@ -132,7 +132,7 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
       // Update password
       await updateUserPassword(passwordForm.newPassword);
 
-      setSuccess('Mot de passe mis a jour avec succes');
+      setSuccess('Mot de passe mis à jour avec succès');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setActiveSection(null);
       onSuccess?.();
@@ -270,10 +270,10 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Mise a jour...
+                  Mise à jour...
                 </>
               ) : (
-                'Mettre a jour l\'email'
+                'Mettre à jour l\'email'
               )}
             </Button>
           </form>
@@ -314,7 +314,7 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
               name="newPassword"
               value={passwordForm.newPassword}
               onChange={handlePasswordChange}
-              hint="Au moins 6 caracteres"
+              hint="Au moins 6 caractères"
               required
             />
             <Input
@@ -329,10 +329,10 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Mise a jour...
+                  Mise à jour...
                 </>
               ) : (
-                'Mettre a jour le mot de passe'
+                'Mettre à jour le mot de passe'
               )}
             </Button>
           </form>
@@ -358,9 +358,9 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
       <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
         <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-blue-700 dark:text-blue-300">
-          <p className="font-medium">Securite du compte</p>
+          <p className="font-medium">Sécurité du compte</p>
           <p className="mt-1 text-blue-600 dark:text-blue-400">
-            Pour des raisons de securite, vous devez entrer votre mot de passe actuel
+            Pour des raisons de sécurité, vous devez entrer votre mot de passe actuel
             pour modifier vos informations de connexion.
           </p>
         </div>
@@ -376,14 +376,14 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
                 Zone dangereuse
               </h3>
               <p className="mt-2 text-sm text-error-600 dark:text-error-400">
-                La suppression de votre compte est irreversible. Toutes vos donnees seront
-                definitivement supprimees, y compris :
+                La suppression de votre compte est irréversible. Toutes vos données seront
+                définitivement supprimées, y compris :
               </p>
               <ul className="mt-2 text-sm text-error-600 dark:text-error-400 list-disc list-inside space-y-1">
                 <li>Votre profil prestataire et toutes ses informations</li>
-                <li>Vos membres d&apos;equipe et leurs disponibilites</li>
+                <li>Vos membres d&apos;équipe et leurs disponibilités</li>
                 <li>Vos lieux et prestations</li>
-                <li>Vos parametres et preferences</li>
+                <li>Vos paramètres et préférences</li>
               </ul>
               <div className="mt-4">
                 <Button
@@ -421,27 +421,27 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
             <div className="flex items-start gap-3 p-4 bg-error-50 dark:bg-error-900/20 rounded-lg mb-4">
               <AlertTriangle className="w-5 h-5 text-error-600 dark:text-error-400 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-error-700 dark:text-error-300">
-                <p className="font-semibold">Cette action est irreversible</p>
+                <p className="font-semibold">Cette action est irréversible</p>
                 <p className="mt-1">
-                  Une fois votre compte supprime, toutes vos donnees seront definitivement
-                  perdues et ne pourront pas etre recuperees.
+                  Une fois votre compte supprimé, toutes vos données seront définitivement
+                  perdues et ne pourront pas être récupérées.
                 </p>
               </div>
             </div>
 
             <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg mb-4">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Les donnees suivantes seront supprimees :
+                Les données suivantes seront supprimées :
               </p>
               <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                 <li>• Profil prestataire et informations d&apos;entreprise</li>
-                <li>• Membres d&apos;equipe et disponibilites</li>
+                <li>• Membres d&apos;équipe et disponibilités</li>
                 <li>• Lieux et prestations</li>
-                <li>• Creneaux bloques et parametres</li>
+                <li>• Créneaux bloqués et paramètres</li>
                 <li>• Compte utilisateur et identifiants</li>
               </ul>
               <p className="mt-3 text-xs text-gray-500 dark:text-gray-500">
-                Note : L&apos;historique des rendez-vous et des avis sera conserve de maniere anonyme.
+                Note : L&apos;historique des rendez-vous et des avis sera conservé de manière anonyme.
               </p>
             </div>
           </div>

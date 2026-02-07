@@ -303,7 +303,7 @@ export default function CalendarPage() {
           Calendrier
         </h1>
         <p className="mt-1 text-gray-600 dark:text-gray-400">
-          Gerez vos rendez-vous
+          Gérez vos rendez-vous
         </p>
       </div>
 
@@ -328,7 +328,7 @@ export default function CalendarPage() {
       />
 
       {/* Calendar View */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0">
+      <div className="bg-gray-100/50 dark:bg-gray-900/50 rounded-xl border border-gray-200/60 dark:border-gray-700/40 overflow-hidden min-w-0">
         {loadingBookings && (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center z-10">
             <Loader2 className="w-6 h-6 animate-spin text-primary-500" />

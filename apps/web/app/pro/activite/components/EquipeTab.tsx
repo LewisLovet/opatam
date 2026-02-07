@@ -202,7 +202,7 @@ export function EquipeTab() {
 
     try {
       await memberService.deleteMember(provider.id, memberId);
-      toast.success('Membre supprime');
+      toast.success('Membre supprimé');
       await fetchData();
     } catch (error) {
       console.error('Delete error:', error);
@@ -220,21 +220,21 @@ export function EquipeTab() {
         if (isAtMemberLimit) {
           toast.error(
             isSoloPlan
-              ? 'Passez au plan Studio pour reactiver ce membre'
+              ? 'Passez au plan Studio pour réactiver ce membre'
               : `Limite de ${maxMembers} membres actifs atteinte`
           );
           return;
         }
         await memberService.reactivateMember(provider.id, memberId);
-        toast.success('Membre active');
+        toast.success('Membre activé');
       } else {
         await memberService.deactivateMember(provider.id, memberId);
-        toast.success('Membre desactive');
+        toast.success('Membre désactivé');
       }
       await fetchData();
     } catch (error) {
       console.error('Toggle active error:', error);
-      toast.error('Erreur lors de la mise a jour');
+      toast.error('Erreur lors de la mise à jour');
     }
   };
 
@@ -294,10 +294,10 @@ export function EquipeTab() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Votre equipe
+            Votre équipe
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Gerez les membres de votre equipe
+            Gérez les membres de votre équipe
           </p>
         </div>
 
@@ -324,7 +324,7 @@ export function EquipeTab() {
             Aucun membre
           </h3>
           <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
-            Ajoutez votre premier membre pour gerer plusieurs agendas et permettre a votre equipe d'acceder a leur planning.
+            Ajoutez votre premier membre pour gérer plusieurs agendas et permettre à votre équipe d'accéder à leur planning.
           </p>
           <Button onClick={handleOpenCreate} className="mt-6" disabled={isAtMemberLimit}>
             <Plus className="w-4 h-4 mr-2" />

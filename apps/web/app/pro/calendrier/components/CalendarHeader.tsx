@@ -153,7 +153,7 @@ export function CalendarHeader({
         </Button>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={onPrevious} aria-label="Precedent">
+          <Button variant="ghost" size="sm" onClick={onPrevious} aria-label="Précédent">
             <ChevronLeft className="w-5 h-5" />
           </Button>
           <Button variant="ghost" size="sm" onClick={onNext} aria-label="Suivant">

@@ -59,7 +59,7 @@ export default function ProfilPage() {
           Profil public
         </h1>
         <p className="mt-1 text-gray-600 dark:text-gray-400">
-          Gerez les informations visibles par vos clients
+          Gérez les informations visibles par vos clients
         </p>
       </div>
 

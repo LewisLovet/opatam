@@ -52,24 +52,24 @@ export function DemoBanner() {
 
             {/* Title */}
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              Bienvenue sur la boutique demo
+              Bienvenue sur la boutique démo
             </h2>
 
             {/* Description */}
             <p className="mt-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base leading-relaxed">
               Cette page est un <span className="font-semibold text-gray-900 dark:text-white">exemple concret</span> de
-              ce que vos clients verront quand ils reserveront chez vous.
+              ce que vos clients verront quand ils réserveront chez vous.
             </p>
 
             <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm sm:text-base leading-relaxed">
-              Parcourez les prestations, selectionnez un professionnel et choisissez un creneau
+              Parcourez les prestations, sélectionnez un professionnel et choisissez un créneau
               &mdash; exactement comme vos futurs clients le feront.
             </p>
 
             {/* Highlight box */}
             <div className="mt-5 px-4 py-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl">
               <p className="text-sm font-medium text-primary-700 dark:text-primary-300">
-                Votre page de reservation peut etre prete en 5 minutes, sans aucune competence technique.
+                Votre page de réservation peut être prête en 5 minutes, sans aucune compétence technique.
               </p>
             </div>
 
@@ -79,14 +79,14 @@ export function DemoBanner() {
                 onClick={() => setShowModal(false)}
                 className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 text-white hover:bg-primary-700 px-6 py-3 text-sm font-semibold rounded-lg transition-colors"
               >
-                Explorer la demo
+                Explorer la démo
                 <ArrowRight className="w-4 h-4" />
               </button>
               <Link
                 href="/register"
                 className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
               >
-                Creer ma page gratuitement ({APP_CONFIG.trialDays} jours d&apos;essai)
+                Créer ma page gratuitement ({APP_CONFIG.trialDays} jours d&apos;essai)
               </Link>
             </div>
           </div>

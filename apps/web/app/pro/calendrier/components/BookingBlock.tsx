@@ -50,12 +50,14 @@ const visualStatusStyles: Record<VisualStatus, {
     border: 'border-success-300 dark:border-success-700',
     text: 'text-success-800 dark:text-success-200',
     badge: 'bg-success-500',
+    extra: 'shadow-sm',
   },
   pending: {
     bg: 'bg-warning-50 dark:bg-warning-900/20',
     border: 'border-warning-400 dark:border-warning-600',
     text: 'text-warning-800 dark:text-warning-200',
     badge: 'bg-warning-500',
+    extra: 'shadow-sm',
   },
   cancelled: {
     bg: 'bg-error-50/50 dark:bg-error-900/10',
@@ -74,11 +76,11 @@ const visualStatusStyles: Record<VisualStatus, {
 };
 
 const statusLabels: Record<VisualStatus, string> = {
-  past: 'Passe',
+  past: 'Passé',
   ongoing: 'En cours',
-  confirmed: 'Confirme',
+  confirmed: 'Confirmé',
   pending: 'En attente',
-  cancelled: 'Annule',
+  cancelled: 'Annulé',
   noshow: 'Absent',
 };
 
@@ -117,7 +119,7 @@ export function BookingBlock({
     <button
       onClick={handleClick}
       className={`
-        absolute left-1 right-1 rounded-lg border overflow-hidden
+        absolute left-1.5 right-1.5 rounded-xl border overflow-hidden
         cursor-pointer transition-all hover:shadow-md hover:z-10
         ${styles.bg} ${styles.border} ${styles.extra || ''}
       `}

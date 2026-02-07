@@ -357,7 +357,7 @@ export function MemberModal({
 
       {/* Phone */}
       <Input
-        label="Telephone"
+        label="Téléphone"
         name="phone"
         type="tel"
         value={formData.phone || ''}
@@ -375,10 +375,10 @@ export function MemberModal({
       {/* Location single select (NOUVEAU MODÈLE: 1 membre = 1 lieu) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Lieu assigne <span className="text-error-500">*</span>
+          Lieu assigné <span className="text-error-500">*</span>
         </label>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          Chaque membre est associe a un seul lieu
+          Chaque membre est associé à un seul lieu
         </p>
         <div className="space-y-2 max-h-36 overflow-y-auto">
           {activeLocations.length === 0 ? (
@@ -425,13 +425,13 @@ export function MemberModal({
       {/* Services multi-select */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Prestations assignees
+          Prestations assignées
         </label>
         {!formData.locationId ? (
           <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center flex items-center justify-center gap-2">
               <Scissors className="w-4 h-4" />
-              Selectionnez d&apos;abord un lieu
+              Sélectionnez d&apos;abord un lieu
             </p>
           </div>
         ) : availableServices.length === 0 ? (

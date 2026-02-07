@@ -65,7 +65,7 @@ export function LieuxTab() {
     if (isActive && isAtLocationLimit) {
       toast.error(
         isSoloPlan
-          ? 'Passez au plan Studio pour reactiver ce lieu'
+          ? 'Passez au plan Studio pour réactiver ce lieu'
           : `Limite de ${maxLocations} lieux actifs atteinte`
       );
       return;
@@ -82,14 +82,14 @@ export function LieuxTab() {
       } else {
         await locationService.deactivateLocation(provider.id, locationId);
       }
-      toast.success(isActive ? 'Lieu active' : 'Lieu desactive');
+      toast.success(isActive ? 'Lieu activé' : 'Lieu désactivé');
     } catch (error) {
       console.error('Toggle error:', error);
       // Revert on error
       setLocations((prev) =>
         prev.map((l) => (l.id === locationId ? { ...l, isActive: !isActive } : l))
       );
-      toast.error(error instanceof Error ? error.message : 'Erreur lors de la mise a jour');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la mise à jour');
     }
   };
 
@@ -99,11 +99,11 @@ export function LieuxTab() {
 
     try {
       await locationService.setDefault(provider.id, locationId);
-      toast.success('Lieu principal mis a jour');
+      toast.success('Lieu principal mis à jour');
       await fetchData();
     } catch (error) {
       console.error('Set default error:', error);
-      toast.error(error instanceof Error ? error.message : 'Erreur lors de la mise a jour');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la mise à jour');
     }
   };
 
@@ -148,7 +148,7 @@ export function LieuxTab() {
         await locationService.setDefault(provider.id, newLocation.id);
       }
 
-      toast.success('Lieu cree');
+      toast.success('Lieu créé');
     }
 
     await fetchData();
@@ -159,7 +159,7 @@ export function LieuxTab() {
     if (!provider) return;
 
     await locationService.deleteLocation(provider.id, locationId);
-    toast.success('Lieu supprime');
+    toast.success('Lieu supprimé');
     await fetchData();
   };
 
@@ -196,7 +196,7 @@ export function LieuxTab() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Vos lieux</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Gerez les adresses ou vous exercez
+            Gérez les adresses où vous exercez
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">

@@ -50,7 +50,7 @@ export function NowIndicator({
     >
       <div className="relative flex items-center">
         {/* Red circle indicator */}
-        <div className="absolute -left-1 w-2.5 h-2.5 bg-error-500 rounded-full shadow-sm" />
+        <div className="absolute -left-0.5 w-2 h-2 bg-error-500 rounded-full shadow-sm" />
         {/* Red line */}
         <div className="w-full h-0.5 bg-error-500 shadow-sm" />
       </div>

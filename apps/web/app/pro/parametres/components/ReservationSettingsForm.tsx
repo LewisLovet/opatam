@@ -11,7 +11,7 @@ interface ReservationSettingsFormProps {
 }
 
 const MIN_BOOKING_NOTICE_OPTIONS = [
-  { value: '0', label: 'Pas de delai minimum' },
+  { value: '0', label: 'Pas de délai minimum' },
   { value: '1', label: '1 heure' },
   { value: '2', label: '2 heures' },
   { value: '4', label: '4 heures' },
@@ -99,7 +99,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Delai minimum de reservation
+            Délai minimum de réservation
           </label>
         </div>
         <Select
@@ -107,7 +107,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           value={formData.minBookingNotice.toString()}
           onChange={handleSelectChange}
           options={MIN_BOOKING_NOTICE_OPTIONS}
-          hint="Combien de temps a l'avance un client doit reserver"
+          hint="Combien de temps à l'avance un client doit réserver"
         />
       </div>
 
@@ -116,7 +116,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Delai maximum de reservation
+            Délai maximum de réservation
           </label>
         </div>
         <Select
@@ -124,7 +124,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           value={formData.maxBookingAdvance.toString()}
           onChange={handleSelectChange}
           options={MAX_BOOKING_ADVANCE_OPTIONS}
-          hint="Jusqu'a combien de temps a l'avance un client peut reserver"
+          hint="Jusqu'à combien de temps à l'avance un client peut réserver"
         />
       </div>
 
@@ -132,10 +132,10 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
       <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
         <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-blue-700 dark:text-blue-300">
-          <p className="font-medium">A propos de ces parametres</p>
+          <p className="font-medium">À propos de ces paramètres</p>
           <p className="mt-1 text-blue-600 dark:text-blue-400">
-            Ces regles s'appliquent a toutes les nouvelles reservations.
-            Les reservations existantes ne sont pas affectees par ces changements.
+            Ces règles s'appliquent à toutes les nouvelles réservations.
+            Les réservations existantes ne sont pas affectées par ces changements.
           </p>
         </div>
       </div>
@@ -150,7 +150,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
       {/* Success Message */}
       {success && (
         <div className="p-4 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400 rounded-lg text-sm">
-          Parametres de reservation mis a jour avec succes
+          Paramètres de réservation mis à jour avec succès
         </div>
       )}
 

@@ -197,7 +197,7 @@ export function SlotPopover({
 export function StatusBadge({ status }: { status: VisualStatus }) {
   const config: Record<VisualStatus, { label: string; className: string }> = {
     past: {
-      label: 'Passe',
+      label: 'Passé',
       className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
     },
     ongoing: {
@@ -205,7 +205,7 @@ export function StatusBadge({ status }: { status: VisualStatus }) {
       className: 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300',
     },
     confirmed: {
-      label: 'Confirme',
+      label: 'Confirmé',
       className: 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-300',
     },
     pending: {
@@ -213,7 +213,7 @@ export function StatusBadge({ status }: { status: VisualStatus }) {
       className: 'bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-300',
     },
     cancelled: {
-      label: 'Annule',
+      label: 'Annulé',
       className: 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-300',
     },
     noshow: {
