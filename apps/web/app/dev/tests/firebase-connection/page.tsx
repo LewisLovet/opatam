@@ -30,7 +30,7 @@ export default function FirebaseConnectionPage() {
       addResult({
         name: 'Firebase App',
         success: true,
-        message: `App initialisee: ${appName}`,
+        message: `App initialisée: ${appName}`,
         data: {
           name: appName,
           projectId: options.projectId,
@@ -52,7 +52,7 @@ export default function FirebaseConnectionPage() {
       addResult({
         name: 'Firestore',
         success: true,
-        message: `Firestore connecte a l'app: ${firestoreApp}`,
+        message: `Firestore connecté à l'app: ${firestoreApp}`,
         data: {
           type: db.type,
         },
@@ -73,9 +73,9 @@ export default function FirebaseConnectionPage() {
       addResult({
         name: 'Firebase Auth',
         success: true,
-        message: `Auth connecte a l'app: ${authApp}`,
+        message: `Auth connecté à l'app: ${authApp}`,
         data: {
-          currentUser: currentUser ? currentUser.email : 'Non connecte',
+          currentUser: currentUser ? currentUser.email : 'Non connecté',
         },
       });
     } catch (error) {
@@ -93,7 +93,7 @@ export default function FirebaseConnectionPage() {
       addResult({
         name: 'Firebase Storage',
         success: true,
-        message: `Storage connecte a l'app: ${storageApp}`,
+        message: `Storage connecté à l'app: ${storageApp}`,
         data: {
           bucket: storage.app.options.storageBucket,
         },
@@ -129,7 +129,7 @@ export default function FirebaseConnectionPage() {
           Test Connexion Firebase
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Verifie que tous les services Firebase sont correctement configures et accessibles.
+          Vérifie que tous les services Firebase sont correctement configurés et accessibles.
         </p>
       </div>
 
@@ -163,11 +163,11 @@ export default function FirebaseConnectionPage() {
       {results.length > 0 && (
         <div className="flex gap-4">
           <Badge variant="success" size="md">
-            {successCount} succes
+            {successCount} succès
           </Badge>
           {failCount > 0 && (
             <Badge variant="error" size="md">
-              {failCount} echec(s)
+              {failCount} échec(s)
             </Badge>
           )}
         </div>
@@ -207,19 +207,19 @@ export default function FirebaseConnectionPage() {
             <div className="flex justify-between">
               <span className="text-gray-500">NEXT_PUBLIC_FIREBASE_PROJECT_ID</span>
               <code className="text-gray-900 dark:text-gray-100">
-                {process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'Non defini'}
+                {process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'Non défini'}
               </code>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN</span>
               <code className="text-gray-900 dark:text-gray-100">
-                {process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'Non defini'}
+                {process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'Non défini'}
               </code>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">NEXT_PUBLIC_FIREBASE_API_KEY</span>
               <code className="text-gray-900 dark:text-gray-100">
-                {process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? '***' + process.env.NEXT_PUBLIC_FIREBASE_API_KEY.slice(-4) : 'Non defini'}
+                {process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? '***' + process.env.NEXT_PUBLIC_FIREBASE_API_KEY.slice(-4) : 'Non défini'}
               </code>
             </div>
           </div>

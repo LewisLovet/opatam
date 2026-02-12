@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import {
   providerRepository,
   serviceRepository,
+  serviceCategoryRepository,
   locationRepository,
   memberRepository,
   reviewRepository,
@@ -14,6 +15,7 @@ import { ProviderPageClient } from './components/ProviderPageClient';
 import {
   demoProvider,
   demoServices,
+  demoServiceCategories,
   demoLocations,
   demoMembers,
   demoReviews,
@@ -82,7 +84,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!provider || !provider.isPublished) {
     return {
-      title: 'Prestataire non trouve',
+      title: 'Prestataire non trouvé',
     };
   }
 
@@ -118,6 +120,7 @@ export default async function ProviderPage({ params }: PageProps) {
       <ProviderPageClient
         provider={demoProvider}
         services={demoServices}
+        serviceCategories={demoServiceCategories}
         locations={demoLocations}
         members={demoMembers}
         reviews={demoReviews}
@@ -138,8 +141,9 @@ export default async function ProviderPage({ params }: PageProps) {
   }
 
   // Fetch all related data in parallel
-  const [services, locations, members, reviews, availabilities] = await Promise.all([
+  const [services, serviceCategories, locations, members, reviews, availabilities] = await Promise.all([
     serviceRepository.getActiveByProvider(provider.id),
+    serviceCategoryRepository.getByProvider(provider.id),
     locationRepository.getActiveByProvider(provider.id),
     memberRepository.getActiveByProvider(provider.id),
     reviewRepository.getRecentByProvider(provider.id, 10),
@@ -157,18 +161,29 @@ export default async function ProviderPage({ params }: PageProps) {
     ...provider,
     createdAt: provider.createdAt.toISOString(),
     updatedAt: provider.updatedAt.toISOString(),
-    subscription: {
-      ...provider.subscription,
-      validUntil: provider.subscription.validUntil.toISOString(),
-      currentPeriodEnd: provider.subscription.currentPeriodEnd?.toISOString() ?? null,
-    },
+    subscription: provider.subscription
+      ? {
+          ...provider.subscription,
+          validUntil: provider.subscription.validUntil.toISOString(),
+          currentPeriodEnd: provider.subscription.currentPeriodEnd?.toISOString() ?? null,
+        }
+      : null,
   };
 
   const serializedServices = services.map((s) => ({
     ...s,
+    categoryId: s.categoryId ?? null,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
   }));
+
+  const serializedServiceCategories = serviceCategories
+    .filter((c) => c.isActive)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      sortOrder: c.sortOrder,
+    }));
 
   const serializedLocations = locations.map((l) => ({
     ...l,
@@ -197,6 +212,7 @@ export default async function ProviderPage({ params }: PageProps) {
     <ProviderPageClient
       provider={serializedProvider}
       services={serializedServices}
+      serviceCategories={serializedServiceCategories}
       locations={serializedLocations}
       members={serializedMembers}
       reviews={serializedReviews}

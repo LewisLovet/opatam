@@ -42,7 +42,7 @@ export default function SchedulingServiceTestPage() {
   const [serviceId, setServiceId] = useState('');
 
   // Availability form (par jour de semaine)
-  const [availDayOfWeek, setAvailDayOfWeek] = useState(1); // Lundi par defaut
+  const [availDayOfWeek, setAvailDayOfWeek] = useState(1); // Lundi par défaut
   const [availStartTime, setAvailStartTime] = useState('09:00');
   const [availEndTime, setAvailEndTime] = useState('18:00');
   const [availIsOpen, setAvailIsOpen] = useState(true);
@@ -136,7 +136,7 @@ export default function SchedulingServiceTestPage() {
   const handleSetAvailability = () =>
     executeAction('SET AVAILABILITY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele: 1 membre = 1 agenda)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle: 1 membre = 1 agenda)');
       if (!locationId) throw new Error('Location ID requis');
 
       const availabilityId = await schedulingService.setAvailability(providerId, {
@@ -147,7 +147,7 @@ export default function SchedulingServiceTestPage() {
         isOpen: availIsOpen,
       });
       return {
-        message: 'Disponibilite definie',
+        message: 'Disponibilité définie',
         availabilityId,
         day: DAYS_OF_WEEK.find((d) => d.value === availDayOfWeek)?.label,
         locationId,
@@ -161,10 +161,10 @@ export default function SchedulingServiceTestPage() {
   const handleSetWeeklySchedule = () =>
     executeAction('SET WEEKLY SCHEDULE', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
       if (!locationId) throw new Error('Location ID requis');
 
-      // Define Mon-Sat schedule (Dimanche ferme)
+      // Define Mon-Sat schedule (Dimanche fermé)
       const schedule = [
         { dayOfWeek: 0, slots: [], isOpen: false }, // Dimanche
         { dayOfWeek: 1, slots: [{ start: weeklyStartTime, end: weeklyEndTime }], isOpen: true },
@@ -182,11 +182,11 @@ export default function SchedulingServiceTestPage() {
         schedule
       );
       return {
-        message: 'Planning hebdomadaire defini (Lun-Sam)',
+        message: 'Planning hebdomadaire défini (Lun-Sam)',
         locationId,
         memberId,
         horaires: `${weeklyStartTime} - ${weeklyEndTime}`,
-        dimancheFerme: true,
+        dimancheFermé: true,
       };
     });
 
@@ -194,8 +194,8 @@ export default function SchedulingServiceTestPage() {
   const handleBlockPeriod = () =>
     executeAction('BLOCK PERIOD', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
-      if (!locationId) throw new Error('Location ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
+      if (!locationId) throw new Error('Location ID requis (nouveau modèle)');
       if (!blockStartDate || !blockEndDate) throw new Error('Dates requises');
 
       const blockedId = await schedulingService.blockPeriod(providerId, {
@@ -211,7 +211,7 @@ export default function SchedulingServiceTestPage() {
       });
       setBlockedSlotId(blockedId);
       return {
-        message: 'Periode bloquee',
+        message: 'Période bloquée',
         blockedSlotId: blockedId,
         startDate: blockStartDate,
         endDate: blockEndDate,
@@ -227,7 +227,7 @@ export default function SchedulingServiceTestPage() {
 
       await schedulingService.unblockPeriod(providerId, blockedSlotId);
       return {
-        message: 'Periode debloquee',
+        message: 'Période débloquée',
         deletedId: blockedSlotId,
       };
     });
@@ -237,7 +237,7 @@ export default function SchedulingServiceTestPage() {
     executeAction('GET AVAILABLE SLOTS', async () => {
       if (!providerId) throw new Error('Provider ID requis');
       if (!serviceId) throw new Error('Service ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
       if (!slotStartDate || !slotEndDate) throw new Error('Dates requises');
 
       const slots = await schedulingService.getAvailableSlots({
@@ -248,7 +248,7 @@ export default function SchedulingServiceTestPage() {
         endDate: new Date(slotEndDate),
       });
       return {
-        message: `${slots.length} creneau(x) disponible(s)`,
+        message: `${slots.length} créneau(x) disponible(s)`,
         period: `${slotStartDate} - ${slotEndDate}`,
         params: {
           providerId,
@@ -261,7 +261,7 @@ export default function SchedulingServiceTestPage() {
           start: s.start,
           end: s.end,
         })),
-        note: slots.length > 20 ? `... et ${slots.length - 20} autres creneaux` : undefined,
+        note: slots.length > 20 ? `... et ${slots.length - 20} autres créneaux` : undefined,
       };
     });
 
@@ -269,7 +269,7 @@ export default function SchedulingServiceTestPage() {
   const handleIsSlotAvailable = () =>
     executeAction('IS SLOT AVAILABLE', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
       if (!slotStartDate) throw new Error('Date requise');
 
       const datetime = new Date(`${slotStartDate}T${availStartTime}`);
@@ -277,10 +277,10 @@ export default function SchedulingServiceTestPage() {
         providerId,
         memberId, // Obligatoire
         datetime,
-        duration: 60, // 1h par defaut
+        duration: 60, // 1h par défaut
       });
       return {
-        message: isAvailable ? 'Creneau disponible' : 'Creneau NON disponible',
+        message: isAvailable ? 'Créneau disponible' : 'Créneau NON disponible',
         isAvailable,
         datetime: datetime.toISOString(),
         duration: 60,
@@ -291,7 +291,7 @@ export default function SchedulingServiceTestPage() {
   const handleGetWeeklySchedule = () =>
     executeAction('GET WEEKLY SCHEDULE', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
 
       const schedule = await schedulingService.getWeeklySchedule(
         providerId,
@@ -337,7 +337,7 @@ export default function SchedulingServiceTestPage() {
   if (loadingData) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500 dark:text-gray-400">Chargement des donnees...</p>
+        <p className="text-gray-500 dark:text-gray-400">Chargement des données...</p>
       </div>
     );
   }
@@ -349,13 +349,13 @@ export default function SchedulingServiceTestPage() {
           Test Scheduling Service
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations planning: disponibilites hebdomadaires, blocages, calcul de creneaux.
+          Test des opérations planning : disponibilités hebdomadaires, blocages, calcul de créneaux.
         </p>
       </div>
 
       {/* Selection */}
       <Card variant="bordered" className="border-primary-300 dark:border-primary-700">
-        <CardHeader title="Selection" />
+        <CardHeader title="Sélection" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Provider */}
@@ -373,7 +373,7 @@ export default function SchedulingServiceTestPage() {
                 }}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
-                <option value="">-- Selectionner --</option>
+                <option value="">-- Sélectionner --</option>
                 {providers.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.businessName} ({p.id.slice(0, 8)}...)
@@ -396,7 +396,7 @@ export default function SchedulingServiceTestPage() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 disabled={!providerId}
               >
-                <option value="">-- Selectionner --</option>
+                <option value="">-- Sélectionner --</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name} - {l.city}
@@ -411,7 +411,7 @@ export default function SchedulingServiceTestPage() {
             {/* Service */}
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Prestation (pour creneaux)
+                Prestation (pour les créneaux)
               </label>
               <select
                 value={serviceId}
@@ -419,7 +419,7 @@ export default function SchedulingServiceTestPage() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 disabled={!providerId}
               >
-                <option value="">-- Selectionner --</option>
+                <option value="">-- Sélectionner --</option>
                 {services.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name} ({s.duration}min)
@@ -449,7 +449,7 @@ export default function SchedulingServiceTestPage() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 disabled={!providerId}
               >
-                <option value="">-- Selectionner --</option>
+                <option value="">-- Sélectionner --</option>
                 {members.map((m) => {
                   const loc = locations.find((l) => l.id === m.locationId);
                   return (
@@ -468,7 +468,7 @@ export default function SchedulingServiceTestPage() {
           {/* Show selected IDs for debugging */}
           {providerId && (
             <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-xs font-mono">
-              <p><strong>IDs selectionnes:</strong></p>
+              <p><strong>IDs sélectionnés :</strong></p>
               <p>providerId: {providerId}</p>
               <p>locationId: {locationId || '(aucun)'}</p>
               <p>serviceId: {serviceId || '(aucun)'}</p>
@@ -480,7 +480,7 @@ export default function SchedulingServiceTestPage() {
 
       {/* Set Availability (par jour) */}
       <Card>
-        <CardHeader title="Definir Disponibilite (jour de semaine)" />
+        <CardHeader title="Définir Disponibilité (jour de semaine)" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1">
@@ -500,7 +500,7 @@ export default function SchedulingServiceTestPage() {
               </select>
             </div>
             <Input
-              label="Debut"
+              label="Début"
               type="time"
               value={availStartTime}
               onChange={(e) => setAvailStartTime(e.target.value)}
@@ -530,7 +530,7 @@ export default function SchedulingServiceTestPage() {
               loading={loading && lastAction === 'SET AVAILABILITY'}
               disabled={!providerId || !memberId || !locationId}
             >
-              Definir Disponibilite
+              Définir Disponibilité
             </Button>
           </div>
         </CardBody>
@@ -542,7 +542,7 @@ export default function SchedulingServiceTestPage() {
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
-              label="Heure debut"
+              label="Heure début"
               type="time"
               value={weeklyStartTime}
               onChange={(e) => setWeeklyStartTime(e.target.value)}
@@ -555,7 +555,7 @@ export default function SchedulingServiceTestPage() {
             />
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Definit les memes horaires du Lundi au Samedi. Dimanche ferme.
+            Définit les mêmes horaires du Lundi au Samedi. Dimanche fermé.
           </p>
           <div className="mt-4 flex gap-3">
             <Button
@@ -580,11 +580,11 @@ export default function SchedulingServiceTestPage() {
 
       {/* Block Period */}
       <Card>
-        <CardHeader title="Bloquer Periode" />
+        <CardHeader title="Bloquer Période" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Input
-              label="Date debut"
+              label="Date début"
               type="date"
               value={blockStartDate || today}
               onChange={(e) => setBlockStartDate(e.target.value)}
@@ -612,7 +612,7 @@ export default function SchedulingServiceTestPage() {
                 className="w-4 h-4"
               />
               <label htmlFor="allDay" className="text-sm text-gray-700 dark:text-gray-300">
-                Journee entiere
+                Journée entière
               </label>
             </div>
             {!blockAllDay && (
@@ -625,7 +625,7 @@ export default function SchedulingServiceTestPage() {
                   className="w-32"
                 />
                 <Input
-                  label="A"
+                  label="À"
                   type="time"
                   value={blockEndTime}
                   onChange={(e) => setBlockEndTime(e.target.value)}
@@ -646,7 +646,7 @@ export default function SchedulingServiceTestPage() {
               label=""
               value={blockedSlotId}
               onChange={(e) => setBlockedSlotId(e.target.value)}
-              placeholder="ID du blocage (pour debloquer)"
+              placeholder="ID du blocage (pour débloquer)"
               className="flex-1"
             />
             <Button
@@ -655,7 +655,7 @@ export default function SchedulingServiceTestPage() {
               loading={loading && lastAction === 'UNBLOCK PERIOD'}
               disabled={!providerId || !blockedSlotId}
             >
-              Debloquer
+              Débloquer
             </Button>
           </div>
         </CardBody>
@@ -663,11 +663,11 @@ export default function SchedulingServiceTestPage() {
 
       {/* Check Slots */}
       <Card>
-        <CardHeader title="Calculer Creneaux Disponibles" />
+        <CardHeader title="Calculer Créneaux Disponibles" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
-              label="Date debut"
+              label="Date début"
               type="date"
               value={slotStartDate || today}
               onChange={(e) => setSlotStartDate(e.target.value)}
@@ -680,7 +680,7 @@ export default function SchedulingServiceTestPage() {
             />
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Necessite un Service pour calculer la duree des creneaux.
+            Nécessite un Service pour calculer la durée des créneaux.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button
@@ -688,7 +688,7 @@ export default function SchedulingServiceTestPage() {
               loading={loading && lastAction === 'GET AVAILABLE SLOTS'}
               disabled={!providerId || !serviceId || !memberId}
             >
-              Obtenir Creneaux
+              Obtenir Créneaux
             </Button>
             <Button
               variant="outline"
@@ -696,7 +696,7 @@ export default function SchedulingServiceTestPage() {
               loading={loading && lastAction === 'IS SLOT AVAILABLE'}
               disabled={!providerId || !memberId}
             >
-              Verifier {slotStartDate || today} {availStartTime}
+              Vérifier {slotStartDate || today} {availStartTime}
             </Button>
           </div>
         </CardBody>
@@ -721,7 +721,7 @@ export default function SchedulingServiceTestPage() {
               loading={loading && lastAction === 'GET BLOCKED SLOTS'}
               disabled={!providerId}
             >
-              Periodes Bloquees
+              Périodes Bloquées
             </Button>
           </div>
         </CardBody>
@@ -730,7 +730,7 @@ export default function SchedulingServiceTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -751,7 +751,7 @@ export default function SchedulingServiceTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

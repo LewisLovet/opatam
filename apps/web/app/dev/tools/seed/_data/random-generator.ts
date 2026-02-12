@@ -1,8 +1,8 @@
 /**
- * Generateur de donnees aleatoires pour les providers de test
+ * Générateur de données aléatoires pour les providers de test
  */
 
-// Prenoms
+// Prénoms
 const FIRST_NAMES = [
   'Marie', 'Sophie', 'Julie', 'Camille', 'Laura', 'Emma', 'Lea', 'Chloe', 'Manon', 'Sarah',
   'Thomas', 'Lucas', 'Hugo', 'Antoine', 'Maxime', 'Alexandre', 'Nicolas', 'Pierre', 'Marc', 'David',
@@ -20,11 +20,11 @@ const LAST_NAMES = [
 // Suffixes pour noms d'entreprise
 const BUSINESS_SUFFIXES: Record<string, string[]> = {
   coiffure: ['Coiffure', 'Hair Studio', 'Salon', 'Hair Design', 'Coiff\'Style', 'Hair Art'],
-  spa: ['Spa', 'Bien-Etre', 'Wellness', 'Relaxation', 'Detente', 'Serenite'],
+  spa: ['Spa', 'Bien-Être', 'Wellness', 'Relaxation', 'Détente', 'Sérénité'],
   coaching: ['Coaching', 'Fitness', 'Training', 'Sport', 'Form', 'Coach'],
-  beaute: ['Beaute', 'Institut', 'Esthetique', 'Beauty', 'Nails', 'Beauty Lab'],
-  massage: ['Massage', 'Zen', 'Relaxation', 'Bien-Etre', 'Detente', 'Therapy'],
-  sante: ['Sante', 'Osteo', 'Kine', 'Cabinet', 'Centre', 'Clinique'],
+  beaute: ['Beauté', 'Institut', 'Esthétique', 'Beauty', 'Nails', 'Beauty Lab'],
+  massage: ['Massage', 'Zen', 'Relaxation', 'Bien-Être', 'Détente', 'Therapy'],
+  sante: ['Santé', 'Ostéo', 'Kiné', 'Cabinet', 'Centre', 'Clinique'],
 };
 
 // Prefixes pour noms d'entreprise
@@ -62,22 +62,22 @@ const STREET_NAMES = [
   'Place de la Republique', 'Rue Jean Jaures', 'Avenue Foch', 'Rue de Rivoli',
   'Boulevard Haussmann', 'Rue Saint-Honore', 'Avenue Montaigne', 'Rue du Faubourg',
   'Place Bellecour', 'Cours Mirabeau', 'Rue Sainte-Catherine', 'Quai des Chartrons',
-  'Rue de la Liberte', 'Avenue de la Gare', 'Boulevard Gambetta', 'Rue Nationale',
+  'Rue de la Liberté', 'Avenue de la Gare', 'Boulevard Gambetta', 'Rue Nationale',
 ];
 
-// Categories disponibles
+// Catégories disponibles
 const CATEGORIES = ['coiffure', 'spa', 'coaching', 'beaute', 'massage', 'sante'] as const;
 type Category = typeof CATEGORIES[number];
 
-// Services par categorie
+// Services par catégorie
 const SERVICES_BY_CATEGORY: Record<Category, Array<{ name: string; duration: number; priceRange: [number, number]; description: string }>> = {
   coiffure: [
     { name: 'Coupe femme', duration: 45, priceRange: [2500, 4500], description: 'Coupe, shampoing et brushing' },
     { name: 'Coupe homme', duration: 30, priceRange: [1800, 3000], description: 'Coupe classique homme' },
-    { name: 'Coloration', duration: 90, priceRange: [5000, 8000], description: 'Coloration complete avec soin' },
+    { name: 'Coloration', duration: 90, priceRange: [5000, 8000], description: 'Coloration complète avec soin' },
     { name: 'Balayage', duration: 120, priceRange: [7000, 12000], description: 'Balayage naturel ou contraste' },
     { name: 'Brushing', duration: 30, priceRange: [2000, 3500], description: 'Mise en forme et brushing' },
-    { name: 'Meches', duration: 90, priceRange: [6000, 9000], description: 'Meches et reflets' },
+    { name: 'Mèches', duration: 90, priceRange: [6000, 9000], description: 'Mèches et reflets' },
     { name: 'Soin capillaire', duration: 30, priceRange: [2500, 4000], description: 'Soin profond et hydratation' },
     { name: 'Coupe enfant', duration: 20, priceRange: [1200, 2000], description: 'Coupe pour enfant' },
   ],
@@ -86,45 +86,45 @@ const SERVICES_BY_CATEGORY: Record<Category, Array<{ name: string; duration: num
     { name: 'Massage deep tissue', duration: 75, priceRange: [7500, 11000], description: 'Massage profond tensions musculaires' },
     { name: 'Soin visage hydratant', duration: 45, priceRange: [5000, 7500], description: 'Nettoyage et hydratation profonde' },
     { name: 'Rituel corps complet', duration: 120, priceRange: [10000, 15000], description: 'Gommage, enveloppement et massage' },
-    { name: 'Hammam privatif', duration: 60, priceRange: [4000, 6000], description: 'Acces hammam prive' },
-    { name: 'Soin anti-stress', duration: 90, priceRange: [8000, 12000], description: 'Rituel detente complet' },
+    { name: 'Hammam privatif', duration: 60, priceRange: [4000, 6000], description: 'Accès hammam privé' },
+    { name: 'Soin anti-stress', duration: 90, priceRange: [8000, 12000], description: 'Rituel détente complet' },
   ],
   coaching: [
-    { name: 'Seance individuelle', duration: 60, priceRange: [4000, 7000], description: 'Coaching personnalise 1h' },
-    { name: 'Bilan forme', duration: 90, priceRange: [6000, 9000], description: 'Evaluation et programme sur-mesure' },
-    { name: 'Seance duo', duration: 60, priceRange: [6000, 9000], description: 'Entrainement a deux' },
-    { name: 'Programme 10 seances', duration: 60, priceRange: [35000, 55000], description: 'Pack 10 seances' },
+    { name: 'Séance individuelle', duration: 60, priceRange: [4000, 7000], description: 'Coaching personnalisé 1h' },
+    { name: 'Bilan forme', duration: 90, priceRange: [6000, 9000], description: 'Évaluation et programme sur-mesure' },
+    { name: 'Séance duo', duration: 60, priceRange: [6000, 9000], description: 'Entraînement à deux' },
+    { name: 'Programme 10 séances', duration: 60, priceRange: [35000, 55000], description: 'Pack 10 séances' },
     { name: 'Cours collectif', duration: 45, priceRange: [1500, 2500], description: 'Cours en petit groupe' },
-    { name: 'Coaching nutrition', duration: 45, priceRange: [5000, 8000], description: 'Conseils nutritionnels personnalises' },
+    { name: 'Coaching nutrition', duration: 45, priceRange: [5000, 8000], description: 'Conseils nutritionnels personnalisés' },
   ],
   beaute: [
     { name: 'Manucure classique', duration: 30, priceRange: [2000, 3500], description: 'Limage, cuticules et vernis' },
-    { name: 'Pose gel', duration: 60, priceRange: [4000, 6000], description: 'Pose complete gel UV' },
-    { name: 'Epilation jambes', duration: 30, priceRange: [1800, 3000], description: 'Epilation a la cire' },
-    { name: 'Epilation maillot', duration: 20, priceRange: [1200, 2500], description: 'Maillot classique ou integral' },
-    { name: 'Soin visage anti-age', duration: 60, priceRange: [6000, 9000], description: 'Soin premium anti-rides' },
+    { name: 'Pose gel', duration: 60, priceRange: [4000, 6000], description: 'Pose complète gel UV' },
+    { name: 'Épilation jambes', duration: 30, priceRange: [1800, 3000], description: 'Épilation à la cire' },
+    { name: 'Épilation maillot', duration: 20, priceRange: [1200, 2500], description: 'Maillot classique ou intégral' },
+    { name: 'Soin visage anti-âge', duration: 60, priceRange: [6000, 9000], description: 'Soin premium anti-rides' },
     { name: 'Maquillage jour', duration: 30, priceRange: [3000, 5000], description: 'Maquillage naturel' },
-    { name: 'Maquillage soiree', duration: 45, priceRange: [4500, 7000], description: 'Maquillage evenement' },
-    { name: 'Extension cils', duration: 90, priceRange: [6000, 10000], description: 'Pose cil a cil' },
+    { name: 'Maquillage soirée', duration: 45, priceRange: [4500, 7000], description: 'Maquillage événement' },
+    { name: 'Extension cils', duration: 90, priceRange: [6000, 10000], description: 'Pose cil à cil' },
   ],
   massage: [
-    { name: 'Massage suedois', duration: 60, priceRange: [5500, 8000], description: 'Massage classique tonifiant' },
+    { name: 'Massage suédois', duration: 60, priceRange: [5500, 8000], description: 'Massage classique tonifiant' },
     { name: 'Massage pierres chaudes', duration: 75, priceRange: [7000, 10000], description: 'Relaxation profonde' },
-    { name: 'Massage sportif', duration: 45, priceRange: [5000, 7500], description: 'Recuperation apres effort' },
-    { name: 'Reflexologie plantaire', duration: 45, priceRange: [4500, 6500], description: 'Stimulation zones reflexes' },
+    { name: 'Massage sportif', duration: 45, priceRange: [5000, 7500], description: 'Récupération après effort' },
+    { name: 'Réflexologie plantaire', duration: 45, priceRange: [4500, 6500], description: 'Stimulation zones réflexes' },
     { name: 'Massage californien', duration: 60, priceRange: [6000, 8500], description: 'Massage fluide et enveloppant' },
-    { name: 'Massage thai', duration: 90, priceRange: [7500, 11000], description: 'Massage traditionnel thailandais' },
+    { name: 'Massage thaï', duration: 90, priceRange: [7500, 11000], description: 'Massage traditionnel thaïlandais' },
   ],
   sante: [
-    { name: 'Consultation osteopathie', duration: 45, priceRange: [5000, 7500], description: 'Bilan et traitement' },
+    { name: 'Consultation ostéopathie', duration: 45, priceRange: [5000, 7500], description: 'Bilan et traitement' },
     { name: 'Suivi sportif', duration: 30, priceRange: [4000, 6000], description: 'Consultation de suivi' },
-    { name: 'Osteopathie pediatrique', duration: 30, priceRange: [4500, 6500], description: 'Consultation pour enfants' },
-    { name: 'Seance kinesitherapie', duration: 30, priceRange: [3500, 5500], description: 'Reeducation et soins' },
-    { name: 'Bilan postural', duration: 60, priceRange: [6000, 9000], description: 'Analyse posturale complete' },
+    { name: 'Ostéopathie pédiatrique', duration: 30, priceRange: [4500, 6500], description: 'Consultation pour enfants' },
+    { name: 'Séance kinésithérapie', duration: 30, priceRange: [3500, 5500], description: 'Rééducation et soins' },
+    { name: 'Bilan postural', duration: 60, priceRange: [6000, 9000], description: 'Analyse posturale complète' },
   ],
 };
 
-// Images Unsplash par categorie (URLs directes)
+// Images Unsplash par catégorie (URLs directes)
 const CATEGORY_IMAGES: Record<Category, { photos: string[]; covers: string[] }> = {
   coiffure: {
     photos: [
@@ -198,49 +198,49 @@ const CATEGORY_IMAGES: Record<Category, { photos: string[]; covers: string[] }> 
   },
 };
 
-// Descriptions par categorie
+// Descriptions par catégorie
 const DESCRIPTIONS_BY_CATEGORY: Record<Category, string[]> = {
   coiffure: [
-    'Salon de coiffure au coeur de la ville. Specialiste des colorations et coupes tendances.',
-    'Une equipe passionnee a votre service pour sublimer votre chevelure.',
-    'Coiffeur visagiste experimente. Conseils personnalises et ambiance chaleureuse.',
-    'Votre salon de coiffure moderne. Techniques innovantes et produits de qualite.',
+    'Salon de coiffure au cœur de la ville. Spécialiste des colorations et coupes tendances.',
+    'Une équipe passionnée à votre service pour sublimer votre chevelure.',
+    'Coiffeur visagiste expérimenté. Conseils personnalisés et ambiance chaleureuse.',
+    'Votre salon de coiffure moderne. Techniques innovantes et produits de qualité.',
     'Expert en coupe et coloration. Transformez votre look avec nos conseils.',
   ],
   spa: [
     'Un havre de paix pour une relaxation totale. Massages et soins du visage.',
-    'Evadez-vous du quotidien dans notre espace bien-etre.',
-    'Spa urbain offrant une parenthese de detente au coeur de la ville.',
-    'Rituels de beaute et massages pour un moment de pure relaxation.',
-    'Centre de bien-etre proposant des soins personnalises et de qualite.',
+    'Évadez-vous du quotidien dans notre espace bien-être.',
+    'Spa urbain offrant une parenthèse de détente au cœur de la ville.',
+    'Rituels de beauté et massages pour un moment de pure relaxation.',
+    'Centre de bien-être proposant des soins personnalisés et de qualité.',
   ],
   coaching: [
-    'Coach sportif certifie. Programmes personnalises pour atteindre vos objectifs.',
+    'Coach sportif certifié. Programmes personnalisés pour atteindre vos objectifs.',
     'Transformez votre corps et votre esprit avec un accompagnement sur-mesure.',
-    'Coaching fitness adapte a tous les niveaux. Resultats garantis.',
-    'Votre partenaire forme et sante. Entrainements motives et efficaces.',
-    'Personal trainer experimente. Depassez vos limites en toute securite.',
+    'Coaching fitness adapté à tous les niveaux. Résultats garantis.',
+    'Votre partenaire forme et santé. Entraînements motivés et efficaces.',
+    'Personal trainer expérimenté. Dépassez vos limites en toute sécurité.',
   ],
   beaute: [
-    'Institut de beaute haut de gamme. Soins du visage, manucure et maquillage.',
-    'Sublimez votre beaute naturelle avec nos soins experts.',
-    'Espace beaute moderne proposant les dernieres techniques esthetiques.',
-    'Votre institut de beaute de confiance pour tous vos soins.',
-    'Professionnelles passionnees pour prendre soin de vous.',
+    'Institut de beauté haut de gamme. Soins du visage, manucure et maquillage.',
+    'Sublimez votre beauté naturelle avec nos soins experts.',
+    'Espace beauté moderne proposant les dernières techniques esthétiques.',
+    'Votre institut de beauté de confiance pour tous vos soins.',
+    'Professionnelles passionnées pour prendre soin de vous.',
   ],
   massage: [
-    'Masseur-kinesitherapeute diplome. Massages therapeutiques et relaxants.',
+    'Masseur-kinésithérapeute diplômé. Massages thérapeutiques et relaxants.',
     'Soulagez vos tensions avec nos techniques de massage expertes.',
-    'Cabinet de massage proposant differentes approches pour votre bien-etre.',
-    'Detente et relaxation garanties dans un cadre apaisant.',
-    'Specialiste du massage bien-etre. A votre ecoute pour vos besoins.',
+    'Cabinet de massage proposant différentes approches pour votre bien-être.',
+    'Détente et relaxation garanties dans un cadre apaisant.',
+    'Spécialiste du massage bien-être. À votre écoute pour vos besoins.',
   ],
   sante: [
-    'Cabinet d\'osteopathie. Traitement des douleurs et troubles fonctionnels.',
-    'Approche globale du corps pour retrouver equilibre et mobilite.',
-    'Osteopathe experimente. Accompagnement des sportifs et des familles.',
-    'Soins osteopathiques adaptes a chaque patient.',
-    'Centre de sante proposant une prise en charge complete et personnalisee.',
+    'Cabinet d\'ostéopathie. Traitement des douleurs et troubles fonctionnels.',
+    'Approche globale du corps pour retrouver équilibre et mobilité.',
+    'Ostéopathe expérimenté. Accompagnement des sportifs et des familles.',
+    'Soins ostéopathiques adaptés à chaque patient.',
+    'Centre de santé proposant une prise en charge complète et personnalisée.',
   ],
 };
 
@@ -266,7 +266,7 @@ const SCHEDULE_TEMPLATES = [
     { dayOfWeek: 5, isOpen: true, slots: [{ start: '10:00', end: '19:00' }] },
     { dayOfWeek: 6, isOpen: true, slots: [{ start: '10:00', end: '17:00' }] },
   ],
-  // Ferme lundi
+  // Fermé lundi
   [
     { dayOfWeek: 0, isOpen: false, slots: [] },
     { dayOfWeek: 1, isOpen: false, slots: [] },
@@ -302,7 +302,7 @@ function generateUniqueId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
-// Generateur de nom d'entreprise
+// Générateur de nom d'entreprise
 function generateBusinessName(category: Category, firstName: string): string {
   const type = randomInt(0, 2);
   const suffixes = BUSINESS_SUFFIXES[category];
@@ -315,24 +315,24 @@ function generateBusinessName(category: Category, firstName: string): string {
       // "Prefixe Prenom" - ex: "Chez Marie"
       return `${randomItem(BUSINESS_PREFIXES)} ${firstName}`;
     default:
-      // "Suffixe Ville/Adjectif" - ex: "Salon Elegance"
-      const adjectives = ['Elegance', 'Prestige', 'Zen', 'Royal', 'Premium', 'Excellence'];
+      // "Suffixe Ville/Adjectif" - ex: "Salon Élégance"
+      const adjectives = ['Élégance', 'Prestige', 'Zen', 'Royal', 'Premium', 'Excellence'];
       return `${randomItem(suffixes)} ${randomItem(adjectives)}`;
   }
 }
 
-// Generateur de numero de rue
+// Générateur de numéro de rue
 function generateStreetNumber(): string {
   return `${randomInt(1, 150)}`;
 }
 
-// Generateur de telephone
+// Générateur de téléphone
 function generatePhone(): string {
   const prefixes = ['06', '07'];
   return `${randomItem(prefixes)}${randomInt(10000000, 99999999)}`;
 }
 
-// Generateur d'email
+// Générateur d'email
 function generateEmail(businessName: string): string {
   const slug = businessName
     .toLowerCase()
@@ -343,14 +343,14 @@ function generateEmail(businessName: string): string {
   return `contact@${slug}.test`;
 }
 
-// Generateur de code d'acces
+// Générateur de code d'accès
 function generateAccessCode(name: string): string {
   const prefix = name.split(' ')[0].toUpperCase().substring(0, 5);
   const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `${prefix}-${suffix}`;
 }
 
-// Generateur de rating
+// Générateur de rating
 function generateRating(): { average: number; count: number; distribution: Record<number, number> } {
   const count = randomInt(5, 120);
   const average = 3.5 + Math.random() * 1.5; // Entre 3.5 et 5.0
@@ -382,7 +382,7 @@ function getRandomImage(category: Category, type: 'photo' | 'cover'): string {
   return randomItem(images);
 }
 
-// Interface pour un provider genere
+// Interface pour un provider généré
 export interface GeneratedProvider {
   id: string;
   businessName: string;
@@ -421,7 +421,7 @@ export function generateRandomProvider(index: number): GeneratedProvider {
   const streetNumber = generateStreetNumber();
   const streetName = randomItem(STREET_NAMES);
 
-  // Generer 3 a 6 services aleatoires
+  // Générer 3 à 6 services aléatoires
   const availableServices = SERVICES_BY_CATEGORY[category];
   const serviceCount = randomInt(3, Math.min(6, availableServices.length));
   const selectedServices = randomItems(availableServices, serviceCount);
@@ -454,19 +454,19 @@ export function generateRandomProvider(index: number): GeneratedProvider {
   };
 }
 
-// Generer plusieurs providers
+// Générer plusieurs providers
 export function generateRandomProviders(count: number): GeneratedProvider[] {
   return Array.from({ length: count }, (_, i) => generateRandomProvider(i));
 }
 
-// Export des categories pour l'affichage
+// Export des catégories pour l'affichage
 export const CATEGORY_LABELS: Record<Category, string> = {
   coiffure: 'Coiffure',
-  spa: 'Spa & Bien-etre',
+  spa: 'Spa & Bien-être',
   coaching: 'Coaching & Sport',
-  beaute: 'Beaute',
+  beaute: 'Beauté',
   massage: 'Massage',
-  sante: 'Sante',
+  sante: 'Santé',
 };
 
 export type { Category };

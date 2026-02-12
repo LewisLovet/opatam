@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     if (!clientEmail || !clientName || !serviceName || !oldDatetime || !newDatetime) {
       console.log('[RESCHEDULE-EMAIL] ERROR: Missing required fields');
       return NextResponse.json(
-        { message: 'Donnees manquantes' },
+        { message: 'Données manquantes' },
         { status: 400 }
       );
     }
@@ -195,23 +195,23 @@ export async function POST(request: NextRequest) {
                         Bonjour ${clientName},
                       </p>
                       <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
-                        Votre rendez-vous a ete <strong style="color: #2563eb;">modifie</strong>.
+                        Votre rendez-vous a été <strong style="color: #2563eb;">modifié</strong>.
                       </p>
 
                       <!-- Old booking details box (crossed out) -->
                       <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 16px; opacity: 0.8;">
                         <p style="margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">
-                          Ancien creneau
+                          Ancien créneau
                         </p>
                         <p style="margin: 0; font-size: 14px; color: #71717a; text-decoration: line-through;">
-                          <span style="text-transform: capitalize;">${formattedOldDate}</span> a ${formattedOldTime}
+                          <span style="text-transform: capitalize;">${formattedOldDate}</span> à ${formattedOldTime}
                         </p>
                       </div>
 
                       <!-- New booking details box -->
                       <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                         <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">
-                          Nouveau creneau
+                          Nouveau créneau
                         </p>
                         <table style="width: 100%; border-collapse: collapse;">
                           <tr>
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
                             <td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedNewTime} - ${formattedNewEndTime}</td>
                           </tr>
                           <tr>
-                            <td style="padding: 4px 0; font-size: 14px; color: #71717a;">Duree</td>
+                            <td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td>
                             <td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${duration} min</td>
                           </tr>
                           ${locationName ? `
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
                       <!-- Add to Calendar Section -->
                       <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                         <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">
-                          Mettre a jour votre calendrier
+                          Mettre à jour votre calendrier
                         </p>
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
                   <tr>
                     <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
                       <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">
-                        A bientot,<br>
+                        À bientôt,<br>
                         <strong>${businessName}</strong>
                       </p>
                     </td>
@@ -317,8 +317,8 @@ export async function POST(request: NextRequest) {
 
                 <!-- Footer text -->
                 <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">
-                  Cet email a ete envoye automatiquement par ${appConfig.name}.<br>
-                  Si vous n'etes pas concerne, veuillez ignorer ce message.
+                  Cet email a été envoyé automatiquement par ${appConfig.name}.<br>
+                  Si vous n'êtes pas concerné, veuillez ignorer ce message.
                 </p>
               </td>
             </tr>
@@ -329,27 +329,27 @@ export async function POST(request: NextRequest) {
       text: `
 Bonjour ${clientName},
 
-Votre rendez-vous a ete modifie.
+Votre rendez-vous a été modifié.
 
-Ancien creneau : ${formattedOldDate} a ${formattedOldTime}
+Ancien créneau : ${formattedOldDate} à ${formattedOldTime}
 
-Nouveau creneau :
+Nouveau créneau :
 - Prestation : ${serviceName}
 - Date : ${formattedNewDate}
 - Heure : ${formattedNewTime} - ${formattedNewEndTime}
-- Duree : ${duration} min
+- Durée : ${duration} min
 ${locationName ? `- Lieu : ${locationName}` : ''}
 ${locationAddress ? `- Adresse : ${locationAddress}` : ''}
 ${memberName ? `- Avec : ${memberName}` : ''}
 - Prix : ${formattedPrice}
 
-Mettre a jour votre calendrier :
+Mettre à jour votre calendrier :
 - Google Calendar : ${googleCalendarUrl}
 ${icsUrl ? `- Apple / Outlook : ${icsUrl}` : ''}
 
 ${cancelUrl ? `Annuler le rendez-vous : ${cancelUrl}` : ''}
 
-A bientot,
+À bientôt,
 ${businessName}
       `.trim(),
     });

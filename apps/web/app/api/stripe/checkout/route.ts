@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
       },
       metadata: { providerId, ...(plan ? { plan } : {}) },
       success_url: successUrl
-        ? `${process.env.NEXT_PUBLIC_APP_URL}${successUrl}?success=true&session_id={CHECKOUT_SESSION_ID}`
+        ? `${process.env.NEXT_PUBLIC_APP_URL}${successUrl}${successUrl.includes('?') ? '&' : '?'}success=true&session_id={CHECKOUT_SESSION_ID}`
         : `${process.env.NEXT_PUBLIC_APP_URL}/dev/tests/stripe?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl
-        ? `${process.env.NEXT_PUBLIC_APP_URL}${cancelUrl}?cancelled=true`
+        ? `${process.env.NEXT_PUBLIC_APP_URL}${cancelUrl}${cancelUrl.includes('?') ? '&' : '?'}cancelled=true`
         : `${process.env.NEXT_PUBLIC_APP_URL}/dev/tests/stripe?cancelled=true`,
     });
 

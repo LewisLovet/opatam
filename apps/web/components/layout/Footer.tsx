@@ -23,33 +23,26 @@ const footerSections: FooterSection[] = [
   {
     title: 'Produit',
     links: [
-      { href: '/#fonctionnalites', label: 'Fonctionnalites' },
+      { href: '/#fonctionnalites', label: 'Fonctionnalités' },
       { href: '/#tarifs', label: 'Tarifs' },
-      { href: '/#temoignages', label: 'Temoignages' },
-    ],
-  },
-  {
-    title: 'Professionnels',
-    links: [
-      { href: '/pro', label: 'Devenir pro' },
-      { href: '/pro/tarifs', label: 'Tarifs' },
-      { href: '/pro/fonctionnalites', label: 'Fonctionnalites' },
+      { href: '/#temoignages', label: 'Témoignages' },
+      { href: '/#faq', label: 'FAQ' },
     ],
   },
   {
     title: 'Support',
     links: [
-      { href: '/aide', label: 'Centre d\'aide' },
       { href: '/contact', label: 'Contact' },
-      { href: '/faq', label: 'FAQ' },
+      { href: '/telechargement', label: 'Télécharger l\'app' },
     ],
   },
   {
-    title: 'Legal',
+    title: 'Légal',
     links: [
-      { href: '/mentions-legales', label: 'Mentions legales' },
+      { href: '/mentions-legales', label: 'Mentions légales' },
+      { href: '/cgu', label: 'CGU' },
       { href: '/cgv', label: 'CGV' },
-      { href: '/confidentialite', label: 'Confidentialite' },
+      { href: '/confidentialite', label: 'Confidentialité' },
     ],
   },
 ];
@@ -89,7 +82,7 @@ export function Footer({ variant = 'full' }: FooterProps) {
     <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Main Footer Content */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
           {footerSections.map((section) => (
             <div key={section.title}>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
@@ -124,18 +117,7 @@ export function Footer({ variant = 'full' }: FooterProps) {
           {/* Social Links */}
           <div className="flex items-center gap-4">
             <a
-              href="https://facebook.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              aria-label="Facebook"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M18.77 7.46H14.5v-1.9c0-.9.6-1.1 1-1.1h3V.5h-4.33C10.24.5 9.5 3.44 9.5 5.32v2.15h-3v4h3v12h5v-12h3.85l.42-4z" />
-              </svg>
-            </a>
-            <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/opatam_app"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -146,14 +128,14 @@ export function Footer({ variant = 'full' }: FooterProps) {
               </svg>
             </a>
             <a
-              href="https://twitter.com"
+              href="https://www.tiktok.com/@opatam"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              aria-label="Twitter"
+              aria-label="TikTok"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.86a8.28 8.28 0 0 0 4.76 1.5v-3.4a4.85 4.85 0 0 1-1-.27z" />
               </svg>
             </a>
           </div>

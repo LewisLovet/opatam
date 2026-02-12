@@ -16,6 +16,8 @@ import {
   Wrench,
   ArrowRight,
   Sparkles,
+  Mail,
+  MapPin,
 } from 'lucide-react';
 
 interface SectionCard {
@@ -130,13 +132,31 @@ const sections: { heading: string; headingIcon: React.ReactNode; headingColor: s
         links: [{ href: '/dev/tools/functions', label: 'Ouvrir' }],
       },
       {
-        title: 'Donnees de test',
-        description: 'Generer et supprimer des providers de test avec toutes leurs donnees (services, membres, locations).',
+        title: 'Données de test',
+        description: 'Générer et supprimer des providers de test avec toutes leurs données (services, membres, locations).',
         icon: <Sprout className="w-6 h-6" />,
         color: 'bg-lime-600',
         gradientFrom: 'from-lime-500/20',
         gradientTo: 'to-green-500/5',
         links: [{ href: '/dev/tools/seed', label: 'Ouvrir' }],
+      },
+      {
+        title: 'Emails',
+        description: 'Prévisualiser les templates d\'emails transactionnels et envoyer des emails de test.',
+        icon: <Mail className="w-6 h-6" />,
+        color: 'bg-pink-500',
+        gradientFrom: 'from-pink-500/20',
+        gradientTo: 'to-rose-500/5',
+        links: [{ href: '/dev/tools/emails', label: 'Ouvrir' }],
+      },
+      {
+        title: 'Adresses',
+        description: 'Tester l\'autocompletion d\'adresses via l\'API du gouvernement francais (api-adresse.data.gouv.fr).',
+        icon: <MapPin className="w-6 h-6" />,
+        color: 'bg-emerald-500',
+        gradientFrom: 'from-emerald-500/20',
+        gradientTo: 'to-green-500/5',
+        links: [{ href: '/dev/tools/address', label: 'Ouvrir' }],
       },
     ],
   },
@@ -146,8 +166,8 @@ const sections: { heading: string; headingIcon: React.ReactNode; headingColor: s
 const quickStats = [
   { label: 'Composants', value: '2', icon: <Layers className="w-4 h-4" />, color: 'text-blue-400' },
   { label: 'Tests', value: '4', icon: <TestTubes className="w-4 h-4" />, color: 'text-orange-400' },
-  { label: 'Outils', value: '2', icon: <Wrench className="w-4 h-4" />, color: 'text-teal-400' },
-  { label: 'Sections', value: '8', icon: <Activity className="w-4 h-4" />, color: 'text-purple-400' },
+  { label: 'Outils', value: '4', icon: <Wrench className="w-4 h-4" />, color: 'text-teal-400' },
+  { label: 'Sections', value: '10', icon: <Activity className="w-4 h-4" />, color: 'text-purple-400' },
 ];
 
 export default function DevHubPage() {

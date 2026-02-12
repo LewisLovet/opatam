@@ -27,10 +27,10 @@ export function ActionButtons({
 
   return (
     <div className="space-y-4">
-      {/* Selecteur de nombre */}
+      {/* Sélecteur de nombre */}
       <div className="flex items-center gap-4">
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Nombre de providers a generer :
+          Nombre de providers à générer :
         </label>
         <div className="flex gap-2">
           {COUNT_OPTIONS.map((count) => (
@@ -55,7 +55,7 @@ export function ActionButtons({
 
       {/* Boutons d'action */}
       <div className="flex flex-wrap gap-4">
-        {/* Bouton creer */}
+        {/* Bouton créer */}
         <button
           onClick={onCreateClick}
           disabled={isLoading}
@@ -70,12 +70,12 @@ export function ActionButtons({
           {isCreating ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Creation en cours...
+              Création en cours...
             </>
           ) : (
             <>
               <Plus className="w-5 h-5" />
-              Generer {providerCount} providers
+              Générer {providerCount} providers
             </>
           )}
         </button>
@@ -100,7 +100,7 @@ export function ActionButtons({
           ) : (
             <>
               <Trash2 className="w-5 h-5" />
-              Supprimer les donnees de test
+              Supprimer les données de test
               {existingCount > 0 && (
                 <span className="bg-red-500 px-2 py-0.5 rounded-full text-xs">
                   {existingCount}

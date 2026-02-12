@@ -163,7 +163,7 @@ export function ServiceCard({
             checked={service.isActive}
             onChange={(e) => handleToggle(e.target.checked)}
             disabled={toggling}
-            aria-label={service.isActive ? 'Desactiver' : 'Activer'}
+            aria-label={service.isActive ? 'Désactiver' : 'Activer'}
           />
         </div>
       </div>

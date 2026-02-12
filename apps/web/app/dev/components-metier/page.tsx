@@ -40,10 +40,10 @@ import { StepIndicator } from '@/components/common/StepIndicator';
 const mockProviders = [
   {
     id: '1',
-    businessName: 'Salon Elegance',
+    businessName: 'Salon Élégance',
     photoURL: null,
     category: 'Coiffure',
-    description: 'Salon de coiffure haut de gamme au coeur de Paris. Nos experts vous accueillent dans un cadre chaleureux.',
+    description: 'Salon de coiffure haut de gamme au cœur de Paris. Nos experts vous accueillent dans un cadre chaleureux.',
     isVerified: true,
     city: 'Paris',
     rating: 4.8,
@@ -52,10 +52,10 @@ const mockProviders = [
   },
   {
     id: '2',
-    businessName: 'Spa Bien-Etre',
+    businessName: 'Spa Bien-Être',
     photoURL: null,
     category: 'Spa & Massage',
-    description: 'Detente et relaxation dans un espace zen. Massages, soins du corps et du visage.',
+    description: 'Détente et relaxation dans un espace zen. Massages, soins du corps et du visage.',
     isVerified: true,
     city: 'Lyon',
     rating: 4.6,
@@ -64,9 +64,9 @@ const mockProviders = [
   },
   {
     id: '3',
-    businessName: 'Institut Beaute Plus',
+    businessName: 'Institut Beauté Plus',
     photoURL: null,
-    category: 'Esthetique',
+    category: 'Esthétique',
     description: null, // No description case
     isVerified: false,
     city: 'Marseille',
@@ -79,7 +79,7 @@ const mockProviders = [
     businessName: 'Barber Shop',
     photoURL: null,
     category: 'Barbier',
-    description: 'Le barbier traditionnel reinvente. Coupe, barbe et soins pour homme.',
+    description: 'Le barbier traditionnel réinventé. Coupe, barbe et soins pour homme.',
     isVerified: true,
     city: null, // No city case
     rating: 4.7,

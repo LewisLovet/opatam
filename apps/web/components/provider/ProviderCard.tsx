@@ -81,7 +81,7 @@ export function ProviderCard({ provider, href, className = '' }: ProviderCardPro
                     className="w-4 h-4 text-primary-500 flex-shrink-0"
                     fill="currentColor"
                     viewBox="0 0 20 20"
-                    aria-label="Verifie"
+                    aria-label="Vérifié"
                   >
                     <path
                       fillRule="evenodd"

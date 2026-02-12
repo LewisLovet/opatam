@@ -81,7 +81,7 @@ export function AvailabilityChangeModal({
   // Check for conflicts
   const handleCheckConflicts = async () => {
     if (!effectiveDate) {
-      setError('Veuillez selectionner une date d\'effet');
+      setError('Veuillez sélectionner une date d\'effet');
       return;
     }
 
@@ -203,7 +203,7 @@ export function AvailabilityChangeModal({
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <Clock className="w-4 h-4" />
-            <span>{changedDays.length} jour(s) modifie(s): {changedDays.map((d) => DAY_NAMES[d]).join(', ')}</span>
+            <span>{changedDays.length} jour(s) modifié(s): {changedDays.map((d) => DAY_NAMES[d]).join(', ')}</span>
           </div>
         </div>
 
@@ -289,7 +289,7 @@ export function AvailabilityChangeModal({
 
             <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Les nouveaux horaires seront appliques a partir du:
+                Les nouveaux horaires seront appliqués à partir du:
               </p>
               <p className="font-medium text-gray-900 dark:text-white mt-1">
                 {effectiveDate && formatDate(new Date(effectiveDate))}

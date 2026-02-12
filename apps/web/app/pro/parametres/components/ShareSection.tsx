@@ -146,7 +146,7 @@ export function ShareSection() {
             <p className="text-sm text-warning-600/80 dark:text-warning-400/70 mt-1">
               Activez votre page depuis l&apos;onglet{' '}
               <a href="/pro/profil" className="underline font-medium">Profil</a>{' '}
-              pour acceder aux outils de partage et au QR code.
+              pour accéder aux outils de partage et au QR code.
             </p>
           </div>
         </div>

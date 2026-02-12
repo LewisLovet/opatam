@@ -16,6 +16,9 @@ export { LocationRepository, locationRepository } from './location.repository';
 // Service repository (subcollection)
 export { ServiceRepository, serviceRepository } from './service.repository';
 
+// Service Category repository (subcollection)
+export { ServiceCategoryRepository, serviceCategoryRepository } from './serviceCategory.repository';
+
 // Availability repository (subcollection)
 export { AvailabilityRepository, availabilityRepository } from './availability.repository';
 

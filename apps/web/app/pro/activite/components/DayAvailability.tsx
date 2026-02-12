@@ -109,7 +109,7 @@ export function DayAvailability({
 
   const validateSlot = (slot: TimeSlot): string | undefined => {
     if (slot.start >= slot.end) {
-      return 'Heure de fin doit etre apres le debut';
+      return 'Heure de fin doit être après le début';
     }
     return undefined;
   };

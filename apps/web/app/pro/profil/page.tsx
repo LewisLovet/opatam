@@ -47,8 +47,8 @@ export default function ProfilPage() {
   const tabs = [
     { id: 'infos', label: 'Infos', icon: <User className="w-4 h-4" /> },
     { id: 'photos', label: 'Photos', icon: <Image className="w-4 h-4" /> },
-    { id: 'reseaux', label: 'Reseaux', icon: <Share2 className="w-4 h-4" /> },
-    { id: 'publication', label: 'Visibilite', icon: <Globe className="w-4 h-4" /> },
+    { id: 'reseaux', label: 'Réseaux', icon: <Share2 className="w-4 h-4" /> },
+    { id: 'publication', label: 'Visibilité', icon: <Globe className="w-4 h-4" /> },
   ];
 
   return (
@@ -149,7 +149,7 @@ export default function ProfilPage() {
           <Card className="max-w-2xl">
             <CardHeader>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Reseaux sociaux
+                Réseaux sociaux
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Ajoutez vos liens pour permettre aux clients de vous suivre
@@ -161,15 +161,15 @@ export default function ProfilPage() {
           </Card>
         </TabsContent>
 
-        {/* Visibilite Tab */}
+        {/* Visibilité Tab */}
         <TabsContent value="publication" className="mt-6">
           <Card className="max-w-2xl">
             <CardHeader>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Visibilite
+                Visibilité
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Controlez la visibilite de votre page
+                Contrôlez la visibilité de votre page
               </p>
             </CardHeader>
             <CardBody>
@@ -189,7 +189,7 @@ export default function ProfilPage() {
             className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-full shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
           >
             <Eye className="w-4 h-4" />
-            <span className="text-sm font-medium hidden sm:inline">Apercu</span>
+            <span className="text-sm font-medium hidden sm:inline">Aperçu</span>
           </a>
         </div>
       )}

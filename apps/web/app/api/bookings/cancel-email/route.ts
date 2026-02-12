@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (!clientEmail || !clientName || !serviceName || !datetime) {
       console.log('[CANCEL-EMAIL] ERROR: Missing required fields');
       return NextResponse.json(
-        { message: 'Donnees manquantes' },
+        { message: 'Données manquantes' },
         { status: 400 }
       );
     }
@@ -95,13 +95,13 @@ export async function POST(request: NextRequest) {
                         Bonjour ${clientName},
                       </p>
                       <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
-                        Nous vous informons que votre rendez-vous a ete <strong style="color: #dc2626;">annule</strong>.
+                        Nous vous informons que votre rendez-vous a été <strong style="color: #dc2626;">annulé</strong>.
                       </p>
 
                       <!-- Booking details box -->
                       <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                         <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">
-                          Rendez-vous annule
+                          Rendez-vous annulé
                         </p>
                         <table style="width: 100%; border-collapse: collapse;">
                           <tr>
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
                       </div>
 
                       <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
-                        Si vous souhaitez reprendre un nouveau rendez-vous, n'hesitez pas a nous contacter ou a reserver en ligne.
+                        Si vous souhaitez reprendre un nouveau rendez-vous, n'hésitez pas à nous contacter ou à réserver en ligne.
                       </p>
 
                       <!-- CTA Button -->
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
                   <tr>
                     <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
                       <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">
-                        Nous nous excusons pour la gene occasionnee.<br>
+                        Nous nous excusons pour la gêne occasionnée.<br>
                         <strong>${businessName}</strong>
                       </p>
                     </td>
@@ -161,8 +161,8 @@ export async function POST(request: NextRequest) {
 
                 <!-- Footer text -->
                 <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">
-                  Cet email a ete envoye automatiquement par ${appConfig.name}.<br>
-                  Si vous n'etes pas concerne, veuillez ignorer ce message.
+                  Cet email a été envoyé automatiquement par ${appConfig.name}.<br>
+                  Si vous n'êtes pas concerné, veuillez ignorer ce message.
                 </p>
               </td>
             </tr>
@@ -173,18 +173,18 @@ export async function POST(request: NextRequest) {
       text: `
 Bonjour ${clientName},
 
-Nous vous informons que votre rendez-vous a ete annule.
+Nous vous informons que votre rendez-vous a été annulé.
 
-Details du rendez-vous annule :
+Détails du rendez-vous annulé :
 - Prestation : ${serviceName}
 - Date : ${formattedDate}
 - Heure : ${formattedTime}
 ${locationName ? `- Lieu : ${locationName}` : ''}
 ${reason ? `- Motif : ${reason}` : ''}
 
-Si vous souhaitez reprendre un nouveau rendez-vous, n'hesitez pas a nous contacter ou a reserver en ligne sur ${rebookUrl}
+Si vous souhaitez reprendre un nouveau rendez-vous, n'hésitez pas à nous contacter ou à réserver en ligne sur ${rebookUrl}
 
-Nous nous excusons pour la gene occasionnee.
+Nous nous excusons pour la gêne occasionnée.
 
 ${businessName}
       `.trim(),

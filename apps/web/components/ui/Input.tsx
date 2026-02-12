@@ -38,7 +38,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           aria-invalid={hasError}
           aria-describedby={hasError ? errorId : hint ? hintId : undefined}
           className={`
-            w-full px-3 py-2 rounded-lg border
+            w-full px-3 py-2 rounded-lg border text-base
             text-gray-900 dark:text-gray-100
             bg-white dark:bg-gray-800
             placeholder:text-gray-400 dark:placeholder:text-gray-500

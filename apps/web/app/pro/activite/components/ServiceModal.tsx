@@ -12,7 +12,7 @@ import {
   Select,
 } from '@/components/ui';
 import { Loader2, Trash2 } from 'lucide-react';
-import type { Service, Location, Member } from '@booking-app/shared';
+import type { Service, ServiceCategory, Location, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -22,6 +22,7 @@ interface ServiceModalProps {
   service?: WithId<Service> | null;
   locations: WithId<Location>[];
   members: WithId<Member>[];
+  categories: WithId<ServiceCategory>[];
   isTeamPlan: boolean;
   onSave: (data: ServiceFormData) => Promise<void>;
   onDelete?: (serviceId: string) => Promise<void>;
@@ -33,21 +34,11 @@ export interface ServiceFormData {
   duration: number;
   price: number; // in cents
   bufferTime: number;
+  categoryId: string | null;
   locationIds: string[];
   memberIds: string[] | null;
 }
 
-const DURATION_OPTIONS = [
-  { value: '15', label: '15 min' },
-  { value: '30', label: '30 min' },
-  { value: '45', label: '45 min' },
-  { value: '60', label: '1h' },
-  { value: '75', label: '1h15' },
-  { value: '90', label: '1h30' },
-  { value: '120', label: '2h' },
-  { value: '150', label: '2h30' },
-  { value: '180', label: '3h' },
-];
 
 const BUFFER_TIME_OPTIONS = [
   { value: '0', label: 'Aucun' },
@@ -63,6 +54,7 @@ export function ServiceModal({
   service,
   locations,
   members,
+  categories,
   isTeamPlan,
   onSave,
   onDelete,
@@ -79,6 +71,7 @@ export function ServiceModal({
     duration: 60,
     price: 0,
     bufferTime: 0,
+    categoryId: null,
     locationIds: [],
     memberIds: null,
   });
@@ -93,6 +86,7 @@ export function ServiceModal({
           duration: service.duration,
           price: service.price,
           bufferTime: service.bufferTime,
+          categoryId: service.categoryId ?? null,
           locationIds: service.locationIds,
           memberIds: service.memberIds,
         });
@@ -104,6 +98,7 @@ export function ServiceModal({
           duration: 60,
           price: 0,
           bufferTime: 0,
+          categoryId: null,
           locationIds: locations.length > 0 ? [locations[0].id] : [],
           memberIds: null,
         });
@@ -124,7 +119,9 @@ export function ServiceModal({
           ? parseInt(value, 10)
           : name === 'price'
             ? Math.round(parseFloat(value || '0') * 100) // Convert euros to cents
-            : value || null,
+            : name === 'categoryId'
+              ? value || null // empty string → null
+              : value || null,
     }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
@@ -249,12 +246,17 @@ export function ServiceModal({
 
           {/* Duration & Price */}
           <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Durée"
+            <Input
+              label="Durée (minutes)"
               name="duration"
+              type="number"
               value={formData.duration.toString()}
               onChange={handleChange}
-              options={DURATION_OPTIONS}
+              min="5"
+              max="480"
+              step="5"
+              hint="De 5 min à 8h"
+              required
             />
 
             <Input
@@ -273,13 +275,30 @@ export function ServiceModal({
 
           {/* Buffer time */}
           <Select
-            label="Temps de battement apres RDV"
+            label="Temps de battement après RDV"
             name="bufferTime"
             value={formData.bufferTime.toString()}
             onChange={handleChange}
             options={BUFFER_TIME_OPTIONS}
             hint="Temps de pause entre deux rendez-vous"
           />
+
+          {/* Category */}
+          {categories.length > 0 && (
+            <Select
+              label="Catégorie"
+              name="categoryId"
+              value={formData.categoryId || ''}
+              onChange={handleChange}
+              options={[
+                { value: '', label: 'Sans catégorie' },
+                ...categories.map((cat) => ({
+                  value: cat.id,
+                  label: cat.name,
+                })),
+              ]}
+            />
+          )}
 
           {/* Locations */}
           <div>
@@ -288,7 +307,7 @@ export function ServiceModal({
             </label>
             {locations.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                Aucun lieu configure. Creez d'abord un lieu dans l'onglet "Lieux".
+                Aucun lieu configuré. Créez d'abord un lieu dans l'onglet "Lieux".
               </p>
             ) : (
               <div className="space-y-2">
@@ -414,12 +433,12 @@ export function ServiceModal({
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {isEditing ? 'Mise a jour...' : 'Creation...'}
+                {isEditing ? 'Mise à jour...' : 'Création...'}
               </>
             ) : isEditing ? (
-              'Mettre a jour'
+              'Mettre à jour'
             ) : (
-              'Creer'
+              'Créer'
             )}
           </Button>
         </ModalFooter>

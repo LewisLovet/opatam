@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import {
   providerRepository,
   serviceRepository,
+  serviceCategoryRepository,
   locationRepository,
   memberRepository,
   availabilityRepository,
@@ -11,6 +12,7 @@ import { BookingFlow } from './components/BookingFlow';
 import {
   demoBookingProvider,
   demoBookingServices,
+  demoBookingCategories,
   demoBookingLocations,
   demoBookingMembers,
   demoBookingAvailabilities,
@@ -55,6 +57,7 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
       <BookingFlow
         provider={demoBookingProvider}
         services={demoBookingServices}
+        serviceCategories={demoBookingCategories}
         locations={demoBookingLocations}
         members={demoBookingMembers}
         availabilities={demoBookingAvailabilities}
@@ -73,8 +76,9 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
   }
 
   // Fetch all related data in parallel
-  const [services, locations, members, availabilities] = await Promise.all([
+  const [services, serviceCategories, locations, members, availabilities] = await Promise.all([
     serviceRepository.getActiveByProvider(provider.id),
+    serviceCategoryRepository.getByProvider(provider.id),
     locationRepository.getActiveByProvider(provider.id),
     memberRepository.getActiveByProvider(provider.id),
     availabilityRepository.getByProvider(provider.id),
@@ -113,9 +117,18 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     duration: s.duration,
     price: s.price,
     bufferTime: s.bufferTime,
+    categoryId: s.categoryId ?? null,
     locationIds: s.locationIds,
     memberIds: s.memberIds,
   }));
+
+  const serializedCategories = serviceCategories
+    .filter((c) => c.isActive)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      sortOrder: c.sortOrder,
+    }));
 
   const serializedLocations = locations.map((l) => ({
     id: l.id,
@@ -150,6 +163,7 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     <BookingFlow
       provider={serializedProvider}
       services={serializedServices}
+      serviceCategories={serializedCategories}
       locations={serializedLocations}
       members={serializedMembers}
       availabilities={serializedAvailabilities}

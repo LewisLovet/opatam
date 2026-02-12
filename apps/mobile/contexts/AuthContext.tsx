@@ -1,6 +1,8 @@
 /**
  * AuthContext
  * Manages authentication state and actions using Firebase Auth
+ *
+ * Apple Sign-In: Included in Expo SDK, works everywhere.
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -9,8 +11,11 @@ import {
   authService,
   userRepository,
   onAuthChange,
+  OAuthProvider,
   type User as FirebaseUser,
 } from '@booking-app/firebase';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import type { User } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { getFirebaseErrorMessage } from '../utils';
@@ -25,6 +30,7 @@ interface AuthContextValue {
   // Actions
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string, phone?: string) => Promise<void>;
+  signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   refreshUserData: () => Promise<void>;
@@ -93,6 +99,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Sign in with Apple (works in Expo Go — included in Expo SDK)
+  const signInWithApple = async () => {
+    try {
+      const nonce = Crypto.randomUUID();
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        nonce,
+      );
+
+      const appleCredential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce: hashedNonce,
+      });
+
+      const { identityToken } = appleCredential;
+      if (!identityToken) {
+        throw new Error('Token Apple manquant');
+      }
+
+      const provider = new OAuthProvider('apple.com');
+      const credential = provider.credential({
+        idToken: identityToken,
+        rawNonce: nonce,
+      });
+
+      const { user: returnedUserData } = await authService.loginWithCredential(credential);
+
+      // Apple only sends name on first sign-in, update if we have it
+      if (appleCredential.fullName?.givenName && returnedUserData) {
+        const fullName = [
+          appleCredential.fullName.givenName,
+          appleCredential.fullName.familyName,
+        ].filter(Boolean).join(' ');
+
+        if (fullName && returnedUserData.displayName === 'Utilisateur') {
+          await userRepository.update(returnedUserData.id, { displayName: fullName });
+          returnedUserData.displayName = fullName;
+        }
+      }
+
+      setUserData(returnedUserData);
+      setUser(auth.currentUser);
+    } catch (error: any) {
+      // User cancelled = don't throw
+      if (error?.code === 'ERR_REQUEST_CANCELED') return;
+      throw new Error(error.message || 'Erreur de connexion avec Apple');
+    }
+  };
+
   // Sign out
   const signOut = async () => {
     try {
@@ -133,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         signIn,
         signUp,
+        signInWithApple,
         signOut,
         resetPassword,
         refreshUserData,

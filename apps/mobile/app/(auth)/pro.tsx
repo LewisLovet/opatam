@@ -308,7 +308,7 @@ export default function ProScreen() {
           <View style={styles.infoBannerContent}>
             <Ionicons name="sparkles" size={18} color={colors.primary} style={{ marginRight: 8 }} />
             <Text variant="body" color="primary" style={styles.infoBannerText}>
-              Essai gratuit 7 jours - Sans carte bancaire
+              Essai gratuit 30 jours - Sans carte bancaire
             </Text>
           </View>
         </Animated.View>

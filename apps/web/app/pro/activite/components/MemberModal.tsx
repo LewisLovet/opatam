@@ -187,7 +187,7 @@ export function MemberModal({
     if (!formData.name?.trim()) {
       newErrors.name = 'Le nom est requis';
     } else if (formData.name.length < 2) {
-      newErrors.name = 'Le nom doit contenir au moins 2 caracteres';
+      newErrors.name = 'Le nom doit contenir au moins 2 caractères';
     }
 
     if (!formData.email?.trim()) {
@@ -197,7 +197,7 @@ export function MemberModal({
     }
 
     if (formData.phone && !/^(\+33|0)[1-9](\d{2}){4}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Le numero de telephone n\'est pas valide';
+      newErrors.phone = 'Le numéro de téléphone n\'est pas valide';
     }
 
     setErrors(newErrors);
@@ -208,7 +208,7 @@ export function MemberModal({
     const newErrors: Record<string, string> = {};
 
     if (!formData.locationId) {
-      newErrors.locationId = 'Un lieu doit etre selectionne';
+      newErrors.locationId = 'Un lieu doit être sélectionné';
     }
 
     setErrors(newErrors);
@@ -260,7 +260,7 @@ export function MemberModal({
     // Check for upcoming bookings
     if (upcomingBookingsCount > 0) {
       setErrors({
-        submit: `Ce membre a ${upcomingBookingsCount} rendez-vous a venir. Veuillez les reassigner ou les annuler avant de supprimer ce membre.`,
+        submit: `Ce membre a ${upcomingBookingsCount} rendez-vous à venir. Veuillez les réassigner ou les annuler avant de supprimer ce membre.`,
       });
       setShowDeleteConfirm(false);
       return;
@@ -284,7 +284,7 @@ export function MemberModal({
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(currentCode);
-      toast.success('Code copie dans le presse-papier');
+      toast.success('Code copié dans le presse-papier');
     } catch {
       toast.error('Erreur lors de la copie');
     }
@@ -296,7 +296,7 @@ export function MemberModal({
     setSendingEmail(true);
     try {
       await onSendCode(member.id);
-      toast.success('Email envoye avec succes');
+      toast.success('Email envoyé avec succès');
     } catch (error) {
       console.error('Send email error:', error);
       toast.error('Erreur lors de l\'envoi de l\'email');
@@ -312,11 +312,11 @@ export function MemberModal({
     try {
       const newCode = await onRegenerateCode(member.id);
       setCurrentCode(newCode);
-      toast.success('Code regenere avec succes');
+      toast.success('Code régénéré avec succès');
       setShowRegenerateConfirm(false);
     } catch (error) {
       console.error('Regenerate code error:', error);
-      toast.error('Erreur lors de la regeneration du code');
+      toast.error('Erreur lors de la régénération du code');
     } finally {
       setRegenerating(false);
     }
@@ -557,20 +557,20 @@ export function MemberModal({
                 className="text-warning-600 border-warning-300 hover:bg-warning-50"
               >
                 <RefreshCw className="w-4 h-4 mr-1.5" />
-                Regenerer
+                Régénérer
               </Button>
             )}
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Ce code permet au membre d&apos;acceder a son planning sur la page /planning
+            Ce code permet au membre d&apos;accéder à son planning sur la page /planning
           </p>
         </>
       ) : (
         <div className="p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 text-center">
           <Key className="w-8 h-8 text-gray-400 mx-auto mb-2" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Le code d&apos;acces sera genere automatiquement lors de la creation
+            Le code d&apos;accès sera généré automatiquement lors de la création
           </p>
         </div>
       )}
@@ -718,10 +718,10 @@ export function MemberModal({
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Mise a jour...
+                    Mise à jour...
                   </>
                 ) : (
-                  'Mettre a jour'
+                  'Mettre à jour'
                 )}
               </Button>
             </>
@@ -748,10 +748,10 @@ export function MemberModal({
                     {loading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Creation...
+                        Création...
                       </>
                     ) : (
-                      'Creer le membre'
+                      'Créer le membre'
                     )}
                   </Button>
                 </>

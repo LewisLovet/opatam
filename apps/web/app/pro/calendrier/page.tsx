@@ -80,8 +80,9 @@ export default function CalendarPage() {
       setLoading(true);
       try {
         // First load members, locations, and blocked slots
+        // Note: même les plans solo ont un membre créé automatiquement — il faut toujours les charger
         const [membersData, locationsData, blockedData] = await Promise.all([
-          isTeamPlan ? memberService.getByProvider(provider.id) : Promise.resolve([]),
+          memberService.getByProvider(provider.id),
           locationService.getByProvider(provider.id),
           schedulingService.getBlockedSlots(provider.id),
         ]);
@@ -124,7 +125,7 @@ export default function CalendarPage() {
     };
 
     loadInitialData();
-  }, [provider, isTeamPlan]);
+  }, [provider]);
 
   // Load bookings for the current date range
   const loadBookings = useCallback(async () => {
@@ -236,10 +237,9 @@ export default function CalendarPage() {
   // Filter active members based on selected location
   // NOUVEAU MODÈLE: 1 membre = 1 lieu (locationId au lieu de locationIds)
   const activeMembers = useMemo(() => {
-    if (!isTeamPlan) return [];
     if (selectedLocationId === 'all') return members;
     return members.filter((m) => m.locationId === selectedLocationId);
-  }, [members, selectedLocationId, isTeamPlan]);
+  }, [members, selectedLocationId]);
 
   // Get availabilities for the displayed period
   const getAvailabilityForDay = useCallback(

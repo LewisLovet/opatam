@@ -15,7 +15,7 @@ import {
 import { generateRandomProviders, type GeneratedProvider } from '../_data/random-generator';
 import { formatLogTime } from '../_lib/seed-utils';
 
-// Prefixe pour identifier les providers de test
+// Préfixe pour identifier les providers de test
 const TEST_PREFIX = 'test-seed-';
 
 export interface SeedLog {
@@ -49,7 +49,7 @@ export interface UseSeedDataReturn {
   clearLogs: () => void;
 }
 
-// Fonction pour generer un slug
+// Fonction pour générer un slug
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -82,7 +82,7 @@ export function useSeedData(): UseSeedDataReturn {
   }, []);
 
   /**
-   * Verifie si des providers de test existent deja
+   * Vérifie si des providers de test existent déjà
    */
   const checkExistingTestData = useCallback(async () => {
     try {
@@ -100,13 +100,13 @@ export function useSeedData(): UseSeedDataReturn {
   }, []);
 
   /**
-   * Cree un provider de test complet avec toutes ses sous-collections
+   * Crée un provider de test complet avec toutes ses sous-collections
    */
   const createSingleProvider = async (provider: GeneratedProvider): Promise<void> => {
     const providerId = provider.id;
     const slug = slugify(provider.businessName);
 
-    // 1. Creer le document provider
+    // 1. Créer le document provider
     const providerRef = doc(db, 'providers', providerId);
 
     const trialEndDate = new Date();
@@ -159,9 +159,9 @@ export function useSeedData(): UseSeedDataReturn {
       updatedAt: serverTimestamp(),
     });
 
-    addLog('success', `Provider cree: ${provider.businessName} (${provider.city})`);
+    addLog('success', `Provider créé: ${provider.businessName} (${provider.city})`);
 
-    // 2. Creer la location (avant le membre car on a besoin du locationId)
+    // 2. Créer la location (avant le membre car on a besoin du locationId)
     const locationId = `${providerId}-loc1`;
     const locationRef = doc(providerSubcollections.locations(providerId), locationId);
 
@@ -185,7 +185,7 @@ export function useSeedData(): UseSeedDataReturn {
 
     addLog('info', `  - Location: ${provider.address}, ${provider.city}`);
 
-    // 3. Creer le membre proprietaire
+    // 3. Créer le membre propriétaire
     const memberId = `${providerId}-owner`;
     const memberRef = doc(providerSubcollections.members(providerId), memberId);
 
@@ -205,7 +205,7 @@ export function useSeedData(): UseSeedDataReturn {
 
     addLog('info', `  - Membre: ${provider.ownerName}`);
 
-    // 4. Creer les services
+    // 4. Créer les services
     for (let i = 0; i < provider.services.length; i++) {
       const service = provider.services[i];
       const serviceId = `${providerId}-svc${i}`;
@@ -226,9 +226,9 @@ export function useSeedData(): UseSeedDataReturn {
       });
     }
 
-    addLog('info', `  - ${provider.services.length} services crees`);
+    addLog('info', `  - ${provider.services.length} services créés`);
 
-    // 5. Creer les disponibilites
+    // 5. Créer les disponibilités
     for (const daySchedule of provider.schedule) {
       const availabilityId = `${memberId}-${locationId}-${daySchedule.dayOfWeek}`;
       const availabilityRef = doc(providerSubcollections.availability(providerId), availabilityId);
@@ -244,9 +244,9 @@ export function useSeedData(): UseSeedDataReturn {
       });
     }
 
-    addLog('info', `  - 7 disponibilites creees`);
+    addLog('info', `  - 7 disponibilités créées`);
 
-    // Mettre a jour les stats
+    // Mettre à jour les stats
     setStats((prev) => ({
       providersCreated: prev.providersCreated + 1,
       servicesCreated: prev.servicesCreated + provider.services.length,
@@ -257,7 +257,7 @@ export function useSeedData(): UseSeedDataReturn {
   };
 
   /**
-   * Cree les providers de test aleatoires
+   * Crée les providers de test aléatoires
    */
   const createTestData = useCallback(async () => {
     setIsCreating(true);
@@ -270,13 +270,13 @@ export function useSeedData(): UseSeedDataReturn {
     });
     clearLogs();
 
-    addLog('info', `Generation de ${providerCount} providers aleatoires...`);
+    addLog('info', `Génération de ${providerCount} providers aléatoires...`);
 
     try {
-      // Generer les providers aleatoires
+      // Générer les providers aléatoires
       const providers = generateRandomProviders(providerCount);
 
-      addLog('info', `Debut de la creation dans Firestore...`);
+      addLog('info', `Début de la création dans Firestore...`);
 
       for (let i = 0; i < providers.length; i++) {
         const provider = providers[i];
@@ -290,7 +290,7 @@ export function useSeedData(): UseSeedDataReturn {
         }
       }
 
-      addLog('success', `Creation terminee ! ${providerCount} providers crees.`);
+      addLog('success', `Création terminée ! ${providerCount} providers créés.`);
       await checkExistingTestData();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
@@ -322,7 +322,7 @@ export function useSeedData(): UseSeedDataReturn {
       await deleteDoc(serviceDoc.ref);
     }
 
-    // 4. Supprimer les disponibilites
+    // 4. Supprimer les disponibilités
     const availabilitySnapshot = await getDocs(providerSubcollections.availability(providerId));
     for (const availDoc of availabilitySnapshot.docs) {
       await deleteDoc(availDoc.ref);
@@ -349,11 +349,11 @@ export function useSeedData(): UseSeedDataReturn {
       const testProviders = snapshot.docs.filter((doc) => doc.id.startsWith(TEST_PREFIX));
 
       if (testProviders.length === 0) {
-        addLog('warning', 'Aucun provider de test trouve.');
+        addLog('warning', 'Aucun provider de test trouvé.');
         return;
       }
 
-      addLog('info', `${testProviders.length} providers de test trouves. Suppression...`);
+      addLog('info', `${testProviders.length} providers de test trouvés. Suppression...`);
 
       for (let i = 0; i < testProviders.length; i++) {
         const providerDoc = testProviders[i];
@@ -363,14 +363,14 @@ export function useSeedData(): UseSeedDataReturn {
 
         try {
           await deleteSingleProvider(providerDoc.id);
-          addLog('success', `  - ${providerData.businessName} supprime`);
+          addLog('success', `  - ${providerData.businessName} supprimé`);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
           addLog('error', `Erreur pour ${providerData.businessName}: ${errorMessage}`);
         }
       }
 
-      addLog('success', 'Suppression terminee !');
+      addLog('success', 'Suppression terminée !');
       setExistingTestProviders([]);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';

@@ -21,6 +21,7 @@ import {
   Flame,
   Terminal,
   Sparkles,
+  Mail,
 } from 'lucide-react';
 
 interface NavItem {
@@ -108,8 +109,13 @@ const navSections: { title: string; items: NavItem[] }[] = [
       },
       {
         href: '/dev/tools/seed',
-        label: 'Donnees de test',
+        label: 'Données de test',
         icon: <Sprout className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/tools/emails',
+        label: 'Emails',
+        icon: <Mail className="w-4 h-4" />,
       },
     ],
   },
@@ -244,10 +250,10 @@ export default function DevLayout({ children }: { children: React.ReactNode }) {
             <Lock className="w-8 h-8 text-slate-500" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
-            Acces non autorise
+            Accès non autorisé
           </h1>
           <p className="text-slate-400">
-            Cette page n&apos;est disponible qu&apos;en environnement de developpement.
+            Cette page n&apos;est disponible qu&apos;en environnement de développement.
           </p>
         </div>
       </div>
@@ -337,7 +343,7 @@ export default function DevLayout({ children }: { children: React.ReactNode }) {
                 className="group flex items-center gap-2.5 px-3 py-2 text-sm text-slate-500 hover:text-slate-300 rounded-lg hover:bg-white/5 transition-all duration-200"
               >
                 <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
-                <span>Retour a l&apos;app</span>
+                <span>Retour à l&apos;app</span>
               </Link>
             </div>
           </nav>

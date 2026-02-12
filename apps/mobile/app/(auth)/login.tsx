@@ -143,7 +143,7 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
-  const { signIn } = useAuth();
+  const { signIn, signInWithApple } = useAuth();
 
   // Form state
   const [email, setEmail] = useState('');
@@ -171,18 +171,15 @@ export default function LoginScreen() {
     ]).start();
   }, []);
 
-  const handleGoogleSignIn = () => {
-    showToast({
-      variant: 'info',
-      message: 'Google Sign-In bientôt disponible',
-    });
-  };
-
-  const handleAppleSignIn = () => {
-    showToast({
-      variant: 'info',
-      message: 'Apple Sign-In bientôt disponible',
-    });
+  const handleAppleSignIn = async () => {
+    try {
+      await signInWithApple();
+    } catch (error: any) {
+      showToast({
+        variant: 'error',
+        message: error.message || 'Erreur de connexion avec Apple',
+      });
+    }
   };
 
   // Validate form
@@ -305,27 +302,6 @@ export default function LoginScreen() {
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
           >
-            {/* Google button */}
-            <Pressable
-              onPress={handleGoogleSignIn}
-              style={({ pressed }) => [
-                styles.socialButton,
-                {
-                  backgroundColor: '#FFFFFF',
-                  borderColor: 'rgba(26, 109, 175, 0.15)',
-                  borderRadius: 16,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                },
-              ]}
-            >
-              <View style={[styles.socialIconContainer, { backgroundColor: 'rgba(26, 109, 175, 0.08)' }]}>
-                <Ionicons name="logo-google" size={18} color={colors.primary} />
-              </View>
-              <Text variant="body" style={styles.socialButtonText}>
-                Continuer avec Google
-              </Text>
-            </Pressable>
-
             {/* Apple button */}
             <Pressable
               onPress={handleAppleSignIn}

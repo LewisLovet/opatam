@@ -83,7 +83,7 @@ export function FirestoreTrackerWidget() {
                 ? 'bg-green-600 hover:bg-green-700'
                 : 'bg-gray-600 hover:bg-gray-500'
             }`}
-            title={isEnabled ? 'Desactiver' : 'Activer'}
+            title={isEnabled ? 'Désactiver' : 'Activer'}
           >
             <Power className="w-4 h-4" />
           </button>
@@ -101,7 +101,7 @@ export function FirestoreTrackerWidget() {
       <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
         {!isEnabled ? (
           <p className="text-gray-400 text-sm text-center py-4">
-            Tracking desactive. Cliquez sur le bouton power pour commencer.
+            Tracking désactivé. Cliquez sur le bouton power pour commencer.
           </p>
         ) : summary ? (
           <>
@@ -136,20 +136,20 @@ export function FirestoreTrackerWidget() {
               </div>
             </div>
 
-            {/* Cout estime */}
+            {/* Coût estimé */}
             <div className="bg-yellow-900/30 rounded p-2 text-center">
               <div className="text-sm text-yellow-400">
-                Cout estime:{' '}
+                Coût estimé:{' '}
                 <span className="font-mono">
                   ${summary.estimatedCost.total.toFixed(6)}
                 </span>
               </div>
             </div>
 
-            {/* Derniere operation */}
+            {/* Dernière opération */}
             {summary.lastOperation && (
               <div className="text-xs text-gray-400 bg-gray-800 rounded p-2">
-                <span className="text-gray-500">Derniere:</span>{' '}
+                <span className="text-gray-500">Dernière:</span>{' '}
                 <span
                   className={
                     summary.lastOperation.type === 'read'
@@ -181,10 +181,10 @@ export function FirestoreTrackerWidget() {
               ) : (
                 <ChevronRight className="w-3 h-3" />
               )}
-              Details par collection
+              Détails par collection
             </button>
 
-            {/* Details par collection */}
+            {/* Détails par collection */}
             {showCollections && Object.keys(summary.byCollection).length > 0 && (
               <div className="space-y-1">
                 {Object.entries(summary.byCollection).map(([collection, stats]) => (
@@ -235,7 +235,7 @@ export function FirestoreTrackerWidget() {
             )}
           </>
         ) : (
-          <p className="text-gray-400 text-sm text-center py-4">Aucune donnee</p>
+          <p className="text-gray-400 text-sm text-center py-4">Aucune donnée</p>
         )}
       </div>
 

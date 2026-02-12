@@ -36,19 +36,19 @@ export function SearchEmptyState({
 
       {/* Message */}
       <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-        Aucun prestataire trouve
+        Aucun prestataire trouvé
       </h3>
 
       <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
         {hasFilters ? (
           <>
-            Nous n'avons trouve aucun prestataire correspondant a vos criteres
+            Nous n'avons trouvé aucun prestataire correspondant à vos critères
             {query && <span className="font-medium"> "{query}"</span>}
-            {category && <span className="font-medium"> dans la categorie selectionnee</span>}
-            {city && <span className="font-medium"> a {city}</span>}.
+            {category && <span className="font-medium"> dans la catégorie sélectionnée</span>}
+            {city && <span className="font-medium"> à {city}</span>}.
           </>
         ) : (
-          "Il n'y a pas encore de prestataires disponibles. Revenez bientot !"
+          "Il n'y a pas encore de prestataires disponibles. Revenez bientôt !"
         )}
       </p>
 

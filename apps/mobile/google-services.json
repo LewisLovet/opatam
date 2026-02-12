@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "930618604476",
+    "project_id": "opatam-da04b",
+    "storage_bucket": "opatam-da04b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:930618604476:android:355005f4cd8a333a9589b9",
+        "android_client_info": {
+          "package_name": "com.kamerleontech.opatam"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "930618604476-apu5qld393mdmosug0eatkbae3f9depd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnsyBdobIIcMNiRGZ7fFEi-U-2UHrffYY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "930618604476-apu5qld393mdmosug0eatkbae3f9depd.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "930618604476-adubo6tlt4gpbgkkd4m0rf96t932sh5t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kamerleontech.opatam"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

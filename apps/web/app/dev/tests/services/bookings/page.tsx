@@ -154,10 +154,10 @@ export default function BookingsServiceTestPage() {
       });
       setAvailableSlots(slots);
       if (slots.length === 0) {
-        setSlotsError('Aucun creneau disponible pour cette periode. Verifiez les disponibilites dans l\'onglet Scheduling.');
+        setSlotsError('Aucun créneau disponible pour cette période. Vérifiez les disponibilités dans l\'onglet Scheduling.');
       }
     } catch (err) {
-      setSlotsError(err instanceof Error ? err.message : 'Erreur lors du chargement des creneaux');
+      setSlotsError(err instanceof Error ? err.message : 'Erreur lors du chargement des créneaux');
     } finally {
       setLoadingSlots(false);
     }
@@ -183,7 +183,7 @@ export default function BookingsServiceTestPage() {
       if (!providerId) throw new Error('Provider requis');
       if (!serviceId) throw new Error('Service requis');
       if (!locationId) throw new Error('Lieu requis');
-      if (!selectedSlot) throw new Error('Selectionnez un creneau disponible');
+      if (!selectedSlot) throw new Error('Sélectionnez un créneau disponible');
 
       const input: Parameters<typeof bookingService.createBooking>[0] = {
         providerId,
@@ -213,7 +213,7 @@ export default function BookingsServiceTestPage() {
       await loadAvailableSlots();
 
       return {
-        message: 'Reservation creee avec succes',
+        message: 'Réservation créée avec succès',
         booking: {
           id: booking.id,
           service: booking.serviceName,
@@ -225,7 +225,7 @@ export default function BookingsServiceTestPage() {
           status: booking.status,
         },
         cancelToken: booking.cancelToken,
-        note: `Prix et duree recuperes automatiquement du service "${selectedService?.name}"`,
+        note: `Prix et durée récupérés automatiquement du service "${selectedService?.name}"`,
       };
     });
 
@@ -235,7 +235,7 @@ export default function BookingsServiceTestPage() {
       await bookingService.confirmBooking(bookingId, providerId);
       const booking = await bookingRepository.getById(bookingId);
       return {
-        message: 'Reservation confirmee',
+        message: 'Réservation confirmée',
         status: booking?.status,
       };
     });
@@ -251,7 +251,7 @@ export default function BookingsServiceTestPage() {
       );
       const booking = await bookingRepository.getById(bookingId);
       return {
-        message: 'Reservation annulee',
+        message: 'Réservation annulée',
         status: booking?.status,
         cancelledBy: booking?.cancelledBy,
         cancelReason: booking?.cancelReason,
@@ -263,7 +263,7 @@ export default function BookingsServiceTestPage() {
       if (!cancelToken) throw new Error("Token d'annulation requis");
       await bookingService.cancelBookingByToken(cancelToken);
       return {
-        message: 'Reservation annulee via token',
+        message: 'Réservation annulée via token',
       };
     });
 
@@ -273,7 +273,7 @@ export default function BookingsServiceTestPage() {
       await bookingService.markNoShow(bookingId, providerId);
       const booking = await bookingRepository.getById(bookingId);
       return {
-        message: 'Client marque absent',
+        message: 'Client marqué absent',
         status: booking?.status,
       };
     });
@@ -282,7 +282,7 @@ export default function BookingsServiceTestPage() {
     executeAction('GET BOOKING', async () => {
       if (!bookingId) throw new Error('Booking ID requis');
       const booking = await bookingRepository.getById(bookingId);
-      if (!booking) return { message: 'Reservation non trouvee' };
+      if (!booking) return { message: 'Réservation non trouvée' };
       return {
         ...booking,
         priceFormatted: `${(booking.price / 100).toFixed(2)}€`,
@@ -297,7 +297,7 @@ export default function BookingsServiceTestPage() {
         count: bookings.length,
         bookings: bookings.map((b) => ({
           id: b.id,
-          client: b.clientInfo?.name || 'Client connecte',
+          client: b.clientInfo?.name || 'Client connecté',
           service: b.serviceName,
           location: b.locationName,
           datetime: b.datetime,
@@ -339,7 +339,7 @@ export default function BookingsServiceTestPage() {
   if (loadingData) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500 dark:text-gray-400">Chargement des donnees...</p>
+        <p className="text-gray-500 dark:text-gray-400">Chargement des données...</p>
       </div>
     );
   }
@@ -351,13 +351,13 @@ export default function BookingsServiceTestPage() {
           Test Bookings Service
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations reservations: creation, confirmation, annulation, completion.
+          Test des opérations réservations: création, confirmation, annulation, complétion.
         </p>
       </div>
 
       {/* Provider Selection */}
       <Card variant="bordered" className="border-primary-300 dark:border-primary-700">
-        <CardHeader title="Selection du Provider" />
+        <CardHeader title="Sélection du Provider" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
@@ -376,7 +376,7 @@ export default function BookingsServiceTestPage() {
                 }}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
-                <option value="">-- Selectionner un provider --</option>
+                <option value="">-- Sélectionner un provider --</option>
                 {providers.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.businessName} ({p.id.slice(0, 8)}...)
@@ -385,7 +385,7 @@ export default function BookingsServiceTestPage() {
               </select>
               {providers.length === 0 && (
                 <p className="text-sm text-amber-600 dark:text-amber-400">
-                  Aucun provider. Creez-en un dans l&apos;onglet Provider.
+                  Aucun provider. Créez-en un dans l&apos;onglet Provider.
                 </p>
               )}
             </div>
@@ -393,7 +393,7 @@ export default function BookingsServiceTestPage() {
               label="Booking ID (pour actions)"
               value={bookingId}
               onChange={(e) => setBookingId(e.target.value)}
-              placeholder="ID de la reservation"
+              placeholder="ID de la réservation"
             />
           </div>
         </CardBody>
@@ -401,7 +401,7 @@ export default function BookingsServiceTestPage() {
 
       {/* Create Booking */}
       <Card>
-        <CardHeader title="Creer une Reservation" />
+        <CardHeader title="Créer une Réservation" />
         <CardBody>
           {/* Step 1: Selection criteria */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -420,7 +420,7 @@ export default function BookingsServiceTestPage() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 disabled={!providerId}
               >
-                <option value="">-- Selectionner --</option>
+                <option value="">-- Sélectionner --</option>
                 {services.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name} - {(s.price / 100).toFixed(2)}€ ({s.duration}min)
@@ -428,7 +428,7 @@ export default function BookingsServiceTestPage() {
                 ))}
               </select>
               {services.length === 0 && providerId && (
-                <p className="text-xs text-amber-600">Aucun service. Creez-en dans Catalog.</p>
+                <p className="text-xs text-amber-600">Aucun service. Créez-en dans Catalog.</p>
               )}
             </div>
 
@@ -447,7 +447,7 @@ export default function BookingsServiceTestPage() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 disabled={!providerId}
               >
-                <option value="">-- Selectionner --</option>
+                <option value="">-- Sélectionner --</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name} - {l.city}
@@ -479,7 +479,7 @@ export default function BookingsServiceTestPage() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 disabled={!providerId}
               >
-                <option value="">-- Selectionner --</option>
+                <option value="">-- Sélectionner --</option>
                 {members.map((m) => {
                   const loc = locations.find((l) => l.id === m.locationId);
                   return (
@@ -490,7 +490,7 @@ export default function BookingsServiceTestPage() {
                 })}
               </select>
               {members.length === 0 && providerId && (
-                <p className="text-xs text-amber-600">Aucun membre. Creez-en dans Members.</p>
+                <p className="text-xs text-amber-600">Aucun membre. Créez-en dans Members.</p>
               )}
             </div>
 
@@ -524,7 +524,7 @@ export default function BookingsServiceTestPage() {
                 disabled={!providerId || !serviceId || !memberId}
                 variant="outline"
               >
-                Chercher creneaux
+                Chercher créneaux
               </Button>
             </div>
           </div>
@@ -533,8 +533,8 @@ export default function BookingsServiceTestPage() {
           {selectedService && (
             <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-950 rounded-lg">
               <p className="text-sm text-primary-700 dark:text-primary-300">
-                <strong>Service selectionne:</strong> {selectedService.name} |{' '}
-                <strong>Duree:</strong> {selectedService.duration} min |{' '}
+                <strong>Service sélectionné:</strong> {selectedService.name} |{' '}
+                <strong>Durée:</strong> {selectedService.duration} min |{' '}
                 <strong>Prix:</strong> {(selectedService.price / 100).toFixed(2)}€
                 {selectedService.bufferTime > 0 && (
                   <> | <strong>Buffer:</strong> {selectedService.bufferTime} min</>
@@ -546,16 +546,16 @@ export default function BookingsServiceTestPage() {
           {/* Available slots */}
           <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-4">
-              Creneaux disponibles
+              Créneaux disponibles
               {availableSlots.length > 0 && (
                 <span className="ml-2 text-sm font-normal text-gray-500">
-                  ({availableSlots.length} creneaux)
+                  ({availableSlots.length} créneaux)
                 </span>
               )}
             </h4>
 
             {loadingSlots && (
-              <p className="text-gray-500 dark:text-gray-400">Chargement des creneaux...</p>
+              <p className="text-gray-500 dark:text-gray-400">Chargement des créneaux...</p>
             )}
 
             {slotsError && (
@@ -566,7 +566,7 @@ export default function BookingsServiceTestPage() {
 
             {!loadingSlots && availableSlots.length === 0 && !slotsError && (
               <p className="text-gray-500 dark:text-gray-400 text-sm">
-                Selectionnez un service, un lieu et cliquez sur &quot;Chercher creneaux&quot;.
+                Sélectionnez un service, un lieu et cliquez sur &quot;Chercher créneaux&quot;.
               </p>
             )}
 
@@ -604,13 +604,13 @@ export default function BookingsServiceTestPage() {
             {selectedSlot && (
               <div className="mt-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
                 <p className="text-green-700 dark:text-green-300 text-sm">
-                  <strong>Creneau selectionne:</strong>{' '}
+                  <strong>Créneau sélectionné:</strong>{' '}
                   {selectedSlot.datetime.toLocaleDateString('fr-FR', {
                     weekday: 'long',
                     day: 'numeric',
                     month: 'long',
                   })}{' '}
-                  de {selectedSlot.start} a {selectedSlot.end}
+                  de {selectedSlot.start} à {selectedSlot.end}
                 </p>
               </div>
             )}
@@ -660,7 +660,7 @@ export default function BookingsServiceTestPage() {
                   placeholder="email@example.com"
                 />
                 <Input
-                  label="Telephone *"
+                  label="Téléphone *"
                   value={clientPhone}
                   onChange={(e) => setClientPhone(e.target.value)}
                   placeholder="0612345678"
@@ -676,7 +676,7 @@ export default function BookingsServiceTestPage() {
                   onChange={(e) => setClientId(e.target.value)}
                   className="w-full max-w-md px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
-                  <option value="">-- Selectionner un client --</option>
+                  <option value="">-- Sélectionner un client --</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.displayName || c.email} ({c.id.slice(0, 8)}...)
@@ -707,18 +707,18 @@ export default function BookingsServiceTestPage() {
               loading={loading && lastAction === 'CREATE BOOKING'}
               disabled={!providerId || !serviceId || !locationId || !selectedSlot}
             >
-              Creer Reservation
+              Créer Réservation
             </Button>
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Le prix et la duree sont automatiquement recuperes depuis le service selectionne.
+            Le prix et la durée sont automatiquement récupérés depuis le service sélectionné.
           </p>
         </CardBody>
       </Card>
 
       {/* Booking Status Actions */}
       <Card>
-        <CardHeader title="Actions sur Reservation" />
+        <CardHeader title="Actions sur Réservation" />
         <CardBody>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -743,12 +743,12 @@ export default function BookingsServiceTestPage() {
 
       {/* Cancel Booking */}
       <Card>
-        <CardHeader title="Annuler Reservation" />
+        <CardHeader title="Annuler Réservation" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-3 items-end">
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Annule par
+                Annulé par
               </label>
               <select
                 value={cancelledBy}
@@ -787,7 +787,7 @@ export default function BookingsServiceTestPage() {
               label="Token d'annulation"
               value={cancelToken}
               onChange={(e) => setCancelToken(e.target.value)}
-              placeholder="Token recu lors de la creation"
+              placeholder="Token reçu lors de la création"
               className="flex-1"
             />
             <Button
@@ -807,7 +807,7 @@ export default function BookingsServiceTestPage() {
 
       {/* List Bookings */}
       <Card>
-        <CardHeader title="Lister Reservations" />
+        <CardHeader title="Lister Réservations" />
         <CardBody>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -816,7 +816,7 @@ export default function BookingsServiceTestPage() {
               loading={loading && lastAction === 'GET BOOKING'}
               disabled={!bookingId}
             >
-              Obtenir Reservation
+              Obtenir Réservation
             </Button>
             <Button
               variant="outline"
@@ -841,7 +841,7 @@ export default function BookingsServiceTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>{lastAction}</Badge>
@@ -860,7 +860,7 @@ export default function BookingsServiceTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

@@ -120,7 +120,7 @@ export default function DashboardPage() {
       if (!provider.portfolioPhotos || provider.portfolioPhotos.length === 0) {
         alerts.push({
           id: 'no-portfolio',
-          message: 'Ajoutez des photos a votre portfolio',
+          message: 'Ajoutez des photos à votre portfolio',
           action: 'Ajouter',
           href: '/pro/profil?tab=photos',
           priority: 'low',
@@ -131,7 +131,7 @@ export default function DashboardPage() {
       if (locationsData.length === 0) {
         alerts.push({
           id: 'no-location',
-          message: 'Ajoutez un lieu pour recevoir des reservations',
+          message: 'Ajoutez un lieu pour recevoir des réservations',
           action: 'Configurer',
           href: '/pro/activite?tab=lieux',
           priority: 'high',
@@ -142,8 +142,8 @@ export default function DashboardPage() {
       if (servicesData.length === 0) {
         alerts.push({
           id: 'no-service',
-          message: 'Creez votre premiere prestation',
-          action: 'Creer',
+          message: 'Créez votre première prestation',
+          action: 'Créer',
           href: '/pro/activite?tab=prestations',
           priority: 'high',
         });
@@ -365,7 +365,7 @@ export default function DashboardPage() {
           icon={<AlertCircle className="w-5 h-5" />}
           label="En attente"
           value={pendingCount}
-          sublabel="a confirmer"
+          sublabel="à confirmer"
           href="/pro/reservations?status=pending"
           variant={pendingCount > 0 ? 'warning' : 'default'}
         />

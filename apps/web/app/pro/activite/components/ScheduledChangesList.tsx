@@ -92,10 +92,10 @@ export function ScheduledChangesList({
       <div className="text-center py-8 px-4">
         <Calendar className="w-10 h-10 mx-auto mb-3 text-gray-400" />
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Aucun changement planifie
+          Aucun changement planifié
         </p>
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-          Les changements planifies apparaitront ici
+          Les changements planifiés apparaîtront ici
         </p>
       </div>
     );

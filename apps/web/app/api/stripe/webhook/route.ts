@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Resend } from 'resend';
 import { getStripe } from '@/lib/stripe';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -11,6 +12,18 @@ import type Stripe from 'stripe';
 // and dispatches to the appropriate handler. It ALWAYS returns 200 to avoid
 // Stripe retrying events endlessly — errors are logged for investigation.
 // ---------------------------------------------------------------------------
+
+/**
+ * Safely extract an ID from a Stripe field that may be a string or an
+ * expanded object (e.g. session.subscription can be "sub_xxx" or { id: "sub_xxx", ... }).
+ * This is critical for Stripe SDK v20+ where many fields can be expanded objects.
+ */
+function extractId(field: string | { id: string } | null | undefined): string | null {
+  if (!field) return null;
+  if (typeof field === 'string') return field;
+  if (typeof field === 'object' && 'id' in field) return field.id;
+  return null;
+}
 
 /**
  * Extract the billing period end from a subscription.
@@ -87,7 +100,7 @@ export async function POST(request: NextRequest) {
         console.log(`[STRIPE-WEBHOOK] Unhandled event type: ${event.type}`);
     }
   } catch (error) {
-    console.error(`[STRIPE-WEBHOOK] Error handling ${event.type}:`, String(error));
+    console.error(`[STRIPE-WEBHOOK] Error handling ${event.type}:`, error instanceof Error ? error.stack || error.message : String(error));
     // Return 200 anyway to prevent Stripe from retrying in a loop.
     // The error is logged for investigation.
   }
@@ -113,12 +126,13 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  const subscriptionId = session.subscription as string;
-  const customerId = session.customer as string;
+  // session.subscription / session.customer can be strings OR expanded objects
+  const subscriptionId = extractId(session.subscription as any);
+  const customerId = extractId(session.customer as any);
 
   console.log(`[STRIPE-WEBHOOK] providerId: ${providerId}`);
-  console.log(`[STRIPE-WEBHOOK] subscriptionId: ${subscriptionId}`);
-  console.log(`[STRIPE-WEBHOOK] customerId: ${customerId}`);
+  console.log(`[STRIPE-WEBHOOK] subscriptionId: ${subscriptionId} (raw type: ${typeof session.subscription})`);
+  console.log(`[STRIPE-WEBHOOK] customerId: ${customerId} (raw type: ${typeof session.customer})`);
 
   if (!subscriptionId || !customerId) {
     console.error('[STRIPE-WEBHOOK] Missing subscriptionId or customerId in session');
@@ -187,6 +201,43 @@ async function handleCheckoutCompleted(
   await providerRef.update(updateData);
 
   console.log(`[STRIPE-WEBHOOK] Provider ${providerId} subscription activated (${activeMemberCount} active members)`);
+
+  // Fire-and-forget: send welcome email
+  try {
+    const providerEmail = existingData?.email || existingData?.contactEmail;
+    const providerDisplayName = existingData?.businessName || existingData?.name || 'Professionnel';
+    if (providerEmail) {
+      const PLAN_FEATURES: Record<string, string[]> = {
+        Pro: [
+          'Réservations illimitées, 0% de commission',
+          'Votre vitrine en ligne professionnelle',
+          'Rappels automatiques email et push',
+          'Agenda accessible partout, 24h/24',
+          'Prêt en 5 minutes, sans formation',
+        ],
+        Studio: [
+          'Jusqu\'à 5 agendas synchronisés',
+          '0% de commission, même en équipe',
+          'Assignation des prestations par membre',
+          'Multi-lieux (jusqu\'à 5 adresses)',
+          'Page publique d\'équipe professionnelle',
+          'Tout le plan Pro inclus',
+        ],
+      };
+
+      const planDisplayName = plan === 'team' ? 'Studio' : 'Pro';
+      const planFeatures = PLAN_FEATURES[planDisplayName] || PLAN_FEATURES.Pro;
+
+      sendWelcomeEmail({
+        providerEmail,
+        providerName: providerDisplayName,
+        planName: planDisplayName,
+        planFeatures,
+      }).catch((err) => console.error('[STRIPE-WEBHOOK] Welcome email error:', err));
+    }
+  } catch (welcomeErr) {
+    console.error('[STRIPE-WEBHOOK] Welcome email error:', welcomeErr);
+  }
 }
 
 async function handleInvoicePaid(
@@ -196,12 +247,11 @@ async function handleInvoicePaid(
 ) {
   console.log('[STRIPE-WEBHOOK] invoice.paid');
 
-  // In Stripe SDK v20+ (API 2025-03-31), invoice.subscription type changed.
-  // Cast through any for compatibility.
-  const subscriptionId = (invoice as any).subscription as string;
-  const customerId = invoice.customer as string;
+  // invoice.subscription / invoice.customer can be strings OR expanded objects
+  const subscriptionId = extractId((invoice as any).subscription);
+  const customerId = extractId(invoice.customer as any);
 
-  console.log(`[STRIPE-WEBHOOK] subscriptionId: ${subscriptionId}`);
+  console.log(`[STRIPE-WEBHOOK] subscriptionId: ${subscriptionId} (raw type: ${typeof (invoice as any).subscription})`);
   console.log(`[STRIPE-WEBHOOK] customerId: ${customerId}`);
 
   if (!subscriptionId) {
@@ -379,4 +429,116 @@ async function handleSubscriptionDeleted(
   });
 
   console.log(`[STRIPE-WEBHOOK] Provider ${providerId} subscription deleted - profile unpublished`);
+}
+
+// ---------------------------------------------------------------------------
+// Welcome Email Helper (standalone — cannot import from functions package)
+// ---------------------------------------------------------------------------
+
+async function sendWelcomeEmail(data: {
+  providerEmail: string;
+  providerName: string;
+  planName: string;
+  planFeatures: string[];
+}): Promise<void> {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey) {
+    console.warn('[STRIPE-WEBHOOK] RESEND_API_KEY not set, skipping welcome email');
+    return;
+  }
+
+  const resend = new Resend(resendApiKey);
+  const isPro = data.planName === 'Pro';
+  const themeColor = isPro ? '#3b82f6' : '#8b5cf6';
+  const themeBg = isPro ? '#eff6ff' : '#f5f3ff';
+  const themeBorder = isPro ? '#bfdbfe' : '#c4b5fd';
+  const tierLabel = isPro ? 'Indépendant' : 'Équipe';
+
+  const featuresHtml = data.planFeatures
+    .map(f => `<tr><td style="padding: 6px 0; font-size: 14px; color: #18181b;"><span style="color: #16a34a; font-weight: bold; margin-right: 8px;">&#10003;</span> ${f}</td></tr>`)
+    .join('');
+
+  const featuresText = data.planFeatures.map(f => `- ${f}`).join('\n');
+
+  const appName = 'Opatam';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
+  const logoUrl = 'https://firebasestorage.googleapis.com/v0/b/opatam-da04b.appspot.com/o/assets%2Flogos%2Flogo-email.png?alt=media';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" style="max-width: 480px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <tr>
+                <td style="padding: 32px 32px 24px; text-align: center;">
+                  <img src="${logoUrl}" alt="${appName}" style="max-height: 48px; max-width: 200px;" />
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0 32px 24px;">
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.providerName},</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Merci d'avoir choisi <strong>${appName}</strong> ! Votre abonnement <strong style="color: ${themeColor};">${data.planName}</strong> est désormais actif.</p>
+                  <div style="background-color: ${themeBg}; border: 1px solid ${themeBorder}; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: ${themeColor}; text-transform: uppercase; letter-spacing: 0.5px;">Votre plan</p>
+                    <p style="margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #18181b;">${data.planName} <span style="font-size: 14px; font-weight: 400; color: #71717a;">&mdash; ${tierLabel}</span></p>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      ${featuresHtml}
+                    </table>
+                  </div>
+                  <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">Tout est prêt pour accueillir vos premiers clients. Configurez vos disponibilités, ajoutez vos prestations et partagez votre page de réservation.</p>
+                  <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${appUrl}/pro/calendrier" style="display: inline-block; padding: 14px 32px; background-color: ${themeColor}; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Accéder à mon espace</a></td></tr></table>
+                  <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center;"><a href="${appUrl}/pro/parametres?tab=abonnement" style="color: ${themeColor}; text-decoration: underline;">Gérer mon abonnement</a></p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>L'équipe ${appName}</strong></p>
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appName}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Bonjour ${data.providerName},
+
+Merci d'avoir choisi ${appName} ! Votre abonnement ${data.planName} est désormais actif.
+
+Votre plan : ${data.planName} — ${tierLabel}
+${featuresText}
+
+Tout est prêt pour accueillir vos premiers clients.
+
+Accéder à mon espace : ${appUrl}/pro/calendrier
+Gérer mon abonnement : ${appUrl}/pro/parametres?tab=abonnement
+
+À bientôt,
+L'équipe ${appName}
+  `.trim();
+
+  const { error } = await resend.emails.send({
+    from: 'Opatam <noreply@kamerleontech.com>',
+    to: data.providerEmail,
+    subject: `Bienvenue chez ${appName} — Plan ${data.planName} activé !`,
+    html,
+    text,
+  });
+
+  if (error) {
+    console.error('[STRIPE-WEBHOOK] Resend welcome email error:', error);
+  } else {
+    console.log(`[STRIPE-WEBHOOK] Welcome email sent to ${data.providerEmail}`);
+  }
 }

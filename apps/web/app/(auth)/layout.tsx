@@ -1,21 +1,21 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { LogoWhite } from '@/components/ui';
 import {
-  Calendar,
-  Clock,
   BadgePercent,
-  ShieldCheck,
-  MapPin,
-  Scissors,
+  Calendar,
   CalendarCheck,
-  Rocket,
+  Clock,
   Gift,
+  MapPin,
+  Rocket,
+  Scissors,
+  ShieldCheck,
   Sparkles,
 } from 'lucide-react';
-import { LogoWhite } from '@/components/ui';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 // Step-based content for register wizard
 const REGISTER_STEP_CONTENT = [
@@ -51,7 +51,7 @@ const REGISTER_STEP_CONTENT = [
       },
       {
         icon: Calendar,
-        title: 'Page personnalisee',
+        title: 'Page personnalisée',
         description: 'Votre vitrine en ligne',
       },
       {
@@ -72,8 +72,8 @@ const REGISTER_STEP_CONTENT = [
       },
       {
         icon: Clock,
-        title: 'Durees flexibles',
-        description: 'Adaptees a vos besoins',
+        title: 'Durées flexibles',
+        description: 'Adaptées à vos besoins',
       },
       {
         icon: BadgePercent,
@@ -84,38 +84,38 @@ const REGISTER_STEP_CONTENT = [
   },
   {
     // Step 4 - Availability
-    title: 'Gardez le controle de votre agenda',
+    title: 'Gardez le contrôle de votre agenda',
     benefits: [
       {
         icon: CalendarCheck,
         title: 'Horaires flexibles',
-        description: 'Vous decidez quand',
+        description: 'Vous décidez quand',
       },
       {
         icon: Clock,
-        title: 'Mise a jour instantanee',
-        description: 'Modifiez a tout moment',
+        title: 'Mise à jour instantanée',
+        description: 'Modifiez à tout moment',
       },
       {
         icon: Sparkles,
-        title: 'Zero conflit',
-        description: 'Fini les doubles reservations',
+        title: 'Zéro conflit',
+        description: 'Fini les doubles réservations',
       },
     ],
   },
   {
     // Step 5 - Preview
-    title: 'Pret a vous lancer ?',
+    title: 'Prêt à vous lancer ?',
     benefits: [
       {
         icon: Rocket,
-        title: 'Demarrage rapide',
+        title: 'Démarrage rapide',
         description: 'En ligne en 2 minutes',
       },
       {
         icon: Sparkles,
-        title: 'Modifiable a tout moment',
-        description: 'Evoluez avec votre activite',
+        title: 'Modifiable à tout moment',
+        description: 'Évoluez avec votre activité',
       },
       {
         icon: BadgePercent,
@@ -130,7 +130,7 @@ const REGISTER_STEP_CONTENT = [
     benefits: [
       {
         icon: Gift,
-        title: '7 jours offerts',
+        title: '30 jours offerts',
         description: "Testez sans limite",
       },
       {
@@ -250,7 +250,7 @@ function InfoPanel({ isRight, registerStep }: InfoPanelProps) {
             <ShieldCheck className="w-4 h-4" />
           </div>
           <span className="text-sm text-primary-50">
-            Connexion securisee - Vos donnees sont protegees
+            Connexion sécurisée - Vos données sont protégées
           </span>
         </div>
       </div>

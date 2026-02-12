@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!memberName || !memberEmail || !accessCode || !businessName) {
       return NextResponse.json(
-        { message: 'Donnees manquantes' },
+        { message: 'Données manquantes' },
         { status: 400 }
       );
     }
@@ -41,14 +41,14 @@ export async function POST(request: NextRequest) {
     const { error } = await resend.emails.send({
       from: emailConfig.from,
       to: memberEmail,
-      subject: `Votre code d'acces planning - ${businessName}`,
+      subject: `Votre code d'accès planning - ${businessName}`,
       html: `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Votre code d'acces</title>
+          <title>Votre code d'accès</title>
         </head>
         <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
           <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
                       <!-- Code box -->
                       <div style="background-color: #f4f4f5; border-radius: 8px; padding: 24px; text-align: center; margin-bottom: 24px;">
                         <p style="margin: 0 0 8px; font-size: 14px; color: #71717a;">
-                          Votre code d'acces
+                          Votre code d'accès
                         </p>
                         <p style="margin: 0; font-size: 28px; font-weight: 700; font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace; letter-spacing: 2px; color: #18181b;">
                           ${accessCode}
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
                         <tr>
                           <td align="center">
                             <a href="${appConfig.url}/planning" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">
-                              Acceder a mon planning
+                              Accéder à mon planning
                             </a>
                           </td>
                         </tr>
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
                   <tr>
                     <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
                       <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">
-                        A bientot,<br>
+                        À bientôt,<br>
                         <strong>${businessName}</strong>
                       </p>
                     </td>
@@ -110,8 +110,8 @@ export async function POST(request: NextRequest) {
 
                 <!-- Footer text -->
                 <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">
-                  Cet email a ete envoye automatiquement par ${appConfig.name}.<br>
-                  Si vous n'etes pas concerne, veuillez ignorer ce message.
+                  Cet email a été envoyé automatiquement par ${appConfig.name}.<br>
+                  Si vous n'êtes pas concerné, veuillez ignorer ce message.
                 </p>
               </td>
             </tr>
@@ -124,11 +124,11 @@ Bonjour ${memberName},
 
 Vous pouvez consulter votre planning sur ${appConfig.name}.
 
-Votre code d'acces : ${accessCode}
+Votre code d'accès : ${accessCode}
 
 Rendez-vous sur : ${appConfig.url}/planning
 
-A bientot,
+À bientôt,
 ${businessName}
       `.trim(),
     });

@@ -10,6 +10,8 @@ import {
   Input,
   Textarea,
   Checkbox,
+  AddressAutocomplete,
+  type AddressSuggestion,
 } from '@/components/ui';
 import { Loader2, Trash2, Building2, Car } from 'lucide-react';
 import type { Location, LocationType } from '@booking-app/shared';
@@ -33,6 +35,7 @@ export interface LocationFormData {
   isDefault: boolean;
   type: LocationType;
   travelRadius: number | null;
+  geopoint?: { latitude: number; longitude: number } | null;
 }
 
 export function LocationModal({
@@ -130,21 +133,32 @@ export function LocationModal({
     setErrors((prev) => ({ ...prev, travelRadius: '' }));
   };
 
+  const handleAddressSelect = (suggestion: AddressSuggestion) => {
+    setFormData((prev) => ({
+      ...prev,
+      address: suggestion.label,
+      postalCode: suggestion.postcode,
+      city: suggestion.city,
+      geopoint: suggestion.coordinates,
+    }));
+    setErrors((prev) => ({ ...prev, address: '', postalCode: '', city: '' }));
+  };
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name?.trim()) {
       newErrors.name = 'Le nom est requis';
     } else if (formData.name.length < 2) {
-      newErrors.name = 'Le nom doit contenir au moins 2 caracteres';
+      newErrors.name = 'Le nom doit contenir au moins 2 caractères';
     }
 
-    // Address required only for fixed type
+    // Address required only for fixed type — must be selected from autocomplete
     if (formData.type === 'fixed') {
       if (!formData.address?.trim()) {
         newErrors.address = "L'adresse est requise";
-      } else if (formData.address.length < 5) {
-        newErrors.address = "L'adresse doit contenir au moins 5 caracteres";
+      } else if (!formData.geopoint) {
+        newErrors.address = 'Veuillez sélectionner une adresse dans la liste';
       }
     }
 
@@ -272,7 +286,7 @@ export function LocationModal({
                 </div>
                 <div className="text-left">
                   <p className={`font-medium ${formData.type === 'mobile' ? 'text-primary-700 dark:text-primary-300' : 'text-gray-900 dark:text-white'}`}>
-                    Deplacement
+                    Déplacement
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     A domicile
@@ -295,11 +309,20 @@ export function LocationModal({
 
           {/* Address - only for fixed type */}
           {formData.type === 'fixed' && (
-            <Input
+            <AddressAutocomplete
               label="Adresse"
-              name="address"
               value={formData.address}
-              onChange={handleChange}
+              onChange={(value) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  address: value,
+                  postalCode: '',
+                  city: '',
+                  geopoint: null,
+                }));
+                setErrors((prev) => ({ ...prev, address: '' }));
+              }}
+              onSelect={handleAddressSelect}
               placeholder="Ex: 12 rue de la Paix"
               error={errors.address}
               required
@@ -312,11 +335,13 @@ export function LocationModal({
               label="Code postal"
               name="postalCode"
               value={formData.postalCode}
-              onChange={handleChange}
+              onChange={formData.type === 'fixed' ? undefined : handleChange}
+              readOnly={formData.type === 'fixed'}
               placeholder="75001"
               error={errors.postalCode}
               required
               maxLength={5}
+              className={formData.type === 'fixed' ? 'bg-gray-50 dark:bg-gray-900 cursor-default' : ''}
             />
 
             <div className="col-span-2">
@@ -324,10 +349,12 @@ export function LocationModal({
                 label={formData.type === 'fixed' ? 'Ville' : 'Zone centrale'}
                 name="city"
                 value={formData.city}
-                onChange={handleChange}
+                onChange={formData.type === 'fixed' ? undefined : handleChange}
+                readOnly={formData.type === 'fixed'}
                 placeholder="Paris"
                 error={errors.city}
                 required
+                className={formData.type === 'fixed' ? 'bg-gray-50 dark:bg-gray-900 cursor-default' : ''}
               />
             </div>
           </div>
@@ -386,9 +413,9 @@ export function LocationModal({
             name="isDefault"
             checked={formData.isDefault}
             onChange={handleCheckboxChange}
-            label="Definir comme lieu principal"
+            label="Définir comme lieu principal"
             disabled={location?.isDefault}
-            description={location?.isDefault ? 'Ce lieu est deja le lieu principal' : undefined}
+            description={location?.isDefault ? 'Ce lieu est déjà le lieu principal' : undefined}
           />
 
           {/* Error message */}
@@ -448,10 +475,10 @@ export function LocationModal({
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {isEditing ? 'Mise a jour...' : 'Creation...'}
+                {isEditing ? 'Mise à jour...' : 'Création...'}
               </>
             ) : isEditing ? (
-              'Mettre a jour'
+              'Mettre à jour'
             ) : (
               'Enregistrer'
             )}

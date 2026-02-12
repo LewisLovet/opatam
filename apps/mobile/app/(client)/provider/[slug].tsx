@@ -32,8 +32,8 @@ import {
   SocialLinks,
   useToast,
 } from '../../../components';
-import { useProvider, useServices, useReviews, useLocations, useNextAvailableDate } from '../../../hooks';
-import type { Service, SocialLinks as SocialLinksType } from '@booking-app/shared';
+import { useProvider, useServices, useServiceCategories, useReviews, useLocations, useNextAvailableDate } from '../../../hooks';
+import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
 // Check if provider has any social links
@@ -41,14 +41,36 @@ function hasSocialLinks(socialLinks: SocialLinksType): boolean {
   return !!(socialLinks.instagram || socialLinks.facebook || socialLinks.tiktok || socialLinks.website);
 }
 
-// Group services (Service type doesn't have category, so we group all together)
-function groupServices(services: WithId<Service>[]): { title: string; services: WithId<Service>[] }[] {
+// Group services by category
+function groupServices(
+  services: WithId<Service>[],
+  categories: WithId<ServiceCategoryType>[],
+): { id: string; title: string; services: WithId<Service>[] }[] {
   if (services.length === 0) return [];
 
-  return [{
-    title: 'Prestations',
-    services,
-  }];
+  // No categories → flat list
+  if (categories.length === 0) {
+    return [{ id: '__all__', title: 'Prestations', services }];
+  }
+
+  const groups: { id: string; title: string; services: WithId<Service>[] }[] = [];
+
+  for (const cat of categories) {
+    const catServices = services.filter((s) => s.categoryId === cat.id);
+    if (catServices.length > 0) {
+      groups.push({ id: cat.id, title: cat.name, services: catServices });
+    }
+  }
+
+  // Uncategorized services
+  const uncategorized = services.filter(
+    (s) => !s.categoryId || !categories.some((c) => c.id === s.categoryId)
+  );
+  if (uncategorized.length > 0) {
+    groups.push({ id: '__other__', title: 'Autres', services: uncategorized });
+  }
+
+  return groups;
 }
 
 export default function ProviderDetailScreen() {
@@ -63,6 +85,7 @@ export default function ProviderDetailScreen() {
 
   // Fetch related data (only when provider is loaded)
   const { services, loading: loadingServices, refresh: refreshServices } = useServices(provider?.id);
+  const { categories, refresh: refreshCategories } = useServiceCategories(provider?.id);
   const { reviews, loading: loadingReviews, refresh: refreshReviews } = useReviews(provider?.id);
   const { locations, refresh: refreshLocations } = useLocations(provider?.id);
   const { formattedDate: nextAvailableFormatted, loading: loadingAvailability, refresh: refreshAvailability } = useNextAvailableDate(provider?.id);
@@ -77,6 +100,7 @@ export default function ProviderDetailScreen() {
     await Promise.all([
       refreshProvider(),
       refreshServices(),
+      refreshCategories(),
       refreshReviews(),
       refreshLocations(),
       refreshAvailability(),
@@ -114,8 +138,8 @@ export default function ProviderDetailScreen() {
   // Get primary location for display
   const primaryLocation = locations[0];
 
-  // Group services
-  const serviceCategories = groupServices(services);
+  // Group services by category
+  const serviceGroups = groupServices(services, categories);
 
   // Get selected service
   const selectedService = services.find((s) => s.id === selectedServiceId);
@@ -297,11 +321,11 @@ export default function ProviderDetailScreen() {
             </Card>
           ) : (
             <View style={{ gap: spacing.lg }}>
-              {serviceCategories.map((category, index) => (
+              {serviceGroups.map((group, index) => (
                 <ServiceCategory
-                  key={index}
-                  title={category.title}
-                  services={category.services.map((s) => ({
+                  key={group.id}
+                  title={group.title}
+                  services={group.services.map((s) => ({
                     id: s.id,
                     name: s.name,
                     description: s.description,
@@ -310,8 +334,8 @@ export default function ProviderDetailScreen() {
                   }))}
                   selectedId={selectedServiceId}
                   onSelectService={handleSelectService}
-                  collapsible
-                  defaultExpanded={index === 0}
+                  collapsible={serviceGroups.length > 1}
+                  defaultExpanded={serviceGroups.length <= 3 || index === 0}
                 />
               ))}
             </View>

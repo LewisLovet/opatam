@@ -53,7 +53,7 @@ const formatDateRange = (start: Date, end: Date): string => {
 };
 
 const formatTimeRange = (startTime: string | null, endTime: string | null): string => {
-  if (!startTime || !endTime) return 'Journee entiere';
+  if (!startTime || !endTime) return 'Journée entière';
   return `${startTime} - ${endTime}`;
 };
 
@@ -149,7 +149,7 @@ export function BlockedSlotsSection({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-            Periodes de fermeture
+            Périodes de fermeture
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Vacances, formations, absences...
@@ -165,7 +165,7 @@ export function BlockedSlotsSection({
       {upcomingSlots.length === 0 ? (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
           <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-          <p>Aucune periode de fermeture prevue</p>
+          <p>Aucune période de fermeture prévue</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -225,7 +225,7 @@ export function BlockedSlotsSection({
             {/* Date range */}
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="Date debut"
+                label="Date début"
                 type="date"
                 value={formData.startDate.toISOString().split('T')[0]}
                 onChange={(e) =>
@@ -253,7 +253,7 @@ export function BlockedSlotsSection({
             {/* All day toggle */}
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Journee entiere
+                Journée entière
               </span>
               <Switch
                 checked={formData.allDay}
@@ -272,7 +272,7 @@ export function BlockedSlotsSection({
             {!formData.allDay && (
               <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="Heure debut"
+                  label="Heure début"
                   type="time"
                   value={formData.startTime || ''}
                   onChange={(e) =>
@@ -315,7 +315,7 @@ export function BlockedSlotsSection({
             {members.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Membre concerne {hasTeams ? '' : '(vous)'}
+                  Membre concerné {hasTeams ? '' : '(vous)'}
                 </label>
                 <select
                   value={formData.memberId}

@@ -53,6 +53,7 @@ export function formatDateFr(date: Date): string {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Europe/Paris',
   });
 }
 
@@ -61,6 +62,7 @@ export function formatTimeFr(date: Date): string {
   return date.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Paris',
   });
 }
 
@@ -580,7 +582,7 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>` : ''}
+                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr><tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                     </table>
@@ -626,7 +628,7 @@ Détails de votre rendez-vous :
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.locationAddress ? `- Adresse : ${data.locationAddress}` : ''}
+${data.locationAddress ? `- Adresse : ${data.locationAddress}\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
@@ -763,7 +765,7 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
                   <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous a été <strong style="color: #2563eb;">modifié</strong>.</p>
                   <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 16px; opacity: 0.8;">
                     <p style="margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Ancien créneau</p>
-                    <p style="margin: 0; font-size: 14px; color: #71717a; text-decoration: line-through;"><span style="text-transform: capitalize;">${data.formattedOldDate}</span> a ${data.formattedOldTime}</p>
+                    <p style="margin: 0; font-size: 14px; color: #71717a; text-decoration: line-through;"><span style="text-transform: capitalize;">${data.formattedOldDate}</span> à ${data.formattedOldTime}</p>
                   </div>
                   <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Nouveau créneau</p>
@@ -773,7 +775,7 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedNewTime} - ${data.formattedNewEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>` : ''}
+                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr><tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                     </table>
@@ -812,7 +814,7 @@ Bonjour ${data.clientName},
 
 Votre rendez-vous a été modifié.
 
-Ancien créneau : ${data.formattedOldDate} a ${data.formattedOldTime}
+Ancien créneau : ${data.formattedOldDate} à ${data.formattedOldTime}
 
 Nouveau créneau :
 - Prestation : ${data.serviceName}
@@ -820,7 +822,7 @@ Nouveau créneau :
 - Heure : ${data.formattedNewTime} - ${data.formattedNewEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.locationAddress ? `- Adresse : ${data.locationAddress}` : ''}
+${data.locationAddress ? `- Adresse : ${data.locationAddress}\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
@@ -880,7 +882,7 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>` : ''}
+                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr><tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                     </table>
@@ -926,7 +928,7 @@ Détails de votre rendez-vous :
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.locationAddress ? `- Adresse : ${data.locationAddress}` : ''}
+${data.locationAddress ? `- Adresse : ${data.locationAddress}\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
@@ -938,5 +940,144 @@ ${data.cancelUrl ? `Annuler le rendez-vous : ${data.cancelUrl}` : ''}
 
 À bientôt,
 ${data.businessName}
+  `.trim();
+}
+
+// ---------------------------------------------------------------------------
+// Welcome / Subscription Email
+// ---------------------------------------------------------------------------
+
+/**
+ * Send welcome email to provider after subscribing to a plan
+ */
+export async function sendWelcomeEmail(data: {
+  providerEmail: string;
+  providerName: string;
+  planName: string; // 'Pro' or 'Studio'
+  planFeatures: string[];
+}): Promise<EmailResult> {
+  console.log('[EMAIL] Sending welcome email to:', data.providerEmail);
+
+  if (!isValidEmail(data.providerEmail)) {
+    console.log('[EMAIL] Invalid email format');
+    return { success: false, error: 'Invalid email format' };
+  }
+
+  try {
+    const isPro = data.planName === 'Pro';
+    const themeColor = isPro ? '#3b82f6' : '#8b5cf6';
+    const themeBg = isPro ? '#eff6ff' : '#f5f3ff';
+    const themeBorder = isPro ? '#bfdbfe' : '#c4b5fd';
+    const tierLabel = isPro ? 'Indépendant' : 'Équipe';
+
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.providerEmail,
+      subject: `Bienvenue chez ${appConfig.name} — Plan ${data.planName} activé !`,
+      html: generateWelcomeHtml({ ...data, isPro, themeColor, themeBg, themeBorder, tierLabel }),
+      text: generateWelcomeText(data),
+    });
+
+    if (error) {
+      console.error('[EMAIL] Resend error:', error);
+      return { success: false, error: String(error) };
+    }
+
+    console.log('[EMAIL] Welcome email sent successfully');
+    return { success: true };
+  } catch (err) {
+    console.error('[EMAIL] Exception sending welcome email:', err);
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+interface WelcomeTemplateData {
+  providerName: string;
+  planName: string;
+  planFeatures: string[];
+  isPro: boolean;
+  themeColor: string;
+  themeBg: string;
+  themeBorder: string;
+  tierLabel: string;
+}
+
+function generateWelcomeHtml(data: WelcomeTemplateData): string {
+  const featuresHtml = data.planFeatures
+    .map(f => `<tr><td style="padding: 6px 0; font-size: 14px; color: #18181b;"><span style="color: #16a34a; font-weight: bold; margin-right: 8px;">&#10003;</span> ${f}</td></tr>`)
+    .join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" style="max-width: 480px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <tr>
+                <td style="padding: 32px 32px 24px; text-align: center;">
+                  <img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height: 48px; max-width: 200px;" />
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0 32px 24px;">
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.providerName},</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Merci d'avoir choisi <strong>${appConfig.name}</strong> ! Votre abonnement <strong style="color: ${data.themeColor};">${data.planName}</strong> est désormais actif.</p>
+                  <div style="background-color: ${data.themeBg}; border: 1px solid ${data.themeBorder}; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: ${data.themeColor}; text-transform: uppercase; letter-spacing: 0.5px;">Votre plan</p>
+                    <p style="margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #18181b;">${data.planName} <span style="font-size: 14px; font-weight: 400; color: #71717a;">&mdash; ${data.tierLabel}</span></p>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      ${featuresHtml}
+                    </table>
+                  </div>
+                  <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">Tout est prêt pour accueillir vos premiers clients. Configurez vos disponibilités, ajoutez vos prestations et partagez votre page de réservation.</p>
+                  <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${appConfig.url}/pro/calendrier" style="display: inline-block; padding: 14px 32px; background-color: ${data.themeColor}; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Accéder à mon espace</a></td></tr></table>
+                  <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center;"><a href="${appConfig.url}/pro/parametres?tab=abonnement" style="color: ${data.themeColor}; text-decoration: underline;">Gérer mon abonnement</a></p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>L'équipe ${appConfig.name}</strong></p>
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+function generateWelcomeText(data: {
+  providerName: string;
+  planName: string;
+  planFeatures: string[];
+}): string {
+  const isPro = data.planName === 'Pro';
+  const tierLabel = isPro ? 'Indépendant' : 'Équipe';
+  const featuresText = data.planFeatures.map(f => `- ${f}`).join('\n');
+
+  return `
+Bonjour ${data.providerName},
+
+Merci d'avoir choisi ${appConfig.name} ! Votre abonnement ${data.planName} est désormais actif.
+
+Votre plan : ${data.planName} — ${tierLabel}
+${featuresText}
+
+Tout est prêt pour accueillir vos premiers clients.
+
+Accéder à mon espace : ${appConfig.url}/pro/calendrier
+Gérer mon abonnement : ${appConfig.url}/pro/parametres?tab=abonnement
+
+À bientôt,
+L'équipe ${appConfig.name}
   `.trim();
 }

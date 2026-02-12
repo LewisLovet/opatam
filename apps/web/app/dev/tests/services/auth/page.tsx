@@ -18,7 +18,7 @@ export default function AuthServiceTestPage() {
   const [registerDisplayName, setRegisterDisplayName] = useState('Test User');
   const [registerPhone, setRegisterPhone] = useState('0612345678');
 
-  // Form states - Register Provider (simplifie: juste auth, pas de business info)
+  // Form states - Register Provider (simplifié : juste auth, pas de business info)
   const [providerEmail, setProviderEmail] = useState('provider@example.com');
   const [providerPassword, setProviderPassword] = useState('test123');
   const [providerConfirmPassword, setProviderConfirmPassword] = useState('test123');
@@ -68,7 +68,7 @@ export default function AuthServiceTestPage() {
         phone: registerPhone || undefined,
       });
       return {
-        message: 'Client inscrit avec succes',
+        message: 'Client inscrit avec succès',
         userId: result.user.id,
         displayName: result.user.displayName,
         role: result.user.role,
@@ -86,13 +86,13 @@ export default function AuthServiceTestPage() {
         phone: providerPhone,
       });
       return {
-        message: 'Provider inscrit avec succes (User cree, pas encore de Provider document)',
+        message: 'Provider inscrit avec succès (User créé, pas encore de Provider document)',
         userId: result.user.id,
         displayName: result.user.displayName,
         role: result.user.role,
         providerId: result.user.providerId, // null car pas encore de Provider document
         firebaseUid: result.credential.user.uid,
-        nextStep: 'Utiliser providerService.createProvider() pour creer le Provider document (onboarding)',
+        nextStep: 'Utiliser providerService.createProvider() pour créer le Provider document (onboarding)',
       };
     });
 
@@ -103,7 +103,7 @@ export default function AuthServiceTestPage() {
         password: loginPassword,
       });
       return {
-        message: 'Connexion reussie',
+        message: 'Connexion réussie',
         userId: result.user.id,
         role: result.user.role,
         displayName: result.user.displayName,
@@ -112,38 +112,26 @@ export default function AuthServiceTestPage() {
       };
     });
 
-  const handleLoginWithGoogle = () =>
-    executeAction('LOGIN GOOGLE', async () => {
-      const result = await authService.loginWithGoogle();
-      return {
-        message: 'Connexion Google reussie',
-        userId: result.user.id,
-        role: result.user.role,
-        isNewUser: result.isNewUser,
-        firebaseUid: result.credential.user.uid,
-      };
-    });
-
   const handleLogout = () =>
     executeAction('LOGOUT', async () => {
       await authService.logout();
-      return { message: 'Deconnexion reussie' };
+      return { message: 'Déconnexion réussie' };
     });
 
   const handleResetPassword = () =>
     executeAction('RESET PASSWORD', async () => {
       await authService.resetPassword(resetEmail);
-      return { message: `Email de reinitialisation envoye a ${resetEmail}` };
+      return { message: `Email de réinitialisation envoyé à ${resetEmail}` };
     });
 
   const handleGetCurrentUser = () =>
     executeAction('GET CURRENT USER', async () => {
       const user = await authService.getCurrentUser();
       if (!user) {
-        return { message: 'Aucun utilisateur connecte' };
+        return { message: 'Aucun utilisateur connecté' };
       }
       return {
-        message: 'Utilisateur trouve',
+        message: 'Utilisateur trouvé',
         user,
       };
     });
@@ -151,15 +139,15 @@ export default function AuthServiceTestPage() {
   const handleCheckOnboarding = () =>
     executeAction('CHECK ONBOARDING', async () => {
       if (!currentUser) {
-        throw new Error('Aucun utilisateur connecte');
+        throw new Error('Aucun utilisateur connecté');
       }
       const hasCompleted = await authService.hasCompletedProviderOnboarding(currentUser.uid);
       return {
         userId: currentUser.uid,
         hasCompletedOnboarding: hasCompleted,
         message: hasCompleted
-          ? 'Onboarding complete (Provider document existe)'
-          : 'Onboarding non complete (Provider document manquant)',
+          ? 'Onboarding complété (Provider document existe)'
+          : 'Onboarding non complété (Provider document manquant)',
       };
     });
 
@@ -170,7 +158,7 @@ export default function AuthServiceTestPage() {
           Test Auth Service
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations d&apos;authentification: inscription, connexion, deconnexion.
+          Test des opérations d&apos;authentification : inscription, connexion, déconnexion.
         </p>
       </div>
 
@@ -180,7 +168,7 @@ export default function AuthServiceTestPage() {
           title="Utilisateur actuel"
           action={
             <Badge variant={currentUser ? 'success' : 'default'}>
-              {currentUser ? 'Connecte' : 'Deconnecte'}
+              {currentUser ? 'Connecté' : 'Déconnecté'}
             </Badge>
           }
         />
@@ -192,7 +180,7 @@ export default function AuthServiceTestPage() {
             </div>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Aucun utilisateur connecte
+              Aucun utilisateur connecté
             </p>
           )}
         </CardBody>
@@ -218,7 +206,7 @@ export default function AuthServiceTestPage() {
                 setRegisterPassword(e.target.value);
                 setRegisterConfirmPassword(e.target.value);
               }}
-              placeholder="Min 6 caracteres"
+              placeholder="Min 6 caractères"
             />
             <Input
               label="Confirmer mot de passe"
@@ -234,7 +222,7 @@ export default function AuthServiceTestPage() {
               placeholder="Test User"
             />
             <Input
-              label="Telephone (optionnel)"
+              label="Téléphone (optionnel)"
               value={registerPhone}
               onChange={(e) => setRegisterPhone(e.target.value)}
               placeholder="0612345678"
@@ -256,11 +244,11 @@ export default function AuthServiceTestPage() {
       <Card>
         <CardHeader
           title="Inscription Provider"
-          action={<Badge variant="warning">Etape 1 seulement</Badge>}
+          action={<Badge variant="warning">Étape 1 seulement</Badge>}
         />
         <CardBody>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Cree uniquement le User avec role &quot;provider&quot;. Le Provider document est cree a l&apos;onboarding.
+            Crée uniquement le User avec rôle &quot;provider&quot;. Le Provider document est créé à l&apos;onboarding.
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Input
@@ -278,7 +266,7 @@ export default function AuthServiceTestPage() {
                 setProviderPassword(e.target.value);
                 setProviderConfirmPassword(e.target.value);
               }}
-              placeholder="Min 6 caracteres"
+              placeholder="Min 6 caractères"
             />
             <Input
               label="Confirmer mot de passe"
@@ -294,7 +282,7 @@ export default function AuthServiceTestPage() {
               placeholder="Mon Salon"
             />
             <Input
-              label="Telephone"
+              label="Téléphone"
               value={providerPhone}
               onChange={(e) => setProviderPhone(e.target.value)}
               placeholder="0612345678"
@@ -315,7 +303,7 @@ export default function AuthServiceTestPage() {
               loading={loading && lastAction === 'CHECK ONBOARDING'}
               disabled={!currentUser}
             >
-              Verifier Onboarding
+              Vérifier Onboarding
             </Button>
           </div>
         </CardBody>
@@ -350,25 +338,18 @@ export default function AuthServiceTestPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={handleLoginWithGoogle}
-              loading={loading && lastAction === 'LOGIN GOOGLE'}
-            >
-              Connexion Google
-            </Button>
-            <Button
-              variant="outline"
               onClick={handleLogout}
               loading={loading && lastAction === 'LOGOUT'}
               disabled={!currentUser}
             >
-              Deconnexion
+              Déconnexion
             </Button>
             <Button
               variant="ghost"
               onClick={handleGetCurrentUser}
               loading={loading && lastAction === 'GET CURRENT USER'}
             >
-              Verifier session
+              Vérifier session
             </Button>
           </div>
         </CardBody>
@@ -401,7 +382,7 @@ export default function AuthServiceTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -422,7 +403,7 @@ export default function AuthServiceTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

@@ -13,7 +13,7 @@ export function SeedStats({ stats }: SeedStatsProps) {
     { label: 'Services', value: stats.servicesCreated, icon: Scissors },
     { label: 'Membres', value: stats.membersCreated, icon: User },
     { label: 'Locations', value: stats.locationsCreated, icon: MapPin },
-    { label: 'Disponibilites', value: stats.availabilitiesCreated, icon: Calendar },
+    { label: 'Disponibilités', value: stats.availabilitiesCreated, icon: Calendar },
   ];
 
   const hasData = Object.values(stats).some(v => v > 0);
@@ -25,7 +25,7 @@ export function SeedStats({ stats }: SeedStatsProps) {
   return (
     <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
       <h3 className="text-sm font-medium text-green-800 dark:text-green-200 mb-3">
-        Donnees creees
+        Données créées
       </h3>
       <div className="grid grid-cols-5 gap-4">
         {items.map((item) => {

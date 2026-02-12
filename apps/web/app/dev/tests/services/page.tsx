@@ -7,37 +7,37 @@ const serviceTests = [
   {
     href: '/dev/tests/services/auth',
     title: 'Auth Service',
-    description: 'Test inscription client/provider, connexion email/Google, deconnexion, reset password',
-    tests: ['registerClient', 'registerProvider', 'login', 'loginWithGoogle', 'logout', 'resetPassword'],
+    description: 'Test inscription client/provider, connexion email, déconnexion, reset password',
+    tests: ['registerClient', 'registerProvider', 'login', 'logout', 'resetPassword'],
   },
   {
     href: '/dev/tests/services/provider',
     title: 'Provider Service',
-    description: 'Test creation/modification provider, publication, generation de slug unique',
+    description: 'Test création/modification provider, publication, génération de slug unique',
     tests: ['createProvider', 'updateProvider', 'publishProvider', 'checkPublishRequirements', 'generateSlug'],
   },
   {
     href: '/dev/tests/services/members',
     title: 'Members Service',
-    description: 'Test creation membre avec code acces, suppression avec verification reservations',
+    description: 'Test création membre avec code accès, suppression avec vérification réservations',
     tests: ['createMember', 'generateAccessCode', 'deleteMember (check bookings)'],
   },
   {
     href: '/dev/tests/services/catalog',
     title: 'Catalog Service (Prestations)',
-    description: 'Test creation/modification prestations, duplication, filtrage par lieu/membre/prix',
+    description: 'Test création/modification prestations, duplication, filtrage par lieu/membre/prix',
     tests: ['createService', 'updateService', 'duplicateService', 'deactivate', 'filterByLocation', 'filterByMember'],
   },
   {
     href: '/dev/tests/services/scheduling',
     title: 'Scheduling Service',
-    description: 'Test disponibilites, blocages, calcul creneaux disponibles',
+    description: 'Test disponibilités, blocages, calcul créneaux disponibles',
     tests: ['setAvailability', 'setWeeklySchedule', 'blockPeriod', 'getAvailableSlots', 'isSlotAvailable'],
   },
   {
     href: '/dev/tests/services/bookings',
     title: 'Bookings Service',
-    description: 'Test creation reservation avec verification dispo, confirmation, annulation',
+    description: 'Test création réservation avec vérification dispo, confirmation, annulation',
     tests: ['createBooking', 'confirmBooking', 'cancelBooking', 'cancelByToken', 'completeBooking'],
   },
 ];
@@ -50,8 +50,8 @@ export default function ServicesTestIndexPage() {
           Test des Services (Business Logic)
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Ces pages testent la couche service qui encapsule la logique metier,
-          la validation Zod et les operations multi-repositories.
+          Ces pages testent la couche service qui encapsule la logique métier,
+          la validation Zod et les opérations multi-repositories.
         </p>
       </div>
 
@@ -84,8 +84,8 @@ export default function ServicesTestIndexPage() {
         <CardBody>
           <p className="text-amber-800 dark:text-amber-200 text-sm">
             <strong>Note:</strong> Les services utilisent la validation Zod et peuvent rejeter
-            des donnees invalides. Consultez les schemas dans <code>@booking-app/shared</code>
-            pour connaitre les formats attendus.
+            des données invalides. Consultez les schémas dans <code>@booking-app/shared</code>
+            pour connaître les formats attendus.
           </p>
         </CardBody>
       </Card>

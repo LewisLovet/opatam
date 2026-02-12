@@ -1,10 +1,14 @@
-import { serviceRepository, bookingRepository, providerRepository } from '../repositories';
-import type { Service } from '@booking-app/shared';
+import { serviceRepository, bookingRepository, providerRepository, serviceCategoryRepository } from '../repositories';
+import type { Service, ServiceCategory } from '@booking-app/shared';
 import {
   createServiceSchema,
   updateServiceSchema,
+  createServiceCategorySchema,
+  updateServiceCategorySchema,
   type CreateServiceInput,
   type UpdateServiceInput,
+  type CreateServiceCategoryInput,
+  type UpdateServiceCategoryInput,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 
@@ -27,6 +31,7 @@ export class CatalogService {
       duration: validated.duration,
       price: validated.price,
       bufferTime: validated.bufferTime || 0,
+      categoryId: validated.categoryId ?? null,
       locationIds: validated.locationIds,
       memberIds: validated.memberIds || null,
       isActive: true,
@@ -283,6 +288,7 @@ export class CatalogService {
       duration: service.duration,
       price: service.price,
       bufferTime: service.bufferTime,
+      categoryId: service.categoryId,
       locationIds: service.locationIds,
       memberIds: service.memberIds,
       isActive: false, // Start as inactive
@@ -295,6 +301,73 @@ export class CatalogService {
     }
 
     return newService;
+  }
+
+  // ─── Service Categories ──────────────────────────────────────────
+
+  async createCategory(providerId: string, input: CreateServiceCategoryInput): Promise<WithId<ServiceCategory>> {
+    const validated = createServiceCategorySchema.parse(input);
+
+    const existing = await serviceCategoryRepository.getByProvider(providerId);
+    const sortOrder = existing.length;
+
+    const categoryId = await serviceCategoryRepository.create(providerId, {
+      name: validated.name,
+      sortOrder,
+      isActive: true,
+    });
+
+    const category = await serviceCategoryRepository.getById(providerId, categoryId);
+    if (!category) {
+      throw new Error('Erreur lors de la création de la catégorie');
+    }
+
+    return category;
+  }
+
+  async updateCategory(
+    providerId: string,
+    categoryId: string,
+    input: UpdateServiceCategoryInput
+  ): Promise<void> {
+    const validated = updateServiceCategorySchema.parse(input);
+
+    const category = await serviceCategoryRepository.getById(providerId, categoryId);
+    if (!category) {
+      throw new Error('Catégorie non trouvée');
+    }
+
+    await serviceCategoryRepository.update(providerId, categoryId, validated);
+  }
+
+  async deleteCategory(providerId: string, categoryId: string): Promise<void> {
+    const category = await serviceCategoryRepository.getById(providerId, categoryId);
+    if (!category) {
+      throw new Error('Catégorie non trouvée');
+    }
+
+    // Unassign services from this category
+    const services = await serviceRepository.getByProvider(providerId);
+    const assignedServices = services.filter((s) => s.categoryId === categoryId);
+    await Promise.all(
+      assignedServices.map((s) =>
+        serviceRepository.update(providerId, s.id, { categoryId: null })
+      )
+    );
+
+    await serviceCategoryRepository.delete(providerId, categoryId);
+  }
+
+  async getCategoriesByProvider(providerId: string): Promise<WithId<ServiceCategory>[]> {
+    return serviceCategoryRepository.getByProvider(providerId);
+  }
+
+  async reorderCategories(providerId: string, orderedIds: string[]): Promise<void> {
+    await Promise.all(
+      orderedIds.map((categoryId, index) =>
+        serviceCategoryRepository.update(providerId, categoryId, { sortOrder: index })
+      )
+    );
   }
 
   /**

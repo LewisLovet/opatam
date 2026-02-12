@@ -49,7 +49,7 @@ export function LocationCard({
 
   // Format location info based on type
   const locationInfo = isMobile
-    ? `Deplacement dans un rayon de ${location.travelRadius} km autour de ${location.city}`
+    ? `Déplacement dans un rayon de ${location.travelRadius} km autour de ${location.city}`
     : `${location.address}, ${location.postalCode} ${location.city}`;
 
   return (
@@ -104,7 +104,7 @@ export function LocationCard({
                 disabled={settingDefault}
                 className="mt-3 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors disabled:opacity-50"
               >
-                {settingDefault ? 'Mise a jour...' : 'Definir comme principal'}
+                {settingDefault ? 'Mise à jour...' : 'Définir comme principal'}
               </button>
             )}
           </div>
@@ -115,7 +115,7 @@ export function LocationCard({
               checked={location.isActive}
               onChange={(e) => handleToggle(e.target.checked)}
               disabled={toggling}
-              aria-label={location.isActive ? 'Desactiver' : 'Activer'}
+              aria-label={location.isActive ? 'Désactiver' : 'Activer'}
             />
           </div>
         </div>

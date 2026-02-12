@@ -34,11 +34,11 @@ export default function TestSeedPage() {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Generateur de donnees de test
+            Générateur de données de test
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Generez des providers de test aleatoires avec leurs services, membres, locations et disponibilites.
-            Chaque generation cree des donnees uniques et differentes.
+            Générez des providers de test aléatoires avec leurs services, membres, locations et disponibilités.
+            Chaque génération crée des données uniques et différentes.
           </p>
         </div>
 
@@ -49,11 +49,11 @@ export default function TestSeedPage() {
               <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
               <div>
                 <h3 className="font-medium text-yellow-800 dark:text-yellow-200">
-                  Donnees de test existantes
+                  Données de test existantes
                 </h3>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                  {existingTestProviders.length} provider(s) de test trouve(s) dans la base.
-                  Vous pouvez les supprimer avant d'en creer de nouveaux, ou generer des providers supplementaires.
+                  {existingTestProviders.length} provider(s) de test trouvé(s) dans la base.
+                  Vous pouvez les supprimer avant d'en créer de nouveaux, ou générer des providers supplémentaires.
                 </p>
               </div>
             </div>
@@ -82,15 +82,15 @@ export default function TestSeedPage() {
           <div className="flex items-center gap-2 mb-2">
             <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <h3 className="font-medium text-blue-800 dark:text-blue-200">
-              A savoir
+              À savoir
             </h3>
           </div>
           <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
-            <li>Chaque generation cree des providers <strong>uniques et aleatoires</strong> (noms, villes, services, images...)</li>
-            <li>Les providers de test sont prefixes avec <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">test-seed-</code></li>
-            <li>Les images proviennent de <strong>Unsplash</strong> et sont differentes a chaque generation</li>
+            <li>Chaque génération crée des providers <strong>uniques et aléatoires</strong> (noms, villes, services, images...)</li>
+            <li>Les providers de test sont préfixés avec <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">test-seed-</code></li>
+            <li>Les images proviennent de <strong>Unsplash</strong> et sont différentes à chaque génération</li>
             <li>Le champ <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">nextAvailableSlot</code> reste null - utilisez <strong>recalculateAllProviders</strong> pour le calculer</li>
-            <li>Tous les providers sont crees avec <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">isPublished: true</code></li>
+            <li>Tous les providers sont créés avec <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">isPublished: true</code></li>
           </ul>
         </div>
       </div>

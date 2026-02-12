@@ -95,7 +95,7 @@ export function ReviewsSection({ reviews, rating }: ReviewsSectionProps) {
       ) : (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
           <p className="text-gray-500 dark:text-gray-400">
-            Soyez le premier a donner votre avis !
+            Soyez le premier à donner votre avis !
           </p>
         </div>
       )}

@@ -62,6 +62,16 @@ export type {
   UpdateServiceInput,
 } from './service.schema';
 
+// Service Category schemas
+export {
+  createServiceCategorySchema,
+  updateServiceCategorySchema,
+} from './serviceCategory.schema';
+export type {
+  CreateServiceCategoryInput,
+  UpdateServiceCategoryInput,
+} from './serviceCategory.schema';
+
 // Availability schemas
 export {
   timeSlotSchema,

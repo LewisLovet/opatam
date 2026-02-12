@@ -28,9 +28,9 @@ export const createServiceSchema = z.object({
     .max(120)
     .optional()
     .default(0),
-  category: z
+  categoryId: z
     .string()
-    .max(50)
+    .nullable()
     .optional(),
   locationIds: z
     .array(z.string())
@@ -88,9 +88,9 @@ export const updateServiceSchema = z.object({
     .min(0)
     .max(120)
     .optional(),
-  category: z
+  categoryId: z
     .string()
-    .max(50)
+    .nullable()
     .optional(),
   locationIds: z
     .array(z.string())

@@ -69,7 +69,7 @@ export default function CatalogServiceTestPage() {
       });
       setServiceId(service.id);
       return {
-        message: 'Prestation creee avec succes',
+        message: 'Prestation créée avec succès',
         service: {
           id: service.id,
           name: service.name,
@@ -93,13 +93,13 @@ export default function CatalogServiceTestPage() {
       if (updatePrice) updateData.price = parseInt(updatePrice, 10);
 
       if (Object.keys(updateData).length === 0) {
-        throw new Error('Au moins un champ a modifier');
+        throw new Error('Au moins un champ à modifier');
       }
 
       await catalogService.updateService(providerId, serviceId, updateData);
       const service = await serviceRepository.getById(providerId, serviceId);
       return {
-        message: 'Prestation mise a jour',
+        message: 'Prestation mise à jour',
         service,
       };
     });
@@ -110,7 +110,7 @@ export default function CatalogServiceTestPage() {
       if (!serviceId) throw new Error('Service ID requis');
       await catalogService.deleteService(providerId, serviceId);
       return {
-        message: 'Prestation supprimee',
+        message: 'Prestation supprimée',
         deletedId: serviceId,
       };
     });
@@ -122,7 +122,7 @@ export default function CatalogServiceTestPage() {
       await catalogService.deactivateService(providerId, serviceId);
       const service = await serviceRepository.getById(providerId, serviceId);
       return {
-        message: 'Prestation desactivee',
+        message: 'Prestation désactivée',
         isActive: service?.isActive,
       };
     });
@@ -134,7 +134,7 @@ export default function CatalogServiceTestPage() {
       await catalogService.reactivateService(providerId, serviceId);
       const service = await serviceRepository.getById(providerId, serviceId);
       return {
-        message: 'Prestation reactivee',
+        message: 'Prestation réactivée',
         isActive: service?.isActive,
       };
     });
@@ -145,7 +145,7 @@ export default function CatalogServiceTestPage() {
       if (!serviceId) throw new Error('Service ID requis');
       const newService = await catalogService.duplicateService(providerId, serviceId);
       return {
-        message: 'Prestation dupliquee',
+        message: 'Prestation dupliquée',
         originalId: serviceId,
         newService: {
           id: newService.id,
@@ -161,10 +161,10 @@ export default function CatalogServiceTestPage() {
       if (!serviceId) throw new Error('Service ID requis');
       const service = await catalogService.getById(providerId, serviceId);
       if (!service) {
-        return { message: 'Prestation non trouvee' };
+        return { message: 'Prestation non trouvée' };
       }
       return {
-        message: 'Prestation trouvee',
+        message: 'Prestation trouvée',
         service: {
           ...service,
           priceFormatted: `${(service.price / 100).toFixed(2)}€`,
@@ -262,7 +262,7 @@ export default function CatalogServiceTestPage() {
       await catalogService.addLocation(providerId, serviceId, filterLocationId);
       const service = await serviceRepository.getById(providerId, serviceId);
       return {
-        message: 'Location ajoutee',
+        message: 'Location ajoutée',
         locationIds: service?.locationIds,
       };
     });
@@ -275,7 +275,7 @@ export default function CatalogServiceTestPage() {
       await catalogService.removeLocation(providerId, serviceId, filterLocationId);
       const service = await serviceRepository.getById(providerId, serviceId);
       return {
-        message: 'Location retiree',
+        message: 'Location retirée',
         locationIds: service?.locationIds,
       };
     });
@@ -288,7 +288,7 @@ export default function CatalogServiceTestPage() {
       await catalogService.addMember(providerId, serviceId, filterMemberId);
       const service = await serviceRepository.getById(providerId, serviceId);
       return {
-        message: 'Membre ajoute',
+        message: 'Membre ajouté',
         memberIds: service?.memberIds,
       };
     });
@@ -301,7 +301,7 @@ export default function CatalogServiceTestPage() {
       await catalogService.removeMember(providerId, serviceId, filterMemberId);
       const service = await serviceRepository.getById(providerId, serviceId);
       return {
-        message: 'Membre retire',
+        message: 'Membre retiré',
         memberIds: service?.memberIds,
       };
     });
@@ -313,7 +313,7 @@ export default function CatalogServiceTestPage() {
           Test Catalog Service (Prestations)
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations prestations: creation, modification, activation/desactivation, gestion des locations et membres.
+          Test des opérations prestations: création, modification, activation/désactivation, gestion des locations et membres.
         </p>
       </div>
 
@@ -327,14 +327,14 @@ export default function CatalogServiceTestPage() {
               value={providerId}
               onChange={(e) => setProviderId(e.target.value)}
               placeholder="ID du provider"
-              hint="Requis pour toutes les operations"
+              hint="Requis pour toutes les opérations"
             />
             <Input
               label="Service ID"
               value={serviceId}
               onChange={(e) => setServiceId(e.target.value)}
               placeholder="ID de la prestation"
-              hint="Auto-rempli apres creation"
+              hint="Auto-rempli après création"
             />
           </div>
         </CardBody>
@@ -342,7 +342,7 @@ export default function CatalogServiceTestPage() {
 
       {/* Create Service */}
       <Card>
-        <CardHeader title="Creer une Prestation" />
+        <CardHeader title="Créer une Prestation" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Input
@@ -358,7 +358,7 @@ export default function CatalogServiceTestPage() {
               placeholder="Description"
             />
             <Input
-              label="Duree (minutes)"
+              label="Durée (minutes)"
               type="number"
               value={createDuration}
               onChange={(e) => setCreateDuration(e.target.value)}
@@ -385,7 +385,7 @@ export default function CatalogServiceTestPage() {
               value={createLocationIds}
               onChange={(e) => setCreateLocationIds(e.target.value)}
               placeholder="loc-1, loc-2"
-              hint="Separes par virgule"
+              hint="Séparés par virgule"
             />
           </div>
           <div className="mt-4">
@@ -394,7 +394,7 @@ export default function CatalogServiceTestPage() {
               loading={loading && lastAction === 'CREATE SERVICE'}
               disabled={!providerId}
             >
-              Creer Prestation
+              Créer Prestation
             </Button>
           </div>
         </CardBody>
@@ -418,7 +418,7 @@ export default function CatalogServiceTestPage() {
               placeholder="Laisser vide pour ignorer"
             />
             <Input
-              label="Nouvelle duree"
+              label="Nouvelle durée"
               type="number"
               value={updateDuration}
               onChange={(e) => setUpdateDuration(e.target.value)}
@@ -456,7 +456,7 @@ export default function CatalogServiceTestPage() {
               loading={loading && lastAction === 'GET BY ID'}
               disabled={!providerId || !serviceId}
             >
-              Voir Details
+              Voir Détails
             </Button>
             <Button
               variant="outline"
@@ -464,7 +464,7 @@ export default function CatalogServiceTestPage() {
               loading={loading && lastAction === 'DEACTIVATE SERVICE'}
               disabled={!providerId || !serviceId}
             >
-              Desactiver
+              Désactiver
             </Button>
             <Button
               variant="outline"
@@ -472,7 +472,7 @@ export default function CatalogServiceTestPage() {
               loading={loading && lastAction === 'REACTIVATE SERVICE'}
               disabled={!providerId || !serviceId}
             >
-              Reactiver
+              Réactiver
             </Button>
             <Button
               variant="outline"
@@ -627,7 +627,7 @@ export default function CatalogServiceTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -648,7 +648,7 @@ export default function CatalogServiceTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

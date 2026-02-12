@@ -4,10 +4,8 @@ export { app, getFirebaseApp } from './lib/config';
 // Auth
 export {
   auth,
-  googleProvider,
   signInWithEmail,
   createUserWithEmail,
-  signInWithGoogle,
   signOutUser,
   resetPassword,
   onAuthChange,
@@ -16,7 +14,7 @@ export {
   updateUserPassword,
   reauthenticateUser,
   deleteCurrentUser,
-  GoogleAuthProvider,
+  OAuthProvider,
   signInWithCredential,
   EmailAuthProvider,
   reauthenticateWithCredential,
@@ -105,6 +103,9 @@ export {
   // Service (subcollection)
   ServiceRepository,
   serviceRepository,
+  // Service Category (subcollection)
+  ServiceCategoryRepository,
+  serviceCategoryRepository,
   // Availability (subcollection)
   AvailabilityRepository,
   availabilityRepository,

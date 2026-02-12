@@ -12,7 +12,7 @@ export function ShareButton({ businessName }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
-  const shareText = `Decouvrez ${businessName}`;
+  const shareText = `Découvrez ${businessName}`;
 
   const handleNativeShare = async () => {
     if (navigator.share) {

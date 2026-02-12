@@ -67,8 +67,8 @@ export function ReviewList({
           Aucun avis pour le moment
         </h3>
         <p className="mt-2 text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-          Vos clients pourront laisser un avis apres leur rendez-vous. Les avis vous aident a
-          construire votre reputation.
+          Vos clients pourront laisser un avis après leur rendez-vous. Les avis vous aident à
+          construire votre réputation.
         </p>
       </div>
     );
@@ -82,10 +82,10 @@ export function ReviewList({
           <MessageSquare className="w-8 h-8 text-gray-400 dark:text-gray-500" />
         </div>
         <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-          Aucun avis trouve
+          Aucun avis trouvé
         </h3>
         <p className="mt-2 text-gray-500 dark:text-gray-400">
-          Aucun avis ne correspond aux filtres selectionnes.
+          Aucun avis ne correspond aux filtres sélectionnés.
         </p>
         <button
           onClick={onResetFilters}

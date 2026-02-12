@@ -53,7 +53,7 @@ export default function UsersTestPage() {
         cancellationCount: 0,
         pushTokens: [],
       });
-      return { id, message: 'User cree avec succes' };
+      return { id, message: 'User créé avec succès' };
     });
 
   const handleGetAll = () =>
@@ -66,14 +66,14 @@ export default function UsersTestPage() {
     executeAction('GET BY ID', async () => {
       if (!searchId) throw new Error('ID requis');
       const user = await userRepository.getById(searchId);
-      return user || { message: 'User non trouve' };
+      return user || { message: 'User non trouvé' };
     });
 
   const handleGetByEmail = () =>
     executeAction('GET BY EMAIL', async () => {
       if (!searchEmail) throw new Error('Email requis');
       const user = await userRepository.getByEmail(searchEmail);
-      return user || { message: 'User non trouve' };
+      return user || { message: 'User non trouvé' };
     });
 
   const handleUpdate = () =>
@@ -81,14 +81,14 @@ export default function UsersTestPage() {
       if (!updateId) throw new Error('ID requis');
       if (!updateName) throw new Error('Nouveau nom requis');
       await userRepository.update(updateId, { displayName: updateName });
-      return { message: 'User mis a jour avec succes', id: updateId };
+      return { message: 'User mis à jour avec succès', id: updateId };
     });
 
   const handleDelete = () =>
     executeAction('DELETE', async () => {
       if (!deleteId) throw new Error('ID requis');
       await userRepository.delete(deleteId);
-      return { message: 'User supprime avec succes', id: deleteId };
+      return { message: 'User supprimé avec succès', id: deleteId };
     });
 
   return (
@@ -98,13 +98,13 @@ export default function UsersTestPage() {
           Test Users Repository
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations CRUD sur la collection users.
+          Test des opérations CRUD sur la collection users.
         </p>
       </div>
 
       {/* Create */}
       <Card>
-        <CardHeader title="Creer un User" />
+        <CardHeader title="Créer un User" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-3">
             <Input
@@ -120,7 +120,7 @@ export default function UsersTestPage() {
               placeholder="Test User"
             />
             <Input
-              label="Telephone"
+              label="Téléphone"
               value={createPhone}
               onChange={(e) => setCreatePhone(e.target.value)}
               placeholder="0612345678"
@@ -128,7 +128,7 @@ export default function UsersTestPage() {
           </div>
           <div className="mt-4">
             <Button onClick={handleCreate} loading={loading && lastAction === 'CREATE'}>
-              Creer User
+              Créer User
             </Button>
           </div>
         </CardBody>
@@ -218,7 +218,7 @@ export default function UsersTestPage() {
         <CardBody>
           <div className="flex gap-3 items-end">
             <Input
-              label="ID du User a supprimer"
+              label="ID du User à supprimer"
               value={deleteId}
               onChange={(e) => setDeleteId(e.target.value)}
               placeholder="ID"
@@ -239,7 +239,7 @@ export default function UsersTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -260,7 +260,7 @@ export default function UsersTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

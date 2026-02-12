@@ -1,13 +1,13 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithCredential,
   signOut,
   sendPasswordResetEmail,
-  GoogleAuthProvider,
   type UserCredential,
+  type AuthCredential,
 } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/auth';
+import { auth } from '../lib/auth';
 import { userRepository } from '../repositories';
 import type { User } from '@booking-app/shared';
 import {
@@ -62,8 +62,8 @@ export class AuthService {
 
   /**
    * Register a new provider user
-   * SIMPLIFIE: Cree juste le User avec role: 'provider'
-   * Le Provider document est cree APRES, lors de l'onboarding (via providerService.createProvider)
+   * SIMPLIFIÉ: Crée juste le User avec role: 'provider'
+   * Le Provider document est créé APRÈS, lors de l'onboarding (via providerService.createProvider)
    */
   async registerProvider(input: RegisterProviderInput): Promise<{ user: WithId<User>; credential: UserCredential }> {
     // Validate input
@@ -85,7 +85,7 @@ export class AuthService {
       phone: validated.phone || null,
       photoURL: credential.user.photoURL,
       role: 'provider', // Role provider mais pas encore de Provider document
-      providerId: null, // Sera rempli a l'onboarding quand le Provider est cree
+      providerId: null, // Sera rempli à l'onboarding quand le Provider est créé
       city: null,
       birthYear: null,
       gender: null,
@@ -144,24 +144,23 @@ export class AuthService {
   }
 
   /**
-   * Login with Google
+   * Login with a Firebase credential (Apple from native SDKs)
+   * Used by mobile app for native social sign-in
    */
-  async loginWithGoogle(): Promise<{ user: WithId<User>; credential: UserCredential; isNewUser: boolean }> {
-    const credential = await signInWithPopup(auth, googleProvider);
-    const userId = credential.user.uid;
+  async loginWithCredential(credential: AuthCredential): Promise<{ user: WithId<User>; credential: UserCredential; isNewUser: boolean }> {
+    const userCredential = await signInWithCredential(auth, credential);
+    const userId = userCredential.user.uid;
 
-    // Check if user exists
     let user = await userRepository.getById(userId);
     let isNewUser = false;
 
     if (!user) {
-      // Create new user from Google profile
       isNewUser = true;
       await userRepository.createWithId(userId, {
-        email: credential.user.email || '',
-        displayName: credential.user.displayName || 'Utilisateur',
-        phone: credential.user.phoneNumber,
-        photoURL: credential.user.photoURL,
+        email: userCredential.user.email || '',
+        displayName: userCredential.user.displayName || 'Utilisateur',
+        phone: userCredential.user.phoneNumber,
+        photoURL: userCredential.user.photoURL,
         role: 'client',
         providerId: null,
         city: null,
@@ -173,11 +172,11 @@ export class AuthService {
 
       user = await userRepository.getById(userId);
       if (!user) {
-        throw new Error('Erreur lors de la connexion avec Google');
+        throw new Error('Erreur lors de la connexion');
       }
     }
 
-    return { user, credential, isNewUser };
+    return { user, credential: userCredential, isNewUser };
   }
 
   /**

@@ -91,7 +91,7 @@ export default function ProvidersTestPage() {
         searchTokens: [],
         nextAvailableSlot: null,
       });
-      return { id, slug, message: 'Provider cree avec succes' };
+      return { id, slug, message: 'Provider créé avec succès' };
     });
 
   const handleGetAll = () =>
@@ -110,26 +110,26 @@ export default function ProvidersTestPage() {
     executeAction('GET BY ID', async () => {
       if (!searchId) throw new Error('ID requis');
       const provider = await providerRepository.getById(searchId);
-      return provider || { message: 'Provider non trouve' };
+      return provider || { message: 'Provider non trouvé' };
     });
 
   const handleGetBySlug = () =>
     executeAction('GET BY SLUG', async () => {
       if (!searchSlug) throw new Error('Slug requis');
       const provider = await providerRepository.getBySlug(searchSlug);
-      return provider || { message: 'Provider non trouve' };
+      return provider || { message: 'Provider non trouvé' };
     });
 
   const handleGetByUserId = () =>
     executeAction('GET BY USER ID', async () => {
       if (!searchUserId) throw new Error('User ID requis');
       const provider = await providerRepository.getByUserId(searchUserId);
-      return provider || { message: 'Provider non trouve' };
+      return provider || { message: 'Provider non trouvé' };
     });
 
   const handleGetByCategory = () =>
     executeAction('GET BY CATEGORY', async () => {
-      if (!searchCategory) throw new Error('Categorie requise');
+      if (!searchCategory) throw new Error('Catégorie requise');
       const providers = await providerRepository.getByCategory(searchCategory);
       return { count: providers.length, providers };
     });
@@ -139,28 +139,28 @@ export default function ProvidersTestPage() {
       if (!updateId) throw new Error('ID requis');
       if (!updateBusinessName) throw new Error('Nouveau nom requis');
       await providerRepository.update(updateId, { businessName: updateBusinessName });
-      return { message: 'Provider mis a jour avec succes', id: updateId };
+      return { message: 'Provider mis à jour avec succès', id: updateId };
     });
 
   const handleTogglePublished = () =>
     executeAction('TOGGLE PUBLISHED', async () => {
       if (!updateId) throw new Error('ID requis');
       const provider = await providerRepository.getById(updateId);
-      if (!provider) throw new Error('Provider non trouve');
+      if (!provider) throw new Error('Provider non trouvé');
       await providerRepository.togglePublished(updateId, !provider.isPublished);
-      return { message: `Provider ${!provider.isPublished ? 'publie' : 'depublie'}`, id: updateId };
+      return { message: `Provider ${!provider.isPublished ? 'publié' : 'dépublié'}`, id: updateId };
     });
 
   const handleDelete = () =>
     executeAction('DELETE', async () => {
       if (!deleteId) throw new Error('ID requis');
       await providerRepository.delete(deleteId);
-      return { message: 'Provider supprime avec succes', id: deleteId };
+      return { message: 'Provider supprimé avec succès', id: deleteId };
     });
 
   const categoryOptions = [
-    { value: 'beauty', label: 'Beaute & Esthetique' },
-    { value: 'wellness', label: 'Bien-etre & Sante' },
+    { value: 'beauty', label: 'Beauté & Esthétique' },
+    { value: 'wellness', label: 'Bien-être & Santé' },
     { value: 'sport', label: 'Sport & Coaching' },
     { value: 'training', label: 'Formation & Cours' },
   ];
@@ -172,13 +172,13 @@ export default function ProvidersTestPage() {
           Test Providers Repository
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations CRUD sur la collection providers.
+          Test des opérations CRUD sur la collection providers.
         </p>
       </div>
 
       {/* Create */}
       <Card>
-        <CardHeader title="Creer un Provider" />
+        <CardHeader title="Créer un Provider" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-3">
             <Input
@@ -188,7 +188,7 @@ export default function ProvidersTestPage() {
               placeholder="Mon Salon"
             />
             <Select
-              label="Categorie"
+              label="Catégorie"
               value={createCategory}
               onChange={(e) => setCreateCategory(e.target.value)}
               options={categoryOptions}
@@ -205,7 +205,7 @@ export default function ProvidersTestPage() {
           </div>
           <div className="mt-4">
             <Button onClick={handleCreate} loading={loading && lastAction === 'CREATE'}>
-              Creer Provider
+              Créer Provider
             </Button>
           </div>
         </CardBody>
@@ -225,7 +225,7 @@ export default function ProvidersTestPage() {
                 onClick={handleGetPublished}
                 loading={loading && lastAction === 'GET PUBLISHED'}
               >
-                Providers publies
+                Providers publiés
               </Button>
             </div>
 
@@ -282,11 +282,11 @@ export default function ProvidersTestPage() {
 
             <div className="flex gap-3 items-end">
               <Select
-                label="Chercher par Categorie"
+                label="Chercher par Catégorie"
                 value={searchCategory}
                 onChange={(e) => setSearchCategory(e.target.value)}
                 options={categoryOptions}
-                placeholder="Choisir une categorie"
+                placeholder="Choisir une catégorie"
                 className="flex-1"
               />
               <Button
@@ -332,7 +332,7 @@ export default function ProvidersTestPage() {
               onClick={handleTogglePublished}
               loading={loading && lastAction === 'TOGGLE PUBLISHED'}
             >
-              Toggle Publie
+              Toggle Publié
             </Button>
           </div>
         </CardBody>
@@ -344,7 +344,7 @@ export default function ProvidersTestPage() {
         <CardBody>
           <div className="flex gap-3 items-end">
             <Input
-              label="ID du Provider a supprimer"
+              label="ID du Provider à supprimer"
               value={deleteId}
               onChange={(e) => setDeleteId(e.target.value)}
               placeholder="ID"
@@ -365,7 +365,7 @@ export default function ProvidersTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -386,7 +386,7 @@ export default function ProvidersTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

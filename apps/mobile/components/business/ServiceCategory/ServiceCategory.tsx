@@ -60,16 +60,23 @@ export function ServiceCategory({
     <View style={styles.container}>
       <HeaderComponent
         onPress={collapsible ? toggleExpanded : undefined}
-        style={[styles.header, { marginBottom: spacing.md }]}
+        style={[styles.header, { marginBottom: isExpanded ? spacing.md : 0 }]}
       >
-        <Text variant="h3">{title}</Text>
-        {collapsible && (
-          <Ionicons
-            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={colors.textSecondary}
-          />
-        )}
+        <View style={styles.headerLeft}>
+          {collapsible && (
+            <Ionicons
+              name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+              size={18}
+              color={colors.textSecondary}
+            />
+          )}
+          <Text variant="h3">{title}</Text>
+          <View style={[styles.badge, { backgroundColor: colors.border }]}>
+            <Text variant="caption" color="textSecondary" style={{ fontSize: 12, fontWeight: '600' }}>
+              {services.length}
+            </Text>
+          </View>
+        </View>
       </HeaderComponent>
 
       {isExpanded && (
@@ -98,7 +105,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   servicesList: {
     width: '100%',

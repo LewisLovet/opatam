@@ -1,8 +1,8 @@
 /**
  * Server-side Firestore Tracker
  *
- * Compteur simple pour les operations Firestore cote Cloud Functions.
- * Affiche un resume dans les logs a la fin de chaque execution.
+ * Compteur simple pour les opérations Firestore côté Cloud Functions.
+ * Affiche un résumé dans les logs à la fin de chaque exécution.
  */
 
 type OperationType = 'read' | 'write' | 'delete';

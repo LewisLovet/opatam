@@ -34,6 +34,13 @@ export const providerSettingsSchema = z.object({
     .min(0, { message: 'Le délai d\'annulation doit être positif' })
     .max(168, { message: 'Le délai d\'annulation ne peut pas dépasser 168 heures (7 jours)' })
     .default(24),
+  slotInterval: z
+    .number()
+    .int()
+    .min(5, { message: 'L\'intervalle minimum est de 5 minutes' })
+    .max(60, { message: 'L\'intervalle maximum est de 60 minutes' })
+    .default(15)
+    .optional(),
 });
 
 // Create provider schema - MINIMUM requis pour creer un provider

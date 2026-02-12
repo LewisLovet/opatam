@@ -13,6 +13,9 @@ export type { UseProviderResult } from './useProvider';
 export { useServices } from './useServices';
 export type { UseServicesResult } from './useServices';
 
+export { useServiceCategories } from './useServiceCategories';
+export type { UseServiceCategoriesResult } from './useServiceCategories';
+
 export { useReviews } from './useReviews';
 export type { UseReviewsResult } from './useReviews';
 

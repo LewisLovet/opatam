@@ -182,7 +182,7 @@ function CurrentStatusCard() {
             <div className="mt-3 flex items-center gap-2 text-red-600 dark:text-red-400">
               <AlertTriangle className="w-4 h-4" />
               <p className="text-sm font-medium">
-                Votre periode d&apos;essai est terminee
+                Votre période d&apos;essai est terminée
               </p>
             </div>
           )}
@@ -196,7 +196,7 @@ function CurrentStatusCard() {
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Clock className="w-4 h-4" />
               <span>
-                Prochaine echeance : {formatDate(subscription.currentPeriodEnd)}
+                Prochaine échéance : {formatDate(subscription.currentPeriodEnd)}
               </span>
             </div>
           )}
@@ -217,7 +217,7 @@ function CurrentStatusCard() {
         <div className="mt-4 flex items-center gap-2 text-amber-600 dark:text-amber-400">
           <AlertTriangle className="w-4 h-4" />
           <p className="text-sm font-medium">
-            Paiement en attente. Veuillez mettre a jour votre moyen de paiement.
+            Paiement en attente. Veuillez mettre à jour votre moyen de paiement.
           </p>
         </div>
       )}
@@ -227,9 +227,9 @@ function CurrentStatusCard() {
         <div className="mt-4 flex items-center gap-2 text-red-600 dark:text-red-400">
           <XCircle className="w-4 h-4" />
           <p className="text-sm font-medium">
-            Abonnement annule
+            Abonnement annulé
             {subscription?.validUntil && (
-              <>. Acces valide jusqu&apos;au {formatDate(subscription.validUntil)}</>
+              <>. Accès valide jusqu&apos;au {formatDate(subscription.validUntil)}</>
             )}
           </p>
         </div>
@@ -411,7 +411,7 @@ function ChoosePlanSection({
         return;
       }
 
-      setSuccessMessage(`Plan mis a jour vers ${selectedPrice?.planName ?? selectedPrice?.plan}. Les changements seront appliques sous peu.`);
+      setSuccessMessage(`Plan mis à jour vers ${selectedPrice?.planName ?? selectedPrice?.plan}. Les changements seront appliqués sous peu.`);
       onPlanChanged?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');

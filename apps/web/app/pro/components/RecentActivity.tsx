@@ -75,13 +75,13 @@ export function RecentActivity({
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="p-4 sm:px-5 border-b border-gray-200 dark:border-gray-700">
           <h3 className="font-semibold text-gray-900 dark:text-white">
-            Activite recente
+            Activité récente
           </h3>
         </div>
         <div className="p-8 text-center">
           <Clock className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
           <p className="text-gray-500 dark:text-gray-400">
-            Aucune activite recente
+            Aucune activité récente
           </p>
         </div>
       </div>
@@ -92,7 +92,7 @@ export function RecentActivity({
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div className="p-4 sm:px-5 border-b border-gray-200 dark:border-gray-700">
         <h3 className="font-semibold text-gray-900 dark:text-white">
-          Activite recente
+          Activité récente
         </h3>
       </div>
 

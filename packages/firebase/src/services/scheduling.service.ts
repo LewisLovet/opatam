@@ -330,10 +330,11 @@ export class SchedulingService {
       throw new Error('Prestation non trouvée');
     }
 
-    // Get provider settings for buffer time
+    // Get provider settings for buffer time and slot interval
     const provider = await providerRepository.getById(providerId);
     const bufferTime = service.bufferTime || provider?.settings.defaultBufferTime || 0;
     const totalDuration = service.duration + bufferTime;
+    const slotInterval = provider?.settings.slotInterval ?? 15;
 
     const availableSlots: TimeSlotWithDate[] = [];
 
@@ -390,7 +391,8 @@ export class SchedulingService {
             currentDate,
             slot.start,
             slot.end,
-            totalDuration
+            totalDuration,
+            slotInterval
           );
 
           // Filter out blocked and booked slots
@@ -501,7 +503,8 @@ export class SchedulingService {
     date: Date,
     startTime: string,
     endTime: string,
-    slotDuration: number
+    slotDuration: number,
+    slotInterval: number = 15
   ): TimeSlotWithDate[] {
     const slots: TimeSlotWithDate[] = [];
 
@@ -535,8 +538,8 @@ export class SchedulingService {
         endDatetime,
       });
 
-      // Move to next slot (15-minute intervals for typical booking systems)
-      currentMinutes += 15;
+      // Move to next slot
+      currentMinutes += slotInterval;
     }
 
     return slots;

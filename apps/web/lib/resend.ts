@@ -28,7 +28,7 @@ export const emailConfig = {
 // App configuration
 export const appConfig = {
   name: 'Opatam',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.vercel.app',
+  url: process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com',
 } as const;
 
 // Helper to format date in French
@@ -39,6 +39,7 @@ export function formatDateFr(date: Date | string): string {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Europe/Paris',
   });
 }
 
@@ -48,6 +49,7 @@ export function formatTimeFr(date: Date | string): string {
   return dateObj.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Paris',
   });
 }
 
@@ -67,7 +69,7 @@ export function getEmailFooterHtml(businessName: string): string {
     <tr>
       <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
         <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">
-          A bientot,<br>
+          À bientôt,<br>
           <strong>${businessName}</strong>
         </p>
       </td>
@@ -101,8 +103,8 @@ export function getEmailWrapperHtml(content: string): string {
             </table>
             <!-- Disclaimer -->
             <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">
-              Cet email a ete envoye automatiquement par ${appConfig.name}.<br>
-              Si vous n'etes pas concerne, veuillez ignorer ce message.
+              Cet email a été envoyé automatiquement par ${appConfig.name}.<br>
+              Si vous n'êtes pas concerné, veuillez ignorer ce message.
             </p>
           </td>
         </tr>

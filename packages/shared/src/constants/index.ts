@@ -38,8 +38,8 @@ export const SUBSCRIPTION_PLANS = {
   solo: {
     name: 'Pro',
     description: "L'essentiel pour les indépendants. Gérez vos rendez-vous et développez votre activité — sans commission.",
-    monthlyPrice: 1490, // 14,90€ TTC
-    yearlyPrice: 11900, // 119€ TTC (9,92€/mois — économie 33%)
+    monthlyPrice: 1790, // 17,90€ TTC
+    yearlyPrice: 17900, // 179€ TTC (14,92€/mois — économie 17%)
     features: [
       'Réservations illimitées, 0% de commission',
       'Votre vitrine en ligne professionnelle',
@@ -51,10 +51,8 @@ export const SUBSCRIPTION_PLANS = {
   team: {
     name: 'Studio',
     description: 'La solution complète pour les équipes. Coordonnez vos agendas, gérez plusieurs lieux et offrez une expérience pro.',
-    baseMonthlyPrice: 2990, // 29,90€ TTC (inclut 1 membre)
-    memberMonthlyPrice: 990, // +9,90€/membre supplémentaire
+    baseMonthlyPrice: 2990, // 29,90€ TTC
     baseYearlyPrice: 23900, // 239€ TTC/an (19,92€/mois — économie 33%)
-    memberYearlyPrice: 7900, // +79€/membre sup./an (6,58€/mois — économie 34%)
     features: [
       'Jusqu\'à 5 agendas synchronisés',
       '0% de commission, même en équipe',
@@ -115,7 +113,7 @@ export const DAYS_OF_WEEK = [
 export const APP_CONFIG = {
   name: 'OPATAM',
   url: 'https://opatam.com',
-  trialDays: 7,
+  trialDays: 30,
   maxPortfolioPhotos: 10,
   maxMemberPhotoSize: 5 * 1024 * 1024, // 5MB
   reviewDeadlineDays: 14,

@@ -46,7 +46,7 @@ export function MobileBookingBar({ slug, minPrice, businessName }: MobileBooking
             {/* CTA Button */}
             <Link href={`/p/${slug}/reserver`}>
               <Button size="lg" className="px-8 font-semibold">
-                Reserver
+                Réserver
               </Button>
             </Link>
           </div>

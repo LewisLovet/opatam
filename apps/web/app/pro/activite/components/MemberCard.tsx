@@ -68,7 +68,7 @@ export function MemberCard({
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(member.accessCode);
-      toast.success('Code copie dans le presse-papier');
+      toast.success('Code copié dans le presse-papier');
     } catch {
       toast.error('Erreur lors de la copie');
     }
@@ -198,7 +198,7 @@ export function MemberCard({
               checked={member.isActive}
               onChange={(e) => handleToggle(e.target.checked)}
               disabled={toggling}
-              aria-label={member.isActive ? 'Desactiver' : 'Activer'}
+              aria-label={member.isActive ? 'Désactiver' : 'Activer'}
             />
           </div>
         </div>

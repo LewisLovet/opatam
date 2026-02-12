@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       if (activeMemberCount > limits.maxMembers) {
         return NextResponse.json(
           {
-            message: `Vous avez ${activeMemberCount} membre(s) actif(s). Le plan ${getPlanDisplayName(newPlan)} est limite a ${limits.maxMembers}. Desactivez des membres avant de changer.`,
+            message: `Vous avez ${activeMemberCount} membre(s) actif(s). Le plan ${getPlanDisplayName(newPlan)} est limité à ${limits.maxMembers}. Désactivez des membres avant de changer.`,
             code: 'MEMBER_LIMIT_EXCEEDED',
           },
           { status: 400 },
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       if (activeLocationCount > limits.maxLocations) {
         return NextResponse.json(
           {
-            message: `Vous avez ${activeLocationCount} lieu(x) actif(s). Le plan ${getPlanDisplayName(newPlan)} est limite a ${limits.maxLocations}. Desactivez des lieux avant de changer.`,
+            message: `Vous avez ${activeLocationCount} lieu(x) actif(s). Le plan ${getPlanDisplayName(newPlan)} est limité à ${limits.maxLocations}. Désactivez des lieux avant de changer.`,
             code: 'LOCATION_LIMIT_EXCEEDED',
           },
           { status: 400 },
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     if (!subscription || subscription.status === 'canceled') {
       return NextResponse.json(
-        { message: 'Abonnement introuvable ou annule' },
+        { message: 'Abonnement introuvable ou annulé' },
         { status: 400 },
       );
     }
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     const existingItem = subscription.items.data[0];
     if (!existingItem) {
       return NextResponse.json(
-        { message: "Aucun element d'abonnement trouve" },
+        { message: "Aucun élément d'abonnement trouvé" },
         { status: 400 },
       );
     }
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       if (error?.code === 'resource_missing') {
         return NextResponse.json(
           {
-            message: 'Abonnement introuvable sur Stripe. Votre abonnement a peut-etre ete cree dans un autre environnement (test/production). Veuillez re-souscrire.',
+            message: 'Abonnement introuvable sur Stripe. Votre abonnement a peut-être été créé dans un autre environnement (test/production). Veuillez re-souscrire.',
             code: 'SUBSCRIPTION_NOT_FOUND',
           },
           { status: 404 },

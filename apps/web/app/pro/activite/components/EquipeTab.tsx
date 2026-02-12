@@ -171,7 +171,7 @@ export function EquipeTab() {
         // Update service assignments
         await updateServiceMemberAssignments(memberId, data.serviceIds);
 
-        toast.success('Membre mis a jour');
+        toast.success('Membre mis à jour');
       } else {
         // Create member
         const newMember = await memberService.createMember(provider.id, {
@@ -187,7 +187,7 @@ export function EquipeTab() {
         // Update service assignments for new member (already included above, but keep for safety)
         await updateServiceMemberAssignments(memberId, data.serviceIds);
 
-        toast.success('Membre cree');
+        toast.success('Membre créé');
       }
       await fetchData();
     } catch (error) {

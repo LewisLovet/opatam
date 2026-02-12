@@ -289,7 +289,7 @@ export function ThemeSwitcher({ className = '' }: ThemeSwitcherProps) {
       {currentPalette && (
         <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Apercu de la palette : {currentPalette.name}
+            Aperçu de la palette : {currentPalette.name}
           </p>
           <div className="flex gap-1">
             {Object.entries(currentPalette.colors).map(([shade, color]) => (
@@ -312,7 +312,7 @@ export function ThemeSwitcher({ className = '' }: ThemeSwitcherProps) {
       {/* Demo buttons with selected palette */}
       <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          Apercu des composants
+          Aperçu des composants
         </p>
         <div className="flex flex-wrap gap-3">
           <button

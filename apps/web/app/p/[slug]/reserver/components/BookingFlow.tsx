@@ -30,6 +30,12 @@ interface Provider {
   };
 }
 
+interface ServiceCategory {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
+
 interface Service {
   id: string;
   name: string;
@@ -37,6 +43,7 @@ interface Service {
   duration: number;
   price: number;
   bufferTime: number;
+  categoryId?: string | null;
   locationIds: string[];
   memberIds: string[] | null;
 }
@@ -78,6 +85,7 @@ interface TimeSlotWithDate {
 interface BookingFlowProps {
   provider: Provider;
   services: Service[];
+  serviceCategories?: ServiceCategory[];
   locations: Location[];
   members: Member[];
   availabilities: Availability[];
@@ -109,6 +117,7 @@ const initialClientInfo = {
 export function BookingFlow({
   provider,
   services,
+  serviceCategories = [],
   locations,
   members,
   availabilities,
@@ -395,8 +404,8 @@ export function BookingFlow({
       </div>
       )}
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      {/* Main Content — pb-24 on mobile to account for fixed bottom recap bar */}
+      <div className={`max-w-4xl mx-auto px-4 py-6 ${selectedService && currentStep !== 'demo-success' ? 'pb-24 lg:pb-6' : ''}`}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Step Content */}
           <div className="lg:col-span-2">
@@ -409,6 +418,7 @@ export function BookingFlow({
             {currentStep === 'service' && (
               <StepService
                 services={services}
+                categories={serviceCategories}
                 selectedServiceId={state.serviceId}
                 onSelect={handleServiceSelect}
               />
@@ -457,10 +467,10 @@ export function BookingFlow({
                   <CalendarCheck className="w-8 h-8 text-green-600 dark:text-green-400" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  Reservation confirmee !
+                  Réservation confirmée !
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-sm mx-auto">
-                  C&apos;est exactement ce que vos clients verront apres avoir reserve chez vous.
+                  C&apos;est exactement ce que vos clients verront après avoir réservé chez vous.
                 </p>
 
                 {/* Recap */}
@@ -475,7 +485,7 @@ export function BookingFlow({
                         weekday: 'long',
                         day: 'numeric',
                         month: 'long',
-                      })} a {state.slot.start}
+                      })} à {state.slot.start}
                     </p>
                   </div>
                 )}
@@ -486,11 +496,11 @@ export function BookingFlow({
                     <div className="flex items-center gap-2 mb-2">
                       <Sparkles className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                       <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">
-                        Cette page pourrait etre la votre
+                        Cette page pourrait être la vôtre
                       </p>
                     </div>
                     <p className="text-xs text-primary-600/80 dark:text-primary-400/80">
-                      Configurez votre page de reservation en 5 minutes. Vos clients pourront reserver 24h/24.
+                      Configurez votre page de réservation en 5 minutes. Vos clients pourront réserver 24h/24.
                     </p>
                   </div>
 
@@ -509,7 +519,7 @@ export function BookingFlow({
                     href="/p/demo"
                     className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 mt-2"
                   >
-                    ← Retour a la boutique demo
+                    ← Retour à la boutique démo
                   </Link>
                 </div>
               </div>

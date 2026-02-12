@@ -7,9 +7,9 @@ import type { BookingStatus } from '@booking-app/shared';
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'En attente' },
-  { value: 'confirmed', label: 'Confirme' },
-  { value: 'cancelled', label: 'Annule' },
-  { value: 'completed', label: 'Termine' },
+  { value: 'confirmed', label: 'Confirmé' },
+  { value: 'cancelled', label: 'Annulé' },
+  { value: 'completed', label: 'Terminé' },
   { value: 'noshow', label: 'No-show' },
 ];
 
@@ -98,7 +98,7 @@ export default function BookingsTestPage() {
         remindersSent: [],
         reviewRequestSentAt: null,
       });
-      return { id, message: 'Reservation creee avec succes' };
+      return { id, message: 'Réservation créée avec succès' };
     });
 
   const handleGetAll = () =>
@@ -111,7 +111,7 @@ export default function BookingsTestPage() {
     executeAction('GET BY ID', async () => {
       if (!searchId) throw new Error('ID requis');
       const booking = await bookingRepository.getById(searchId);
-      return booking || { message: 'Reservation non trouvee' };
+      return booking || { message: 'Réservation non trouvée' };
     });
 
   const handleGetByProvider = () =>
@@ -140,7 +140,7 @@ export default function BookingsTestPage() {
     executeAction('GET BY TOKEN', async () => {
       if (!searchCancelToken) throw new Error('Token requis');
       const booking = await bookingRepository.getByCancelToken(searchCancelToken);
-      return booking || { message: 'Reservation non trouvee' };
+      return booking || { message: 'Réservation non trouvée' };
     });
 
   const handleGetByStatus = () =>
@@ -176,7 +176,7 @@ export default function BookingsTestPage() {
     executeAction('UPDATE STATUS', async () => {
       if (!updateId) throw new Error('ID requis');
       await bookingRepository.updateStatus(updateId, updateStatus);
-      return { message: `Statut mis a jour: ${updateStatus}`, id: updateId };
+      return { message: `Statut mis à jour : ${updateStatus}`, id: updateId };
     });
 
   const handleCancel = () =>
@@ -184,9 +184,9 @@ export default function BookingsTestPage() {
       if (!updateId) throw new Error('ID requis');
       await bookingRepository.updateStatus(updateId, 'cancelled', {
         cancelledBy: 'provider',
-        cancelReason: 'Annule depuis le test',
+        cancelReason: 'Annulé depuis le test',
       });
-      return { message: 'Reservation annulee', id: updateId };
+      return { message: 'Réservation annulée', id: updateId };
     });
 
   const handleGetStats = () =>
@@ -200,7 +200,7 @@ export default function BookingsTestPage() {
     executeAction('DELETE', async () => {
       if (!searchId) throw new Error('ID requis');
       await bookingRepository.delete(searchId);
-      return { message: 'Reservation supprimee', id: searchId };
+      return { message: 'Réservation supprimée', id: searchId };
     });
 
   return (
@@ -210,7 +210,7 @@ export default function BookingsTestPage() {
           Test Bookings Repository
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations CRUD sur la collection bookings.
+          Test des opérations CRUD sur la collection bookings.
         </p>
       </div>
 
@@ -249,7 +249,7 @@ export default function BookingsTestPage() {
 
       {/* Create */}
       <Card>
-        <CardHeader title="Creer une Reservation" />
+        <CardHeader title="Créer une Réservation" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Input
@@ -265,7 +265,7 @@ export default function BookingsTestPage() {
               placeholder="client@example.com"
             />
             <Input
-              label="Telephone client"
+              label="Téléphone client"
               value={clientPhone}
               onChange={(e) => setClientPhone(e.target.value)}
               placeholder="0612345678"
@@ -289,7 +289,7 @@ export default function BookingsTestPage() {
               loading={loading && lastAction === 'CREATE'}
               disabled={!providerId || !locationId || !serviceId}
             >
-              Creer Reservation
+              Créer Réservation
             </Button>
           </div>
         </CardBody>
@@ -297,7 +297,7 @@ export default function BookingsTestPage() {
 
       {/* Read */}
       <Card>
-        <CardHeader title="Lire des Reservations" />
+        <CardHeader title="Lire des Réservations" />
         <CardBody>
           <div className="space-y-4">
             <div className="flex flex-wrap gap-3">
@@ -353,7 +353,7 @@ export default function BookingsTestPage() {
                 label="Chercher par ID"
                 value={searchId}
                 onChange={(e) => setSearchId(e.target.value)}
-                placeholder="ID de la reservation"
+                placeholder="ID de la réservation"
                 className="flex-1"
               />
               <Button
@@ -444,7 +444,7 @@ export default function BookingsTestPage() {
         <CardBody>
           <div className="flex gap-3 items-end flex-wrap">
             <Input
-              label="ID de la reservation"
+              label="ID de la réservation"
               value={updateId}
               onChange={(e) => setUpdateId(e.target.value)}
               placeholder="ID"
@@ -479,7 +479,7 @@ export default function BookingsTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -500,7 +500,7 @@ export default function BookingsTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

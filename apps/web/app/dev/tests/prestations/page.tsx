@@ -53,12 +53,13 @@ export default function ServicesTestPage() {
         duration: parseInt(createDuration, 10),
         price: parseInt(createPrice, 10),
         bufferTime: 0,
+        categoryId: null,
         locationIds: [createLocationId],
         memberIds: null,
         isActive: true,
         sortOrder: 0,
       });
-      return { id, message: 'Service cree avec succes' };
+      return { id, message: 'Service créé avec succès' };
     });
 
   const handleGetByProvider = () =>
@@ -80,7 +81,7 @@ export default function ServicesTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!searchServiceId) throw new Error('Service ID requis');
       const service = await serviceRepository.getById(providerId, searchServiceId);
-      return service || { message: 'Service non trouve' };
+      return service || { message: 'Service non trouvé' };
     });
 
   const handleGetByLocation = () =>
@@ -109,11 +110,11 @@ export default function ServicesTestPage() {
       if (updatePrice) updateData.price = parseInt(updatePrice, 10);
 
       if (Object.keys(updateData).length === 0) {
-        throw new Error('Au moins un champ a modifier requis');
+        throw new Error('Au moins un champ à modifier requis');
       }
 
       await serviceRepository.update(providerId, updateServiceId, updateData);
-      return { message: 'Service mis a jour avec succes', id: updateServiceId };
+      return { message: 'Service mis à jour avec succès', id: updateServiceId };
     });
 
   const handleToggleActive = () =>
@@ -121,9 +122,9 @@ export default function ServicesTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!updateServiceId) throw new Error('Service ID requis');
       const service = await serviceRepository.getById(providerId, updateServiceId);
-      if (!service) throw new Error('Service non trouve');
+      if (!service) throw new Error('Service non trouvé');
       await serviceRepository.toggleActive(providerId, updateServiceId, !service.isActive);
-      return { message: `Service ${!service.isActive ? 'active' : 'desactive'}`, id: updateServiceId };
+      return { message: `Service ${!service.isActive ? 'activé' : 'désactivé'}`, id: updateServiceId };
     });
 
   const handleDelete = () =>
@@ -131,7 +132,7 @@ export default function ServicesTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!deleteServiceId) throw new Error('Service ID requis');
       await serviceRepository.delete(providerId, deleteServiceId);
-      return { message: 'Service supprime avec succes', id: deleteServiceId };
+      return { message: 'Service supprimé avec succès', id: deleteServiceId };
     });
 
   const handleCount = () =>
@@ -148,7 +149,7 @@ export default function ServicesTestPage() {
           Test Services Repository
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations CRUD sur la sous-collection providers/&#123;id&#125;/services.
+          Test des opérations CRUD sur la sous-collection providers/&#123;id&#125;/services.
         </p>
       </div>
 
@@ -167,7 +168,7 @@ export default function ServicesTestPage() {
 
       {/* Create */}
       <Card>
-        <CardHeader title="Creer un Service" />
+        <CardHeader title="Créer un Service" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Input
@@ -177,7 +178,7 @@ export default function ServicesTestPage() {
               placeholder="Coupe Homme"
             />
             <Input
-              label="Duree (min)"
+              label="Durée (min)"
               type="number"
               value={createDuration}
               onChange={(e) => setCreateDuration(e.target.value)}
@@ -204,7 +205,7 @@ export default function ServicesTestPage() {
               loading={loading && lastAction === 'CREATE'}
               disabled={!providerId}
             >
-              Creer Service
+              Créer Service
             </Button>
           </div>
         </CardBody>
@@ -351,7 +352,7 @@ export default function ServicesTestPage() {
         <CardBody>
           <div className="flex gap-3 items-end">
             <Input
-              label="Service ID a supprimer"
+              label="Service ID à supprimer"
               value={deleteServiceId}
               onChange={(e) => setDeleteServiceId(e.target.value)}
               placeholder="ID"
@@ -373,7 +374,7 @@ export default function ServicesTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -394,7 +395,7 @@ export default function ServicesTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

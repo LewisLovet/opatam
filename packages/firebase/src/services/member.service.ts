@@ -30,7 +30,7 @@ export class MemberService {
         const activeMembers = await memberRepository.getActiveByProvider(providerId);
         if (activeMembers.length >= limits.maxMembers) {
           throw new Error(
-            `Votre plan ${providerPlan} est limite a ${limits.maxMembers} membre(s) actif(s). Passez au plan superieur pour ajouter plus de membres.`
+            `Votre plan ${providerPlan} est limité à ${limits.maxMembers} membre(s) actif(s). Passez au plan supérieur pour ajouter plus de membres.`
           );
         }
       }
@@ -189,7 +189,7 @@ export class MemberService {
         const activeMembers = await memberRepository.getActiveByProvider(providerId);
         if (activeMembers.length >= limits.maxMembers) {
           throw new Error(
-            `Votre plan ${providerPlan} est limite a ${limits.maxMembers} membre(s) actif(s). Passez au plan superieur pour reactiver ce membre.`
+            `Votre plan ${providerPlan} est limité à ${limits.maxMembers} membre(s) actif(s). Passez au plan supérieur pour réactiver ce membre.`
           );
         }
       }

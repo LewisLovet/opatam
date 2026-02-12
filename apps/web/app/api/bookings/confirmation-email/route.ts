@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (!clientEmail || !clientName || !serviceName || !datetime) {
       console.log('[CONFIRMATION-EMAIL] ERROR: Missing required fields');
       return NextResponse.json(
-        { message: 'Donnees manquantes' },
+        { message: 'Données manquantes' },
         { status: 400 }
       );
     }
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
                         Bonjour ${clientName},
                       </p>
                       <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
-                        Votre rendez-vous a bien ete <strong style="color: #16a34a;">confirme</strong>.
+                        Votre rendez-vous a bien été <strong style="color: #16a34a;">confirmé</strong>.
                       </p>
 
                       <!-- Booking details box -->
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
                             <td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedTime} - ${formattedEndTime}</td>
                           </tr>
                           <tr>
-                            <td style="padding: 4px 0; font-size: 14px; color: #71717a;">Duree</td>
+                            <td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td>
                             <td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${duration} min</td>
                           </tr>
                           ${locationName ? `
@@ -232,6 +232,14 @@ export async function POST(request: NextRequest) {
                           <tr>
                             <td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td>
                             <td style="padding: 4px 0; font-size: 14px; color: #18181b;">${locationAddress}</td>
+                          </tr>
+                          <tr>
+                            <td></td>
+                            <td style="padding: 2px 0 4px;">
+                              <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">
+                                &#x1F4CD; Voir l&#39;itin&#233;raire
+                              </a>
+                            </td>
                           </tr>
                           ` : ''}
                           ${memberName ? `
@@ -250,7 +258,7 @@ export async function POST(request: NextRequest) {
                       <!-- Add to Calendar Section -->
                       <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                         <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">
-                          Ajouter a votre calendrier
+                          Ajouter à votre calendrier
                         </p>
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
@@ -300,12 +308,12 @@ export async function POST(request: NextRequest) {
                   <tr>
                     <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
                       <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">
-                        A bientot,<br>
+                        À bientôt,<br>
                         <strong>${businessName}</strong>
                       </p>
                       ${reviewUrl ? `
                       <p style="margin: 16px 0 0; font-size: 13px; color: #a1a1aa; text-align: center;">
-                        Apres votre rendez-vous, <a href="${reviewUrl}" style="color: #6366f1; text-decoration: underline;">donnez-nous votre avis</a>
+                        Après votre rendez-vous, <a href="${reviewUrl}" style="color: #6366f1; text-decoration: underline;">donnez-nous votre avis</a>
                       </p>
                       ` : ''}
                     </td>
@@ -314,8 +322,8 @@ export async function POST(request: NextRequest) {
 
                 <!-- Footer text -->
                 <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">
-                  Cet email a ete envoye automatiquement par ${appConfig.name}.<br>
-                  Si vous n'etes pas concerne, veuillez ignorer ce message.
+                  Cet email a été envoyé automatiquement par ${appConfig.name}.<br>
+                  Si vous n'êtes pas concerné, veuillez ignorer ce message.
                 </p>
               </td>
             </tr>
@@ -326,27 +334,27 @@ export async function POST(request: NextRequest) {
       text: `
 Bonjour ${clientName},
 
-Votre rendez-vous a bien ete confirme.
+Votre rendez-vous a bien été confirmé.
 
-Details de votre rendez-vous :
+Détails de votre rendez-vous :
 - Prestation : ${serviceName}
 - Date : ${formattedDate}
 - Heure : ${formattedTime} - ${formattedEndTime}
-- Duree : ${duration} min
+- Durée : ${duration} min
 ${locationName ? `- Lieu : ${locationName}` : ''}
-${locationAddress ? `- Adresse : ${locationAddress}` : ''}
+${locationAddress ? `- Adresse : ${locationAddress}\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationAddress)}` : ''}
 ${memberName ? `- Avec : ${memberName}` : ''}
 - Prix : ${formattedPrice}
 
-Ajouter a votre calendrier :
+Ajouter à votre calendrier :
 - Google Calendar : ${googleCalendarUrl}
 ${icsUrl ? `- Apple / Outlook : ${icsUrl}` : ''}
 
 ${cancelUrl ? `Annuler le rendez-vous : ${cancelUrl}` : ''}
 
-${reviewUrl ? `Apres votre rendez-vous, donnez-nous votre avis : ${reviewUrl}` : ''}
+${reviewUrl ? `Après votre rendez-vous, donnez-nous votre avis : ${reviewUrl}` : ''}
 
-A bientot,
+À bientôt,
 ${businessName}
       `.trim(),
     });

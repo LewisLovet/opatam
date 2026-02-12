@@ -60,7 +60,7 @@ export default function AvailabilityTestPage() {
     executeAction('SET AVAILABILITY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
       if (!locationId) throw new Error('Location ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
       const id = await availabilityRepository.set(providerId, {
         locationId,
         memberId,
@@ -69,20 +69,20 @@ export default function AvailabilityTestPage() {
         isOpen,
         effectiveFrom: null,
       });
-      return { id, message: 'Disponibilite definie avec succes' };
+      return { id, message: 'Disponibilité définie avec succès' };
     });
 
   // NOUVEAU MODÈLE: get prend (providerId, memberId, dayOfWeek)
   const handleGetAvailability = () =>
     executeAction('GET AVAILABILITY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
       const availability = await availabilityRepository.get(
         providerId,
         memberId,
         parseInt(dayOfWeek, 10)
       );
-      return availability || { message: 'Aucune disponibilite trouvee' };
+      return availability || { message: 'Aucune disponibilité trouvée' };
     });
 
   const handleGetByProvider = () =>
@@ -104,7 +104,7 @@ export default function AvailabilityTestPage() {
   const handleGetWeeklySchedule = () =>
     executeAction('GET WEEKLY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
       const schedule = await availabilityRepository.getWeeklySchedule(
         providerId,
         memberId
@@ -116,7 +116,7 @@ export default function AvailabilityTestPage() {
   const handleSetWeeklySchedule = () =>
     executeAction('SET WEEKLY', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
       if (!locationId) throw new Error('Location ID requis');
 
       // Create a default week schedule (Mon-Fri 9-18, Sat 9-12, Sun closed)
@@ -136,7 +136,7 @@ export default function AvailabilityTestPage() {
         locationId,
         schedule
       );
-      return { message: 'Emploi du temps hebdomadaire defini', schedule };
+      return { message: 'Emploi du temps hebdomadaire défini', schedule };
     });
 
   // Blocked slot actions
@@ -144,8 +144,8 @@ export default function AvailabilityTestPage() {
   const handleCreateBlockedSlot = () =>
     executeAction('CREATE BLOCKED', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!memberId) throw new Error('Member ID requis (nouveau modele)');
-      if (!locationId) throw new Error('Location ID requis (nouveau modele)');
+      if (!memberId) throw new Error('Member ID requis (nouveau modèle)');
+      if (!locationId) throw new Error('Location ID requis (nouveau modèle)');
       if (!blockStartDate || !blockEndDate) throw new Error('Dates requises');
 
       const id = await blockedSlotRepository.create(providerId, {
@@ -158,7 +158,7 @@ export default function AvailabilityTestPage() {
         endTime: blockAllDay ? null : endTime,
         reason: blockReason || null,
       });
-      return { id, message: 'Creneau bloque cree avec succes' };
+      return { id, message: 'Créneau bloqué créé avec succès' };
     });
 
   const handleGetBlockedSlots = () =>
@@ -180,14 +180,14 @@ export default function AvailabilityTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!searchBlockId) throw new Error('Blocked Slot ID requis');
       await blockedSlotRepository.delete(providerId, searchBlockId);
-      return { message: 'Creneau bloque supprime', id: searchBlockId };
+      return { message: 'Créneau bloqué supprimé', id: searchBlockId };
     });
 
   const handleDeletePastBlocked = () =>
     executeAction('DELETE PAST BLOCKED', async () => {
       if (!providerId) throw new Error('Provider ID requis');
       const count = await blockedSlotRepository.deletePast(providerId);
-      return { message: `${count} creneau(x) passe(s) supprime(s)` };
+      return { message: `${count} créneau(x) passé(s) supprimé(s)` };
     });
 
   return (
@@ -197,7 +197,7 @@ export default function AvailabilityTestPage() {
           Test Availability & Blocked Slots
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des disponibilites et creneaux bloques.
+          Test des disponibilités et créneaux bloqués.
         </p>
       </div>
 
@@ -230,7 +230,7 @@ export default function AvailabilityTestPage() {
 
       {/* Availability */}
       <Card>
-        <CardHeader title="Disponibilites" />
+        <CardHeader title="Disponibilités" />
         <CardBody>
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-4">
@@ -241,7 +241,7 @@ export default function AvailabilityTestPage() {
                 options={DAYS_OF_WEEK}
               />
               <Input
-                label="Debut"
+                label="Début"
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
@@ -271,7 +271,7 @@ export default function AvailabilityTestPage() {
                 loading={loading && lastAction === 'SET AVAILABILITY'}
                 disabled={!providerId || !locationId}
               >
-                Definir disponibilite
+                Définir disponibilité
               </Button>
               <Button
                 variant="outline"
@@ -295,7 +295,7 @@ export default function AvailabilityTestPage() {
                 loading={loading && lastAction === 'SET WEEKLY'}
                 disabled={!providerId || !locationId}
               >
-                Semaine par defaut
+                Semaine par défaut
               </Button>
             </div>
 
@@ -323,12 +323,12 @@ export default function AvailabilityTestPage() {
 
       {/* Blocked Slots */}
       <Card>
-        <CardHeader title="Creneaux Bloques (vacances, absences...)" />
+        <CardHeader title="Créneaux Bloqués (vacances, absences...)" />
         <CardBody>
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Input
-                label="Date debut"
+                label="Date début"
                 type="date"
                 value={blockStartDate}
                 onChange={(e) => setBlockStartDate(e.target.value)}
@@ -353,7 +353,7 @@ export default function AvailabilityTestPage() {
                     onChange={(e) => setBlockAllDay(e.target.checked)}
                     className="rounded border-gray-300"
                   />
-                  <span className="text-sm">Journee entiere</span>
+                  <span className="text-sm">Journée entière</span>
                 </label>
               </div>
             </div>
@@ -364,7 +364,7 @@ export default function AvailabilityTestPage() {
                 loading={loading && lastAction === 'CREATE BLOCKED'}
                 disabled={!providerId}
               >
-                Creer blocage
+                Créer blocage
               </Button>
               <Button
                 variant="outline"
@@ -380,7 +380,7 @@ export default function AvailabilityTestPage() {
                 loading={loading && lastAction === 'GET UPCOMING BLOCKED'}
                 disabled={!providerId}
               >
-                Blocages a venir
+                Blocages à venir
               </Button>
               <Button
                 variant="ghost"
@@ -388,13 +388,13 @@ export default function AvailabilityTestPage() {
                 loading={loading && lastAction === 'DELETE PAST BLOCKED'}
                 disabled={!providerId}
               >
-                Supprimer passes
+                Supprimer passés
               </Button>
             </div>
 
             <div className="flex gap-3 items-end">
               <Input
-                label="ID du blocage a supprimer"
+                label="ID du blocage à supprimer"
                 value={searchBlockId}
                 onChange={(e) => setSearchBlockId(e.target.value)}
                 placeholder="ID"
@@ -417,7 +417,7 @@ export default function AvailabilityTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -438,7 +438,7 @@ export default function AvailabilityTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

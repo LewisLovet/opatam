@@ -107,7 +107,7 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
         name="description"
         value={formData.description}
         onChange={handleChange}
-        placeholder="Decrivez votre activite en quelques lignes..."
+        placeholder="Décrivez votre activité en quelques lignes..."
         rows={4}
         hint="Cette description sera visible sur votre page publique"
       />
@@ -135,7 +135,7 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
             )}
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Le slug est genere automatiquement a partir du nom de l'entreprise
+            Le slug est généré automatiquement à partir du nom de l'entreprise
           </p>
         </div>
       )}
@@ -150,7 +150,7 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
       {/* Success Message */}
       {success && (
         <div className="p-4 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400 rounded-lg text-sm">
-          Informations mises a jour avec succes
+          Informations mises à jour avec succès
         </div>
       )}
 

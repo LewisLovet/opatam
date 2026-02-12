@@ -73,6 +73,7 @@ export interface ProviderSettings {
   maxBookingAdvance: number;         // Maximum days in advance (default: 60)
   allowClientCancellation: boolean;  // Allow clients to cancel (default: true)
   cancellationDeadline: number;      // Hours before appointment for cancellation (default: 24)
+  slotInterval?: number;             // Minutes between each bookable slot (default: 15)
 }
 
 export interface Subscription {
@@ -120,6 +121,15 @@ export interface Location {
   updatedAt: Date;
 }
 
+// Service Category types
+export interface ServiceCategory {
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Service types
 export interface Service {
   name: string;
@@ -127,6 +137,7 @@ export interface Service {
   duration: number;
   price: number;
   bufferTime: number;
+  categoryId: string | null;
   locationIds: string[];
   memberIds: string[] | null;
   isActive: boolean;

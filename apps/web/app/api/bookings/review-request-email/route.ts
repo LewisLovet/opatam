@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     if (!bookingId) {
       console.log('[REVIEW-REQUEST-EMAIL] ERROR: Missing bookingId');
       return NextResponse.json(
-        { error: 'L\'identifiant de la reservation est requis' },
+        { error: 'L\'identifiant de la réservation est requis' },
         { status: 400 }
       );
     }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (!booking) {
       console.log('[REVIEW-REQUEST-EMAIL] ERROR: Booking not found');
       return NextResponse.json(
-        { error: 'Reservation non trouvee' },
+        { error: 'Réservation non trouvée' },
         { status: 404 }
       );
     }
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (booking.datetime > new Date()) {
       console.log('[REVIEW-REQUEST-EMAIL] ERROR: Booking is in the future');
       return NextResponse.json(
-        { error: 'Le rendez-vous n\'est pas encore passe' },
+        { error: 'Le rendez-vous n\'est pas encore passé' },
         { status: 400 }
       );
     }
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     if (booking.status !== 'confirmed') {
       console.log('[REVIEW-REQUEST-EMAIL] ERROR: Booking is not confirmed');
       return NextResponse.json(
-        { error: 'Impossible de demander un avis pour cette reservation' },
+        { error: 'Impossible de demander un avis pour cette réservation' },
         { status: 400 }
       );
     }
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     if (booking.reviewRequestSentAt) {
       console.log('[REVIEW-REQUEST-EMAIL] ERROR: Review request already sent');
       return NextResponse.json(
-        { error: 'La demande d\'avis a deja ete envoyee' },
+        { error: 'La demande d\'avis a déjà été envoyée' },
         { status: 400 }
       );
     }
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
             Bonjour ${booking.clientInfo.name},
           </p>
           <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
-            Nous esperons que votre rendez-vous s'est bien passe. Votre avis nous aide a ameliorer nos services !
+            Nous espérons que votre rendez-vous s'est bien passé. Votre avis nous aide à améliorer nos services !
           </p>
 
           <!-- Booking details box -->
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
           </div>
 
           <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
-            Prenez quelques secondes pour partager votre experience. Votre commentaire aidera d'autres clients et permettra au prestataire de s'ameliorer.
+            Prenez quelques secondes pour partager votre expérience. Votre commentaire aidera d'autres clients et permettra au prestataire de s'améliorer.
           </p>
 
           <!-- CTA Button -->
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
       text: `
 Bonjour ${booking.clientInfo.name},
 
-Nous esperons que votre rendez-vous s'est bien passe. Votre avis nous aide a ameliorer nos services !
+Nous espérons que votre rendez-vous s'est bien passé. Votre avis nous aide à améliorer nos services !
 
 Votre rendez-vous :
 - Prestation : ${booking.serviceName}
@@ -172,12 +172,12 @@ Votre rendez-vous :
 - Heure : ${formattedTime}
 - Chez : ${booking.providerName}
 
-Prenez quelques secondes pour partager votre experience :
+Prenez quelques secondes pour partager votre expérience :
 ${reviewUrl}
 
 Votre avis sera visible sur la page du prestataire.
 
-A bientot,
+À bientôt,
 ${booking.providerName}
       `.trim(),
     });

@@ -121,6 +121,7 @@ export function LieuxTab() {
         description: data.description,
         type: data.type,
         travelRadius: data.travelRadius,
+        geopoint: data.geopoint ?? null,
       });
 
       // If setting as default
@@ -128,7 +129,7 @@ export function LieuxTab() {
         await locationService.setDefault(provider.id, editingLocation.id);
       }
 
-      toast.success('Lieu mis a jour');
+      toast.success('Lieu mis à jour');
     } else {
       // Create
       const newLocation = await locationService.createLocation(provider.id, {
@@ -141,6 +142,7 @@ export function LieuxTab() {
         photoURLs: [],
         type: data.type,
         travelRadius: data.travelRadius,
+        geopoint: data.geopoint ?? null,
       });
 
       // If setting as default

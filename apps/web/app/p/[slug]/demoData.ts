@@ -12,6 +12,11 @@ const LOCATION_1_ID = 'demo-loc-1';
 const MEMBER_1_ID = 'demo-member-1';
 const MEMBER_2_ID = 'demo-member-2';
 const MEMBER_3_ID = 'demo-member-3';
+const CATEGORY_1_ID = 'demo-cat-1';
+const CATEGORY_2_ID = 'demo-cat-2';
+const CATEGORY_3_ID = 'demo-cat-3';
+const CATEGORY_4_ID = 'demo-cat-4';
+const CATEGORY_5_ID = 'demo-cat-5';
 
 // Unsplash image helper — optimized size params
 const unsplash = (id: string, w = 800) =>
@@ -31,16 +36,16 @@ export const demoProvider = {
   portfolioPhotos: [
     unsplash('photo-1522337360788-8b13dee7a37e', 600), // Hair styling
     unsplash('photo-1595476108010-b4d1f102b1b1', 600), // Hair coloring
-    unsplash('photo-1562322140-8baeacacf494', 600), // Hair styling result
+    unsplash('photo-1605497788044-5a32c7078486', 600), // Hair styling result
     unsplash('photo-1519699047748-de8e457a634e', 600), // Manicure
     unsplash('photo-1457972729786-0411a3b2b626', 600), // Salon ambiance
     unsplash('photo-1521590832167-7bcbfaa6381f', 600), // Hair care
   ],
   socialLinks: {
-    instagram: 'https://instagram.com',
-    facebook: 'https://facebook.com',
-    tiktok: null,
-    website: null,
+    instagram: 'https://www.instagram.com/opatam_app',
+    facebook: 'https://facebook.com/opatam',
+    tiktok: 'https://tiktok.com/@opatam',
+    website: 'https://opatam.com',
   },
   rating: {
     average: 4.8,
@@ -53,6 +58,49 @@ export const demoProvider = {
   updatedAt: now,
 };
 
+export const demoServiceCategories = [
+  {
+    id: CATEGORY_1_ID,
+    name: 'Coiffure',
+    sortOrder: 0,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: CATEGORY_2_ID,
+    name: 'Coloration',
+    sortOrder: 1,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: CATEGORY_3_ID,
+    name: 'Ongles',
+    sortOrder: 2,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: CATEGORY_4_ID,
+    name: 'Soins visage',
+    sortOrder: 3,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: CATEGORY_5_ID,
+    name: 'Épilation',
+    sortOrder: 4,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+];
+
 export const demoServices = [
   {
     id: 'demo-svc-1',
@@ -61,6 +109,7 @@ export const demoServices = [
     duration: 45,
     price: 3500,
     bufferTime: 10,
+    categoryId: CATEGORY_1_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: null,
     isActive: true,
@@ -75,6 +124,7 @@ export const demoServices = [
     duration: 30,
     price: 2500,
     bufferTime: 5,
+    categoryId: CATEGORY_1_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: null,
     isActive: true,
@@ -89,6 +139,7 @@ export const demoServices = [
     duration: 90,
     price: 6500,
     bufferTime: 15,
+    categoryId: CATEGORY_2_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: [MEMBER_1_ID, MEMBER_2_ID],
     isActive: true,
@@ -103,6 +154,7 @@ export const demoServices = [
     duration: 120,
     price: 8500,
     bufferTime: 15,
+    categoryId: CATEGORY_2_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: [MEMBER_1_ID, MEMBER_2_ID],
     isActive: true,
@@ -117,6 +169,7 @@ export const demoServices = [
     duration: 30,
     price: 2000,
     bufferTime: 5,
+    categoryId: CATEGORY_1_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: null,
     isActive: true,
@@ -131,6 +184,7 @@ export const demoServices = [
     duration: 40,
     price: 2800,
     bufferTime: 5,
+    categoryId: CATEGORY_3_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: [MEMBER_3_ID],
     isActive: true,
@@ -145,10 +199,146 @@ export const demoServices = [
     duration: 60,
     price: 3800,
     bufferTime: 10,
+    categoryId: CATEGORY_3_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: [MEMBER_3_ID],
     isActive: true,
     sortOrder: 6,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'demo-svc-8',
+    name: 'Brushing',
+    description: 'Brushing lisse, bouclé ou wavy selon vos envies',
+    duration: 30,
+    price: 2000,
+    bufferTime: 5,
+    categoryId: CATEGORY_1_ID,
+    locationIds: [LOCATION_1_ID],
+    memberIds: null,
+    isActive: true,
+    sortOrder: 7,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'demo-svc-9',
+    name: 'Mèches',
+    description: 'Technique de mèches pour un effet lumineux et naturel',
+    duration: 100,
+    price: 7500,
+    bufferTime: 15,
+    categoryId: CATEGORY_2_ID,
+    locationIds: [LOCATION_1_ID],
+    memberIds: [MEMBER_1_ID, MEMBER_2_ID],
+    isActive: true,
+    sortOrder: 8,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'demo-svc-10',
+    name: 'Soin hydratant visage',
+    description: 'Nettoyage en profondeur et hydratation intense pour un teint éclatant',
+    duration: 60,
+    price: 5500,
+    bufferTime: 10,
+    categoryId: CATEGORY_4_ID,
+    locationIds: [LOCATION_1_ID],
+    memberIds: [MEMBER_2_ID, MEMBER_3_ID],
+    isActive: true,
+    sortOrder: 9,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'demo-svc-11',
+    name: 'Soin anti-âge',
+    description: 'Traitement lissant et repulpant aux actifs concentrés',
+    duration: 75,
+    price: 7000,
+    bufferTime: 10,
+    categoryId: CATEGORY_4_ID,
+    locationIds: [LOCATION_1_ID],
+    memberIds: [MEMBER_2_ID],
+    isActive: true,
+    sortOrder: 10,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'demo-svc-12',
+    name: 'Peeling doux',
+    description: 'Exfoliation douce pour révéler un teint frais et uniforme',
+    duration: 45,
+    price: 4500,
+    bufferTime: 10,
+    categoryId: CATEGORY_4_ID,
+    locationIds: [LOCATION_1_ID],
+    memberIds: [MEMBER_2_ID, MEMBER_3_ID],
+    isActive: true,
+    sortOrder: 11,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'demo-svc-13',
+    name: 'Épilation jambes complètes',
+    description: 'Épilation à la cire tiède pour une peau douce et nette',
+    duration: 45,
+    price: 3500,
+    bufferTime: 10,
+    categoryId: CATEGORY_5_ID,
+    locationIds: [LOCATION_1_ID],
+    memberIds: [MEMBER_3_ID],
+    isActive: true,
+    sortOrder: 12,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'demo-svc-14',
+    name: 'Épilation maillot',
+    description: 'Épilation soignée à la cire, différentes formes disponibles',
+    duration: 20,
+    price: 2000,
+    bufferTime: 5,
+    categoryId: CATEGORY_5_ID,
+    locationIds: [LOCATION_1_ID],
+    memberIds: [MEMBER_3_ID],
+    isActive: true,
+    sortOrder: 13,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'demo-svc-15',
+    name: 'Épilation aisselles',
+    description: 'Épilation rapide et efficace à la cire',
+    duration: 15,
+    price: 1200,
+    bufferTime: 5,
+    categoryId: CATEGORY_5_ID,
+    locationIds: [LOCATION_1_ID],
+    memberIds: [MEMBER_3_ID],
+    isActive: true,
+    sortOrder: 14,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'demo-svc-16',
+    name: 'Pédicure complète',
+    description: 'Bain de pieds, gommage, soin des ongles et pose de vernis',
+    duration: 50,
+    price: 3500,
+    bufferTime: 10,
+    categoryId: CATEGORY_3_ID,
+    locationIds: [LOCATION_1_ID],
+    memberIds: [MEMBER_3_ID],
+    isActive: true,
+    sortOrder: 15,
     createdAt: now,
     updatedAt: now,
   },
@@ -350,6 +540,12 @@ export const demoBookingProvider = {
   },
 };
 
+export const demoBookingCategories = demoServiceCategories.map((c) => ({
+  id: c.id,
+  name: c.name,
+  sortOrder: c.sortOrder,
+}));
+
 export const demoBookingServices = demoServices.map((s) => ({
   id: s.id,
   name: s.name,
@@ -357,6 +553,7 @@ export const demoBookingServices = demoServices.map((s) => ({
   duration: s.duration,
   price: s.price,
   bufferTime: s.bufferTime,
+  categoryId: s.categoryId,
   locationIds: s.locationIds,
   memberIds: s.memberIds,
 }));

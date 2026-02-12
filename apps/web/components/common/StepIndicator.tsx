@@ -98,7 +98,7 @@ export function StepIndicator({ steps, currentStep, className = '' }: StepIndica
       {/* Mobile Step Label */}
       <div className="sm:hidden mt-4 text-center">
         <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
-          Etape {currentStep} : {steps[currentStep - 1]?.label}
+          Étape {currentStep} : {steps[currentStep - 1]?.label}
         </span>
       </div>
     </nav>

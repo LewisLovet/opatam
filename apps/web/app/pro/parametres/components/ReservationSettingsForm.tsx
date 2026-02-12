@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Select, Button } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
-import { Loader2, Clock, Calendar, Info } from 'lucide-react';
+import { Loader2, Clock, Calendar, Info, Timer } from 'lucide-react';
 
 interface ReservationSettingsFormProps {
   onSuccess?: () => void;
@@ -21,6 +21,16 @@ const MIN_BOOKING_NOTICE_OPTIONS = [
   { value: '48', label: '48 heures (2 jours)' },
   { value: '72', label: '72 heures (3 jours)' },
   { value: '168', label: '168 heures (7 jours)' },
+];
+
+const SLOT_INTERVAL_OPTIONS = [
+  { value: '5', label: '5 minutes' },
+  { value: '10', label: '10 minutes' },
+  { value: '15', label: '15 minutes' },
+  { value: '20', label: '20 minutes' },
+  { value: '30', label: '30 minutes' },
+  { value: '45', label: '45 minutes' },
+  { value: '60', label: '1 heure' },
 ];
 
 const MAX_BOOKING_ADVANCE_OPTIONS = [
@@ -42,6 +52,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
   const [formData, setFormData] = useState({
     minBookingNotice: 2,
     maxBookingAdvance: 60,
+    slotInterval: 15,
   });
 
   // Initialize form with provider data
@@ -50,6 +61,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
       setFormData({
         minBookingNotice: provider.settings.minBookingNotice ?? 2,
         maxBookingAdvance: provider.settings.maxBookingAdvance ?? 60,
+        slotInterval: provider.settings.slotInterval ?? 15,
       });
     }
   }, [provider]);
@@ -75,6 +87,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           ...provider.settings,
           minBookingNotice: formData.minBookingNotice,
           maxBookingAdvance: formData.maxBookingAdvance,
+          slotInterval: formData.slotInterval,
           // Always allow cancellation (no deadline restriction)
           allowClientCancellation: true,
           cancellationDeadline: 0,
@@ -125,6 +138,23 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           onChange={handleSelectChange}
           options={MAX_BOOKING_ADVANCE_OPTIONS}
           hint="Jusqu'à combien de temps à l'avance un client peut réserver"
+        />
+      </div>
+
+      {/* Slot Interval */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Timer className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Intervalle entre les créneaux
+          </label>
+        </div>
+        <Select
+          name="slotInterval"
+          value={formData.slotInterval.toString()}
+          onChange={handleSelectChange}
+          options={SLOT_INTERVAL_OPTIONS}
+          hint="Fréquence des créneaux proposés aux clients (ex : toutes les 15 min)"
         />
       </div>
 

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Calendar,
-  Bell,
   User,
   CreditCard,
   QrCode,
@@ -12,11 +11,13 @@ import {
 } from 'lucide-react';
 import {
   ReservationSettingsForm,
-  NotificationsForm,
   AccountForm,
   SubscriptionSection,
   ShareSection,
+  SubscriptionSuccessModal,
 } from './components';
+import { useAuth } from '@/contexts/AuthContext';
+import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
 
 const tabs = [
   {
@@ -25,13 +26,7 @@ const tabs = [
     description: 'Règles de prise de rendez-vous',
     icon: Calendar,
   },
-  {
-    id: 'notifications',
-    label: 'Notifications',
-    description: 'Rappels automatiques clients',
-    icon: Bell,
-  },
-  {
+{
     id: 'compte',
     label: 'Compte',
     description: 'Email, mot de passe, suppression',
@@ -54,10 +49,21 @@ const tabs = [
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { provider } = useAuth();
 
   const tabFromUrl = searchParams.get('tab');
   const validTab = tabs.find((t) => t.id === tabFromUrl);
   const [activeTab, setActiveTab] = useState(validTab?.id || 'reservation');
+
+  // Detect return from Stripe checkout success
+  const isCheckoutSuccess = searchParams.get('success') === 'true';
+  const [showSuccessModal, setShowSuccessModal] = useState(isCheckoutSuccess);
+
+  // Determine plan name and features for success modal
+  const providerPlan = provider?.plan as keyof typeof SUBSCRIPTION_PLANS | undefined;
+  const planConfig = providerPlan && providerPlan in SUBSCRIPTION_PLANS
+    ? SUBSCRIPTION_PLANS[providerPlan as 'solo' | 'team' | 'test']
+    : SUBSCRIPTION_PLANS.solo;
 
   // Sync URL → state
   useEffect(() => {
@@ -160,13 +166,20 @@ export default function SettingsPage() {
 
             {/* Section content */}
             {activeTab === 'reservation' && <ReservationSettingsForm />}
-            {activeTab === 'notifications' && <NotificationsForm />}
             {activeTab === 'compte' && <AccountForm />}
             {activeTab === 'abonnement' && <SubscriptionSection />}
             {activeTab === 'partage' && <ShareSection />}
           </div>
         </div>
       </div>
+
+      {/* Success modal after Stripe checkout */}
+      <SubscriptionSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        planName={planConfig.name}
+        planFeatures={[...planConfig.features]}
+      />
     </div>
   );
 }

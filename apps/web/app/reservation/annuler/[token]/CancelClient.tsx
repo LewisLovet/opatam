@@ -152,16 +152,16 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <XCircle className="w-10 h-10 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Lien invalide ou expire
+            Lien invalide ou expiré
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">
-            Ce lien d'annulation n'est plus valide. Le rendez-vous a peut-etre deja ete annule ou le lien a expire.
+            Ce lien d'annulation n'est plus valide. Le rendez-vous a peut-être déjà été annulé ou le lien a expiré.
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour a l'accueil
+            Retour à l'accueil
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -178,21 +178,21 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <AlertTriangle className="w-10 h-10 text-yellow-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Rendez-vous deja annule
+            Rendez-vous déjà annulé
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-2">
-            Ce rendez-vous a deja ete annule.
+            Ce rendez-vous a déjà été annulé.
           </p>
           {cancelledAt && (
             <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">
-              Annule le {formatDate(cancelledAt)} a {formatTime(cancelledAt)}
+              Annulé le {formatDate(cancelledAt)} à {formatTime(cancelledAt)}
             </p>
           )}
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour a l'accueil
+            Retour à l'accueil
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -209,16 +209,16 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <Clock className="w-10 h-10 text-gray-400" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Rendez-vous passe
+            Rendez-vous passé
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">
-            Ce rendez-vous est deja passe et ne peut plus etre annule.
+            Ce rendez-vous est déjà passé et ne peut plus être annulé.
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour a l'accueil
+            Retour à l'accueil
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -235,13 +235,13 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <CheckCircle className="w-10 h-10 text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Rendez-vous annule
+            Rendez-vous annulé
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-2">
-            Votre rendez-vous a bien ete annule.
+            Votre rendez-vous a bien été annulé.
           </p>
           <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">
-            Le prestataire a ete notifie de cette annulation.
+            Le prestataire a été notifié de cette annulation.
           </p>
 
           {booking && (
@@ -258,7 +258,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
                   href="/"
                   className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
-                  Ou retourner a l'accueil
+                  Ou retourner à l'accueil
                 </Link>
               </div>
             </div>
@@ -285,7 +285,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             Annuler votre rendez-vous
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Etes-vous sur de vouloir annuler ce rendez-vous ?
+            Êtes-vous sûr de vouloir annuler ce rendez-vous ?
           </p>
         </div>
 
@@ -401,7 +401,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              Cette action est irreversible. Le prestataire sera notifie de votre annulation.
+              Cette action est irréversible. Le prestataire sera notifié de votre annulation.
             </p>
           </div>
         </div>
@@ -429,13 +429,13 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             href="/"
             className="flex items-center justify-center w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors"
           >
-            Annuler et retourner a l'accueil
+            Annuler et retourner à l'accueil
           </Link>
         </div>
 
         {/* Reference */}
         <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
-          Reference : {booking.id}
+          Référence : {booking.id}
         </p>
       </div>
     </div>

@@ -51,7 +51,7 @@ export default function MembersTestPage() {
   const handleCreate = () =>
     executeAction('CREATE', async () => {
       if (!providerId) throw new Error('Provider ID requis');
-      if (!createLocationId) throw new Error('Location ID requis (nouveau modele: 1 membre = 1 lieu)');
+      if (!createLocationId) throw new Error('Location ID requis (nouveau modèle: 1 membre = 1 lieu)');
       const accessCode = generateAccessCode();
       const id = await memberRepository.create(providerId, {
         name: createName,
@@ -64,7 +64,7 @@ export default function MembersTestPage() {
         isActive: true,
         sortOrder: 0,
       });
-      return { id, accessCode, message: 'Member cree avec succes' };
+      return { id, accessCode, message: 'Member créé avec succès' };
     });
 
   const handleGetByProvider = () =>
@@ -86,14 +86,14 @@ export default function MembersTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!searchMemberId) throw new Error('Member ID requis');
       const member = await memberRepository.getById(providerId, searchMemberId);
-      return member || { message: 'Member non trouve' };
+      return member || { message: 'Member non trouvé' };
     });
 
   const handleGetByAccessCode = () =>
     executeAction('GET BY ACCESS CODE', async () => {
       if (!searchAccessCode) throw new Error('Access code requis');
       const member = await memberRepository.getByAccessCode(searchAccessCode);
-      return member || { message: 'Member non trouve' };
+      return member || { message: 'Member non trouvé' };
     });
 
   const handleGetByLocation = () =>
@@ -110,7 +110,7 @@ export default function MembersTestPage() {
       if (!updateMemberId) throw new Error('Member ID requis');
       if (!updateName) throw new Error('Nouveau nom requis');
       await memberRepository.update(providerId, updateMemberId, { name: updateName });
-      return { message: 'Member mis a jour avec succes', id: updateMemberId };
+      return { message: 'Member mis à jour avec succès', id: updateMemberId };
     });
 
   const handleToggleActive = () =>
@@ -118,9 +118,9 @@ export default function MembersTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!updateMemberId) throw new Error('Member ID requis');
       const member = await memberRepository.getById(providerId, updateMemberId);
-      if (!member) throw new Error('Member non trouve');
+      if (!member) throw new Error('Member non trouvé');
       await memberRepository.toggleActive(providerId, updateMemberId, !member.isActive);
-      return { message: `Member ${!member.isActive ? 'active' : 'desactive'}`, id: updateMemberId };
+      return { message: `Member ${!member.isActive ? 'activé' : 'désactivé'}`, id: updateMemberId };
     });
 
   const handleDelete = () =>
@@ -128,7 +128,7 @@ export default function MembersTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!deleteMemberId) throw new Error('Member ID requis');
       await memberRepository.delete(providerId, deleteMemberId);
-      return { message: 'Member supprime avec succes', id: deleteMemberId };
+      return { message: 'Member supprimé avec succès', id: deleteMemberId };
     });
 
   const handleCount = () =>
@@ -145,7 +145,7 @@ export default function MembersTestPage() {
           Test Members Repository
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations CRUD sur la sous-collection providers/&#123;id&#125;/members.
+          Test des opérations CRUD sur la sous-collection providers/&#123;id&#125;/members.
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export default function MembersTestPage() {
 
       {/* Create */}
       <Card>
-        <CardHeader title="Creer un Member" />
+        <CardHeader title="Créer un Member" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Input
@@ -180,7 +180,7 @@ export default function MembersTestPage() {
               placeholder="jean@example.com"
             />
             <Input
-              label="Telephone"
+              label="Téléphone"
               value={createPhone}
               onChange={(e) => setCreatePhone(e.target.value)}
               placeholder="0612345678"
@@ -199,7 +199,7 @@ export default function MembersTestPage() {
               loading={loading && lastAction === 'CREATE'}
               disabled={!providerId || !createLocationId}
             >
-              Creer Member
+              Créer Member
             </Button>
           </div>
         </CardBody>
@@ -337,7 +337,7 @@ export default function MembersTestPage() {
         <CardBody>
           <div className="flex gap-3 items-end">
             <Input
-              label="Member ID a supprimer"
+              label="Member ID à supprimer"
               value={deleteMemberId}
               onChange={(e) => setDeleteMemberId(e.target.value)}
               placeholder="ID"
@@ -359,7 +359,7 @@ export default function MembersTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -380,7 +380,7 @@ export default function MembersTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

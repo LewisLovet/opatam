@@ -106,7 +106,7 @@ export function ProviderHero({ provider, nextAvailableDate }: ProviderHeroProps)
                         clipRule="evenodd"
                       />
                     </svg>
-                    Verifie
+                    Vérifié
                   </span>
                 )}
               </div>

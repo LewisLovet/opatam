@@ -11,6 +11,7 @@ import { useAppReady } from '../hooks';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+
   const { isReady, onLayoutRootView } = useAppReady();
 
   // Don't render anything until ready
@@ -30,6 +31,7 @@ export default function RootLayout() {
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(client)" options={{ headerShown: false }} />
+              <Stack.Screen name="(pro)" options={{ headerShown: false }} />
               <Stack.Screen
                 name="design-system"
                 options={{

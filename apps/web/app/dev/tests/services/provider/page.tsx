@@ -14,7 +14,7 @@ export default function ProviderServiceTestPage() {
   const [providerId, setProviderId] = useState('');
   const [userId, setUserId] = useState('');
 
-  // Create form - simplifie (plan est auto 'trial')
+  // Create form - simplifié (plan est auto 'trial')
   const [createBusinessName, setCreateBusinessName] = useState('Mon Salon Test');
   const [createCategory, setCreateCategory] = useState('coiffure');
   const [createDescription, setCreateDescription] = useState('');
@@ -58,7 +58,7 @@ export default function ProviderServiceTestPage() {
       });
       setProviderId(provider.id);
       return {
-        message: 'Provider cree avec succes (plan: trial)',
+        message: 'Provider créé avec succès (plan : trial)',
         provider: {
           id: provider.id,
           businessName: provider.businessName,
@@ -80,13 +80,13 @@ export default function ProviderServiceTestPage() {
       if (updateCategory) updateData.category = updateCategory;
 
       if (Object.keys(updateData).length === 0) {
-        throw new Error('Au moins un champ a modifier requis');
+        throw new Error('Au moins un champ à modifier requis');
       }
 
       await providerService.updateProvider(providerId, updateData);
       const provider = await providerRepository.getById(providerId);
       return {
-        message: 'Provider mis a jour',
+        message: 'Provider mis à jour',
         provider: provider ? {
           id: provider.id,
           businessName: provider.businessName,
@@ -103,7 +103,7 @@ export default function ProviderServiceTestPage() {
       await providerService.upgradePlan(providerId, upgradePlan);
       const provider = await providerRepository.getById(providerId);
       return {
-        message: `Plan mis a jour vers ${upgradePlan}`,
+        message: `Plan mis à jour vers ${upgradePlan}`,
         plan: provider?.plan,
         memberCount: provider?.subscription.memberCount,
       };
@@ -118,8 +118,8 @@ export default function ProviderServiceTestPage() {
         missingItems: result.missingItems,
         completeness: result.completeness,
         message: result.canPublish
-          ? 'Pret a publier!'
-          : `Elements manquants:\n- ${result.missingItems.join('\n- ')}`,
+          ? 'Prêt à publier !'
+          : `Éléments manquants :\n- ${result.missingItems.join('\n- ')}`,
       };
     });
 
@@ -136,7 +136,7 @@ export default function ProviderServiceTestPage() {
       }
       const provider = await providerRepository.getById(providerId);
       return {
-        message: 'Provider publie avec succes',
+        message: 'Provider publié avec succès',
         isPublished: provider?.isPublished,
         slug: provider?.slug,
       };
@@ -146,7 +146,7 @@ export default function ProviderServiceTestPage() {
     executeAction('UNPUBLISH PROVIDER', async () => {
       if (!providerId) throw new Error('Provider ID requis');
       await providerService.unpublishProvider(providerId);
-      return { message: 'Provider depublie' };
+      return { message: 'Provider dépublié' };
     });
 
   const handleGetProvider = () =>
@@ -154,7 +154,7 @@ export default function ProviderServiceTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       const provider = await providerService.getById(providerId);
       if (!provider) {
-        return { message: 'Provider non trouve' };
+        return { message: 'Provider non trouvé' };
       }
       const trialDaysRemaining = providerService.getTrialDaysRemaining(provider);
       const isTrialExpired = providerService.isTrialExpired(provider);
@@ -172,7 +172,7 @@ export default function ProviderServiceTestPage() {
     executeAction('GET BY SLUG', async () => {
       if (!searchSlug) throw new Error('Slug requis');
       const provider = await providerService.getBySlug(searchSlug);
-      return provider || { message: 'Provider non trouve avec ce slug' };
+      return provider || { message: 'Provider non trouvé avec ce slug' };
     });
 
   const handleGetByUserId = () =>
@@ -241,7 +241,7 @@ export default function ProviderServiceTestPage() {
           Test Provider Service
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations provider: creation (plan trial auto), modification, publication, upgrade plan.
+          Test des opérations provider : création (plan trial auto), modification, publication, upgrade plan.
         </p>
       </div>
 
@@ -255,14 +255,14 @@ export default function ProviderServiceTestPage() {
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               placeholder="ID de l'utilisateur"
-              hint="Pour creer un provider ou chercher par user"
+              hint="Pour créer un provider ou chercher par user"
             />
             <Input
               label="Provider ID"
               value={providerId}
               onChange={(e) => setProviderId(e.target.value)}
               placeholder="ID du provider"
-              hint="Auto-rempli apres creation"
+              hint="Auto-rempli après création"
             />
           </div>
           <div className="mt-3">
@@ -282,7 +282,7 @@ export default function ProviderServiceTestPage() {
       {/* Create Provider */}
       <Card>
         <CardHeader
-          title="Creer un Provider"
+          title="Créer un Provider"
           action={<Badge variant="info">Plan: trial (7j)</Badge>}
         />
         <CardBody>
@@ -294,11 +294,11 @@ export default function ProviderServiceTestPage() {
               placeholder="Mon Salon"
             />
             <Input
-              label="Categorie (optionnel)"
+              label="Catégorie (optionnel)"
               value={createCategory}
               onChange={(e) => setCreateCategory(e.target.value)}
               placeholder="coiffure"
-              hint="coiffure, barbier, esthetique, spa, autre"
+              hint="coiffure, barbier, esthétique, spa, autre"
             />
             <Input
               label="Description (optionnel)"
@@ -308,7 +308,7 @@ export default function ProviderServiceTestPage() {
             />
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Le plan est automatiquement &quot;trial&quot; (7 jours). L&apos;upgrade vers solo/team se fait apres.
+            Le plan est automatiquement &quot;trial&quot; (30 jours). L&apos;upgrade vers solo/team se fait après.
           </p>
           <div className="mt-4">
             <Button
@@ -316,7 +316,7 @@ export default function ProviderServiceTestPage() {
               loading={loading && lastAction === 'CREATE PROVIDER'}
               disabled={!userId}
             >
-              Creer Provider
+              Créer Provider
             </Button>
           </div>
         </CardBody>
@@ -334,7 +334,7 @@ export default function ProviderServiceTestPage() {
               placeholder="Laisser vide pour ignorer"
             />
             <Input
-              label="Nouvelle categorie"
+              label="Nouvelle catégorie"
               value={updateCategory}
               onChange={(e) => setUpdateCategory(e.target.value)}
               placeholder="Laisser vide pour ignorer"
@@ -361,7 +361,7 @@ export default function ProviderServiceTestPage() {
 
       {/* Upgrade Plan */}
       <Card>
-        <CardHeader title="Upgrade Plan (apres trial)" />
+        <CardHeader title="Upgrade Plan (après trial)" />
         <CardBody>
           <div className="flex gap-4 items-end">
             <div className="space-y-1">
@@ -387,7 +387,7 @@ export default function ProviderServiceTestPage() {
             </Button>
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Note: En production, ceci est appele apres le paiement Stripe.
+            Note: En production, ceci est appelé après le paiement Stripe.
           </p>
         </CardBody>
       </Card>
@@ -403,7 +403,7 @@ export default function ProviderServiceTestPage() {
               loading={loading && lastAction === 'CHECK PUBLISH REQUIREMENTS'}
               disabled={!providerId}
             >
-              Verifier completude
+              Vérifier complétude
             </Button>
             <Button
               onClick={handlePublishProvider}
@@ -418,11 +418,11 @@ export default function ProviderServiceTestPage() {
               loading={loading && lastAction === 'UNPUBLISH PROVIDER'}
               disabled={!providerId}
             >
-              Depublier
+              Dépublier
             </Button>
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Requis: nom, categorie, 1 lieu, 1 prestation, disponibilites definies.
+            Requis : nom, catégorie, 1 lieu, 1 prestation, disponibilités définies.
           </p>
         </CardBody>
       </Card>
@@ -439,7 +439,7 @@ export default function ProviderServiceTestPage() {
               placeholder="mon-salon"
             />
             <Input
-              label="Categorie"
+              label="Catégorie"
               value={searchCategory}
               onChange={(e) => setSearchCategory(e.target.value)}
               placeholder="coiffure"
@@ -454,7 +454,7 @@ export default function ProviderServiceTestPage() {
               label="Recherche"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="mot-cle"
+              placeholder="mot-clé"
             />
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
@@ -495,14 +495,14 @@ export default function ProviderServiceTestPage() {
               onClick={handleGetPublished}
               loading={loading && lastAction === 'GET PUBLISHED'}
             >
-              Providers publies
+              Providers publiés
             </Button>
             <Button
               variant="outline"
               onClick={handleGetTopRated}
               loading={loading && lastAction === 'GET TOP RATED'}
             >
-              Top notes
+              Top notés
             </Button>
           </div>
         </CardBody>
@@ -511,7 +511,7 @@ export default function ProviderServiceTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -532,7 +532,7 @@ export default function ProviderServiceTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

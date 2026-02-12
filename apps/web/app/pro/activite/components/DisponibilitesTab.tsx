@@ -80,7 +80,7 @@ export function DisponibilitesTab() {
       setBlockedSlots(blockedSlotsData);
     } catch (error) {
       console.error('Fetch error:', error);
-      toast.error('Erreur lors du chargement des donnees');
+      toast.error('Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
@@ -146,7 +146,7 @@ export function DisponibilitesTab() {
           slots: day.slots,
         });
       }
-      toast.success('Disponibilites mises a jour');
+      toast.success('Disponibilités mises à jour');
       setIsEditing(false);
       setPendingChanges([]);
       // Refresh data
@@ -175,7 +175,7 @@ export function DisponibilitesTab() {
         memberId: data.memberId,
         locationId: data.locationId,
       });
-      toast.success('Periode de fermeture ajoutee');
+      toast.success('Période de fermeture ajoutée');
       // Refresh blocked slots
       const blockedSlotsData = await schedulingService.getUpcomingBlockedSlots(provider.id);
       setBlockedSlots(blockedSlotsData);
@@ -321,7 +321,7 @@ export function DisponibilitesTab() {
         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 px-4 py-2 rounded-lg">
           <Users className="w-4 h-4" />
           <span>
-            Disponibilites de <span className="font-medium text-gray-900 dark:text-white">{selectedMember.name}</span>
+            Disponibilités de <span className="font-medium text-gray-900 dark:text-white">{selectedMember.name}</span>
             {' '}au <span className="font-medium text-gray-900 dark:text-white">{selectedLocation.name}</span>
           </span>
         </div>

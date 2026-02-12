@@ -218,13 +218,13 @@ export default function SearchPage({ params }: SearchPageProps) {
   const pageTitle = useMemo(() => {
     const categoryLabel = getCategoryLabel(urlFilters.category);
     if (categoryLabel && urlFilters.city) {
-      return `${categoryLabel} a ${urlFilters.city}`;
+      return `${categoryLabel} à ${urlFilters.city}`;
     }
     if (categoryLabel) {
       return categoryLabel;
     }
     if (urlFilters.city) {
-      return `Prestataires a ${urlFilters.city}`;
+      return `Prestataires à ${urlFilters.city}`;
     }
     return 'Rechercher un prestataire';
   }, [urlFilters]);
@@ -268,7 +268,7 @@ export default function SearchPage({ params }: SearchPageProps) {
           {/* Results Count */}
           {!isLoading && sortedProviders.length > 0 && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {sortedProviders.length} prestataire{sortedProviders.length > 1 ? 's' : ''} trouve
+              {sortedProviders.length} prestataire{sortedProviders.length > 1 ? 's' : ''} trouvé
               {sortedProviders.length > 1 ? 's' : ''}
             </p>
           )}

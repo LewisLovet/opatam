@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     if (error?.type === 'StripeInvalidRequestError' && error?.code === 'resource_missing') {
       return NextResponse.json(
-        { message: 'Client Stripe introuvable. Votre compte a peut-etre ete cree dans un autre environnement (test/production). Veuillez re-souscrire.' },
+        { message: 'Client Stripe introuvable. Votre compte a peut-être été créé dans un autre environnement (test/production). Veuillez re-souscrire.' },
         { status: 404 }
       );
     }

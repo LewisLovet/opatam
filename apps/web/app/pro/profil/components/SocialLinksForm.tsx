@@ -184,7 +184,7 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
       {/* Success Message */}
       {success && (
         <div className="p-4 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400 rounded-lg text-sm">
-          Liens sociaux mis a jour avec succes
+          Liens sociaux mis à jour avec succès
         </div>
       )}
 

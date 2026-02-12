@@ -16,12 +16,12 @@ export function TrialExpiredBanner() {
 
         {/* Title */}
         <h2 className="text-center text-2xl font-bold text-gray-900">
-          Votre acces a expire
+          Votre accès a expiré
         </h2>
 
         {/* Subtitle */}
         <p className="mt-3 text-center text-gray-500">
-          Choisissez un plan pour continuer a utiliser Opatam et garder votre
+          Choisissez un plan pour continuer à utiliser Opatam et garder votre
           profil visible.
         </p>
 
@@ -29,11 +29,11 @@ export function TrialExpiredBanner() {
         <div className="mt-6 space-y-3">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
-            <span>Vos donnees sont conservees</span>
+            <span>Vos données sont conservées</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
-            <span>Reactivation instantanee apres souscription</span>
+            <span>Réactivation instantanée après souscription</span>
           </div>
         </div>
 

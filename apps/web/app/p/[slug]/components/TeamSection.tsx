@@ -23,7 +23,7 @@ export function TeamSection({ members }: TeamSectionProps) {
     <div>
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
         <Users className="w-5 h-5 text-primary-500" />
-        L&apos;equipe
+        L&apos;équipe
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {displayMembers.map((member) => (

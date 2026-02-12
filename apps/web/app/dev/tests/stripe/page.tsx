@@ -58,7 +58,7 @@ function CheckoutResult() {
     <div className="relative overflow-hidden rounded-xl border border-slate-800/50">
       <div className="absolute inset-0 bg-slate-900" />
       <div className="relative px-6 py-4 border-b border-slate-800/50">
-        <h3 className="text-lg font-semibold text-white">Resultat du Checkout</h3>
+        <h3 className="text-lg font-semibold text-white">Résultat du Checkout</h3>
         <p className="text-sm text-slate-400 mt-0.5">Retour de la session Stripe Checkout</p>
       </div>
       <div className="relative p-6 space-y-3">
@@ -68,10 +68,10 @@ function CheckoutResult() {
               <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
               </div>
-              <Badge variant="success">Paiement reussi</Badge>
+              <Badge variant="success">Paiement réussi</Badge>
             </div>
             <p className="text-sm text-slate-300">
-              Le checkout Stripe s&apos;est termine avec succes.
+              Le checkout Stripe s&apos;est terminé avec succès.
             </p>
             {sessionId && (
               <p className="text-xs font-mono mt-2 text-slate-500 bg-slate-800/50 rounded-lg px-3 py-1.5 inline-block">
@@ -82,9 +82,9 @@ function CheckoutResult() {
         )}
         {cancelled === 'true' && (
           <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5">
-            <Badge variant="error">Paiement annule</Badge>
+            <Badge variant="error">Paiement annulé</Badge>
             <p className="text-sm mt-2 text-slate-300">
-              Le checkout Stripe a ete annule par l&apos;utilisateur.
+              Le checkout Stripe a été annulé par l&apos;utilisateur.
             </p>
           </div>
         )}
@@ -120,9 +120,9 @@ const webhookEventColors: Record<string, { bg: string; border: string; text: str
 
 const webhookEvents = [
   { event: 'checkout.session.completed', description: 'Active l\'abonnement' },
-  { event: 'invoice.paid', description: 'Renouvellement reussi' },
-  { event: 'customer.subscription.updated', description: 'Changement de plan/annulation programmee' },
-  { event: 'customer.subscription.deleted', description: 'Fin d\'abonnement + depublication' },
+  { event: 'invoice.paid', description: 'Renouvellement réussi' },
+  { event: 'customer.subscription.updated', description: 'Changement de plan/annulation programmée' },
+  { event: 'customer.subscription.deleted', description: 'Fin d\'abonnement + dépublication' },
 ];
 
 export default function StripeTestPage() {
@@ -217,7 +217,7 @@ export default function StripeTestPage() {
     addLog(`Price ID: ${priceId}`);
     if (selectedPrice) addLog(`Produit: ${selectedPrice.productName}`);
     addLog(`Provider ID: ${providerId}`);
-    if (trialEnabled) addLog('Periode d\'essai: 7 jours');
+    if (trialEnabled) addLog('Période d\'essai: 30 jours');
 
     try {
       const res = await fetch('/api/stripe/checkout', {
@@ -240,11 +240,11 @@ export default function StripeTestPage() {
       }
 
       if (data.url) {
-        addLog(`Session creee : ${data.sessionId}`);
+        addLog(`Session créée : ${data.sessionId}`);
         addLog('Redirection vers Stripe Checkout...');
         window.location.href = data.url;
       } else {
-        addLog(`Erreur : ${data.error || 'Pas d\'URL dans la reponse'}`);
+        addLog(`Erreur : ${data.error || 'Pas d\'URL dans la réponse'}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur inconnue';
@@ -287,7 +287,7 @@ export default function StripeTestPage() {
         addLog('Redirection vers le Customer Portal...');
         window.location.href = data.url;
       } else {
-        addLog(`Erreur : ${data.error || 'Pas d\'URL dans la reponse'}`);
+        addLog(`Erreur : ${data.error || 'Pas d\'URL dans la réponse'}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur inconnue';
@@ -347,7 +347,7 @@ export default function StripeTestPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-white">Webhook Stripe</h3>
-                <p className="text-sm text-slate-400">Les evenements Stripe sont traites par /api/stripe/webhook</p>
+                <p className="text-sm text-slate-400">Les événements Stripe sont traités par /api/stripe/webhook</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
@@ -357,7 +357,7 @@ export default function StripeTestPage() {
           </div>
           <div className="relative p-6">
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-300 mb-3">Evenements geres :</p>
+              <p className="text-sm font-medium text-slate-300 mb-3">Événements gérés :</p>
               <div className="grid gap-2">
                 {webhookEvents.map((item) => {
                   const colors = webhookEventColors[item.event];
@@ -407,7 +407,7 @@ export default function StripeTestPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-white">Stripe Checkout Test</h3>
-                <p className="text-sm text-slate-400">Selectionnez un prix pour lancer une session Stripe Checkout</p>
+                <p className="text-sm text-slate-400">Sélectionnez un prix pour lancer une session Stripe Checkout</p>
               </div>
             </div>
             <Badge variant="info">Test</Badge>
@@ -461,7 +461,7 @@ export default function StripeTestPage() {
                       value={providerId}
                       onChange={(e) => setProviderId(e.target.value)}
                       placeholder="test-provider-123"
-                      hint="Aucun provider trouve dans Firestore"
+                      hint="Aucun provider trouvé dans Firestore"
                     />
                   )}
                   <button
@@ -487,7 +487,7 @@ export default function StripeTestPage() {
                 htmlFor="trial-toggle"
                 className="text-sm font-medium text-slate-300"
               >
-                Periode d&apos;essai (7 jours)
+                Période d&apos;essai (30 jours)
               </label>
             </div>
 
@@ -517,7 +517,7 @@ export default function StripeTestPage() {
               {!pricesLoading && !pricesError && prices.length === 0 && (
                 <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5">
                   <p className="text-sm text-amber-400">
-                    Aucun produit trouve dans Stripe. Creez d&apos;abord un produit
+                    Aucun produit trouvé dans Stripe. Créez d&apos;abord un produit
                     dans le dashboard Stripe.
                   </p>
                 </div>
@@ -706,7 +706,7 @@ export default function StripeTestPage() {
                       {formatPrice(SUBSCRIPTION_PLANS.team.baseMonthlyPrice)}
                     </span>
                     <span className="text-sm text-slate-400">
-                      /mois + {formatPrice(SUBSCRIPTION_PLANS.team.memberMonthlyPrice)}/membre
+                      /mois (5 membres inclus)
                     </span>
                   </div>
                   <div>
@@ -714,7 +714,7 @@ export default function StripeTestPage() {
                       {formatPrice(SUBSCRIPTION_PLANS.team.baseYearlyPrice)}
                     </span>
                     <span className="text-sm text-slate-400">
-                      /an + {formatPrice(SUBSCRIPTION_PLANS.team.memberYearlyPrice)}/membre/an
+                      /an (5 membres inclus)
                     </span>
                   </div>
                 </div>
@@ -763,7 +763,7 @@ export default function StripeTestPage() {
             {logs.length === 0 ? (
               <div className="flex items-center gap-2 text-slate-600">
                 <CircleDot className="w-3 h-3" />
-                Aucun log. Lancez un test pour voir les resultats.
+                Aucun log. Lancez un test pour voir les résultats.
               </div>
             ) : (
               logs.map((log, i) => (
@@ -822,7 +822,7 @@ export default function StripeTestPage() {
                 },
                 {
                   step: 2,
-                  text: 'Les prix actifs de votre compte Stripe sont charges automatiquement',
+                  text: 'Les prix actifs de votre compte Stripe sont chargés automatiquement',
                 },
                 {
                   step: 3,
@@ -830,7 +830,7 @@ export default function StripeTestPage() {
                 },
                 {
                   step: 4,
-                  text: 'Apres le paiement, vous serez redirige ici avec le resultat',
+                  text: 'Après le paiement, vous serez redirigé ici avec le résultat',
                 },
                 {
                   step: 5,

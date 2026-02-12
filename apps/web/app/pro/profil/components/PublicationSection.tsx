@@ -176,10 +176,10 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
 
   const requirementItems = [
     { key: 'hasBusinessName', label: 'Nom de l\'entreprise', href: '#profile' },
-    { key: 'hasCategory', label: 'Categorie', href: '#profile' },
+    { key: 'hasCategory', label: 'Catégorie', href: '#profile' },
     { key: 'hasLocation', label: 'Au moins un lieu', href: '/pro/lieux' },
     { key: 'hasService', label: 'Au moins une prestation', href: '/pro/prestations' },
-    { key: 'hasAvailability', label: 'Disponibilites configurees', href: '/pro/disponibilites' },
+    { key: 'hasAvailability', label: 'Disponibilités configurées', href: '/pro/disponibilites' },
   ];
 
   return (
@@ -376,12 +376,12 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Desactivation...
+                Désactivation...
               </>
             ) : (
               <>
                 <GlobeLock className="w-4 h-4 mr-2" />
-                Desactiver
+                Désactiver
               </>
             )}
           </Button>

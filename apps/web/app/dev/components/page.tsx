@@ -71,7 +71,7 @@ export default function ComponentsPage() {
   if (process.env.NODE_ENV !== 'development') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Cette page est disponible uniquement en developpement.</p>
+        <p className="text-gray-500">Cette page est disponible uniquement en développement.</p>
       </div>
     );
   }
@@ -84,12 +84,12 @@ export default function ComponentsPage() {
             Composants UI
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            Bibliotheque de composants pour OPATAM
+            Bibliothèque de composants pour OPATAM
           </p>
         </header>
 
         {/* Theme Switcher */}
-        <Section title="Theme">
+        <Section title="Thème">
           <ThemeSwitcher />
         </Section>
 
@@ -112,7 +112,7 @@ export default function ComponentsPage() {
             </div>
           </SubSection>
 
-          <SubSection title="Etats">
+          <SubSection title="États">
             <div className="flex flex-wrap gap-4">
               <Button disabled>Disabled</Button>
               <Button loading>Loading</Button>
@@ -120,7 +120,7 @@ export default function ComponentsPage() {
             </div>
           </SubSection>
 
-          <SubSection title="Avec icones">
+          <SubSection title="Avec icônes">
             <div className="flex flex-wrap gap-4">
               <Button
                 leftIcon={
@@ -151,20 +151,20 @@ export default function ComponentsPage() {
             <Input label="Texte" placeholder="Entrez votre texte" />
             <Input label="Email" type="email" placeholder="email@exemple.com" />
             <Input label="Mot de passe" type="password" placeholder="********" />
-            <Input label="Telephone" type="tel" placeholder="+33 6 12 34 56 78" />
+            <Input label="Téléphone" type="tel" placeholder="+33 6 12 34 56 78" />
             <Input label="Avec erreur" error="Ce champ est requis" defaultValue="Valeur invalide" />
-            <Input label="Desactive" disabled placeholder="Non modifiable" />
-            <Input label="Avec indication" hint="Minimum 8 caracteres" placeholder="Mot de passe" />
+            <Input label="Désactivé" disabled placeholder="Non modifiable" />
+            <Input label="Avec indication" hint="Minimum 8 caractères" placeholder="Mot de passe" />
           </div>
         </Section>
 
         {/* Textarea */}
         <Section title="Textarea">
           <div className="grid gap-6 sm:grid-cols-2">
-            <Textarea label="Description" placeholder="Decrivez votre activite..." />
+            <Textarea label="Description" placeholder="Décrivez votre activité..." />
             <Textarea label="Avec erreur" error="La description est trop courte" defaultValue="Texte" />
-            <Textarea label="Desactive" disabled placeholder="Non modifiable" />
-            <Textarea label="Avec indication" hint="Maximum 500 caracteres" />
+            <Textarea label="Désactivé" disabled placeholder="Non modifiable" />
+            <Textarea label="Avec indication" hint="Maximum 500 caractères" />
           </div>
         </Section>
 
@@ -172,25 +172,25 @@ export default function ComponentsPage() {
         <Section title="Select">
           <div className="grid gap-6 sm:grid-cols-2">
             <Select
-              label="Categorie"
-              placeholder="Choisir une categorie"
+              label="Catégorie"
+              placeholder="Choisir une catégorie"
               options={[
-                { value: 'beauty', label: 'Beaute & Esthetique' },
-                { value: 'wellness', label: 'Bien-etre & Sante' },
+                { value: 'beauty', label: 'Beauté & Esthétique' },
+                { value: 'wellness', label: 'Bien-être & Santé' },
                 { value: 'sport', label: 'Sport & Coaching' },
                 { value: 'training', label: 'Formation & Cours' },
               ]}
             />
             <Select
               label="Avec erreur"
-              error="Veuillez selectionner une option"
+              error="Veuillez sélectionner une option"
               options={[
                 { value: 'a', label: 'Option A' },
                 { value: 'b', label: 'Option B' },
               ]}
             />
             <Select
-              label="Desactive"
+              label="Désactivé"
               disabled
               options={[{ value: 'disabled', label: 'Non modifiable' }]}
             />
@@ -210,10 +210,10 @@ export default function ComponentsPage() {
                   />
                   <Checkbox
                     label="Avec description"
-                    description="Une description supplementaire pour cette option"
+                    description="Une description supplémentaire pour cette option"
                   />
-                  <Checkbox label="Desactive" disabled />
-                  <Checkbox label="Desactive et coche" disabled checked />
+                  <Checkbox label="Désactivé" disabled />
+                  <Checkbox label="Désactivé et coché" disabled checked />
                 </div>
               </SubSection>
             </div>
@@ -230,8 +230,8 @@ export default function ComponentsPage() {
                     label="Avec description"
                     description="Recevoir des notifications par email"
                   />
-                  <Switch label="Desactive" disabled />
-                  <Switch label="Desactive et actif" disabled checked />
+                  <Switch label="Désactivé" disabled />
+                  <Switch label="Désactivé et actif" disabled checked />
                 </div>
               </SubSection>
             </div>
@@ -263,13 +263,13 @@ export default function ComponentsPage() {
           <div className="mt-6">
             <Card>
               <CardHeader
-                title="Carte complete"
+                title="Carte complète"
                 description="Avec header, body et footer"
                 action={<Button size="sm" variant="outline">Action</Button>}
               />
               <CardBody>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Contenu de la carte avec du texte et potentiellement d&apos;autres elements.
+                  Contenu de la carte avec du texte et potentiellement d&apos;autres éléments.
                 </p>
               </CardBody>
               <CardFooter>
@@ -349,7 +349,7 @@ export default function ComponentsPage() {
         {/* Toast */}
         <Section title="Toast">
           <div className="flex flex-wrap gap-4">
-            <Button variant="outline" onClick={() => toast.success('Operation reussie !')}>
+            <Button variant="outline" onClick={() => toast.success('Opération réussie !')}>
               Success Toast
             </Button>
             <Button variant="outline" onClick={() => toast.error('Une erreur est survenue')}>
@@ -389,7 +389,7 @@ export default function ComponentsPage() {
               <TabsTrigger value="tab1">Onglet 1</TabsTrigger>
               <TabsTrigger value="tab2">Onglet 2</TabsTrigger>
               <TabsTrigger value="tab3">Onglet 3</TabsTrigger>
-              <TabsTrigger value="tab4" disabled>Desactive</TabsTrigger>
+              <TabsTrigger value="tab4" disabled>Désactivé</TabsTrigger>
             </TabsList>
             <TabsContent value="tab1">
               <Card>
@@ -404,7 +404,7 @@ export default function ComponentsPage() {
               <Card>
                 <CardBody>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Contenu du deuxieme onglet avec un formulaire.
+                    Contenu du deuxième onglet avec un formulaire.
                   </p>
                   <div className="mt-4">
                     <Input label="Nom" placeholder="Votre nom..." />
@@ -416,7 +416,7 @@ export default function ComponentsPage() {
               <Card>
                 <CardBody>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Contenu du troisieme onglet.
+                    Contenu du troisième onglet.
                   </p>
                 </CardBody>
               </Card>

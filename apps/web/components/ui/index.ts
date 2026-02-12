@@ -72,3 +72,7 @@ export type { ColorPalette } from './ThemeSwitcher';
 
 // Logo
 export { Logo, LogoWhite } from './Logo';
+
+// AddressAutocomplete
+export { AddressAutocomplete } from './AddressAutocomplete';
+export type { AddressAutocompleteProps, AddressSuggestion } from './AddressAutocomplete';

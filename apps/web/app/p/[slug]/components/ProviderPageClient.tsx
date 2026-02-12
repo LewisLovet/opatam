@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ProviderHero } from './ProviderHero';
 import { ProviderNav } from './ProviderNav';
 import { SocialLinks } from './SocialLinks';
@@ -47,6 +47,7 @@ interface SerializedService {
   duration: number;
   price: number;
   bufferTime: number;
+  categoryId?: string | null;
   locationIds: string[];
   memberIds: string[] | null;
   isActive: boolean;
@@ -111,9 +112,16 @@ interface SerializedAvailability {
   updatedAt: string;
 }
 
+interface SerializedServiceCategory {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
+
 interface ProviderPageClientProps {
   provider: SerializedProvider;
   services: SerializedService[];
+  serviceCategories?: SerializedServiceCategory[];
   locations: SerializedLocation[];
   members: SerializedMember[];
   reviews: SerializedReview[];
@@ -123,11 +131,12 @@ interface ProviderPageClientProps {
   isDemo?: boolean;
 }
 
-type SectionId = 'prestations' | 'portfolio' | 'avis' | 'infos';
+type TabId = 'prestations' | 'avis' | 'horaires';
 
 export function ProviderPageClient({
   provider,
   services,
+  serviceCategories = [],
   locations,
   members,
   reviews,
@@ -136,74 +145,13 @@ export function ProviderPageClient({
   nextAvailableDate,
   isDemo = false,
 }: ProviderPageClientProps) {
-  const [activeSection, setActiveSection] = useState<SectionId>('prestations');
-  const [showNav, setShowNav] = useState(false);
-
-  // Section refs for scroll spy
-  const prestationsRef = useRef<HTMLDivElement>(null);
-  const portfolioRef = useRef<HTMLDivElement>(null);
-  const avisRef = useRef<HTMLDivElement>(null);
-  const infosRef = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<TabId>('prestations');
 
   // Check if has portfolio photos
   const hasPortfolio = provider.portfolioPhotos.length > 0;
 
   // Check if has social links
   const hasSocials = hasSocialLinks(provider.socialLinks);
-
-  // Scroll spy effect
-  useEffect(() => {
-    const handleScroll = () => {
-      // Show nav after scrolling past hero
-      if (heroRef.current) {
-        const heroBottom = heroRef.current.getBoundingClientRect().bottom;
-        setShowNav(heroBottom < 60);
-      }
-
-      // Determine active section
-      const sections = [
-        { id: 'prestations' as SectionId, ref: prestationsRef },
-        ...(hasPortfolio ? [{ id: 'portfolio' as SectionId, ref: portfolioRef }] : []),
-        { id: 'avis' as SectionId, ref: avisRef },
-        { id: 'infos' as SectionId, ref: infosRef },
-      ];
-
-      const scrollPosition = window.scrollY + 150;
-
-      for (let i = sections.length - 1; i >= 0; i--) {
-        const section = sections[i];
-        if (section.ref.current) {
-          const offsetTop = section.ref.current.offsetTop;
-          if (scrollPosition >= offsetTop) {
-            setActiveSection(section.id);
-            break;
-          }
-        }
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // Initial check
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasPortfolio]);
-
-  const scrollToSection = (sectionId: SectionId) => {
-    const refs: Record<SectionId, React.RefObject<HTMLDivElement | null>> = {
-      prestations: prestationsRef,
-      portfolio: portfolioRef,
-      avis: avisRef,
-      infos: infosRef,
-    };
-
-    const ref = refs[sectionId];
-    if (ref.current) {
-      const offset = 80; // Nav height
-      const top = ref.current.offsetTop - offset;
-      window.scrollTo({ top, behavior: 'smooth' });
-    }
-  };
 
   // Check if provider has team plan (more than 1 member)
   const isTeam = provider.plan === 'team' && members.length > 1;
@@ -214,11 +162,9 @@ export function ProviderPageClient({
       {isDemo && <DemoBanner />}
 
       {/* Hero Section */}
-      <div ref={heroRef}>
-        <ProviderHero provider={provider} nextAvailableDate={nextAvailableDate} />
-      </div>
+      <ProviderHero provider={provider} nextAvailableDate={nextAvailableDate} />
 
-      {/* Social Links - Just after hero, before nav */}
+      {/* Social Links - Just after hero, before tabs */}
       {hasSocials && (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
           <div className="flex justify-center">
@@ -227,42 +173,37 @@ export function ProviderPageClient({
         </div>
       )}
 
-      {/* Sticky Navigation */}
+      {/* Tab Navigation */}
       <ProviderNav
-        activeSection={activeSection}
-        onSectionClick={scrollToSection}
-        visible={showNav}
-        hasPortfolio={hasPortfolio}
+        activeTab={activeTab}
+        onTabClick={setActiveTab}
+        reviewCount={reviews.length}
       />
 
-      {/* Main Content */}
+      {/* Tab Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Services Section */}
-        <div ref={prestationsRef} id="prestations">
-          <ServicesSection services={services} slug={provider.slug} />
-        </div>
-
-        {/* Portfolio Section (only if has photos) */}
-        {hasPortfolio && (
-          <div ref={portfolioRef} id="portfolio">
-            <PortfolioSection photos={provider.portfolioPhotos} />
-          </div>
+        {activeTab === 'prestations' && (
+          <>
+            <ServicesSection services={services} categories={serviceCategories} slug={provider.slug} />
+            {/* Portfolio shown below services if available */}
+            {hasPortfolio && (
+              <PortfolioSection photos={provider.portfolioPhotos} />
+            )}
+          </>
         )}
 
-        {/* Reviews Section (always visible with distribution) */}
-        <div ref={avisRef} id="avis">
+        {activeTab === 'avis' && (
           <ReviewsSection reviews={reviews} rating={provider.rating} />
-        </div>
+        )}
 
-        {/* Infos Section */}
-        <div ref={infosRef} id="infos">
+        {activeTab === 'horaires' && (
           <InfosSection
             locations={locations}
             members={members}
             availabilities={availabilities}
             isTeam={isTeam}
           />
-        </div>
+        )}
       </div>
 
       {/* Sticky Booking Bar (all screens) */}

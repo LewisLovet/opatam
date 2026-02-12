@@ -8,11 +8,24 @@ function getOrInitApp(): App {
 
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-  // Try to load service account from env variable or common paths
-  const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  // 1. Try FIREBASE_SERVICE_ACCOUNT_KEY env var (JSON string — recommended for Vercel)
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (serviceAccountJson) {
+    try {
+      const serviceAccount = JSON.parse(serviceAccountJson);
+      console.log('[FIREBASE-ADMIN] Initialized with FIREBASE_SERVICE_ACCOUNT_KEY env var');
+      return initializeApp({
+        credential: cert(serviceAccount),
+        projectId,
+      });
+    } catch (e) {
+      console.error('[FIREBASE-ADMIN] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', e);
+    }
+  }
 
+  // 2. Try GOOGLE_APPLICATION_CREDENTIALS file path
+  const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   if (serviceAccountPath) {
-    // Resolve relative to cwd or use absolute path
     const absolutePath = resolve(process.cwd(), serviceAccountPath);
     if (existsSync(absolutePath)) {
       const serviceAccount = JSON.parse(readFileSync(absolutePath, 'utf-8'));
@@ -25,7 +38,7 @@ function getOrInitApp(): App {
     console.warn(`[FIREBASE-ADMIN] Service account not found at: ${absolutePath}`);
   }
 
-  // Fallback: try common paths relative to project
+  // 3. Fallback: try common file paths relative to project (local dev)
   const commonPaths = [
     resolve(process.cwd(), 'service-account.json'),
     resolve(process.cwd(), '../../service-account.json'),
@@ -43,8 +56,8 @@ function getOrInitApp(): App {
     }
   }
 
-  // In production (Vercel, Cloud Run), ADC or managed credentials are used
-  console.log('[FIREBASE-ADMIN] Initialized with default credentials (no service account file found)');
+  // 4. Last resort: default credentials (only works on Google Cloud infra)
+  console.warn('[FIREBASE-ADMIN] No service account found. Using default credentials (will fail on Vercel).');
   return initializeApp({ projectId });
 }
 

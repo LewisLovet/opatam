@@ -106,7 +106,7 @@ const PLAN_META: Record<
 const FAQ_ITEMS = [
   {
     q: "Que se passe-t-il à la fin de l'essai gratuit ?",
-    a: "À la fin des 7 jours d'essai, votre abonnement commence automatiquement. Vous ne serez débité qu'après la période d'essai. Vous pouvez annuler à tout moment avant la fin de l'essai sans être facturé.",
+    a: "À la fin des 30 jours d'essai, votre abonnement commence automatiquement. Vous ne serez débité qu'après la période d'essai. Vous pouvez annuler à tout moment avant la fin de l'essai sans être facturé.",
   },
   {
     q: 'Puis-je changer de plan à tout moment ?',
@@ -255,13 +255,8 @@ function PlanCard({
   const displayPrice = formatPrice(price.unitAmount);
   const intervalLabel = price.interval === 'year' ? '/an' : '/mois';
 
-  // Per-member pricing for team plan
-  const memberPriceLabel =
-    plan === 'team'
-      ? billingInterval === 'year'
-        ? `+${formatPrice(SUBSCRIPTION_PLANS.team.memberYearlyPrice)}\u20AC/membre sup./an`
-        : `+${formatPrice(SUBSCRIPTION_PLANS.team.memberMonthlyPrice)}\u20AC/membre sup.`
-      : null;
+  // Team plan includes up to 5 members
+  const memberPriceLabel = plan === 'team' ? 'Jusqu\u2019à 5 membres inclus' : null;
 
   return (
     <div
@@ -337,6 +332,12 @@ function PlanCard({
           {memberPriceLabel && (
             <p className="text-xs text-violet-600/80 font-medium mt-1.5">
               {memberPriceLabel}
+            </p>
+          )}
+
+          {!isFree && !isTest && (
+            <p className="text-sm font-semibold text-emerald-600 mt-2">
+              Sans engagement
             </p>
           )}
 

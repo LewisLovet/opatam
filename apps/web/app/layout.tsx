@@ -12,9 +12,38 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+const BASE_URL = 'https://opatam.com';
+const SITE_NAME = APP_CONFIG.name;
+const DEFAULT_DESCRIPTION =
+  'Opatam est la plateforme de réservation en ligne pour les entrepreneurs de la beauté, du bien-être et des services. Gérez vos rendez-vous, attirez de nouveaux clients, sans commission.';
+
 export const metadata: Metadata = {
-  title: `${APP_CONFIG.name} - Réservez en ligne`,
-  description: 'Plateforme de réservation multi-secteurs pour prestataires de services',
+  metadataBase: new URL(BASE_URL),
+  title: {
+    template: `%s | ${SITE_NAME}`,
+    default: `${SITE_NAME} - Réservation en ligne pour entrepreneurs`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  openGraph: {
+    type: 'website',
+    locale: 'fr_FR',
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} - Réservation en ligne pour entrepreneurs`,
+    description: DEFAULT_DESCRIPTION,
+    url: BASE_URL,
+  },
+  twitter: {
+    card: 'summary',
+    title: `${SITE_NAME} - Réservation en ligne pour entrepreneurs`,
+    description: DEFAULT_DESCRIPTION,
+  },
+  alternates: {
+    canonical: BASE_URL,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

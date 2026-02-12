@@ -36,14 +36,14 @@ interface SearchFilters {
   limit?: number;
 }
 
-// Duree du trial en jours
-const TRIAL_DURATION_DAYS = 7;
+// Durée du trial en jours
+const TRIAL_DURATION_DAYS = 30;
 
 export class ProviderService {
   /**
    * Create a new provider for a user
-   * Le plan est TOUJOURS 'trial' a la creation
-   * IMPORTANT: Provider.id === User.id (meme ID pour simplifier)
+   * Le plan est TOUJOURS 'trial' à la création
+   * IMPORTANT: Provider.id === User.id (même ID pour simplifier)
    */
   async createProvider(userId: string, input: CreateProviderInput): Promise<WithId<Provider>> {
     // Validate input
@@ -424,7 +424,7 @@ export class ProviderService {
   async deleteProvider(providerId: string): Promise<void> {
     const provider = await providerRepository.getById(providerId);
     if (!provider) {
-      throw new Error('Prestataire non trouve');
+      throw new Error('Prestataire non trouvé');
     }
 
     // Delete all subcollections in parallel

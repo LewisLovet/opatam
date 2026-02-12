@@ -43,7 +43,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             aria-invalid={hasError}
             aria-describedby={hasError ? errorId : hint ? hintId : undefined}
             className={`
-              w-full px-3 py-2 rounded-lg border appearance-none
+              w-full px-3 py-2 rounded-lg border appearance-none text-base
               text-gray-900 dark:text-gray-100
               bg-white dark:bg-gray-800
               transition-colors duration-200

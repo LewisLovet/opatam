@@ -8,7 +8,7 @@ interface PageProps {
 
 export const metadata: Metadata = {
   title: 'Donner votre avis',
-  description: 'Partagez votre experience et aidez les autres clients',
+  description: 'Partagez votre expérience et aidez les autres clients',
 };
 
 export default async function ReviewPage({ params }: PageProps) {

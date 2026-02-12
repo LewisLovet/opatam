@@ -15,14 +15,14 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!bookingId) {
       return NextResponse.json(
-        { error: 'L\'identifiant de la reservation est requis' },
+        { error: 'L\'identifiant de la réservation est requis' },
         { status: 400 }
       );
     }
 
     if (!rating || rating < 1 || rating > 5) {
       return NextResponse.json(
-        { error: 'La note doit etre comprise entre 1 et 5' },
+        { error: 'La note doit être comprise entre 1 et 5' },
         { status: 400 }
       );
     }

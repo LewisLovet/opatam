@@ -56,7 +56,7 @@ export default function LocationsTestPage() {
         type: 'fixed',
         travelRadius: null,
       });
-      return { id, message: 'Location creee avec succes' };
+      return { id, message: 'Location créée avec succès' };
     });
 
   const handleGetByProvider = () =>
@@ -77,7 +77,7 @@ export default function LocationsTestPage() {
     executeAction('GET DEFAULT', async () => {
       if (!providerId) throw new Error('Provider ID requis');
       const location = await locationRepository.getDefault(providerId);
-      return location || { message: 'Aucune location par defaut' };
+      return location || { message: 'Aucune location par défaut' };
     });
 
   const handleGetById = () =>
@@ -85,7 +85,7 @@ export default function LocationsTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!searchLocationId) throw new Error('Location ID requis');
       const location = await locationRepository.getById(providerId, searchLocationId);
-      return location || { message: 'Location non trouvee' };
+      return location || { message: 'Location non trouvée' };
     });
 
   const handleGetByCity = () =>
@@ -102,7 +102,7 @@ export default function LocationsTestPage() {
       if (!updateLocationId) throw new Error('Location ID requis');
       if (!updateName) throw new Error('Nouveau nom requis');
       await locationRepository.update(providerId, updateLocationId, { name: updateName });
-      return { message: 'Location mise a jour avec succes', id: updateLocationId };
+      return { message: 'Location mise à jour avec succès', id: updateLocationId };
     });
 
   const handleSetDefault = () =>
@@ -110,7 +110,7 @@ export default function LocationsTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!updateLocationId) throw new Error('Location ID requis');
       await locationRepository.setDefault(providerId, updateLocationId);
-      return { message: 'Location definie comme defaut', id: updateLocationId };
+      return { message: 'Location définie comme défaut', id: updateLocationId };
     });
 
   const handleToggleActive = () =>
@@ -118,9 +118,9 @@ export default function LocationsTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!updateLocationId) throw new Error('Location ID requis');
       const location = await locationRepository.getById(providerId, updateLocationId);
-      if (!location) throw new Error('Location non trouvee');
+      if (!location) throw new Error('Location non trouvée');
       await locationRepository.toggleActive(providerId, updateLocationId, !location.isActive);
-      return { message: `Location ${!location.isActive ? 'activee' : 'desactivee'}`, id: updateLocationId };
+      return { message: `Location ${!location.isActive ? 'activée' : 'désactivée'}`, id: updateLocationId };
     });
 
   const handleDelete = () =>
@@ -128,7 +128,7 @@ export default function LocationsTestPage() {
       if (!providerId) throw new Error('Provider ID requis');
       if (!deleteLocationId) throw new Error('Location ID requis');
       await locationRepository.delete(providerId, deleteLocationId);
-      return { message: 'Location supprimee avec succes', id: deleteLocationId };
+      return { message: 'Location supprimée avec succès', id: deleteLocationId };
     });
 
   const handleCount = () =>
@@ -145,7 +145,7 @@ export default function LocationsTestPage() {
           Test Locations Repository
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Test des operations CRUD sur la sous-collection providers/&#123;id&#125;/locations.
+          Test des opérations CRUD sur la sous-collection providers/&#123;id&#125;/locations.
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export default function LocationsTestPage() {
 
       {/* Create */}
       <Card>
-        <CardHeader title="Creer une Location" />
+        <CardHeader title="Créer une Location" />
         <CardBody>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Input
@@ -198,7 +198,7 @@ export default function LocationsTestPage() {
               loading={loading && lastAction === 'CREATE'}
               disabled={!providerId}
             >
-              Creer Location
+              Créer Location
             </Button>
           </div>
         </CardBody>
@@ -231,7 +231,7 @@ export default function LocationsTestPage() {
                 loading={loading && lastAction === 'GET DEFAULT'}
                 disabled={!providerId}
               >
-                Location par defaut
+                Location par défaut
               </Button>
               <Button
                 variant="outline"
@@ -315,7 +315,7 @@ export default function LocationsTestPage() {
               loading={loading && lastAction === 'SET DEFAULT'}
               disabled={!providerId}
             >
-              Defaut
+              Défaut
             </Button>
             <Button
               variant="outline"
@@ -335,7 +335,7 @@ export default function LocationsTestPage() {
         <CardBody>
           <div className="flex gap-3 items-end">
             <Input
-              label="Location ID a supprimer"
+              label="Location ID à supprimer"
               value={deleteLocationId}
               onChange={(e) => setDeleteLocationId(e.target.value)}
               placeholder="ID"
@@ -357,7 +357,7 @@ export default function LocationsTestPage() {
       {/* Result */}
       <Card>
         <CardHeader
-          title="Resultat"
+          title="Résultat"
           action={
             lastAction && (
               <Badge variant={error ? 'error' : 'success'}>
@@ -378,7 +378,7 @@ export default function LocationsTestPage() {
             </pre>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Executez une action pour voir le resultat ici.
+              Exécutez une action pour voir le résultat ici.
             </p>
           )}
         </CardBody>

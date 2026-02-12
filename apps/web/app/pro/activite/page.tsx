@@ -70,14 +70,14 @@ export default function ActivityPage() {
           <LieuxTab />
         </TabsContent>
 
-        {/* Equipe Tab (Teams only) */}
+        {/* Équipe Tab (Teams only) */}
         {isTeamPlan && (
           <TabsContent value="equipe" className="mt-6">
             <EquipeTab />
           </TabsContent>
         )}
 
-        {/* Disponibilites Tab */}
+        {/* Disponibilités Tab */}
         <TabsContent value="disponibilites" className="mt-6">
           <DisponibilitesTab />
         </TabsContent>

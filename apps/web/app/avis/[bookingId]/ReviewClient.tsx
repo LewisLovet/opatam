@@ -104,7 +104,7 @@ export function ReviewClient({
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      setError('Veuillez selectionner une note');
+      setError('Veuillez sélectionner une note');
       return;
     }
 
@@ -144,16 +144,16 @@ export function ReviewClient({
             <XCircle className="w-10 h-10 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Reservation introuvable
+            Réservation introuvable
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">
-            Cette reservation n'existe pas ou le lien est invalide.
+            Cette réservation n'existe pas ou le lien est invalide.
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour a l'accueil
+            Retour à l'accueil
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -170,21 +170,21 @@ export function ReviewClient({
             <Clock className="w-10 h-10 text-yellow-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Rendez-vous a venir
+            Rendez-vous à venir
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-2">
-            Vous pourrez donner votre avis apres votre rendez-vous.
+            Vous pourrez donner votre avis après votre rendez-vous.
           </p>
           {booking && (
             <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">
-              Rendez-vous prevu le {formatDate(booking.datetime)} a {formatTime(booking.datetime)}
+              Rendez-vous prévu le {formatDate(booking.datetime)} à {formatTime(booking.datetime)}
             </p>
           )}
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour a l'accueil
+            Retour à l'accueil
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -201,10 +201,10 @@ export function ReviewClient({
             <CheckCircle className="w-10 h-10 text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Avis deja depose
+            Avis déjà déposé
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-6">
-            Vous avez deja donne votre avis pour ce rendez-vous.
+            Vous avez déjà donné votre avis pour ce rendez-vous.
           </p>
 
           {/* Display the existing review */}
@@ -224,7 +224,7 @@ export function ReviewClient({
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour a l'accueil
+            Retour à l'accueil
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -244,13 +244,13 @@ export function ReviewClient({
             Merci pour votre avis !
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">
-            Votre avis a bien ete enregistre et sera visible sur la page du prestataire.
+            Votre avis a bien été enregistré et sera visible sur la page du prestataire.
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour a l'accueil
+            Retour à l'accueil
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -275,7 +275,7 @@ export function ReviewClient({
             Donner votre avis
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Comment s'est passe votre rendez-vous chez {booking.providerName} ?
+            Comment s'est passé votre rendez-vous chez {booking.providerName} ?
           </p>
         </div>
 
@@ -335,11 +335,11 @@ export function ReviewClient({
           </div>
           {rating > 0 && (
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">
-              {rating === 1 && 'Tres insatisfait'}
+              {rating === 1 && 'Très insatisfait'}
               {rating === 2 && 'Insatisfait'}
               {rating === 3 && 'Correct'}
               {rating === 4 && 'Satisfait'}
-              {rating === 5 && 'Tres satisfait'}
+              {rating === 5 && 'Très satisfait'}
             </p>
           )}
         </div>
@@ -357,7 +357,7 @@ export function ReviewClient({
             rows={4}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Partagez votre experience..."
+            placeholder="Partagez votre expérience..."
             maxLength={1000}
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
             disabled={state === 'loading'}
@@ -402,13 +402,13 @@ export function ReviewClient({
             href="/"
             className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
-            Annuler et retourner a l'accueil
+            Annuler et retourner à l'accueil
           </Link>
         </div>
 
         {/* Reference */}
         <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
-          Reference : {booking.id}
+          Référence : {booking.id}
         </p>
       </div>
     </div>

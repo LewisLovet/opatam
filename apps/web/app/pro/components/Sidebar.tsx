@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getDaysRemaining } from '@/lib/date-utils';
 import { useTheme } from '@/hooks/useTheme';
 import { Logo, LogoWhite } from '@/components/ui';
+import { APP_CONFIG } from '@booking-app/shared/constants';
 
 interface NavItem {
   label: string;
@@ -58,10 +59,10 @@ function TrialBanner({ collapsed, provider }: { collapsed?: boolean; provider: a
   if (provider?.plan !== 'trial' || !provider?.subscription?.validUntil) return null;
 
   const daysLeft = getDaysRemaining(provider.subscription.validUntil);
-  const totalDays = 7;
+  const totalDays = APP_CONFIG.trialDays;
   const progress = Math.max(0, Math.min(100, (daysLeft / totalDays) * 100));
-  const isUrgent = daysLeft <= 2;
-  const isWarning = daysLeft <= 4;
+  const isUrgent = daysLeft <= 3;
+  const isWarning = daysLeft <= 7;
   const isExpired = daysLeft === 0;
 
   // Color based on urgency
@@ -91,11 +92,11 @@ function TrialBanner({ collapsed, provider }: { collapsed?: boolean; provider: a
         <div className="flex items-center gap-1.5">
           <Clock className={`w-3.5 h-3.5 ${textColor}`} />
           <span className={`text-xs font-semibold ${textColor}`}>
-            {isExpired ? 'Essai termine' : 'Essai gratuit'}
+            {isExpired ? 'Essai terminé' : 'Essai gratuit'}
           </span>
         </div>
         <span className={`text-xs font-bold ${textColor}`}>
-          {isExpired ? 'Expire' : `${daysLeft}j`}
+          {isExpired ? 'Expiré' : `${daysLeft}j`}
         </span>
       </div>
 

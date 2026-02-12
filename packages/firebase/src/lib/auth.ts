@@ -5,8 +5,7 @@ import {
   signOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
+  OAuthProvider,
   signInWithCredential,
   updateEmail as firebaseUpdateEmail,
   updatePassword as firebaseUpdatePassword,
@@ -30,11 +29,6 @@ function getAuthInstance(): Auth {
 export const auth: Auth = getAuthInstance();
 
 /**
- * Google Auth Provider
- */
-export const googleProvider = new GoogleAuthProvider();
-
-/**
  * Sign in with email and password
  */
 export async function signInWithEmail(
@@ -52,13 +46,6 @@ export async function createUserWithEmail(
   password: string
 ): Promise<UserCredential> {
   return createUserWithEmailAndPassword(auth, email, password);
-}
-
-/**
- * Sign in with Google (web)
- */
-export async function signInWithGoogle(): Promise<UserCredential> {
-  return signInWithPopup(auth, googleProvider);
 }
 
 /**
@@ -130,7 +117,7 @@ export async function deleteCurrentUser(): Promise<void> {
 
 // Re-export types and functions for convenience
 export {
-  GoogleAuthProvider,
+  OAuthProvider,
   signInWithCredential,
   EmailAuthProvider,
   reauthenticateWithCredential,
