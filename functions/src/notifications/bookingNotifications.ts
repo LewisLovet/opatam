@@ -42,6 +42,10 @@ function formatDateFr(date: Date): string {
   return `${dayName} ${dayNum} ${month} à ${hours}h${minutes}`;
 }
 
+// Notification event types for preference checks
+type ClientNotifType = 'confirmation' | 'cancellation' | 'reschedule' | 'reminder';
+type ProviderNotifType = 'newBooking' | 'confirmation' | 'cancellation' | 'reminder';
+
 /**
  * Get user's push tokens from Firestore
  * Returns empty array if user doesn't exist or has no tokens
@@ -58,6 +62,58 @@ async function getUserPushTokens(userId: string): Promise<string[]> {
   } catch (error) {
     console.error(`Error fetching push tokens for user ${userId}:`, error);
     return [];
+  }
+}
+
+/**
+ * Check if a client has push enabled for a given notification type
+ * Returns true by default if no settings are configured (opt-out model)
+ */
+async function isClientPushAllowed(clientId: string, type: ClientNotifType): Promise<boolean> {
+  try {
+    const userDoc = await admin.firestore().collection('users').doc(clientId).get();
+    if (!userDoc.exists) return false;
+
+    const settings = userDoc.data()?.notificationSettings;
+    if (!settings) return true; // No settings = all enabled (default)
+    if (!settings.pushEnabled) return false; // Master toggle off
+
+    const map: Record<ClientNotifType, string> = {
+      confirmation: 'confirmationNotifications',
+      cancellation: 'cancellationNotifications',
+      reschedule: 'rescheduleNotifications',
+      reminder: 'reminderNotifications',
+    };
+    return settings[map[type]] !== false;
+  } catch (error) {
+    console.error(`Error checking client push prefs for ${clientId}:`, error);
+    return true; // Fail-open: send if we can't check
+  }
+}
+
+/**
+ * Check if a provider has push enabled for a given notification type
+ * Returns true by default if no preferences are configured (opt-out model)
+ */
+async function isProviderPushAllowed(providerId: string, type: ProviderNotifType): Promise<boolean> {
+  try {
+    const providerDoc = await admin.firestore().collection('providers').doc(providerId).get();
+    if (!providerDoc.exists) return false;
+
+    const prefs = providerDoc.data()?.settings?.notificationPreferences;
+    if (!prefs) return true; // No preferences = all enabled (default)
+    if (!prefs.pushEnabled) return false; // Master toggle off
+
+    const map: Record<ProviderNotifType, string> = {
+      newBooking: 'newBookingNotifications',
+      confirmation: 'confirmationNotifications',
+      cancellation: 'cancellationNotifications',
+      reminder: 'reminderNotifications',
+    };
+    return prefs[map[type]] !== false;
+  } catch (error) {
+    console.error(`Error checking provider push prefs for ${providerId}:`, error);
+    return true; // Fail-open
   }
 }
 
@@ -109,6 +165,11 @@ async function removeInvalidTokens(userId: string, invalidTokens: string[]): Pro
 export async function notifyProviderNewBooking(booking: BookingData, bookingId: string): Promise<void> {
   console.log('notifyProviderNewBooking:', booking.providerId, bookingId);
 
+  if (!(await isProviderPushAllowed(booking.providerId, 'newBooking'))) {
+    console.log('Provider has disabled newBooking push notifications, skipping');
+    return;
+  }
+
   const providerUserId = await getProviderUserId(booking.providerId);
   if (!providerUserId) {
     console.log('Provider userId not found, skipping notification');
@@ -151,6 +212,11 @@ export async function notifyClientBookingConfirmed(booking: BookingData): Promis
     return;
   }
 
+  if (!(await isClientPushAllowed(booking.clientId, 'confirmation'))) {
+    console.log('Client has disabled confirmation push notifications, skipping');
+    return;
+  }
+
   const pushTokens = await getUserPushTokens(booking.clientId);
   if (pushTokens.length === 0) {
     console.log('Client has no push tokens, skipping notification');
@@ -180,6 +246,11 @@ export async function notifyClientBookingConfirmed(booking: BookingData): Promis
  */
 export async function notifyProviderBookingCancelled(booking: BookingData): Promise<void> {
   console.log('notifyProviderBookingCancelled:', booking.providerId);
+
+  if (!(await isProviderPushAllowed(booking.providerId, 'cancellation'))) {
+    console.log('Provider has disabled cancellation push notifications, skipping');
+    return;
+  }
 
   const providerUserId = await getProviderUserId(booking.providerId);
   if (!providerUserId) {
@@ -222,6 +293,11 @@ export async function notifyClientBookingCancelled(booking: BookingData): Promis
     return;
   }
 
+  if (!(await isClientPushAllowed(booking.clientId, 'cancellation'))) {
+    console.log('Client has disabled cancellation push notifications, skipping');
+    return;
+  }
+
   const pushTokens = await getUserPushTokens(booking.clientId);
   if (pushTokens.length === 0) {
     console.log('Client has no push tokens, skipping notification');
@@ -257,6 +333,11 @@ export async function notifyClientBookingRescheduled(
 
   if (!booking.clientId) {
     console.log('No clientId (guest booking), skipping push notification');
+    return;
+  }
+
+  if (!(await isClientPushAllowed(booking.clientId, 'reschedule'))) {
+    console.log('Client has disabled reschedule push notifications, skipping');
     return;
   }
 
@@ -296,6 +377,11 @@ export async function notifyClientBookingReminder(
 
   if (!booking.clientId) {
     console.log('No clientId (guest booking), skipping push notification');
+    return;
+  }
+
+  if (!(await isClientPushAllowed(booking.clientId, 'reminder'))) {
+    console.log('Client has disabled reminder push notifications, skipping');
     return;
   }
 

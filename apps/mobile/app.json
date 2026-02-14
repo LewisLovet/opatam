@@ -20,7 +20,8 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": ["remote-notification"],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Opatam utilise votre position pour vous suggérer des prestataires à proximité."
       }
     },
     "android": {
@@ -30,7 +31,8 @@
       },
       "package": "com.kamerleontech.opatam",
       "googleServicesFile": "./google-services.json",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
     "notification": {
       "icon": "./assets/notification-icon.png",
@@ -45,6 +47,12 @@
       "expo-router",
       "expo-font",
       "expo-apple-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Opatam utilise votre position pour vous suggérer des prestataires à proximité."
+        }
+      ],
       [
         "expo-build-properties",
         {

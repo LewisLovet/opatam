@@ -87,8 +87,10 @@ export default function ProvidersTestPage() {
         isPublished: false,
         isVerified: false,
         cities: [],
+        region: null,
         minPrice: null,
         searchTokens: [],
+        geopoint: null,
         nextAvailableSlot: null,
       });
       return { id, slug, message: 'Provider créé avec succès' };

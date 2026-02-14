@@ -17,7 +17,7 @@ import {
   ProviderCardSkeleton,
   EmptyState,
 } from '../../../components';
-import { useTopProviders, useNavigateToProvider, useNextBooking } from '../../../hooks';
+import { useUserLocation, useNearbyProviders, useNavigateToProvider, useNextBooking } from '../../../hooks';
 import { useAuth } from '../../../contexts';
 
 // Category images from Unsplash
@@ -80,8 +80,9 @@ export default function HomeScreen() {
   // Get user's first name
   const firstName = userData?.displayName?.split(' ')[0] || '';
 
-  // Fetch top rated providers for suggestions
-  const { providers: suggestions, loading: loadingSuggestions } = useTopProviders(5);
+  // Fetch nearby providers (falls back to top-rated if no location)
+  const { location: userLocation, loading: locationLoading } = useUserLocation();
+  const { providers: suggestions, loading: loadingSuggestions, isNearby } = useNearbyProviders(userLocation, locationLoading, 5);
 
   const handleCategoryPress = (categoryId: string) => {
     router.push({
@@ -191,7 +192,7 @@ export default function HomeScreen() {
         {/* Suggestions */}
         <View style={{ paddingHorizontal: spacing.lg }}>
           <Text variant="h3" style={{ marginBottom: spacing.md }}>
-            Suggestions
+            {isNearby ? 'Près de chez vous' : 'Suggestions'}
           </Text>
 
           {loadingSuggestions ? (
@@ -219,6 +220,7 @@ export default function HomeScreen() {
                   city={provider.cities[0] || ''}
                   rating={provider.rating}
                   minPrice={provider.minPrice}
+                  distance={isNearby ? provider.distance : undefined}
                   onPress={() => navigateToProvider(provider.slug)}
                   isLoading={isLoading(provider.slug)}
                 />

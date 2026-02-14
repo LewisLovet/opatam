@@ -7,7 +7,7 @@ import React from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { Rating } from '@booking-app/shared';
+import { Rating, formatDistance } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Card } from '../../Card';
@@ -25,6 +25,8 @@ export interface ProviderCardProps {
   rating: Rating;
   /** Minimum price in centimes (null if no services) */
   minPrice: number | null;
+  /** Distance in km (from user location) */
+  distance?: number;
   /** Press handler */
   onPress: () => void;
   /** Show loading overlay (for navigation preloading) */
@@ -49,6 +51,7 @@ export function ProviderCard({
   city,
   rating,
   minPrice,
+  distance,
   onPress,
   isLoading = false,
 }: ProviderCardProps) {
@@ -114,7 +117,7 @@ export function ProviderCard({
         </Text>
 
         <Text variant="caption" color="textSecondary" numberOfLines={1}>
-          {category} • {city}
+          {category} • {city}{distance != null && distance !== Infinity ? ` • ${formatDistance(distance)}` : ''}
         </Text>
 
         <View style={[styles.footer, { marginTop: spacing.sm }]}>

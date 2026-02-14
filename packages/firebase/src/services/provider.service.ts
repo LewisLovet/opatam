@@ -7,11 +7,12 @@ import {
   memberRepository,
   blockedSlotRepository,
 } from '../repositories';
-import type { Provider, ProviderPlan } from '@booking-app/shared';
+import type { Provider, ProviderPlan, ProviderNotificationPreferences } from '@booking-app/shared';
 import {
   createProviderSchema,
   updateProviderSchema,
   generateSearchTokens,
+  haversineDistance,
   type CreateProviderInput,
   type UpdateProviderInput,
 } from '@booking-app/shared';
@@ -32,6 +33,7 @@ interface PublishCheckResult {
 interface SearchFilters {
   category?: string;
   city?: string;
+  region?: string;
   query?: string;
   limit?: number;
 }
@@ -111,8 +113,10 @@ export class ProviderService {
       isPublished: false,
       isVerified: false,
       cities: [],
+      region: null,
       minPrice: null,
       searchTokens,
+      geopoint: null,
       nextAvailableSlot: null,
     });
 
@@ -187,6 +191,33 @@ export class ProviderService {
 
     await providerRepository.update(providerId, {
       settings: { ...provider.settings, ...settings },
+    });
+  }
+
+  /**
+   * Update notification preferences for a provider
+   */
+  async updateNotificationPreferences(
+    providerId: string,
+    preferences: Partial<ProviderNotificationPreferences>
+  ): Promise<void> {
+    const provider = await providerRepository.getById(providerId);
+    if (!provider) throw new Error('Prestataire non trouvé');
+
+    const current = provider.settings.notificationPreferences ?? {
+      pushEnabled: true,
+      emailEnabled: true,
+      newBookingNotifications: true,
+      confirmationNotifications: true,
+      cancellationNotifications: true,
+      reminderNotifications: true,
+    };
+
+    await providerRepository.update(providerId, {
+      settings: {
+        ...provider.settings,
+        notificationPreferences: { ...current, ...preferences },
+      },
     });
   }
 
@@ -350,6 +381,7 @@ export class ProviderService {
     return providerRepository.searchProviders({
       category: filters.category,
       city: filters.city,
+      region: filters.region,
       query: filters.query,
     });
   }
@@ -366,6 +398,7 @@ export class ProviderService {
       {
         category: filters.category,
         city: filters.city,
+        region: filters.region,
         query: filters.query,
       },
       pageSize,
@@ -391,6 +424,46 @@ export class ProviderService {
    */
   async getByCategory(category: string): Promise<WithId<Provider>[]> {
     return providerRepository.getByCategory(category);
+  }
+
+  /**
+   * Get nearby providers sorted by distance
+   * Combines city-local providers with global results to ensure coverage
+   */
+  async getNearby(
+    userLat: number,
+    userLon: number,
+    city: string | null,
+    maxResults: number = 10
+  ): Promise<(WithId<Provider> & { distance: number })[]> {
+    // Fetch city-local + global in parallel, then merge
+    const [cityProviders, allProviders] = await Promise.all([
+      city ? providerRepository.getPublishedByCity(city, 50) : Promise.resolve([]),
+      providerRepository.getPublishedAll(50),
+    ]);
+
+    // Merge and deduplicate (city providers take priority)
+    const seen = new Set<string>();
+    const merged: WithId<Provider>[] = [];
+    for (const p of [...cityProviders, ...allProviders]) {
+      if (!seen.has(p.id)) {
+        seen.add(p.id);
+        merged.push(p);
+      }
+    }
+
+    // Calculate distance and sort — providers without geopoint go to the end
+    const withDistance = merged
+      .map((provider) => {
+        const dist = provider.geopoint
+          ? haversineDistance(userLat, userLon, provider.geopoint.latitude, provider.geopoint.longitude)
+          : Infinity;
+        return { ...provider, distance: dist };
+      })
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, maxResults);
+
+    return withDistance;
   }
 
   /**

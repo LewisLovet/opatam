@@ -12,6 +12,7 @@ export interface PaginatedResult<T> {
 export interface ProviderSearchFilters {
   category?: string;
   city?: string;
+  region?: string;
   query?: string;
 }
 
@@ -103,6 +104,42 @@ export class ProviderRepository extends BaseRepository<Provider> {
   }
 
   /**
+   * Get published providers by city (for nearby search)
+   */
+  async getPublishedByCity(city: string, maxResults: number = 50): Promise<WithId<Provider>[]> {
+    const normalizedCity = normalizeCity(city);
+    return this.query([
+      where('isPublished', '==', true),
+      where('cities', 'array-contains', normalizedCity),
+      orderBy('rating.average', 'desc'),
+      limit(maxResults),
+    ]);
+  }
+
+  /**
+   * Get all published providers (limited, for nearby fallback when no city match)
+   */
+  async getPublishedAll(maxResults: number = 30): Promise<WithId<Provider>[]> {
+    return this.query([
+      where('isPublished', '==', true),
+      orderBy('rating.average', 'desc'),
+      limit(maxResults),
+    ]);
+  }
+
+  /**
+   * Get published providers by region
+   */
+  async getPublishedByRegion(region: string, maxResults: number = 50): Promise<WithId<Provider>[]> {
+    return this.query([
+      where('isPublished', '==', true),
+      where('region', '==', region),
+      orderBy('rating.average', 'desc'),
+      limit(maxResults),
+    ]);
+  }
+
+  /**
    * Check if slug is available
    */
   async isSlugAvailable(slug: string, excludeId?: string): Promise<boolean> {
@@ -141,6 +178,11 @@ export class ProviderRepository extends BaseRepository<Provider> {
     // Filter by category if provided
     if (filters.category) {
       constraints.push(where('category', '==', filters.category));
+    }
+
+    // Filter by region if provided (== filter, compatible with array-contains)
+    if (filters.region) {
+      constraints.push(where('region', '==', filters.region));
     }
 
     // Normalize search query token
@@ -197,6 +239,11 @@ export class ProviderRepository extends BaseRepository<Provider> {
     // Filter by category if provided
     if (filters.category) {
       constraints.push(where('category', '==', filters.category));
+    }
+
+    // Filter by region if provided (== filter, compatible with array-contains)
+    if (filters.region) {
+      constraints.push(where('region', '==', filters.region));
     }
 
     // Normalize search query token

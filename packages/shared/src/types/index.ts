@@ -1,3 +1,23 @@
+// Notification settings (shared by clients via User)
+export interface NotificationSettings {
+  pushEnabled: boolean;
+  emailEnabled: boolean;
+  reminderNotifications: boolean;
+  confirmationNotifications: boolean;
+  cancellationNotifications: boolean;
+  rescheduleNotifications: boolean;
+}
+
+// Notification preferences (for providers via ProviderSettings)
+export interface ProviderNotificationPreferences {
+  pushEnabled: boolean;
+  emailEnabled: boolean;
+  newBookingNotifications: boolean;
+  confirmationNotifications: boolean;
+  cancellationNotifications: boolean;
+  reminderNotifications: boolean;
+}
+
 // User types
 export interface User {
   email: string;
@@ -11,6 +31,7 @@ export interface User {
   gender: 'male' | 'female' | 'other' | null;
   cancellationCount: number;
   pushTokens: string[]; // Expo push tokens for notifications (device-specific)
+  notificationSettings?: NotificationSettings;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,8 +57,10 @@ export interface Provider {
   isVerified: boolean;
   // Denormalized fields for search optimization
   cities: string[];              // Normalized cities from active locations
+  region: string | null;         // Region from primary location (e.g., "Île-de-France")
   minPrice: number | null;       // Minimum price from active services (in centimes)
   searchTokens: string[];        // Normalized words from businessName for search (e.g., ["salon", "hugo"])
+  geopoint: { latitude: number; longitude: number } | null; // From default location, for proximity search
   // Availability cache (computed by Cloud Functions)
   nextAvailableSlot: Date | null; // Next available booking slot (null if none or not computed)
   createdAt: Date;
@@ -74,6 +97,7 @@ export interface ProviderSettings {
   allowClientCancellation: boolean;  // Allow clients to cancel (default: true)
   cancellationDeadline: number;      // Hours before appointment for cancellation (default: 24)
   slotInterval?: number;             // Minutes between each bookable slot (default: 15)
+  notificationPreferences?: ProviderNotificationPreferences;
 }
 
 export interface Subscription {

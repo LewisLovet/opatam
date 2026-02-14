@@ -43,3 +43,9 @@ export type { UseProviderByIdResult } from './useProviderById';
 
 export { useNextAvailableDate } from './useNextAvailableDate';
 export type { UseNextAvailableDateResult } from './useNextAvailableDate';
+
+export { useUserLocation } from './useUserLocation';
+export type { UserLocation, UseUserLocationResult } from './useUserLocation';
+
+export { useNearbyProviders } from './useNearbyProviders';
+export type { NearbyProvider, UseNearbyProvidersResult } from './useNearbyProviders';

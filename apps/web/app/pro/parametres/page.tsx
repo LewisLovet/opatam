@@ -8,9 +8,11 @@ import {
   CreditCard,
   QrCode,
   Settings,
+  Bell,
 } from 'lucide-react';
 import {
   ReservationSettingsForm,
+  NotificationsForm,
   AccountForm,
   SubscriptionSection,
   ShareSection,
@@ -26,7 +28,13 @@ const tabs = [
     description: 'Règles de prise de rendez-vous',
     icon: Calendar,
   },
-{
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    description: 'Push, emails, rappels',
+    icon: Bell,
+  },
+  {
     id: 'compte',
     label: 'Compte',
     description: 'Email, mot de passe, suppression',
@@ -166,6 +174,7 @@ export default function SettingsPage() {
 
             {/* Section content */}
             {activeTab === 'reservation' && <ReservationSettingsForm />}
+            {activeTab === 'notifications' && <NotificationsForm />}
             {activeTab === 'compte' && <AccountForm />}
             {activeTab === 'abonnement' && <SubscriptionSection />}
             {activeTab === 'partage' && <ShareSection />}

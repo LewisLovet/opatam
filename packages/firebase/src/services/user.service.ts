@@ -1,5 +1,5 @@
 import { userRepository } from '../repositories';
-import type { User } from '@booking-app/shared';
+import type { User, NotificationSettings } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 
 export class UserService {
@@ -67,6 +67,27 @@ export class UserService {
   async isEmailRegistered(email: string): Promise<boolean> {
     const user = await userRepository.getByEmail(email);
     return user !== null;
+  }
+
+  /**
+   * Update notification settings for a user (client)
+   */
+  async updateNotificationSettings(userId: string, settings: Partial<NotificationSettings>): Promise<void> {
+    const user = await userRepository.getById(userId);
+    if (!user) throw new Error('Utilisateur non trouvé');
+
+    const current = user.notificationSettings ?? {
+      pushEnabled: true,
+      emailEnabled: true,
+      reminderNotifications: true,
+      confirmationNotifications: true,
+      cancellationNotifications: true,
+      rescheduleNotifications: true,
+    };
+
+    await userRepository.update(userId, {
+      notificationSettings: { ...current, ...settings },
+    });
   }
 
   /**

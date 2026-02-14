@@ -19,6 +19,7 @@ import type { WithId } from '@booking-app/firebase';
 interface SearchParams {
   category?: string | null;
   city?: string | null;
+  region?: string | null;
   query?: string | null;
 }
 
@@ -193,6 +194,7 @@ function areParamsEqual(a: SearchParams | null, b: SearchParams): boolean {
   return (
     (a.category ?? null) === (b.category ?? null) &&
     (a.city ?? null) === (b.city ?? null) &&
+    (a.region ?? null) === (b.region ?? null) &&
     (a.query ?? null) === (b.query ?? null)
   );
 }
@@ -218,11 +220,13 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
         const filters: {
           category?: string;
           city?: string;
+          region?: string;
           query?: string;
         } = {};
 
         if (params.category) filters.category = params.category;
         if (params.city) filters.city = params.city;
+        if (params.region) filters.region = params.region;
         if (params.query) filters.query = params.query;
 
         const result = await providerService.searchPaginated(filters, pageSize);
@@ -259,11 +263,13 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
       const filters: {
         category?: string;
         city?: string;
+        region?: string;
         query?: string;
       } = {};
 
       if (state.searchParams.category) filters.category = state.searchParams.category;
       if (state.searchParams.city) filters.city = state.searchParams.city;
+      if (state.searchParams.region) filters.region = state.searchParams.region;
       if (state.searchParams.query) filters.query = state.searchParams.query;
 
       const result = await providerService.searchPaginated(filters, 10, state.searchCursor);

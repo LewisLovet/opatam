@@ -11,8 +11,11 @@ import type { WithId } from '@booking-app/firebase';
 export interface UseProvidersOptions {
   category?: string | null;
   city?: string | null;
+  region?: string | null;
   query?: string | null;
   pageSize?: number;
+  /** Max total results (caps pagination). Undefined = no limit. */
+  maxResults?: number;
 }
 
 export interface UseProvidersResult {
@@ -34,8 +37,9 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
   // Refs to prevent race conditions
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
+  const loadProvidersRef = useRef<(forceRefresh?: boolean) => Promise<void>>();
 
-  const { category = null, city = null, query = null, pageSize = 10 } = options;
+  const { category = null, city = null, region = null, query = null, pageSize = 10, maxResults } = options;
 
   // Only search if query is null/empty or has at least 3 characters
   const effectiveQuery = query && query.length >= 3 ? query : null;
@@ -44,6 +48,13 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
     async (forceRefresh = false) => {
       // Increment request ID to cancel stale requests
       const currentRequestId = ++requestIdRef.current;
+
+      // Skip fetching when disabled (pageSize = 0)
+      if (pageSize === 0) {
+        setProviders([]);
+        setLoading(false);
+        return;
+      }
 
       // If query is provided but less than 3 chars, don't search yet
       if (query && query.length > 0 && query.length < 3) {
@@ -57,7 +68,7 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
 
       try {
         const result = await searchProviders(
-          { category, city, query: effectiveQuery },
+          { category, city, region, query: effectiveQuery },
           pageSize,
           forceRefresh
         );
@@ -79,18 +90,21 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
         }
       }
     },
-    [searchProviders, category, city, query, pageSize]
+    [searchProviders, category, city, region, query, pageSize]
   );
+
+  // Keep ref in sync so useEffect always calls the latest version
+  loadProvidersRef.current = loadProviders;
 
   // Load on mount and when filters change
   useEffect(() => {
     mountedRef.current = true;
-    loadProviders(false);
+    loadProvidersRef.current?.(false);
 
     return () => {
       mountedRef.current = false;
     };
-  }, [category, city, effectiveQuery, pageSize]); // Don't include loadProviders to avoid infinite loop
+  }, [category, city, region, effectiveQuery, pageSize]);
 
   // Sync local state with cache state
   useEffect(() => {
@@ -101,21 +115,25 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
     await loadProviders(true);
   }, [loadProviders]);
 
+  // Cap pagination when maxResults is set
+  const reachedMax = maxResults != null && providers.length >= maxResults;
+  const hasMore = state.hasMore && !reachedMax;
+
   const loadMore = useCallback(async () => {
-    if (!state.hasMore || state.loadingMore) return;
+    if (!hasMore || state.loadingMore) return;
 
     try {
       await loadMoreProviders();
     } catch (err) {
       console.error('Error loading more providers:', err);
     }
-  }, [loadMoreProviders, state.hasMore, state.loadingMore]);
+  }, [loadMoreProviders, hasMore, state.loadingMore]);
 
   return {
     providers,
     loading,
     loadingMore: state.loadingMore,
-    hasMore: state.hasMore,
+    hasMore,
     error,
     refresh,
     loadMore,

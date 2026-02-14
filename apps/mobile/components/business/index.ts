@@ -13,6 +13,8 @@ export * from './SearchBar';
 export * from './CategoryPills';
 export * from './CategoryCard';
 export * from './CitySelect';
+export * from './RegionSelect';
+export * from './CategorySelect';
 export * from './EmptyState';
 export * from './ScreenHeader';
 export * from './SocialLinks';

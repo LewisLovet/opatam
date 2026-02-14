@@ -33,7 +33,7 @@ export const registerClientSchema = z.object({
   password: passwordSchema,
   confirmPassword: z.string({ required_error: 'La confirmation du mot de passe est requise' }),
   displayName: displayNameSchema,
-  phone: phoneSchema.optional(),
+  phone: phoneSchema,
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Les mots de passe ne correspondent pas',
   path: ['confirmPassword'],

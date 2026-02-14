@@ -1,3 +1,6 @@
+// Regions
+export * from './regions';
+
 /**
  * Business categories for providers
  */
@@ -88,6 +91,30 @@ export const PLAN_LIMITS = {
  * Default reminder times in minutes
  */
 export const DEFAULT_REMINDER_TIMES = [60, 1440] as const; // 1h and 24h
+
+/**
+ * Default notification settings for clients
+ */
+export const DEFAULT_NOTIFICATION_SETTINGS = {
+  pushEnabled: true,
+  emailEnabled: true,
+  reminderNotifications: true,
+  confirmationNotifications: true,
+  cancellationNotifications: true,
+  rescheduleNotifications: true,
+} as const;
+
+/**
+ * Default notification preferences for providers
+ */
+export const DEFAULT_PROVIDER_NOTIFICATION_PREFERENCES = {
+  pushEnabled: true,
+  emailEnabled: true,
+  newBookingNotifications: true,
+  confirmationNotifications: true,
+  cancellationNotifications: true,
+  reminderNotifications: true,
+} as const;
 
 /**
  * Default timezone

@@ -18,71 +18,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Create booking
+    // Emails (client confirmation + provider notification) are sent automatically
+    // by the onBookingWrite Cloud Function trigger via handleBookingEmails()
     const booking = await bookingService.createBooking(validated);
-
-    // Send confirmation email (fire and forget)
-    try {
-      console.log('[BOOKINGS-API] Sending confirmation email with:', {
-        bookingId: booking.id,
-        cancelToken: booking.cancelToken ? 'EXISTS' : 'NOT SET',
-        providerSlug: body.providerSlug || 'NOT PROVIDED',
-      });
-
-      const emailResponse = await fetch(
-        new URL('/api/bookings/confirmation-email', request.url).toString(),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            clientEmail: booking.clientInfo.email,
-            clientName: booking.clientInfo.name,
-            serviceName: booking.serviceName,
-            datetime: booking.datetime.toISOString(),
-            duration: booking.duration,
-            price: booking.price,
-            providerName: booking.providerName,
-            providerSlug: body.providerSlug,
-            locationName: booking.locationName,
-            locationAddress: booking.locationAddress,
-            memberName: booking.memberName,
-            // IMPORTANT: Ces paramètres sont nécessaires pour les liens d'annulation et d'avis
-            bookingId: booking.id,
-            cancelToken: booking.cancelToken,
-          }),
-        }
-      );
-
-      if (!emailResponse.ok) {
-        console.error('[BOOKINGS-API] Failed to send confirmation email:', await emailResponse.text());
-      } else {
-        console.log('[BOOKINGS-API] Confirmation email sent successfully');
-      }
-    } catch (emailError) {
-      console.error('[BOOKINGS-API] Error sending confirmation email:', emailError);
-    }
-
-    // Notify provider (fire and forget)
-    fetch(
-      new URL('/api/bookings/provider-notification', request.url).toString(),
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          providerId: booking.providerId,
-          clientName: booking.clientInfo.name,
-          clientPhone: booking.clientInfo.phone,
-          serviceName: booking.serviceName,
-          datetime: booking.datetime.toISOString(),
-          duration: booking.duration,
-          price: booking.price,
-          locationName: booking.locationName,
-          locationAddress: booking.locationAddress,
-          memberName: booking.memberName,
-          bookingId: booking.id,
-          type: 'confirmation',
-        }),
-      }
-    ).catch((err) => console.error('[BOOKINGS-API] Provider notification error:', err));
 
     return NextResponse.json({ bookingId: booking.id }, { status: 201 });
   } catch (error) {

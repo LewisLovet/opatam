@@ -51,8 +51,10 @@ export default function EditProfileScreen() {
       newErrors.displayName = 'Le prénom doit contenir au moins 2 caractères';
     }
 
-    // Phone validation (optional)
-    if (phone.trim()) {
+    // Phone validation (required)
+    if (!phone.trim()) {
+      newErrors.phone = 'Le numéro de téléphone est requis';
+    } else {
       const cleanedPhone = phone.replace(/\s/g, '');
       if (!/^0[67]\d{8}$/.test(cleanedPhone)) {
         newErrors.phone = 'Format invalide (ex: 06 12 34 56 78)';

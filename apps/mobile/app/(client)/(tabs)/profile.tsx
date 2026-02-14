@@ -12,6 +12,7 @@ import {
   Pressable,
   Alert,
   Image,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -202,7 +203,7 @@ export default function ProfileScreen() {
             <MenuItem
               icon="notifications-outline"
               label="Notifications"
-              onPress={() => handleNotImplemented('Notifications')}
+              onPress={() => router.push('/(client)/notification-settings')}
               colors={colors}
             />
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
@@ -223,22 +224,22 @@ export default function ProfileScreen() {
           <Card padding="none" shadow="sm">
             <MenuItem
               icon="help-circle-outline"
-              label="Aide"
-              onPress={() => handleNotImplemented('Aide')}
+              label="Aide et contact"
+              onPress={() => Linking.openURL('https://opatam.com/contact')}
               colors={colors}
             />
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="document-text-outline"
               label="Conditions d'utilisation"
-              onPress={() => handleNotImplemented('CGU')}
+              onPress={() => Linking.openURL('https://opatam.com/cgu')}
               colors={colors}
             />
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="shield-checkmark-outline"
               label="Politique de confidentialité"
-              onPress={() => handleNotImplemented('Politique de confidentialité')}
+              onPress={() => Linking.openURL('https://opatam.com/confidentialite')}
               colors={colors}
             />
           </Card>

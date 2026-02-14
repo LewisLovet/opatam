@@ -14,6 +14,7 @@ import {
 } from '@booking-app/firebase';
 import { generateRandomProviders, type GeneratedProvider } from '../_data/random-generator';
 import { formatLogTime } from '../_lib/seed-utils';
+import { generateSearchTokens, normalizeCity, getCityRegion } from '@booking-app/shared';
 
 // Préfixe pour identifier les providers de test
 const TEST_PREFIX = 'test-seed-';
@@ -137,6 +138,14 @@ export function useSeedData(): UseSeedDataReturn {
         maxBookingAdvance: 60,
         allowClientCancellation: true,
         cancellationDeadline: 24,
+        notificationPreferences: {
+          pushEnabled: true,
+          emailEnabled: true,
+          newBookingNotifications: true,
+          confirmationNotifications: true,
+          cancellationNotifications: true,
+          reminderNotifications: true,
+        },
       },
       subscription: {
         plan: 'trial',
@@ -152,8 +161,14 @@ export function useSeedData(): UseSeedDataReturn {
       plan: 'trial',
       isPublished: true,
       isVerified: false,
-      cities: [provider.city.toLowerCase()],
+      cities: [normalizeCity(provider.city)],
+      region: getCityRegion(provider.city),
       minPrice: Math.min(...provider.services.map(s => s.price)),
+      searchTokens: generateSearchTokens(provider.businessName),
+      geopoint: {
+        latitude: provider.latitude,
+        longitude: provider.longitude,
+      },
       nextAvailableSlot: null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

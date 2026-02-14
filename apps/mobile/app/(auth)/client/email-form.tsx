@@ -67,8 +67,10 @@ export default function EmailFormScreen() {
       newErrors.password = 'Le mot de passe doit contenir au moins 6 caractères';
     }
 
-    // Phone validation (optional)
-    if (phone.trim()) {
+    // Phone validation (required)
+    if (!phone.trim()) {
+      newErrors.phone = 'Le numéro de téléphone est requis';
+    } else {
       const cleanedPhone = phone.replace(/\s/g, '');
       if (!/^0[67]\d{8}$/.test(cleanedPhone)) {
         newErrors.phone = 'Format invalide (ex: 06 12 34 56 78)';
@@ -93,7 +95,7 @@ export default function EmailFormScreen() {
     setIsSubmitting(true);
 
     try {
-      const cleanedPhone = phone.trim() ? phone.replace(/\s/g, '') : undefined;
+      const cleanedPhone = phone.replace(/\s/g, '');
       await signUp(email.trim(), password, firstName.trim(), cleanedPhone);
 
       showToast({
@@ -199,7 +201,7 @@ export default function EmailFormScreen() {
           />
 
           <Input
-            label="Téléphone (optionnel)"
+            label="Téléphone"
             placeholder="06 12 34 56 78"
             value={phone}
             onChangeText={(text) => {
@@ -209,7 +211,6 @@ export default function EmailFormScreen() {
             keyboardType="phone-pad"
             autoComplete="tel"
             error={errors.phone}
-            helperText="Pour recevoir les rappels SMS"
           />
 
           <Button

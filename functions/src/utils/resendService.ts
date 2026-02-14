@@ -242,6 +242,161 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
 }
 
 /**
+ * Send email notification to provider about a new booking
+ */
+export interface ProviderNewBookingEmailData {
+  providerEmail: string;
+  clientName: string;
+  clientPhone?: string;
+  serviceName: string;
+  datetime: Date;
+  duration: number;
+  price: number;
+  providerName: string;
+  locationName?: string;
+  locationAddress?: string;
+  memberName?: string;
+}
+
+export async function sendProviderNewBookingEmail(data: ProviderNewBookingEmailData): Promise<EmailResult> {
+  console.log('[EMAIL] Sending provider new booking email to:', data.providerEmail);
+
+  if (!isValidEmail(data.providerEmail)) {
+    console.log('[EMAIL] Invalid provider email format');
+    return { success: false, error: 'Invalid email format' };
+  }
+
+  try {
+    const formattedDate = formatDateFr(data.datetime);
+    const formattedTime = formatTimeFr(data.datetime);
+    const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
+    const formattedEndTime = formatTimeFr(endDate);
+    const formattedPrice = formatPriceFr(data.price);
+    const calendarUrl = `${appConfig.url}/pro/calendrier`;
+
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.providerEmail,
+      replyTo: emailConfig.replyTo,
+      subject: `Nouveau rendez-vous - ${data.clientName} - ${data.serviceName}`,
+      html: generateProviderNewBookingHtml({
+        ...data,
+        formattedDate,
+        formattedTime,
+        formattedEndTime,
+        formattedPrice,
+        calendarUrl,
+      }),
+      text: generateProviderNewBookingText({
+        ...data,
+        formattedDate,
+        formattedTime,
+        formattedEndTime,
+        formattedPrice,
+        calendarUrl,
+      }),
+    });
+
+    if (error) {
+      console.error('[EMAIL] Resend error:', error);
+      return { success: false, error: String(error) };
+    }
+
+    console.log('[EMAIL] Provider new booking email sent successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAIL] Exception:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+interface ProviderNewBookingTemplateData extends ProviderNewBookingEmailData {
+  formattedDate: string;
+  formattedTime: string;
+  formattedEndTime: string;
+  formattedPrice: string;
+  calendarUrl: string;
+}
+
+function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" style="max-width: 480px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <tr>
+                <td style="padding: 32px 32px 24px; text-align: center;">
+                  <img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height: 48px; max-width: 200px;" />
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0 32px 24px;">
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour,</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Un nouveau rendez-vous vient d'être <strong style="color: #16a34a;">confirmé</strong>.</p>
+                  <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Nouveau rendez-vous</p>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Client</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.clientName}</td></tr>
+                      ${data.clientPhone ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Téléphone</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.clientPhone}</td></tr>` : ''}
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Horaire</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
+                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
+                      ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Membre</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedPrice}</td></tr>
+                    </table>
+                  </div>
+                  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                    <tr><td align="center"><a href="${data.calendarUrl}" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Voir mon calendrier</a></td></tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>L'équipe ${appConfig.name}</strong></p>
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+function generateProviderNewBookingText(data: ProviderNewBookingTemplateData): string {
+  return `
+Bonjour,
+
+Un nouveau rendez-vous vient d'être confirmé.
+
+Détails :
+- Client : ${data.clientName}
+${data.clientPhone ? `- Téléphone : ${data.clientPhone}` : ''}
+- Prestation : ${data.serviceName}
+- Date : ${data.formattedDate}
+- Horaire : ${data.formattedTime} - ${data.formattedEndTime}
+${data.locationName ? `- Lieu : ${data.locationName}` : ''}
+${data.memberName ? `- Membre : ${data.memberName}` : ''}
+- Prix : ${data.formattedPrice}
+
+Voir mon calendrier : ${data.calendarUrl}
+
+À bientôt,
+L'équipe ${appConfig.name}
+  `.trim();
+}
+
+/**
  * Send cancellation email to client
  */
 export async function sendCancellationEmail(data: {
@@ -480,9 +635,11 @@ export async function sendReminderEmail(
     ].join('\r\n');
     const icsBuffer = Buffer.from(icsContent, 'utf-8');
 
-    const timeLabel = minutesUntil != null
-      ? formatTimeUntilFr(minutesUntil)
-      : (reminderType === '24h' ? 'demain' : 'dans 2 heures');
+    // 24h reminder = "demain" (no need for exact hours count)
+    // 2h reminder = dynamic "dans X heures/minutes"
+    const timeLabel = reminderType === '24h'
+      ? 'demain'
+      : (minutesUntil != null ? formatTimeUntilFr(minutesUntil) : 'dans 2 heures');
     const subject = reminderType === '24h'
       ? `Rappel : votre rendez-vous demain - ${data.serviceName}`
       : `Rappel : votre rendez-vous ${timeLabel} - ${data.serviceName}`;

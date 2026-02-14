@@ -4,6 +4,7 @@ import {
   createLocationSchema,
   updateLocationSchema,
   normalizeCity,
+  getCityRegion,
   type CreateLocationInput,
   type UpdateLocationInput,
 } from '@booking-app/shared';
@@ -247,7 +248,7 @@ export class LocationService {
   }
 
   /**
-   * Recalculate and update provider's cities array
+   * Recalculate and update provider's cities array and geopoint
    * Called after location create/update/delete
    */
   async updateProviderCities(providerId: string): Promise<void> {
@@ -261,8 +262,19 @@ export class LocationService {
       }
     }
 
+    // Get geopoint from default location (or first active with geopoint)
+    const defaultLocation = activeLocations.find((l) => l.isDefault);
+    const geopoint =
+      defaultLocation?.geopoint ??
+      activeLocations.find((l) => l.geopoint)?.geopoint ??
+      null;
+
+    // Determine region from default/first active location's city
+    const defaultCity = defaultLocation?.city || activeLocations[0]?.city || null;
+    const region = defaultCity ? getCityRegion(defaultCity) : null;
+
     const cities = Array.from(citiesSet).sort();
-    await providerRepository.update(providerId, { cities });
+    await providerRepository.update(providerId, { cities, geopoint, region });
   }
 }
 

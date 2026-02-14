@@ -1,6 +1,7 @@
 /**
  * Search Tab Screen
- * Search providers with filters and infinite scroll
+ * Progressive search: Region (mandatory) → City → Category
+ * User must select a region first (via GPS or manual pick) before seeing results
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -11,64 +12,127 @@ import {
   RefreshControl,
   Keyboard,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../../theme';
 import {
   Text,
   SearchBar,
-  CategoryPills,
   CitySelect,
+  RegionSelect,
+  CategorySelect,
   ProviderCard,
   ProviderCardSkeleton,
   EmptyState,
 } from '../../../components';
-import { useProviders, useNavigateToProvider } from '../../../hooks';
+import { useProviders, useNavigateToProvider, useUserLocation } from '../../../hooks';
+import {
+  REGIONS,
+  REGION_NAMES,
+  CATEGORIES,
+  getCityRegion,
+  getRegionFromCoords,
+} from '@booking-app/shared';
 import type { Provider } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
 const PAGE_SIZE = 10;
+const MAX_BROWSE_RESULTS = 100;
 
-// Categories list
-const categories = [
-  { id: 'coiffure', label: 'Coiffure' },
-  { id: 'beaute', label: 'Beauté' },
-  { id: 'massage', label: 'Massage' },
-  { id: 'coaching', label: 'Coaching' },
-  { id: 'sante', label: 'Santé' },
-];
-
-// Cities list
-const cities = ['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Lille', 'Toulouse', 'Nice'];
+// Map CATEGORIES constant to the format CategorySelect expects
+const categoryOptions = CATEGORIES.map((c) => ({ id: c.id, label: c.label }));
 
 export default function SearchScreen() {
-  const { colors, spacing } = useTheme();
-  const router = useRouter();
+  const { colors, spacing, radius } = useTheme();
   const params = useLocalSearchParams<{ category?: string }>();
   const { navigateToProvider, isLoading } = useNavigateToProvider();
 
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
+  // User location
+  const { location: userLocation, loading: locationLoading, refresh: refreshLocation } = useUserLocation();
+
+  // Search state — progressive: Region (mandatory first pick) → City → Category
+  // hasPickedRegion distinguishes "never interacted" from "chose Toutes les régions"
+  const [hasPickedRegion, setHasPickedRegion] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     params.category || null
   );
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [gpsDetecting, setGpsDetecting] = useState(false);
+
+  // Handle "Use my location" button
+  const handleUseLocation = useCallback(async () => {
+    if (userLocation) {
+      // Location already available — detect region
+      let region: string | null = null;
+      if (userLocation.city) {
+        region = getCityRegion(userLocation.city);
+      }
+      if (!region) {
+        region = getRegionFromCoords(userLocation.latitude, userLocation.longitude);
+      }
+      if (region) {
+        setSelectedRegion(region);
+        setSelectedCity(null);
+        setHasPickedRegion(true);
+      }
+    } else {
+      // Request location
+      setGpsDetecting(true);
+      await refreshLocation();
+      setGpsDetecting(false);
+    }
+  }, [userLocation, refreshLocation]);
+
+  // When location becomes available after GPS request, auto-detect region
+  useEffect(() => {
+    if (gpsDetecting && !locationLoading && userLocation) {
+      setGpsDetecting(false);
+      let region: string | null = null;
+      if (userLocation.city) {
+        region = getCityRegion(userLocation.city);
+      }
+      if (!region) {
+        region = getRegionFromCoords(userLocation.latitude, userLocation.longitude);
+      }
+      if (region) {
+        setSelectedRegion(region);
+        setSelectedCity(null);
+        setHasPickedRegion(true);
+      }
+    }
+  }, [gpsDetecting, locationLoading, userLocation]);
+
+  // Build cities list based on selected region
+  const cities = React.useMemo(() => {
+    if (selectedRegion && REGIONS[selectedRegion]) {
+      return REGIONS[selectedRegion];
+    }
+    return [];
+  }, [selectedRegion]);
+
+  // When region changes, reset city
+  const handleRegionChange = useCallback((region: string | null) => {
+    setSelectedRegion(region);
+    setSelectedCity(null);
+    setHasPickedRegion(true);
+  }, []);
 
   // Debounced query for API calls
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounce search query
   useEffect(() => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
-
     debounceRef.current = setTimeout(() => {
       setDebouncedQuery(searchQuery);
     }, 300);
-
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
@@ -76,17 +140,26 @@ export default function SearchScreen() {
     };
   }, [searchQuery]);
 
-  // Fetch providers with filters and pagination
-  const { providers, loading, loadingMore, hasMore, error, refresh, loadMore } = useProviders({
-    category: selectedCategory,
-    city: selectedCity,
-    query: debouncedQuery || null,
-    pageSize: PAGE_SIZE,
-  });
+  // Fetch once the user has made their first region choice
+  // Text search (3+ chars): no cap. Browsing: cap at 100 results.
+  const hasTextSearch = debouncedQuery.length >= 3;
+  const { providers, loading, loadingMore, hasMore, error, refresh, loadMore } = useProviders(
+    hasPickedRegion
+      ? {
+          region: selectedRegion,
+          city: selectedCity,
+          category: selectedCategory,
+          query: debouncedQuery || null,
+          pageSize: PAGE_SIZE,
+          maxResults: hasTextSearch ? undefined : MAX_BROWSE_RESULTS,
+        }
+      : { pageSize: 0 } // Won't trigger a fetch
+  );
 
   // Handle refresh
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
+    if (!hasPickedRegion) return;
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
@@ -98,7 +171,7 @@ export default function SearchScreen() {
     Keyboard.dismiss();
   };
 
-  // Memoized render functions to prevent re-renders
+  // Memoized render for provider card
   const renderProvider = useCallback(({ item }: { item: WithId<Provider> }) => (
     <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
       <ProviderCard
@@ -114,7 +187,14 @@ export default function SearchScreen() {
     </View>
   ), [spacing.lg, spacing.md, navigateToProvider, isLoading]);
 
-  // Render empty state
+  // Handle end reached for infinite scroll
+  const handleEndReached = useCallback(() => {
+    if (!loading && !loadingMore && hasMore) {
+      loadMore();
+    }
+  }, [loading, loadingMore, hasMore, loadMore]);
+
+  // Render empty state (only when region is selected)
   const renderEmpty = () => {
     if (loading) return null;
 
@@ -142,8 +222,8 @@ export default function SearchScreen() {
           onAction={() => {
             setSearchQuery('');
             setDebouncedQuery('');
-            setSelectedCategory(null);
             setSelectedCity(null);
+            setSelectedCategory(null);
           }}
         />
       </View>
@@ -161,25 +241,35 @@ export default function SearchScreen() {
     </View>
   );
 
-  // Render filters (categories, city, results count) - inside FlatList header
+  // Render refinement filters
   const renderFilters = () => (
     <View style={[styles.filtersContainer, { backgroundColor: colors.background }]}>
-      {/* Category Pills */}
-      <View style={{ marginTop: spacing.sm }}>
-        <CategoryPills
-          categories={categories}
-          selectedId={selectedCategory}
-          onSelect={setSelectedCategory}
-          showAll
+      {/* Active region with change button */}
+      <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: spacing.sm }}>
+        <RegionSelect
+          value={selectedRegion}
+          regions={REGION_NAMES}
+          onChange={handleRegionChange}
         />
       </View>
 
-      {/* City Select */}
-      <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.md }}>
-        <CitySelect
-          value={selectedCity}
-          cities={cities}
-          onChange={setSelectedCity}
+      {/* City Select (scoped to selected region — hidden when "Toutes les régions") */}
+      {selectedRegion && (
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm }}>
+          <CitySelect
+            value={selectedCity}
+            cities={cities}
+            onChange={setSelectedCity}
+          />
+        </View>
+      )}
+
+      {/* Category Select (full list modal) */}
+      <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm }}>
+        <CategorySelect
+          value={selectedCategory}
+          categories={categoryOptions}
+          onChange={setSelectedCategory}
         />
       </View>
 
@@ -195,10 +285,9 @@ export default function SearchScreen() {
     </View>
   );
 
-  // Render footer (loading indicator for infinite scroll)
+  // Render footer
   const renderFooter = () => {
     if (!loadingMore) return null;
-
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={colors.primary} />
@@ -206,16 +295,78 @@ export default function SearchScreen() {
     );
   };
 
-  // Handle end reached for infinite scroll
-  const handleEndReached = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      loadMore();
-    }
-  }, [loading, loadingMore, hasMore, loadMore]);
+  // =============================================
+  // FIRST VISIT — show region selection screen
+  // =============================================
+  if (!hasPickedRegion) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.regionPickerContainer, { paddingHorizontal: spacing.lg }]}>
+          {/* Title */}
+          <View style={{ alignItems: 'center', marginTop: spacing['2xl'], marginBottom: spacing.xl }}>
+            <Ionicons name="search" size={48} color={colors.primary} style={{ marginBottom: spacing.md }} />
+            <Text variant="h2" style={{ textAlign: 'center', marginBottom: spacing.sm }}>
+              Rechercher un prestataire
+            </Text>
+            <Text variant="body" color="textSecondary" style={{ textAlign: 'center' }}>
+              Commencez par choisir votre région
+            </Text>
+          </View>
 
+          {/* Use my location button */}
+          <Pressable
+            onPress={handleUseLocation}
+            disabled={gpsDetecting || locationLoading}
+            style={({ pressed }) => [
+              styles.locationButton,
+              {
+                backgroundColor: colors.primary,
+                borderRadius: radius.md,
+                paddingVertical: spacing.md,
+                paddingHorizontal: spacing.lg,
+                marginBottom: spacing.lg,
+                opacity: (gpsDetecting || locationLoading) ? 0.6 : 1,
+              },
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            {gpsDetecting || locationLoading ? (
+              <ActivityIndicator size="small" color="#fff" style={{ marginRight: spacing.sm }} />
+            ) : (
+              <Ionicons name="navigate" size={20} color="#fff" style={{ marginRight: spacing.sm }} />
+            )}
+            <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
+              Utiliser ma localisation
+            </Text>
+          </Pressable>
+
+          {/* Divider with "ou" */}
+          <View style={[styles.dividerRow, { marginBottom: spacing.lg }]}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text variant="caption" color="textMuted" style={{ marginHorizontal: spacing.md }}>
+              ou
+            </Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          {/* Region select */}
+          <RegionSelect
+            value={selectedRegion}
+            regions={REGION_NAMES}
+            onChange={handleRegionChange}
+            placeholder="Choisir une région"
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // =============================================
+  // REGION SELECTED — show results with filters
+  // =============================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Search Bar - Outside FlatList to prevent focus loss on re-render */}
+      {/* Search Bar */}
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.background }}>
         <SearchBar
           value={searchQuery}
@@ -258,6 +409,22 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  regionPickerContainer: {
+    flex: 1,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
   },
   filtersContainer: {
     // Dynamic styles applied inline
