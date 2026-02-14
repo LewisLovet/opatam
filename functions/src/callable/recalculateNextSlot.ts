@@ -30,6 +30,10 @@ interface RecalculateResponse {
 
 export const recalculateNextSlot = onCall(
   async (request: CallableRequest<RecalculateRequest>): Promise<RecalculateResponse> => {
+    if (!request.auth) {
+      throw new Error('Authentification requise');
+    }
+
     const { providerId } = request.data;
 
     serverTracker.startContext('recalculateNextSlot');

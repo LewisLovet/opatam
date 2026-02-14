@@ -31,11 +31,13 @@ function formatDateFr(date: Date): string {
   const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
                   'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
-  const dayName = days[date.getDay()];
-  const dayNum = date.getDate();
-  const month = months[date.getMonth()];
-  const hours = date.getHours();
-  const minutes = date.getMinutes().toString().padStart(2, '0');
+  // Use Paris timezone since Cloud Functions run in UTC
+  const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+  const dayName = days[parisDate.getDay()];
+  const dayNum = parisDate.getDate();
+  const month = months[parisDate.getMonth()];
+  const hours = parisDate.getHours();
+  const minutes = parisDate.getMinutes().toString().padStart(2, '0');
 
   return `${dayName} ${dayNum} ${month} à ${hours}h${minutes}`;
 }
@@ -104,8 +106,8 @@ async function removeInvalidTokens(userId: string, invalidTokens: string[]): Pro
 /**
  * Send notification to provider when a new booking is created
  */
-export async function notifyProviderNewBooking(booking: BookingData): Promise<void> {
-  console.log('notifyProviderNewBooking:', booking.providerId);
+export async function notifyProviderNewBooking(booking: BookingData, bookingId: string): Promise<void> {
+  console.log('notifyProviderNewBooking:', booking.providerId, bookingId);
 
   const providerUserId = await getProviderUserId(booking.providerId);
   if (!providerUserId) {
@@ -127,7 +129,7 @@ export async function notifyProviderNewBooking(booking: BookingData): Promise<vo
     body: `${booking.clientInfo.name} - ${booking.serviceName} le ${dateStr}`,
     data: {
       type: 'new_booking',
-      bookingId: booking.providerId, // Will be replaced with actual bookingId
+      bookingId,
     },
   });
 
@@ -345,8 +347,7 @@ export async function notifyClientBookingReminder(
  * Process booking write event and send appropriate notifications
  * This is the main entry point called from onBookingWrite trigger
  *
- * NOTE: Currently only notifying CLIENTS, not providers.
- * Provider notifications are disabled for now.
+ * Notifies both clients and providers via push notifications.
  */
 export async function handleBookingNotifications(
   beforeData: admin.firestore.DocumentData | undefined,
@@ -356,9 +357,8 @@ export async function handleBookingNotifications(
   // Creation - no push notification needed (client is already using the app)
   // Email confirmation is sent separately via bookingEmails
   if (!beforeData && afterData) {
-    console.log('Booking created, no push notification needed (client is in app)');
-    // Provider notification disabled for now:
-    // await notifyProviderNewBooking(afterData as BookingData);
+    console.log('Booking created, notifying provider');
+    await notifyProviderNewBooking(afterData as BookingData, bookingId);
     return;
   }
 
@@ -386,9 +386,8 @@ export async function handleBookingNotifications(
       const cancelledBy = afterData.cancelledBy;
 
       if (cancelledBy === 'client') {
-        // Client cancelled - provider notification disabled for now
-        console.log('Booking cancelled by client, provider notification disabled');
-        // await notifyProviderBookingCancelled(booking);
+        console.log('Booking cancelled by client, notifying provider');
+        await notifyProviderBookingCancelled(booking);
       } else if (cancelledBy === 'provider') {
         // Provider cancelled - notify client
         console.log('Booking cancelled by provider, notifying client');

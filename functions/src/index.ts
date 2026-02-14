@@ -23,8 +23,8 @@ export { onBookingWrite } from './triggers/onBookingWrite';
 // Export scheduled functions
 export { recalculateExpiredSlots } from './scheduled/recalculateExpiredSlots';
 export { sendBookingReminders } from './scheduled/sendBookingReminders';
+export { sendDailyAgendaSummary } from './scheduled/sendDailyAgendaSummary';
 // export { completeBookings } from './scheduled/completeBookings';
-// export { sendMemberDigest } from './scheduled/sendMemberDigest';
 
 // Export callable functions
 export { testFunction } from './callable/testFunction';
@@ -34,5 +34,6 @@ export { recalculateAllProviders } from './callable/recalculateAllProviders';
 export { testPushNotification } from './callable/testPushNotification';
 export { testCreateBooking } from './callable/testCreateBooking';
 export { testCleanupBookings } from './callable/testCleanupBookings';
+export { testDailyAgendaSummary } from './callable/testDailyAgendaSummary';
 // export { cancelBooking } from './callable/cancelBooking';
 // export { getMemberPlanning } from './callable/getMemberPlanning';

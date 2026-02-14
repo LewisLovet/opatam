@@ -178,6 +178,23 @@ interface RecalculateAllResponse {
   message: string;
 }
 
+// Types pour testDailyAgendaSummary
+interface AgendaSummaryResult {
+  success: boolean;
+  date: string;
+  providersProcessed: number;
+  emailsSent: number;
+  errors: number;
+  details: Array<{
+    businessName: string;
+    bookingsCount: number;
+    providerEmailSent: boolean;
+    memberEmails: Array<{ name: string; bookingsCount: number; sent: boolean }>;
+  }>;
+  executionTimeMs: number;
+  message: string;
+}
+
 export default function TestFunctionsPage() {
   const [testResult, setTestResult] = useState<TestFunctionResponse | null>(null);
   const [recalculateResult, setRecalculateResult] = useState<RecalculateResponse | null>(null);
@@ -196,6 +213,8 @@ export default function TestFunctionsPage() {
   const [bookingScenario, setBookingScenario] = useState<BookingTestScenario>('create');
   const [bookingResult, setBookingResult] = useState<TestCreateBookingResponse | null>(null);
   const [cleanupResult, setCleanupResult] = useState<TestCleanupBookingsResponse | null>(null);
+  const [agendaResult, setAgendaResult] = useState<AgendaSummaryResult | null>(null);
+  const [agendaProviderId, setAgendaProviderId] = useState('');
   const emulatorConnected = useRef(false);
 
   useEffect(() => {
@@ -427,6 +446,29 @@ export default function TestFunctionsPage() {
     }
   };
 
+  const runTestDailyAgendaSummary = async () => {
+    const functions = getFunctions(app);
+    setLoading('agenda');
+    setError(null);
+    setAgendaResult(null);
+
+    try {
+      const agendaFn = httpsCallable<{ providerId?: string }, AgendaSummaryResult>(
+        functions,
+        'testDailyAgendaSummary'
+      );
+      const response = await agendaFn(
+        agendaProviderId.trim() ? { providerId: agendaProviderId.trim() } : {}
+      );
+      setAgendaResult(response.data);
+    } catch (err) {
+      console.error('Error calling testDailyAgendaSummary:', err);
+      handleError(err);
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="py-12 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -438,6 +480,127 @@ export default function TestFunctionsPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Test Cloud Functions
         </h1>
+
+        {/* Test Récapitulatif Agenda Quotidien */}
+        <Card>
+          <CardHeader
+            title="Récapitulatif agenda quotidien"
+            description="Envoie le récap de demain aux providers et membres (emails)"
+            action={
+              <Badge variant={isEmulator ? 'info' : 'success'}>
+                {isEmulator ? 'Émulateur' : 'Production'}
+              </Badge>
+            }
+          />
+          <CardBody className="space-y-4">
+            <Input
+              label="Provider ID (optionnel)"
+              value={agendaProviderId}
+              onChange={(e) => setAgendaProviderId(e.target.value)}
+              placeholder="Laisser vide pour tous les providers"
+            />
+
+            <Button
+              onClick={runTestDailyAgendaSummary}
+              loading={loading === 'agenda'}
+              fullWidth
+              variant="primary"
+            >
+              {agendaProviderId.trim() ? 'Envoyer pour ce provider' : 'Envoyer pour tous les providers'}
+            </Button>
+
+            {agendaResult && (
+              <div className="space-y-4">
+                <div className={`p-4 rounded-lg border ${
+                  agendaResult.success
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                    : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant={agendaResult.success ? 'success' : 'error'}>
+                      {agendaResult.success ? 'Succès' : 'Erreur'}
+                    </Badge>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {agendaResult.executionTimeMs}ms
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-1">{agendaResult.message}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Date : {agendaResult.date}</p>
+
+                  <div className="flex flex-wrap gap-4 mt-3">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{agendaResult.providersProcessed}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Providers</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">{agendaResult.emailsSent}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Emails envoyés</div>
+                    </div>
+                    {agendaResult.errors > 0 && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">{agendaResult.errors}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Erreurs</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {agendaResult.details.length > 0 && (
+                  <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <p className="text-sm font-medium mb-3 text-gray-900 dark:text-gray-100">Détail par provider</p>
+                    <div className="space-y-2">
+                      {agendaResult.details.map((detail, i) => (
+                        <div
+                          key={i}
+                          className={`p-3 rounded border ${
+                            detail.bookingsCount === 0
+                              ? 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                              : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{detail.businessName}</span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={detail.bookingsCount > 0 ? 'info' : 'default'}>
+                                {detail.bookingsCount} RDV
+                              </Badge>
+                              {detail.providerEmailSent && (
+                                <Badge variant="success">Email envoyé</Badge>
+                              )}
+                            </div>
+                          </div>
+                          {detail.memberEmails.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {detail.memberEmails.map((m, j) => (
+                                <div key={j} className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                                  <span>{m.name} ({m.bookingsCount} RDV)</span>
+                                  {m.sent ? (
+                                    <Badge variant="success">Envoyé</Badge>
+                                  ) : (
+                                    <Badge variant="default">Non envoyé</Badge>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <details className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <summary className="text-sm font-medium cursor-pointer text-gray-900 dark:text-gray-100">
+                    Voir la réponse JSON complète
+                  </summary>
+                  <pre className="text-xs overflow-auto max-h-60 mt-2 text-gray-700 dark:text-gray-300">
+                    {JSON.stringify(agendaResult, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </CardBody>
+        </Card>
 
         {/* Recalculer TOUS les providers */}
         <Card>

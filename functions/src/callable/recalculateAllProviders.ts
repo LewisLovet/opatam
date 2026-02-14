@@ -42,7 +42,11 @@ const BATCH_SIZE = 10;
 
 export const recalculateAllProviders = onCall(
   { timeoutSeconds: 300 }, // 5 minutes max
-  async (_request: CallableRequest): Promise<RecalculateAllResponse> => {
+  async (request: CallableRequest): Promise<RecalculateAllResponse> => {
+    if (!request.auth) {
+      throw new Error('Authentification requise');
+    }
+
     const startTime = Date.now();
     serverTracker.startContext('recalculateAllProviders');
     console.log('=== recalculateAllProviders started ===');
