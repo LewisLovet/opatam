@@ -485,8 +485,27 @@ export function CreateBookingModal({
         });
       } catch (emailError) {
         console.error('[CreateBookingModal] Error sending confirmation email:', emailError);
-        // Don't fail the booking creation if email fails
       }
+
+      // Notify provider (fire and forget)
+      fetch('/api/bookings/provider-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          providerId: provider.id,
+          clientName: formData.clientName.trim(),
+          clientPhone: formData.clientPhone.trim(),
+          serviceName: selectedService?.name || '',
+          datetime: datetime.toISOString(),
+          duration: selectedService?.duration || 0,
+          price: selectedService?.price || 0,
+          locationName: selectedLocation?.name || '',
+          locationAddress: selectedLocation?.address || '',
+          memberName: selectedMember?.name,
+          bookingId: booking.id,
+          type: 'confirmation',
+        }),
+      }).catch(() => {});
 
       toast.success('Rendez-vous créé avec succès');
       onCreated();

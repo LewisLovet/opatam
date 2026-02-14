@@ -167,62 +167,31 @@ export async function emailClientBookingReminder(
  * Process booking write event and send appropriate emails
  * This is called from onBookingWrite trigger alongside notifications
  *
- * NOTE: Currently only emailing CLIENTS, not providers.
- * Same logic as push notifications.
+ * NOTE: Confirmation and cancellation emails are sent by Next.js API routes
+ * (/api/bookings/confirmation-email and /api/bookings/cancel-email).
+ * This handler only processes reschedule emails (datetime changes).
  */
 export async function handleBookingEmails(
   beforeData: admin.firestore.DocumentData | undefined,
   afterData: admin.firestore.DocumentData | undefined,
   bookingId: string
 ): Promise<void> {
-  // Creation - send confirmation email if created with status = confirmed
-  if (!beforeData && afterData) {
-    const booking = afterData as BookingData;
-    if (booking.status === 'confirmed') {
-      console.log('[EMAIL] Booking created with status=confirmed, emailing client');
-      await emailClientBookingConfirmed(booking, bookingId);
-    } else {
-      console.log('[EMAIL] Booking created with status=' + booking.status + ', no email needed');
-    }
+  // Only process updates (reschedule)
+  if (!beforeData || !afterData) {
     return;
   }
 
-  // Deletion - no email needed
-  if (beforeData && !afterData) {
-    console.log('[EMAIL] Booking deleted, no email needed');
-    return;
-  }
+  const booking = afterData as BookingData;
+  const newStatus = afterData.status;
 
-  // Update - check what changed
-  if (beforeData && afterData) {
-    const booking = afterData as BookingData;
-    const oldStatus = beforeData.status;
-    const newStatus = afterData.status;
+  // Datetime changed (reschedule) - email client
+  const oldDatetime = beforeData.datetime?.toMillis?.();
+  const newDatetime = afterData.datetime?.toMillis?.();
 
-    // Status changed to confirmed - email client
-    if (oldStatus !== 'confirmed' && newStatus === 'confirmed') {
-      console.log('[EMAIL] Booking confirmed, emailing client');
-      await emailClientBookingConfirmed(booking, bookingId);
-      return;
-    }
-
-    // Status changed to cancelled - always email client as confirmation
-    if (oldStatus !== 'cancelled' && newStatus === 'cancelled') {
-      const cancelledBy = afterData.cancelledBy;
-      console.log(`[EMAIL] Booking cancelled by ${cancelledBy || 'unknown'}, emailing client confirmation`);
-      await emailClientBookingCancelled(booking, bookingId);
-      return;
-    }
-
-    // Datetime changed (reschedule) - email client
-    const oldDatetime = beforeData.datetime?.toMillis?.();
-    const newDatetime = afterData.datetime?.toMillis?.();
-
-    if (oldDatetime && newDatetime && oldDatetime !== newDatetime) {
-      if (newStatus === 'pending' || newStatus === 'confirmed') {
-        console.log('[EMAIL] Booking rescheduled, emailing client');
-        await emailClientBookingRescheduled(booking, bookingId, beforeData.datetime.toDate());
-      }
+  if (oldDatetime && newDatetime && oldDatetime !== newDatetime) {
+    if (newStatus === 'pending' || newStatus === 'confirmed') {
+      console.log('[EMAIL] Booking rescheduled, emailing client');
+      await emailClientBookingRescheduled(booking, bookingId, beforeData.datetime.toDate());
     }
   }
 }

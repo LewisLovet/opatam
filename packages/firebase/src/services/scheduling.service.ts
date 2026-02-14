@@ -395,9 +395,11 @@ export class SchedulingService {
             slotInterval
           );
 
-          // Filter out blocked and booked slots
+          // Filter out blocked, booked, and past/too-soon slots
           let filteredCount = 0;
           const now = new Date();
+          const minBookingNoticeHours = provider?.settings.minBookingNotice ?? 2;
+          const earliestBookable = new Date(now.getTime() + minBookingNoticeHours * 60 * 60 * 1000);
 
           for (const genSlot of generatedSlots) {
             const isBlocked = this.isTimeBlockedBySlots(
@@ -412,9 +414,9 @@ export class SchedulingService {
               relevantBookings
             );
 
-            const isPast = genSlot.datetime <= now;
+            const isTooSoon = genSlot.datetime <= earliestBookable;
 
-            if (!isBlocked && !isBooked && !isPast) {
+            if (!isBlocked && !isBooked && !isTooSoon) {
               availableSlots.push(genSlot);
             } else {
               filteredCount++;
@@ -438,6 +440,15 @@ export class SchedulingService {
    */
   async isSlotAvailable(params: SlotCheckParams): Promise<boolean> {
     const { providerId, memberId, datetime, duration, excludeBookingId } = params;
+
+    // Reject slots in the past or too close to now (minBookingNotice)
+    const provider = await providerRepository.getById(providerId);
+    const minBookingNoticeHours = provider?.settings.minBookingNotice ?? 2;
+    const now = new Date();
+    const earliestBookable = new Date(now.getTime() + minBookingNoticeHours * 60 * 60 * 1000);
+    if (datetime <= earliestBookable) {
+      return false;
+    }
 
     const endDatetime = new Date(datetime.getTime() + duration * 60 * 1000);
     const dayOfWeek = datetime.getDay();

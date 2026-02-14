@@ -130,6 +130,25 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
           // Don't fail the cancellation if email fails
           console.error('[CANCEL-CLIENT] Step 2: FAILED to send cancellation email:', emailErr);
         }
+        // Notify provider (fire and forget)
+        fetch('/api/bookings/provider-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            providerId: booking.providerId,
+            clientName: booking.clientInfo.name,
+            serviceName: booking.serviceName,
+            datetime: booking.datetime,
+            duration: booking.duration,
+            price: booking.price,
+            locationName: booking.locationName,
+            locationAddress: booking.locationAddress,
+            memberName: booking.memberName,
+            type: 'cancellation',
+            cancelledBy: 'client',
+            cancelReason: reason || undefined,
+          }),
+        }).catch(() => {});
       } else {
         console.log('[CANCEL-CLIENT] Step 2: SKIPPED - No booking data available');
       }
