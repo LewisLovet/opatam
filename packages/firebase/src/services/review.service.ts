@@ -14,6 +14,7 @@ import type { WithId } from '../repositories/base.repository';
 export class ReviewService {
   /**
    * Submit a review for a past booking (authenticated client)
+   * Dedup: one review per client per provider. Updates existing review if found.
    */
   async submitReview(clientId: string, input: CreateReviewInput): Promise<WithId<Review>> {
     // Validate input
@@ -39,23 +40,44 @@ export class ReviewService {
       }
     }
 
-    // Check if review already exists for this booking
-    const existingReview = await reviewRepository.getByBooking(validated.bookingId);
-    if (existingReview) {
-      throw new Error('Vous avez déjà donné un avis pour cette réservation');
-    }
-
     // Get client info
     const client = await userRepository.getById(clientId);
     if (!client) {
       throw new Error('Utilisateur non trouvé');
     }
 
-    // Create review
+    const clientEmail = client.email.toLowerCase().trim();
+
+    // Check if client already has a review for this provider (dedup by client+provider)
+    const existingReview = await reviewRepository.getByClientForProvider(clientId, validated.providerId)
+      || await reviewRepository.getByEmailForProvider(clientEmail, validated.providerId);
+
+    if (existingReview) {
+      // Update the existing review instead of creating a new one
+      await reviewRepository.update(existingReview.id, {
+        bookingId: validated.bookingId,
+        memberId: booking.memberId,
+        rating: validated.rating,
+        comment: validated.comment || null,
+        clientName: client.displayName,
+        clientPhoto: client.photoURL,
+      });
+
+      const updated = await reviewRepository.getById(existingReview.id);
+      if (!updated) {
+        throw new Error('Erreur lors de la mise à jour de l\'avis');
+      }
+
+      await this.recalculateProviderRating(validated.providerId);
+      return updated;
+    }
+
+    // Create new review
     const reviewId = await reviewRepository.create({
       providerId: validated.providerId,
       bookingId: validated.bookingId,
       clientId,
+      clientEmail,
       memberId: booking.memberId,
       clientName: client.displayName,
       clientPhoto: client.photoURL,
@@ -141,8 +163,15 @@ export class ReviewService {
   }
 
   /**
-   * Submit a review by booking ID (for non-authenticated clients)
-   * Uses the booking's clientInfo for the reviewer name
+   * Get existing review for a client (by email) at a provider
+   */
+  async getByEmailForProvider(clientEmail: string, providerId: string): Promise<WithId<Review> | null> {
+    return reviewRepository.getByEmailForProvider(clientEmail, providerId);
+  }
+
+  /**
+   * Submit a review by booking ID (for non-authenticated clients via email link)
+   * Dedup: one review per email per provider. Updates existing review if found.
    */
   async submitReviewByBooking(
     bookingId: string,
@@ -161,22 +190,64 @@ export class ReviewService {
       throw new Error('Vous ne pouvez donner un avis qu\'après votre rendez-vous');
     }
 
-    // Check if review already exists for this booking
-    const existingReview = await reviewRepository.getByBooking(bookingId);
-    if (existingReview) {
-      throw new Error('Un avis a déjà été déposé pour cette réservation');
-    }
-
     // Validate rating
     if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
       throw new Error('La note doit être un nombre entier entre 1 et 5');
     }
 
-    // Create review with clientId: null (anonymous)
+    const clientEmail = booking.clientInfo.email.toLowerCase().trim();
+
+    // Check if this client (by email) already has a review for this provider
+    const existingReview = await reviewRepository.getByEmailForProvider(clientEmail, booking.providerId);
+
+    if (existingReview) {
+      // Update the existing review
+      await reviewRepository.update(existingReview.id, {
+        bookingId,
+        memberId: booking.memberId,
+        rating,
+        comment: comment || null,
+        clientName: booking.clientInfo.name,
+      });
+
+      const updated = await reviewRepository.getById(existingReview.id);
+      if (!updated) {
+        throw new Error('Erreur lors de la mise à jour de l\'avis');
+      }
+
+      await this.recalculateProviderRating(booking.providerId);
+      return updated;
+    }
+
+    // Also check by clientId if booking has one
+    if (booking.clientId) {
+      const existingByClient = await reviewRepository.getByClientForProvider(booking.clientId, booking.providerId);
+      if (existingByClient) {
+        await reviewRepository.update(existingByClient.id, {
+          bookingId,
+          memberId: booking.memberId,
+          rating,
+          comment: comment || null,
+          clientName: booking.clientInfo.name,
+          clientEmail,
+        });
+
+        const updated = await reviewRepository.getById(existingByClient.id);
+        if (!updated) {
+          throw new Error('Erreur lors de la mise à jour de l\'avis');
+        }
+
+        await this.recalculateProviderRating(booking.providerId);
+        return updated;
+      }
+    }
+
+    // Create new review with clientId from booking (null for anonymous)
     const reviewId = await reviewRepository.create({
       providerId: booking.providerId,
       bookingId,
-      clientId: null,
+      clientId: booking.clientId || null,
+      clientEmail,
       memberId: booking.memberId,
       clientName: booking.clientInfo.name,
       clientPhoto: null,
@@ -204,9 +275,11 @@ export class ReviewService {
   }
 
   /**
-   * Check if client can review a booking
+   * Check if client can review a booking.
+   * Returns 'can_review' | 'can_update' | false.
+   * 'can_update' means the client already has a review for this provider (will update it).
    */
-  async canReview(clientId: string, bookingId: string): Promise<boolean> {
+  async canReview(clientId: string, bookingId: string): Promise<'can_review' | 'can_update' | false> {
     const booking = await bookingRepository.getById(bookingId);
     if (!booking) {
       return false;
@@ -225,9 +298,13 @@ export class ReviewService {
       }
     }
 
-    // Must not have reviewed already
-    const existingReview = await reviewRepository.getByBooking(bookingId);
-    return !existingReview;
+    // Check if already has a review for this provider
+    const existingReview = await reviewRepository.getByClientForProvider(clientId, booking.providerId);
+    if (existingReview) {
+      return 'can_update';
+    }
+
+    return 'can_review';
   }
 
   /**

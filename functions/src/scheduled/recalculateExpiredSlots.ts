@@ -28,6 +28,7 @@ export const recalculateExpiredSlots = onSchedule(
   {
     schedule: 'every 2 hours',
     timeZone: 'Europe/Paris',
+    region: 'europe-west1',
     timeoutSeconds: 300,
   },
   async () => {

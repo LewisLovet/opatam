@@ -49,6 +49,7 @@ export const sendDailyAgendaSummary = onSchedule(
   {
     schedule: 'every day 20:00',
     timeZone: 'Europe/Paris',
+    region: 'europe-west1',
     timeoutSeconds: 300,
   },
   async () => {

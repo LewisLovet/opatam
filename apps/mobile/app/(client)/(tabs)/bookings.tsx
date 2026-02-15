@@ -7,12 +7,12 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   Pressable,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
@@ -140,6 +140,7 @@ function BookingCardSkeleton({ colors }: { colors: any }) {
 
 export default function BookingsScreen() {
   const { colors, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { upcoming, past, loading, error, refresh } = useClientBookings();
@@ -166,11 +167,13 @@ export default function BookingsScreen() {
   // Not authenticated
   if (!isAuthenticated) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { padding: spacing.lg }]}>
-          <Text variant="h1">Mes rendez-vous</Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
+            <Text variant="h1" style={{ color: '#FFFFFF' }}>Mes rendez-vous</Text>
+          </View>
         </View>
-        <View style={[styles.content, { paddingHorizontal: spacing.lg }]}>
+        <View style={[styles.content, { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }]}>
           <Card padding="lg" shadow="sm">
             <EmptyState
               icon="log-in-outline"
@@ -181,15 +184,17 @@ export default function BookingsScreen() {
             />
           </Card>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { padding: spacing.lg }]}>
-        <Text variant="h1">Mes rendez-vous</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* ── Branded Header ── */}
+      <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
+          <Text variant="h1" style={{ color: '#FFFFFF' }}>Mes rendez-vous</Text>
+        </View>
       </View>
 
       {/* Tab Toggle */}
@@ -301,7 +306,7 @@ export default function BookingsScreen() {
           ))
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

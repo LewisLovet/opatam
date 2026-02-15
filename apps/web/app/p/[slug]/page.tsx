@@ -88,22 +88,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
+  const city = provider.cities?.[0] || '';
   const description = provider.description
     ? provider.description.substring(0, 160)
-    : `Reservez vos rendez-vous chez ${provider.businessName} - ${provider.category}`;
+    : `Réservez vos rendez-vous chez ${provider.businessName}${city ? ` à ${city}` : ''} — ${provider.category}. Prise de RDV en ligne sur Opatam.`;
+
+  const pageUrl = `https://opatam.com/p/${slug}`;
 
   return {
-    title: `${provider.businessName} | ${provider.category}`,
+    title: `${provider.businessName}${city ? ` — ${city}` : ''} | ${provider.category} | Opatam`,
     description,
+    alternates: {
+      canonical: pageUrl,
+    },
     openGraph: {
-      title: provider.businessName,
+      title: `${provider.businessName}${city ? ` — ${city}` : ''}`,
       description,
+      url: pageUrl,
+      siteName: 'Opatam',
       images: provider.coverPhotoURL ? [provider.coverPhotoURL] : [],
       type: 'website',
+      locale: 'fr_FR',
     },
     twitter: {
       card: 'summary_large_image',
-      title: provider.businessName,
+      title: `${provider.businessName}${city ? ` — ${city}` : ''}`,
       description,
       images: provider.coverPhotoURL ? [provider.coverPhotoURL] : [],
     },

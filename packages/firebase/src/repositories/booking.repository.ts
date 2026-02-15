@@ -66,6 +66,14 @@ export class BookingRepository extends BaseRepository<Booking> {
       constraints.push(where('locationId', '==', filters.locationId));
     }
 
+    if (filters?.startDate) {
+      constraints.push(where('datetime', '>=', Timestamp.fromDate(filters.startDate)));
+    }
+
+    if (filters?.endDate) {
+      constraints.push(where('datetime', '<=', Timestamp.fromDate(filters.endDate)));
+    }
+
     if (filters?.limit) {
       constraints.push(limit(filters.limit) as unknown as typeof constraints[0]);
     }

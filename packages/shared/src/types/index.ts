@@ -253,6 +253,7 @@ export interface Review {
   providerId: string;
   bookingId: string;
   clientId: string | null;  // null for anonymous reviews (from email link)
+  clientEmail: string | null; // normalized email for dedup (one review per client per provider)
   memberId: string | null;
   clientName: string;
   clientPhoto: string | null;

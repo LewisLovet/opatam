@@ -75,16 +75,19 @@ export function formatPriceFr(priceInCentimes: number): string {
   }).format(priceInEuros);
 }
 
-// Helper to format relative time in French ("dans 30 minutes", "dans 1 heure", "demain")
+// Helper to format relative time in French ("dans 30 minutes", "dans 1h30", "demain")
 export function formatTimeUntilFr(minutesUntil: number): string {
   if (minutesUntil < 60) {
     const mins = Math.round(minutesUntil);
     return mins <= 1 ? 'dans 1 minute' : `dans ${mins} minutes`;
   }
-  const hours = Math.round(minutesUntil / 60);
-  if (hours === 1) return 'dans 1 heure';
-  if (hours < 24) return `dans ${hours} heures`;
-  return 'demain';
+  const hours = Math.floor(minutesUntil / 60);
+  const mins = Math.round(minutesUntil % 60);
+  if (hours >= 24) return 'demain';
+  if (mins === 0) {
+    return hours === 1 ? 'dans 1 heure' : `dans ${hours} heures`;
+  }
+  return `dans ${hours}h${mins.toString().padStart(2, '0')}`;
 }
 
 // Validate email format

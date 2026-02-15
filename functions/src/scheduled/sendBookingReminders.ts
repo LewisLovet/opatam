@@ -29,6 +29,7 @@ export const sendBookingReminders = onSchedule(
   {
     schedule: 'every 1 hours',
     timeZone: 'Europe/Paris',
+    region: 'europe-west1',
     timeoutSeconds: 300,
   },
   async () => {

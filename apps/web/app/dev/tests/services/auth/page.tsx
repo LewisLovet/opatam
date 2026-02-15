@@ -65,7 +65,7 @@ export default function AuthServiceTestPage() {
         password: registerPassword,
         confirmPassword: registerConfirmPassword,
         displayName: registerDisplayName,
-        phone: registerPhone || undefined,
+        phone: registerPhone || '',
       });
       return {
         message: 'Client inscrit avec succès',

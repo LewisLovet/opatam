@@ -1,16 +1,25 @@
 /**
- * Client Registration - Social First Screen
- * Choose registration method: Apple or Email
+ * Client Registration Screen
+ * Direct email/password registration with animated background
  */
 
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Pressable, Animated, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Animated,
+  Dimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
-import { Text, useToast } from '../../../components';
+import { Text, Button, Input, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -26,12 +35,12 @@ interface Bubble {
 }
 
 const BUBBLES: Bubble[] = [
-  { size: 110, startX: -35, startY: SCREEN_HEIGHT * 0.12, color: 'rgba(26, 109, 175, 0.14)', duration: 9000, delay: 0 },
-  { size: 75, startX: SCREEN_WIDTH - 55, startY: SCREEN_HEIGHT * 0.18, color: 'rgba(41, 139, 206, 0.11)', duration: 11000, delay: 300 },
-  { size: 55, startX: SCREEN_WIDTH * 0.35, startY: SCREEN_HEIGHT * 0.55, color: 'rgba(26, 109, 175, 0.09)', duration: 13000, delay: 700 },
-  { size: 85, startX: SCREEN_WIDTH - 65, startY: SCREEN_HEIGHT * 0.58, color: 'rgba(41, 139, 206, 0.12)', duration: 10000, delay: 150 },
-  { size: 65, startX: 25, startY: SCREEN_HEIGHT * 0.68, color: 'rgba(26, 109, 175, 0.10)', duration: 12000, delay: 500 },
-  { size: 45, startX: SCREEN_WIDTH * 0.6, startY: SCREEN_HEIGHT * 0.35, color: 'rgba(41, 139, 206, 0.08)', duration: 14000, delay: 800 },
+  { size: 110, startX: -35, startY: SCREEN_HEIGHT * 0.08, color: 'rgba(26, 109, 175, 0.14)', duration: 9000, delay: 0 },
+  { size: 75, startX: SCREEN_WIDTH - 55, startY: SCREEN_HEIGHT * 0.14, color: 'rgba(41, 139, 206, 0.11)', duration: 11000, delay: 300 },
+  { size: 55, startX: SCREEN_WIDTH * 0.35, startY: SCREEN_HEIGHT * 0.5, color: 'rgba(26, 109, 175, 0.09)', duration: 13000, delay: 700 },
+  { size: 85, startX: SCREEN_WIDTH - 65, startY: SCREEN_HEIGHT * 0.55, color: 'rgba(41, 139, 206, 0.12)', duration: 10000, delay: 150 },
+  { size: 65, startX: 25, startY: SCREEN_HEIGHT * 0.65, color: 'rgba(26, 109, 175, 0.10)', duration: 12000, delay: 500 },
+  { size: 45, startX: SCREEN_WIDTH * 0.6, startY: SCREEN_HEIGHT * 0.32, color: 'rgba(41, 139, 206, 0.08)', duration: 14000, delay: 800 },
 ];
 
 function FloatingBubble({ bubble }: { bubble: Bubble }) {
@@ -125,12 +134,28 @@ function FloatingBubble({ bubble }: { bubble: Bubble }) {
   );
 }
 
-export default function ClientSocialScreen() {
+interface FormErrors {
+  firstName?: string;
+  email?: string;
+  password?: string;
+  phone?: string;
+}
+
+export default function ClientRegisterScreen() {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
-  const { signInWithApple } = useAuth();
+  const { signUp } = useAuth();
+
+  // Form state
+  const [firstName, setFirstName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -151,14 +176,70 @@ export default function ClientSocialScreen() {
     ]).start();
   }, []);
 
-  const handleAppleSignIn = async () => {
+  // Validate form
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!firstName.trim()) {
+      newErrors.firstName = 'Le prénom est requis';
+    } else if (firstName.trim().length < 2) {
+      newErrors.firstName = 'Le prénom doit contenir au moins 2 caractères';
+    }
+
+    if (!email.trim()) {
+      newErrors.email = "L'email est requis";
+    } else if (!email.includes('@') || !email.includes('.')) {
+      newErrors.email = "Format d'email invalide";
+    }
+
+    if (!password) {
+      newErrors.password = 'Le mot de passe est requis';
+    } else if (password.length < 6) {
+      newErrors.password = 'Le mot de passe doit contenir au moins 6 caractères';
+    }
+
+    if (!phone.trim()) {
+      newErrors.phone = 'Le numéro de téléphone est requis';
+    } else {
+      const cleanedPhone = phone.replace(/\s/g, '');
+      if (!/^0[67]\d{8}$/.test(cleanedPhone)) {
+        newErrors.phone = 'Format invalide (ex: 06 12 34 56 78)';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Clear error on field change
+  const clearError = (field: keyof FormErrors) => {
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  // Handle submit
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+
     try {
-      await signInWithApple();
+      const cleanedPhone = phone.replace(/\s/g, '');
+      await signUp(email.trim(), password, firstName.trim(), cleanedPhone);
+
+      showToast({
+        variant: 'success',
+        message: 'Compte créé avec succès',
+      });
+
+      // Navigation is handled reactively by the auth layout guard
     } catch (error: any) {
       showToast({
         variant: 'error',
-        message: error.message || 'Erreur de connexion avec Apple',
+        message: error.message || "Erreur lors de l'inscription",
       });
+      setIsSubmitting(false);
     }
   };
 
@@ -176,150 +257,174 @@ export default function ClientSocialScreen() {
         ))}
       </View>
 
-      <View
-        style={[
-          styles.container,
-          {
-            paddingTop: insets.top + spacing.md,
-            paddingBottom: insets.bottom + spacing.lg,
-            paddingHorizontal: spacing.lg,
-          },
-        ]}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Back button */}
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.backButton,
+        <ScrollView
+          contentContainerStyle={[
+            styles.container,
             {
-              backgroundColor: '#FFFFFF',
-              borderRadius: radius.full,
-              shadowColor: colors.primary,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 3,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
+              paddingTop: insets.top + spacing.md,
+              paddingBottom: insets.bottom + spacing.lg,
+              paddingHorizontal: spacing.lg,
             },
           ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Ionicons name="chevron-back" size={24} color={colors.primary} />
-        </Pressable>
-
-        {/* Header */}
-        <Animated.View
-          style={[
-            styles.header,
-            { marginTop: spacing.xl },
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          <Text variant="h1" style={styles.headerTitle}>Créer un compte</Text>
-          <Text
-            variant="body"
-            color="textSecondary"
-            style={{ marginTop: spacing.xs }}
-          >
-            Réservez en quelques secondes
-          </Text>
-        </Animated.View>
-
-        {/* Social buttons */}
-        <Animated.View
-          style={[
-            styles.buttonsSection,
-            { gap: 12 },
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          {/* Apple button */}
+          {/* Back button */}
           <Pressable
-            onPress={handleAppleSignIn}
+            onPress={() => router.back()}
             style={({ pressed }) => [
-              styles.socialButton,
+              styles.backButton,
               {
-                backgroundColor: colors.primary,
-                borderColor: colors.primary,
-                borderRadius: 16,
-                transform: [{ scale: pressed ? 0.98 : 1 }],
+                backgroundColor: '#FFFFFF',
+                borderRadius: radius.full,
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 3,
+                transform: [{ scale: pressed ? 0.95 : 1 }],
               },
             ]}
           >
-            <View style={[styles.socialIconContainer, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-              <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
-            </View>
-            <Text variant="body" style={[styles.socialButtonText, { color: '#FFFFFF' }]}>
-              Continuer avec Apple
-            </Text>
+            <Ionicons name="chevron-back" size={24} color={colors.primary} />
           </Pressable>
 
-          {/* Separator */}
-          <View style={[styles.separator, { marginVertical: spacing.md }]}>
-            <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+          {/* Header */}
+          <Animated.View
+            style={[
+              styles.header,
+              { marginTop: spacing.lg },
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            <Text variant="h1" style={styles.headerTitle}>Créer un compte</Text>
+            <Text
+              variant="body"
+              color="textSecondary"
+              style={{ marginTop: spacing.xs }}
+            >
+              Réservez en quelques secondes
+            </Text>
+          </Animated.View>
+
+          {/* Form */}
+          <Animated.View
+            style={[
+              styles.form,
+              { gap: spacing.md, marginTop: spacing.xl },
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            <Input
+              label="Prénom"
+              placeholder="Votre prénom"
+              value={firstName}
+              onChangeText={(text) => {
+                setFirstName(text);
+                clearError('firstName');
+              }}
+              autoCapitalize="words"
+              autoComplete="given-name"
+              error={errors.firstName}
+            />
+
+            <Input
+              label="Email"
+              placeholder="votre@email.com"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                clearError('email');
+              }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              error={errors.email}
+            />
+
+            <Input
+              label="Mot de passe"
+              placeholder="Votre mot de passe"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                clearError('password');
+              }}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoComplete="new-password"
+              error={errors.password}
+              helperText="Min. 6 caractères"
+              rightIcon={
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              }
+              onRightIconPress={() => setShowPassword(!showPassword)}
+            />
+
+            <Input
+              label="Téléphone"
+              placeholder="06 12 34 56 78"
+              value={phone}
+              onChangeText={(text) => {
+                setPhone(text);
+                clearError('phone');
+              }}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              error={errors.phone}
+            />
+
+            <Button
+              variant="primary"
+              title="Créer mon compte"
+              onPress={handleSubmit}
+              loading={isSubmitting}
+              disabled={isSubmitting}
+              style={{ marginTop: spacing.sm }}
+            />
+          </Animated.View>
+
+          {/* Legal text */}
+          <Animated.View style={[{ marginTop: spacing.lg }, { opacity: fadeAnim }]}>
             <Text
               variant="caption"
               color="textSecondary"
-              style={{ paddingHorizontal: spacing.md }}
+              style={styles.legalText}
             >
-              ou
+              En créant un compte, vous acceptez nos CGU et Politique de confidentialité
             </Text>
-            <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-          </View>
+          </Animated.View>
 
-          {/* Email button */}
-          <Pressable
-            onPress={() => router.push('/(auth)/client/email-form')}
-            style={({ pressed }) => [
-              styles.socialButton,
-              {
-                backgroundColor: '#FFFFFF',
-                borderColor: 'rgba(26, 109, 175, 0.15)',
-                borderRadius: 16,
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-              },
+          {/* Footer link */}
+          <Animated.View
+            style={[
+              styles.footer,
+              { marginTop: spacing.md },
+              { opacity: fadeAnim },
             ]}
           >
-            <View style={[styles.socialIconContainer, { backgroundColor: 'rgba(26, 109, 175, 0.08)' }]}>
-              <Ionicons name="mail-outline" size={18} color={colors.primary} />
-            </View>
-            <Text variant="body" style={styles.socialButtonText}>
-              Continuer avec email
+            <Text variant="body" color="textSecondary">
+              Déjà un compte ?{' '}
             </Text>
-          </Pressable>
-        </Animated.View>
-
-        {/* Legal text */}
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <Text
-            variant="caption"
-            color="textSecondary"
-            style={[styles.legalText, { marginTop: spacing.xl }]}
-          >
-            En continuant, vous acceptez nos CGU et Politique de confidentialité
-          </Text>
-        </Animated.View>
-
-        {/* Footer link */}
-        <Animated.View
-          style={[
-            styles.footer,
-            { marginTop: spacing.lg },
-            { opacity: fadeAnim },
-          ]}
-        >
-          <Text variant="body" color="textSecondary">
-            Déjà un compte ?{' '}
-          </Text>
-          <Pressable
-            onPress={() => router.push('/(auth)/login')}
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <Text variant="body" color="primary" style={{ fontWeight: '600' }}>
-              Se connecter
-            </Text>
-          </Pressable>
-        </Animated.View>
-      </View>
+            <Pressable
+              onPress={() => router.push('/(auth)/login')}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            >
+              <Text variant="body" color="primary" style={{ fontWeight: '600' }}>
+                Se connecter
+              </Text>
+            </Pressable>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
@@ -336,7 +441,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
   },
   backButton: {
     width: 44,
@@ -345,48 +450,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    marginBottom: 32,
+    // Dynamic styles
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
   },
-  buttonsSection: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 56,
-    width: '100%',
-    borderWidth: 1,
-    shadowColor: '#1a6daf',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  socialIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  socialButtonText: {
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  separator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
+  form: {
+    // Dynamic styles
   },
   legalText: {
     textAlign: 'center',

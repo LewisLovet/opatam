@@ -7,13 +7,13 @@ import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Pressable,
   Alert,
   Image,
   Linking,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
@@ -62,6 +62,7 @@ function MenuItem({
 
 export default function ProfileScreen() {
   const { colors, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
   const { userData, isAuthenticated, signOut } = useAuth();
@@ -105,11 +106,13 @@ export default function ProfileScreen() {
   // Not authenticated
   if (!isAuthenticated) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { padding: spacing.lg }]}>
-          <Text variant="h1">Profil</Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
+            <Text variant="h1" style={{ color: '#FFFFFF' }}>Plus</Text>
+          </View>
         </View>
-        <View style={[styles.content, { paddingHorizontal: spacing.lg }]}>
+        <View style={[styles.content, { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }]}>
           <Card padding="lg" shadow="sm">
             <EmptyState
               icon="person-outline"
@@ -130,7 +133,7 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -143,15 +146,18 @@ export default function ProfileScreen() {
     .slice(0, 2) || '?';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* ── Branded Header ── */}
+      <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
+          <Text variant="h1" style={{ color: '#FFFFFF' }}>Plus</Text>
+        </View>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: spacing['3xl'] }}
       >
-        {/* Header */}
-        <View style={[styles.header, { padding: spacing.lg }]}>
-          <Text variant="h1">Profil</Text>
-        </View>
 
         {/* User Info Card */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
@@ -269,7 +275,7 @@ export default function ProfileScreen() {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

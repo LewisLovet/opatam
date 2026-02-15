@@ -14,7 +14,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../../theme';
@@ -47,6 +47,7 @@ const categoryOptions = CATEGORIES.map((c) => ({ id: c.id, label: c.label }));
 
 export default function SearchScreen() {
   const { colors, spacing, radius } = useTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ category?: string }>();
   const { navigateToProvider, isLoading } = useNavigateToProvider();
 
@@ -300,7 +301,13 @@ export default function SearchScreen() {
   // =============================================
   if (!hasPickedRegion) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* ── Branded Header ── */}
+        <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
+            <Text variant="h2" style={{ color: '#FFFFFF' }}>Recherche</Text>
+          </View>
+        </View>
         <View style={[styles.regionPickerContainer, { paddingHorizontal: spacing.lg }]}>
           {/* Title */}
           <View style={{ alignItems: 'center', marginTop: spacing['2xl'], marginBottom: spacing.xl }}>
@@ -357,7 +364,7 @@ export default function SearchScreen() {
             placeholder="Choisir une région"
           />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -365,7 +372,14 @@ export default function SearchScreen() {
   // REGION SELECTED — show results with filters
   // =============================================
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* ── Branded Header ── */}
+      <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md }}>
+          <Text variant="h2" style={{ color: '#FFFFFF' }}>Recherche</Text>
+        </View>
+      </View>
+
       {/* Search Bar */}
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: colors.background }}>
         <SearchBar
@@ -402,7 +416,7 @@ export default function SearchScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

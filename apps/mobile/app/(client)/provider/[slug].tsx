@@ -76,7 +76,8 @@ function groupServices(
 export default function ProviderDetailScreen() {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { slug, preview } = useLocalSearchParams<{ slug: string; preview?: string }>();
+  const isPreview = preview === '1';
   const router = useRouter();
   const { showToast } = useToast();
 
@@ -90,7 +91,7 @@ export default function ProviderDetailScreen() {
   const { locations, refresh: refreshLocations } = useLocations(provider?.id);
   const { formattedDate: nextAvailableFormatted, loading: loadingAvailability, refresh: refreshAvailability } = useNextAvailableDate(provider?.id);
 
-  // Selected service state
+  // Selected service state (disabled in preview mode)
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -262,7 +263,7 @@ export default function ProviderDetailScreen() {
             tintColor={colors.primary}
           />
         }
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: isPreview ? 40 : 120 }}
       >
         {/* Provider Header */}
         <ProviderHeader
@@ -332,8 +333,8 @@ export default function ProviderDetailScreen() {
                     duration: s.duration,
                     price: s.price / 100, // Convert cents to euros
                   }))}
-                  selectedId={selectedServiceId}
-                  onSelectService={handleSelectService}
+                  selectedId={isPreview ? null : selectedServiceId}
+                  onSelectService={isPreview ? undefined : handleSelectService}
                   collapsible={serviceGroups.length > 1}
                   defaultExpanded={serviceGroups.length <= 3 || index === 0}
                 />
@@ -388,27 +389,29 @@ export default function ProviderDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Sticky Footer */}
-      <StickyFooter>
-        <View style={styles.footerContent}>
-          {selectedService && (
-            <View style={{ marginBottom: spacing.sm }}>
-              <Text variant="caption" color="textSecondary">
-                {selectedService.name} - {selectedService.duration} min
-              </Text>
-              <Text variant="h3" color="primary">
-                {(selectedService.price / 100).toFixed(2)} €
-              </Text>
-            </View>
-          )}
-          <Button
-            variant="primary"
-            title={selectedService ? 'Réserver' : 'Sélectionnez une prestation'}
-            onPress={handleBooking}
-            disabled={!selectedServiceId}
-          />
-        </View>
-      </StickyFooter>
+      {/* Sticky Footer (hidden in preview mode) */}
+      {!isPreview && (
+        <StickyFooter>
+          <View style={styles.footerContent}>
+            {selectedService && (
+              <View style={{ marginBottom: spacing.sm }}>
+                <Text variant="caption" color="textSecondary">
+                  {selectedService.name} - {selectedService.duration} min
+                </Text>
+                <Text variant="h3" color="primary">
+                  {(selectedService.price / 100).toFixed(2)} €
+                </Text>
+              </View>
+            )}
+            <Button
+              variant="primary"
+              title={selectedService ? 'Réserver' : 'Sélectionnez une prestation'}
+              onPress={handleBooking}
+              disabled={!selectedServiceId}
+            />
+          </View>
+        </StickyFooter>
+      )}
     </View>
   );
 }

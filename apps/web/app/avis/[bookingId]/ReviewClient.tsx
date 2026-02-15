@@ -38,7 +38,7 @@ interface ExistingReview {
 interface ReviewClientProps {
   booking: Booking | null;
   bookingId: string;
-  initialState: 'not_found' | 'not_yet_passed' | 'already_reviewed' | 'form';
+  initialState: 'not_found' | 'not_yet_passed' | 'already_reviewed' | 'form' | 'update_form';
   existingReview: ExistingReview | null;
 }
 
@@ -95,11 +95,12 @@ export function ReviewClient({
   initialState,
   existingReview,
 }: ReviewClientProps) {
+  const isUpdate = initialState === 'update_form';
   const [state, setState] = useState<
-    'not_found' | 'not_yet_passed' | 'already_reviewed' | 'form' | 'loading' | 'success' | 'error'
-  >(initialState);
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
+    'not_found' | 'not_yet_passed' | 'already_reviewed' | 'form' | 'update_form' | 'loading' | 'success' | 'error'
+  >(initialState === 'update_form' ? 'update_form' : initialState);
+  const [rating, setRating] = useState(isUpdate && existingReview ? existingReview.rating : 0);
+  const [comment, setComment] = useState(isUpdate && existingReview?.comment ? existingReview.comment : '');
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
@@ -241,10 +242,12 @@ export function ReviewClient({
             <CheckCircle className="w-10 h-10 text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Merci pour votre avis !
+            {isUpdate ? 'Avis mis à jour !' : 'Merci pour votre avis !'}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">
-            Votre avis a bien été enregistré et sera visible sur la page du prestataire.
+            {isUpdate
+              ? 'Votre avis a bien été mis à jour.'
+              : 'Votre avis a bien été enregistré et sera visible sur la page du prestataire.'}
           </p>
           <Link
             href="/"
@@ -272,10 +275,12 @@ export function ReviewClient({
             <Star className="w-8 h-8 text-primary-600 dark:text-primary-400" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Donner votre avis
+            {isUpdate ? 'Modifier votre avis' : 'Donner votre avis'}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Comment s'est passé votre rendez-vous chez {booking.providerName} ?
+            {isUpdate
+              ? `Vous avez déjà laissé un avis pour ${booking.providerName}. Vous pouvez le modifier ci-dessous.`
+              : `Comment s'est passé votre rendez-vous chez ${booking.providerName} ?`}
           </p>
         </div>
 
@@ -386,12 +391,12 @@ export function ReviewClient({
           {state === 'loading' ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Envoi en cours...
+              {isUpdate ? 'Mise à jour en cours...' : 'Envoi en cours...'}
             </>
           ) : (
             <>
               <Star className="w-5 h-5" />
-              Envoyer mon avis
+              {isUpdate ? 'Modifier mon avis' : 'Envoyer mon avis'}
             </>
           )}
         </button>

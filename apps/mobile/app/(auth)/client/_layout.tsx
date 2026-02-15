@@ -17,7 +17,6 @@ export default function ClientLayout() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="email-form" />
     </Stack>
   );
 }

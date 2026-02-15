@@ -102,6 +102,30 @@ export class ReviewRepository extends BaseRepository<Review> {
   }
 
   /**
+   * Get existing review by clientId for a provider (authenticated dedup)
+   */
+  async getByClientForProvider(clientId: string, providerId: string): Promise<WithId<Review> | null> {
+    const results = await this.query([
+      where('clientId', '==', clientId),
+      where('providerId', '==', providerId),
+      limit(1),
+    ]);
+    return results[0] || null;
+  }
+
+  /**
+   * Get existing review by email for a provider (anonymous dedup)
+   */
+  async getByEmailForProvider(clientEmail: string, providerId: string): Promise<WithId<Review> | null> {
+    const results = await this.query([
+      where('clientEmail', '==', clientEmail.toLowerCase().trim()),
+      where('providerId', '==', providerId),
+      limit(1),
+    ]);
+    return results[0] || null;
+  }
+
+  /**
    * Check if client has reviewed booking
    */
   async hasReviewedBooking(clientId: string, bookingId: string): Promise<boolean> {

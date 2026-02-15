@@ -109,7 +109,7 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
             </div>
             <Switch
               checked={prefs.pushEnabled}
-              onChange={(checked) => updatePref('pushEnabled', checked)}
+              onChange={(e) => updatePref('pushEnabled', e.target.checked)}
             />
           </div>
           <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
@@ -122,7 +122,7 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
             </div>
             <Switch
               checked={prefs.emailEnabled}
-              onChange={(checked) => updatePref('emailEnabled', checked)}
+              onChange={(e) => updatePref('emailEnabled', e.target.checked)}
             />
           </div>
         </div>
@@ -142,7 +142,7 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
               </div>
               <Switch
                 checked={prefs[key]}
-                onChange={(checked) => updatePref(key, checked)}
+                onChange={(e) => updatePref(key, e.target.checked)}
                 disabled={!prefs.pushEnabled && !prefs.emailEnabled}
               />
             </div>

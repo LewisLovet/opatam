@@ -403,8 +403,13 @@ export async function notifyClientBookingReminder(
       const mins = Math.round(minutesUntil);
       timeLabel = mins <= 1 ? 'dans 1 minute' : `dans ${mins} minutes`;
     } else {
-      const hours = Math.round(minutesUntil / 60);
-      timeLabel = hours === 1 ? 'dans 1 heure' : `dans ${hours} heures`;
+      const hours = Math.floor(minutesUntil / 60);
+      const mins = Math.round(minutesUntil % 60);
+      if (mins === 0) {
+        timeLabel = hours === 1 ? 'dans 1 heure' : `dans ${hours} heures`;
+      } else {
+        timeLabel = `dans ${hours}h${mins.toString().padStart(2, '0')}`;
+      }
     }
   } else {
     timeLabel = 'dans 2 heures';

@@ -1,6 +1,6 @@
 /**
  * Login Screen
- * Email/password authentication with social options
+ * Email/password authentication with Pro/Client tab toggle
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -14,7 +14,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -133,6 +133,8 @@ function FloatingBubble({ bubble }: { bubble: Bubble }) {
   );
 }
 
+type TabType = 'client' | 'pro';
+
 interface FormErrors {
   email?: string;
   password?: string;
@@ -143,7 +145,13 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
-  const { signIn, signInWithApple } = useAuth();
+  const { signIn } = useAuth();
+  const params = useLocalSearchParams<{ tab?: string }>();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>(
+    params.tab === 'pro' ? 'pro' : 'client'
+  );
 
   // Form state
   const [email, setEmail] = useState('');
@@ -171,15 +179,12 @@ export default function LoginScreen() {
     ]).start();
   }, []);
 
-  const handleAppleSignIn = async () => {
-    try {
-      await signInWithApple();
-    } catch (error: any) {
-      showToast({
-        variant: 'error',
-        message: error.message || 'Erreur de connexion avec Apple',
-      });
-    }
+  // Reset form when switching tabs
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setEmail('');
+    setPassword('');
+    setErrors({});
   };
 
   // Validate form
@@ -280,7 +285,7 @@ export default function LoginScreen() {
           <Animated.View
             style={[
               styles.header,
-              { marginTop: spacing.xl },
+              { marginTop: spacing.lg },
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
           >
@@ -294,46 +299,80 @@ export default function LoginScreen() {
             </Text>
           </Animated.View>
 
-          {/* Social buttons */}
+          {/* Pro/Client Tab Toggle */}
           <Animated.View
             style={[
-              styles.socialSection,
-              { marginTop: spacing.xl, gap: 12 },
+              { marginTop: spacing.lg },
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
           >
-            {/* Apple button */}
-            <Pressable
-              onPress={handleAppleSignIn}
-              style={({ pressed }) => [
-                styles.socialButton,
+            <View
+              style={[
+                styles.tabContainer,
                 {
-                  backgroundColor: colors.primary,
-                  borderColor: colors.primary,
-                  borderRadius: 16,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                  backgroundColor: 'rgba(26, 109, 175, 0.08)',
+                  borderRadius: 14,
+                  padding: 4,
                 },
               ]}
             >
-              <View style={[styles.socialIconContainer, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-                <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
-              </View>
-              <Text variant="body" style={[styles.socialButtonText, { color: '#FFFFFF' }]}>
-                Continuer avec Apple
-              </Text>
-            </Pressable>
-
-            {/* Separator */}
-            <View style={[styles.separator, { marginVertical: spacing.md }]}>
-              <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-              <Text
-                variant="caption"
-                color="textSecondary"
-                style={{ paddingHorizontal: spacing.md }}
+              <Pressable
+                onPress={() => handleTabChange('client')}
+                style={[
+                  styles.tab,
+                  {
+                    backgroundColor: activeTab === 'client' ? '#FFFFFF' : 'transparent',
+                    borderRadius: 10,
+                  },
+                  activeTab === 'client' && styles.tabActive,
+                ]}
               >
-                ou
-              </Text>
-              <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+                <Ionicons
+                  name="person-outline"
+                  size={16}
+                  color={activeTab === 'client' ? colors.primary : colors.textSecondary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  variant="body"
+                  style={{
+                    fontWeight: activeTab === 'client' ? '600' : '400',
+                    color: activeTab === 'client' ? colors.primary : colors.textSecondary,
+                    fontSize: 14,
+                  }}
+                >
+                  Client
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => handleTabChange('pro')}
+                style={[
+                  styles.tab,
+                  {
+                    backgroundColor: activeTab === 'pro' ? '#FFFFFF' : 'transparent',
+                    borderRadius: 10,
+                  },
+                  activeTab === 'pro' && styles.tabActive,
+                ]}
+              >
+                <Ionicons
+                  name="briefcase-outline"
+                  size={16}
+                  color={activeTab === 'pro' ? colors.primary : colors.textSecondary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  variant="body"
+                  style={{
+                    fontWeight: activeTab === 'pro' ? '600' : '400',
+                    color: activeTab === 'pro' ? colors.primary : colors.textSecondary,
+                    fontSize: 14,
+                  }}
+                >
+                  Professionnel
+                </Text>
+              </Pressable>
             </View>
           </Animated.View>
 
@@ -341,7 +380,7 @@ export default function LoginScreen() {
           <Animated.View
             style={[
               styles.form,
-              { gap: spacing.md },
+              { gap: spacing.md, marginTop: spacing.xl },
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
           >
@@ -410,17 +449,41 @@ export default function LoginScreen() {
               { opacity: fadeAnim },
             ]}
           >
-            <Text variant="body" color="textSecondary">
-              Pas encore de compte ?{' '}
-            </Text>
-            <Pressable
-              onPress={() => router.push('/(auth)/client')}
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-            >
-              <Text variant="body" color="primary" style={{ fontWeight: '600' }}>
-                Créer un compte
-              </Text>
-            </Pressable>
+            {activeTab === 'client' ? (
+              <View style={styles.footerRow}>
+                <Text variant="body" color="textSecondary">
+                  Pas encore de compte ?{' '}
+                </Text>
+                <Pressable
+                  onPress={() => router.push('/(auth)/client')}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                >
+                  <Text variant="body" color="primary" style={{ fontWeight: '600' }}>
+                    Créer un compte
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.footerColumn}>
+                <View style={[styles.proInfoBanner, { backgroundColor: 'rgba(26, 109, 175, 0.06)', borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: 'rgba(26, 109, 175, 0.12)' }]}>
+                  <Ionicons name="information-circle-outline" size={18} color={colors.primary} style={{ marginRight: 8, marginTop: 1 }} />
+                  <Text variant="caption" color="textSecondary" style={{ flex: 1, lineHeight: 18 }}>
+                    L'inscription pro se fait sur le site web. Connectez-vous ici si vous avez déjà un compte.
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => router.push('/(auth)/pro')}
+                  style={({ pressed }) => [styles.footerRow, { marginTop: spacing.md, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Text variant="body" color="textSecondary">
+                    Pas encore de compte ?{' '}
+                  </Text>
+                  <Text variant="body" color="primary" style={{ fontWeight: '600' }}>
+                    S'inscrire en ligne
+                  </Text>
+                </Pressable>
+              </View>
+            )}
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -455,41 +518,22 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
   },
-  socialSection: {
-    // Dynamic styles
-  },
-  socialButton: {
+  tabContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 56,
-    width: '100%',
-    borderWidth: 1,
-    shadowColor: '#1a6daf',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
   },
-  socialIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  socialButtonText: {
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  separator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  separatorLine: {
+  tab: {
     flex: 1,
-    height: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  tabActive: {
+    shadowColor: '#1a6daf',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   form: {
     // Dynamic styles
@@ -498,8 +542,20 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   footer: {
+    alignItems: 'center',
+  },
+  footerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  footerColumn: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  proInfoBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
   },
 });

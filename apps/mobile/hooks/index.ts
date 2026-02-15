@@ -49,3 +49,16 @@ export type { UserLocation, UseUserLocationResult } from './useUserLocation';
 
 export { useNearbyProviders } from './useNearbyProviders';
 export type { NearbyProvider, UseNearbyProvidersResult } from './useNearbyProviders';
+
+// Pro hooks
+export { useProviderBookings } from './useProviderBookings';
+export type { UseProviderBookingsOptions, UseProviderBookingsResult } from './useProviderBookings';
+
+export { useProviderDashboard } from './useProviderDashboard';
+export type { DashboardData, UseProviderDashboardResult } from './useProviderDashboard';
+
+export { useBlockedSlots } from './useBlockedSlots';
+export type { UseBlockedSlotsResult } from './useBlockedSlots';
+
+export { useProviderStats } from './useProviderStats';
+export type { ProviderStats, UseProviderStatsResult } from './useProviderStats';

@@ -4,12 +4,15 @@
  */
 
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../../theme';
 
 export default function ClientLayout() {
   const { colors } = useTheme();
 
   return (
+    <>
+    <StatusBar style="light" />
     <Stack
       screenOptions={{
         headerShown: false,
@@ -42,6 +45,19 @@ export default function ClientLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="review/[bookingId]"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="notification-settings"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
+    </>
   );
 }

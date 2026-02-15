@@ -17,18 +17,28 @@ export default async function ReviewPage({ params }: PageProps) {
   // Fetch booking
   const booking = await bookingRepository.getById(bookingId);
 
-  // Check if review already exists
-  const existingReview = booking ? await reviewRepository.getByBooking(bookingId) : null;
+  // Check if this client already has a review for this provider (by email)
+  let existingReview = null;
+  if (booking) {
+    const clientEmail = booking.clientInfo.email.toLowerCase().trim();
+    existingReview = await reviewRepository.getByEmailForProvider(clientEmail, booking.providerId);
+
+    // Fallback: also check by clientId if booking has one
+    if (!existingReview && booking.clientId) {
+      existingReview = await reviewRepository.getByClientForProvider(booking.clientId, booking.providerId);
+    }
+  }
 
   // Determine initial state
-  let initialState: 'not_found' | 'not_yet_passed' | 'already_reviewed' | 'form' = 'form';
+  // 'update_form' = client already left a review for this provider, can update it
+  let initialState: 'not_found' | 'not_yet_passed' | 'already_reviewed' | 'form' | 'update_form' = 'form';
 
   if (!booking) {
     initialState = 'not_found';
   } else if (booking.datetime > new Date()) {
     initialState = 'not_yet_passed';
   } else if (existingReview) {
-    initialState = 'already_reviewed';
+    initialState = 'update_form';
   }
 
   // Serialize booking for client component

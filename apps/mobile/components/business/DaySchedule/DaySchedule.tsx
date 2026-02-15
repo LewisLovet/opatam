@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { useTheme, type Colors } from '../../../theme';
 import { Text } from '../../Text';
 import { type BookingStatus } from '../BookingStatusBadge';
@@ -73,23 +73,69 @@ function getStatusBorderColor(status: BookingStatus, colors: Colors): string {
 export function DaySchedule({
   date,
   bookings,
-  workingHours = { start: '09:00', end: '19:00' },
+  workingHours = { start: '07:00', end: '21:00' },
   onBookingPress,
 }: DayScheduleProps) {
   const { colors, spacing, radius } = useTheme();
 
-  const startMinutes = parseTime(workingHours.start);
-  const endMinutes = parseTime(workingHours.end);
+  // Compute effective time range: expand to fit all bookings
+  const { effectiveStart, effectiveEnd } = useMemo(() => {
+    let wStart = parseTime(workingHours.start);
+    let wEnd = parseTime(workingHours.end);
+
+    // Handle 24h range: if start === end (both "00:00"), show full day
+    if (wStart === wEnd) {
+      wStart = 0;
+      wEnd = 24 * 60;
+    }
+    // Handle end at midnight: treat "00:00" end as 24:00
+    if (wEnd === 0 && wStart > 0) {
+      wEnd = 24 * 60;
+    }
+
+    // Expand range to fit all bookings
+    for (const b of bookings) {
+      const bStart = parseTime(b.startTime);
+      let bEnd = parseTime(b.endTime);
+      // If endTime is "00:00" and startTime is not, treat as midnight (24:00)
+      if (bEnd === 0 && bStart > 0) {
+        bEnd = 24 * 60;
+      }
+      // Also handle endTime < startTime (crossing midnight)
+      if (bEnd <= bStart) {
+        bEnd = 24 * 60;
+      }
+
+      // Floor start to the previous full hour
+      const bStartHour = Math.floor(bStart / 60) * 60;
+      // Ceil end to the next full hour
+      const bEndHour = Math.ceil(bEnd / 60) * 60;
+
+      if (bStartHour < wStart) wStart = bStartHour;
+      if (bEndHour > wEnd) wEnd = bEndHour;
+    }
+
+    // Clamp to 0..1440
+    wStart = Math.max(0, wStart);
+    wEnd = Math.min(24 * 60, wEnd);
+
+    return { effectiveStart: wStart, effectiveEnd: wEnd };
+  }, [workingHours, bookings]);
+
+  const startMinutes = effectiveStart;
+  const endMinutes = effectiveEnd;
   const totalMinutes = endMinutes - startMinutes;
   const totalHeight = (totalMinutes / 60) * HOUR_HEIGHT;
 
   // Generate hour labels
   const hours = useMemo(() => {
     const result: string[] = [];
-    const startHour = Math.floor(startMinutes / 60);
-    const endHour = Math.ceil(endMinutes / 60);
-    for (let h = startHour; h <= endHour; h++) {
-      result.push(`${h.toString().padStart(2, '0')}:00`);
+    const sHour = Math.floor(startMinutes / 60);
+    const eHour = Math.ceil(endMinutes / 60);
+    for (let h = sHour; h <= eHour; h++) {
+      // Display hour 24 as "00:00" (midnight)
+      const displayHour = h === 24 ? 0 : h;
+      result.push(`${displayHour.toString().padStart(2, '0')}:00`);
     }
     return result;
   }, [startMinutes, endMinutes]);
@@ -114,107 +160,106 @@ export function DaySchedule({
   }, [isToday, startMinutes, endMinutes, totalMinutes, totalHeight]);
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={[styles.schedule, { height: totalHeight }]}>
-        {/* Hour labels and grid lines */}
-        <View style={[styles.timeColumn, { width: TIME_COLUMN_WIDTH }]}>
-          {hours.map((hour, index) => (
-            <View
-              key={hour}
+    <View style={[styles.schedule, { height: totalHeight }]}>
+      {/* Hour labels and grid lines */}
+      <View style={[styles.timeColumn, { width: TIME_COLUMN_WIDTH }]}>
+        {hours.map((hour, index) => (
+          <View
+            key={`h-${index}`}
+            style={[
+              styles.hourLabel,
+              { top: index * HOUR_HEIGHT - 8 },
+            ]}
+          >
+            <Text variant="caption" color="textMuted">
+              {hour}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Grid area */}
+      <View style={styles.gridArea}>
+        {/* Hour grid lines */}
+        {hours.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.gridLine,
+              {
+                top: index * HOUR_HEIGHT,
+                backgroundColor: colors.divider,
+              },
+            ]}
+          />
+        ))}
+
+        {/* Bookings */}
+        {bookings.map((booking) => {
+          const bookingStart = parseTime(booking.startTime);
+          let bookingEnd = parseTime(booking.endTime);
+          // Handle endTime at midnight or crossing midnight
+          if (bookingEnd === 0 && bookingStart > 0) bookingEnd = 24 * 60;
+          if (bookingEnd <= bookingStart) bookingEnd = 24 * 60;
+
+          const top = ((bookingStart - startMinutes) / totalMinutes) * totalHeight;
+          const height = ((bookingEnd - bookingStart) / totalMinutes) * totalHeight;
+
+          return (
+            <Pressable
+              key={booking.id}
+              onPress={() => onBookingPress?.(booking.id)}
               style={[
-                styles.hourLabel,
-                { top: index * HOUR_HEIGHT - 8 },
+                styles.bookingBlock,
+                {
+                  top,
+                  height: Math.max(height, 40), // Minimum height for visibility
+                  backgroundColor: getStatusColor(booking.status, colors),
+                  borderLeftColor: getStatusBorderColor(booking.status, colors),
+                  borderRadius: radius.sm,
+                  padding: spacing.xs,
+                  marginLeft: spacing.xs,
+                },
               ]}
             >
-              <Text variant="caption" color="textMuted">
-                {hour}
+              <Text variant="caption" style={styles.bookingTime}>
+                {booking.startTime} - {booking.endTime}
               </Text>
-            </View>
-          ))}
-        </View>
+              <Text variant="caption" numberOfLines={1} style={styles.clientName}>
+                {booking.clientName}
+              </Text>
+              <Text variant="caption" color="textSecondary" numberOfLines={1} style={{ fontSize: 11 }}>
+                {booking.serviceName}
+              </Text>
+            </Pressable>
+          );
+        })}
 
-        {/* Grid area */}
-        <View style={styles.gridArea}>
-          {/* Hour grid lines */}
-          {hours.map((_, index) => (
+        {/* "Now" line */}
+        {nowPosition !== null && (
+          <View
+            style={[
+              styles.nowLine,
+              {
+                top: nowPosition,
+                backgroundColor: colors.error,
+              },
+            ]}
+          >
             <View
-              key={index}
               style={[
-                styles.gridLine,
-                {
-                  top: index * HOUR_HEIGHT,
-                  backgroundColor: colors.divider,
-                },
+                styles.nowDot,
+                { backgroundColor: colors.error },
               ]}
             />
-          ))}
-
-          {/* Bookings */}
-          {bookings.map((booking) => {
-            const bookingStart = parseTime(booking.startTime);
-            const bookingEnd = parseTime(booking.endTime);
-            const top = ((bookingStart - startMinutes) / totalMinutes) * totalHeight;
-            const height = ((bookingEnd - bookingStart) / totalMinutes) * totalHeight;
-
-            return (
-              <Pressable
-                key={booking.id}
-                onPress={() => onBookingPress?.(booking.id)}
-                style={[
-                  styles.bookingBlock,
-                  {
-                    top,
-                    height: Math.max(height, 40), // Minimum height for visibility
-                    backgroundColor: getStatusColor(booking.status, colors),
-                    borderLeftColor: getStatusBorderColor(booking.status, colors),
-                    borderRadius: radius.sm,
-                    padding: spacing.xs,
-                    marginLeft: spacing.xs,
-                  },
-                ]}
-              >
-                <Text variant="caption" style={styles.bookingTime}>
-                  {booking.startTime} - {booking.endTime}
-                </Text>
-                <Text variant="bodySmall" numberOfLines={1} style={styles.clientName}>
-                  {booking.clientName}
-                </Text>
-                <Text variant="caption" color="textSecondary" numberOfLines={1}>
-                  {booking.serviceName}
-                </Text>
-              </Pressable>
-            );
-          })}
-
-          {/* "Now" line */}
-          {nowPosition !== null && (
-            <View
-              style={[
-                styles.nowLine,
-                {
-                  top: nowPosition,
-                  backgroundColor: colors.error,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.nowDot,
-                  { backgroundColor: colors.error },
-                ]}
-              />
-            </View>
-          )}
-        </View>
+          </View>
+        )}
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   schedule: {
     flexDirection: 'row',
   },

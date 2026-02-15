@@ -1,7 +1,6 @@
 import {
   getAuth,
   initializeAuth,
-  getReactNativePersistence,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
@@ -32,14 +31,16 @@ function getAuthInstance(): Auth {
 
   if (isReactNative) {
     try {
-      // Dynamic require so bundlers on web don't try to resolve it
+      // Dynamic imports so web bundlers don't try to resolve RN-only modules
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getReactNativePersistence } = require('firebase/auth');
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       return initializeAuth(app, {
         persistence: getReactNativePersistence(AsyncStorage),
       });
     } catch {
-      // Fallback if AsyncStorage not available
+      // Fallback if AsyncStorage or RN persistence not available
       return getAuth(app);
     }
   }

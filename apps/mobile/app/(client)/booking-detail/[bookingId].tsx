@@ -22,7 +22,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Calendar from 'expo-calendar';
-import { bookingService } from '@booking-app/firebase';
+import { bookingService, reviewService } from '@booking-app/firebase';
 import type { Booking } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
@@ -344,6 +344,9 @@ export default function BookingDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Review state
+  const [reviewStatus, setReviewStatus] = useState<'can_review' | 'can_update' | false | null>(null);
+
   // Cancel modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -378,6 +381,20 @@ export default function BookingDetailScreen() {
   useEffect(() => {
     loadBooking();
   }, [loadBooking]);
+
+  // Check review status after booking loads
+  useEffect(() => {
+    async function checkReview() {
+      if (!booking || !user?.uid) return;
+      try {
+        const result = await reviewService.canReview(user.uid, booking.id);
+        setReviewStatus(result);
+      } catch {
+        setReviewStatus(false);
+      }
+    }
+    checkReview();
+  }, [booking, user?.uid]);
 
   // Add to calendar
   const handleAddToCalendar = async () => {
@@ -686,6 +703,28 @@ export default function BookingDetailScreen() {
           )}
         </Card>
 
+        {/* Review Button */}
+        {(reviewStatus === 'can_review' || reviewStatus === 'can_update') && (
+          <Pressable
+            onPress={() => router.push(`/(client)/review/${booking.id}` as any)}
+            style={({ pressed }) => [
+              styles.reviewButton,
+              {
+                marginTop: spacing.lg,
+                marginHorizontal: spacing.lg,
+                backgroundColor: pressed ? 'rgba(245, 158, 11, 0.1)' : colors.surface,
+                borderColor: '#f59e0b',
+                borderRadius: radius.md,
+              },
+            ]}
+          >
+            <Ionicons name="star" size={20} color="#f59e0b" />
+            <Text style={{ color: '#f59e0b', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
+              {reviewStatus === 'can_update' ? 'Modifier mon avis' : 'Laisser un avis'}
+            </Text>
+          </Pressable>
+        )}
+
         {/* Cancel Button */}
         {canCancel && (
           <Pressable
@@ -859,6 +898,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  reviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderWidth: 1,
   },
   cancelButton: {
     flexDirection: 'row',
