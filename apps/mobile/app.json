@@ -19,7 +19,9 @@
       "usesAppleSignIn": true,
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"],
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Opatam utilise votre position pour vous suggérer des prestataires à proximité."
       }
@@ -32,7 +34,10 @@
       "package": "com.kamerleontech.opatam",
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "notification": {
       "icon": "./assets/notification-icon.png",
@@ -60,7 +65,9 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "./plugins/withFollyFix"
     ],
     "experiments": {
       "typedRoutes": true

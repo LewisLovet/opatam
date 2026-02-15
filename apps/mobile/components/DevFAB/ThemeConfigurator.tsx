@@ -12,7 +12,6 @@ import {
   Pressable,
   SafeAreaView,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useTheme,
@@ -148,24 +147,23 @@ export function ThemeConfigurator({ visible, onClose }: ThemeConfiguratorProps) 
             >
               BORD ARRONDI
             </Text>
-            <View style={styles.sliderRow}>
-              <Text variant="bodySmall">Carré</Text>
-              <Text variant="bodySmall">Arrondi</Text>
+            <View style={styles.stepperRow}>
+              <Pressable
+                onPress={() => handleRadiusChange(Math.max(0.5, radiusMultiplier - 0.25))}
+                style={[styles.stepperButton, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.md }]}
+              >
+                <Ionicons name="remove" size={20} color={colors.text} />
+              </Pressable>
+              <Text variant="body" align="center" style={{ flex: 1 }}>
+                {radiusMultiplier.toFixed(2)}x
+              </Text>
+              <Pressable
+                onPress={() => handleRadiusChange(Math.min(2, radiusMultiplier + 0.25))}
+                style={[styles.stepperButton, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.md }]}
+              >
+                <Ionicons name="add" size={20} color={colors.text} />
+              </Pressable>
             </View>
-            <Slider
-              style={styles.slider}
-              minimumValue={0.5}
-              maximumValue={2}
-              step={0.25}
-              value={radiusMultiplier}
-              onValueChange={handleRadiusChange}
-              minimumTrackTintColor={colors.primary}
-              maximumTrackTintColor={colors.border}
-              thumbTintColor={colors.primary}
-            />
-            <Text variant="caption" color="textMuted" align="center">
-              Multiplicateur: {radiusMultiplier.toFixed(2)}x
-            </Text>
           </View>
 
           {/* Spacing */}
@@ -177,24 +175,23 @@ export function ThemeConfigurator({ visible, onClose }: ThemeConfiguratorProps) 
             >
               ESPACEMENT
             </Text>
-            <View style={styles.sliderRow}>
-              <Text variant="bodySmall">Compact</Text>
-              <Text variant="bodySmall">Spacieux</Text>
+            <View style={styles.stepperRow}>
+              <Pressable
+                onPress={() => handleSpacingChange(Math.max(0.75, +(spacingMultiplier - 0.05).toFixed(2)))}
+                style={[styles.stepperButton, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.md }]}
+              >
+                <Ionicons name="remove" size={20} color={colors.text} />
+              </Pressable>
+              <Text variant="body" align="center" style={{ flex: 1 }}>
+                {spacingMultiplier.toFixed(2)}x
+              </Text>
+              <Pressable
+                onPress={() => handleSpacingChange(Math.min(1.25, +(spacingMultiplier + 0.05).toFixed(2)))}
+                style={[styles.stepperButton, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.md }]}
+              >
+                <Ionicons name="add" size={20} color={colors.text} />
+              </Pressable>
             </View>
-            <Slider
-              style={styles.slider}
-              minimumValue={0.75}
-              maximumValue={1.25}
-              step={0.05}
-              value={spacingMultiplier}
-              onValueChange={handleSpacingChange}
-              minimumTrackTintColor={colors.primary}
-              maximumTrackTintColor={colors.border}
-              thumbTintColor={colors.primary}
-            />
-            <Text variant="caption" color="textMuted" align="center">
-              Multiplicateur: {spacingMultiplier.toFixed(2)}x
-            </Text>
           </View>
 
           {/* Preview */}
@@ -276,14 +273,16 @@ const styles = StyleSheet.create({
     height: 40,
     marginBottom: 4,
   },
-  sliderRow: {
+  stepperRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    alignItems: 'center',
+    gap: 12,
   },
-  slider: {
-    width: '100%',
+  stepperButton: {
+    width: 40,
     height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   previewButtons: {
     flexDirection: 'row',
