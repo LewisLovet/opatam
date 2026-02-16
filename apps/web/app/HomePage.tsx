@@ -93,7 +93,7 @@ const testimonials = [
     role: 'Coiffeuse indépendante',
     city: 'Lyon',
     initials: 'ML',
-    text: "Depuis que j'utilise OPATAM, mes no-shows ont baissé de 60%. Les rappels automatiques changent tout. Et surtout, 0% de commission, c'est ce qui m'a convaincu de quitter Planity.",
+    text: "0% de commission, c'est ce qui m'a convaincu de quitter Planity.",
   },
   {
     name: 'Karim B.',

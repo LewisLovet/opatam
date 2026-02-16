@@ -160,7 +160,7 @@ export default function MoreScreen() {
   const boutiqueItems: MenuItem[] = [
     {
       icon: 'create-outline',
-      label: 'Modifier ma boutique',
+      label: 'Modifier mon enseigne',
       description: 'Services, horaires, infos...',
       iconColor: colors.primary,
       onPress: () => {
@@ -183,7 +183,7 @@ export default function MoreScreen() {
   const autreItems: MenuItem[] = [
     {
       icon: 'globe-outline',
-      label: 'Accéder au site web',
+      label: 'Accéder à mon espace web',
       description: 'opatam.com/pro',
       iconColor: colors.textSecondary,
       onPress: () => Linking.openURL('https://opatam.com/pro'),
@@ -325,7 +325,7 @@ export default function MoreScreen() {
           </Card>
         </View>
 
-        {/* Group 3: Ma boutique */}
+        {/* Group 3: Mon enseigne */}
         <View style={{ marginBottom: spacing.lg }}>
           <Text
             variant="caption"
@@ -338,7 +338,7 @@ export default function MoreScreen() {
               paddingLeft: spacing.xs,
             }}
           >
-            Ma boutique
+            Mon enseigne
           </Text>
           <Card padding="none" shadow="sm">
             {boutiqueItems.map((item, index) => (

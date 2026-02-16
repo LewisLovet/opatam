@@ -22,7 +22,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Calendar from 'expo-calendar';
-import { bookingService, reviewService } from '@booking-app/firebase';
+import { bookingService, reviewService, providerService } from '@booking-app/firebase';
 import type { Booking } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
@@ -118,10 +118,10 @@ function getStatusConfig(status: string, isDark: boolean): StatusConfig {
     },
     past: {
       label: 'Termine',
-      textColor: '#6b7280',
-      bgColor: '#f3f4f6',
-      headerBgLight: '#f3f4f6',
-      headerBgDark: 'rgba(107, 114, 128, 0.2)',
+      textColor: '#16a34a',
+      bgColor: '#dcfce7',
+      headerBgLight: '#dcfce7',
+      headerBgDark: 'rgba(22, 163, 74, 0.2)',
     },
   };
 
@@ -496,6 +496,19 @@ export default function BookingDetailScreen() {
     }
   };
 
+  // Handle rebook - navigate to provider page
+  const handleRebook = async () => {
+    if (!booking) return;
+    try {
+      const provider = await providerService.getById(booking.providerId);
+      if (provider?.slug) {
+        router.push(`/(client)/provider/${provider.slug}` as any);
+      }
+    } catch {
+      showToast({ variant: 'error', message: 'Impossible d\'accéder à la page du prestataire' });
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -546,6 +559,7 @@ export default function BookingDetailScreen() {
   const canCancel = canCancelBooking(booking);
   const hasAddress = !!(booking.locationAddress || booking.locationName);
   const hasPhone = !!(booking as any).providerPhone; // Assuming providerPhone might exist
+  const isPast = visualStatus === 'past';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -553,18 +567,17 @@ export default function BookingDetailScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Blue Header */}
+        {/* Blue Header - extends behind status bar */}
         <View
           style={[
             styles.coloredHeader,
             {
               backgroundColor: colors.primary,
-              marginTop: insets.top,
-              marginHorizontal: spacing.md,
-              paddingTop: spacing.md,
+              paddingTop: insets.top + spacing.md,
               paddingHorizontal: spacing.lg,
               paddingBottom: spacing.lg,
-              borderRadius: 16,
+              borderBottomLeftRadius: 20,
+              borderBottomRightRadius: 20,
             },
           ]}
         >
@@ -679,6 +692,14 @@ export default function BookingDetailScreen() {
 
         {/* Actions Card */}
         <Card padding="md" shadow="sm" style={{ marginHorizontal: spacing.lg, marginTop: spacing.md }}>
+          {isPast && (
+            <ActionRow
+              icon="refresh-outline"
+              label="Reprendre un rendez-vous"
+              onPress={handleRebook}
+              colors={colors}
+            />
+          )}
           <ActionRow
             icon="calendar-outline"
             label="Ajouter au calendrier"

@@ -1,10 +1,18 @@
 'use client';
 
-import { Calendar } from 'lucide-react';
+import { Calendar, User } from 'lucide-react';
+import Image from 'next/image';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { RatingDisplay } from '@/components/review/RatingDisplay';
 import { ShareButton } from './ShareButton';
+
+interface MemberNextAvailability {
+  memberId: string;
+  memberName: string;
+  memberPhoto: string | null;
+  nextDate: string | null;
+}
 
 interface ProviderHeroProps {
   provider: {
@@ -20,6 +28,8 @@ interface ProviderHeroProps {
     isVerified: boolean;
   };
   nextAvailableDate: string | null;
+  memberAvailabilities?: MemberNextAvailability[];
+  isTeam?: boolean;
 }
 
 /**
@@ -55,8 +65,16 @@ function formatNextAvailableDate(dateStr: string | null): string | null {
   return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
 }
 
-export function ProviderHero({ provider, nextAvailableDate }: ProviderHeroProps) {
+export function ProviderHero({
+  provider,
+  nextAvailableDate,
+  memberAvailabilities = [],
+  isTeam = false,
+}: ProviderHeroProps) {
   const formattedDate = formatNextAvailableDate(nextAvailableDate);
+  // For team plans, show per-member availability; sort by earliest date first
+  const showMemberDispos = isTeam && memberAvailabilities.length > 1;
+
   return (
     <div className="overflow-hidden">
       {/* Cover Photo */}
@@ -125,7 +143,7 @@ export function ProviderHero({ provider, nextAvailableDate }: ProviderHeroProps)
                 </p>
               )}
 
-              {/* Next Available Date Badge */}
+              {/* Next Available Date Badge — global (solo or team earliest) */}
               {formattedDate && (
                 <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
                   <Calendar className="w-4 h-4 text-primary-600 dark:text-primary-400" />
@@ -136,6 +154,48 @@ export function ProviderHero({ provider, nextAvailableDate }: ProviderHeroProps)
               )}
             </div>
           </div>
+
+          {/* Per-member availability (Team plans only) */}
+          {showMemberDispos && (
+            <div className="mt-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                Disponibilités par professionnel
+              </h3>
+              <div className="space-y-2.5">
+                {memberAvailabilities
+                  .filter((ma) => ma.nextDate !== null)
+                  .sort((a, b) => (a.nextDate! < b.nextDate! ? -1 : 1))
+                  .map((ma) => (
+                    <div key={ma.memberId} className="flex items-center gap-3">
+                      {ma.memberPhoto ? (
+                        <Image
+                          src={ma.memberPhoto}
+                          alt={ma.memberName}
+                          width={32}
+                          height={32}
+                          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                          <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                        </div>
+                      )}
+                      <span className="text-sm font-medium text-gray-900 dark:text-white min-w-0 truncate">
+                        {ma.memberName}
+                      </span>
+                      <span className="ml-auto text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-1 rounded-md whitespace-nowrap">
+                        {formatNextAvailableDate(ma.nextDate)}
+                      </span>
+                    </div>
+                  ))}
+                {memberAvailabilities.filter((ma) => ma.nextDate === null).length > 0 && (
+                  <div className="text-xs text-gray-400 dark:text-gray-500 pt-1">
+                    {memberAvailabilities.filter((ma) => ma.nextDate === null).length} professionnel(s) sans disponibilité prochaine
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

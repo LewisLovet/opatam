@@ -118,6 +118,13 @@ interface SerializedServiceCategory {
   sortOrder: number;
 }
 
+interface MemberNextAvailability {
+  memberId: string;
+  memberName: string;
+  memberPhoto: string | null;
+  nextDate: string | null;
+}
+
 interface ProviderPageClientProps {
   provider: SerializedProvider;
   services: SerializedService[];
@@ -128,6 +135,7 @@ interface ProviderPageClientProps {
   availabilities: SerializedAvailability[];
   minPrice: number | null;
   nextAvailableDate: string | null;
+  memberAvailabilities?: MemberNextAvailability[];
   isDemo?: boolean;
 }
 
@@ -143,6 +151,7 @@ export function ProviderPageClient({
   availabilities,
   minPrice,
   nextAvailableDate,
+  memberAvailabilities = [],
   isDemo = false,
 }: ProviderPageClientProps) {
   const [activeTab, setActiveTab] = useState<TabId>('prestations');
@@ -162,7 +171,12 @@ export function ProviderPageClient({
       {isDemo && <DemoBanner />}
 
       {/* Hero Section */}
-      <ProviderHero provider={provider} nextAvailableDate={nextAvailableDate} />
+      <ProviderHero
+        provider={provider}
+        nextAvailableDate={nextAvailableDate}
+        memberAvailabilities={isTeam ? memberAvailabilities : []}
+        isTeam={isTeam}
+      />
 
       {/* Social Links - Just after hero, before tabs */}
       {hasSocials && (

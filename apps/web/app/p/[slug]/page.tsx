@@ -21,46 +21,76 @@ import {
   demoReviews,
   demoAvailabilities,
   getDemoNextAvailableDate,
+  getDemoMemberAvailabilities,
 } from './demoData';
 
+interface MemberNextAvailability {
+  memberId: string;
+  memberName: string;
+  memberPhoto: string | null;
+  nextDate: string | null;
+}
+
 /**
- * Calculate the next available date based on availabilities
- * Returns the next date where at least one member has availability
+ * Calculate the next available date for a single member based on their availabilities
  */
-function calculateNextAvailableDate(
-  availabilities: WithId<Availability>[],
-  members: WithId<Member>[]
+function getNextDateForMember(
+  memberId: string,
+  availabilities: WithId<Availability>[]
 ): string | null {
-  // Get open days (days where at least one member is available)
-  const openDays = new Set<number>();
-
-  // Get default or first member
-  const defaultMember = members.find((m) => m.isDefault) || members[0];
-  if (!defaultMember) return null;
-
-  // Get availabilities for default member
   const memberAvailabilities = availabilities.filter(
-    (a) => a.memberId === defaultMember.id && a.isOpen && a.slots.length > 0
+    (a) => a.memberId === memberId && a.isOpen && a.slots.length > 0
   );
 
   if (memberAvailabilities.length === 0) return null;
 
+  const openDays = new Set<number>();
   memberAvailabilities.forEach((a) => openDays.add(a.dayOfWeek));
 
-  // Find next available date starting from today
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  for (let i = 0; i < 60; i++) { // Check up to 60 days ahead
+  for (let i = 0; i < 60; i++) {
     const checkDate = new Date(today);
     checkDate.setDate(checkDate.getDate() + i);
-
     if (openDays.has(checkDate.getDay())) {
       return checkDate.toISOString();
     }
   }
 
   return null;
+}
+
+/**
+ * Calculate the next available date based on availabilities
+ * Returns the earliest date across all members, plus per-member availability for Team plans
+ */
+function calculateAvailabilities(
+  availabilities: WithId<Availability>[],
+  members: WithId<Member>[]
+): { nextAvailableDate: string | null; memberAvailabilities: MemberNextAvailability[] } {
+  if (members.length === 0) {
+    return { nextAvailableDate: null, memberAvailabilities: [] };
+  }
+
+  // Calculate per-member availability
+  const memberAvailabilities: MemberNextAvailability[] = members.map((m) => ({
+    memberId: m.id,
+    memberName: m.name,
+    memberPhoto: m.photoURL,
+    nextDate: getNextDateForMember(m.id, availabilities),
+  }));
+
+  // Global next available = earliest across all members
+  const allDates = memberAvailabilities
+    .map((ma) => ma.nextDate)
+    .filter((d): d is string => d !== null);
+
+  const nextAvailableDate = allDates.length > 0
+    ? allDates.sort()[0]
+    : null;
+
+  return { nextAvailableDate, memberAvailabilities };
 }
 
 interface PageProps {
@@ -136,6 +166,7 @@ export default async function ProviderPage({ params }: PageProps) {
         availabilities={demoAvailabilities}
         minPrice={minPrice}
         nextAvailableDate={getDemoNextAvailableDate()}
+        memberAvailabilities={getDemoMemberAvailabilities()}
         isDemo
       />
     );
@@ -162,8 +193,8 @@ export default async function ProviderPage({ params }: PageProps) {
   // Calculate min price from services
   const minPrice = services.length > 0 ? Math.min(...services.map((s) => s.price)) : null;
 
-  // Calculate next available date based on availabilities
-  const nextAvailableDate = calculateNextAvailableDate(availabilities, members);
+  // Calculate next available date based on availabilities (per-member for Team plans)
+  const { nextAvailableDate, memberAvailabilities } = calculateAvailabilities(availabilities, members);
 
   // Serialize dates for client component
   const serializedProvider = {
@@ -228,6 +259,7 @@ export default async function ProviderPage({ params }: PageProps) {
       availabilities={serializedAvailabilities}
       minPrice={minPrice}
       nextAvailableDate={nextAvailableDate}
+      memberAvailabilities={memberAvailabilities}
     />
   );
 }

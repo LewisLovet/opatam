@@ -3,7 +3,7 @@
  * Uses CalendarStrip for date selection and TimeSlotSection for grouped time slots
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -25,7 +25,8 @@ import {
   StickyConfirmButton,
 } from '../../../../components';
 import { useBooking } from '../../../../contexts';
-import { useAvailableSlots, type TimeSlot } from '../../../../hooks';
+import { availabilityRepository } from '@booking-app/firebase';
+import { useAvailableSlots, useNextAvailableDate, type TimeSlot } from '../../../../hooks';
 
 // Period configuration
 type Period = 'morning' | 'afternoon' | 'evening';
@@ -99,13 +100,36 @@ export default function DateSelectionScreen() {
   // Booking context
   const { provider, service, member, memberId, setDateAndSlot } = useBooking();
 
-  // Selected date state - default to today
+  // Get next available date to auto-scroll calendar
+  const { nextAvailableDate } = useNextAvailableDate(providerId, memberId ?? undefined);
+
+  // Selected date state - default to next available date, fallback to today
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return today;
   });
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+
+  // Auto-select next available date once loaded
+  if (nextAvailableDate && !hasAutoSelected) {
+    const nextDate = new Date(nextAvailableDate);
+    nextDate.setHours(0, 0, 0, 0);
+    setSelectedDate(nextDate);
+    setHasAutoSelected(true);
+  }
+
+  // Load closed days from member's availability schedule
+  const [closedDays, setClosedDays] = useState<number[]>([]);
+  useEffect(() => {
+    if (!providerId || !memberId) return;
+    availabilityRepository.getByMember(providerId, memberId).then((avails) => {
+      const openDays = avails.filter((a) => a.isOpen && a.slots.length > 0).map((a) => a.dayOfWeek);
+      const allDays = [0, 1, 2, 3, 4, 5, 6];
+      setClosedDays(allDays.filter((d) => !openDays.includes(d)));
+    }).catch(() => {});
+  }, [providerId, memberId]);
 
   // Expanded sections state - all collapsed by default
   const [expandedSections, setExpandedSections] = useState<Record<Period, boolean>>({
@@ -119,7 +143,6 @@ export default function DateSelectionScreen() {
     const startDate = new Date(selectedDate);
     startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(selectedDate);
-    endDate.setDate(endDate.getDate() + 1);
     endDate.setHours(23, 59, 59, 999);
     return { startDate, endDate };
   }, [selectedDate.toDateString()]);
@@ -235,6 +258,7 @@ export default function DateSelectionScreen() {
           <CalendarStrip
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
+            closedDays={closedDays}
           />
         </View>
 

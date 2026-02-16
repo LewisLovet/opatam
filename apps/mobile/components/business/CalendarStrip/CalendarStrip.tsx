@@ -19,6 +19,8 @@ export interface CalendarStripProps {
   maxDate?: Date;
   /** Dates that are disabled/unavailable */
   disabledDates?: Date[];
+  /** Days of the week that are always closed (0=Sun, 1=Mon, ..., 6=Sat) */
+  closedDays?: number[];
 }
 
 const DAY_WIDTH = 56;
@@ -58,6 +60,7 @@ export function CalendarStrip({
   minDate,
   maxDate,
   disabledDates = [],
+  closedDays = [],
 }: CalendarStripProps) {
   const { colors, spacing, radius } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
@@ -70,16 +73,16 @@ export function CalendarStrip({
 
   const days = generateDays(effectiveMinDate, effectiveMaxDate);
 
-  // Scroll to selected date on mount
+  // Scroll to selected date on mount and when selectedDate changes
   useEffect(() => {
     const selectedIndex = days.findIndex((d) => isSameDay(d, selectedDate));
     if (selectedIndex >= 0 && scrollRef.current) {
       const offset = selectedIndex * (DAY_WIDTH + DAY_GAP) - (DAY_WIDTH * 2);
       setTimeout(() => {
-        scrollRef.current?.scrollTo({ x: Math.max(0, offset), animated: false });
+        scrollRef.current?.scrollTo({ x: Math.max(0, offset), animated: true });
       }, 100);
     }
-  }, []);
+  }, [selectedDate.toDateString()]);
 
   return (
     <ScrollView
@@ -91,7 +94,7 @@ export function CalendarStrip({
       {days.map((day) => {
         const isSelected = isSameDay(day, selectedDate);
         const isToday = isSameDay(day, today);
-        const isDisabled = isDateDisabled(day, disabledDates);
+        const isDisabled = isDateDisabled(day, disabledDates) || closedDays.includes(day.getDay());
 
         return (
           <Pressable

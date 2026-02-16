@@ -34,7 +34,7 @@ export const appConfig = {
 
 // Firebase Storage assets
 // Note: Keep in sync with @booking-app/shared/constants ASSETS
-const STORAGE_BUCKET = 'opatam-da04b.appspot.com';
+const STORAGE_BUCKET = 'opatam-da04b.firebasestorage.app';
 const ASSETS_BASE_URL = `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o`;
 
 export const assets = {

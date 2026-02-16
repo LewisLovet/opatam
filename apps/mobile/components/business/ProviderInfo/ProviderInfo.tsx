@@ -30,6 +30,13 @@ export function ProviderInfo({
 }: ProviderInfoProps) {
   const { colors, spacing, radius } = useTheme();
 
+  const fullAddress = `${address}, ${city}`;
+
+  const handleAddressPress = () => {
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
+    Linking.openURL(mapsUrl);
+  };
+
   const handlePhonePress = () => {
     if (phone) {
       Linking.openURL(`tel:${phone}`);
@@ -53,7 +60,7 @@ export function ProviderInfo({
         </>
       )}
 
-      {/* Address - combined on fewer lines */}
+      {/* Address - clickable, opens Google Maps */}
       <View style={[styles.section, { paddingVertical: spacing.md }]}>
         <View style={styles.row}>
           <Ionicons
@@ -62,9 +69,27 @@ export function ProviderInfo({
             color={colors.primary}
             style={{ marginRight: spacing.md }}
           />
-          <View style={styles.textContainer}>
-            <Text variant="body">{address}, {city}</Text>
-          </View>
+          <Pressable
+            onPress={handleAddressPress}
+            style={({ pressed }) => [
+              {
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+              },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text variant="body" color="primary" style={{ flex: 1 }}>
+              {fullAddress}
+            </Text>
+            <Ionicons
+              name="open-outline"
+              size={14}
+              color={colors.primary}
+              style={{ marginLeft: spacing.xs }}
+            />
+          </Pressable>
         </View>
       </View>
 

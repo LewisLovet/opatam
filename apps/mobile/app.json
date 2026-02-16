@@ -13,12 +13,17 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "primaryLanguage": "fr-FR",
+    "locales": {
+      "fr": "./locales/fr.json"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kamerleontech.opatam",
       "usesAppleSignIn": true,
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
+        "CFBundleDevelopmentRegion": "fr",
         "UIBackgroundModes": [
           "remote-notification"
         ],

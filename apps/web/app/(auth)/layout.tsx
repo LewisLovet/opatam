@@ -8,9 +8,9 @@ import {
   Gift,
   MapPin,
   Rocket,
-  Tag,
   ShieldCheck,
   Sparkles,
+  Tag,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -30,7 +30,7 @@ const REGISTER_STEP_CONTENT = [
       {
         icon: Clock,
         title: 'Rappels automatiques',
-        description: 'Réduisez les no-shows',
+        description: 'Réduisez les absences',
       },
       {
         icon: BadgePercent,
@@ -156,7 +156,7 @@ const DEFAULT_BENEFITS = [
   {
     icon: Clock,
     title: 'Rappels automatiques',
-    description: 'Réduisez les no-shows',
+    description: 'Réduisez les absences',
   },
   {
     icon: BadgePercent,

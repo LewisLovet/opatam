@@ -43,8 +43,25 @@ export function StepSlot({
   openDays,
   isDemo = false,
 }: StepSlotProps) {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  // Find the first selectable date to auto-scroll to
+  const firstAvailableDate = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + maxAdvanceDays);
+
+    for (let i = 0; i < maxAdvanceDays; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(checkDate.getDate() + i);
+      if (openDays.includes(checkDate.getDay()) && checkDate <= maxDate) {
+        return checkDate;
+      }
+    }
+    return null;
+  }, [openDays, maxAdvanceDays]);
+
+  const [selectedDate, setSelectedDate] = useState<Date | null>(firstAvailableDate);
+  const [currentMonth, setCurrentMonth] = useState(firstAvailableDate || new Date());
   const [slots, setSlots] = useState<TimeSlotWithDate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

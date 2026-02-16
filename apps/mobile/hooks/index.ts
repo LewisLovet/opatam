@@ -44,6 +44,9 @@ export type { UseProviderByIdResult } from './useProviderById';
 export { useNextAvailableDate } from './useNextAvailableDate';
 export type { UseNextAvailableDateResult } from './useNextAvailableDate';
 
+export { useTeamAvailabilities } from './useTeamAvailabilities';
+export type { MemberAvailability, UseTeamAvailabilitiesResult } from './useTeamAvailabilities';
+
 export { useUserLocation } from './useUserLocation';
 export type { UserLocation, UseUserLocationResult } from './useUserLocation';
 

@@ -639,3 +639,28 @@ export function getDemoNextAvailableDate(): string {
 
   return tomorrow.toISOString();
 }
+
+/**
+ * Demo per-member availabilities for team display
+ */
+export function getDemoMemberAvailabilities() {
+  const base = getDemoNextAvailableDate();
+  const baseDate = new Date(base);
+
+  // Second member available 2 days later
+  const date2 = new Date(baseDate);
+  date2.setDate(date2.getDate() + 2);
+  if (date2.getDay() === 0) date2.setDate(date2.getDate() + 1);
+
+  // Third member available 4 days later
+  const date3 = new Date(baseDate);
+  date3.setDate(date3.getDate() + 4);
+  if (date3.getDay() === 0) date3.setDate(date3.getDate() + 1);
+
+  return demoMembers.map((m, i) => ({
+    memberId: m.id,
+    memberName: m.name,
+    memberPhoto: m.photoURL,
+    nextDate: i === 0 ? base : i === 1 ? date2.toISOString() : date3.toISOString(),
+  }));
+}

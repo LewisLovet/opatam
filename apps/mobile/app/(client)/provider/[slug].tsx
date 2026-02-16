@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Pressable,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +33,7 @@ import {
   SocialLinks,
   useToast,
 } from '../../../components';
-import { useProvider, useServices, useServiceCategories, useReviews, useLocations, useNextAvailableDate } from '../../../hooks';
+import { useProvider, useServices, useServiceCategories, useReviews, useLocations, useNextAvailableDate, useTeamAvailabilities } from '../../../hooks';
 import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
@@ -91,6 +92,20 @@ export default function ProviderDetailScreen() {
   const { locations, refresh: refreshLocations } = useLocations(provider?.id);
   const { formattedDate: nextAvailableFormatted, loading: loadingAvailability, refresh: refreshAvailability } = useNextAvailableDate(provider?.id);
 
+  // Team plan: per-member availability
+  const isTeam = provider?.plan === 'team';
+  const {
+    memberAvailabilities,
+    earliestFormattedDate: teamEarliestFormatted,
+    loading: loadingTeamAvail,
+    refresh: refreshTeamAvail,
+  } = useTeamAvailabilities(provider?.id, !!isTeam);
+
+  // For team plans, use the earliest date across all members; for solo, use default hook
+  const showTeamDispos = isTeam && memberAvailabilities.length > 1;
+  const displayedAvailability = showTeamDispos ? teamEarliestFormatted : nextAvailableFormatted;
+  const availabilityLoading = showTeamDispos ? loadingTeamAvail : loadingAvailability;
+
   // Selected service state (disabled in preview mode)
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,6 +120,7 @@ export default function ProviderDetailScreen() {
       refreshReviews(),
       refreshLocations(),
       refreshAvailability(),
+      ...(isTeam ? [refreshTeamAvail()] : []),
     ]);
     setRefreshing(false);
   };
@@ -286,13 +302,49 @@ export default function ProviderDetailScreen() {
           </Card>
 
           {/* Next Available Date Badge */}
-          {!loadingAvailability && nextAvailableFormatted && (
+          {!availabilityLoading && displayedAvailability && (
             <View style={[styles.availabilityBadge, { backgroundColor: colors.primaryLight || '#e4effa', marginTop: spacing.md }]}>
               <Ionicons name="calendar-outline" size={16} color={colors.primary} style={{ marginRight: spacing.xs }} />
               <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-                Prochaine dispo : {nextAvailableFormatted}
+                Prochaine dispo : {displayedAvailability}
               </Text>
             </View>
+          )}
+
+          {/* Per-member availability (Team plans) */}
+          {showTeamDispos && !loadingTeamAvail && (
+            <Card padding="md" shadow="sm" style={{ marginTop: spacing.md }}>
+              <Text variant="caption" style={{ fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.sm }}>
+                Disponibilités par professionnel
+              </Text>
+              <View style={{ gap: spacing.sm }}>
+                {memberAvailabilities
+                  .filter((ma) => ma.nextDate !== null)
+                  .sort((a, b) => a.nextDate!.getTime() - b.nextDate!.getTime())
+                  .map((ma) => (
+                    <View key={ma.memberId} style={styles.memberRow}>
+                      {ma.memberPhoto ? (
+                        <Image
+                          source={{ uri: ma.memberPhoto }}
+                          style={styles.memberAvatar}
+                        />
+                      ) : (
+                        <View style={[styles.memberAvatar, { backgroundColor: colors.surfaceSecondary, justifyContent: 'center', alignItems: 'center' }]}>
+                          <Ionicons name="person" size={14} color={colors.textSecondary} />
+                        </View>
+                      )}
+                      <Text variant="caption" style={{ flex: 1, fontWeight: '500' }} numberOfLines={1}>
+                        {ma.memberName}
+                      </Text>
+                      <View style={[styles.memberDateBadge, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
+                        <Text variant="caption" style={{ color: colors.primary, fontWeight: '600', fontSize: 11 }}>
+                          {ma.formattedDate}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+              </View>
+            </Card>
           )}
 
           {/* Social Links */}
@@ -454,5 +506,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     alignSelf: 'flex-start',
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  memberAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  memberDateBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
 });

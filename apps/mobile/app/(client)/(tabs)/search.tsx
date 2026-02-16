@@ -63,6 +63,16 @@ export default function SearchScreen() {
     params.category || null
   );
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Sync category from navigation params (e.g. home page category tap)
+  useEffect(() => {
+    if (params.category) {
+      setSelectedCategory(params.category);
+      if (!hasPickedRegion) {
+        setHasPickedRegion(true);
+      }
+    }
+  }, [params.category]);
   const [gpsDetecting, setGpsDetecting] = useState(false);
 
   // Handle "Use my location" button

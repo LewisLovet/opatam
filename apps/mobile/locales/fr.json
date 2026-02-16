@@ -1,0 +1,9 @@
+{
+  "CFBundleDisplayName": "Opatam",
+  "NSLocationWhenInUseUsageDescription": "Opatam utilise votre position pour vous suggérer des prestataires à proximité.",
+  "NSAppleMusicUsageDescription": "Opatam n'accède pas à votre musique.",
+  "NSCalendarsUsageDescription": "Opatam peut ajouter vos rendez-vous à votre calendrier.",
+  "NSCameraUsageDescription": "Opatam utilise l'appareil photo pour votre photo de profil.",
+  "NSPhotoLibraryUsageDescription": "Opatam accède à vos photos pour votre photo de profil.",
+  "NSPhotoLibraryAddUsageDescription": "Opatam peut enregistrer des images dans votre photothèque."
+}

@@ -4,23 +4,23 @@
  * Bottom container stays fixed, only visuals and text slide
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text as RNText,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
-  Pressable,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
-  Animated,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Image, ImageSource } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { Image, ImageSource } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  Text as RNText,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setOnboardingSeen } from '../../utils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -176,7 +176,7 @@ const SLIDES: Slide[] = [
   },
   {
     title: 'Plus jamais de rendez-vous oublié',
-    subtitle: 'Recevez des rappels automatiques par notification et SMS',
+    subtitle: 'Recevez des rappels automatiques par notification',
   },
   {
     title: '+500 professionnels vous attendent',

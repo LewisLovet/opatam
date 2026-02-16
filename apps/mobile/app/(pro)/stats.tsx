@@ -3,21 +3,21 @@
  * Detailed stats for the provider: bookings, revenue, rates
  */
 
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  View,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
   Pressable,
   RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../theme';
-import { Text, Loader, StatCard, Card } from '../../components';
+import { Card, Loader, StatCard, Text } from '../../components';
 import { useProvider } from '../../contexts';
 import { useProviderStats } from '../../hooks';
+import { useTheme } from '../../theme';
 
 function formatPrice(centimes: number): string {
   return (centimes / 100).toLocaleString('fr-FR', {
@@ -97,7 +97,7 @@ export default function StatsScreen() {
             <View style={styles.gridItem}>
               <StatCard
                 icon="alert-circle-outline"
-                label="No-shows"
+                label="Absents"
                 value={stats.noshow}
               />
             </View>
