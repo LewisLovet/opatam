@@ -8,6 +8,7 @@ import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
+import { Avatar } from '../../Avatar';
 
 export interface BookingSummaryProps {
   /** Service name */
@@ -18,6 +19,8 @@ export interface BookingSummaryProps {
   price: number;
   /** Provider name */
   providerName: string;
+  /** Provider photo URL (optional) */
+  providerPhotoURL?: string | null;
   /** Member name (optional) */
   memberName?: string | null;
 }
@@ -27,6 +30,7 @@ export function BookingSummary({
   duration,
   price,
   providerName,
+  providerPhotoURL,
   memberName,
 }: BookingSummaryProps) {
   const { colors, spacing, radius } = useTheme();
@@ -52,9 +56,12 @@ export function BookingSummary({
     >
       {/* Service info */}
       <View style={styles.mainRow}>
-        <View style={[styles.iconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-          <Ionicons name="cut" size={22} color="#FFFFFF" />
-        </View>
+        <Avatar
+          size="md"
+          name={providerName}
+          imageUrl={providerPhotoURL}
+          style={styles.avatar}
+        />
         <View style={styles.content}>
           <Text variant="body" style={styles.serviceName}>
             {serviceName}
@@ -104,13 +111,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatar: {
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   content: {
     flex: 1,

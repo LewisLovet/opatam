@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -16,6 +16,13 @@ const BASE_URL = 'https://opatam.com';
 const SITE_NAME = APP_CONFIG.name;
 const DEFAULT_DESCRIPTION =
   'Opatam est la plateforme de réservation en ligne pour les entrepreneurs de la beauté, du bien-être et des services. Gérez vos rendez-vous, attirez de nouveaux clients, sans commission.';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

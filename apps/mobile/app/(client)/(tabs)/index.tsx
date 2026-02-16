@@ -16,6 +16,7 @@ import {
   ProviderCard,
   ProviderCardSkeleton,
   EmptyState,
+  Avatar,
 } from '../../../components';
 import { useUserLocation, useNearbyProviders, useNavigateToProvider, useClientBookings } from '../../../hooks';
 import { useAuth } from '../../../contexts';
@@ -157,9 +158,12 @@ export default function HomeScreen() {
           ) : nextBooking ? (
             <Card padding="lg" shadow="sm">
               <View style={styles.bookingCard}>
-                <View style={[styles.bookingIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
-                  <Ionicons name="calendar" size={24} color={colors.primary} />
-                </View>
+                <Avatar
+                  size="md"
+                  name={nextBooking.providerName}
+                  imageUrl={nextBooking.providerPhoto}
+                  style={{ marginRight: 12 }}
+                />
                 <View style={styles.bookingInfo}>
                   <Text variant="body" style={{ fontWeight: '600' }}>
                     {nextBooking.serviceName}
@@ -227,9 +231,12 @@ export default function HomeScreen() {
                 >
                   <Card padding="md" shadow="sm" style={{ marginBottom: 8 }}>
                     <View style={styles.bookingCard}>
-                      <View style={[styles.bookingIconContainer, { backgroundColor: '#f3f4f6' }]}>
-                        <Ionicons name="time" size={22} color="#6b7280" />
-                      </View>
+                      <Avatar
+                        size="md"
+                        name={booking.providerName}
+                        imageUrl={booking.providerPhoto}
+                        style={{ marginRight: 12 }}
+                      />
                       <View style={styles.bookingInfo}>
                         <Text variant="body" style={{ fontWeight: '600' }}>
                           {booking.serviceName}

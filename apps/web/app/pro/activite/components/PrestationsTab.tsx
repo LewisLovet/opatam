@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
 import { catalogService, locationService, memberService } from '@booking-app/firebase';
-import { Plus, FolderPlus, Pencil, ChevronDown, ChevronRight, Scissors, Loader2 } from 'lucide-react';
+import { Plus, FolderPlus, Pencil, ChevronDown, ChevronRight, Tag, Loader2 } from 'lucide-react';
 import { ServiceCard } from './ServiceCard';
 import { ServiceModal, type ServiceFormData } from './ServiceModal';
 import { CategoryModal, type CategoryFormData } from './CategoryModal';
@@ -405,7 +405,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
       <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-4">
-        <Scissors className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+        <Tag className="w-8 h-8 text-primary-600 dark:text-primary-400" />
       </div>
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         Aucune prestation

@@ -9,14 +9,13 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { bookingService } from '@booking-app/firebase';
 import { useTheme } from '../../../../theme';
-import { Text, Card, Button, EmptyState, useToast } from '../../../../components';
+import { Text, Card, Button, EmptyState, Avatar, useToast } from '../../../../components';
 import { useBooking } from '../../../../contexts';
 import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
@@ -63,16 +62,6 @@ export default function ConfirmBookingScreen() {
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Get initials for avatar
-  const getInitials = (name: string): string => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   // Handle booking confirmation
   const handleConfirm = async () => {
@@ -200,7 +189,7 @@ export default function ConfirmBookingScreen() {
           {/* Service */}
           <View style={styles.detailRow}>
             <View style={[styles.detailIcon, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
-              <Ionicons name="cut-outline" size={20} color={colors.primary} />
+              <Ionicons name="pricetag-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.detailContent}>
               <Text variant="caption" color="textSecondary">Prestation</Text>
@@ -266,18 +255,12 @@ export default function ConfirmBookingScreen() {
         {/* Provider info */}
         <Card padding="md" shadow="sm" style={{ marginTop: spacing.lg }}>
           <View style={styles.providerRow}>
-            {provider.photoURL ? (
-              <Image
-                source={{ uri: provider.photoURL }}
-                style={[styles.providerAvatar, { backgroundColor: colors.surfaceSecondary }]}
-              />
-            ) : (
-              <View style={[styles.providerAvatar, { backgroundColor: colors.primary }]}>
-                <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-                  {getInitials(provider.businessName)}
-                </Text>
-              </View>
-            )}
+            <Avatar
+              size="lg"
+              name={provider.businessName}
+              imageUrl={provider.photoURL}
+              style={{ marginRight: 12 }}
+            />
             <View style={{ flex: 1 }}>
               <Text variant="body" style={{ fontWeight: '600' }}>{provider.businessName}</Text>
               <Text variant="caption" color="textSecondary">{provider.category}</Text>
@@ -401,14 +384,6 @@ const styles = StyleSheet.create({
   providerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  providerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
   },
   priceRow: {
     flexDirection: 'row',

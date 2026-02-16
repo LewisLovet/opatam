@@ -23,7 +23,7 @@ import {
   MapPin,
   Calendar,
   Clock,
-  Scissors,
+  Tag,
   AlertTriangle,
   Check,
   Users,
@@ -592,7 +592,7 @@ export function CreateBookingModal({
               {/* Service */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  <Scissors className="w-4 h-4 inline mr-1" />
+                  <Tag className="w-4 h-4 inline mr-1" />
                   Prestation <span className="text-error-500">*</span>
                 </label>
                 <Select
@@ -842,7 +842,7 @@ export function CreateBookingModal({
 
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
-                    <Scissors className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                    <Tag className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                     <span className="text-primary-800 dark:text-primary-200">
                       {selectedService?.name} - {selectedService?.duration} min
                     </span>

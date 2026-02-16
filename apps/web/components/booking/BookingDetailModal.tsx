@@ -29,7 +29,7 @@ import {
   Mail,
   Phone,
   MapPin,
-  Scissors,
+  Tag,
   Users,
   Check,
   X,
@@ -521,7 +521,7 @@ export function BookingDetailModal({
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Prestation</h4>
           <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl space-y-2">
             <div className="flex items-center gap-3">
-              <Scissors className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               <span className="text-gray-900 dark:text-white">{booking.serviceName}</span>
               <span className="ml-auto font-semibold text-gray-900 dark:text-white">
                 {formatBookingPrice(booking.price)}

@@ -1,6 +1,5 @@
 'use client';
 
-import { LogoWhite } from '@/components/ui';
 import {
   BadgePercent,
   Calendar,
@@ -9,7 +8,7 @@ import {
   Gift,
   MapPin,
   Rocket,
-  Scissors,
+  Tag,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
@@ -66,7 +65,7 @@ const REGISTER_STEP_CONTENT = [
     title: 'Presentez vos services',
     benefits: [
       {
-        icon: Scissors,
+        icon: Tag,
         title: 'Catalogue complet',
         description: 'Toutes vos prestations',
       },
@@ -186,29 +185,30 @@ function InfoPanel({ isRight, registerStep }: InfoPanelProps) {
         isRight ? 'order-2' : 'order-1'
       }`}
     >
-      {/* Decorative bubbles */}
+      {/* Decorative animated bubbles */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        {/* Large blurred circles */}
-        <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-primary-400/20 blur-3xl" />
-        <div className="absolute top-1/3 -right-16 w-48 h-48 rounded-full bg-white/5 blur-2xl" />
+        {/* Large blurred circles - slow drift */}
+        <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full bg-white/10 blur-3xl animate-blob-drift" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-primary-400/20 blur-3xl animate-blob-drift-2" />
+        <div className="absolute top-1/3 -right-16 w-48 h-48 rounded-full bg-white/5 blur-2xl animate-blob-drift" style={{ animationDelay: '-6s' }} />
 
-        {/* Medium circles */}
-        <div className="absolute top-20 right-20 w-24 h-24 rounded-full bg-white/10" />
-        <div className="absolute bottom-40 left-10 w-16 h-16 rounded-full bg-white/5" />
-        <div className="absolute top-1/2 right-1/4 w-12 h-12 rounded-full bg-primary-300/20" />
+        {/* Medium circles - gentle float */}
+        <div className="absolute top-20 right-20 w-24 h-24 rounded-full bg-white/10 animate-float" />
+        <div className="absolute bottom-40 left-10 w-16 h-16 rounded-full bg-white/5 animate-float" style={{ animationDelay: '-2s' }} />
+        <div className="absolute top-1/2 right-1/4 w-12 h-12 rounded-full bg-primary-300/20 animate-float" style={{ animationDelay: '-4s' }} />
 
-        {/* Small sharp circles */}
-        <div className="absolute top-32 left-1/3 w-6 h-6 rounded-full bg-white/15" />
-        <div className="absolute bottom-1/4 right-16 w-8 h-8 rounded-full bg-white/10" />
-        <div className="absolute top-2/3 left-20 w-4 h-4 rounded-full bg-white/20" />
-        <div className="absolute bottom-20 right-1/3 w-5 h-5 rounded-full bg-primary-200/15" />
+        {/* Small sharp circles - subtle float */}
+        <div className="absolute top-32 left-1/3 w-6 h-6 rounded-full bg-white/15 animate-float" style={{ animationDelay: '-1s' }} />
+        <div className="absolute bottom-1/4 right-16 w-8 h-8 rounded-full bg-white/10 animate-float" style={{ animationDelay: '-3s' }} />
+        <div className="absolute top-2/3 left-20 w-4 h-4 rounded-full bg-white/20 animate-float" style={{ animationDelay: '-5s' }} />
+        <div className="absolute bottom-20 right-1/3 w-5 h-5 rounded-full bg-primary-200/15 animate-float" style={{ animationDelay: '-2.5s' }} />
       </div>
 
-      {/* Logo */}
+      {/* Title */}
       <div className="relative z-10">
-        <Link href="/">
-          <LogoWhite size="lg" variant="light" subtitle="Espace Professionnel" />
+        <Link href="/" className="inline-block">
+          <span className="text-white font-bold text-xl tracking-wide">OPATAM</span>
+          <span className="block text-primary-100 text-sm mt-0.5">Espace Professionnel</span>
         </Link>
       </div>
 
@@ -260,10 +260,9 @@ function InfoPanel({ isRight, registerStep }: InfoPanelProps) {
 
 function MobileHeader() {
   return (
-    <div className="lg:hidden flex items-center justify-center py-6 bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-700 dark:to-primary-800">
-      <Link href="/">
-        <LogoWhite size="lg" variant="light" subtitle="Espace Professionnel" />
-      </Link>
+    <div className="lg:hidden flex flex-col items-center justify-center py-5 bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-700 dark:to-primary-800">
+      <span className="text-white font-bold text-lg tracking-wide">OPATAM</span>
+      <span className="text-primary-100 text-xs mt-0.5">Espace Professionnel</span>
     </div>
   );
 }
@@ -306,12 +305,20 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Form Panel */}
         <div
-          className={`flex-1 flex flex-col justify-center px-4 py-8 sm:px-6 lg:px-10 xl:px-16 bg-gray-50 dark:bg-gray-900 ${
+          className={`flex-1 flex flex-col justify-center px-4 py-8 sm:px-6 lg:px-10 xl:px-16 bg-gray-50 dark:bg-gray-900 relative overflow-hidden ${
             isRegister ? 'order-1' : 'order-2'
           }`}
         >
+          {/* Background animated bubbles (visible on all screens) */}
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+            <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full bg-primary-300/40 dark:bg-primary-500/15 blur-3xl animate-blob-drift" />
+            <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-primary-400/30 dark:bg-primary-400/15 blur-3xl animate-blob-drift-2" />
+            <div className="absolute top-1/4 right-1/4 w-40 h-40 rounded-full bg-primary-200/50 dark:bg-primary-600/15 blur-2xl animate-float" style={{ animationDelay: '-3s' }} />
+            <div className="absolute bottom-1/3 left-1/3 w-24 h-24 rounded-full bg-primary-300/25 dark:bg-primary-500/10 blur-xl animate-float" style={{ animationDelay: '-5s' }} />
+          </div>
+
           <div
-            className={`w-full mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 border border-gray-100 dark:border-gray-700 overflow-visible ${
+            className={`w-full mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 border border-gray-100 dark:border-gray-700 overflow-visible relative z-10 ${
               isRegister ? 'max-w-lg' : 'max-w-md'
             }`}
           >

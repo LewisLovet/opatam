@@ -36,7 +36,7 @@ export function ReviewFilters({
           onChange={(e) =>
             onChange({ memberId: e.target.value === 'all' ? null : e.target.value })
           }
-          className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
           <option value="all">Tous les membres</option>
           {members.map((member) => (
@@ -53,7 +53,7 @@ export function ReviewFilters({
         onChange={(e) =>
           onChange({ rating: e.target.value === 'all' ? null : Number(e.target.value) })
         }
-        className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
       >
         <option value="all">Toutes les notes</option>
         <option value="5">5 etoiles</option>

@@ -315,7 +315,7 @@ export default function ProviderDetailScreen() {
           ) : services.length === 0 ? (
             <Card padding="lg" shadow="sm">
               <EmptyState
-                icon="cut-outline"
+                icon="pricetag-outline"
                 title="Aucune prestation"
                 description="Ce prestataire n'a pas encore de prestations"
               />

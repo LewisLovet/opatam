@@ -260,7 +260,7 @@ export function DisponibilitesTab() {
             <select
               value={selectedMemberId || ''}
               onChange={(e) => setSelectedMemberId(e.target.value || null)}
-              className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="px-3 py-2 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               {members.map((member) => {
                 const location = locations.find((l) => l.id === member.locationId);

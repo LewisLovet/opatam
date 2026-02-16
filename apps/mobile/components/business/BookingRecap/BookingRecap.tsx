@@ -118,7 +118,7 @@ export function BookingRecap({
       {/* Service Section */}
       <View style={[styles.section, { padding: spacing.md }]}>
         <InfoRow
-          icon="cut-outline"
+          icon="pricetag-outline"
           label="Prestation"
           value={service.name}
         />

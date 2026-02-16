@@ -224,6 +224,7 @@ export default function DateSelectionScreen() {
               duration={service.duration}
               price={service.price}
               providerName={provider.businessName}
+              providerPhotoURL={provider.photoURL}
               memberName={member?.name}
             />
           </View>

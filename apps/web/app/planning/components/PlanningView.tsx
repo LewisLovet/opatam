@@ -11,7 +11,7 @@ import {
   Loader2,
   LogOut,
   RefreshCw,
-  Scissors,
+  Tag,
   Copy,
   Check,
   ExternalLink,
@@ -490,7 +490,7 @@ function BookingCard({ booking }: { booking: BookingItem }) {
         {/* Service */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Scissors className="w-4 h-4 text-primary-500" />
+            <Tag className="w-4 h-4 text-primary-500" />
             <span className="font-medium text-gray-900 dark:text-white">
               {booking.serviceName}
             </span>

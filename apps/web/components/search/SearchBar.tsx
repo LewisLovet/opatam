@@ -15,7 +15,7 @@ interface SearchBarProps {
 
 const sizeStyles: Record<SearchSize, { input: string; button: string; icon: string }> = {
   default: {
-    input: 'px-10 py-2.5 text-sm',
+    input: 'px-10 py-2.5 text-base',
     button: 'px-4 py-2.5',
     icon: 'w-4 h-4 left-3',
   },

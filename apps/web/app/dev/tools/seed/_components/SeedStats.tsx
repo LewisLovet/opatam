@@ -1,7 +1,7 @@
 'use client';
 
 import type { SeedStats as SeedStatsType } from '../_hooks/useSeedData';
-import { Store, Scissors, User, MapPin, Calendar } from 'lucide-react';
+import { Store, Tag, User, MapPin, Calendar } from 'lucide-react';
 
 interface SeedStatsProps {
   stats: SeedStatsType;
@@ -10,7 +10,7 @@ interface SeedStatsProps {
 export function SeedStats({ stats }: SeedStatsProps) {
   const items = [
     { label: 'Providers', value: stats.providersCreated, icon: Store },
-    { label: 'Services', value: stats.servicesCreated, icon: Scissors },
+    { label: 'Services', value: stats.servicesCreated, icon: Tag },
     { label: 'Membres', value: stats.membersCreated, icon: User },
     { label: 'Locations', value: stats.locationsCreated, icon: MapPin },
     { label: 'Disponibilités', value: stats.availabilitiesCreated, icon: Calendar },

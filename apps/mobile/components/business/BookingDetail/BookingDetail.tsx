@@ -170,7 +170,7 @@ export function BookingDetail({
       {/* Service Section */}
       <View style={[styles.section, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md }]}>
         <InfoRow
-          icon="cut-outline"
+          icon="pricetag-outline"
           label="Prestation"
           value={booking.service.name}
         />

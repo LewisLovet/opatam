@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
-import { Scissors, MapPin, Users, Clock } from 'lucide-react';
+import { Tag, MapPin, Users, Clock } from 'lucide-react';
 import { PrestationsTab } from './components/PrestationsTab';
 import { LieuxTab } from './components/LieuxTab';
 import { EquipeTab } from './components/EquipeTab';
@@ -29,7 +29,7 @@ export default function ActivityPage() {
   const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
 
   const tabs = [
-    { id: 'prestations', label: 'Prestations', icon: <Scissors className="w-4 h-4" /> },
+    { id: 'prestations', label: 'Prestations', icon: <Tag className="w-4 h-4" /> },
     { id: 'lieux', label: 'Lieux', icon: <MapPin className="w-4 h-4" /> },
     ...(isTeamPlan
       ? [{ id: 'equipe', label: 'Équipe', icon: <Users className="w-4 h-4" /> }]

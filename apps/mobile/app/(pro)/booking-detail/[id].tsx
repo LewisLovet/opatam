@@ -674,7 +674,7 @@ export default function ProBookingDetailScreen() {
     valueColor?: string;
     valueWeight?: '400' | '500' | '600' | '700';
   }[] = [
-    { icon: 'cut-outline', label: 'Prestation', value: booking.serviceName },
+    { icon: 'pricetag-outline', label: 'Prestation', value: booking.serviceName },
     { icon: 'calendar-outline', label: 'Date', value: formatDateFr(booking.datetime) },
     {
       icon: 'time-outline',

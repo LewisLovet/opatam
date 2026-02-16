@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Scissors, Sparkles, HandMetal, Dumbbell, User } from 'lucide-react';
+import { Tag, Sparkles, HandMetal, Dumbbell, User } from 'lucide-react';
 
 // Layout (for demo display only)
 import { Header } from '@/components/layout/Header';
@@ -161,7 +161,7 @@ const mockReviews = [
 ];
 
 const mockCategories = [
-  { id: 'coiffure', label: 'Coiffure', icon: <Scissors className="w-4 h-4" /> },
+  { id: 'coiffure', label: 'Coiffure', icon: <Tag className="w-4 h-4" /> },
   { id: 'spa', label: 'Spa & Massage', icon: <Sparkles className="w-4 h-4" /> },
   { id: 'esthetique', label: 'Esthétique', icon: <HandMetal className="w-4 h-4" /> },
   { id: 'barbier', label: 'Barbier', icon: <User className="w-4 h-4" /> },

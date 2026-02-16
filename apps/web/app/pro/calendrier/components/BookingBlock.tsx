@@ -1,7 +1,7 @@
 'use client';
 
 import type { Booking } from '@booking-app/shared';
-import { Clock, User, Scissors } from 'lucide-react';
+import { Clock, User, Tag } from 'lucide-react';
 import { SlotPopover, getVisualStatus, type VisualStatus } from './SlotPopover';
 
 type WithId<T> = { id: string } & T;
@@ -157,7 +157,7 @@ export function BookingBlock({
         {/* Service name - secondary, shown only if lots of space (non-compact) */}
         {height >= minHeightForService && !compact && (
           <div className="flex items-center gap-1 text-xs mt-0.5 truncate opacity-75">
-            <Scissors className="w-3 h-3 flex-shrink-0" />
+            <Tag className="w-3 h-3 flex-shrink-0" />
             <span className="truncate">{booking.serviceName}</span>
           </div>
         )}

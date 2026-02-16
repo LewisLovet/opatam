@@ -11,7 +11,7 @@ import {
   User,
   Building2,
   MapPin,
-  Scissors,
+  Tag,
   Clock,
   ChevronLeft,
   ChevronRight,
@@ -547,7 +547,7 @@ export default function RegisterPage() {
     <div className="space-y-5">
       <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-100 dark:bg-primary-900/30 mb-3">
-          <Scissors className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+          <Tag className="w-7 h-7 text-primary-600 dark:text-primary-400" />
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Créez votre première prestation
@@ -794,7 +794,7 @@ export default function RegisterPage() {
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                <Scissors className="w-3.5 h-3.5" />
+                <Tag className="w-3.5 h-3.5" />
                 <span>
                   {data.serviceName} - {data.servicePrice} EUR
                 </span>

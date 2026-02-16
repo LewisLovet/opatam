@@ -10,7 +10,7 @@ import {
   Input,
   useToast,
 } from '@/components/ui';
-import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Scissors, ChevronRight, ChevronLeft, User, MapPin, Key } from 'lucide-react';
+import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Tag, ChevronRight, ChevronLeft, User, MapPin, Key } from 'lucide-react';
 import type { Member, Location, Service } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -430,7 +430,7 @@ export function MemberModal({
         {!formData.locationId ? (
           <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center flex items-center justify-center gap-2">
-              <Scissors className="w-4 h-4" />
+              <Tag className="w-4 h-4" />
               Sélectionnez d&apos;abord un lieu
             </p>
           </div>
