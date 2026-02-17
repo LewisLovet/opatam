@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Clock, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Clock, Check, ChevronRight } from 'lucide-react';
 
 interface Service {
   id: string;
@@ -41,6 +41,7 @@ function formatDuration(minutes: number): string {
 }
 
 function formatPrice(cents: number): string {
+  if (cents === 0) return 'Gratuit';
   const euros = cents / 100;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
@@ -59,6 +60,17 @@ function ServiceButton({
   isSelected: boolean;
   onSelect: (id: string) => void;
 }) {
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [descClamped, setDescClamped] = useState(false);
+  const descRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = descRef.current;
+    if (el) {
+      setDescClamped(el.scrollHeight > el.clientHeight);
+    }
+  }, [service.description]);
+
   return (
     <button
       onClick={() => onSelect(service.id)}
@@ -81,9 +93,26 @@ function ServiceButton({
             )}
           </div>
           {service.description && (
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-              {service.description}
-            </p>
+            <div className="mt-1">
+              <p
+                ref={descRef}
+                className={`text-sm text-gray-500 dark:text-gray-400 ${!descExpanded ? 'line-clamp-2' : ''}`}
+              >
+                {service.description}
+              </p>
+              {descClamped && (
+                <span
+                  role="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDescExpanded((v) => !v);
+                  }}
+                  className="text-sm text-primary-600 dark:text-primary-400 hover:underline mt-0.5 inline-block"
+                >
+                  {descExpanded ? 'Moins' : 'Plus de détails'}
+                </span>
+              )}
+            </div>
           )}
           <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500">
             <Clock className="w-4 h-4" />
@@ -177,19 +206,16 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
               <button
                 type="button"
                 onClick={() => toggleCategory(category.id)}
-                className="flex items-center gap-2 mb-3 group w-full text-left"
+                className="flex items-center gap-3 mb-3 w-full text-left bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
               >
-                {isCollapsed ? (
-                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors" />
-                )}
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <div className="w-1 h-5 bg-primary-500 rounded-full flex-shrink-0" />
+                <h3 className="text-[17px] font-semibold text-gray-800 dark:text-gray-200 tracking-tight">
                   {category.name}
                 </h3>
-                <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-xs font-medium rounded-full">
+                <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-0.5 rounded-full">
                   {catServices.length}
                 </span>
+                <ChevronRight className={`w-5 h-5 text-gray-400 flex-shrink-0 ml-auto transition-transform duration-200 ${!isCollapsed ? 'rotate-90' : ''}`} />
               </button>
               {!isCollapsed && (
                 <div className="space-y-3">
@@ -213,19 +239,16 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
               <button
                 type="button"
                 onClick={() => toggleCategory('__uncategorized__')}
-                className="flex items-center gap-2 mb-3 group w-full text-left"
+                className="flex items-center gap-3 mb-3 w-full text-left bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
               >
-                {collapsedCategories.has('__uncategorized__') ? (
-                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors" />
-                )}
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <div className="w-1 h-5 bg-primary-500 rounded-full flex-shrink-0" />
+                <h3 className="text-[17px] font-semibold text-gray-800 dark:text-gray-200 tracking-tight">
                   Autres
                 </h3>
-                <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-xs font-medium rounded-full">
+                <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-0.5 rounded-full">
                   {grouped.uncategorized.length}
                 </span>
+                <ChevronRight className={`w-5 h-5 text-gray-400 flex-shrink-0 ml-auto transition-transform duration-200 ${!collapsedCategories.has('__uncategorized__') ? 'rotate-90' : ''}`} />
               </button>
             )}
             {!collapsedCategories.has('__uncategorized__') && (

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Star, Users, Euro, MapPin } from 'lucide-react';
-import { CATEGORIES } from '@booking-app/shared';
+import { getCategoryLabel, capitalizeWords } from '@booking-app/shared';
 import type { Provider } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { Avatar } from '../ui/Avatar';
@@ -16,19 +16,12 @@ interface SearchProviderCardProps {
  * Format price for display (centimes to euros)
  */
 function formatPrice(cents: number): string {
+  if (cents === 0) return 'Gratuit';
   const euros = cents / 100;
   return new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(euros);
-}
-
-/**
- * Capitalize first letter
- */
-function capitalize(str: string): string {
-  if (!str) return str;
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /**
@@ -57,7 +50,7 @@ export function SearchProviderCard({ provider }: SearchProviderCardProps) {
   const reviewCount = provider.rating.count;
 
   // City display (first city, capitalized)
-  const displayCity = provider.cities?.[0] ? capitalize(provider.cities[0]) : null;
+  const displayCity = provider.cities?.[0] ? capitalizeWords(provider.cities[0]) : null;
 
   // Member count from subscription (if team plan)
   const memberCount = provider.subscription?.memberCount || 1;
@@ -102,7 +95,7 @@ export function SearchProviderCard({ provider }: SearchProviderCardProps) {
             {/* Price Badge */}
             {hasMinPrice && (
               <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-sm font-semibold">
-                <Euro className="w-3.5 h-3.5" />
+                {provider.minPrice! > 0 && <Euro className="w-3.5 h-3.5" />}
                 {formatPrice(provider.minPrice!)}
               </span>
             )}

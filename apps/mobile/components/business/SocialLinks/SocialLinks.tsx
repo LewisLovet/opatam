@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Pressable, StyleSheet, Linking } from 'react-native';
+import { View, ScrollView, Pressable, StyleSheet, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../theme';
@@ -81,7 +81,7 @@ export function SocialLinks({ links }: SocialLinksProps) {
   };
 
   return (
-    <View style={[styles.container, { gap: spacing.sm }]}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
       {activeLinks.map((config) => {
         const value = links[config.key];
         if (!value) return null;
@@ -132,15 +132,11 @@ export function SocialLinks({ links }: SocialLinksProps) {
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
   buttonContainer: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

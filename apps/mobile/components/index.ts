@@ -53,6 +53,9 @@ export { Switch, type SwitchProps } from './Switch';
 // DevFAB (development only)
 export { DevFAB, ThemeConfigurator } from './DevFAB';
 
+// ExpandableText
+export { ExpandableText, type ExpandableTextProps } from './ExpandableText';
+
 // Toast
 export {
   Toast,

@@ -5,6 +5,7 @@
  * @returns Formatted price string
  */
 export function formatPrice(cents: number, currency = 'EUR'): string {
+  if (cents === 0) return 'Gratuit';
   const amount = cents / 100;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
@@ -186,6 +187,16 @@ export function normalizeCity(city: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ');
+}
+
+/**
+ * Capitalize each word in a string (for display of normalized cities)
+ * Handles separators: spaces, hyphens, apostrophes
+ * Ex: "saint-etienne" → "Saint-Etienne", "l'isle-adam" → "L'Isle-Adam"
+ */
+export function capitalizeWords(str: string): string {
+  if (!str) return str;
+  return str.replace(/(^|[\s\-'])(\w)/g, (_, sep, char) => sep + char.toUpperCase());
 }
 
 /**

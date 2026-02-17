@@ -32,6 +32,7 @@ function formatDuration(minutes: number): string {
 }
 
 function formatPrice(cents: number): string {
+  if (cents === 0) return 'Gratuit';
   const euros = cents / 100;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
@@ -141,7 +142,7 @@ export function ServiceCard({
                   {formatDuration(service.duration)}
                 </span>
                 <span className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-white">
-                  <Euro className="w-4 h-4 text-gray-400" />
+                  {service.price > 0 && <Euro className="w-4 h-4 text-gray-400" />}
                   {formatPrice(service.price)}
                 </span>
               </div>

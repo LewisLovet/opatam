@@ -3,8 +3,8 @@
  * Welcome screen with category cards and upcoming bookings
  */
 
-import React, { useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, ScrollView, StyleSheet, Pressable, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,22 +23,26 @@ import { useAuth } from '../../../contexts';
 
 // Category images from Unsplash
 const categoryImages: Record<string, string> = {
-  coiffure: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
-  beaute: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=400',
-  massage: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400',
+  digital: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400',
+  beauty: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=400',
   coaching: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400',
-  sante: 'https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=400',
-  'bien-etre': 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=400',
+  wellness: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=400',
+  sport: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400',
+  training: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400',
+  artisan: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=400',
+  audiovisual: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=400',
 };
 
-// Categories with images
+// Categories displayed on home — IDs match Firestore provider.category
 const categories = [
-  { id: 'coiffure', label: 'Coiffure' },
-  { id: 'beaute', label: 'Beauté' },
-  { id: 'massage', label: 'Massage' },
+  { id: 'digital', label: 'Digital' },
+  { id: 'beauty', label: 'Beauté' },
   { id: 'coaching', label: 'Coaching' },
-  { id: 'sante', label: 'Santé' },
-  { id: 'bien-etre', label: 'Bien-être' },
+  { id: 'wellness', label: 'Bien-être' },
+  { id: 'sport', label: 'Sport' },
+  { id: 'training', label: 'Formation' },
+  { id: 'artisan', label: 'Artisans' },
+  { id: 'audiovisual', label: 'Audiovisuel' },
 ];
 
 // Helper to format booking date
@@ -95,7 +99,15 @@ export default function HomeScreen() {
 
   // Fetch nearby providers (falls back to top-rated if no location)
   const { location: userLocation, loading: locationLoading } = useUserLocation();
-  const { providers: suggestions, loading: loadingSuggestions, isNearby } = useNearbyProviders(userLocation, locationLoading, 5);
+  const { providers: suggestions, loading: loadingSuggestions, isNearby, refresh: refreshSuggestions } = useNearbyProviders(userLocation, locationLoading, 5);
+
+  // Pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refreshBookings(), refreshSuggestions()]);
+    setRefreshing(false);
+  }, [refreshBookings, refreshSuggestions]);
 
   const handleCategoryPress = (categoryId: string) => {
     router.push({
@@ -120,7 +132,15 @@ export default function HomeScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: spacing['3xl'] }}
+        contentContainerStyle={{ paddingTop: spacing.md, paddingBottom: spacing['3xl'] }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
 
         {/* Categories Carousel */}
@@ -214,7 +234,7 @@ export default function HomeScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
               <Text variant="h3">Derniers RDV</Text>
               <Pressable
-                onPress={() => router.push('/(client)/(tabs)/bookings')}
+                onPress={() => router.push({ pathname: '/(client)/(tabs)/bookings', params: { tab: 'past' } })}
                 style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
               >
                 <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>

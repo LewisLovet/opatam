@@ -742,7 +742,7 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr><tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}
+                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>${data.locationAddress.includes(',') ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                     </table>
@@ -788,7 +788,7 @@ Détails de votre rendez-vous :
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.locationAddress ? `- Adresse : ${data.locationAddress}\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}
+${data.locationAddress ? `- Adresse : ${data.locationAddress}${data.locationAddress.includes(',') ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
@@ -935,7 +935,7 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedNewTime} - ${data.formattedNewEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr><tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}
+                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>${data.locationAddress.includes(',') ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                     </table>
@@ -982,7 +982,7 @@ Nouveau créneau :
 - Heure : ${data.formattedNewTime} - ${data.formattedNewEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.locationAddress ? `- Adresse : ${data.locationAddress}\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}
+${data.locationAddress ? `- Adresse : ${data.locationAddress}${data.locationAddress.includes(',') ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
@@ -1042,7 +1042,7 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr><tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}
+                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>${data.locationAddress.includes(',') ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                     </table>
@@ -1088,7 +1088,7 @@ Détails de votre rendez-vous :
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.locationAddress ? `- Adresse : ${data.locationAddress}\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}
+${data.locationAddress ? `- Adresse : ${data.locationAddress}${data.locationAddress.includes(',') ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 

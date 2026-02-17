@@ -7,7 +7,7 @@ import React from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { Rating, formatDistance } from '@booking-app/shared';
+import { Rating, formatDistance, getCategoryLabel, capitalizeWords } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Card } from '../../Card';
@@ -58,7 +58,7 @@ export function ProviderCard({
   const { colors, spacing, radius } = useTheme();
 
   const hasRating = rating.count > 0;
-  const hasValidPrice = minPrice != null && !isNaN(minPrice) && minPrice > 0;
+  const hasValidPrice = minPrice != null && !isNaN(minPrice) && minPrice >= 0;
 
   return (
     <Card padding="none" shadow="md" onPress={onPress} style={[styles.card, isLoading && styles.cardLoading]}>
@@ -117,13 +117,13 @@ export function ProviderCard({
         </Text>
 
         <Text variant="caption" color="textSecondary" numberOfLines={1}>
-          {category} • {city}{distance != null && distance !== Infinity ? ` • ${formatDistance(distance)}` : ''}
+          {getCategoryLabel(category)} • {capitalizeWords(city)}{distance != null && distance !== Infinity ? ` • ${formatDistance(distance)}` : ''}
         </Text>
 
         <View style={[styles.footer, { marginTop: spacing.sm }]}>
           {hasValidPrice ? (
             <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>
-              À partir de {formatPrice(minPrice)} €
+              {minPrice === 0 ? 'Gratuit' : `À partir de ${formatPrice(minPrice)} €`}
             </Text>
           ) : (
             <Text variant="bodySmall" color="textMuted">

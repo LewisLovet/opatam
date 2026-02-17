@@ -956,7 +956,7 @@ export default function CalendarScreen() {
           styles.header,
           {
             paddingHorizontal: spacing.lg,
-            paddingTop: spacing.sm,
+            paddingTop: spacing.md,
             paddingBottom: spacing.sm,
           },
         ]}

@@ -8,7 +8,7 @@ import { View, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Rating } from '@booking-app/shared';
+import { Rating, getCategoryLabel } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Avatar } from '../../Avatar';
@@ -29,9 +29,8 @@ export interface ProviderHeaderProps {
 }
 
 const COVER_HEIGHT = 200;
-const COVER_BORDER_RADIUS = 16;
 const AVATAR_SIZE = 80;
-const AVATAR_BORDER_WIDTH = 3;
+const AVATAR_BORDER_WIDTH = 1.5;
 const AVATAR_OVERLAP = 40;
 
 // Placeholder blur hash
@@ -59,8 +58,6 @@ export function ProviderHeader({
           styles.coverContainer,
           {
             height: coverHeight,
-            borderBottomLeftRadius: COVER_BORDER_RADIUS,
-            borderBottomRightRadius: COVER_BORDER_RADIUS,
           },
         ]}
       >
@@ -90,7 +87,7 @@ export function ProviderHeader({
               marginTop: -AVATAR_OVERLAP,
               borderRadius: AVATAR_SIZE / 2,
               borderWidth: AVATAR_BORDER_WIDTH,
-              borderColor: colors.surface,
+              borderColor: '#FFFFFF',
               ...shadows.md,
             },
           ]}
@@ -119,7 +116,7 @@ export function ProviderHeader({
 
         {/* Category */}
         <Text variant="caption" color="textSecondary" align="center" style={{ marginTop: spacing.xs }}>
-          {category}
+          {getCategoryLabel(category)}
         </Text>
 
         {/* Rating */}

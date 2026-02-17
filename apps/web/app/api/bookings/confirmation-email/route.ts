@@ -233,6 +233,7 @@ export async function POST(request: NextRequest) {
                             <td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td>
                             <td style="padding: 4px 0; font-size: 14px; color: #18181b;">${locationAddress}</td>
                           </tr>
+                          ${locationAddress.includes(',') ? `
                           <tr>
                             <td></td>
                             <td style="padding: 2px 0 4px;">
@@ -241,6 +242,7 @@ export async function POST(request: NextRequest) {
                               </a>
                             </td>
                           </tr>
+                          ` : ''}
                           ` : ''}
                           ${memberName ? `
                           <tr>
@@ -342,7 +344,7 @@ Détails de votre rendez-vous :
 - Heure : ${formattedTime} - ${formattedEndTime}
 - Durée : ${duration} min
 ${locationName ? `- Lieu : ${locationName}` : ''}
-${locationAddress ? `- Adresse : ${locationAddress}\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationAddress)}` : ''}
+${locationAddress ? `- Adresse : ${locationAddress}${locationAddress.includes(',') ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationAddress)}` : ''}` : ''}
 ${memberName ? `- Avec : ${memberName}` : ''}
 - Prix : ${formattedPrice}
 

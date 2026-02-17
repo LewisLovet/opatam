@@ -4,8 +4,9 @@
  * Design: colored left border, prominent name, price badge, duration with icon
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
+import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
@@ -40,6 +41,7 @@ function formatDuration(minutes: number): string {
 }
 
 function formatPrice(euros: number): string {
+  if (euros === 0) return 'Gratuit';
   return euros % 1 === 0 ? `${euros} €` : `${euros.toFixed(2)} €`;
 }
 
@@ -52,6 +54,8 @@ export function ServiceCard({
   onPress,
 }: ServiceCardProps) {
   const { colors, spacing, radius, shadows } = useTheme();
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [descClamped, setDescClamped] = useState(false);
 
   const content = (
     <View
@@ -99,14 +103,46 @@ export function ServiceCard({
 
         {/* Description */}
         {description && (
-          <Text
-            variant="caption"
-            color="textMuted"
-            numberOfLines={2}
-            style={[styles.description, { marginTop: spacing.xs }]}
-          >
-            {description}
-          </Text>
+          <View style={{ marginTop: spacing.xs }}>
+            {/* Hidden text without line limit to measure real line count */}
+            {!descClamped && (
+              <Text
+                variant="caption"
+                style={[styles.description, styles.hiddenMeasure]}
+                onTextLayout={(e: NativeSyntheticEvent<TextLayoutEventData>) => {
+                  if (e.nativeEvent.lines.length > 2) {
+                    setDescClamped(true);
+                  }
+                }}
+              >
+                {description}
+              </Text>
+            )}
+            <Text
+              variant="caption"
+              color="textMuted"
+              numberOfLines={descExpanded ? undefined : 2}
+              style={styles.description}
+            >
+              {description}
+            </Text>
+            {descClamped && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setDescExpanded((v) => !v);
+                }}
+                hitSlop={8}
+              >
+                <Text
+                  variant="caption"
+                  style={{ color: colors.primary, marginTop: 2 }}
+                >
+                  {descExpanded ? 'Moins' : 'Plus de détails'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
         )}
 
         {/* Footer: Duration with icon */}
@@ -176,6 +212,10 @@ const styles = StyleSheet.create({
   },
   description: {
     fontStyle: 'italic',
+  },
+  hiddenMeasure: {
+    position: 'absolute',
+    opacity: 0,
   },
   footer: {
     flexDirection: 'row',

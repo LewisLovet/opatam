@@ -247,14 +247,18 @@ export default function ConfirmBookingScreen() {
                 <Text variant="body" style={{ fontWeight: '600' }}>{location.name}</Text>
                 <Pressable
                   onPress={() => {
-                    const fullAddress = `${location.address}, ${location.postalCode} ${location.city}`;
+                    const fullAddress = location.address?.trim()
+                      ? `${location.address}, ${location.postalCode} ${location.city}`
+                      : `${location.postalCode} ${location.city}`;
                     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`);
                   }}
                   style={({ pressed }) => [pressed && { opacity: 0.7 }]}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text variant="caption" color="primary">
-                      {location.address}, {location.postalCode} {location.city}
+                      {location.address?.trim()
+                        ? `${location.address}, ${location.postalCode} ${location.city}`
+                        : `${location.postalCode} ${location.city}`}
                     </Text>
                     <Ionicons name="open-outline" size={12} color={colors.primary} style={{ marginLeft: 4 }} />
                   </View>
@@ -285,7 +289,7 @@ export default function ConfirmBookingScreen() {
           <View style={styles.priceRow}>
             <Text variant="body">Total</Text>
             <Text variant="h2" color="primary">
-              {(service.price / 100).toFixed(2)} €
+              {service.price === 0 ? 'Gratuit' : `${(service.price / 100).toFixed(2)} €`}
             </Text>
           </View>
           <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>

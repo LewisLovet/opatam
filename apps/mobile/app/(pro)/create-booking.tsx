@@ -1075,7 +1075,9 @@ export default function CreateBookingScreen() {
                       <Text variant="body">{memberLocation.name}</Text>
                       {memberLocation.address && (
                         <Text variant="caption" color="textSecondary">
-                          {memberLocation.address}, {memberLocation.postalCode} {memberLocation.city}
+                          {memberLocation.address?.trim()
+                            ? `${memberLocation.address}, ${memberLocation.postalCode} ${memberLocation.city}`
+                            : `${memberLocation.postalCode} ${memberLocation.city}`}
                         </Text>
                       )}
                     </View>

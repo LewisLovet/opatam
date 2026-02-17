@@ -97,7 +97,9 @@ export class BookingService {
       memberPhoto: member?.photoURL || null,
       locationId: validated.locationId,
       locationName: location.name,
-      locationAddress: `${location.address}, ${location.postalCode} ${location.city}`,
+      locationAddress: location.address
+        ? `${location.address}, ${location.postalCode} ${location.city}`
+        : `${location.postalCode} ${location.city}`,
       serviceId: validated.serviceId,
       serviceName: service.name,
       duration: service.duration,

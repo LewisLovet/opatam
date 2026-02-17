@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Clock, ArrowRight } from 'lucide-react';
 
@@ -27,6 +28,7 @@ function formatDuration(minutes: number): string {
 }
 
 function formatPrice(cents: number): string {
+  if (cents === 0) return 'Gratuit';
   const euros = cents / 100;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
@@ -37,6 +39,17 @@ function formatPrice(cents: number): string {
 }
 
 export function ServiceItem({ service, slug }: ServiceItemProps) {
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [descClamped, setDescClamped] = useState(false);
+  const descRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = descRef.current;
+    if (el) {
+      setDescClamped(el.scrollHeight > el.clientHeight);
+    }
+  }, [service.description]);
+
   return (
     <Link href={`/p/${slug}/reserver?service=${service.id}`} className="block group">
       <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.01] hover:border-primary-200 dark:hover:border-primary-800">
@@ -51,9 +64,27 @@ export function ServiceItem({ service, slug }: ServiceItemProps) {
                 {service.name}
               </h3>
               {service.description && (
-                <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                  {service.description}
-                </p>
+                <div className="mt-1.5">
+                  <p
+                    ref={descRef}
+                    className={`text-sm text-gray-500 dark:text-gray-400 ${!descExpanded ? 'line-clamp-2' : ''}`}
+                  >
+                    {service.description}
+                  </p>
+                  {descClamped && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDescExpanded((v) => !v);
+                      }}
+                      className="text-sm text-primary-600 dark:text-primary-400 hover:underline mt-0.5"
+                    >
+                      {descExpanded ? 'Moins' : 'Plus de détails'}
+                    </button>
+                  )}
+                </div>
               )}
               <div className="mt-3 flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500">
                 <Clock className="w-4 h-4" />

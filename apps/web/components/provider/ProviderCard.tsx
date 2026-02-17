@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { getCategoryLabel, capitalizeWords } from '@booking-app/shared';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
 import { Card } from '../ui/Card';
@@ -44,6 +45,7 @@ function truncateText(text: string, maxLength: number): string {
  * Format price for display
  */
 function formatPrice(price: number): string {
+  if (price === 0) return 'Gratuit';
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
@@ -94,7 +96,7 @@ export function ProviderCard({ provider, href, className = '' }: ProviderCardPro
 
               {/* Category Badge */}
               <Badge size="sm" className="mt-1">
-                {provider.category}
+                {getCategoryLabel(provider.category)}
               </Badge>
 
               {/* City */}
@@ -114,7 +116,7 @@ export function ProviderCard({ provider, href, className = '' }: ProviderCardPro
                       d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                     />
                   </svg>
-                  <span className="truncate">{provider.city}</span>
+                  <span className="truncate">{capitalizeWords(provider.city!)}</span>
                 </div>
               )}
 
@@ -132,7 +134,7 @@ export function ProviderCard({ provider, href, className = '' }: ProviderCardPro
                 {/* Min Price */}
                 {provider.minPrice !== undefined && provider.minPrice !== null && (
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Des {formatPrice(provider.minPrice)}
+                    {provider.minPrice === 0 ? 'Gratuit' : `Dès ${formatPrice(provider.minPrice)}`}
                   </span>
                 )}
               </div>

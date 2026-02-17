@@ -10,6 +10,7 @@ interface MobileBookingBarProps {
 }
 
 function formatPrice(cents: number): string {
+  if (cents === 0) return 'Gratuit';
   const euros = cents / 100;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',

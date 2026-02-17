@@ -11,6 +11,7 @@ import {
   Textarea,
   Checkbox,
   AddressAutocomplete,
+  ConfirmDialog,
   type AddressSuggestion,
 } from '@/components/ui';
 import { Loader2, Trash2, Building2, Car } from 'lucide-react';
@@ -50,6 +51,7 @@ export function LocationModal({
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [cityOnly, setCityOnly] = useState(false);
 
   const [formData, setFormData] = useState<LocationFormData>({
     name: '',
@@ -76,6 +78,7 @@ export function LocationModal({
           type: location.type || 'fixed',
           travelRadius: location.travelRadius,
         });
+        setCityOnly(location.type === 'fixed' && !location.address);
       } else {
         setFormData({
           name: '',
@@ -87,6 +90,7 @@ export function LocationModal({
           type: 'fixed',
           travelRadius: null,
         });
+        setCityOnly(false);
       }
       setErrors({});
       setShowDeleteConfirm(false);
@@ -153,12 +157,21 @@ export function LocationModal({
       newErrors.name = 'Le nom doit contenir au moins 2 caractères';
     }
 
-    // Address required only for fixed type — must be selected from autocomplete
     if (formData.type === 'fixed') {
-      if (!formData.address?.trim()) {
-        newErrors.address = "L'adresse est requise";
-      } else if (!formData.geopoint) {
-        newErrors.address = 'Veuillez sélectionner une adresse dans la liste';
+      if (cityOnly) {
+        // City-only: must select a city from autocomplete
+        if (!formData.city?.trim()) {
+          newErrors.city = 'Veuillez sélectionner une ville';
+        } else if (!formData.postalCode?.trim()) {
+          newErrors.city = 'Veuillez sélectionner une ville dans la liste';
+        }
+      } else {
+        // Full address: must select from autocomplete
+        if (!formData.address?.trim()) {
+          newErrors.address = "L'adresse est requise";
+        } else if (!formData.geopoint) {
+          newErrors.address = 'Veuillez sélectionner une adresse dans la liste';
+        }
       }
     }
 
@@ -169,7 +182,7 @@ export function LocationModal({
     }
 
     if (!formData.city?.trim()) {
-      newErrors.city = 'La ville est requise';
+      newErrors.city = newErrors.city || 'La ville est requise';
     } else if (formData.city.length < 2) {
       newErrors.city = 'La ville doit contenir au moins 2 caractères';
     }
@@ -193,7 +206,10 @@ export function LocationModal({
 
     setLoading(true);
     try {
-      await onSave(formData);
+      const dataToSave = cityOnly
+        ? { ...formData, address: '', geopoint: null }
+        : formData;
+      await onSave(dataToSave);
       onClose();
     } catch (error) {
       console.error('Save error:', error);
@@ -307,8 +323,32 @@ export function LocationModal({
             required
           />
 
-          {/* Address - only for fixed type */}
+          {/* City-only option for fixed type */}
           {formData.type === 'fixed' && (
+            <Checkbox
+              name="cityOnly"
+              checked={cityOnly}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setCityOnly(checked);
+                if (checked) {
+                  setFormData((prev) => ({
+                    ...prev,
+                    address: '',
+                    geopoint: null,
+                    postalCode: '',
+                    city: '',
+                  }));
+                }
+                setErrors((prev) => ({ ...prev, address: '', city: '', postalCode: '' }));
+              }}
+              label="Ville uniquement"
+              description="Ne pas afficher d'adresse précise"
+            />
+          )}
+
+          {/* Address autocomplete for fixed type without city-only */}
+          {formData.type === 'fixed' && !cityOnly && (
             <AddressAutocomplete
               label="Adresse"
               value={formData.address}
@@ -329,7 +369,37 @@ export function LocationModal({
             />
           )}
 
-          {/* City and Postal Code */}
+          {/* City autocomplete for fixed type with city-only */}
+          {formData.type === 'fixed' && cityOnly && (
+            <AddressAutocomplete
+              label="Ville"
+              value={formData.city}
+              onChange={(value) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  city: value,
+                  postalCode: '',
+                  geopoint: null,
+                }));
+                setErrors((prev) => ({ ...prev, city: '' }));
+              }}
+              onSelect={(suggestion) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  city: suggestion.city,
+                  postalCode: suggestion.postcode,
+                  geopoint: suggestion.coordinates,
+                }));
+                setErrors((prev) => ({ ...prev, city: '', postalCode: '' }));
+              }}
+              placeholder="Rechercher une ville..."
+              error={errors.city}
+              required
+              type="municipality"
+            />
+          )}
+
+          {/* City and Postal Code - readonly when auto-filled */}
           <div className="grid grid-cols-3 gap-4">
             <Input
               label="Code postal"
@@ -430,40 +500,15 @@ export function LocationModal({
           {/* Delete button (editing only) */}
           {isEditing && onDelete && (
             <div className="flex-1">
-              {showDeleteConfirm ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Confirmer ?</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowDeleteConfirm(false)}
-                    disabled={deleting}
-                  >
-                    Non
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="text-error-600 hover:text-error-700"
-                  >
-                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Oui, supprimer'}
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="text-error-600 hover:text-error-700"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Supprimer
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-error-600 hover:text-error-700"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer
+              </Button>
             </div>
           )}
 
@@ -485,6 +530,18 @@ export function LocationModal({
           </Button>
         </ModalFooter>
       </form>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Supprimer le lieu"
+        message="Êtes-vous sûr de vouloir supprimer ce lieu ? Cette action est irréversible."
+        confirmLabel="Supprimer"
+        loading={deleting}
+        variant="danger"
+      />
     </Modal>
   );
 }

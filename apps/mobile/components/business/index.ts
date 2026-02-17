@@ -53,3 +53,15 @@ export * from './RatingStats';
 export * from './StatCard';
 export * from './DaySchedule';
 export * from './BookingListItem';
+
+// Hours
+export * from './HoursSection';
+
+// Team
+export * from './TeamSection';
+
+// Portfolio
+export * from './PortfolioGallery';
+
+// Location
+export * from './LocationSection';

@@ -25,6 +25,15 @@ export const CATEGORIES = [
 export type CategoryId = (typeof CATEGORIES)[number]['id'];
 
 /**
+ * Get the display label for a category id
+ * Falls back to the id with first letter capitalized if not found
+ */
+export function getCategoryLabel(categoryId: string): string {
+  const cat = CATEGORIES.find((c) => c.id === categoryId);
+  return cat ? cat.label : categoryId.charAt(0).toUpperCase() + categoryId.slice(1);
+}
+
+/**
  * Booking status labels
  */
 export const BOOKING_STATUS = {

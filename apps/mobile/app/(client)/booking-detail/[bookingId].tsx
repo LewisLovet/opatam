@@ -558,6 +558,7 @@ export default function BookingDetailScreen() {
   const timeReminder = getTimeReminder(booking, colors);
   const canCancel = canCancelBooking(booking);
   const hasAddress = !!(booking.locationAddress || booking.locationName);
+  const hasStreetAddress = !!(booking.locationAddress && booking.locationAddress.includes(','));
   const hasPhone = !!(booking as any).providerPhone; // Assuming providerPhone might exist
   const isPast = visualStatus === 'past';
 
@@ -683,8 +684,8 @@ export default function BookingDetailScreen() {
                 label="Lieu"
                 value={booking.locationAddress || booking.locationName || ''}
                 colors={colors}
-                onPress={() => openMaps(booking.locationAddress || booking.locationName || '')}
-                linkText="Voir sur le plan"
+                onPress={hasStreetAddress ? () => openMaps(booking.locationAddress || '') : undefined}
+                linkText={hasStreetAddress ? 'Voir sur le plan' : undefined}
               />
             )}
           </View>
@@ -714,11 +715,11 @@ export default function BookingDetailScreen() {
               colors={colors}
             />
           )}
-          {hasAddress && (
+          {hasStreetAddress && (
             <ActionRow
               icon="navigate-outline"
               label="Itineraire"
-              onPress={() => openMaps(booking.locationAddress || booking.locationName || '')}
+              onPress={() => openMaps(booking.locationAddress || '')}
               colors={colors}
             />
           )}

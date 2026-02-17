@@ -73,6 +73,10 @@ export type { ColorPalette } from './ThemeSwitcher';
 // Logo
 export { Logo, LogoWhite } from './Logo';
 
+// ConfirmDialog
+export { ConfirmDialog } from './ConfirmDialog';
+export type { ConfirmDialogProps } from './ConfirmDialog';
+
 // AddressAutocomplete
 export { AddressAutocomplete } from './AddressAutocomplete';
 export type { AddressAutocompleteProps, AddressSuggestion } from './AddressAutocomplete';

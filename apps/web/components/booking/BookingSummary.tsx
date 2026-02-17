@@ -114,7 +114,9 @@ export function BookingSummary({
           </div>
           <div>
             <h4 className="font-medium text-gray-900 dark:text-white">{location.name}</h4>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{location.address}</p>
+            {location.address?.trim() && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">{location.address}</p>
+            )}
           </div>
         </div>
 

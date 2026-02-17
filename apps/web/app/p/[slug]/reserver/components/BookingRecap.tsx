@@ -69,6 +69,7 @@ function formatDuration(minutes: number): string {
 }
 
 function formatPrice(cents: number): string {
+  if (cents === 0) return 'Gratuit';
   const euros = cents / 100;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
@@ -216,7 +217,9 @@ export function BookingRecap({
                   {location.name}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {location.address}, {location.postalCode} {location.city}
+                  {location.address
+                    ? `${location.address}, ${location.postalCode} ${location.city}`
+                    : `${location.postalCode} ${location.city}`}
                 </p>
               </div>
             </div>

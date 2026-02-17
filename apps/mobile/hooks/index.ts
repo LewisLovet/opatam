@@ -65,3 +65,6 @@ export type { UseBlockedSlotsResult } from './useBlockedSlots';
 
 export { useProviderStats } from './useProviderStats';
 export type { ProviderStats, UseProviderStatsResult } from './useProviderStats';
+
+export { useOpeningHours } from './useOpeningHours';
+export type { DaySchedule, UseOpeningHoursResult } from './useOpeningHours';

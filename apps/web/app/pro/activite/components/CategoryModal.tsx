@@ -8,6 +8,7 @@ import {
   ModalFooter,
   Button,
   Input,
+  ConfirmDialog,
 } from '@/components/ui';
 import { Loader2, Trash2 } from 'lucide-react';
 import type { ServiceCategory } from '@booking-app/shared';
@@ -144,40 +145,15 @@ export function CategoryModal({
           {/* Delete button (editing only) */}
           {isEditing && onDelete && (
             <div className="flex-1">
-              {showDeleteConfirm ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Confirmer ?</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowDeleteConfirm(false)}
-                    disabled={deleting}
-                  >
-                    Non
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="text-error-600 hover:text-error-700"
-                  >
-                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Oui, supprimer'}
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="text-error-600 hover:text-error-700"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Supprimer
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-error-600 hover:text-error-700"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer
+              </Button>
             </div>
           )}
 
@@ -199,6 +175,18 @@ export function CategoryModal({
           </Button>
         </ModalFooter>
       </form>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Supprimer la catégorie"
+        message="Êtes-vous sûr de vouloir supprimer cette catégorie ? Les prestations associées ne seront pas supprimées mais n'auront plus de catégorie."
+        confirmLabel="Supprimer"
+        loading={deleting}
+        variant="danger"
+      />
     </Modal>
   );
 }

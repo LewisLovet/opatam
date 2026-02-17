@@ -64,7 +64,10 @@ export function ProviderInfo({
   className = '',
 }: ProviderInfoProps) {
   const todayStatus = getTodayStatus(workingHours);
-  const fullAddress = `${address}, ${postalCode} ${city}`;
+  const hasStreetAddress = !!address?.trim();
+  const fullAddress = hasStreetAddress
+    ? `${address}, ${postalCode} ${city}`
+    : `${postalCode} ${city}`;
 
   return (
     <Card variant="bordered" className={className}>

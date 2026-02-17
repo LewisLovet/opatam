@@ -22,6 +22,7 @@ interface NotificationResponse {
 export function useNotifications() {
   const { user, userData } = useAuth();
   const currentTokenRef = useRef<string | null>(null);
+  const previousUidRef = useRef<string | null>(null);
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
@@ -96,12 +97,21 @@ export function useNotifications() {
     };
   }, [handleNotification, handleNotificationResponse]);
 
-  // Clean up token on logout
+  // Remove push token from previous account on logout or account switch
   useEffect(() => {
-    return () => {
-      // When user logs out, we could optionally remove the token
-      // For now, we keep it to allow re-registration on next login
-    };
+    const currentUid = user?.uid ?? null;
+    const previousUid = previousUidRef.current;
+
+    // User logged out or switched account: remove token from previous user
+    if (previousUid && previousUid !== currentUid && currentTokenRef.current) {
+      userRepository
+        .removePushToken(previousUid, currentTokenRef.current)
+        .then(() => console.log('Push token removed from previous user:', previousUid))
+        .catch((err) => console.error('Error removing push token:', err));
+      currentTokenRef.current = null;
+    }
+
+    previousUidRef.current = currentUid;
   }, [user?.uid]);
 
   return {

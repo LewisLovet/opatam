@@ -18,7 +18,10 @@ interface LocationCardProps {
 
 export function LocationCard({ location }: LocationCardProps) {
   const isFixed = location.type === 'fixed';
-  const fullAddress = `${location.address}, ${location.postalCode} ${location.city}`;
+  const hasStreetAddress = !!location.address?.trim();
+  const fullAddress = hasStreetAddress
+    ? `${location.address}, ${location.postalCode} ${location.city}`
+    : `${location.postalCode} ${location.city}`;
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
 
   return (
@@ -63,22 +66,28 @@ export function LocationCard({ location }: LocationCardProps) {
             {isFixed ? (
               <>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  {location.address}
-                  <br />
+                  {hasStreetAddress && (
+                    <>
+                      {location.address}
+                      <br />
+                    </>
+                  )}
                   {location.postalCode} {location.city}
                 </p>
 
-                {/* Google Maps link */}
-                <a
-                  href={mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
-                >
-                  <Navigation className="w-4 h-4" />
-                  Voir sur Google Maps
-                  <ExternalLink className="w-3 h-3 opacity-50" />
-                </a>
+                {/* Google Maps link - only with street address */}
+                {hasStreetAddress && (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    Voir sur Google Maps
+                    <ExternalLink className="w-3 h-3 opacity-50" />
+                  </a>
+                )}
               </>
             ) : (
               <p className="text-sm text-gray-600 dark:text-gray-400">

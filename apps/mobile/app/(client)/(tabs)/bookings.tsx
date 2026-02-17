@@ -3,7 +3,7 @@
  * User's appointments list with upcoming/past tabs
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import { Text, Card, EmptyState } from '../../../components';
@@ -142,9 +142,15 @@ export default function BookingsScreen() {
   const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { isAuthenticated } = useAuth();
   const { upcoming, past, loading, error, refresh } = useClientBookings();
-  const [activeTab, setActiveTab] = useState<TabType>('upcoming');
+  const [activeTab, setActiveTab] = useState<TabType>(tab === 'past' ? 'past' : 'upcoming');
+
+  useEffect(() => {
+    if (tab === 'past') setActiveTab('past');
+  }, [tab]);
+
   const [refreshing, setRefreshing] = useState(false);
 
   // Refresh bookings when screen comes into focus (e.g., after cancellation)
@@ -203,6 +209,7 @@ export default function BookingsScreen() {
           styles.tabContainer,
           {
             marginHorizontal: spacing.lg,
+            marginTop: spacing.md,
             marginBottom: spacing.lg,
             backgroundColor: colors.surfaceSecondary,
             borderRadius: 12,

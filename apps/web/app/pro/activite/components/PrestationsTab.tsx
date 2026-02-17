@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
 import { catalogService, locationService, memberService } from '@booking-app/firebase';
-import { Plus, FolderPlus, Pencil, ChevronDown, ChevronRight, Tag, Loader2 } from 'lucide-react';
+import { Plus, FolderPlus, Pencil, ChevronRight, Tag, Loader2 } from 'lucide-react';
 import { ServiceCard } from './ServiceCard';
 import { ServiceModal, type ServiceFormData } from './ServiceModal';
 import { CategoryModal, type CategoryFormData } from './CategoryModal';
@@ -271,28 +271,25 @@ export function PrestationsTab() {
     return (
       <div key={category.id} className="space-y-3">
         {/* Category header */}
-        <div className="flex items-center gap-3 py-2">
+        <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors">
           <button
             type="button"
             onClick={() => toggleCategoryCollapse(category.id)}
-            className="flex items-center gap-2 flex-1 min-w-0 group"
+            className="flex items-center gap-3 flex-1 min-w-0"
           >
-            {isCollapsed ? (
-              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0" />
-            )}
-            <span className="font-semibold text-gray-900 dark:text-white truncate">
+            <div className="w-1 h-5 bg-primary-500 rounded-full flex-shrink-0" />
+            <span className="text-[17px] font-semibold text-gray-800 dark:text-gray-200 tracking-tight truncate">
               {category.name}
             </span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
-              ({categoryServices.length})
+            <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0">
+              {categoryServices.length}
             </span>
+            <ChevronRight className={`w-5 h-5 text-gray-400 flex-shrink-0 ml-auto transition-transform duration-200 ${!isCollapsed ? 'rotate-90' : ''}`} />
           </button>
           <button
             type="button"
             onClick={() => handleEditCategory(category)}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700 transition-colors"
             aria-label={`Modifier la catégorie ${category.name}`}
           >
             <Pencil className="w-4 h-4" />
@@ -358,12 +355,13 @@ export function PrestationsTab() {
           {/* Uncategorized services */}
           {groupedData.uncategorized.length > 0 && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 py-2">
-                <span className="font-semibold text-gray-900 dark:text-white">
+              <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl px-4 py-3">
+                <div className="w-1 h-5 bg-primary-500 rounded-full flex-shrink-0" />
+                <span className="text-[17px] font-semibold text-gray-800 dark:text-gray-200 tracking-tight">
                   Autres prestations
                 </span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  ({groupedData.uncategorized.length})
+                <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  {groupedData.uncategorized.length}
                 </span>
               </div>
               {renderServiceList(groupedData.uncategorized)}

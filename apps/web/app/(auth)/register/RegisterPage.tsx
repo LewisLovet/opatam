@@ -20,12 +20,12 @@ import {
   Plus,
   X,
 } from 'lucide-react';
-import { Button, Input, AddressAutocomplete, type AddressSuggestion } from '@/components/ui';
+import { Button, Input, Checkbox, AddressAutocomplete, type AddressSuggestion } from '@/components/ui';
 import { StepIndicator } from '@/components/common/StepIndicator';
 import {
   authService,
   providerService,
-  locationRepository,
+  locationService,
   serviceRepository,
   schedulingService,
   memberService,
@@ -66,6 +66,7 @@ interface WizardData {
   description: string;
   // Step 2 - Location
   locationName: string;
+  cityOnly: boolean;
   address: string;
   postalCode: string;
   city: string;
@@ -103,6 +104,7 @@ const DEFAULT_DATA: WizardData = {
   category: '',
   description: '',
   locationName: '',
+  cityOnly: false,
   address: '',
   postalCode: '',
   city: '',
@@ -231,21 +233,28 @@ export default function RegisterPage() {
           setError('Veuillez entrer le nom du lieu');
           return false;
         }
-        if (!data.address.trim()) {
-          setError("Veuillez entrer l'adresse");
-          return false;
-        }
-        if (!data.geopoint) {
-          setError('Veuillez sélectionner une adresse dans la liste');
-          return false;
-        }
-        if (!data.postalCode.trim()) {
-          setError('Veuillez entrer le code postal');
-          return false;
-        }
-        if (!data.city.trim()) {
-          setError('Veuillez entrer la ville');
-          return false;
+        if (data.cityOnly) {
+          if (!data.city.trim() || !data.postalCode.trim()) {
+            setError('Veuillez sélectionner une ville dans la liste');
+            return false;
+          }
+        } else {
+          if (!data.address.trim()) {
+            setError("Veuillez entrer l'adresse");
+            return false;
+          }
+          if (!data.geopoint) {
+            setError('Veuillez sélectionner une adresse dans la liste');
+            return false;
+          }
+          if (!data.postalCode.trim()) {
+            setError('Veuillez entrer le code postal');
+            return false;
+          }
+          if (!data.city.trim()) {
+            setError('Veuillez entrer la ville');
+            return false;
+          }
         }
         return true;
       case 3:
@@ -253,7 +262,7 @@ export default function RegisterPage() {
           setError('Veuillez entrer le nom de la prestation');
           return false;
         }
-        if (data.servicePrice <= 0) {
+        if (data.servicePrice < 0) {
           setError('Veuillez entrer un prix valide');
           return false;
         }
@@ -334,19 +343,18 @@ export default function RegisterPage() {
       description: data.description,
     });
 
-    // Create Location
-    const locationId = await locationRepository.create(provider.id, {
+    // Create Location (via service for validation + provider cities update)
+    const location = await locationService.createLocation(provider.id, {
       name: data.locationName,
-      address: data.address,
+      address: data.cityOnly ? '' : data.address,
       postalCode: data.postalCode,
       city: data.city,
-      geopoint: data.geopoint,
+      geopoint: data.cityOnly ? null : data.geopoint,
       description: null,
-      isDefault: true,
-      isActive: true,
       type: 'fixed',
       travelRadius: null,
     });
+    const locationId = location.id;
 
     // Create default member (represents the provider owner)
     // NOUVEAU MODÈLE: 1 membre = 1 lieu = 1 agenda
@@ -506,22 +514,54 @@ export default function RegisterPage() {
         onChange={(e) => updateData({ locationName: e.target.value })}
       />
 
-      <AddressAutocomplete
-        label="Adresse"
-        value={data.address}
-        onChange={(value) => updateData({ address: value, postalCode: '', city: '', geopoint: null })}
-        onSelect={(suggestion: AddressSuggestion) => {
+      <Checkbox
+        name="cityOnly"
+        checked={data.cityOnly}
+        onChange={(e) => {
+          const checked = e.target.checked;
           updateData({
-            address: suggestion.label,
-            postalCode: suggestion.postcode,
-            city: suggestion.city,
-            geopoint: suggestion.coordinates,
+            cityOnly: checked,
+            ...(checked ? { address: '', geopoint: null, postalCode: '', city: '' } : {}),
           });
         }}
-        placeholder="Commencez à taper votre adresse..."
-        hint={!data.geopoint ? 'Sélectionnez une adresse dans la liste pour remplir automatiquement' : undefined}
-        required
+        label="Ville uniquement"
+        description="Ne pas afficher d'adresse précise"
       />
+
+      {!data.cityOnly ? (
+        <AddressAutocomplete
+          label="Adresse"
+          value={data.address}
+          onChange={(value) => updateData({ address: value, postalCode: '', city: '', geopoint: null })}
+          onSelect={(suggestion: AddressSuggestion) => {
+            updateData({
+              address: suggestion.label,
+              postalCode: suggestion.postcode,
+              city: suggestion.city,
+              geopoint: suggestion.coordinates,
+            });
+          }}
+          placeholder="Commencez à taper votre adresse..."
+          hint={!data.geopoint ? 'Sélectionnez une adresse dans la liste pour remplir automatiquement' : undefined}
+          required
+        />
+      ) : (
+        <AddressAutocomplete
+          label="Ville"
+          value={data.city}
+          onChange={(value) => updateData({ city: value, postalCode: '', geopoint: null })}
+          onSelect={(suggestion: AddressSuggestion) => {
+            updateData({
+              city: suggestion.city,
+              postalCode: suggestion.postcode,
+              geopoint: suggestion.coordinates,
+            });
+          }}
+          placeholder="Rechercher une ville..."
+          required
+          type="municipality"
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Input

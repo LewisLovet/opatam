@@ -195,7 +195,7 @@ export function BookingDetail({
             <InfoRow
               icon="location-outline"
               label="Lieu"
-              value={`${booking.location.name}\n${booking.location.address}`}
+              value={booking.location.address?.trim() ? `${booking.location.name}\n${booking.location.address}` : booking.location.name}
             />
           </View>
         </>

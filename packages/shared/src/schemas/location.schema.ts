@@ -83,18 +83,6 @@ export const createLocationSchema = z.object({
     message: 'Le rayon de déplacement est requis pour un lieu de type déplacement',
     path: ['travelRadius'],
   }
-).refine(
-  (data) => {
-    // If type is fixed, address is required
-    if (data.type === 'fixed' && (!data.address || data.address.length < 5)) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: 'L\'adresse est requise pour un lieu fixe (minimum 5 caractères)',
-    path: ['address'],
-  }
 );
 
 // Update location schema

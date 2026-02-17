@@ -156,7 +156,7 @@ export default function ProfileScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: spacing['3xl'] }}
+        contentContainerStyle={{ paddingTop: spacing.md, paddingBottom: spacing['3xl'] }}
       >
 
         {/* User Info Card */}

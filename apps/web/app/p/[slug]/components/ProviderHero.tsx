@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import { Calendar, User } from 'lucide-react';
 import Image from 'next/image';
+import { getCategoryLabel } from '@booking-app/shared';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { RatingDisplay } from '@/components/review/RatingDisplay';
@@ -75,6 +77,19 @@ export function ProviderHero({
   // For team plans, show per-member availability; sort by earliest date first
   const showMemberDispos = isTeam && memberAvailabilities.length > 1;
 
+  // Description "Voir plus" logic
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [descTruncated, setDescTruncated] = useState(false);
+  const descRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = descRef.current;
+    if (el) {
+      // Check if text is actually truncated (scrollHeight > clientHeight)
+      setDescTruncated(el.scrollHeight > el.clientHeight + 1);
+    }
+  }, [provider.description]);
+
   return (
     <div className="overflow-hidden">
       {/* Cover Photo */}
@@ -129,7 +144,7 @@ export function ProviderHero({
                 )}
               </div>
 
-              <Badge className="mt-2">{provider.category}</Badge>
+              <Badge className="mt-2">{getCategoryLabel(provider.category)}</Badge>
 
               {provider.rating.count > 0 && (
                 <div className="mt-3">
@@ -138,9 +153,23 @@ export function ProviderHero({
               )}
 
               {provider.description && (
-                <p className="mt-3 text-gray-600 dark:text-gray-400 line-clamp-1">
-                  {provider.description}
-                </p>
+                <div className="mt-3">
+                  <p
+                    ref={descRef}
+                    className={`text-gray-600 dark:text-gray-400 ${descExpanded ? '' : 'line-clamp-1'}`}
+                  >
+                    {provider.description}
+                  </p>
+                  {(descTruncated || descExpanded) && (
+                    <button
+                      type="button"
+                      onClick={() => setDescExpanded(!descExpanded)}
+                      className="mt-1 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                    >
+                      {descExpanded ? 'Voir moins' : 'Voir plus'}
+                    </button>
+                  )}
+                </div>
               )}
 
               {/* Next Available Date Badge — global (solo or team earliest) */}

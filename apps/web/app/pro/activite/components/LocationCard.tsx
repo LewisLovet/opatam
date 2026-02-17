@@ -50,7 +50,9 @@ export function LocationCard({
   // Format location info based on type
   const locationInfo = isMobile
     ? `Déplacement dans un rayon de ${location.travelRadius} km autour de ${location.city}`
-    : `${location.address}, ${location.postalCode} ${location.city}`;
+    : location.address
+      ? `${location.address}, ${location.postalCode} ${location.city}`
+      : `${location.postalCode} ${location.city}`;
 
   return (
     <div

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
+import { Sparkles, ChevronRight } from 'lucide-react';
 import { ServiceItem } from './ServiceItem';
 
 interface Service {
@@ -128,19 +128,16 @@ export function ServicesSection({ services, categories = [], slug }: ServicesSec
               <button
                 type="button"
                 onClick={() => toggleCategory(category.id)}
-                className="flex items-center gap-2 mb-3 group w-full text-left"
+                className="flex items-center gap-3 mb-3 w-full text-left bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
               >
-                {isCollapsed ? (
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors" />
-                ) : (
-                  <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors" />
-                )}
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                <div className="w-1 h-5 bg-primary-500 rounded-full flex-shrink-0" />
+                <h3 className="text-[17px] font-semibold text-gray-800 dark:text-gray-200 tracking-tight">
                   {category.name}
                 </h3>
-                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-full">
+                <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-0.5 rounded-full">
                   {catServices.length}
                 </span>
+                <ChevronRight className={`w-5 h-5 text-gray-400 flex-shrink-0 ml-auto transition-transform duration-200 ${!isCollapsed ? 'rotate-90' : ''}`} />
               </button>
               {!isCollapsed && (
                 <div className="space-y-4">
@@ -159,19 +156,16 @@ export function ServicesSection({ services, categories = [], slug }: ServicesSec
               <button
                 type="button"
                 onClick={() => toggleCategory('__uncategorized__')}
-                className="flex items-center gap-2 mb-3 group w-full text-left"
+                className="flex items-center gap-3 mb-3 w-full text-left bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
               >
-                {collapsedCategories.has('__uncategorized__') ? (
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors" />
-                ) : (
-                  <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 transition-colors" />
-                )}
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                <div className="w-1 h-5 bg-primary-500 rounded-full flex-shrink-0" />
+                <h3 className="text-[17px] font-semibold text-gray-800 dark:text-gray-200 tracking-tight">
                   Autres
                 </h3>
-                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-full">
+                <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-0.5 rounded-full">
                   {grouped.uncategorized.length}
                 </span>
+                <ChevronRight className={`w-5 h-5 text-gray-400 flex-shrink-0 ml-auto transition-transform duration-200 ${!collapsedCategories.has('__uncategorized__') ? 'rotate-90' : ''}`} />
               </button>
             )}
             {!collapsedCategories.has('__uncategorized__') && (

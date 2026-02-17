@@ -148,7 +148,7 @@ export function BookingRecap({
             <InfoRow
               icon="location-outline"
               label="Lieu"
-              value={`${location.name}\n${location.address}`}
+              value={location.address?.trim() ? `${location.name}\n${location.address}` : location.name}
             />
           </View>
         </>

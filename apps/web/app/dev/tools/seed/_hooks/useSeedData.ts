@@ -198,7 +198,7 @@ export function useSeedData(): UseSeedDataReturn {
       updatedAt: serverTimestamp(),
     });
 
-    addLog('info', `  - Location: ${provider.address}, ${provider.city}`);
+    addLog('info', `  - Location: ${provider.address?.trim() ? `${provider.address}, ${provider.city}` : provider.city}`);
 
     // 3. Créer le membre propriétaire
     const memberId = `${providerId}-owner`;

@@ -8,6 +8,7 @@ import {
   ModalFooter,
   Button,
   Input,
+  ConfirmDialog,
   useToast,
 } from '@/components/ui';
 import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Tag, ChevronRight, ChevronLeft, User, MapPin, Key } from 'lucide-react';
@@ -521,45 +522,16 @@ export function MemberModal({
               Envoyer par email
             </Button>
 
-            {showRegenerateConfirm ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Confirmer ?</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowRegenerateConfirm(false)}
-                  disabled={regenerating}
-                >
-                  Non
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRegenerateCode}
-                  disabled={regenerating}
-                  className="text-warning-600 hover:text-warning-700"
-                >
-                  {regenerating ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    'Oui'
-                  )}
-                </Button>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowRegenerateConfirm(true)}
-                className="text-warning-600 border-warning-300 hover:bg-warning-50"
-              >
-                <RefreshCw className="w-4 h-4 mr-1.5" />
-                Régénérer
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRegenerateConfirm(true)}
+              className="text-warning-600 border-warning-300 hover:bg-warning-50"
+            >
+              <RefreshCw className="w-4 h-4 mr-1.5" />
+              Régénérer
+            </Button>
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -673,40 +645,15 @@ export function MemberModal({
               {/* Delete button (editing only) */}
               {onDelete && (
                 <div className="flex-1">
-                  {showDeleteConfirm ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Confirmer ?</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowDeleteConfirm(false)}
-                        disabled={deleting}
-                      >
-                        Non
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleDelete}
-                        disabled={deleting}
-                        className="text-error-600 hover:text-error-700"
-                      >
-                        {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Oui, supprimer'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="text-error-600 hover:text-error-700"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Supprimer
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-error-600 hover:text-error-700"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Supprimer
+                  </Button>
                 </div>
               )}
 
@@ -760,6 +707,30 @@ export function MemberModal({
           )}
         </ModalFooter>
       </form>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Supprimer le membre"
+        message="Êtes-vous sûr de vouloir supprimer ce membre ? Cette action est irréversible."
+        confirmLabel="Supprimer"
+        loading={deleting}
+        variant="danger"
+      />
+
+      {/* Regenerate code confirmation dialog */}
+      <ConfirmDialog
+        isOpen={showRegenerateConfirm}
+        onClose={() => setShowRegenerateConfirm(false)}
+        onConfirm={handleRegenerateCode}
+        title="Régénérer le code"
+        message="L'ancien code d'accès ne fonctionnera plus. Le membre devra utiliser le nouveau code pour accéder à son planning."
+        confirmLabel="Régénérer"
+        loading={regenerating}
+        variant="warning"
+      />
     </Modal>
   );
 }

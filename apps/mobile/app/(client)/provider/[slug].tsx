@@ -1,6 +1,6 @@
 /**
  * Provider Detail Screen
- * Full provider profile with services, reviews, and booking CTA
+ * Full provider profile with tabbed layout: Prestations, Avis, Infos
  */
 
 import React, { useState } from 'react';
@@ -21,9 +21,9 @@ import {
   Text,
   Card,
   Skeleton,
+  ExpandableText,
   ProviderHeader,
   ProviderHeaderSkeleton,
-  ProviderInfo,
   ServiceCategory,
   RatingStats,
   ReviewCard,
@@ -31,11 +31,33 @@ import {
   Button,
   EmptyState,
   SocialLinks,
+  PortfolioGallery,
+  HoursSection,
+  TeamSection,
+  LocationSection,
   useToast,
 } from '../../../components';
-import { useProvider, useServices, useServiceCategories, useReviews, useLocations, useNextAvailableDate, useTeamAvailabilities } from '../../../hooks';
+import {
+  useProvider,
+  useServices,
+  useServiceCategories,
+  useReviews,
+  useLocations,
+  useNextAvailableDate,
+  useTeamAvailabilities,
+  useOpeningHours,
+  useMembers,
+} from '../../../hooks';
 import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+
+type TabId = 'prestations' | 'avis' | 'infos';
+
+const TABS: { id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'prestations', label: 'Prestations', icon: 'pricetag-outline' },
+  { id: 'avis', label: 'Avis', icon: 'star-outline' },
+  { id: 'infos', label: 'Infos', icon: 'information-circle-outline' },
+];
 
 // Check if provider has any social links
 function hasSocialLinks(socialLinks: SocialLinksType): boolean {
@@ -91,6 +113,8 @@ export default function ProviderDetailScreen() {
   const { reviews, loading: loadingReviews, refresh: refreshReviews } = useReviews(provider?.id);
   const { locations, refresh: refreshLocations } = useLocations(provider?.id);
   const { formattedDate: nextAvailableFormatted, loading: loadingAvailability, refresh: refreshAvailability } = useNextAvailableDate(provider?.id);
+  const { weekSchedule, isCurrentlyOpen, loading: loadingHours, refresh: refreshHours } = useOpeningHours(provider?.id);
+  const { members, refresh: refreshMembers } = useMembers(provider?.id);
 
   // Team plan: per-member availability
   const isTeam = provider?.plan === 'team';
@@ -106,7 +130,8 @@ export default function ProviderDetailScreen() {
   const displayedAvailability = showTeamDispos ? teamEarliestFormatted : nextAvailableFormatted;
   const availabilityLoading = showTeamDispos ? loadingTeamAvail : loadingAvailability;
 
-  // Selected service state (disabled in preview mode)
+  // Tab & selection state
+  const [activeTab, setActiveTab] = useState<TabId>('prestations');
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -120,6 +145,8 @@ export default function ProviderDetailScreen() {
       refreshReviews(),
       refreshLocations(),
       refreshAvailability(),
+      refreshHours(),
+      refreshMembers(),
       ...(isTeam ? [refreshTeamAvail()] : []),
     ]);
     setRefreshing(false);
@@ -152,9 +179,6 @@ export default function ProviderDetailScreen() {
     });
   };
 
-  // Get primary location for display
-  const primaryLocation = locations[0];
-
   // Group services by category
   const serviceGroups = groupServices(services, categories);
 
@@ -186,18 +210,24 @@ export default function ProviderDetailScreen() {
 
           {/* Provider Info skeleton */}
           <View style={{ padding: spacing.lg }}>
-            <Card padding="md" shadow="sm">
-              <View style={{ gap: spacing.sm }}>
-                <Skeleton width="100%" height={16} />
-                <Skeleton width="90%" height={16} />
-                <Skeleton width="60%" height={14} style={{ marginTop: spacing.xs }} />
+            <View style={{ gap: spacing.sm }}>
+              <Skeleton width="100%" height={16} />
+              <Skeleton width="90%" height={16} />
+              <Skeleton width="60%" height={14} style={{ marginTop: spacing.xs }} />
+            </View>
+          </View>
+
+          {/* Tab bar skeleton */}
+          <View style={{ flexDirection: 'row', paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
+            {[1, 2, 3].map((i) => (
+              <View key={i} style={{ flex: 1, alignItems: 'center', paddingVertical: spacing.sm }}>
+                <Skeleton width={80} height={16} />
               </View>
-            </Card>
+            ))}
           </View>
 
           {/* Services skeleton */}
           <View style={{ paddingHorizontal: spacing.lg }}>
-            <Skeleton width={120} height={24} style={{ marginBottom: spacing.md }} />
             <Card padding="md" shadow="sm">
               {[1, 2, 3].map((i) => (
                 <View key={i} style={{ marginBottom: i < 3 ? spacing.md : 0 }}>
@@ -206,17 +236,6 @@ export default function ProviderDetailScreen() {
                   <Skeleton width="30%" height={14} style={{ marginTop: spacing.xs }} />
                 </View>
               ))}
-            </Card>
-          </View>
-
-          {/* Reviews skeleton */}
-          <View style={{ padding: spacing.lg }}>
-            <Skeleton width={60} height={24} style={{ marginBottom: spacing.md }} />
-            <Card padding="lg" shadow="sm">
-              <View style={{ alignItems: 'center', gap: spacing.sm }}>
-                <Skeleton width={80} height={32} />
-                <Skeleton width={120} height={16} />
-              </View>
             </Card>
           </View>
         </ScrollView>
@@ -290,16 +309,12 @@ export default function ProviderDetailScreen() {
           rating={provider.rating}
         />
 
-        {/* Provider Info */}
-        <View style={{ padding: spacing.lg }}>
-          <Card padding="md" shadow="sm">
-            <ProviderInfo
-              description={provider.description}
-              address={primaryLocation?.address || ''}
-              city={primaryLocation ? `${primaryLocation.city} ${primaryLocation.postalCode}` : provider.cities[0] || ''}
-              phone={null}
-            />
-          </Card>
+        {/* Description + Availability + Social (above tabs) */}
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+          {/* Description */}
+          {provider.description && (
+            <ExpandableText text={provider.description} numberOfLines={3} />
+          )}
 
           {/* Next Available Date Badge */}
           {!availabilityLoading && displayedAvailability && (
@@ -355,87 +370,167 @@ export default function ProviderDetailScreen() {
           )}
         </View>
 
-        {/* Services */}
-        <View style={{ paddingHorizontal: spacing.lg }}>
-          <Text variant="h2" style={{ marginBottom: spacing.md }}>
-            Prestations
-          </Text>
-          {loadingServices ? (
-            <View style={styles.sectionLoading}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          ) : services.length === 0 ? (
-            <Card padding="lg" shadow="sm">
-              <EmptyState
-                icon="pricetag-outline"
-                title="Aucune prestation"
-                description="Ce prestataire n'a pas encore de prestations"
-              />
-            </Card>
-          ) : (
-            <View style={{ gap: spacing.lg }}>
-              {serviceGroups.map((group, index) => (
-                <ServiceCategory
-                  key={group.id}
-                  title={group.title}
-                  services={group.services.map((s) => ({
-                    id: s.id,
-                    name: s.name,
-                    description: s.description,
-                    duration: s.duration,
-                    price: s.price / 100, // Convert cents to euros
-                  }))}
-                  selectedId={isPreview ? null : selectedServiceId}
-                  onSelectService={isPreview ? undefined : handleSelectService}
-                  collapsible={serviceGroups.length > 1}
-                  defaultExpanded={serviceGroups.length <= 3 || index === 0}
+        {/* Tab Bar */}
+        <View
+          style={[
+            styles.tabBar,
+            {
+              marginTop: spacing.lg,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <Pressable
+                key={tab.id}
+                onPress={() => setActiveTab(tab.id)}
+                style={[
+                  styles.tab,
+                  isActive && {
+                    borderBottomColor: colors.primary,
+                    borderBottomWidth: 2,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={tab.icon}
+                  size={18}
+                  color={isActive ? colors.primary : colors.textSecondary}
+                  style={{ marginRight: 6 }}
                 />
-              ))}
-            </View>
-          )}
+                <Text
+                  variant="bodySmall"
+                  style={{
+                    color: isActive ? colors.primary : colors.textSecondary,
+                    fontWeight: isActive ? '600' : '400',
+                  }}
+                >
+                  {tab.label}
+                </Text>
+                {tab.id === 'avis' && reviews.length > 0 && (
+                  <View style={[styles.tabBadge, { backgroundColor: isActive ? colors.primary : colors.textMuted }]}>
+                    <Text variant="caption" style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>
+                      {reviews.length}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
         </View>
 
-        {/* Reviews */}
-        <View style={{ padding: spacing.lg }}>
-          <Text variant="h2" style={{ marginBottom: spacing.md }}>
-            Avis
-          </Text>
+        {/* Tab Content */}
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+          {/* ─── Prestations Tab ─── */}
+          {activeTab === 'prestations' && (
+            <View>
+              {loadingServices ? (
+                <View style={styles.sectionLoading}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              ) : services.length === 0 ? (
+                <Card padding="lg" shadow="sm">
+                  <EmptyState
+                    icon="pricetag-outline"
+                    title="Aucune prestation"
+                    description="Ce prestataire n'a pas encore de prestations"
+                  />
+                </Card>
+              ) : (
+                <View style={{ gap: spacing.lg }}>
+                  {serviceGroups.map((group, index) => (
+                    <ServiceCategory
+                      key={group.id}
+                      title={group.title}
+                      services={group.services.map((s) => ({
+                        id: s.id,
+                        name: s.name,
+                        description: s.description,
+                        duration: s.duration,
+                        price: s.price / 100, // Convert cents to euros
+                      }))}
+                      selectedId={isPreview ? null : selectedServiceId}
+                      onSelectService={isPreview ? undefined : handleSelectService}
+                      collapsible={serviceGroups.length > 1}
+                      defaultExpanded={serviceGroups.length <= 3 || index === 0}
+                    />
+                  ))}
+                </View>
+              )}
 
-          {/* Rating Stats */}
-          {provider.rating.count > 0 && (
-            <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.lg }}>
-              <RatingStats
-                average={provider.rating.average}
-                count={provider.rating.count}
-                distribution={provider.rating.distribution}
-              />
-            </Card>
+              {/* Portfolio Gallery */}
+              {provider.portfolioPhotos && provider.portfolioPhotos.length > 0 && (
+                <View style={{ marginTop: spacing.xl }}>
+                  <Text variant="h3" style={{ marginBottom: spacing.md }}>
+                    Réalisations
+                  </Text>
+                  <PortfolioGallery photos={provider.portfolioPhotos} />
+                </View>
+              )}
+            </View>
           )}
 
-          {/* Reviews List */}
-          {loadingReviews ? (
-            <View style={styles.sectionLoading}>
-              <ActivityIndicator size="small" color={colors.primary} />
+          {/* ─── Avis Tab ─── */}
+          {activeTab === 'avis' && (
+            <View>
+              {/* Rating Stats */}
+              {provider.rating.count > 0 && (
+                <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.lg }}>
+                  <RatingStats
+                    average={provider.rating.average}
+                    count={provider.rating.count}
+                    distribution={provider.rating.distribution}
+                  />
+                </Card>
+              )}
+
+              {/* Reviews List */}
+              {loadingReviews ? (
+                <View style={styles.sectionLoading}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              ) : reviews.length === 0 ? (
+                <Card padding="lg" shadow="sm">
+                  <EmptyState
+                    icon="chatbubble-outline"
+                    title="Aucun avis"
+                    description="Ce prestataire n'a pas encore d'avis"
+                  />
+                </Card>
+              ) : (
+                <View style={{ gap: spacing.md }}>
+                  {reviews.map((review) => (
+                    <ReviewCard
+                      key={review.id}
+                      authorName={review.clientName}
+                      rating={review.rating}
+                      comment={review.comment}
+                      date={review.createdAt}
+                    />
+                  ))}
+                </View>
+              )}
             </View>
-          ) : reviews.length === 0 ? (
-            <Card padding="lg" shadow="sm">
-              <EmptyState
-                icon="chatbubble-outline"
-                title="Aucun avis"
-                description="Ce prestataire n'a pas encore d'avis"
-              />
-            </Card>
-          ) : (
-            <View style={{ gap: spacing.md }}>
-              {reviews.map((review) => (
-                <ReviewCard
-                  key={review.id}
-                  authorName={review.clientName}
-                  rating={review.rating}
-                  comment={review.comment}
-                  date={review.createdAt}
+          )}
+
+          {/* ─── Infos Tab ─── */}
+          {activeTab === 'infos' && (
+            <View style={{ gap: spacing.xl }}>
+              {/* Locations */}
+              <LocationSection locations={locations} />
+
+              {/* Opening Hours */}
+              {!loadingHours && (
+                <HoursSection
+                  weekSchedule={weekSchedule}
+                  isCurrentlyOpen={isCurrentlyOpen}
                 />
-              ))}
+              )}
+
+              {/* Team (only for team plans with displayable members) */}
+              {isTeam && <TeamSection members={members} />}
             </View>
           )}
         </View>
@@ -451,7 +546,7 @@ export default function ProviderDetailScreen() {
                   {selectedService.name} - {selectedService.duration} min
                 </Text>
                 <Text variant="h3" color="primary">
-                  {(selectedService.price / 100).toFixed(2)} €
+                  {selectedService.price === 0 ? 'Gratuit' : `${(selectedService.price / 100).toFixed(2)} €`}
                 </Text>
               </View>
             )}
@@ -521,5 +616,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabBadge: {
+    marginLeft: 6,
+    minWidth: 20,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
   },
 });
