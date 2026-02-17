@@ -349,10 +349,12 @@ export default function RegisterPage() {
       address: data.cityOnly ? '' : data.address,
       postalCode: data.postalCode,
       city: data.city,
+      country: 'France',
       geopoint: data.cityOnly ? null : data.geopoint,
       description: null,
       type: 'fixed',
       travelRadius: null,
+      photoURLs: [],
     });
     const locationId = location.id;
 
