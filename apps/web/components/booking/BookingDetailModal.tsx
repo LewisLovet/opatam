@@ -262,46 +262,7 @@ export function BookingDetailModal({
       const reason = getCancelReason();
       await bookingService.cancelBooking(booking.id, 'provider', user.id, reason || undefined);
 
-      // Send cancellation email via API route
-      try {
-        await fetch('/api/bookings/cancel-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            bookingId: booking.id,
-            clientEmail: booking.clientInfo.email,
-            clientName: booking.clientInfo.name,
-            serviceName: booking.serviceName,
-            datetime: booking.datetime,
-            reason: reason,
-            providerName: booking.providerName,
-            providerSlug: providerSlug || provider?.slug,
-            locationName: booking.locationName,
-          }),
-        });
-      } catch (emailError) {
-        console.error('Error sending cancellation email:', emailError);
-      }
-
-      // Notify provider (fire and forget)
-      fetch('/api/bookings/provider-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          providerId: booking.providerId,
-          clientName: booking.clientInfo.name,
-          serviceName: booking.serviceName,
-          datetime: booking.datetime,
-          duration: booking.duration,
-          price: booking.price,
-          locationName: booking.locationName,
-          locationAddress: booking.locationAddress,
-          memberName: booking.memberName,
-          type: 'cancellation',
-          cancelledBy: 'provider',
-          cancelReason: reason || undefined,
-        }),
-      }).catch(() => {});
+      // Cancellation emails are handled by the onBookingWrite Cloud Function
 
       toast.success('Rendez-vous annulé');
       setShowCancelConfirm(false);

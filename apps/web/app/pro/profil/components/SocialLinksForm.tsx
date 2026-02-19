@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input, Button } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
-import { Loader2, Instagram, Facebook, Globe, DollarSign } from 'lucide-react';
+import { Loader2, Instagram, Facebook, Globe } from 'lucide-react';
 
 // TikTok icon component (not in lucide-react)
 function TikTokIcon({ className }: { className?: string }) {
@@ -16,6 +16,16 @@ function TikTokIcon({ className }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
     >
       <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+    </svg>
+  );
+}
+
+// PayPal icon component
+function PaypalIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 2.23A.773.773 0 0 1 5.706 1.6h6.574c2.179 0 3.702.58 4.527 1.724.785 1.09.957 2.544.513 4.325l-.014.063v.56l.436.247c.37.193.664.433.883.717.263.34.432.742.502 1.196.073.471.046 1.03-.079 1.66-.145.735-.38 1.375-.7 1.9a3.956 3.956 0 0 1-1.108 1.234 4.48 4.48 0 0 1-1.51.72 7.166 7.166 0 0 1-1.89.236H13.3a.95.95 0 0 0-.937.806l-.038.22-.633 4.016-.03.158a.95.95 0 0 1-.937.806H7.076Z" />
+      <path d="M18.282 7.976l-.014.063c-.882 4.528-3.9 6.093-7.752 6.093H8.92a.95.95 0 0 0-.937.806l-.997 6.326a.501.501 0 0 0 .495.578h3.472a.773.773 0 0 0 .763-.652l.031-.165.605-3.836.039-.212a.773.773 0 0 1 .763-.652h.48c3.11 0 5.544-1.263 6.256-4.916.297-1.526.143-2.8-.643-3.695a3.07 3.07 0 0 0-.879-.638l-.086-.1Z" opacity=".7" />
     </svg>
   );
 }
@@ -129,7 +139,7 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Instagram */}
       <div className="relative">
-        <div className="absolute left-3 top-[38px] text-gray-400">
+        <div className="absolute left-3 top-[38px] text-pink-500">
           <Instagram className="w-5 h-5" />
         </div>
         <Input
@@ -145,7 +155,7 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
 
       {/* Facebook */}
       <div className="relative">
-        <div className="absolute left-3 top-[38px] text-gray-400">
+        <div className="absolute left-3 top-[38px] text-[#1877F2]">
           <Facebook className="w-5 h-5" />
         </div>
         <Input
@@ -161,7 +171,7 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
 
       {/* TikTok */}
       <div className="relative">
-        <div className="absolute left-3 top-[38px] text-gray-400">
+        <div className="absolute left-3 top-[38px] text-black dark:text-white">
           <TikTokIcon className="w-5 h-5" />
         </div>
         <Input
@@ -177,7 +187,7 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
 
       {/* Website */}
       <div className="relative">
-        <div className="absolute left-3 top-[38px] text-gray-400">
+        <div className="absolute left-3 top-[38px] text-gray-600 dark:text-gray-400">
           <Globe className="w-5 h-5" />
         </div>
         <Input
@@ -193,8 +203,8 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
 
       {/* PayPal */}
       <div className="relative">
-        <div className="absolute left-3 top-[38px] text-gray-400">
-          <DollarSign className="w-5 h-5" />
+        <div className="absolute left-3 top-[38px] text-[#0070BA]">
+          <PaypalIcon className="w-5 h-5" />
         </div>
         <Input
           label="PayPal.me"

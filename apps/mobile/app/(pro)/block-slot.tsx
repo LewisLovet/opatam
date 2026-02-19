@@ -1,9 +1,10 @@
 /**
  * Block Slot Screen
  * Form to create a blocked period (vacation, absence, etc.)
+ * Uses inline date picker in modal + custom time grid picker (cross-platform).
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,6 +13,8 @@ import {
   Pressable,
   Alert,
   Platform,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,13 +32,323 @@ const months = [
   'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
 ];
 
-function formatDate(date: Date): string {
-  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+function formatDateShort(date: Date): string {
+  return `${date.getDate()} ${months[date.getMonth()].slice(0, 3)}. ${date.getFullYear()}`;
 }
 
 function formatTime(date: Date): string {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 }
+
+// Data for scroll wheels
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5); // 0, 5, 10, ... 55
+const WHEEL_ITEM_HEIGHT = 48;
+const VISIBLE_ITEMS = 5; // Number of items visible in the wheel
+const WHEEL_HEIGHT = WHEEL_ITEM_HEIGHT * VISIBLE_ITEMS;
+const WHEEL_PADDING = WHEEL_ITEM_HEIGHT * Math.floor(VISIBLE_ITEMS / 2);
+
+// ---------------------------------------------------------------------------
+// Scroll Wheel Component
+// ---------------------------------------------------------------------------
+
+function ScrollWheel({
+  data,
+  selectedValue,
+  onValueChange,
+  formatLabel,
+  colors,
+}: {
+  data: number[];
+  selectedValue: number;
+  onValueChange: (value: number) => void;
+  formatLabel: (value: number) => string;
+  colors: any;
+}) {
+  const flatListRef = React.useRef<FlatList>(null);
+  const isUserScrolling = React.useRef(false);
+
+  // Scroll to initial value on mount
+  useEffect(() => {
+    const index = data.indexOf(selectedValue);
+    if (index >= 0 && flatListRef.current) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({
+          offset: index * WHEEL_ITEM_HEIGHT,
+          animated: false,
+        });
+      }, 50);
+    }
+  }, []);
+
+  const handleMomentumEnd = useCallback(
+    (e: any) => {
+      const offsetY = e.nativeEvent.contentOffset.y;
+      const index = Math.round(offsetY / WHEEL_ITEM_HEIGHT);
+      const clampedIndex = Math.max(0, Math.min(index, data.length - 1));
+      onValueChange(data[clampedIndex]);
+      isUserScrolling.current = false;
+    },
+    [data, onValueChange],
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: number }) => {
+      const isSelected = item === selectedValue;
+      return (
+        <View style={[s.wheelItem, { height: WHEEL_ITEM_HEIGHT }]}>
+          <Text
+            variant="body"
+            style={{
+              fontSize: isSelected ? 24 : 18,
+              fontWeight: isSelected ? '700' : '400',
+              color: isSelected ? colors.text : colors.textMuted,
+              opacity: isSelected ? 1 : 0.4,
+            }}
+          >
+            {formatLabel(item)}
+          </Text>
+        </View>
+      );
+    },
+    [selectedValue, colors, formatLabel],
+  );
+
+  return (
+    <View style={{ height: WHEEL_HEIGHT, overflow: 'hidden' }}>
+      <FlatList
+        ref={flatListRef}
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.toString()}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={WHEEL_ITEM_HEIGHT}
+        decelerationRate="fast"
+        onScrollBeginDrag={() => { isUserScrolling.current = true; }}
+        onMomentumScrollEnd={handleMomentumEnd}
+        contentContainerStyle={{
+          paddingTop: WHEEL_PADDING,
+          paddingBottom: WHEEL_PADDING,
+        }}
+        getItemLayout={(_, index) => ({
+          length: WHEEL_ITEM_HEIGHT,
+          offset: WHEEL_ITEM_HEIGHT * index,
+          index,
+        })}
+      />
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Custom Time Picker Modal — Dual scroll wheels (H : M)
+// ---------------------------------------------------------------------------
+
+function TimePickerModal({
+  visible,
+  title,
+  value,
+  onClose,
+  onConfirm,
+  colors,
+  spacing,
+  radius,
+}: {
+  visible: boolean;
+  title: string;
+  value: Date;
+  onClose: () => void;
+  onConfirm: (hour: number, minute: number) => void;
+  colors: any;
+  spacing: any;
+  radius: any;
+}) {
+  const snap = (m: number) => { const r = Math.round(m / 5) * 5; return r >= 60 ? 0 : r; };
+  const [selectedHour, setSelectedHour] = useState(value.getHours());
+  const [selectedMinute, setSelectedMinute] = useState(snap(value.getMinutes()));
+
+  // Reset when opening
+  useEffect(() => {
+    if (visible) {
+      setSelectedHour(value.getHours());
+      setSelectedMinute(snap(value.getMinutes()));
+    }
+  }, [visible, value]);
+
+  const padTwo = useCallback((n: number) => n.toString().padStart(2, '0'), []);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={s.pickerOverlay}>
+        <Pressable style={s.pickerBackdrop} onPress={onClose} />
+        <View style={[s.pickerSheet, { backgroundColor: colors.surface }]}>
+          {/* Header */}
+          <View
+            style={[
+              s.pickerHeader,
+              {
+                borderBottomWidth: 1,
+                borderBottomColor: colors.divider,
+                paddingHorizontal: spacing.lg,
+                paddingVertical: spacing.md,
+              },
+            ]}
+          >
+            <Pressable onPress={onClose} hitSlop={8}>
+              <Text variant="body" color="textSecondary">Annuler</Text>
+            </Pressable>
+            <Text variant="body" style={{ fontWeight: '600' }}>{title}</Text>
+            <Pressable
+              onPress={() => onConfirm(selectedHour, selectedMinute)}
+              hitSlop={8}
+            >
+              <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
+            </Pressable>
+          </View>
+
+          {/* Wheels */}
+          <View style={[s.wheelsContainer, { paddingVertical: spacing.lg }]}>
+            {/* Selection highlight bar */}
+            <View
+              style={[
+                s.wheelHighlight,
+                {
+                  top: spacing.lg + WHEEL_PADDING,
+                  height: WHEEL_ITEM_HEIGHT,
+                  backgroundColor: colors.primaryLight,
+                  borderRadius: radius.lg,
+                  marginHorizontal: spacing['2xl'],
+                },
+              ]}
+            />
+
+            {/* Hour wheel */}
+            <View style={s.wheelColumn}>
+              <ScrollWheel
+                data={HOURS}
+                selectedValue={selectedHour}
+                onValueChange={setSelectedHour}
+                formatLabel={padTwo}
+                colors={colors}
+              />
+            </View>
+
+            {/* Separator */}
+            <Text variant="h2" style={{ fontWeight: '700', color: colors.text, alignSelf: 'center' }}>
+              :
+            </Text>
+
+            {/* Minute wheel */}
+            <View style={s.wheelColumn}>
+              <ScrollWheel
+                data={MINUTES}
+                selectedValue={selectedMinute}
+                onValueChange={setSelectedMinute}
+                formatLabel={padTwo}
+                colors={colors}
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Date Picker Modal (native inline — works great for dates)
+// ---------------------------------------------------------------------------
+
+function DatePickerModal({
+  visible,
+  title,
+  value,
+  minimumDate,
+  onClose,
+  onChange,
+  colors,
+  spacing,
+}: {
+  visible: boolean;
+  title: string;
+  value: Date;
+  minimumDate?: Date;
+  onClose: () => void;
+  onChange: (date: Date) => void;
+  colors: any;
+  spacing: any;
+}) {
+  if (Platform.OS === 'android') {
+    if (!visible) return null;
+    return (
+      <DateTimePicker
+        value={value}
+        mode="date"
+        minimumDate={minimumDate}
+        onChange={(_: any, date: Date | undefined) => {
+          onClose();
+          if (date) onChange(date);
+        }}
+      />
+    );
+  }
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={s.pickerOverlay}>
+        <Pressable style={s.pickerBackdrop} onPress={onClose} />
+        <View style={[s.pickerSheet, { backgroundColor: colors.surface }]}>
+          <View
+            style={[
+              s.pickerHeader,
+              {
+                borderBottomWidth: 1,
+                borderBottomColor: colors.divider,
+                paddingHorizontal: spacing.lg,
+                paddingVertical: spacing.md,
+              },
+            ]}
+          >
+            <Pressable onPress={onClose} hitSlop={8}>
+              <Text variant="body" color="textSecondary">Annuler</Text>
+            </Pressable>
+            <Text variant="body" style={{ fontWeight: '600' }}>{title}</Text>
+            <Pressable onPress={onClose} hitSlop={8}>
+              <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
+            </Pressable>
+          </View>
+          <DateTimePicker
+            value={value}
+            mode="date"
+            display="inline"
+            minimumDate={minimumDate}
+            themeVariant="light"
+            onChange={(_, date) => {
+              if (date) onChange(date);
+            }}
+            style={{ height: 340 }}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Screen
+// ---------------------------------------------------------------------------
+
+type PickerMode = 'startDate' | 'endDate' | 'startTime' | 'endTime' | null;
 
 export default function BlockSlotScreen() {
   const { colors, spacing, radius } = useTheme();
@@ -43,7 +356,6 @@ export default function BlockSlotScreen() {
   const { providerId } = useProvider();
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
 
-  // Parse initial date from query param (ISO string) or fallback to today
   const initialDate = (() => {
     if (dateParam) {
       const parsed = new Date(dateParam);
@@ -60,12 +372,7 @@ export default function BlockSlotScreen() {
   const [reason, setReason] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Date picker visibility
-  const [showStartDate, setShowStartDate] = useState(false);
-  const [showEndDate, setShowEndDate] = useState(false);
-  const [showStartTime, setShowStartTime] = useState(false);
-  const [showEndTime, setShowEndTime] = useState(false);
+  const [activePicker, setActivePicker] = useState<PickerMode>(null);
 
   useEffect(() => {
     if (!providerId) return;
@@ -92,6 +399,28 @@ export default function BlockSlotScreen() {
 
   const toggleAll = () => {
     setSelectedMemberIds(allSelected ? [] : members.map((m) => m.id));
+  };
+
+  const handleDateChange = (date: Date) => {
+    if (activePicker === 'startDate') {
+      setStartDate(date);
+      if (date > endDate) setEndDate(date);
+    } else if (activePicker === 'endDate') {
+      setEndDate(date);
+    }
+  };
+
+  const handleTimeConfirm = (hour: number, minute: number) => {
+    if (activePicker === 'startTime') {
+      const d = new Date(startDate);
+      d.setHours(hour, minute, 0, 0);
+      setStartDate(d);
+    } else if (activePicker === 'endTime') {
+      const d = new Date(endDate);
+      d.setHours(hour, minute, 0, 0);
+      setEndDate(d);
+    }
+    setActivePicker(null);
   };
 
   const handleSubmit = async () => {
@@ -137,31 +466,34 @@ export default function BlockSlotScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.center}>
+      <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
+        <View style={s.center}>
           <Loader />
         </View>
       </SafeAreaView>
     );
   }
 
+  const isTimePicker = activePicker === 'startTime' || activePicker === 'endTime';
+  const isDatePicker = activePicker === 'startDate' || activePicker === 'endDate';
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { padding: spacing.lg, paddingBottom: spacing.md }]}>
+      <View style={[s.header, { padding: spacing.lg, paddingBottom: spacing.md }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Text variant="h2" style={{ marginLeft: spacing.md }}>
+        <Text variant="h2" style={{ marginLeft: spacing.md, flex: 1 }}>
           Bloquer un créneau
         </Text>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, paddingTop: 0 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, paddingBottom: spacing['3xl'] }}>
         {/* Member selection */}
         {members.length > 1 && (
           <View style={{ marginBottom: spacing.lg }}>
-            <Text variant="body" style={{ fontWeight: '600', marginBottom: spacing.sm }}>
+            <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}>
               Membres
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -169,7 +501,7 @@ export default function BlockSlotScreen() {
                 <Pressable
                   onPress={toggleAll}
                   style={[
-                    styles.chip,
+                    s.chip,
                     {
                       backgroundColor: allSelected ? colors.primary : colors.surface,
                       borderColor: allSelected ? colors.primary : colors.border,
@@ -181,10 +513,7 @@ export default function BlockSlotScreen() {
                 >
                   <Text
                     variant="bodySmall"
-                    style={{
-                      color: allSelected ? '#fff' : colors.text,
-                      fontWeight: '500',
-                    }}
+                    style={{ color: allSelected ? '#fff' : colors.text, fontWeight: '500' }}
                   >
                     Tous
                   </Text>
@@ -196,7 +525,7 @@ export default function BlockSlotScreen() {
                       key={member.id}
                       onPress={() => toggleMember(member.id)}
                       style={[
-                        styles.chip,
+                        s.chip,
                         {
                           backgroundColor: isSelected ? colors.primary : colors.surface,
                           borderColor: isSelected ? colors.primary : colors.border,
@@ -208,10 +537,7 @@ export default function BlockSlotScreen() {
                     >
                       <Text
                         variant="bodySmall"
-                        style={{
-                          color: isSelected ? '#fff' : colors.text,
-                          fontWeight: '500',
-                        }}
+                        style={{ color: isSelected ? '#fff' : colors.text, fontWeight: '500' }}
                       >
                         {member.name}
                       </Text>
@@ -223,200 +549,119 @@ export default function BlockSlotScreen() {
           </View>
         )}
 
-        {/* All day toggle */}
-        <View
-          style={[
-            styles.toggleRow,
-            {
-              backgroundColor: colors.surface,
-              borderRadius: radius.md,
-              padding: spacing.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-              marginBottom: spacing.md,
-            },
-          ]}
-        >
-          <Text variant="body" style={{ flex: 1 }}>Journée entière</Text>
-          <Switch value={allDay} onValueChange={setAllDay} />
-        </View>
-
-        {/* Start date */}
-        <View style={{ marginBottom: spacing.md }}>
-          <Text variant="body" style={{ fontWeight: '600', marginBottom: spacing.xs }}>
-            Date de début
-          </Text>
-          <Pressable
-            onPress={() => setShowStartDate(true)}
-            style={[
-              styles.dateButton,
-              {
-                backgroundColor: colors.surface,
-                borderRadius: radius.md,
-                padding: spacing.md,
-                borderWidth: 1,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
-            <Text variant="body" style={{ marginLeft: spacing.sm }}>
-              {formatDate(startDate)}
-            </Text>
-          </Pressable>
-          {showStartDate && (
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              minimumDate={new Date()}
-              onChange={(_: any, date: Date | undefined) => {
-                setShowStartDate(false);
-                if (date) {
-                  setStartDate(date);
-                  if (date > endDate) setEndDate(date);
-                }
-              }}
-            />
-          )}
-        </View>
-
-        {/* Start time (if not all day) */}
-        {!allDay && (
-          <View style={{ marginBottom: spacing.md }}>
-            <Text variant="body" style={{ fontWeight: '600', marginBottom: spacing.xs }}>
-              Heure de début
-            </Text>
-            <Pressable
-              onPress={() => setShowStartTime(true)}
-              style={[
-                styles.dateButton,
-                {
-                  backgroundColor: colors.surface,
-                  borderRadius: radius.md,
-                  padding: spacing.md,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-              <Text variant="body" style={{ marginLeft: spacing.sm }}>
-                {formatTime(startDate)}
-              </Text>
-            </Pressable>
-            {showStartTime && (
-              <DateTimePicker
-                value={startDate}
-                mode="time"
-                is24Hour
-                minuteInterval={15}
-                onChange={(_: any, date: Date | undefined) => {
-                  setShowStartTime(false);
-                  if (date) setStartDate(date);
-                }}
-              />
-            )}
+        {/* Period section */}
+        <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}>
+          Période
+        </Text>
+        <Card padding="none" shadow="sm" style={{ marginBottom: spacing.lg }}>
+          {/* All day toggle */}
+          <View style={[s.cardRow, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md }]}>
+            <View style={[s.rowIcon, { backgroundColor: colors.primaryLight, borderRadius: radius.md }]}>
+              <Ionicons name="sunny-outline" size={18} color={colors.primary} />
+            </View>
+            <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>Journée entière</Text>
+            <Switch value={allDay} onValueChange={setAllDay} />
           </View>
-        )}
+          <View style={[s.divider, { backgroundColor: colors.divider, marginLeft: spacing.lg + 36 + spacing.md }]} />
 
-        {/* End date */}
-        <View style={{ marginBottom: spacing.md }}>
-          <Text variant="body" style={{ fontWeight: '600', marginBottom: spacing.xs }}>
-            Date de fin
-          </Text>
+          {/* Start date */}
           <Pressable
-            onPress={() => setShowEndDate(true)}
-            style={[
-              styles.dateButton,
-              {
-                backgroundColor: colors.surface,
-                borderRadius: radius.md,
-                padding: spacing.md,
-                borderWidth: 1,
-                borderColor: colors.border,
-              },
-            ]}
+            onPress={() => setActivePicker('startDate')}
+            style={({ pressed }) => [s.cardRow, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: pressed ? colors.surfaceSecondary : 'transparent' }]}
           >
-            <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
-            <Text variant="body" style={{ marginLeft: spacing.sm }}>
-              {formatDate(endDate)}
+            <View style={[s.rowIcon, { backgroundColor: '#DBEAFE', borderRadius: radius.md }]}>
+              <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
+            </View>
+            <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>Début</Text>
+            <Text variant="body" color="primary" style={{ fontWeight: '500' }}>
+              {formatDateShort(startDate)}
             </Text>
-          </Pressable>
-          {showEndDate && (
-            <DateTimePicker
-              value={endDate}
-              mode="date"
-              minimumDate={startDate}
-              onChange={(_: any, date: Date | undefined) => {
-                setShowEndDate(false);
-                if (date) setEndDate(date);
-              }}
-            />
-          )}
-        </View>
-
-        {/* End time (if not all day) */}
-        {!allDay && (
-          <View style={{ marginBottom: spacing.md }}>
-            <Text variant="body" style={{ fontWeight: '600', marginBottom: spacing.xs }}>
-              Heure de fin
-            </Text>
-            <Pressable
-              onPress={() => setShowEndTime(true)}
-              style={[
-                styles.dateButton,
-                {
-                  backgroundColor: colors.surface,
-                  borderRadius: radius.md,
-                  padding: spacing.md,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-              <Text variant="body" style={{ marginLeft: spacing.sm }}>
-                {formatTime(endDate)}
-              </Text>
-            </Pressable>
-            {showEndTime && (
-              <DateTimePicker
-                value={endDate}
-                mode="time"
-                is24Hour
-                minuteInterval={15}
-                onChange={(_: any, date: Date | undefined) => {
-                  setShowEndTime(false);
-                  if (date) setEndDate(date);
-                }}
-              />
+            {!allDay && (
+              <Pressable onPress={() => setActivePicker('startTime')} hitSlop={8}>
+                <View style={[s.timeBadge, { backgroundColor: colors.primaryLight, borderRadius: radius.md, marginLeft: spacing.sm }]}>
+                  <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{formatTime(startDate)}</Text>
+                </View>
+              </Pressable>
             )}
-          </View>
-        )}
+          </Pressable>
+          <View style={[s.divider, { backgroundColor: colors.divider, marginLeft: spacing.lg + 36 + spacing.md }]} />
 
-        {/* Reason */}
-        <View style={{ marginBottom: spacing.xl }}>
+          {/* End date */}
+          <Pressable
+            onPress={() => setActivePicker('endDate')}
+            style={({ pressed }) => [s.cardRow, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: pressed ? colors.surfaceSecondary : 'transparent' }]}
+          >
+            <View style={[s.rowIcon, { backgroundColor: '#FEE2E2', borderRadius: radius.md }]}>
+              <Ionicons name="calendar-outline" size={18} color="#EF4444" />
+            </View>
+            <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>Fin</Text>
+            <Text variant="body" color="primary" style={{ fontWeight: '500' }}>
+              {formatDateShort(endDate)}
+            </Text>
+            {!allDay && (
+              <Pressable onPress={() => setActivePicker('endTime')} hitSlop={8}>
+                <View style={[s.timeBadge, { backgroundColor: colors.primaryLight, borderRadius: radius.md, marginLeft: spacing.sm }]}>
+                  <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{formatTime(endDate)}</Text>
+                </View>
+              </Pressable>
+            )}
+          </Pressable>
+        </Card>
+
+        {/* Reason section */}
+        <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}>
+          Détails
+        </Text>
+        <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
           <Input
             label="Motif (optionnel)"
             value={reason}
             onChangeText={setReason}
             placeholder="Vacances, formation, etc."
           />
-        </View>
+        </Card>
 
         {/* Submit */}
         <Button
-          title="Bloquer le créneau"
+          title={isSubmitting ? 'Blocage en cours...' : 'Bloquer le créneau'}
           variant="primary"
           onPress={handleSubmit}
           disabled={isSubmitting || selectedMemberIds.length === 0}
         />
       </ScrollView>
+
+      {/* Date Picker Modal (native inline calendar) */}
+      <DatePickerModal
+        visible={isDatePicker}
+        title={activePicker === 'startDate' ? 'Date de début' : 'Date de fin'}
+        value={activePicker === 'startDate' ? startDate : endDate}
+        minimumDate={activePicker === 'endDate' ? startDate : new Date()}
+        onClose={() => setActivePicker(null)}
+        onChange={handleDateChange}
+        colors={colors}
+        spacing={spacing}
+      />
+
+      {/* Custom Time Picker Modal */}
+      <TimePickerModal
+        visible={isTimePicker}
+        title={activePicker === 'startTime' ? 'Heure de début' : 'Heure de fin'}
+        value={activePicker === 'startTime' ? startDate : endDate}
+        onClose={() => setActivePicker(null)}
+        onConfirm={handleTimeConfirm}
+        colors={colors}
+        spacing={spacing}
+        radius={radius}
+      />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
+const s = StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -429,15 +674,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toggleRow: {
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 52,
   },
-  dateButton: {
-    flexDirection: 'row',
+  rowIcon: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  divider: {
+    height: 1,
+  },
+  timeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   chip: {
     borderWidth: 1,
+  },
+  // Scroll wheel
+  wheelsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  wheelColumn: {
+    width: 80,
+  },
+  wheelItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wheelHighlight: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  },
+  // Picker modals
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  pickerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });

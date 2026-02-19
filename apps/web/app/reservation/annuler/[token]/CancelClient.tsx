@@ -96,62 +96,11 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
     setError(null);
 
     try {
-      console.log('[CANCEL-CLIENT] Step 1: Calling bookingService.cancelBookingByToken...');
+      console.log('[CANCEL-CLIENT] Calling bookingService.cancelBookingByToken...');
       await bookingService.cancelBookingByToken(token, reason || undefined);
-      console.log('[CANCEL-CLIENT] Step 1: SUCCESS - Booking cancelled in database');
+      console.log('[CANCEL-CLIENT] SUCCESS - Booking cancelled in database');
 
-      // Send cancellation email to client
-      if (booking) {
-        console.log('[CANCEL-CLIENT] Step 2: Sending cancellation email...');
-        console.log('[CANCEL-CLIENT] Email recipient:', booking.clientInfo.email);
-        try {
-          const emailResponse = await fetch('/api/bookings/cancel-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              bookingId: booking.id,
-              clientEmail: booking.clientInfo.email,
-              clientName: booking.clientInfo.name,
-              serviceName: booking.serviceName,
-              datetime: booking.datetime,
-              reason: reason || undefined,
-              providerName: booking.providerName,
-              locationName: booking.locationName,
-            }),
-          });
-          console.log('[CANCEL-CLIENT] Step 2: Email API response status:', emailResponse.status);
-          if (!emailResponse.ok) {
-            const errorData = await emailResponse.json();
-            console.error('[CANCEL-CLIENT] Step 2: Email API error:', errorData);
-          } else {
-            console.log('[CANCEL-CLIENT] Step 2: SUCCESS - Cancellation email sent');
-          }
-        } catch (emailErr) {
-          // Don't fail the cancellation if email fails
-          console.error('[CANCEL-CLIENT] Step 2: FAILED to send cancellation email:', emailErr);
-        }
-        // Notify provider (fire and forget)
-        fetch('/api/bookings/provider-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            providerId: booking.providerId,
-            clientName: booking.clientInfo.name,
-            serviceName: booking.serviceName,
-            datetime: booking.datetime,
-            duration: booking.duration,
-            price: booking.price,
-            locationName: booking.locationName,
-            locationAddress: booking.locationAddress,
-            memberName: booking.memberName,
-            type: 'cancellation',
-            cancelledBy: 'client',
-            cancelReason: reason || undefined,
-          }),
-        }).catch(() => {});
-      } else {
-        console.log('[CANCEL-CLIENT] Step 2: SKIPPED - No booking data available');
-      }
+      // Cancellation emails are handled by the onBookingWrite Cloud Function
 
       console.log('[CANCEL-CLIENT] ========== CANCELLATION COMPLETE ==========');
       setState('success');

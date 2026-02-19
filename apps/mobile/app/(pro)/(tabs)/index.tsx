@@ -4,7 +4,7 @@
  * quick actions, and recent reviews.
  */
 
-import { bookingService, analyticsService } from '@booking-app/firebase';
+import { analyticsService, bookingService } from '@booking-app/firebase';
 import type { PageViewStats } from '@booking-app/shared';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -398,7 +398,12 @@ export default function ProDashboardScreen() {
   // -- Share establishment ---------------------------------------------------
 
   const [showQRModal, setShowQRModal] = useState(false);
+  const [activeQRTab, setActiveQRTab] = useState<'booking' | 'paypal'>('booking');
   const shopUrl = provider?.slug ? `https://opatam.com/p/${provider.slug}` : null;
+  const paypalLink = provider?.socialLinks?.paypal || null;
+  const paypalUrl = paypalLink
+    ? (paypalLink.startsWith('http') ? paypalLink : `https://paypal.me/${paypalLink}`)
+    : null;
 
   const handleCopyLink = useCallback(async () => {
     if (!shopUrl) return;
@@ -818,28 +823,139 @@ export default function ProDashboardScreen() {
               style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, margin: spacing.xl }]}
               onPress={() => {}}
             >
-              <Text variant="h3" align="center" style={{ marginBottom: spacing.sm }}>Mon QR Code</Text>
-              <Text variant="body" color="textSecondary" align="center" style={{ marginBottom: spacing.lg }}>
-                Partagez ce QR code pour que vos clients accèdent à votre page de réservation
-              </Text>
-              <View style={[styles.qrContainer, { backgroundColor: '#FFF', borderRadius: radius.lg, padding: spacing.md }]}>
-                <Image
-                  source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(shopUrl)}&size=250x250&margin=10` }}
-                  style={styles.qrImage}
-                  resizeMode="contain"
-                />
+              {/* Tab bar */}
+              <View style={[styles.qrTabBar, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg }]}>
+                <Pressable
+                  onPress={() => setActiveQRTab('booking')}
+                  style={[
+                    styles.qrTab,
+                    {
+                      borderRadius: radius.md,
+                      backgroundColor: activeQRTab === 'booking' ? colors.surface : 'transparent',
+                    },
+                    activeQRTab === 'booking' && styles.qrTabActive,
+                  ]}
+                >
+                  <Ionicons name="qr-code-outline" size={16} color={activeQRTab === 'booking' ? colors.primary : colors.textMuted} />
+                  <Text
+                    variant="bodySmall"
+                    style={{ fontWeight: '600', marginLeft: 6, color: activeQRTab === 'booking' ? colors.primary : colors.textMuted }}
+                  >
+                    Réservation
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setActiveQRTab('paypal')}
+                  style={[
+                    styles.qrTab,
+                    {
+                      borderRadius: radius.md,
+                      backgroundColor: activeQRTab === 'paypal' ? colors.surface : 'transparent',
+                    },
+                    activeQRTab === 'paypal' && styles.qrTabActive,
+                  ]}
+                >
+                  <Ionicons name="logo-paypal" size={16} color={activeQRTab === 'paypal' ? '#0070BA' : colors.textMuted} />
+                  <Text
+                    variant="bodySmall"
+                    style={{ fontWeight: '600', marginLeft: 6, color: activeQRTab === 'paypal' ? '#0070BA' : colors.textMuted }}
+                  >
+                    PayPal
+                  </Text>
+                </Pressable>
               </View>
-              <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.md }}>{shopUrl}</Text>
-              <Pressable
-                onPress={() => { handleCopyLink(); setShowQRModal(false); }}
-                style={({ pressed }) => [
-                  styles.modalButton,
-                  { backgroundColor: pressed ? colors.primaryDark : colors.primary, borderRadius: radius.lg, paddingVertical: spacing.md, marginTop: spacing.lg, width: '100%' },
-                ]}
-              >
-                <Ionicons name="copy-outline" size={18} color="#FFF" style={{ marginRight: spacing.xs }} />
-                <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>Copier le lien</Text>
-              </Pressable>
+
+              {/* Tab content */}
+              {activeQRTab === 'booking' ? (
+                <>
+                  <Text variant="body" color="textSecondary" align="center" style={{ marginBottom: spacing.lg, marginTop: spacing.md }}>
+                    Partagez ce QR code pour que vos clients accèdent à votre page de réservation
+                  </Text>
+                  <View style={[styles.qrContainer, { backgroundColor: '#FFF', borderRadius: radius.lg, padding: spacing.md }]}>
+                    <Image
+                      source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(shopUrl)}&size=250x250&margin=10&ecc=H` }}
+                      style={styles.qrImage}
+                      resizeMode="contain"
+                    />
+                    {provider?.photoURL && (
+                      <View style={styles.qrLogoWrapper}>
+                        <Image
+                          source={{ uri: provider.photoURL }}
+                          style={styles.qrLogo}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    )}
+                  </View>
+                  <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.md }}>{shopUrl}</Text>
+                  <Pressable
+                    onPress={() => { handleCopyLink(); setShowQRModal(false); }}
+                    style={({ pressed }) => [
+                      styles.modalButton,
+                      { backgroundColor: pressed ? colors.primaryDark : colors.primary, borderRadius: radius.lg, paddingVertical: spacing.md, marginTop: spacing.lg, width: '100%' },
+                    ]}
+                  >
+                    <Ionicons name="copy-outline" size={18} color="#FFF" style={{ marginRight: spacing.xs }} />
+                    <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>Copier le lien</Text>
+                  </Pressable>
+                </>
+              ) : paypalUrl ? (
+                <>
+                  <Text variant="body" color="textSecondary" align="center" style={{ marginBottom: spacing.lg, marginTop: spacing.md }}>
+                    Partagez ce QR code pour recevoir des paiements via PayPal
+                  </Text>
+                  <View style={[styles.qrContainer, { backgroundColor: '#FFF', borderRadius: radius.lg, padding: spacing.md }]}>
+                    <Image
+                      source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(paypalUrl)}&size=250x250&margin=10&ecc=H` }}
+                      style={styles.qrImage}
+                      resizeMode="contain"
+                    />
+                    <View style={[styles.qrLogoWrapper, { backgroundColor: '#0070BA' }]}>
+                      <Ionicons name="logo-paypal" size={28} color="#FFF" />
+                    </View>
+                  </View>
+                  <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.md }}>{paypalUrl}</Text>
+                  <Pressable
+                    onPress={() => {
+                      Clipboard.setStringAsync(paypalUrl);
+                      Alert.alert('Lien copié', 'Le lien PayPal a été copié dans le presse-papiers.');
+                      setShowQRModal(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.modalButton,
+                      { backgroundColor: pressed ? '#005A9E' : '#0070BA', borderRadius: radius.lg, paddingVertical: spacing.md, marginTop: spacing.lg, width: '100%' },
+                    ]}
+                  >
+                    <Ionicons name="copy-outline" size={18} color="#FFF" style={{ marginRight: spacing.xs }} />
+                    <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>Copier le lien PayPal</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <View style={{ alignItems: 'center', marginTop: spacing.md, width: '100%' }}>
+                  <View style={[styles.paypalEmptyIcon, { backgroundColor: '#E8F0FE', borderRadius: radius.full }]}>
+                    <Ionicons name="logo-paypal" size={32} color="#0070BA" />
+                  </View>
+                  <Text variant="h3" align="center" style={{ marginTop: spacing.lg }}>
+                    PayPal non configuré
+                  </Text>
+                  <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.sm, paddingHorizontal: spacing.sm }}>
+                    Ajoutez votre lien PayPal depuis l'interface web pour générer un QR code de paiement.
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setShowQRModal(false);
+                      Linking.openURL('https://opatam.com/pro/profil?tab=reseaux');
+                    }}
+                    style={({ pressed }) => [
+                      styles.modalButton,
+                      { backgroundColor: pressed ? '#005A9E' : '#0070BA', borderRadius: radius.lg, paddingVertical: spacing.md, marginTop: spacing.lg, width: '100%' },
+                    ]}
+                  >
+                    <Ionicons name="open-outline" size={18} color="#FFF" style={{ marginRight: spacing.xs }} />
+                    <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>Configurer PayPal</Text>
+                  </Pressable>
+                </View>
+              )}
             </Pressable>
           </Pressable>
         </Modal>
@@ -1058,8 +1174,57 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
   },
+  qrLogoWrapper: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 3,
+    // Shadow for contrast
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  qrLogo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
   modalButton: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // QR Tabs
+  qrTabBar: {
+    flexDirection: 'row',
+    padding: 3,
+    marginBottom: 4,
+    width: '100%',
+  },
+  qrTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  qrTabActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  paypalEmptyIcon: {
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
   },

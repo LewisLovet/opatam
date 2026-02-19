@@ -20,6 +20,18 @@ import {
   QrCode,
 } from 'lucide-react';
 
+// PayPal SVG icon
+function PaypalIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 2.23A.773.773 0 0 1 5.706 1.6h6.574c2.179 0 3.702.58 4.527 1.724.785 1.09.957 2.544.513 4.325l-.014.063v.56l.436.247c.37.193.664.433.883.717.263.34.432.742.502 1.196.073.471.046 1.03-.079 1.66-.145.735-.38 1.375-.7 1.9a3.956 3.956 0 0 1-1.108 1.234 4.48 4.48 0 0 1-1.51.72 7.166 7.166 0 0 1-1.89.236H13.3a.95.95 0 0 0-.937.806l-.038.22-.633 4.016-.03.158a.95.95 0 0 1-.937.806H7.076Z" />
+      <path d="M18.282 7.976l-.014.063c-.882 4.528-3.9 6.093-7.752 6.093H8.92a.95.95 0 0 0-.937.806l-.997 6.326a.501.501 0 0 0 .495.578h3.472a.773.773 0 0 0 .763-.652l.031-.165.605-3.836.039-.212a.773.773 0 0 1 .763-.652h.48c3.11 0 5.544-1.263 6.256-4.916.297-1.526.143-2.8-.643-3.695a3.07 3.07 0 0 0-.879-.638l-.086-.1Z" opacity=".7" />
+    </svg>
+  );
+}
+
+type QRTab = 'booking' | 'paypal';
+
 interface PublicationSectionProps {
   onSuccess?: () => void;
 }
@@ -43,7 +55,14 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
   const [requirements, setRequirements] = useState<RequirementCheck | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [activeQRTab, setActiveQRTab] = useState<QRTab>('booking');
   const qrRef = useRef<HTMLDivElement>(null);
+  const qrPaypalRef = useRef<HTMLDivElement>(null);
+
+  const paypalLink = provider?.socialLinks?.paypal || null;
+  const paypalUrl = paypalLink
+    ? (paypalLink.startsWith('http') ? paypalLink : `https://paypal.me/${paypalLink}`)
+    : null;
 
   // Check requirements on mount and when provider changes
   useEffect(() => {
@@ -132,8 +151,9 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
     setTimeout(() => setCopied(false), 2000);
   }, []);
 
-  const handleDownloadQr = useCallback(() => {
-    const canvas = qrRef.current?.querySelector('canvas');
+  const handleDownloadQr = useCallback(async () => {
+    const ref = activeQRTab === 'booking' ? qrRef : qrPaypalRef;
+    const canvas = ref.current?.querySelector('canvas');
     if (!canvas) return;
 
     const downloadCanvas = document.createElement('canvas');
@@ -148,31 +168,44 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
     ctx.fillRect(0, 0, downloadCanvas.width, downloadCanvas.height);
     ctx.drawImage(canvas, padding, padding, size, size);
 
+    // Draw logo on download if provider has photoURL (booking) or PayPal badge
+    if (activeQRTab === 'booking' && provider?.photoURL) {
+      await drawLogoOnDownload(ctx, provider.photoURL, size, padding);
+    } else if (activeQRTab === 'paypal') {
+      drawPaypalBadgeOnDownload(ctx, size, padding);
+    }
+
     ctx.fillStyle = '#374151';
     ctx.font = '600 28px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(
-      `Scannez pour réserver chez ${provider?.businessName || ''}`,
-      downloadCanvas.width / 2,
-      size + padding + 48
-    );
+    const label = activeQRTab === 'booking'
+      ? `Scannez pour réserver chez ${provider?.businessName || ''}`
+      : `Payer via PayPal — ${provider?.businessName || ''}`;
+    ctx.fillText(label, downloadCanvas.width / 2, size + padding + 48);
 
     const link = document.createElement('a');
-    link.download = `qrcode-${provider?.slug || 'reservation'}.png`;
+    const prefix = activeQRTab === 'booking' ? 'qrcode' : 'paypal-qr';
+    link.download = `${prefix}-${provider?.slug || 'code'}.png`;
     link.href = downloadCanvas.toDataURL('image/png');
     link.click();
-  }, [provider?.businessName, provider?.slug]);
+  }, [provider?.businessName, provider?.slug, provider?.photoURL, activeQRTab]);
 
   const handlePrintQr = useCallback(() => {
-    const canvas = qrRef.current?.querySelector('canvas');
+    const ref = activeQRTab === 'booking' ? qrRef : qrPaypalRef;
+    const canvas = ref.current?.querySelector('canvas');
     if (!canvas) return;
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>QR Code - ${provider?.businessName || ''}</title><style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui,-apple-system,sans-serif}img{max-width:400px;width:100%}h2{margin-top:24px;color:#111827;font-size:20px}p{color:#6b7280;font-size:14px;margin-top:8px}</style></head><body><img src="${canvas.toDataURL('image/png')}" alt="QR Code"/><h2>${provider?.businessName || ''}</h2><p>Scannez ce QR code pour réserver en ligne</p><p style="font-size:12px;color:#9ca3af;margin-top:16px">${bookingUrl || ''}</p><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}};</script></body></html>`);
+    const title = activeQRTab === 'booking'
+      ? 'Scannez ce QR code pour réserver en ligne'
+      : 'Scannez pour payer via PayPal';
+    const url = activeQRTab === 'booking' ? bookingUrl : paypalUrl;
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>QR Code - ${provider?.businessName || ''}</title><style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui,-apple-system,sans-serif}img{max-width:400px;width:100%}h2{margin-top:24px;color:#111827;font-size:20px}p{color:#6b7280;font-size:14px;margin-top:8px}</style></head><body><img src="${canvas.toDataURL('image/png')}" alt="QR Code"/><h2>${provider?.businessName || ''}</h2><p>${title}</p><p style="font-size:12px;color:#9ca3af;margin-top:16px">${url || ''}</p><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}};</script></body></html>`);
     printWindow.document.close();
-  }, [provider?.businessName, bookingUrl]);
+  }, [provider?.businessName, bookingUrl, paypalUrl, activeQRTab]);
 
   const requirementItems = [
     { key: 'hasBusinessName', label: 'Nom de l\'entreprise', href: '#profile' },
@@ -250,55 +283,134 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
 
           {/* QR Code */}
           <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+            {/* Tab bar */}
+            <div className="flex bg-gray-200/60 dark:bg-gray-700 rounded-lg p-0.5 mb-4">
+              <button
+                onClick={() => setActiveQRTab('booking')}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  activeQRTab === 'booking'
+                    ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                <QrCode className="w-3 h-3" />
+                Réservation
+              </button>
+              <button
+                onClick={() => setActiveQRTab('paypal')}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  activeQRTab === 'paypal'
+                    ? 'bg-white dark:bg-gray-600 text-[#0070BA] shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                <PaypalIcon className="w-3 h-3" />
+                PayPal
+              </button>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-5">
               {/* QR visual */}
-              <div
-                ref={qrRef}
-                className="flex-shrink-0 bg-white p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm self-start"
-              >
-                <QRCodeCanvas
-                  value={bookingUrl || ''}
-                  size={140}
-                  level="H"
-                  marginSize={0}
-                  imageSettings={{
-                    src: '/favicon.ico',
-                    height: 24,
-                    width: 24,
-                    excavate: true,
-                  }}
-                />
-              </div>
+              {activeQRTab === 'booking' ? (
+                <div
+                  ref={qrRef}
+                  className="flex-shrink-0 bg-white p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm self-start"
+                >
+                  <QRCodeCanvas
+                    value={bookingUrl || ''}
+                    size={140}
+                    level="H"
+                    marginSize={0}
+                    imageSettings={provider?.photoURL ? {
+                      src: provider.photoURL,
+                      height: 24,
+                      width: 24,
+                      excavate: true,
+                    } : {
+                      src: '/favicon.ico',
+                      height: 24,
+                      width: 24,
+                      excavate: true,
+                    }}
+                  />
+                </div>
+              ) : paypalUrl ? (
+                <div
+                  ref={qrPaypalRef}
+                  className="flex-shrink-0 bg-white p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm self-start"
+                >
+                  <QRCodeCanvas
+                    value={paypalUrl}
+                    size={140}
+                    level="H"
+                    marginSize={0}
+                    imageSettings={{
+                      src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="%230070BA"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="11" font-weight="bold" font-family="system-ui">PP</text></svg>'),
+                      height: 24,
+                      width: 24,
+                      excavate: true,
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700/50 p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 self-start flex flex-col items-center justify-center" style={{ width: 172, height: 172 }}>
+                  <PaypalIcon className="w-8 h-8 text-[#0070BA] mb-2" />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">Non configuré</p>
+                </div>
+              )}
 
               {/* Info + actions */}
               <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 text-sm">
-                  <QrCode className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                  QR code de réservation
+                  {activeQRTab === 'booking' ? (
+                    <>
+                      <QrCode className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                      QR code de réservation
+                    </>
+                  ) : (
+                    <>
+                      <PaypalIcon className="w-4 h-4 text-[#0070BA]" />
+                      QR code PayPal
+                    </>
+                  )}
                 </h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Affichez-le dans votre établissement ou sur vos supports de communication. Vos clients scannent et réservent directement.
+                  {activeQRTab === 'booking'
+                    ? 'Affichez-le dans votre établissement ou sur vos supports de communication. Vos clients scannent et réservent directement.'
+                    : paypalUrl
+                      ? 'Vos clients scannent ce QR code pour vous payer directement via PayPal.'
+                      : 'Configurez votre lien PayPal depuis l\'onglet Réseaux de votre profil.'}
                 </p>
 
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <button
-                    onClick={handleDownloadQr}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-xs font-medium transition-colors"
+                {(activeQRTab === 'booking' || paypalUrl) ? (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      onClick={handleDownloadQr}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-xs font-medium transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Télécharger
+                    </button>
+                    <button
+                      onClick={handlePrintQr}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg text-xs font-medium transition-colors"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      Imprimer
+                    </button>
+                  </div>
+                ) : (
+                  <a
+                    href="/pro/profil?tab=reseaux"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0070BA] text-white hover:bg-[#005A9E] rounded-lg text-xs font-medium transition-colors mt-3"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    Telecharger
-                  </button>
-                  <button
-                    onClick={handlePrintQr}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg text-xs font-medium transition-colors"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    Imprimer
-                  </button>
-                </div>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Configurer PayPal
+                  </a>
+                )}
 
                 <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 truncate">
-                  {bookingUrl}
+                  {activeQRTab === 'booking' ? bookingUrl : paypalUrl || ''}
                 </p>
               </div>
             </div>
@@ -414,6 +526,72 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
           Actualiser le statut
         </Button>
       </div>
+
     </div>
   );
+}
+
+/** Draw provider logo on download canvas */
+function drawLogoOnDownload(ctx: CanvasRenderingContext2D, logoUrl: string, qrSize: number, padding: number): Promise<void> {
+  return new Promise((resolve) => {
+    const logoSize = Math.round(qrSize * 0.18);
+    const logoX = padding + (qrSize - logoSize) / 2;
+    const logoY = padding + (qrSize - logoSize) / 2;
+    const logoRadius = Math.round(logoSize * 0.2);
+
+    ctx.fillStyle = '#ffffff';
+    const bgPad = 4;
+    roundRect(ctx, logoX - bgPad, logoY - bgPad, logoSize + bgPad * 2, logoSize + bgPad * 2, logoRadius + 2);
+    ctx.fill();
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.save();
+      roundRect(ctx, logoX, logoY, logoSize, logoSize, logoRadius);
+      ctx.clip();
+      ctx.drawImage(img, logoX, logoY, logoSize, logoSize);
+      ctx.restore();
+      resolve();
+    };
+    img.onerror = () => resolve();
+    img.src = logoUrl;
+  });
+}
+
+/** Draw PayPal badge on download canvas */
+function drawPaypalBadgeOnDownload(ctx: CanvasRenderingContext2D, qrSize: number, padding: number) {
+  const logoSize = Math.round(qrSize * 0.18);
+  const logoX = padding + (qrSize - logoSize) / 2;
+  const logoY = padding + (qrSize - logoSize) / 2;
+  const logoRadius = Math.round(logoSize * 0.2);
+
+  ctx.fillStyle = '#ffffff';
+  const bgPad = 4;
+  roundRect(ctx, logoX - bgPad, logoY - bgPad, logoSize + bgPad * 2, logoSize + bgPad * 2, logoRadius + 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#0070BA';
+  roundRect(ctx, logoX, logoY, logoSize, logoSize, logoRadius);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${Math.round(logoSize * 0.45)}px system-ui, -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('PP', logoX + logoSize / 2, logoY + logoSize / 2);
+}
+
+/** Helper: draw a rounded rect path */
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }

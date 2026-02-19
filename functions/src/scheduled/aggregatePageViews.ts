@@ -9,6 +9,7 @@
 
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { serverTracker } from '../utils/serverTracker';
 
 const BATCH_SIZE = 10;
@@ -83,7 +84,7 @@ export const aggregatePageViews = onSchedule(
             await db.collection('pageViewsDaily').doc(dailyDocId).set({
               providerId,
               date: yesterdayStr,
-              count: admin.firestore.FieldValue.increment(todayViews),
+              count: FieldValue.increment(todayViews),
             }, { merge: true });
             serverTracker.trackWrite('pageViewsDaily', 1);
           }

@@ -458,6 +458,158 @@ export async function sendCancellationEmail(data: {
 }
 
 /**
+ * Send cancellation email to provider when client cancels
+ */
+export async function sendProviderCancellationEmail(data: {
+  providerEmail: string;
+  clientName: string;
+  clientPhone?: string;
+  serviceName: string;
+  datetime: Date;
+  reason?: string;
+  providerName: string;
+  locationName?: string;
+  memberName?: string;
+  cancelledBy: 'client' | 'provider';
+}): Promise<EmailResult> {
+  console.log('[EMAIL] Sending provider cancellation email to:', data.providerEmail);
+
+  if (!isValidEmail(data.providerEmail)) {
+    return { success: false, error: 'Invalid email format' };
+  }
+
+  try {
+    const formattedDate = formatDateFr(data.datetime);
+    const formattedTime = formatTimeFr(data.datetime);
+    const calendarUrl = `${appConfig.url}/pro/calendrier`;
+
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.providerEmail,
+      replyTo: emailConfig.replyTo,
+      subject: `Rendez-vous annulé - ${data.clientName} - ${data.serviceName}`,
+      html: generateProviderCancellationHtml({
+        ...data,
+        formattedDate,
+        formattedTime,
+        calendarUrl,
+      }),
+      text: generateProviderCancellationText({
+        ...data,
+        formattedDate,
+        formattedTime,
+        calendarUrl,
+      }),
+    });
+
+    if (error) {
+      console.error('[EMAIL] Resend error:', error);
+      return { success: false, error: String(error) };
+    }
+
+    console.log('[EMAIL] Provider cancellation email sent successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAIL] Exception:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+interface ProviderCancellationTemplateData {
+  clientName: string;
+  clientPhone?: string;
+  serviceName: string;
+  formattedDate: string;
+  formattedTime: string;
+  reason?: string;
+  providerName: string;
+  locationName?: string;
+  memberName?: string;
+  cancelledBy: 'client' | 'provider';
+  calendarUrl: string;
+}
+
+function generateProviderCancellationHtml(data: ProviderCancellationTemplateData): string {
+  const cancelledByLabel = data.cancelledBy === 'client' ? 'par le client' : 'par vous';
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" style="max-width: 480px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <tr>
+                <td style="padding: 32px 32px 24px; text-align: center;">
+                  <img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height: 48px; max-width: 200px;" />
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0 32px 24px;">
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour,</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Un rendez-vous a été <strong style="color: #dc2626;">annulé</strong> ${cancelledByLabel}.</p>
+                  <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Rendez-vous annulé</p>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Client</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.clientName}</td></tr>
+                      ${data.clientPhone ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Téléphone</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.clientPhone}</td></tr>` : ''}
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime}</td></tr>
+                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
+                      ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Membre</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
+                      ${data.reason ? `<tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a; vertical-align: top;">Motif</td><td style="padding: 8px 0 4px; font-size: 14px; color: #18181b;">${data.reason}</td></tr>` : ''}
+                    </table>
+                  </div>
+                  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                    <tr><td align="center"><a href="${data.calendarUrl}" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Voir mon calendrier</a></td></tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>L'équipe ${appConfig.name}</strong></p>
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+function generateProviderCancellationText(data: ProviderCancellationTemplateData): string {
+  const cancelledByLabel = data.cancelledBy === 'client' ? 'par le client' : 'par vous';
+  return `
+Bonjour,
+
+Un rendez-vous a été annulé ${cancelledByLabel}.
+
+Détails :
+- Client : ${data.clientName}
+${data.clientPhone ? `- Téléphone : ${data.clientPhone}` : ''}
+- Prestation : ${data.serviceName}
+- Date : ${data.formattedDate}
+- Heure : ${data.formattedTime}
+${data.locationName ? `- Lieu : ${data.locationName}` : ''}
+${data.memberName ? `- Membre : ${data.memberName}` : ''}
+${data.reason ? `- Motif : ${data.reason}` : ''}
+
+Voir mon calendrier : ${data.calendarUrl}
+
+À bientôt,
+L'équipe ${appConfig.name}
+  `.trim();
+}
+
+/**
  * Send reschedule email to client
  */
 export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime: Date }): Promise<EmailResult> {

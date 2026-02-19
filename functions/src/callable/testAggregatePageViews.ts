@@ -7,6 +7,7 @@
 
 import { onCall, CallableRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { serverTracker } from '../utils/serverTracker';
 
 interface ProviderDetail {
@@ -118,7 +119,7 @@ export const testAggregatePageViews = onCall(
               await db.collection('pageViewsDaily').doc(dailyDocId).set({
                 providerId,
                 date: yesterdayStr,
-                count: admin.firestore.FieldValue.increment(todayViews),
+                count: FieldValue.increment(todayViews),
               }, { merge: true });
               serverTracker.trackWrite('pageViewsDaily', 1);
             }

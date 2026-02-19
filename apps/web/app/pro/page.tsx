@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Eye, Star, Globe, GlobeLock } from 'lucide-react';
+import { Calendar, Clock, Eye, Star, Globe, GlobeLock, QrCode } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -21,6 +21,7 @@ import {
   TodayBookings,
   RecentActivity,
   QuickActions,
+  QRDisplayModal,
   type Alert,
 } from './components';
 import { getStartOfWeek, getEndOfWeek, getDaysRemaining, formatFullDate } from '@/lib/date-utils';
@@ -55,8 +56,18 @@ export default function DashboardPage() {
   const [selectedBooking, setSelectedBooking] = useState<WithId<Booking> | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 
   const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
+
+  const bookingUrl = provider?.slug
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${provider.slug}/reserver`
+    : null;
+
+  const paypalLink = provider?.socialLinks?.paypal || null;
+  const paypalUrl = paypalLink
+    ? (paypalLink.startsWith('http') ? paypalLink : `https://paypal.me/${paypalLink}`)
+    : null;
 
   // Greeting based on time of day
   const greeting = useMemo(() => {
@@ -356,7 +367,19 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <QuickActions onCreateBooking={handleCreateBooking} onBlockSlot={handleBlockSlot} />
+        <div className="flex items-center gap-2">
+          {provider?.isPublished && bookingUrl && (
+            <button
+              onClick={() => setIsQRModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+            >
+              <QrCode className="w-4 h-4" />
+              <span className="hidden sm:inline">Afficher le QR code</span>
+              <span className="sm:hidden">QR code</span>
+            </button>
+          )}
+          <QuickActions onCreateBooking={handleCreateBooking} onBlockSlot={handleBlockSlot} />
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -436,6 +459,19 @@ export default function DashboardPage() {
         isTeamPlan={isTeamPlan}
         onCreated={handleBookingCreated}
       />
+
+      {/* QR Code Display Modal */}
+      {bookingUrl && (
+        <QRDisplayModal
+          isOpen={isQRModalOpen}
+          onClose={() => setIsQRModalOpen(false)}
+          bookingUrl={bookingUrl}
+          paypalUrl={paypalUrl}
+          businessName={provider?.businessName || ''}
+          photoURL={provider?.photoURL}
+          slug={provider?.slug || ''}
+        />
+      )}
     </div>
   );
 }

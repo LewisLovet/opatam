@@ -8,6 +8,7 @@ import * as admin from 'firebase-admin';
 import {
   sendConfirmationEmail,
   sendCancellationEmail,
+  sendProviderCancellationEmail,
   sendRescheduleEmail,
   sendReminderEmail,
   sendProviderNewBookingEmail,
@@ -30,6 +31,7 @@ interface BookingData {
   providerName: string;
   status: string;
   cancelledBy?: 'client' | 'provider' | null;
+  cancelReason?: string;
   cancelToken?: string;
   locationName?: string;
   locationAddress?: string;
@@ -239,12 +241,49 @@ export async function emailClientBookingCancelled(
     clientName: booking.clientInfo.name,
     serviceName: booking.serviceName,
     datetime: booking.datetime.toDate(),
+    reason: booking.cancelReason,
     providerName: booking.providerName,
     providerSlug,
     locationName: booking.locationName,
   });
 
   console.log('[EMAIL] Cancellation email result:', result);
+}
+
+/**
+ * Send cancellation email to provider when client cancels (or as confirmation when provider cancels)
+ */
+export async function emailProviderBookingCancelled(
+  booking: BookingData,
+  bookingId: string
+): Promise<void> {
+  console.log('[EMAIL] emailProviderBookingCancelled:', booking.providerId);
+
+  if (!(await isProviderEmailAllowed(booking.providerId, 'cancellation'))) {
+    console.log('[EMAIL] Provider has disabled cancellation emails, skipping');
+    return;
+  }
+
+  const providerEmail = await getProviderEmail(booking.providerId);
+  if (!providerEmail) {
+    console.log('[EMAIL] No provider email found, skipping');
+    return;
+  }
+
+  const result = await sendProviderCancellationEmail({
+    providerEmail,
+    clientName: booking.clientInfo.name,
+    clientPhone: booking.clientInfo.phone,
+    serviceName: booking.serviceName,
+    datetime: booking.datetime.toDate(),
+    reason: booking.cancelReason,
+    providerName: booking.providerName,
+    locationName: booking.locationName,
+    memberName: booking.memberName,
+    cancelledBy: booking.cancelledBy || 'client',
+  });
+
+  console.log('[EMAIL] Provider cancellation email result:', result);
 }
 
 /**
@@ -302,6 +341,7 @@ export async function emailClientBookingReminder(
  *
  * Handles:
  * - Creation: confirmation email to client + new booking email to provider
+ * - Update (cancellation): cancellation email to client (provider cancels) or provider (client cancels)
  * - Update (reschedule): reschedule email to client
  */
 export async function handleBookingEmails(
@@ -327,10 +367,26 @@ export async function handleBookingEmails(
     return;
   }
 
-  // Update - check for reschedule
+  // Update - check for cancellation or reschedule
   if (beforeData && afterData) {
     const booking = afterData as BookingData;
+    const oldStatus = beforeData.status;
     const newStatus = afterData.status;
+
+    // Status changed to cancelled - email both parties
+    if (oldStatus !== 'cancelled' && newStatus === 'cancelled') {
+      const cancelledBy = afterData.cancelledBy;
+      console.log(`[EMAIL] Booking cancelled by ${cancelledBy}, sending emails`);
+
+      if (cancelledBy === 'provider') {
+        // Provider cancelled → email client
+        await emailClientBookingCancelled(booking, bookingId);
+      } else if (cancelledBy === 'client') {
+        // Client cancelled → email provider
+        await emailProviderBookingCancelled(booking, bookingId);
+      }
+      return;
+    }
 
     // Datetime changed (reschedule) - email client
     const oldDatetime = beforeData.datetime?.toMillis?.();

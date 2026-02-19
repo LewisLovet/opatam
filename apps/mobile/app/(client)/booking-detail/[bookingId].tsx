@@ -457,27 +457,7 @@ export default function BookingDetailScreen() {
         cancelReason.trim() || undefined
       );
 
-      // Send cancellation email (non-blocking, fire and forget)
-      // Note: In development, localhost won't work from mobile device
-      // Use your machine's IP address or deployed URL in .env.local
-      if (API_URL && !API_URL.includes('localhost')) {
-        fetch(`${API_URL}/api/bookings/cancel-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            bookingId: booking.id,
-            clientEmail: booking.clientInfo.email,
-            clientName: booking.clientInfo.name,
-            serviceName: booking.serviceName,
-            datetime: booking.datetime,
-            reason: cancelReason.trim() || undefined,
-            providerName: booking.providerName,
-            locationName: booking.locationName,
-          }),
-        }).catch(() => {
-          // Silently ignore email errors - cancellation already succeeded
-        });
-      }
+      // Cancellation emails are handled by the onBookingWrite Cloud Function
 
       showToast({
         variant: 'success',

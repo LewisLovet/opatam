@@ -394,7 +394,9 @@ const s = StyleSheet.create({
   },
 
   // Stat row
-  statRow: {},
+  statRow: {
+    overflow: 'hidden',
+  },
   statRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -407,7 +409,6 @@ const s = StyleSheet.create({
   },
   barTrack: {
     height: 5,
-    width: '100%',
     marginLeft: 44, // Align with text after icon
   },
   barFill: {
