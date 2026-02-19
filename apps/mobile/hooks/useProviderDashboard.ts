@@ -8,16 +8,20 @@ import {
   bookingService,
   memberService,
   locationService,
+  catalogService,
 } from '@booking-app/firebase';
-import type { Booking, Member, Location } from '@booking-app/shared';
+import type { Booking, Member, Location, Service } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
 export interface DashboardData {
   todayBookings: WithId<Booking>[];
   pendingBookings: WithId<Booking>[];
   weekBookingsCount: number;
+  /** Bookings per day of week [Mon, Tue, Wed, Thu, Fri, Sat, Sun] */
+  weekBookingsPerDay: number[];
   members: WithId<Member>[];
   locations: WithId<Location>[];
+  services: WithId<Service>[];
   averageRating: number | null;
 }
 
@@ -32,8 +36,10 @@ const emptyData: DashboardData = {
   todayBookings: [],
   pendingBookings: [],
   weekBookingsCount: 0,
+  weekBookingsPerDay: [0, 0, 0, 0, 0, 0, 0],
   members: [],
   locations: [],
+  services: [],
   averageRating: null,
 };
 
@@ -71,7 +77,7 @@ export function useProviderDashboard(
 
       const { start: weekStart, end: weekEnd } = getWeekRange();
 
-      const [todayBookings, pendingBookings, weekBookings, members, locations] =
+      const [todayBookings, pendingBookings, weekBookings, members, locations, services] =
         await Promise.all([
           bookingService.getTodayBookings(providerId),
           bookingService.getPendingBookings(providerId),
@@ -82,14 +88,26 @@ export function useProviderDashboard(
           }),
           memberService.getByProvider(providerId).catch(() => []),
           locationService.getByProvider(providerId).catch(() => []),
+          catalogService.getByProvider(providerId).catch(() => []),
         ]);
+
+      // Count bookings per day of week [Mon=0 .. Sun=6]
+      const perDay = [0, 0, 0, 0, 0, 0, 0];
+      for (const b of weekBookings) {
+        const dt = b.datetime instanceof Date ? b.datetime : (b.datetime as any)?.toDate?.() || new Date(b.datetime);
+        const jsDay = dt.getDay(); // 0=Sun, 1=Mon...6=Sat
+        const idx = jsDay === 0 ? 6 : jsDay - 1; // Mon=0...Sun=6
+        perDay[idx]++;
+      }
 
       setData({
         todayBookings,
         pendingBookings,
         weekBookingsCount: weekBookings.length,
+        weekBookingsPerDay: perDay,
         members: (members as WithId<Member>[]).filter((m) => m.isActive),
         locations: locations as WithId<Location>[],
+        services: services as WithId<Service>[],
         averageRating: averageRating ?? null,
       });
     } catch (err) {

@@ -71,6 +71,7 @@ function formatDuration(minutes: number): string {
 
 // Helper to format price
 function formatPrice(cents: number): string {
+  if (cents === 0) return 'Gratuit';
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',

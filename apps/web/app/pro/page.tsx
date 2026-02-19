@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, AlertCircle, Star, Globe, GlobeLock } from 'lucide-react';
+import { Calendar, Clock, Eye, Star, Globe, GlobeLock } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -10,8 +10,9 @@ import {
   memberService,
   locationService,
   catalogService,
+  analyticsService,
 } from '@booking-app/firebase';
-import type { Booking, Member, Location, Service } from '@booking-app/shared';
+import type { Booking, Member, Location, Service, PageViewStats } from '@booking-app/shared';
 import { BookingDetailModal } from '@/components/booking';
 import { CreateBookingModal } from './calendrier/components/CreateBookingModal';
 import {
@@ -34,11 +35,18 @@ export default function DashboardPage() {
   const [todayBookings, setTodayBookings] = useState<WithId<Booking>[]>([]);
   const [upcomingBookings, setUpcomingBookings] = useState<WithId<Booking>[]>([]);
   const [recentCancellations, setRecentCancellations] = useState<WithId<Booking>[]>([]);
-  const [pendingCount, setPendingCount] = useState(0);
   const [weekBookingsCount, setWeekBookingsCount] = useState(0);
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+
+  // Page views (real-time)
+  const [pageViewStats, setPageViewStats] = useState<PageViewStats>({
+    today: 0,
+    total: 0,
+    last7Days: 0,
+    last30Days: 0,
+  });
 
   // Loading state
   const [loading, setLoading] = useState(true);
@@ -223,7 +231,6 @@ export default function DashboardPage() {
       setTodayBookings(activeTodayBookings);
       setUpcomingBookings(futureBookings);
       setRecentCancellations(sortedCancellations.slice(0, 3));
-      setPendingCount(pendingData.length);
       setWeekBookingsCount(weekData.length);
       setMembers(membersData.filter((m: WithId<Member>) => m.isActive));
       setLocations(locationsData.filter((l: WithId<Location>) => l.isActive));
@@ -241,6 +248,15 @@ export default function DashboardPage() {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  // Real-time page views subscription
+  useEffect(() => {
+    if (!provider?.id) return;
+    const unsub = analyticsService.subscribeToPageViews(provider.id, setPageViewStats);
+    return unsub;
+  }, [provider?.id]);
+
+  const liveViews = analyticsService.computeLiveStats(pageViewStats);
 
   // Handlers
   const handleBookingClick = (booking: WithId<Booking>) => {
@@ -362,12 +378,11 @@ export default function DashboardPage() {
           variant="success"
         />
         <StatCard
-          icon={<AlertCircle className="w-5 h-5" />}
-          label="En attente"
-          value={pendingCount}
-          sublabel="à confirmer"
-          href="/pro/reservations?status=pending"
-          variant={pendingCount > 0 ? 'warning' : 'default'}
+          icon={<Eye className="w-5 h-5" />}
+          label="Vues"
+          value={liveViews.today}
+          sublabel="aujourd'hui"
+          variant={liveViews.today > 0 ? 'primary' : 'default'}
         />
         <StatCard
           icon={<Star className="w-5 h-5" />}

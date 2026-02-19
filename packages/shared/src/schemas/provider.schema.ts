@@ -6,6 +6,7 @@ export const socialLinksSchema = z.object({
   facebook: z.string().url({ message: 'URL Facebook invalide' }).nullable().optional(),
   tiktok: z.string().url({ message: 'URL TikTok invalide' }).nullable().optional(),
   website: z.string().url({ message: 'URL du site web invalide' }).nullable().optional(),
+  paypal: z.string().url({ message: 'URL PayPal invalide' }).nullable().optional(),
 });
 
 // Provider settings schema

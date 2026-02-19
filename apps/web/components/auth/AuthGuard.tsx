@@ -20,9 +20,10 @@ export function AuthGuard({ children, requireProvider = true }: AuthGuardProps) 
   useEffect(() => {
     if (loading) return;
 
-    // Not authenticated -> redirect to login
+    // Not authenticated -> redirect to login with return URL
     if (!isAuthenticated) {
-      router.replace('/login');
+      const returnUrl = window.location.pathname + window.location.search;
+      router.replace(`/login?redirect=${encodeURIComponent(returnUrl)}`);
       return;
     }
 

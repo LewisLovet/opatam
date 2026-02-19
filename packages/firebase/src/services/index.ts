@@ -30,3 +30,6 @@ export { MessagingService, messagingService } from './messaging.service';
 
 // Notification Service (Stub)
 export { NotificationService, notificationService } from './notification.service';
+
+// Analytics Service
+export { AnalyticsService, analyticsService } from './analytics.service';

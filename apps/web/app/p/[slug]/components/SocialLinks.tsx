@@ -16,6 +16,7 @@ interface SocialLinksData {
   facebook: string | null;
   tiktok: string | null;
   website: string | null;
+  paypal?: string | null;
 }
 
 interface SocialLinksProps {

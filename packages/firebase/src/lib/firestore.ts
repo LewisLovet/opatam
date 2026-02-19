@@ -16,6 +16,7 @@ import {
   serverTimestamp,
   Timestamp,
   collectionGroup,
+  increment,
   type Firestore,
   type DocumentReference,
   type CollectionReference,
@@ -41,6 +42,7 @@ export const collections = {
   bookings: () => collection(db, 'bookings'),
   reviews: () => collection(db, 'reviews'),
   conversations: () => collection(db, 'conversations'),
+  pageViewsDaily: () => collection(db, 'pageViewsDaily'),
 } as const;
 
 /**
@@ -95,6 +97,7 @@ export {
   startAfter,
   onSnapshot,
   collectionGroup,
+  increment,
   type DocumentReference,
   type CollectionReference,
   type Query,

@@ -57,6 +57,7 @@ export default function ProvidersTestPage() {
           facebook: null,
           tiktok: null,
           website: null,
+          paypal: null,
         },
         rating: {
           average: 0,

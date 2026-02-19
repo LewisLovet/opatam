@@ -5,7 +5,7 @@
  * Functions are organized into:
  * - triggers: Firestore document triggers (onCreate, onUpdate, etc.)
  * - scheduled: Scheduled tasks (reminders, cleanup, etc.)
- * - callable: HTTPS callable functions
+ * - callable (test): HTTPS callable functions for dev/testing only (emulator)
  */
 
 import * as admin from 'firebase-admin';
@@ -13,27 +13,33 @@ import * as admin from 'firebase-admin';
 // Initialize Firebase Admin SDK
 admin.initializeApp();
 
-// Export triggers
-export { onBookingWrite } from './triggers/onBookingWrite';
-// export { onBookingCreate } from './triggers/onBookingCreate';
-// export { onBookingUpdate } from './triggers/onBookingUpdate';
-// export { onReviewCreate } from './triggers/onReviewCreate';
-// export { onMessageCreate } from './triggers/onMessageCreate';
+// ─── Production functions (deployed) ─────────────────────────────────────────
 
-// Export scheduled functions
+// Triggers
+export { onBookingWrite } from './triggers/onBookingWrite';
+
+// Scheduled
 export { recalculateExpiredSlots } from './scheduled/recalculateExpiredSlots';
 export { sendBookingReminders } from './scheduled/sendBookingReminders';
 export { sendDailyAgendaSummary } from './scheduled/sendDailyAgendaSummary';
-// export { completeBookings } from './scheduled/completeBookings';
+export { aggregatePageViews } from './scheduled/aggregatePageViews';
 
-// Export callable functions
-export { testFunction } from './callable/testFunction';
-export { recalculateNextSlot } from './callable/recalculateNextSlot';
-export { testCalculateNextSlot } from './callable/testCalculateNextSlot';
-export { recalculateAllProviders } from './callable/recalculateAllProviders';
-export { testPushNotification } from './callable/testPushNotification';
-export { testCreateBooking } from './callable/testCreateBooking';
-export { testCleanupBookings } from './callable/testCleanupBookings';
-export { testDailyAgendaSummary } from './callable/testDailyAgendaSummary';
-// export { cancelBooking } from './callable/cancelBooking';
-// export { getMemberPlanning } from './callable/getMemberPlanning';
+// ─── Test/Dev callable functions (emulator only) ─────────────────────────────
+// These are only exported when running in the Firebase emulator.
+// They will NOT be deployed to production with `firebase deploy --only functions`.
+
+const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+
+if (isEmulator) {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  exports.testFunction = require('./callable/testFunction').testFunction;
+  exports.recalculateNextSlot = require('./callable/recalculateNextSlot').recalculateNextSlot;
+  exports.testCalculateNextSlot = require('./callable/testCalculateNextSlot').testCalculateNextSlot;
+  exports.recalculateAllProviders = require('./callable/recalculateAllProviders').recalculateAllProviders;
+  exports.testPushNotification = require('./callable/testPushNotification').testPushNotification;
+  exports.testCreateBooking = require('./callable/testCreateBooking').testCreateBooking;
+  exports.testCleanupBookings = require('./callable/testCleanupBookings').testCleanupBookings;
+  exports.testDailyAgendaSummary = require('./callable/testDailyAgendaSummary').testDailyAgendaSummary;
+  exports.testAggregatePageViews = require('./callable/testAggregatePageViews').testAggregatePageViews;
+  /* eslint-enable @typescript-eslint/no-require-imports */
+}

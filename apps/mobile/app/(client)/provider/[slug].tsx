@@ -3,7 +3,7 @@
  * Full provider profile with tabbed layout: Prestations, Avis, Infos
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -12,6 +12,7 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
+  Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +50,7 @@ import {
   useMembers,
 } from '../../../hooks';
 import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
-import type { WithId } from '@booking-app/firebase';
+import { analyticsService, type WithId } from '@booking-app/firebase';
 
 type TabId = 'prestations' | 'avis' | 'infos';
 
@@ -129,6 +130,14 @@ export default function ProviderDetailScreen() {
   const showTeamDispos = isTeam && memberAvailabilities.length > 1;
   const displayedAvailability = showTeamDispos ? teamEarliestFormatted : nextAvailableFormatted;
   const availabilityLoading = showTeamDispos ? loadingTeamAvail : loadingAvailability;
+
+  // Track page view (once per mount per provider, deduplicated via ref)
+  const trackedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!provider?.id || isPreview || trackedRef.current === provider.id) return;
+    trackedRef.current = provider.id;
+    analyticsService.trackPageView(provider.id).catch(() => {});
+  }, [provider?.id, isPreview]);
 
   // Tab & selection state
   const [activeTab, setActiveTab] = useState<TabId>('prestations');
@@ -316,13 +325,37 @@ export default function ProviderDetailScreen() {
             <ExpandableText text={provider.description} numberOfLines={3} />
           )}
 
-          {/* Next Available Date Badge */}
-          {!availabilityLoading && displayedAvailability && (
-            <View style={[styles.availabilityBadge, { backgroundColor: colors.primaryLight || '#e4effa', marginTop: spacing.md }]}>
-              <Ionicons name="calendar-outline" size={16} color={colors.primary} style={{ marginRight: spacing.xs }} />
-              <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-                Prochaine dispo : {displayedAvailability}
-              </Text>
+          {/* Next Available Date Badge + PayPal */}
+          {(!availabilityLoading && displayedAvailability || provider.socialLinks?.paypal) && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md, alignItems: 'center' }}>
+              {!availabilityLoading && displayedAvailability && (
+                <View style={[styles.availabilityBadge, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
+                  <Ionicons name="calendar-outline" size={16} color={colors.primary} style={{ marginRight: spacing.xs }} />
+                  <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+                    Prochaine dispo : {displayedAvailability}
+                  </Text>
+                </View>
+              )}
+              {provider.socialLinks?.paypal && (
+                <Pressable
+                  onPress={() => {
+                    const url = provider.socialLinks!.paypal!.startsWith('http')
+                      ? provider.socialLinks!.paypal!
+                      : `https://paypal.me/${provider.socialLinks!.paypal}`;
+                    Linking.openURL(url).catch(() => {});
+                  }}
+                  style={({ pressed }) => [
+                    styles.paypalButton,
+                    { opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+                  ]}
+                >
+                  <Ionicons name="logo-paypal" size={16} color="white" />
+                  <Text variant="caption" style={{ color: 'white', fontWeight: '600' }}>
+                    PayPal
+                  </Text>
+                  <Ionicons name="open-outline" size={12} color="rgba(255,255,255,0.7)" />
+                </Pressable>
+              )}
             </View>
           )}
 
@@ -638,5 +671,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 5,
+  },
+  paypalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0070BA',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

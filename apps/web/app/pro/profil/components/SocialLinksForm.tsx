@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input, Button } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
-import { Loader2, Instagram, Facebook, Globe } from 'lucide-react';
+import { Loader2, Instagram, Facebook, Globe, DollarSign } from 'lucide-react';
 
 // TikTok icon component (not in lucide-react)
 function TikTokIcon({ className }: { className?: string }) {
@@ -35,6 +35,7 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
     facebook: '',
     tiktok: '',
     website: '',
+    paypal: '',
   });
 
   // Initialize form with provider data
@@ -45,6 +46,7 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
         facebook: provider.socialLinks.facebook || '',
         tiktok: provider.socialLinks.tiktok || '',
         website: provider.socialLinks.website || '',
+        paypal: provider.socialLinks.paypal || '',
       });
     }
   }, [provider]);
@@ -56,14 +58,33 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
     setSuccess(false);
   };
 
-  // Validate URL format
-  const isValidUrl = (url: string): boolean => {
-    if (!url) return true; // Empty is valid (optional)
+  // Expected domains per platform (website has no restriction)
+  const domainRules: Record<string, string[]> = {
+    instagram: ['instagram.com', 'www.instagram.com'],
+    facebook: ['facebook.com', 'www.facebook.com', 'fb.com'],
+    tiktok: ['tiktok.com', 'www.tiktok.com'],
+    paypal: ['paypal.me', 'www.paypal.me', 'paypal.com', 'www.paypal.com'],
+  };
+
+  const platformLabels: Record<string, string> = {
+    instagram: 'Instagram',
+    facebook: 'Facebook',
+    tiktok: 'TikTok',
+    paypal: 'PayPal',
+  };
+
+  // Validate URL format + domain
+  const validateUrl = (key: string, url: string): string | null => {
+    if (!url) return null;
     try {
-      new URL(url.startsWith('http') ? url : `https://${url}`);
-      return true;
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+      const allowedDomains = domainRules[key];
+      if (allowedDomains && !allowedDomains.includes(parsed.hostname)) {
+        return `Le lien ${platformLabels[key] || key} doit pointer vers ${allowedDomains[0]}`;
+      }
+      return null;
     } catch {
-      return false;
+      return `L'URL ${platformLabels[key] || key} n'est pas valide`;
     }
   };
 
@@ -71,11 +92,11 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
     e.preventDefault();
     if (!provider) return;
 
-    // Validate URLs
-    const urls = { ...formData };
-    for (const [key, value] of Object.entries(urls)) {
-      if (value && !isValidUrl(value)) {
-        setError(`L'URL ${key} n'est pas valide`);
+    // Validate URLs (format + domain)
+    for (const [key, value] of Object.entries(formData)) {
+      const err = validateUrl(key, value);
+      if (err) {
+        setError(err);
         return;
       }
     }
@@ -90,6 +111,7 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
         facebook: formData.facebook || null,
         tiktok: formData.tiktok || null,
         website: formData.website || null,
+        paypal: formData.paypal || null,
       });
 
       await refreshProvider();
@@ -165,6 +187,22 @@ export function SocialLinksForm({ onSuccess }: SocialLinksFormProps) {
           value={formData.website}
           onChange={handleChange}
           placeholder="https://votre-site.com"
+          className="pl-10"
+        />
+      </div>
+
+      {/* PayPal */}
+      <div className="relative">
+        <div className="absolute left-3 top-[38px] text-gray-400">
+          <DollarSign className="w-5 h-5" />
+        </div>
+        <Input
+          label="PayPal.me"
+          name="paypal"
+          type="url"
+          value={formData.paypal}
+          onChange={handleChange}
+          placeholder="https://paypal.me/votre-identifiant"
           className="pl-10"
         />
       </div>

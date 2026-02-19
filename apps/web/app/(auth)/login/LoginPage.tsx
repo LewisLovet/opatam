@@ -78,10 +78,16 @@ function LoginContent() {
     try {
       const { user } = await authService.login({ email, password });
 
+      // Use redirect param if provided (e.g. from AuthGuard)
+      const redirectUrl = searchParams.get('redirect');
+
       // Redirect based on user role
       if (user.role === 'client') {
         // Clients should use the mobile app
         router.push('/telechargement');
+      } else if (redirectUrl && user.providerId) {
+        // Redirect to the original page (only for authenticated providers)
+        router.push(redirectUrl);
       } else if (user.providerId) {
         // Provider with completed setup
         router.push('/pro');

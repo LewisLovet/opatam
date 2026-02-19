@@ -23,14 +23,14 @@ export function useClientBookings(): UseClientBookingsResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadBookings = useCallback(async () => {
+  const loadBookings = useCallback(async (silent = false) => {
     if (!user?.uid) {
       setBookings([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
 
     try {
@@ -49,8 +49,9 @@ export function useClientBookings(): UseClientBookingsResult {
   }, [loadBookings]);
 
   const refresh = useCallback(async () => {
-    await loadBookings();
-  }, [loadBookings]);
+    // Silent refresh: don't show loading skeleton when data already exists
+    await loadBookings(bookings.length > 0);
+  }, [loadBookings, bookings.length]);
 
   // Filter upcoming: datetime > now AND status in ['confirmed', 'pending']
   const upcoming = bookings.filter((booking) => {

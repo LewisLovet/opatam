@@ -63,8 +63,27 @@ export interface Provider {
   geopoint: { latitude: number; longitude: number } | null; // From default location, for proximity search
   // Availability cache (computed by Cloud Functions)
   nextAvailableSlot: Date | null; // Next available booking slot (null if none or not computed)
+  // Analytics (pageViews.today incremented in real-time, rest updated nightly)
+  stats?: {
+    pageViews: PageViewStats;
+  };
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Page view stats (denormalized on Provider, updated nightly by Cloud Function)
+export interface PageViewStats {
+  today: number;         // Incremented in real-time, reset nightly
+  total: number;         // Accumulated total, updated nightly
+  last7Days: number;     // Recalculated nightly from daily docs
+  last30Days: number;    // Recalculated nightly from daily docs
+}
+
+// Daily page view document (pageViewsDaily collection)
+export interface PageViewDaily {
+  providerId: string;
+  date: string;          // YYYY-MM-DD format
+  count: number;         // Total views for that day
 }
 
 export interface SocialLinks {
@@ -72,6 +91,7 @@ export interface SocialLinks {
   facebook: string | null;
   tiktok: string | null;
   website: string | null;
+  paypal: string | null;
 }
 
 export interface Rating {

@@ -45,6 +45,7 @@ export {
   startAfter,
   onSnapshot,
   collectionGroup,
+  increment,
   type DocumentReference,
   type CollectionReference,
   type Query,
@@ -173,4 +174,7 @@ export {
   // Notification (Stub)
   NotificationService,
   notificationService,
+  // Analytics
+  AnalyticsService,
+  analyticsService,
 } from './services';

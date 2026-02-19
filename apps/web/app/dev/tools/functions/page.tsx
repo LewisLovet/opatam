@@ -195,6 +195,27 @@ interface AgendaSummaryResult {
   message: string;
 }
 
+// Types pour testAggregatePageViews
+interface AggregateProviderDetail {
+  providerId: string;
+  businessName: string;
+  todayViews: number;
+  previousTotal: number;
+  newTotal: number;
+  last7Days: number;
+  last30Days: number;
+}
+
+interface AggregatePageViewsResult {
+  success: boolean;
+  providersProcessed: number;
+  skipped: number;
+  oldDocsDeleted: number;
+  details: AggregateProviderDetail[];
+  executionTimeMs: number;
+  message: string;
+}
+
 export default function TestFunctionsPage() {
   const [testResult, setTestResult] = useState<TestFunctionResponse | null>(null);
   const [recalculateResult, setRecalculateResult] = useState<RecalculateResponse | null>(null);
@@ -215,6 +236,8 @@ export default function TestFunctionsPage() {
   const [cleanupResult, setCleanupResult] = useState<TestCleanupBookingsResponse | null>(null);
   const [agendaResult, setAgendaResult] = useState<AgendaSummaryResult | null>(null);
   const [agendaProviderId, setAgendaProviderId] = useState('');
+  const [aggregateResult, setAggregateResult] = useState<AggregatePageViewsResult | null>(null);
+  const [aggregateProviderId, setAggregateProviderId] = useState('');
   const emulatorConnected = useRef(false);
 
   useEffect(() => {
@@ -469,6 +492,29 @@ export default function TestFunctionsPage() {
     }
   };
 
+  const runTestAggregatePageViews = async () => {
+    const functions = getFunctions(app);
+    setLoading('aggregate');
+    setError(null);
+    setAggregateResult(null);
+
+    try {
+      const aggregateFn = httpsCallable<{ providerId?: string }, AggregatePageViewsResult>(
+        functions,
+        'testAggregatePageViews'
+      );
+      const response = await aggregateFn(
+        aggregateProviderId.trim() ? { providerId: aggregateProviderId.trim() } : {}
+      );
+      setAggregateResult(response.data);
+    } catch (err) {
+      console.error('Error calling testAggregatePageViews:', err);
+      handleError(err);
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="py-12 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -595,6 +641,113 @@ export default function TestFunctionsPage() {
                   </summary>
                   <pre className="text-xs overflow-auto max-h-60 mt-2 text-gray-700 dark:text-gray-300">
                     {JSON.stringify(agendaResult, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Test Agrégation des vues */}
+        <Card>
+          <CardHeader
+            title="Agrégation des vues de page"
+            description="Archive les vues du jour, recalcule les stats 7j/30j et nettoie les anciens docs"
+            action={
+              <Badge variant={isEmulator ? 'info' : 'success'}>
+                {isEmulator ? 'Émulateur' : 'Production'}
+              </Badge>
+            }
+          />
+          <CardBody className="space-y-4">
+            <Input
+              label="Provider ID (optionnel)"
+              value={aggregateProviderId}
+              onChange={(e) => setAggregateProviderId(e.target.value)}
+              placeholder="Laisser vide pour tous les providers publiés"
+            />
+
+            <Button
+              onClick={runTestAggregatePageViews}
+              loading={loading === 'aggregate'}
+              fullWidth
+              variant="primary"
+            >
+              {aggregateProviderId.trim() ? 'Agréger pour ce provider' : 'Agréger pour tous les providers'}
+            </Button>
+
+            {aggregateResult && (
+              <div className="space-y-4">
+                <div className={`p-4 rounded-lg border ${
+                  aggregateResult.success
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                    : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant={aggregateResult.success ? 'success' : 'error'}>
+                      {aggregateResult.success ? 'Succès' : 'Erreur'}
+                    </Badge>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {aggregateResult.executionTimeMs}ms
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-1">{aggregateResult.message}</p>
+
+                  <div className="flex flex-wrap gap-4 mt-3">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{aggregateResult.providersProcessed}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Traités</div>
+                    </div>
+                    {aggregateResult.skipped > 0 && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{aggregateResult.skipped}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Ignorés</div>
+                      </div>
+                    )}
+                    {aggregateResult.oldDocsDeleted > 0 && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{aggregateResult.oldDocsDeleted}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Anciens docs supprimés</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {aggregateResult.details.length > 0 && (
+                  <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <p className="text-sm font-medium mb-3 text-gray-900 dark:text-gray-100">Détail par provider</p>
+                    <div className="space-y-2">
+                      {aggregateResult.details.map((detail) => (
+                        <div
+                          key={detail.providerId}
+                          className="p-3 rounded border bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{detail.businessName}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">{detail.providerId.substring(0, 8)}...</span>
+                            </div>
+                            {detail.todayViews > 0 && (
+                              <Badge variant="info">+{detail.todayViews} vues</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                            <span>Total : {detail.previousTotal} → <span className="font-medium text-gray-900 dark:text-gray-100">{detail.newTotal}</span></span>
+                            <span>7j : {detail.last7Days}</span>
+                            <span>30j : {detail.last30Days}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <details className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <summary className="text-sm font-medium cursor-pointer text-gray-900 dark:text-gray-100">
+                    Voir la réponse JSON complète
+                  </summary>
+                  <pre className="text-xs overflow-auto max-h-60 mt-2 text-gray-700 dark:text-gray-300">
+                    {JSON.stringify(aggregateResult, null, 2)}
                   </pre>
                 </details>
               </div>

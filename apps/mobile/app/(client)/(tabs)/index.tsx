@@ -1,13 +1,23 @@
 /**
- * Home Tab Screen
- * Welcome screen with category cards and upcoming bookings
+ * Home Tab Screen — Redesigned
+ * Gradient header with search bar, image category carousel, enhanced bookings,
+ * re-book action, and dynamic city name in suggestions.
  */
 
-import React, { useState, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Pressable, RefreshControl } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { providerService } from '@booking-app/firebase';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter, useFocusEffect } from 'expo-router';
+import React, { useState, useCallback } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
 import {
   Text,
@@ -21,7 +31,10 @@ import {
 import { useUserLocation, useNearbyProviders, useNavigateToProvider, useClientBookings } from '../../../hooks';
 import { useAuth } from '../../../contexts';
 
-// Category images from Unsplash
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const categoryImages: Record<string, string> = {
   digital: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400',
   beauty: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=400',
@@ -33,7 +46,6 @@ const categoryImages: Record<string, string> = {
   audiovisual: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=400',
 };
 
-// Categories displayed on home — IDs match Firestore provider.category
 const categories = [
   { id: 'digital', label: 'Digital' },
   { id: 'beauty', label: 'Beauté' },
@@ -45,27 +57,28 @@ const categories = [
   { id: 'audiovisual', label: 'Audiovisuel' },
 ];
 
-// Helper to format booking date
-function formatBookingDate(datetime: Date | any): string {
-  const date = datetime instanceof Date
-    ? datetime
-    : datetime?.toDate?.() || new Date(datetime);
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
+function toDate(dt: any): Date {
+  if (dt instanceof Date) return dt;
+  if (dt?.toDate) return dt.toDate();
+  return new Date(dt);
+}
+
+function formatBookingDate(datetime: Date | any): string {
+  const date = toDate(datetime);
   const now = new Date();
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   const isToday = date.toDateString() === now.toDateString();
   const isTomorrow = date.toDateString() === tomorrow.toDateString();
-
   const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-  if (isToday) {
-    return `Aujourd'hui à ${timeStr}`;
-  }
-  if (isTomorrow) {
-    return `Demain à ${timeStr}`;
-  }
+  if (isToday) return `Aujourd'hui à ${timeStr}`;
+  if (isTomorrow) return `Demain à ${timeStr}`;
 
   const dateStr = date.toLocaleDateString('fr-FR', {
     weekday: 'long',
@@ -75,15 +88,31 @@ function formatBookingDate(datetime: Date | any): string {
   return `${dateStr} à ${timeStr}`;
 }
 
+/** Returns "Dans Xh", "Dans X min", or null if booking is in the past */
+function getTimeUntilChip(bookingDate: Date): string | null {
+  const now = new Date();
+  const diffMs = bookingDate.getTime() - now.getTime();
+  if (diffMs <= 0) return null;
+  const diffMin = Math.round(diffMs / 60000);
+  if (diffMin < 60) return `Dans ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  const remainMin = diffMin % 60;
+  return remainMin > 0 ? `Dans ${diffH}h${remainMin.toString().padStart(2, '0')}` : `Dans ${diffH}h`;
+}
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
+
 export default function HomeScreen() {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { navigateToProvider, isLoading } = useNavigateToProvider();
   const { userData, isAuthenticated } = useAuth();
   const { upcoming, past, loading: loadingBookings, refresh: refreshBookings } = useClientBookings();
 
-  // Refresh bookings when screen comes into focus (e.g., after new booking)
+  // Refresh bookings when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (isAuthenticated) {
@@ -91,13 +120,17 @@ export default function HomeScreen() {
       }
     }, [isAuthenticated, refreshBookings])
   );
-  const nextBooking = upcoming.length > 0 ? upcoming[0] : null;
-  const recentPast = past.slice(0, 3); // Show up to 3 recent past bookings
 
-  // Get user's first name
+  const nextBooking = upcoming.length > 0 ? upcoming[0] : null;
+  const recentPast = past.slice(0, 3);
   const firstName = userData?.displayName?.split(' ')[0] || '';
 
-  // Fetch nearby providers (falls back to top-rated if no location)
+  // Next booking derived values
+  const nextBookingDate = nextBooking ? toDate(nextBooking.datetime) : null;
+  const nextBookingBarColor = nextBooking?.status === 'confirmed' ? colors.success : colors.warning;
+  const nextBookingTimeChip = nextBookingDate ? getTimeUntilChip(nextBookingDate) : null;
+
+  // Nearby providers
   const { location: userLocation, loading: locationLoading } = useUserLocation();
   const { providers: suggestions, loading: loadingSuggestions, isNearby, refresh: refreshSuggestions } = useNearbyProviders(userLocation, locationLoading, 5);
 
@@ -109,6 +142,22 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [refreshBookings, refreshSuggestions]);
 
+  // Re-book handler
+  const [rebookingId, setRebookingId] = useState<string | null>(null);
+  const handleRebook = useCallback(async (providerId: string, bookingId: string) => {
+    setRebookingId(bookingId);
+    try {
+      const provider = await providerService.getById(providerId);
+      if (provider?.slug) {
+        router.push(`/(client)/provider/${provider.slug}` as any);
+      }
+    } catch {
+      // Silent fail — provider may have been deleted
+    } finally {
+      setRebookingId(null);
+    }
+  }, [router]);
+
   const handleCategoryPress = (categoryId: string) => {
     router.push({
       pathname: '/(client)/(tabs)/search',
@@ -118,8 +167,11 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* ── Branded Header ── */}
-      <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+      {/* ── Gradient Header with Search Bar ── */}
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        style={{ paddingTop: insets.top }}
+      >
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
           <Text variant="h1" style={{ color: '#FFFFFF' }}>
             {isAuthenticated && firstName ? `Bonjour ${firstName}` : 'Bonjour'}
@@ -127,12 +179,34 @@ export default function HomeScreen() {
           <Text variant="body" style={{ color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs }}>
             Trouvez votre prochain rendez-vous
           </Text>
+
+          {/* Fake search bar */}
+          <Pressable
+            onPress={() => router.push('/(client)/(tabs)/search')}
+            style={({ pressed }) => [
+              styles.fakeSearchBar,
+              {
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                borderRadius: radius.full,
+                opacity: pressed ? 0.8 : 1,
+                marginTop: spacing.md,
+              },
+            ]}
+          >
+            <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.7)" />
+            <Text
+              variant="body"
+              style={{ color: 'rgba(255,255,255,0.5)', marginLeft: spacing.sm, flex: 1 }}
+            >
+              Rechercher un prestataire...
+            </Text>
+          </Pressable>
         </View>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: spacing.md, paddingBottom: spacing['3xl'] }}
+        contentContainerStyle={{ paddingTop: spacing.lg, paddingBottom: spacing['3xl'] }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -142,22 +216,15 @@ export default function HomeScreen() {
           />
         }
       >
-
-        {/* Categories Carousel */}
+        {/* ── Categories ── */}
         <View style={{ marginBottom: spacing.xl }}>
-          <Text
-            variant="h3"
-            style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}
-          >
+          <Text variant="h3" style={{ marginBottom: spacing.md, paddingHorizontal: spacing.lg }}>
             Catégories
           </Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: spacing.lg,
-              gap: spacing.md,
-            }}
+            contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
           >
             {categories.map((category) => (
               <CategoryCard
@@ -171,7 +238,7 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Upcoming Booking */}
+        {/* ── Prochain RDV ── */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
           <Text variant="h3" style={{ marginBottom: spacing.md }}>
             Prochain RDV
@@ -185,50 +252,77 @@ export default function HomeScreen() {
               </View>
             </Card>
           ) : nextBooking ? (
-            <Card padding="lg" shadow="sm">
-              <View style={styles.bookingCard}>
-                <Avatar
-                  size="md"
-                  name={nextBooking.providerName}
-                  imageUrl={nextBooking.providerPhoto}
-                  style={{ marginRight: 12 }}
-                />
-                <View style={styles.bookingInfo}>
-                  <Text variant="body" style={{ fontWeight: '600' }}>
-                    {nextBooking.serviceName}
-                  </Text>
-                  <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                    {nextBooking.providerName}
-                  </Text>
-                  <Text variant="caption" color="primary" style={{ marginTop: 4, fontWeight: '500' }}>
-                    {formatBookingDate(nextBooking.datetime)}
+            <Pressable
+              onPress={() => router.push('/(client)/(tabs)/bookings')}
+              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+            >
+              <View style={[styles.nextBookingCard, { backgroundColor: colors.primaryLight, borderRadius: radius.lg, overflow: 'hidden' }]}>
+                {/* Color bar */}
+                <View style={{ width: 4, backgroundColor: nextBookingBarColor, borderTopLeftRadius: radius.lg, borderBottomLeftRadius: radius.lg }} />
+                <View style={{ flex: 1, padding: spacing.lg, flexDirection: 'row', alignItems: 'center' }}>
+                  <Avatar
+                    size="md"
+                    name={nextBooking.providerName}
+                    imageUrl={nextBooking.providerPhoto}
+                    style={{ marginRight: 12 }}
+                  />
+                  <View style={styles.bookingInfo}>
+                    <Text variant="body" style={{ fontWeight: '600' }}>
+                      {nextBooking.serviceName}
+                    </Text>
+                    <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                      {nextBooking.providerName}
+                    </Text>
+                    <Text variant="caption" color="primary" style={{ marginTop: 4, fontWeight: '500' }}>
+                      {formatBookingDate(nextBooking.datetime)}
+                    </Text>
+                  </View>
+                  {nextBookingTimeChip ? (
+                    <View style={[styles.timeChip, { backgroundColor: colors.surface, borderRadius: radius.full }]}>
+                      <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 11 }}>
+                        {nextBookingTimeChip}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.bookingArrow, { backgroundColor: colors.surface }]}>
+                      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                    </View>
+                  )}
+                </View>
+              </View>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => router.push('/(client)/(tabs)/search')}
+              style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+            >
+              <LinearGradient
+                colors={[colors.primaryLight, colors.surface]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.emptyBookingCard, { borderRadius: radius.lg, borderColor: colors.primary + '20', borderWidth: 1 }]}
+              >
+                <View style={[styles.emptyBookingIcon, { backgroundColor: colors.primary + '15', borderRadius: radius.full }]}>
+                  <Ionicons name="calendar-outline" size={28} color={colors.primary} />
+                </View>
+                <Text variant="body" style={{ fontWeight: '600', marginTop: spacing.md }}>
+                  Pas de RDV à venir
+                </Text>
+                <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs, textAlign: 'center' }}>
+                  Trouvez un prestataire et réservez votre prochain rendez-vous en quelques clics
+                </Text>
+                <View style={[styles.emptyBookingBtn, { backgroundColor: colors.primary, borderRadius: radius.full, marginTop: spacing.lg }]}>
+                  <Ionicons name="search-outline" size={16} color="#FFF" />
+                  <Text variant="body" style={{ color: '#FFF', fontWeight: '600', marginLeft: spacing.xs }}>
+                    Rechercher
                   </Text>
                 </View>
-                <Pressable
-                  onPress={() => router.push('/(client)/(tabs)/bookings')}
-                  style={({ pressed }) => [
-                    styles.bookingArrow,
-                    { backgroundColor: colors.surfaceSecondary, opacity: pressed ? 0.7 : 1 },
-                  ]}
-                >
-                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                </Pressable>
-              </View>
-            </Card>
-          ) : (
-            <Card padding="lg" shadow="sm">
-              <EmptyState
-                icon="calendar-outline"
-                title="Pas de RDV à venir"
-                description="Réservez votre prochain rendez-vous"
-                actionLabel="Rechercher"
-                onAction={() => router.push('/(client)/(tabs)/search')}
-              />
-            </Card>
+              </LinearGradient>
+            </Pressable>
           )}
         </View>
 
-        {/* Past Bookings */}
+        {/* ── Derniers RDV ── */}
         {!loadingBookings && recentPast.length > 0 && (
           <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
@@ -243,9 +337,7 @@ export default function HomeScreen() {
               </Pressable>
             </View>
             {recentPast.map((booking) => {
-              const bookingDate = booking.datetime instanceof Date
-                ? booking.datetime
-                : (booking.datetime as any)?.toDate?.() || new Date(booking.datetime);
+              const bookingDate = toDate(booking.datetime);
               const dateStr = bookingDate.toLocaleDateString('fr-FR', {
                 day: 'numeric',
                 month: 'short',
@@ -274,16 +366,38 @@ export default function HomeScreen() {
                           {booking.providerName} — {dateStr}
                         </Text>
                       </View>
-                      {isPast ? (
-                        <View style={[styles.reviewChip, { backgroundColor: '#fef3c7' }]}>
-                          <Ionicons name="star" size={14} color="#f59e0b" />
-                          <Text style={{ fontSize: 11, fontWeight: '600', color: '#f59e0b', marginLeft: 2 }}>
-                            Avis
-                          </Text>
-                        </View>
-                      ) : (
-                        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                      )}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                        {isPast && (
+                          <Pressable
+                            onPress={() => handleRebook(booking.providerId, booking.id)}
+                            disabled={rebookingId === booking.id}
+                            style={({ pressed }) => [
+                              styles.rebookChip,
+                              { backgroundColor: colors.primaryLight, opacity: pressed ? 0.7 : 1 },
+                            ]}
+                          >
+                            {rebookingId === booking.id ? (
+                              <ActivityIndicator size={12} color={colors.primary} />
+                            ) : (
+                              <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+                            )}
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.primary, marginLeft: 2 }}>
+                              Réserver
+                            </Text>
+                          </Pressable>
+                        )}
+                        {isPast && (
+                          <View style={[styles.reviewChip, { backgroundColor: '#fef3c7' }]}>
+                            <Ionicons name="star" size={14} color="#f59e0b" />
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#f59e0b', marginLeft: 2 }}>
+                              Avis
+                            </Text>
+                          </View>
+                        )}
+                        {!isPast && (
+                          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                        )}
+                      </View>
                     </View>
                   </Card>
                 </Pressable>
@@ -292,10 +406,12 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Suggestions */}
+        {/* ── Suggestions ── */}
         <View style={{ paddingHorizontal: spacing.lg }}>
           <Text variant="h3" style={{ marginBottom: spacing.md }}>
-            {isNearby ? 'Près de chez vous' : 'Suggestions'}
+            {isNearby
+              ? `Près de chez vous${userLocation?.city ? ` \u00B7 à ${userLocation.city}` : ''}`
+              : 'Suggestions'}
           </Text>
 
           {loadingSuggestions ? (
@@ -336,24 +452,43 @@ export default function HomeScreen() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    // Dynamic styles applied inline
+  fakeSearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  emptyBookingCard: {
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+  },
+  emptyBookingIcon: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyBookingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  nextBookingCard: {
+    flexDirection: 'row',
   },
   bookingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  bookingIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
   },
   bookingInfo: {
     flex: 1,
@@ -365,7 +500,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  timeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
   reviewChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  rebookChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,

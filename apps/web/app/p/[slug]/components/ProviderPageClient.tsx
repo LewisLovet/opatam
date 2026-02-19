@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProviderHero } from './ProviderHero';
 import { ProviderNav } from './ProviderNav';
 import { SocialLinks } from './SocialLinks';
@@ -28,6 +28,7 @@ interface SerializedProvider {
     facebook: string | null;
     tiktok: string | null;
     website: string | null;
+    paypal: string | null;
   };
   rating: {
     average: number;
@@ -156,6 +157,19 @@ export function ProviderPageClient({
 }: ProviderPageClientProps) {
   const [activeTab, setActiveTab] = useState<TabId>('prestations');
 
+  // Track page view (deduplicated per session per provider)
+  useEffect(() => {
+    if (isDemo) return;
+    const key = `pv_${provider.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    fetch('/api/analytics/track-view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ providerId: provider.id }),
+    }).catch(() => {});
+  }, [provider.id, isDemo]);
+
   // Check if has portfolio photos
   const hasPortfolio = provider.portfolioPhotos.length > 0;
 
@@ -174,6 +188,7 @@ export function ProviderPageClient({
       <ProviderHero
         provider={provider}
         nextAvailableDate={nextAvailableDate}
+        paypalLink={provider.socialLinks?.paypal}
         memberAvailabilities={isTeam ? memberAvailabilities : []}
         isTeam={isTeam}
       />

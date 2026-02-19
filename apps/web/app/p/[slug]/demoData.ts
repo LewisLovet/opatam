@@ -46,6 +46,7 @@ export const demoProvider = {
     facebook: 'https://facebook.com/opatam',
     tiktok: 'https://tiktok.com/@opatam',
     website: 'https://opatam.com',
+    paypal: null,
   },
   rating: {
     average: 4.8,
