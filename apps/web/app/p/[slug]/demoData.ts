@@ -44,7 +44,7 @@ export const demoProvider = {
   socialLinks: {
     instagram: 'https://www.instagram.com/opatam_app',
     facebook: 'https://facebook.com/opatam',
-    tiktok: 'https://tiktok.com/@opatam',
+    tiktok: 'https://tiktok.com/@kamerleontech',
     website: 'https://opatam.com',
     paypal: null,
   },
@@ -366,7 +366,7 @@ export const demoLocations = [
 export const demoMembers = [
   {
     id: MEMBER_1_ID,
-    name: 'Sophie Martin',
+    name: 'Sophie',
     email: 'sophie@demo.com',
     phone: null,
     photoURL: unsplash('photo-1494790108377-be9c29b29330', 200),
@@ -380,7 +380,7 @@ export const demoMembers = [
   },
   {
     id: MEMBER_2_ID,
-    name: 'Léa Dubois',
+    name: 'Léa',
     email: 'lea@demo.com',
     phone: null,
     photoURL: unsplash('photo-1438761681033-6461ffad8d80', 200),
@@ -394,7 +394,7 @@ export const demoMembers = [
   },
   {
     id: MEMBER_3_ID,
-    name: 'Camille Petit',
+    name: 'Cami',
     email: 'camille@demo.com',
     phone: null,
     photoURL: unsplash('photo-1489424731084-a5d8b219a5bb', 200),
@@ -444,7 +444,7 @@ export const demoReviews = [
     clientName: 'Amina K.',
     clientPhoto: null,
     rating: 4,
-    comment: 'Très contente de ma manucure semi-permanente. Camille est très minutieuse.',
+    comment: 'Très contente de ma manucure semi-permanente. Cami est très minutieuse.',
     isPublic: true,
     createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
   },

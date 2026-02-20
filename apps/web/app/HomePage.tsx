@@ -10,25 +10,29 @@ import {
   Bell,
   Calendar,
   CalendarCheck,
+  Camera,
   Check,
   ChevronDown,
   CreditCard,
+  Dumbbell,
   Globe,
-  Home,
-  LayoutDashboard,
-  Lock,
+  Heart,
+  Lightbulb,
+  Mail,
+  MapPin,
   QrCode,
   Quote,
-  Settings,
-  Share2,
+  Shield,
   Smartphone,
+  Sparkles,
   Star,
   UserPlus,
   Users,
+  Wrench,
   Zap,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useRef, useState } from 'react';
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -39,39 +43,44 @@ function formatPrice(cents: number): string {
 // ─── FAQ Data ───────────────────────────────────────────────────────
 const faqItems = [
   {
-    question: 'Est-ce que je dois payer une commission sur les réservations ?',
+    question: 'Quel est le meilleur logiciel de prise de rendez-vous en ligne pour indépendants ?',
     answer:
-      'Non, jamais. OPATAM fonctionne avec un abonnement mensuel fixe (à partir de 17,90\u20AC/mois). Vous ne payez aucune commission sur vos réservations, quel que soit le nombre de clients ou le montant des prestations. C\'est notre engagement fondamental.',
+      'OPATAM est conçu spécialement pour les indépendants et petites équipes : agenda en ligne, page de réservation personnalisée, rappels automatiques, application mobile — le tout sans commission et prêt en 5 minutes. Plus de 15 secteurs d\'activité sont pris en charge (beauté, bien-être, coaching, artisans, et bien d\'autres).',
   },
   {
-    question: 'Combien de temps faut-il pour configurer mon profil ?',
+    question: 'Existe-t-il une alternative à Planity ou Doctolib sans commission ?',
     answer:
-      'En moyenne, 5 minutes. Vous renseignez votre activité, vos prestations et vos horaires, et votre page de réservation est en ligne immédiatement. Notre assistant vous guide pas à pas. Aucune compétence technique n\'est requise.',
+      'Oui. Contrairement aux plateformes qui prélèvent un pourcentage sur chaque réservation, OPATAM fonctionne avec un abonnement fixe à partir de 17,90\u20AC/mois — 0% de commission, quel que soit votre volume de rendez-vous. Vous gardez 100% de vos revenus.',
   },
   {
-    question: 'Mes clients doivent-ils créer un compte pour réserver ?',
+    question: 'Comment permettre à mes clients de réserver en ligne sans créer de compte ?',
     answer:
-      'Non. Vos clients réservent en renseignant simplement leur nom, email et téléphone. Pas de compte à créer, pas de mot de passe à retenir. C\'est rapide et sans friction pour eux.',
+      'Avec OPATAM, vos clients réservent en renseignant simplement leur nom, email et téléphone — en 3 clics. Aucun compte à créer, aucun mot de passe. Vous recevez un lien personnalisé et un QR code à partager sur vos réseaux, par SMS ou à afficher en boutique.',
   },
   {
-    question: 'Est-ce que je peux annuler mon abonnement à tout moment ?',
+    question: 'Comment gérer les rendez-vous de mon équipe depuis un seul outil ?',
     answer:
-      'Oui, sans aucune condition. Il n\'y a aucun engagement de durée. Vous pouvez annuler votre abonnement en un clic depuis votre espace, et il reste actif jusqu\'à la fin de la période en cours.',
+      'Le plan Studio (29,90\u20AC/mois) permet de gérer jusqu\'à 5 agendas synchronisés. Chaque membre a son propre planning et ses prestations. Vous pouvez leur envoyer le récap quotidien de leur journée, les notifier individuellement de chaque rendez-vous, et garder la vue d\'ensemble sur toute l\'équipe.',
   },
   {
-    question: 'Comment mes clients trouvent-ils ma page de réservation ?',
+    question: 'Comment réduire les rendez-vous manqués et les oublis de mes clients ?',
     answer:
-      'Vous recevez un lien unique (par exemple : opatam.com/p/votre-nom) et un QR code personnalisé que vous pouvez partager par SMS, email, WhatsApp, réseaux sociaux, ou afficher dans votre établissement. Vos clients scannent le QR code ou cliquent sur le lien pour réserver directement.',
+      'OPATAM envoie automatiquement un rappel par email et notification push 24h avant le rendez-vous, puis un second rappel 2h avant. Vos clients reçoivent aussi une confirmation instantanée à la réservation. Résultat : moins d\'oublis, moins de créneaux perdus.',
   },
   {
-    question: 'OPATAM est-il adapté à une équipe de plusieurs personnes ?',
+    question: 'Combien coûte un logiciel de réservation en ligne professionnel ?',
     answer:
-      'Oui. Le plan Studio (29,90\u20AC/mois) est conçu pour les équipes. Vous pouvez gérer jusqu\'à 5 agendas synchronisés, assigner des prestations à chaque membre, et gérer plusieurs lieux.',
+      'OPATAM propose deux formules sans engagement : le plan Pro à 17,90\u20AC/mois (ou 179\u20AC/an) pour les indépendants, et le plan Studio à 29,90\u20AC/mois (ou 239\u20AC/an) pour les équipes jusqu\'à 5 personnes. Essai gratuit de 30 jours, sans carte bancaire.',
   },
   {
-    question: 'Que se passe-t-il à la fin de l\'essai gratuit ?',
+    question: 'Peut-on utiliser un agenda de réservation en ligne sur téléphone ?',
     answer:
-      'Rien d\'automatique. À la fin des 30 jours d\'essai, vous choisissez librement de vous abonner ou non. Aucune carte bancaire n\'est demandée à l\'inscription, donc aucun prélèvement surprise. Vos données restent accessibles.',
+      'Oui. OPATAM propose une application mobile qui vous permet de consulter votre agenda, recevoir les alertes de nouveaux rendez-vous en temps réel et gérer votre planning où que vous soyez. La configuration initiale se fait sur ordinateur ou tablette, et le quotidien se gère depuis votre poche.',
+  },
+  {
+    question: 'Est-ce qu\'OPATAM est adapté aux métiers de la beauté, du bien-être et du coaching ?',
+    answer:
+      'Absolument. OPATAM est multi-secteurs : coiffeurs, esthéticiennes, masseurs, coachs sportifs, thérapeutes, photographes, formateurs, artisans… Chaque professionnel personnalise ses prestations, ses durées et ses tarifs selon son activité.',
   },
 ];
 
@@ -93,7 +102,7 @@ const testimonials = [
     role: 'Coiffeuse indépendante',
     city: 'Lyon',
     initials: 'ML',
-    text: "0% de commission, c'est ce qui m'a convaincu de quitter Planity.",
+    text: "0% de commission, c'est ce qui m'a convaincue. Je garde 100% de ce que je gagne, et l'outil est hyper simple à utiliser.",
   },
   {
     name: 'Karim B.',
@@ -111,14 +120,62 @@ const testimonials = [
   },
 ];
 
-// ─── Trust brands ───────────────────────────────────────────────────
-const trustBrands = [
-  'Salon Marie Coiffure',
-  'Studio Zen Massage',
-  'Coach Fit Pro',
-  'Atelier des Ongles',
-  'Barber House',
-  'Yoga Equilibre',
+// ─── Features Data ──────────────────────────────────────────────────
+// To use a real screenshot, place the image in /public/images/features/ and set the image path below.
+// If image is null, the CSS mockup fallback is displayed instead.
+const mainFeatures = [
+  {
+    title: 'Un agenda qui travaille pour vous',
+    description:
+      "Visualisez votre semaine en un coup d'œil. Vos créneaux se remplissent automatiquement, les rappels partent tout seuls, et vous gardez le contrôle depuis votre téléphone ou votre ordinateur.",
+    icon: Calendar,
+    mockup: 'agenda' as const,
+    image: null as string | null, // e.g. '/images/features/agenda.png'
+  },
+  {
+    title: 'Vos clients réservent même quand vous dormez',
+    description:
+      'Votre page de réservation personnalisée est accessible 24h/24. Vos clients choisissent la prestation, le créneau et réservent en 3 clics — sans créer de compte.',
+    icon: Globe,
+    mockup: 'booking' as const,
+    image: null as string | null, // e.g. '/images/features/booking-mobile.png'
+  },
+  {
+    title: 'Configurez sur votre ordinateur, gérez depuis votre poche',
+    description:
+      "Créez vos services, configurez vos horaires et gérez vos membres depuis votre ordinateur ou tablette. Au quotidien, suivez vos rendez-vous et recevez vos alertes en temps réel directement sur l'application mobile — où que vous soyez.",
+    icon: Smartphone,
+    mockup: 'mobile' as const,
+    image: null as string | null, // e.g. '/images/features/mobile-app.png'
+  },
+  {
+    title: "Toute votre équipe, un seul outil",
+    description:
+      "Chaque membre a son propre agenda, ses prestations et son code d'accès au planning. Envoyez-leur le récap de leur journée, notifiez-les de chaque nouveau rendez-vous individuellement, et gardez la vue d'ensemble sur toute l'équipe.",
+    icon: Users,
+    mockup: 'team' as const,
+    image: null as string | null, // e.g. '/images/features/team.png'
+  },
+];
+
+const secondaryFeatures = [
+  { icon: Globe, title: 'Vitrine en ligne', description: 'Votre page pro avec services, avis, photos et infos pratiques' },
+  { icon: QrCode, title: 'QR Code personnalisé', description: 'Affichez-le en boutique ou sur vos cartes — vos clients scannent et réservent' },
+  { icon: Bell, title: 'Rappels automatiques', description: 'Vos clients reçoivent un rappel 24h et 2h avant leur rendez-vous' },
+  { icon: BarChart3, title: 'Tableau de bord', description: 'Suivez vos réservations, vos vues et votre activité en temps réel' },
+  { icon: MapPin, title: 'Multi-lieux', description: "Gérez jusqu'à 5 adresses avec des disponibilités par lieu" },
+  { icon: Mail, title: 'Récap quotidien', description: "Recevez chaque soir l'agenda du lendemain, pour vous et votre équipe" },
+  { icon: Smartphone, title: 'App mobile', description: 'Gérez vos rendez-vous depuis votre téléphone, où que vous soyez' },
+  { icon: Shield, title: 'Données sécurisées', description: 'Hébergement en Europe, conforme RGPD, vos données vous appartiennent' },
+];
+
+const sectors = [
+  { icon: Sparkles, title: 'Beauté & Esthétique', examples: 'Coiffeurs, esthéticiennes, barbiers, prothésistes ongulaires' },
+  { icon: Heart, title: 'Bien-être', examples: 'Masseurs, sophrologues, naturopathes, ostéopathes' },
+  { icon: Dumbbell, title: 'Sport & Coaching', examples: 'Coachs sportifs, personal trainers, salles de sport' },
+  { icon: Lightbulb, title: 'Coaching', examples: 'Coachs de vie, thérapeutes, consultants en développement' },
+  { icon: Wrench, title: 'Artisans', examples: 'Plombiers, électriciens, serruriers, peintres' },
+  { icon: Camera, title: 'Audiovisuel', examples: 'Photographes, vidéastes, créateurs de contenu' },
 ];
 
 // ═════════════════════════════════════════════════════════════════════
@@ -313,38 +370,26 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Section 3 - Trust / Social Proof Bar ───────────────────── */}
+        {/* ── Section 3 - Social Proof Metrics ──────────────────────── */}
         <section className="py-10 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-500 text-center mb-6">
-              Ils gerent leurs rendez-vous avec {APP_CONFIG.name}
-            </p>
-            <div className="overflow-hidden">
-              <div className="flex items-center gap-6 sm:gap-10 animate-scroll-x w-max">
-                {/* First set */}
-                {trustBrands.map((brand) => (
-                  <span
-                    key={brand}
-                    className="text-gray-400 dark:text-gray-600 font-medium text-sm sm:text-base whitespace-nowrap"
-                  >
-                    {brand}
-                  </span>
-                ))}
-                {/* Duplicate for seamless loop */}
-                {trustBrands.map((brand) => (
-                  <span
-                    key={`dup-${brand}`}
-                    className="text-gray-400 dark:text-gray-600 font-medium text-sm sm:text-base whitespace-nowrap"
-                  >
-                    {brand}
-                  </span>
-                ))}
-              </div>
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+              {[
+                { value: '15+', label: 'Secteurs d\'activité' },
+                { value: '24/7', label: 'Réservation en ligne' },
+                { value: '0%', label: 'Commission' },
+                { value: '5 min', label: 'Pour démarrer' },
+              ].map((stat) => (
+                <div key={stat.label}>
+                  <p className="text-3xl sm:text-4xl font-extrabold text-primary-600 dark:text-primary-400">{stat.value}</p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ── Section 4 - Benefits "Pourquoi OPATAM" ─────────────────── */}
+        {/* ── Section 4 - Main Features (Alternating) ──────────────── */}
         <section id="fonctionnalites" className="py-16 sm:py-24 bg-white dark:bg-gray-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-16">
@@ -353,52 +398,256 @@ export default function LandingPage() {
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
                 Fini les appels manqués, les agendas papier. {APP_CONFIG.name} automatise la gestion de
-                vos réservations pour que vous puissiez vous professionaliser et vous concentrer sur votre métier.
+                vos réservations pour que vous puissiez vous concentrer sur votre métier.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Card 1 - Agenda */}
-              <div className="group bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-primary-200 dark:hover:border-primary-800">
-                <div className="w-14 h-14 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
-                  <Calendar className="w-7 h-7 text-primary-600 dark:text-primary-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Agenda en ligne 24h/24</h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Vos clients réservent directement en ligne, même à 23h, même le dimanche. Fini les appels en pleine
-                  prestation. Votre agenda se remplit tout seul.
-                </p>
-              </div>
+            <div className="space-y-20 lg:space-y-28">
+              {mainFeatures.map((feature, index) => {
+                const Icon = feature.icon;
+                const isReversed = index % 2 === 1;
+                return (
+                  <div
+                    key={feature.title}
+                    className={`flex flex-col ${isReversed ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-10 lg:gap-16`}
+                  >
+                    {/* Text */}
+                    <div className="flex-1 text-center lg:text-left">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 mb-4">
+                        <Icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                      </div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                        {feature.title}
+                      </h3>
+                      <p className="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-lg mx-auto lg:mx-0">
+                        {feature.description}
+                      </p>
+                    </div>
 
-              {/* Card 2 - Rappels */}
-              <div className="group bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-primary-200 dark:hover:border-primary-800">
-                <div className="w-14 h-14 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
-                  <Bell className="w-7 h-7 text-primary-600 dark:text-primary-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Rappels automatiques</h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Vos clients reçoivent un rappel par email et notification push avant chaque rendez-vous. 
-                </p>
-              </div>
+                    {/* Mockup visual — real image if available, CSS fallback otherwise */}
+                    <div className="flex-1 w-full max-w-lg">
+                      {feature.image ? (
+                        <div className="rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                          <Image
+                            src={feature.image}
+                            alt={feature.title}
+                            width={960}
+                            height={640}
+                            className="w-full h-auto"
+                            priority={index === 0}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          {feature.mockup === 'agenda' && (
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                              <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                                <div className="flex gap-1.5">
+                                  <div className="w-3 h-3 rounded-full bg-red-400" />
+                                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                                  <div className="w-3 h-3 rounded-full bg-green-400" />
+                                </div>
+                                <div className="flex-1 text-center text-xs text-gray-400">opatam.com/pro/calendar</div>
+                              </div>
+                              <div className="p-5">
+                                <div className="flex items-center gap-3 mb-5">
+                                  <Calendar className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                                  <div>
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Mon agenda</p>
+                                    <p className="text-xs text-gray-500">Semaine du 3 février</p>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-5 gap-2">
+                                  {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'].map((day, i) => (
+                                    <div key={day} className="text-center">
+                                      <p className="text-xs font-medium text-gray-500 mb-2">{day}</p>
+                                      <div className="space-y-1.5">
+                                        <div className="rounded bg-primary-200 dark:bg-primary-800" style={{ height: `${18 + (i * 7) % 20}px` }} />
+                                        <div className="rounded bg-primary-400 dark:bg-primary-600" style={{ height: `${28 - (i * 3) % 10}px` }} />
+                                        <div className="rounded bg-gray-100 dark:bg-gray-700" style={{ height: `${10 + (i * 2) % 8}px` }} />
+                                        <div className="rounded bg-primary-300 dark:bg-primary-700" style={{ height: `${16 + (i * 4) % 12}px` }} />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
-              {/* Card 3 - 0% commission */}
-              <div className="group bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-primary-200 dark:hover:border-primary-800">
-                <div className="w-14 h-14 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
-                  <BadgePercent className="w-7 h-7 text-primary-600 dark:text-primary-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                  0% de commission, toujours
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Contrairement à Planity ou Fresha, {APP_CONFIG.name} ne prend aucune commission sur vos réservations.
-                  Vous payez un prix fixe, point final. Pas de mauvaise surprise sur votre chiffre d&apos;affaires.
-                </p>
-              </div>
+                          {feature.mockup === 'booking' && (
+                            <div className="mx-auto w-64 sm:w-72">
+                              <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl border border-gray-200 dark:border-gray-700 p-4 pb-6">
+                                <div className="w-20 h-5 bg-gray-100 dark:bg-gray-700 rounded-full mx-auto mb-4" />
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+                                    <div className="w-12 h-12 rounded-full bg-primary-200 dark:bg-primary-800" />
+                                    <div>
+                                      <div className="h-3 w-28 bg-gray-300 dark:bg-gray-600 rounded mb-1.5" />
+                                      <div className="h-2 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+                                    </div>
+                                  </div>
+                                  <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl">
+                                    <p className="text-xs font-semibold text-primary-700 dark:text-primary-300 mb-2">Choisir une prestation</p>
+                                    {['Coupe femme — 35€', 'Brushing — 25€', 'Coloration — 55€'].map((s) => (
+                                      <div key={s} className="flex items-center justify-between py-2 border-b border-primary-100 dark:border-primary-800 last:border-0">
+                                        <span className="text-xs text-gray-700 dark:text-gray-300">{s}</span>
+                                        <div className="w-4 h-4 rounded-full border-2 border-primary-400" />
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="bg-primary-600 text-white text-center py-2.5 rounded-xl text-sm font-semibold">
+                                    Réserver
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {feature.mockup === 'mobile' && (
+                            <div className="mx-auto w-64 sm:w-72">
+                              <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl border border-gray-200 dark:border-gray-700 p-4 pb-6">
+                                <div className="w-20 h-5 bg-gray-100 dark:bg-gray-700 rounded-full mx-auto mb-4" />
+                                <div className="space-y-3">
+                                  <div className="bg-primary-600 rounded-xl p-3">
+                                    <p className="text-xs font-semibold text-white mb-1">Aujourd&apos;hui</p>
+                                    <p className="text-2xl font-bold text-white">4 RDV</p>
+                                    <p className="text-xs text-primary-200">Prochain dans 25 min</p>
+                                  </div>
+                                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3 flex items-start gap-2">
+                                    <Bell className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="text-xs font-semibold text-green-800 dark:text-green-300">Nouvelle réservation</p>
+                                      <p className="text-[10px] text-green-600 dark:text-green-400">Alice M. — Coupe + Brushing — 14h00</p>
+                                    </div>
+                                  </div>
+                                  {[
+                                    { time: '10:00', name: 'Marie L.', service: 'Brushing' },
+                                    { time: '11:30', name: 'Thomas R.', service: 'Barbe' },
+                                  ].map((rdv) => (
+                                    <div key={rdv.time} className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                      <div className="text-xs font-bold text-primary-600 dark:text-primary-400 w-10">{rdv.time}</div>
+                                      <div className="flex-1">
+                                        <p className="text-xs font-medium text-gray-900 dark:text-white">{rdv.name}</p>
+                                        <p className="text-[10px] text-gray-500">{rdv.service}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {feature.mockup === 'team' && (
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                              <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                                <div className="flex gap-1.5">
+                                  <div className="w-3 h-3 rounded-full bg-red-400" />
+                                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                                  <div className="w-3 h-3 rounded-full bg-green-400" />
+                                </div>
+                                <div className="flex-1 text-center text-xs text-gray-400">opatam.com/pro/members</div>
+                              </div>
+                              <div className="p-5">
+                                <div className="flex items-center gap-3 mb-5">
+                                  <Users className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Mon équipe</p>
+                                </div>
+                                <div className="space-y-3">
+                                  {[
+                                    { name: 'Marie D.', role: 'Coiffeuse', rdv: '6 RDV aujourd\'hui', color: 'bg-primary-400' },
+                                    { name: 'Julie K.', role: 'Coloriste', rdv: '4 RDV aujourd\'hui', color: 'bg-emerald-400' },
+                                    { name: 'Thomas R.', role: 'Barbier', rdv: '5 RDV aujourd\'hui', color: 'bg-amber-400' },
+                                  ].map((member) => (
+                                    <div key={member.name} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+                                      <div className={`w-10 h-10 rounded-full ${member.color} flex items-center justify-center text-white text-xs font-bold`}>
+                                        {member.name.split(' ').map(n => n[0]).join('')}
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{member.name}</p>
+                                        <p className="text-xs text-gray-500">{member.role}</p>
+                                      </div>
+                                      <span className="text-xs font-medium text-primary-600 dark:text-primary-400">{member.rdv}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
 
-        {/* ── Section 5 - How it works (PRO version) ─────────────────── */}
+        {/* ── Section 5 - Secondary Features Grid ──────────────────── */}
+        <section className="py-16 sm:py-24 bg-gray-50 dark:bg-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-12">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
+                Et bien plus encore
+              </h2>
+              <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
+                Toutes les fonctionnalités essentielles, incluses dès le départ.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {secondaryFeatures.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <div
+                    key={feature.title}
+                    className="group bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-800"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110">
+                      <Icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                    </div>
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">{feature.title}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{feature.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 6 - Sectors ───────────────────────────────────── */}
+        <section className="py-16 sm:py-24 bg-white dark:bg-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-12">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
+                Quelle que soit votre activité, {APP_CONFIG.name} s&apos;adapte à votre métier
+              </h2>
+              <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
+                Plus de 15 secteurs d&apos;activité couverts — de la beauté au coaching, des artisans à l&apos;audiovisuel.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6">
+              {sectors.map((sector) => {
+                const Icon = sector.icon;
+                return (
+                  <div
+                    key={sector.title}
+                    className="group text-center p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-800"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mx-auto mb-3 transition-transform duration-300 group-hover:scale-110">
+                      <Icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{sector.title}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{sector.examples}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 7 - How it works ─────────────────────────────── */}
         <section className="py-16 sm:py-24 bg-gray-50 dark:bg-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-16">
@@ -435,7 +684,6 @@ export default function LandingPage() {
                 const Icon = step.icon;
                 return (
                   <div key={step.title} className="relative text-center">
-                    {/* Connector line for desktop */}
                     {index < 2 && (
                       <div className="hidden md:block absolute top-10 left-[60%] w-[80%] h-0.5 bg-gray-200 dark:bg-gray-700" />
                     )}
@@ -454,7 +702,6 @@ export default function LandingPage() {
               })}
             </div>
 
-            {/* CTA */}
             <div className="mt-12 text-center">
               <Link
                 href="/register"
@@ -469,210 +716,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Section 5b - QR Code Feature ─────────────────────────────── */}
-        <section className="py-16 sm:py-24 bg-white dark:bg-gray-900">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="lg:grid lg:grid-cols-2 lg:gap-16 lg:items-center">
-              {/* Left: QR Code Visual */}
-              <div className="flex justify-center lg:justify-end mb-10 lg:mb-0">
-                <div className="relative">
-                  {/* Phone mockup */}
-                  <div className="w-64 sm:w-72 bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl border border-gray-200 dark:border-gray-700 p-4 pb-6">
-                    {/* Phone notch */}
-                    <div className="w-20 h-5 bg-gray-100 dark:bg-gray-700 rounded-full mx-auto mb-4" />
-                    {/* Camera scanning QR */}
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-6 flex flex-col items-center">
-                      {/* Real QR code pointing to demo booking page */}
-                      <div className="bg-white rounded-xl p-3 relative">
-                        <QRCodeSVG
-                          value={`${APP_CONFIG.url}/p/demo/reserver`}
-                          size={136}
-                          level="H"
-                          marginSize={0}
-                        />
-                        {/* Scan line animation */}
-                        <div className="absolute inset-x-3 h-0.5 bg-primary-500/60 animate-pulse top-1/2" />
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
-                        Scanner pour réserver
-                      </p>
-                    </div>
-                    {/* Page preview below */}
-                    <div className="mt-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full bg-primary-200 dark:bg-primary-800" />
-                        <div className="h-2.5 w-20 bg-primary-200 dark:bg-primary-800 rounded" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="h-2 w-full bg-primary-100 dark:bg-primary-900/30 rounded" />
-                        <div className="h-2 w-3/4 bg-primary-100 dark:bg-primary-900/30 rounded" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Floating badge */}
-                  <div className="absolute -bottom-3 -right-3 bg-primary-600 text-white rounded-xl px-3 py-2 shadow-lg shadow-primary-500/25 flex items-center gap-2">
-                    <QrCode className="w-4 h-4" />
-                    <span className="text-xs font-semibold">Scan &amp; Book</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Copy */}
-              <div className="text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 text-sm font-medium px-3 py-1.5 rounded-full mb-4">
-                  <QrCode className="w-4 h-4" />
-                  Nouveau
-                </div>
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                  Un QR code pour réserver en un scan
-                </h2>
-                <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                  Générez votre QR code personnalisé et affichez-le dans votre établissement, sur vos cartes de visite ou vos réseaux sociaux. Vos clients scannent et réservent instantanément.
-                </p>
-
-                <ul className="mt-6 space-y-3 text-left">
-                  {[
-                    { icon: QrCode, text: 'QR code généré automatiquement pour votre page' },
-                    { icon: Share2, text: 'Téléchargez, imprimez ou partagez en un clic' },
-                    { icon: Smartphone, text: 'Vos clients réservent depuis leur téléphone' },
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <li key={item.text} className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Icon className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                        </div>
-                        <span className="text-gray-700 dark:text-gray-300">{item.text}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-
-                <div className="mt-8">
-                  <Link
-                    href="/register"
-                    className="inline-flex items-center gap-2 bg-primary-600 text-white hover:bg-primary-700 px-6 py-3 font-semibold rounded-lg transition-colors"
-                  >
-                    Créer mon QR code
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Section 6 - Demo Visual ────────────────────────────────── */}
-        <section id="demo" className="py-16 sm:py-24 bg-white dark:bg-gray-900">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-12">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                Un outil simple et puissant
-              </h2>
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Découvrez l&apos;interface que des centaines de professionnels utilisent chaque jour pour gérer leur
-                activité.
-              </p>
-              <Link
-                href="/p/demo"
-                className="mt-4 inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 font-medium hover:underline"
-              >
-                Voir la page de réservation en live
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            {/* Dashboard mockup */}
-            <div className="relative aspect-video max-w-5xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="flex h-full">
-                {/* Sidebar */}
-                <div className="hidden sm:flex flex-col items-center gap-4 w-16 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 py-6">
-                  <Home className="w-5 h-5 text-gray-400" />
-                  <Calendar className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                  <Users className="w-5 h-5 text-gray-400" />
-                  <BarChart3 className="w-5 h-5 text-gray-400" />
-                  <Settings className="w-5 h-5 text-gray-400" />
-                </div>
-
-                {/* Center: Weekly calendar */}
-                <div className="flex-1 p-4 sm:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <LayoutDashboard className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Agenda</span>
-                    </div>
-                    <span className="text-xs text-gray-500">Semaine du 3 février</span>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2 h-[calc(100%-2.5rem)]">
-                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'].map((day, i) => (
-                      <div key={day} className="flex flex-col">
-                        <p className="text-[10px] sm:text-xs font-medium text-gray-500 mb-1.5 text-center">{day}</p>
-                        <div className="flex-1 space-y-1">
-                          <div
-                            className="rounded bg-primary-200 dark:bg-primary-800"
-                            style={{ height: `${20 + (i * 7) % 25}%` }}
-                          />
-                          <div
-                            className="rounded bg-primary-400 dark:bg-primary-600"
-                            style={{ height: `${30 - (i * 5) % 15}%` }}
-                          />
-                          <div
-                            className="rounded bg-gray-100 dark:bg-gray-700"
-                            style={{ height: `${10 + (i * 3) % 10}%` }}
-                          />
-                          <div
-                            className="rounded bg-primary-300 dark:bg-primary-700"
-                            style={{ height: `${15 + (i * 4) % 12}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Right: Details panel */}
-                <div className="hidden md:block w-56 bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 p-4">
-                  <p className="text-xs font-semibold text-gray-900 dark:text-white mb-3">Prochain rendez-vous</p>
-                  <div className="space-y-3">
-                    {[
-                      { time: '10:00', name: 'Alice M.', service: 'Coupe + Brushing' },
-                      { time: '11:30', name: 'Thomas R.', service: 'Barbe' },
-                      { time: '14:00', name: 'Julie K.', service: 'Coloration' },
-                    ].map((rdv) => (
-                      <div
-                        key={rdv.time}
-                        className="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700"
-                      >
-                        <p className="text-[10px] text-primary-600 dark:text-primary-400 font-semibold">{rdv.time}</p>
-                        <p className="text-xs font-medium text-gray-900 dark:text-white">{rdv.name}</p>
-                        <p className="text-[10px] text-gray-500">{rdv.service}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Mini-stats */}
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-sm font-medium text-gray-600 dark:text-gray-400">
-              <span className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                Prêt en 5 min
-              </span>
-              <span className="flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                Compatible mobile
-              </span>
-              <span className="flex items-center gap-2">
-                <Lock className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                Données sécurisées
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Section 7 - Testimonials ───────────────────────────────── */}
+        {/* ── Section 8 - Testimonials ───────────────────────────────── */}
         <section id="temoignages" className="py-16 sm:py-24 bg-gray-50 dark:bg-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
@@ -719,7 +763,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Section 8 - Comparison ─────────────────────────────────── */}
+        {/* ── Section 9 - Comparison ─────────────────────────────────── */}
         <section className="py-16 sm:py-24 bg-white dark:bg-gray-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-12">
@@ -793,7 +837,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Section 9 - Pricing ────────────────────────────────────── */}
+        {/* ── Section 10 - Pricing ───────────────────────────────────── */}
         <section id="tarifs" className="py-16 sm:py-24 bg-gray-50 dark:bg-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-12">
@@ -960,7 +1004,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Section 10 - FAQ ───────────────────────────────────────── */}
+        {/* ── Section 11 - FAQ ───────────────────────────────────────── */}
         <section id="faq" className="py-16 sm:py-24 bg-white dark:bg-gray-900">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
@@ -1000,7 +1044,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Section 11 - Final CTA ─────────────────────────────────── */}
+        {/* ── Section 12 - Final CTA ─────────────────────────────────── */}
         <section className="py-16 sm:py-24 bg-primary-600">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Prêt à remplir votre agenda ?</h2>
@@ -1023,7 +1067,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Section 12 - Marketplace redirect ──────────────────────── */}
+        {/* ── Section 13 - Marketplace redirect ──────────────────────── */}
         <section className="py-8 bg-gray-50 dark:bg-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -1039,7 +1083,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* ── Section 13 - Footer ────────────────────────────────────── */}
+      {/* ── Section 14 - Footer ────────────────────────────────────── */}
       <Footer />
 
       {/* ── Sticky mobile CTA ────────────────────────────────────────── */}

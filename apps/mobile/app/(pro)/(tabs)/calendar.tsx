@@ -21,9 +21,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { memberService } from '@booking-app/firebase';
-import type { Member } from '@booking-app/shared';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { memberService, schedulingService } from '@booking-app/firebase';
+import type { Member, BlockedSlot } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
@@ -173,6 +173,64 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/**
+ * Compute overlap layout for bookings in a single day column.
+ * Returns a map: bookingId → { column, totalColumns }
+ * so each booking can be offset horizontally.
+ */
+function computeOverlapLayout(
+  bookings: WeekBooking[],
+  startHour: number,
+): Record<string, { column: number; totalColumns: number }> {
+  if (bookings.length <= 1) {
+    const result: Record<string, { column: number; totalColumns: number }> = {};
+    bookings.forEach((b) => { result[b.id] = { column: 0, totalColumns: 1 }; });
+    return result;
+  }
+
+  // Sort by start time, then by duration (longer first)
+  const sorted = [...bookings].sort((a, b) => {
+    const aStart = a.datetime.getHours() * 60 + a.datetime.getMinutes();
+    const bStart = b.datetime.getHours() * 60 + b.datetime.getMinutes();
+    if (aStart !== bStart) return aStart - bStart;
+    return b.duration - a.duration;
+  });
+
+  // Assign columns using a greedy algorithm
+  const columns: { end: number; ids: string[] }[] = [];
+  const assignment: Record<string, number> = {};
+
+  for (const booking of sorted) {
+    const bStart = booking.datetime.getHours() * 60 + booking.datetime.getMinutes();
+    const bEnd = bStart + booking.duration;
+
+    // Find the first column where this booking doesn't overlap
+    let placed = false;
+    for (let c = 0; c < columns.length; c++) {
+      if (bStart >= columns[c].end) {
+        columns[c].end = bEnd;
+        columns[c].ids.push(booking.id);
+        assignment[booking.id] = c;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      columns.push({ end: bEnd, ids: [booking.id] });
+      assignment[booking.id] = columns.length - 1;
+    }
+  }
+
+  // Now compute the max overlapping columns for each group of overlapping bookings
+  // For simplicity, use the total column count for each booking
+  const result: Record<string, { column: number; totalColumns: number }> = {};
+  const totalCols = columns.length;
+  for (const booking of sorted) {
+    result[booking.id] = { column: assignment[booking.id], totalColumns: totalCols };
+  }
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -277,26 +335,44 @@ interface WeekBooking {
   memberName: string | null;
 }
 
+interface WeekBlockedSlot {
+  id: string;
+  startDate: Date;
+  endDate: Date;
+  allDay: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  reason: string | null;
+  memberName: string | null;
+  memberId: string;
+}
+
 interface WeekViewProps {
   weekDays: Date[];
   selectedDate: Date;
   bookings: WeekBooking[];
+  blockedSlots?: WeekBlockedSlot[];
   onDayPress: (date: Date) => void;
   onBookingPress: (id: string) => void;
   showMemberAvatars: boolean;
   startHour?: number;
   endHour?: number;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
 function WeekView({
   weekDays,
   selectedDate,
   bookings,
+  blockedSlots = [],
   onDayPress,
   onBookingPress,
   showMemberAvatars,
   startHour = DEFAULT_WEEK_START_HOUR,
   endHour = DEFAULT_WEEK_END_HOUR,
+  refreshing = false,
+  onRefresh,
 }: WeekViewProps) {
   const { colors, spacing, radius } = useTheme();
 
@@ -323,6 +399,23 @@ function WeekView({
     });
     return map;
   }, [bookings, weekDays]);
+
+  // Group blocked slots by day index
+  const blockedByDay = useMemo(() => {
+    const map: Record<number, WeekBlockedSlot[]> = {};
+    for (let i = 0; i < 7; i++) map[i] = [];
+
+    blockedSlots.forEach((bs) => {
+      weekDays.forEach((wd, dayIdx) => {
+        const dayStart = startOfDay(wd);
+        const dayEnd = endOfDay(wd);
+        if (bs.startDate <= dayEnd && bs.endDate >= dayStart) {
+          map[dayIdx].push(bs);
+        }
+      });
+    });
+    return map;
+  }, [blockedSlots, weekDays]);
 
   // Current time position
   const nowLine = useMemo(() => {
@@ -455,6 +548,16 @@ function WeekView({
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: spacing['4xl'] }}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          ) : undefined
+        }
       >
         <View
           style={[
@@ -502,10 +605,11 @@ function WeekView({
               />
             ))}
 
-            {/* Day columns with bookings */}
+            {/* Day columns with bookings and blocked slots */}
             {weekDays.map((day, dayIdx) => {
               const isSelected = isSameDay(day, selectedDate);
               const dayBookings = bookingsByDay[dayIdx] || [];
+              const dayBlocked = blockedByDay[dayIdx] || [];
 
               return (
                 <Pressable
@@ -525,7 +629,54 @@ function WeekView({
                     },
                   ]}
                 >
-                  {dayBookings.map((booking) => {
+                  {/* Blocked slots */}
+                  {dayBlocked.map((bs) => {
+                    let bsStartMin: number;
+                    let bsEndMin: number;
+                    if (bs.allDay) {
+                      bsStartMin = startHour * 60;
+                      bsEndMin = endHour * 60;
+                    } else {
+                      const [sh, sm] = (bs.startTime || '00:00').split(':').map(Number);
+                      const [eh, em] = (bs.endTime || '23:59').split(':').map(Number);
+                      bsStartMin = sh * 60 + sm;
+                      bsEndMin = eh * 60 + em;
+                    }
+                    const clampStart = Math.max(bsStartMin - startHour * 60, 0);
+                    const clampEnd = Math.min(bsEndMin - startHour * 60, weekTotalHours * 60);
+                    if (clampEnd <= clampStart) return null;
+                    const bsTop = (clampStart / (weekTotalHours * 60)) * totalHeight;
+                    const bsHeight = ((clampEnd - clampStart) / (weekTotalHours * 60)) * totalHeight;
+                    return (
+                      <View
+                        key={`blocked-${bs.id}-${dayIdx}`}
+                        style={[
+                          styles.weekBlockedBar,
+                          {
+                            top: bsTop,
+                            height: Math.max(bsHeight, 6),
+                            backgroundColor: colors.surfaceSecondary,
+                            borderRadius: radius.sm,
+                            marginHorizontal: 1,
+                          },
+                        ]}
+                      >
+                        {bsHeight > 12 && (
+                          <Text
+                            variant="caption"
+                            numberOfLines={1}
+                            style={{ fontSize: 7, lineHeight: 9 }}
+                            color="textMuted"
+                          >
+                            {bs.reason || 'Bloqué'}
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                  {(() => {
+                    const overlapLayout = computeOverlapLayout(dayBookings, startHour);
+                    return dayBookings.map((booking) => {
                     const dt = booking.datetime;
                     const startMin =
                       dt.getHours() * 60 + dt.getMinutes();
@@ -547,6 +698,10 @@ function WeekView({
                       ? getInitials(booking.memberName)
                       : null;
 
+                    const layout = overlapLayout[booking.id] || { column: 0, totalColumns: 1 };
+                    const colWidth = (columnWidth - 2) / layout.totalColumns;
+                    const colLeft = layout.column * colWidth;
+
                     return (
                       <Pressable
                         key={booking.id}
@@ -559,6 +714,9 @@ function WeekView({
                           {
                             top,
                             height,
+                            left: colLeft,
+                            right: undefined,
+                            width: colWidth,
                             backgroundColor: getStatusBgColor(
                               booking.status,
                             ),
@@ -567,8 +725,7 @@ function WeekView({
                               booking.status,
                             ),
                             borderRadius: radius.sm,
-                            marginHorizontal: 1,
-                            paddingHorizontal: 2,
+                            paddingHorizontal: 1,
                             paddingVertical: 1,
                           },
                         ]}
@@ -643,7 +800,8 @@ function WeekView({
                         )}
                       </Pressable>
                     );
-                  })}
+                  });
+                  })()}
                 </Pressable>
               );
             })}
@@ -735,8 +893,53 @@ export default function CalendarScreen() {
       .catch(() => setMembers([]));
   }, [providerId]);
 
+  // ---- Fetch blocked slots for the current range ----
+  const [blockedSlots, setBlockedSlots] = useState<WithId<BlockedSlot>[]>([]);
+  useEffect(() => {
+    if (!providerId) return;
+    schedulingService
+      .getBlockedSlotsInRange(providerId, fetchStart, fetchEnd)
+      .then(setBlockedSlots)
+      .catch(() => setBlockedSlots([]));
+  }, [providerId, fetchStart, fetchEnd]);
+
   // ---- Whether to show the member filter ----
   const showMemberFilter = members.length > 1;
+
+  // ---- Member name map for blocked slots ----
+  const memberNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of members) map[m.id] = m.name;
+    return map;
+  }, [members]);
+
+  // ---- Blocked slots for the selected day ----
+  const dayBlockedSlots = useMemo(() => {
+    if (viewMode !== 'day') return [];
+    return blockedSlots
+      .filter((bs) => {
+        if (selectedMemberId && bs.memberId !== selectedMemberId) return false;
+        const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
+        const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
+        return bsStart <= dayEnd && bsEnd >= dayStart;
+      })
+      .map((bs) => {
+        const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
+        const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
+        const memberName = memberNameMap[bs.memberId] || null;
+        if (bs.allDay) {
+          return { id: bs.id, startTime: '00:00', endTime: '23:59', reason: bs.reason, memberName, allDay: true };
+        }
+        return {
+          id: bs.id,
+          startTime: bs.startTime || formatTime(bsStart),
+          endTime: bs.endTime || formatTime(bsEnd),
+          reason: bs.reason,
+          memberName,
+          allDay: false,
+        };
+      });
+  }, [blockedSlots, viewMode, selectedMemberId, dayStart, dayEnd, memberNameMap]);
 
   // ---- Transform bookings for Day View ----
   const dayBookings: DayScheduleBooking[] = useMemo(() => {
@@ -752,9 +955,10 @@ export default function CalendarScreen() {
         clientName: b.clientInfo.name,
         serviceName: b.serviceName,
         status: b.status,
+        memberName: (b.memberId && memberNameMap[b.memberId]) || undefined,
       };
     });
-  }, [bookings, viewMode]);
+  }, [bookings, viewMode, memberNameMap]);
 
   // ---- Transform bookings for Week View ----
   const weekBookings: WeekBooking[] = useMemo(() => {
@@ -774,6 +978,18 @@ export default function CalendarScreen() {
       };
     });
   }, [bookings, viewMode]);
+
+  // ---- Blocked slots for week view ----
+  const weekBlockedSlots = useMemo(() => {
+    if (viewMode !== 'week') return [];
+    return blockedSlots
+      .filter((bs) => !selectedMemberId || bs.memberId === selectedMemberId)
+      .map((bs) => {
+        const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
+        const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
+        return { ...bs, startDate: bsStart, endDate: bsEnd, memberName: memberNameMap[bs.memberId] || null };
+      });
+  }, [blockedSlots, viewMode, selectedMemberId, memberNameMap]);
 
   // ---- Compute effective hour range from bookings ----
   const { effectiveStartHour, effectiveEndHour } = useMemo(() => {
@@ -815,8 +1031,9 @@ export default function CalendarScreen() {
 
   const handleCreateBooking = useCallback(() => {
     const dateStr = selectedDate.toISOString();
-    router.push(`/(pro)/create-booking?date=${dateStr}` as any);
-  }, [router, selectedDate]);
+    const memberParam = selectedMemberId ? `&memberId=${selectedMemberId}` : '';
+    router.push(`/(pro)/create-booking?date=${dateStr}${memberParam}` as any);
+  }, [router, selectedDate, selectedMemberId]);
 
   const handleBlockSlot = useCallback(() => {
     const dateStr = selectedDate.toISOString();
@@ -878,9 +1095,28 @@ export default function CalendarScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([
+      refresh(),
+      providerId ? schedulingService.getBlockedSlotsInRange(providerId, fetchStart, fetchEnd).then(setBlockedSlots) : Promise.resolve(),
+    ]);
     setRefreshing(false);
-  }, [refresh]);
+  }, [refresh, providerId, fetchStart, fetchEnd]);
+
+  // ---- Auto-refresh when screen regains focus (e.g. after creating a booking) ----
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      // Skip the initial focus (data is already loaded via useEffect)
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      refresh();
+      if (providerId) {
+        schedulingService.getBlockedSlotsInRange(providerId, fetchStart, fetchEnd).then(setBlockedSlots).catch(() => {});
+      }
+    }, [refresh, providerId, fetchStart, fetchEnd]),
+  );
 
   // ---- Booking count for today badge ----
   const todayBookingCount = useMemo(() => {
@@ -1210,10 +1446,11 @@ export default function CalendarScreen() {
             }
             showsVerticalScrollIndicator={false}
           >
-            {dayBookings.length > 0 ? (
+            {dayBookings.length > 0 || dayBlockedSlots.length > 0 ? (
               <DaySchedule
                 date={selectedDate}
                 bookings={dayBookings}
+                blockedSlots={dayBlockedSlots}
                 onBookingPress={handleBookingPress}
                 workingHours={{
                   start: `${effectiveStartHour.toString().padStart(2, '0')}:00`,
@@ -1242,11 +1479,14 @@ export default function CalendarScreen() {
           weekDays={weekDays}
           selectedDate={selectedDate}
           bookings={weekBookings}
+          blockedSlots={weekBlockedSlots}
           onDayPress={handleWeekDayPress}
           onBookingPress={handleBookingPress}
           showMemberAvatars={members.length > 1}
           startHour={effectiveStartHour}
           endHour={effectiveEndHour}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
         />
       )}
 
@@ -1492,10 +1732,20 @@ const styles = StyleSheet.create({
   weekDayColumn: {
     position: 'relative',
   },
-  weekBookingBar: {
+  weekBlockedBar: {
     position: 'absolute',
     left: 0,
     right: 0,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    opacity: 0.5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(0,0,0,0.15)',
+  },
+  weekBookingBar: {
+    position: 'absolute',
     overflow: 'hidden',
     justifyContent: 'flex-start',
   },

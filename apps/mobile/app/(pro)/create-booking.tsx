@@ -1,7 +1,8 @@
 /**
  * Pro Create Booking Screen
  * Multi-step booking creation flow for providers to manually create bookings.
- * Steps: 1. Select Service -> 2. Select Date & Time -> 3. Client Info -> 4. Confirmation
+ * Steps (single member):   1. Service -> 2. Date & Time -> 3. Client Info -> 4. Confirmation
+ * Steps (multiple members): 1. Service -> 2. Member -> 3. Date & Time -> 4. Client Info -> 5. Confirmation
  *
  * Redesigned with:
  * - Visual progress stepper (circles + connecting lines)
@@ -61,7 +62,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 // Types
 // ---------------------------------------------------------------------------
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 interface SlotWithMember {
   date: Date;
@@ -143,19 +144,37 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// Step labels for the stepper
-const STEP_LABELS: Record<Step, string> = {
+// Step labels/titles — with or without member step
+const STEP_LABELS_WITH_MEMBER: Record<Step, string> = {
+  1: 'Service',
+  2: 'Membre',
+  3: 'Horaire',
+  4: 'Client',
+  5: 'Résumé',
+};
+
+const STEP_LABELS_WITHOUT_MEMBER: Record<Step, string> = {
   1: 'Service',
   2: 'Horaire',
   3: 'Client',
   4: 'Résumé',
+  5: '', // unused
 };
 
-const STEP_TITLES: Record<Step, string> = {
+const STEP_TITLES_WITH_MEMBER: Record<Step, string> = {
+  1: 'Choisir une prestation',
+  2: 'Choisir un membre',
+  3: 'Date et heure',
+  4: 'Informations client',
+  5: 'Confirmation',
+};
+
+const STEP_TITLES_WITHOUT_MEMBER: Record<Step, string> = {
   1: 'Choisir une prestation',
   2: 'Date et heure',
   3: 'Informations client',
   4: 'Confirmation',
+  5: '', // unused
 };
 
 // ---------------------------------------------------------------------------
@@ -164,13 +183,21 @@ const STEP_TITLES: Record<Step, string> = {
 
 /**
  * ProgressStepper
- * Horizontal row of 4 circles connected by lines.
+ * Horizontal row of circles connected by lines.
  * Active = primary bg + white number, Completed = success bg + checkmark, Future = surfaceSecondary + muted number.
  */
-function ProgressStepper({ currentStep }: { currentStep: Step }) {
+function ProgressStepper({
+  currentStep,
+  totalSteps,
+  stepLabels,
+}: {
+  currentStep: Step;
+  totalSteps: number;
+  stepLabels: Record<Step, string>;
+}) {
   const { colors, spacing, radius } = useTheme();
 
-  const steps: Step[] = [1, 2, 3, 4];
+  const steps = Array.from({ length: totalSteps }, (_, i) => (i + 1) as Step);
 
   return (
     <View style={[stepperStyles.container, { paddingHorizontal: spacing.lg, paddingVertical: spacing.lg }]}>
@@ -242,7 +269,7 @@ function ProgressStepper({ currentStep }: { currentStep: Step }) {
                     fontSize: 10,
                   }}
                 >
-                  {STEP_LABELS[step]}
+                  {stepLabels[step]}
                 </Text>
               </View>
             </React.Fragment>
@@ -284,7 +311,7 @@ export default function CreateBookingScreen() {
   const router = useRouter();
   const { providerId } = useProvider();
   const { user } = useAuth();
-  const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
+  const { date: dateParam, memberId: memberIdParam } = useLocalSearchParams<{ date?: string; memberId?: string }>();
 
   // -- Step state -------------------------------------------------------------
   const [step, setStep] = useState<Step>(1);
@@ -351,9 +378,15 @@ export default function CreateBookingScreen() {
     today.setHours(0, 0, 0, 0);
     return today;
   });
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(memberIdParam ?? null);
   const [slots, setSlots] = useState<SlotWithMember[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<SlotWithMember | null>(null);
+
+  // -- Member availability info (for member step + calendar) ------------------
+  const [nextAvailByMember, setNextAvailByMember] = useState<Record<string, Date | null>>({});
+  const [loadingNextAvail, setLoadingNextAvail] = useState(false);
+  const [memberClosedDays, setMemberClosedDays] = useState<number[]>([]);
 
   // Expanded sections state for collapsible time period groups (collapsed by default)
   const [expandedSections, setExpandedSections] = useState<Record<Period, boolean>>({
@@ -397,20 +430,111 @@ export default function CreateBookingScreen() {
     loadData();
   }, [providerId]);
 
+  // -- Member step logic -------------------------------------------------------
+  const activeMembers = useMemo(() => members.filter((m) => m.isActive), [members]);
+  const needsMemberStep = activeMembers.length > 1;
+  const totalSteps = needsMemberStep ? 5 : 4;
+  const stepLabels = needsMemberStep ? STEP_LABELS_WITH_MEMBER : STEP_LABELS_WITHOUT_MEMBER;
+  const stepTitles = needsMemberStep ? STEP_TITLES_WITH_MEMBER : STEP_TITLES_WITHOUT_MEMBER;
+
+  // Step mapping: which internal step corresponds to which screen
+  // With member step: 1=Service, 2=Member, 3=TimeSlot, 4=Client, 5=Confirm
+  // Without:          1=Service,            2=TimeSlot, 3=Client, 4=Confirm
+  const STEP_TIMESLOT = needsMemberStep ? 3 : 2;
+  const STEP_CLIENT = needsMemberStep ? 4 : 3;
+  const STEP_CONFIRM = needsMemberStep ? 5 : 4;
+  const STEP_MEMBER = 2; // only used when needsMemberStep
+
+  // Auto-select member when only one active member
+  useEffect(() => {
+    if (activeMembers.length === 1 && !selectedMemberId) {
+      setSelectedMemberId(activeMembers[0].id);
+    }
+  }, [activeMembers, selectedMemberId]);
+
+  // -- Fetch next availability per member when entering member step ------------
+  useEffect(() => {
+    if (!needsMemberStep || step !== STEP_MEMBER || !selectedService || !providerId) return;
+
+    let cancelled = false;
+    const fetchNextAvail = async () => {
+      setLoadingNextAvail(true);
+      const result: Record<string, Date | null> = {};
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const lookAhead = new Date(today);
+      lookAhead.setDate(lookAhead.getDate() + 14);
+
+      await Promise.all(
+        activeMembers.map(async (member) => {
+          try {
+            const memberSlots = await schedulingService.getAvailableSlots({
+              providerId,
+              serviceId: selectedService.id,
+              memberId: member.id,
+              startDate: today,
+              endDate: lookAhead,
+            });
+            result[member.id] = memberSlots.length > 0 ? memberSlots[0].datetime : null;
+          } catch {
+            result[member.id] = null;
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setNextAvailByMember(result);
+        setLoadingNextAvail(false);
+      }
+    };
+
+    fetchNextAvail();
+    return () => { cancelled = true; };
+  }, [needsMemberStep, step, STEP_MEMBER, selectedService, providerId, activeMembers]);
+
+  // -- Fetch closed days for selected member (for CalendarStrip) --------------
+  useEffect(() => {
+    if (!selectedMemberId || !providerId) {
+      setMemberClosedDays([]);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchClosedDays = async () => {
+      try {
+        const schedule = await schedulingService.getWeeklySchedule(providerId, selectedMemberId);
+        // Days where isOpen is false or no entry = closed
+        const openDays = new Set(schedule.filter((a) => a.isOpen).map((a) => a.dayOfWeek));
+        const closed: number[] = [];
+        for (let d = 0; d < 7; d++) {
+          if (!openDays.has(d)) closed.push(d);
+        }
+        if (!cancelled) setMemberClosedDays(closed);
+      } catch {
+        if (!cancelled) setMemberClosedDays([]);
+      }
+    };
+
+    fetchClosedDays();
+    return () => { cancelled = true; };
+  }, [selectedMemberId, providerId]);
+
   // -- Load slots when date or service changes (step 2) -----------------------
   useEffect(() => {
-    if (step !== 2 || !selectedService || !providerId) return;
+    if (step !== STEP_TIMESLOT || !selectedService || !providerId || !selectedMemberId) return;
 
     const loadSlots = async () => {
       try {
         setLoadingSlots(true);
         setSelectedSlot(null);
 
-        // Fetch slots for all members in parallel
+        // Fetch slots for selected member or all active members
         const allSlots: SlotWithMember[] = [];
-        const activeMembers = members.filter((m) => m.isActive);
+        const membersToFetch = selectedMemberId
+          ? activeMembers.filter((m) => m.id === selectedMemberId)
+          : activeMembers;
 
-        const promises = activeMembers.map(async (member) => {
+        const promises = membersToFetch.map(async (member) => {
           try {
             const memberSlots = await schedulingService.getAvailableSlots({
               providerId,
@@ -460,7 +584,7 @@ export default function CreateBookingScreen() {
     };
 
     loadSlots();
-  }, [step, selectedDate, selectedService, providerId, members]);
+  }, [step, STEP_TIMESLOT, selectedDate, selectedService, providerId, activeMembers, selectedMemberId]);
 
   // -- Grouped slots by period ------------------------------------------------
   const groupedSlots = useMemo(() => {
@@ -513,10 +637,31 @@ export default function CreateBookingScreen() {
     (service: WithId<Service>) => {
       setSelectedService(service);
       animateStepTransition('forward', () => {
-        setStep(2);
+        // Go to member step if multiple members, otherwise timeslot step
+        setStep((needsMemberStep ? STEP_MEMBER : STEP_TIMESLOT) as Step);
       });
     },
-    [animateStepTransition],
+    [animateStepTransition, needsMemberStep, STEP_TIMESLOT],
+  );
+
+  const handleSelectMember = useCallback(
+    (memberId: string) => {
+      setSelectedMemberId(memberId);
+      setSelectedSlot(null);
+
+      // Jump to the member's next available date if known
+      const nextAvail = nextAvailByMember[memberId];
+      if (nextAvail) {
+        const nextDate = new Date(nextAvail);
+        nextDate.setHours(0, 0, 0, 0);
+        setSelectedDate(nextDate);
+      }
+
+      animateStepTransition('forward', () => {
+        setStep(STEP_TIMESLOT as Step);
+      });
+    },
+    [animateStepTransition, STEP_TIMESLOT, nextAvailByMember],
   );
 
   const handleSelectSlot = useCallback(
@@ -532,9 +677,9 @@ export default function CreateBookingScreen() {
   const handleConfirmSlot = useCallback(() => {
     if (!selectedSlot) return;
     animateStepTransition('forward', () => {
-      setStep(3);
+      setStep(STEP_CLIENT as Step);
     });
-  }, [selectedSlot, animateStepTransition]);
+  }, [selectedSlot, animateStepTransition, STEP_CLIENT]);
 
   const handleDateChange = useCallback((date: Date) => {
     setSelectedDate(date);
@@ -563,9 +708,9 @@ export default function CreateBookingScreen() {
       return;
     }
     animateStepTransition('forward', () => {
-      setStep(4);
+      setStep(STEP_CONFIRM as Step);
     });
-  }, [clientName, clientEmail, clientPhone, animateStepTransition]);
+  }, [clientName, clientEmail, clientPhone, animateStepTransition, STEP_CONFIRM]);
 
   // -- Derived info for step 4 ------------------------------------------------
   const selectedMember = useMemo(() => {
@@ -655,13 +800,13 @@ export default function CreateBookingScreen() {
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
         <Text variant="h3" style={styles.headerTitle}>
-          {STEP_TITLES[step]}
+          {stepTitles[step]}
         </Text>
         <View style={styles.headerSpacer} />
       </View>
 
       {/* ── Progress Stepper ───────────────────────────────────────────── */}
-      <ProgressStepper currentStep={step} />
+      <ProgressStepper currentStep={step} totalSteps={totalSteps} stepLabels={stepLabels} />
 
       {/* ── Animated Step Content ──────────────────────────────────────── */}
       <Animated.View
@@ -673,7 +818,7 @@ export default function CreateBookingScreen() {
           },
         ]}
       >
-        {/* ── Step 1: Select Service ───────────────────────────────────── */}
+        {/* ── Step: Select Service (always step 1) ─────────────────────── */}
         {step === 1 && (
           <ScrollView
             contentContainerStyle={[styles.scrollContent, { padding: spacing.lg }]}
@@ -787,14 +932,94 @@ export default function CreateBookingScreen() {
           </ScrollView>
         )}
 
-        {/* ── Step 2: Select Date & Time ───────────────────────────────── */}
-        {step === 2 && (
+        {/* ── Step: Select Member (only when multiple members) ──────────── */}
+        {needsMemberStep && step === STEP_MEMBER && (
+          <ScrollView
+            contentContainerStyle={[styles.scrollContent, { padding: spacing.lg }]}
+            showsVerticalScrollIndicator={false}
+          >
+            {loadingNextAvail && (
+              <View style={styles.loaderContainerSmall}>
+                <Loader />
+                <Text variant="body" color="textSecondary" style={{ marginTop: spacing.md }}>
+                  Recherche des disponibilités...
+                </Text>
+              </View>
+            )}
+            {!loadingNextAvail && activeMembers.map((member) => {
+              const isSelected = selectedMemberId === member.id;
+              const nextAvail = nextAvailByMember[member.id];
+
+              // Format next availability
+              let nextAvailLabel: string;
+              if (nextAvail) {
+                const d = new Date(nextAvail);
+                const dayName = DAYS[d.getDay()];
+                const dayNum = d.getDate();
+                const monthName = MONTHS[d.getMonth()];
+                const hours = d.getHours().toString().padStart(2, '0');
+                const mins = d.getMinutes().toString().padStart(2, '0');
+                nextAvailLabel = `${capitalize(dayName)} ${dayNum} ${monthName} à ${hours}:${mins}`;
+              } else {
+                nextAvailLabel = 'Aucune disponibilité prochaine';
+              }
+
+              return (
+                <Card
+                  key={member.id}
+                  padding="lg"
+                  shadow="sm"
+                  onPress={() => nextAvail ? handleSelectMember(member.id) : undefined}
+                  style={{
+                    marginBottom: spacing.md,
+                    opacity: nextAvail ? 1 : 0.5,
+                    ...(isSelected
+                      ? {
+                          backgroundColor: colors.primaryLight,
+                          borderColor: colors.primary,
+                        }
+                      : {}),
+                  }}
+                >
+                  <View style={styles.memberCardContent}>
+                    <Avatar name={member.name} size="md" />
+                    <View style={styles.memberCardInfo}>
+                      <Text variant="h3">{member.name}</Text>
+                      <View style={[styles.nextAvailRow, { marginTop: spacing.xs }]}>
+                        <Ionicons
+                          name={nextAvail ? 'calendar-outline' : 'close-circle-outline'}
+                          size={13}
+                          color={nextAvail ? colors.success : colors.textMuted}
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text
+                          variant="caption"
+                          color={nextAvail ? 'success' : 'textMuted'}
+                          style={{ fontWeight: '500' }}
+                        >
+                          {nextAvailLabel}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.serviceChevron}>
+                      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                    </View>
+                  </View>
+                </Card>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {/* ── Step: Select Date & Time ──────────────────────────────────── */}
+        {step === STEP_TIMESLOT && (
           <View style={styles.flex}>
             {/* Calendar strip */}
             <View style={{ paddingVertical: spacing.md }}>
               <CalendarStrip
                 selectedDate={selectedDate}
                 onSelectDate={handleDateChange}
+                closedDays={memberClosedDays}
               />
             </View>
 
@@ -879,8 +1104,8 @@ export default function CreateBookingScreen() {
           </View>
         )}
 
-        {/* ── Step 3: Client Info ──────────────────────────────────────── */}
-        {step === 3 && (
+        {/* ── Step: Client Info ────────────────────────────────────────── */}
+        {step === STEP_CLIENT && (
           <KeyboardAvoidingView
             style={styles.flex}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -986,8 +1211,8 @@ export default function CreateBookingScreen() {
           </KeyboardAvoidingView>
         )}
 
-        {/* ── Step 4: Confirmation ─────────────────────────────────────── */}
-        {step === 4 && selectedService && selectedSlot && (
+        {/* ── Step: Confirmation ──────────────────────────────────────── */}
+        {step === STEP_CONFIRM && selectedService && selectedSlot && (
           <ScrollView
             contentContainerStyle={[styles.scrollContent, { padding: spacing.lg }]}
             showsVerticalScrollIndicator={false}
@@ -1243,6 +1468,20 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  // Step Member — Member card
+  memberCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  memberCardInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  nextAvailRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },

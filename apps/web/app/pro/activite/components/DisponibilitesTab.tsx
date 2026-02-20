@@ -2,63 +2,74 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button, useToast } from '@/components/ui';
+import { ConfirmDialog, useToast } from '@/components/ui';
 import {
   schedulingService,
   locationService,
   memberService,
 } from '@booking-app/firebase';
-import { Loader2, Clock, Pencil, Save, X, Users } from 'lucide-react';
-import { AvailabilityGrid } from './AvailabilityGrid';
-import { AvailabilityView } from './AvailabilityView';
+import { Loader2, Clock, Users } from 'lucide-react';
+import { DayRow } from './DayRow';
+import { MemberPills } from './MemberPills';
+import { QuickTemplates } from './QuickTemplates';
+import { StickyFooter } from './StickyFooter';
+import { WeeklyPreview } from './WeeklyPreview';
 import { BlockedSlotsSection, type BlockedSlotFormData } from './BlockedSlotsSection';
-import type { Availability, BlockedSlot, Location, Member, TimeSlot } from '@booking-app/shared';
+import { useScheduleReducer, type DaySchedule } from '../hooks/useScheduleReducer';
+import type { BlockedSlot, Location, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
-interface DaySchedule {
-  dayOfWeek: number;
-  isOpen: boolean;
-  slots: TimeSlot[];
-}
-
 /**
- * NOUVEAU MODÈLE: Centré sur le membre (1 membre = 1 lieu = 1 agenda)
- * - On sélectionne un membre, pas un lieu
- * - Le lieu est déduit du membre sélectionné
+ * Redesigned availability editor.
+ * Always-editable interface with copy-to mechanism and sticky save bar.
+ * No more view/edit toggle.
  */
 export function DisponibilitesTab() {
   const { provider } = useAuth();
   const toast = useToast();
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [availabilities, setAvailabilities] = useState<WithId<Availability>[]>([]);
-  const [pendingChanges, setPendingChanges] = useState<DaySchedule[]>([]);
   const [blockedSlots, setBlockedSlots] = useState<WithId<BlockedSlot>[]>([]);
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
   const [members, setMembers] = useState<WithId<Member>[]>([]);
 
-  // Selected member (NOUVEAU MODÈLE: clé principale)
+  // Selected member
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
-  // Get selected member and their location
+  // Confirm dialog for unsaved changes on member switch
+  const [pendingMemberSwitch, setPendingMemberSwitch] = useState<string | null>(null);
+
+  // Schedule state via reducer
+  const {
+    orderedSchedule,
+    saving,
+    isDirty,
+    dirtyDays,
+    dirtyCount,
+    load,
+    updateDay,
+    copyTo,
+    applyTemplate,
+    reset,
+    saveStart,
+    saveSuccess,
+    saveError,
+  } = useScheduleReducer();
+
+  // Derived
   const selectedMember = members.find((m) => m.id === selectedMemberId);
   const selectedLocation = selectedMember
     ? locations.find((l) => l.id === selectedMember.locationId)
     : null;
-
-  // Check if provider has multiple members
   const hasMultipleMembers = members.length > 1;
 
-  // Fetch data
+  // Fetch members, locations, blocked slots
   const fetchData = useCallback(async () => {
     if (!provider) return;
 
     setLoading(true);
     try {
-      // Fetch locations and members
       const [locationsData, membersData] = await Promise.all([
         locationService.getActiveByProvider(provider.id),
         memberService.getByProvider(provider.id),
@@ -67,7 +78,6 @@ export function DisponibilitesTab() {
       setLocations(locationsData);
       setMembers(membersData);
 
-      // Set default selected member (default member or first one)
       if (!selectedMemberId && membersData.length > 0) {
         const defaultMember = membersData.find((m) => m.isDefault) || membersData[0];
         if (defaultMember) {
@@ -75,7 +85,6 @@ export function DisponibilitesTab() {
         }
       }
 
-      // Fetch blocked slots
       const blockedSlotsData = await schedulingService.getUpcomingBlockedSlots(provider.id);
       setBlockedSlots(blockedSlotsData);
     } catch (error) {
@@ -86,21 +95,43 @@ export function DisponibilitesTab() {
     }
   }, [provider, selectedMemberId, toast]);
 
-  // Fetch availability for selected member
+  // Fetch availability for selected member and load into reducer
   const fetchAvailability = useCallback(async () => {
     if (!provider || !selectedMemberId) return;
 
     try {
-      // NOUVEAU MODÈLE: getWeeklySchedule prend seulement providerId et memberId
       const availabilityData = await schedulingService.getWeeklySchedule(
         provider.id,
         selectedMemberId
       );
-      setAvailabilities(availabilityData);
+
+      const defaultSchedule: DaySchedule[] = [
+        { dayOfWeek: 0, isOpen: false, slots: [] },
+        { dayOfWeek: 1, isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        { dayOfWeek: 2, isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        { dayOfWeek: 3, isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        { dayOfWeek: 4, isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        { dayOfWeek: 5, isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        { dayOfWeek: 6, isOpen: false, slots: [] },
+      ];
+
+      const schedule = defaultSchedule.map((defaultDay) => {
+        const existing = availabilityData.find((a) => a.dayOfWeek === defaultDay.dayOfWeek);
+        if (existing) {
+          return {
+            dayOfWeek: existing.dayOfWeek,
+            isOpen: existing.isOpen,
+            slots: existing.slots,
+          };
+        }
+        return defaultDay;
+      });
+
+      load(schedule);
     } catch (error) {
       console.error('Fetch availability error:', error);
     }
-  }, [provider, selectedMemberId]);
+  }, [provider, selectedMemberId, load]);
 
   useEffect(() => {
     fetchData();
@@ -112,50 +143,46 @@ export function DisponibilitesTab() {
     }
   }, [selectedMemberId, fetchAvailability]);
 
-  // Start editing mode
-  const handleStartEditing = () => {
-    setIsEditing(true);
-    setPendingChanges([]);
+  // Handle member switch with unsaved changes check
+  const handleMemberSelect = (memberId: string) => {
+    if (memberId === selectedMemberId) return;
+    if (isDirty) {
+      setPendingMemberSwitch(memberId);
+    } else {
+      setSelectedMemberId(memberId);
+    }
   };
 
-  // Cancel editing and discard changes
-  const handleCancelEditing = () => {
-    setIsEditing(false);
-    setPendingChanges([]);
+  const confirmMemberSwitch = () => {
+    if (pendingMemberSwitch) {
+      reset();
+      setSelectedMemberId(pendingMemberSwitch);
+      setPendingMemberSwitch(null);
+    }
   };
 
-  // Track changes during editing (no auto-save)
-  const handleScheduleChange = (schedule: DaySchedule[]) => {
-    setPendingChanges(schedule);
-  };
+  // Save handler — batch save all 7 days
+  const handleSave = async () => {
+    if (!provider || !selectedMemberId || !selectedMember) return;
 
-  // Save all pending changes
-  const handleSaveChanges = async () => {
-    if (!provider || !selectedMemberId || !selectedMember || pendingChanges.length === 0) return;
-
-    setSaving(true);
+    saveStart();
     try {
-      // Save each day that has changes
-      // NOUVEAU MODÈLE: memberId obligatoire, locationId dénormalisé
-      for (const day of pendingChanges) {
-        await schedulingService.setAvailability(provider.id, {
-          memberId: selectedMemberId,
-          locationId: selectedMember.locationId,
+      await schedulingService.setWeeklySchedule(
+        provider.id,
+        selectedMemberId,
+        selectedMember.locationId,
+        orderedSchedule.map((day) => ({
           dayOfWeek: day.dayOfWeek,
-          isOpen: day.isOpen,
           slots: day.slots,
-        });
-      }
+          isOpen: day.isOpen,
+        }))
+      );
+      saveSuccess();
       toast.success('Disponibilités mises à jour');
-      setIsEditing(false);
-      setPendingChanges([]);
-      // Refresh data
-      await fetchAvailability();
     } catch (error) {
       console.error('Save error:', error);
+      saveError();
       toast.error('Erreur lors de la sauvegarde');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -176,12 +203,11 @@ export function DisponibilitesTab() {
         locationId: data.locationId,
       });
       toast.success('Période de fermeture ajoutée');
-      // Refresh blocked slots
       const blockedSlotsData = await schedulingService.getUpcomingBlockedSlots(provider.id);
       setBlockedSlots(blockedSlotsData);
     } catch (error) {
       console.error('Add blocked slot error:', error);
-      toast.error('Erreur lors de l\'ajout');
+      toast.error("Erreur lors de l'ajout");
       throw error;
     }
   };
@@ -217,7 +243,7 @@ export function DisponibilitesTab() {
           Aucun membre configuré
         </h3>
         <p className="text-gray-500 dark:text-gray-400">
-          Ajoutez d'abord un membre dans l'onglet "Équipe" pour définir vos disponibilités.
+          Ajoutez d&apos;abord un membre dans l&apos;onglet &quot;Équipe&quot; pour définir vos disponibilités.
         </p>
       </div>
     );
@@ -231,16 +257,16 @@ export function DisponibilitesTab() {
           Aucun lieu configuré
         </h3>
         <p className="text-gray-500 dark:text-gray-400">
-          Ajoutez d'abord un lieu dans l'onglet "Lieux" pour définir vos disponibilités.
+          Ajoutez d&apos;abord un lieu dans l&apos;onglet &quot;Lieux&quot; pour définir vos disponibilités.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="pb-20">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 mb-6">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             Vos disponibilités
@@ -249,105 +275,100 @@ export function DisponibilitesTab() {
             )}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {isEditing ? 'Modifiez vos horaires d\'ouverture' : 'Définissez vos horaires d\'ouverture'}
+            Configurez vos horaires d&apos;ouverture, puis enregistrez vos modifications.
           </p>
         </div>
 
-        {/* Filters and actions */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Member selector (NOUVEAU MODÈLE: sélection du membre = sélection du lieu) */}
-          {hasMultipleMembers && !isEditing && (
-            <select
-              value={selectedMemberId || ''}
-              onChange={(e) => setSelectedMemberId(e.target.value || null)}
-              className="px-3 py-2 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              {members.map((member) => {
-                const location = locations.find((l) => l.id === member.locationId);
-                return (
-                  <option key={member.id} value={member.id}>
-                    {member.name} {location ? `(${location.name})` : ''}
-                  </option>
-                );
-              })}
-            </select>
-          )}
+        {/* Member pills selector */}
+        {hasMultipleMembers && selectedMemberId && (
+          <MemberPills
+            members={members}
+            locations={locations}
+            selectedMemberId={selectedMemberId}
+            onSelect={handleMemberSelect}
+            disabled={saving}
+          />
+        )}
 
-          {/* Show selected location info when editing */}
-          {isEditing && selectedLocation && (
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              <span className="font-medium">{selectedMember?.name}</span>
-              <span className="mx-1">-</span>
-              <span>{selectedLocation.name}</span>
-            </div>
-          )}
+        {/* Single member info */}
+        {!hasMultipleMembers && selectedMember && selectedLocation && (
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 px-4 py-2 rounded-lg">
+            <Users className="w-4 h-4" />
+            <span>
+              Disponibilités de{' '}
+              <span className="font-medium text-gray-900 dark:text-white">{selectedMember.name}</span>
+              {' '}au{' '}
+              <span className="font-medium text-gray-900 dark:text-white">{selectedLocation.name}</span>
+            </span>
+          </div>
+        )}
+      </div>
 
-          {/* Edit / Save / Cancel buttons */}
-          {isEditing ? (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelEditing}
-                disabled={saving}
-              >
-                <X className="w-4 h-4 mr-1" />
-                Annuler
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveChanges}
-                disabled={saving || pendingChanges.length === 0}
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-1" />
-                )}
-                Enregistrer
-              </Button>
-            </div>
-          ) : (
-            <Button size="sm" onClick={handleStartEditing}>
-              <Pencil className="w-4 h-4 mr-1" />
-              Modifier
-            </Button>
-          )}
+      {/* Split-panel layout: editor left, preview right on desktop */}
+      <div className="xl:grid xl:grid-cols-[minmax(0,420px)_1fr] xl:gap-8">
+        {/* Left column — editor (compact) */}
+        <div className="space-y-4">
+          {/* Quick templates */}
+          <QuickTemplates onApply={applyTemplate} />
+
+          {/* Day list — always editable */}
+          <div className="space-y-0.5">
+            {orderedSchedule.map((day) => (
+              <DayRow
+                key={day.dayOfWeek}
+                dayOfWeek={day.dayOfWeek}
+                isOpen={day.isOpen}
+                slots={day.slots}
+                onDayChange={updateDay}
+                onCopyTo={copyTo}
+                isDirty={dirtyDays.has(day.dayOfWeek)}
+              />
+            ))}
+          </div>
+
+          {/* Blocked slots section */}
+          <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+            <BlockedSlotsSection
+              blockedSlots={blockedSlots}
+              locations={locations}
+              members={members}
+              onAdd={handleAddBlockedSlot}
+              onDelete={handleDeleteBlockedSlot}
+              hasTeams={hasMultipleMembers}
+            />
+          </div>
+        </div>
+
+        {/* Right column — weekly preview (desktop only) */}
+        <div className="hidden xl:block">
+          <div className="sticky top-24">
+            <WeeklyPreview
+              schedule={orderedSchedule}
+              dirtyDays={dirtyDays}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Current member info */}
-      {!hasMultipleMembers && selectedMember && selectedLocation && (
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 px-4 py-2 rounded-lg">
-          <Users className="w-4 h-4" />
-          <span>
-            Disponibilités de <span className="font-medium text-gray-900 dark:text-white">{selectedMember.name}</span>
-            {' '}au <span className="font-medium text-gray-900 dark:text-white">{selectedLocation.name}</span>
-          </span>
-        </div>
-      )}
+      {/* Sticky save footer */}
+      <StickyFooter
+        dirtyCount={dirtyCount}
+        saving={saving}
+        onSave={handleSave}
+        onCancel={reset}
+      />
 
-      {/* Availability view (consultation) or grid (editing) */}
-      {isEditing ? (
-        <AvailabilityGrid
-          availabilities={availabilities}
-          onChange={handleScheduleChange}
-        />
-      ) : (
-        <AvailabilityView availabilities={availabilities} />
-      )}
-
-      {/* Blocked slots section */}
-      <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-        <BlockedSlotsSection
-          blockedSlots={blockedSlots}
-          locations={locations}
-          members={members}
-          onAdd={handleAddBlockedSlot}
-          onDelete={handleDeleteBlockedSlot}
-          hasTeams={hasMultipleMembers}
-        />
-      </div>
+      {/* Confirm dialog for member switch with unsaved changes */}
+      <ConfirmDialog
+        isOpen={pendingMemberSwitch !== null}
+        onClose={() => setPendingMemberSwitch(null)}
+        onConfirm={confirmMemberSwitch}
+        title="Modifications non enregistrées"
+        message="Vous avez des modifications non enregistrées. Voulez-vous les abandonner et changer de membre ?"
+        confirmLabel="Abandonner"
+        cancelLabel="Rester"
+        variant="warning"
+      />
     </div>
   );
 }

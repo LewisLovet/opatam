@@ -3,7 +3,7 @@
  * Shows upcoming blocked slots with ability to delete
  */
 
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -19,8 +19,8 @@ import { useTheme } from '../../theme';
 import { Text, Card, Loader, EmptyState } from '../../components';
 import { useProvider } from '../../contexts';
 import { useBlockedSlots } from '../../hooks';
-import { schedulingService } from '@booking-app/firebase';
-import type { BlockedSlot } from '@booking-app/shared';
+import { schedulingService, memberService } from '@booking-app/firebase';
+import type { BlockedSlot, Member } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
 const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -42,6 +42,19 @@ export default function BlockedSlotsScreen() {
   const router = useRouter();
   const { providerId } = useProvider();
   const { blockedSlots, isLoading, refresh } = useBlockedSlots(providerId);
+
+  // Fetch members to resolve memberId → name
+  const [members, setMembers] = useState<WithId<Member>[]>([]);
+  useEffect(() => {
+    if (!providerId) return;
+    memberService.getByProvider(providerId).then((res) => setMembers(res as WithId<Member>[])).catch(() => {});
+  }, [providerId]);
+
+  const memberNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of members) map[m.id] = m.name;
+    return map;
+  }, [members]);
 
   const handleDelete = (slot: WithId<BlockedSlot>) => {
     Alert.alert(
@@ -91,7 +104,7 @@ export default function BlockedSlotsScreen() {
             )}
             {item.memberId && (
               <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                Membre: {item.memberId}
+                {memberNameMap[item.memberId] || 'Membre'}
               </Text>
             )}
           </View>

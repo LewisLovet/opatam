@@ -16,6 +16,16 @@ export interface DayScheduleBooking {
   clientName: string;
   serviceName: string;
   status: BookingStatus;
+  memberName?: string;
+}
+
+export interface DayScheduleBlockedSlot {
+  id: string;
+  startTime: string; // "09:00"
+  endTime: string; // "23:59"
+  reason: string | null;
+  memberName: string | null;
+  allDay: boolean;
 }
 
 export interface DayScheduleProps {
@@ -23,6 +33,8 @@ export interface DayScheduleProps {
   date: Date;
   /** List of bookings for the day */
   bookings: DayScheduleBooking[];
+  /** Blocked slots for the day */
+  blockedSlots?: DayScheduleBlockedSlot[];
   /** Working hours (defaults to 09:00-19:00) */
   workingHours?: {
     start: string; // "09:00"
@@ -55,6 +67,83 @@ function getStatusColor(status: BookingStatus, colors: Colors): string {
   }
 }
 
+/**
+ * Greedy column assignment for overlapping bookings.
+ * Returns a map of bookingId → { column, totalColumns }.
+ */
+function computeOverlapLayout(
+  bookings: DayScheduleBooking[],
+): Record<string, { column: number; totalColumns: number }> {
+  if (bookings.length === 0) return {};
+
+  // Sort by start time, then by end time
+  const sorted = [...bookings].sort((a, b) => {
+    const diff = parseTime(a.startTime) - parseTime(b.startTime);
+    if (diff !== 0) return diff;
+    return parseTime(a.endTime) - parseTime(b.endTime);
+  });
+
+  // For each booking, find an available column (greedy)
+  const columns: { endMinute: number }[] = [];
+  const assignments: Record<string, number> = {};
+
+  for (const booking of sorted) {
+    const start = parseTime(booking.startTime);
+    let placed = false;
+    for (let c = 0; c < columns.length; c++) {
+      if (columns[c].endMinute <= start) {
+        columns[c].endMinute = parseTime(booking.endTime);
+        assignments[booking.id] = c;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      assignments[booking.id] = columns.length;
+      columns.push({ endMinute: parseTime(booking.endTime) });
+    }
+  }
+
+  // Build overlap groups to determine totalColumns per group
+  // Two bookings overlap if their time ranges intersect
+  const groups: DayScheduleBooking[][] = [];
+  for (const booking of sorted) {
+    const bStart = parseTime(booking.startTime);
+    let bEnd = parseTime(booking.endTime);
+    if (bEnd <= bStart) bEnd = bStart + 30; // fallback
+
+    let addedToGroup = false;
+    for (const group of groups) {
+      const groupOverlaps = group.some((g) => {
+        const gStart = parseTime(g.startTime);
+        let gEnd = parseTime(g.endTime);
+        if (gEnd <= gStart) gEnd = gStart + 30;
+        return bStart < gEnd && bEnd > gStart;
+      });
+      if (groupOverlaps) {
+        group.push(booking);
+        addedToGroup = true;
+        break;
+      }
+    }
+    if (!addedToGroup) {
+      groups.push([booking]);
+    }
+  }
+
+  // For each group, find the max column used
+  const result: Record<string, { column: number; totalColumns: number }> = {};
+  for (const group of groups) {
+    const maxCol = Math.max(...group.map((b) => assignments[b.id]));
+    const totalColumns = maxCol + 1;
+    for (const booking of group) {
+      result[booking.id] = { column: assignments[booking.id], totalColumns };
+    }
+  }
+
+  return result;
+}
+
 function getStatusBorderColor(status: BookingStatus, colors: Colors): string {
   switch (status) {
     case 'confirmed':
@@ -73,6 +162,7 @@ function getStatusBorderColor(status: BookingStatus, colors: Colors): string {
 export function DaySchedule({
   date,
   bookings,
+  blockedSlots = [],
   workingHours = { start: '07:00', end: '21:00' },
   onBookingPress,
 }: DayScheduleProps) {
@@ -140,6 +230,9 @@ export function DaySchedule({
     return result;
   }, [startMinutes, endMinutes]);
 
+  // Compute overlap layout for bookings
+  const overlapLayout = useMemo(() => computeOverlapLayout(bookings), [bookings]);
+
   // Check if today to show "now" line
   const isToday = useMemo(() => {
     const today = new Date();
@@ -194,6 +287,59 @@ export function DaySchedule({
           />
         ))}
 
+        {/* Blocked slots */}
+        {blockedSlots.map((slot) => {
+          let slotStart = parseTime(slot.startTime);
+          let slotEnd = parseTime(slot.endTime);
+          if (slot.allDay) {
+            slotStart = startMinutes;
+            slotEnd = endMinutes;
+          }
+          if (slotEnd === 0 && slotStart > 0) slotEnd = 24 * 60;
+          if (slotEnd <= slotStart) slotEnd = 24 * 60;
+
+          // Clamp to visible range
+          const visStart = Math.max(slotStart, startMinutes);
+          const visEnd = Math.min(slotEnd, endMinutes);
+          if (visEnd <= visStart) return null;
+
+          const top = ((visStart - startMinutes) / totalMinutes) * totalHeight;
+          const height = ((visEnd - visStart) / totalMinutes) * totalHeight;
+          const label = slot.reason || 'Indisponible';
+
+          return (
+            <View
+              key={`blocked-${slot.id}`}
+              style={[
+                styles.blockedBlock,
+                {
+                  top,
+                  height: Math.max(height, 30),
+                  backgroundColor: colors.surfaceSecondary,
+                  borderLeftColor: colors.textMuted,
+                  borderRadius: radius.sm,
+                  padding: spacing.xs,
+                  marginLeft: spacing.xs,
+                },
+              ]}
+            >
+              <View style={styles.blockedRow}>
+                <View style={[styles.blockedIcon, { backgroundColor: colors.border }]}>
+                  <Text variant="caption" style={{ fontSize: 10 }}>🚫</Text>
+                </View>
+                <Text variant="caption" numberOfLines={1} style={{ fontSize: 11, fontWeight: '500' }} color="textMuted">
+                  {label}
+                </Text>
+              </View>
+              {slot.memberName && height > 40 && (
+                <Text variant="caption" numberOfLines={1} style={{ fontSize: 10, marginTop: 2 }} color="textMuted">
+                  {slot.memberName}
+                </Text>
+              )}
+            </View>
+          );
+        })}
+
         {/* Bookings */}
         {bookings.map((booking) => {
           const bookingStart = parseTime(booking.startTime);
@@ -204,6 +350,14 @@ export function DaySchedule({
 
           const top = ((bookingStart - startMinutes) / totalMinutes) * totalHeight;
           const height = ((bookingEnd - bookingStart) / totalMinutes) * totalHeight;
+          const actualHeight = Math.max(height, 40);
+
+          // Overlap layout
+          const layout = overlapLayout[booking.id] || { column: 0, totalColumns: 1 };
+          const GRID_RIGHT_MARGIN = 8;
+          const colWidth = layout.totalColumns > 1
+            ? (100 / layout.totalColumns)
+            : undefined; // full width when no overlap
 
           return (
             <Pressable
@@ -213,24 +367,40 @@ export function DaySchedule({
                 styles.bookingBlock,
                 {
                   top,
-                  height: Math.max(height, 40), // Minimum height for visibility
+                  height: actualHeight,
                   backgroundColor: getStatusColor(booking.status, colors),
                   borderLeftColor: getStatusBorderColor(booking.status, colors),
                   borderRadius: radius.sm,
                   padding: spacing.xs,
                   marginLeft: spacing.xs,
                 },
+                layout.totalColumns > 1
+                  ? {
+                      left: `${layout.column * (100 / layout.totalColumns)}%` as any,
+                      width: `${colWidth}%` as any,
+                      right: undefined,
+                    }
+                  : {
+                      right: GRID_RIGHT_MARGIN,
+                    },
               ]}
             >
-              <Text variant="caption" style={styles.bookingTime}>
+              <Text variant="caption" style={styles.bookingTime} numberOfLines={1}>
                 {booking.startTime} - {booking.endTime}
               </Text>
               <Text variant="caption" numberOfLines={1} style={styles.clientName}>
                 {booking.clientName}
               </Text>
-              <Text variant="caption" color="textSecondary" numberOfLines={1} style={{ fontSize: 11 }}>
-                {booking.serviceName}
-              </Text>
+              {actualHeight > 50 && (
+                <Text variant="caption" color="textSecondary" numberOfLines={1} style={{ fontSize: 11 }}>
+                  {booking.serviceName}
+                </Text>
+              )}
+              {actualHeight > 65 && booking.memberName && (
+                <Text variant="caption" color="textMuted" numberOfLines={1} style={{ fontSize: 10 }}>
+                  {booking.memberName}
+                </Text>
+              )}
             </Pressable>
           );
         })}
@@ -280,6 +450,27 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
+  },
+  blockedBlock: {
+    position: 'absolute',
+    left: 0,
+    right: 8,
+    borderLeftWidth: 3,
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+    opacity: 0.7,
+  },
+  blockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  blockedIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bookingBlock: {
     position: 'absolute',

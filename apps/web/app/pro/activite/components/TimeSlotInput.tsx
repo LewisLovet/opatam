@@ -15,7 +15,7 @@ interface TimeSlotInputProps {
 const generateTimeOptions = () => {
   const options: { value: string; label: string }[] = [];
   for (let hour = 0; hour < 24; hour++) {
-    for (let min = 0; min < 60; min += 30) {
+    for (let min = 0; min < 60; min += 15) {
       const value = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
       options.push({ value, label: value });
     }

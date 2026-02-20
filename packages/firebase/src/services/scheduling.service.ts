@@ -318,6 +318,13 @@ export class SchedulingService {
   }
 
   /**
+   * Get blocked slots in a date range
+   */
+  async getBlockedSlotsInRange(providerId: string, startDate: Date, endDate: Date): Promise<WithId<BlockedSlot>[]> {
+    return blockedSlotRepository.getInRange(providerId, startDate, endDate);
+  }
+
+  /**
    * Calculate available time slots for booking
    * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
    */
