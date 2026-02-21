@@ -14,6 +14,7 @@ import { MemberCard } from './MemberCard';
 import { MemberModal, type MemberFormData } from './MemberModal';
 import type { Member, Location, Service } from '@booking-app/shared';
 import { PLAN_LIMITS } from '@booking-app/shared';
+import { UpgradeTeamModal } from '@/components/modals/UpgradeTeamModal';
 
 type WithId<T> = { id: string } & T;
 
@@ -29,14 +30,15 @@ export function EquipeTab() {
   const [selectedMember, setSelectedMember] = useState<WithId<Member> | null>(null);
   const [selectedMemberServiceIds, setSelectedMemberServiceIds] = useState<string[]>([]);
   const [upcomingBookingsCount, setUpcomingBookingsCount] = useState(0);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
-  // Plan member limit check (no limit during trial — enforced at plan selection)
+  // Plan member limit check
   const plan = provider?.plan || 'trial';
-  const planLimits = plan !== 'trial' ? PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] : null;
+  const planLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? null;
   const maxMembers = planLimits?.maxMembers ?? Infinity;
   const activeMembers = members.filter((m) => m.isActive);
-  const isAtMemberLimit = plan !== 'trial' && activeMembers.length >= maxMembers;
-  const isSoloPlan = plan === 'solo';
+  const isAtMemberLimit = activeMembers.length >= maxMembers;
+  const isSoloPlan = plan === 'solo' || plan === 'trial';
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -302,7 +304,7 @@ export function EquipeTab() {
         </div>
 
         <div className="flex flex-col items-end gap-1">
-          <Button onClick={handleOpenCreate} disabled={isAtMemberLimit}>
+          <Button onClick={isAtMemberLimit ? () => setUpgradeModalOpen(true) : handleOpenCreate}>
             <Plus className="w-4 h-4 mr-2" />
             Ajouter
           </Button>
@@ -326,7 +328,7 @@ export function EquipeTab() {
           <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
             Ajoutez votre premier membre pour gérer plusieurs agendas et permettre à votre équipe d'accéder à leur planning.
           </p>
-          <Button onClick={handleOpenCreate} className="mt-6" disabled={isAtMemberLimit}>
+          <Button onClick={isAtMemberLimit ? () => setUpgradeModalOpen(true) : handleOpenCreate} className="mt-6">
             <Plus className="w-4 h-4 mr-2" />
             Ajouter un membre
           </Button>
@@ -360,6 +362,13 @@ export function EquipeTab() {
         onRegenerateCode={handleRegenerateCode}
         onSendCode={handleSendCode}
         upcomingBookingsCount={upcomingBookingsCount}
+      />
+
+      {/* Upgrade modal */}
+      <UpgradeTeamModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        context="members"
       />
     </div>
   );

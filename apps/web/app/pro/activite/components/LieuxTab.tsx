@@ -9,6 +9,7 @@ import { LocationCard } from './LocationCard';
 import { LocationModal, type LocationFormData } from './LocationModal';
 import type { Location } from '@booking-app/shared';
 import { PLAN_LIMITS } from '@booking-app/shared';
+import { UpgradeTeamModal } from '@/components/modals/UpgradeTeamModal';
 
 type WithId<T> = { id: string } & T;
 
@@ -21,14 +22,15 @@ export function LieuxTab() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<WithId<Location> | null>(null);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
-  // Plan location limit check (no limit during trial — enforced at plan selection)
+  // Plan location limit check
   const plan = provider?.plan || 'trial';
-  const planLimits = plan !== 'trial' ? PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] : null;
+  const planLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? null;
   const maxLocations = planLimits?.maxLocations ?? Infinity;
   const activeLocations = locations.filter((l) => l.isActive);
-  const isAtLocationLimit = plan !== 'trial' && activeLocations.length >= maxLocations;
-  const isSoloPlan = plan === 'solo';
+  const isAtLocationLimit = activeLocations.length >= maxLocations;
+  const isSoloPlan = plan === 'solo' || plan === 'trial';
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -202,7 +204,7 @@ export function LieuxTab() {
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <Button onClick={handleCreate} disabled={isAtLocationLimit}>
+          <Button onClick={isAtLocationLimit ? () => setUpgradeModalOpen(true) : handleCreate}>
             <Plus className="w-4 h-4 mr-2" />
             Ajouter
           </Button>
@@ -240,6 +242,13 @@ export function LieuxTab() {
         location={editingLocation}
         onSave={handleSaveLocation}
         onDelete={handleDeleteLocation}
+      />
+
+      {/* Upgrade modal */}
+      <UpgradeTeamModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        context="locations"
       />
     </div>
   );
