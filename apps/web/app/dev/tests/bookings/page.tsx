@@ -76,6 +76,7 @@ export default function BookingsTestPage() {
         providerPhoto: null,
         memberName: memberId ? 'Test Member' : null,
         memberPhoto: null,
+        memberColor: null,
         locationId,
         locationName: 'Test Location',
         locationAddress: '123 Rue Test',

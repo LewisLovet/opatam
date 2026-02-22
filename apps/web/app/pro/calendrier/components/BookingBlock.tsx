@@ -10,9 +10,11 @@ interface BookingBlockProps {
   booking: WithId<Booking>;
   top: number;
   height: number;
-  onClick: () => void;
+  onClick: (e?: React.MouseEvent) => void;
   showMemberName?: boolean;
   compact?: boolean;
+  leftPercent?: number;
+  widthPercent?: number;
 }
 
 /**
@@ -91,6 +93,8 @@ export function BookingBlock({
   onClick,
   showMemberName = false,
   compact = false,
+  leftPercent,
+  widthPercent,
 }: BookingBlockProps) {
   const visualStatus = getVisualStatus(booking);
   const styles = visualStatusStyles[visualStatus];
@@ -109,21 +113,60 @@ export function BookingBlock({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent opening create modal
-    onClick();
+    onClick(e);
   };
 
   const startTime = formatTime(booking.datetime);
   const endTime = formatTime(booking.endDatetime);
 
+  // For past/cancelled/noshow bookings with memberColor, use faded member color instead of grey
+  const isPast = visualStatus === 'past' || visualStatus === 'cancelled' || visualStatus === 'noshow';
+  const hasMemberColor = !!booking.memberColor;
+
+  const getMemberColorStyle = () => {
+    if (!hasMemberColor) return {};
+    if (isPast) {
+      // Faded member color for past bookings — still identifiable but clearly past
+      return {
+        borderLeftWidth: '4px',
+        borderLeftColor: `${booking.memberColor}80`, // 50% opacity
+        backgroundColor: `${booking.memberColor}0D`, // ~5% opacity
+      };
+    }
+    return {
+      borderLeftWidth: '4px',
+      borderLeftColor: booking.memberColor!,
+      backgroundColor: `${booking.memberColor}18`, // ~9% opacity
+    };
+  };
+
+  // When memberColor is present on past bookings, skip the grey bg class
+  // so the member color tint shows through
+  const bgClass = (isPast && hasMemberColor) ? '' : styles.bg;
+
   const blockContent = (
     <button
       onClick={handleClick}
       className={`
-        absolute left-1.5 right-1.5 rounded-xl border overflow-hidden
+        absolute rounded-xl border overflow-hidden
         cursor-pointer transition-all hover:shadow-md hover:z-10
-        ${styles.bg} ${styles.border} ${styles.extra || ''}
+        ${bgClass} ${styles.border} ${styles.extra || ''}
       `}
-      style={{ top: `${top}px`, height: `${height}px`, minHeight: '24px' }}
+      style={{
+        top: `${top}px`,
+        height: `${height}px`,
+        minHeight: '24px',
+        ...(leftPercent !== undefined && widthPercent !== undefined
+          ? {
+              left: `calc(${leftPercent}% + 2px)`,
+              width: `calc(${widthPercent}% - 4px)`,
+            }
+          : {
+              left: '6px',
+              right: '6px',
+            }),
+        ...getMemberColorStyle(),
+      }}
       title={`${startTime} - ${endTime} | ${booking.clientInfo.name} | ${booking.serviceName}`}
     >
       <div className={`h-full p-1.5 sm:p-2 flex flex-col ${styles.text}`}>

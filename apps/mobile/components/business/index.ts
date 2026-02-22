@@ -39,6 +39,7 @@ export * from './TimeSlotSection';
 // Lot 2 - Members
 export * from './MemberCard';
 export * from './MemberPicker';
+export * from './MemberSelect';
 
 // Lot 2 - Layout
 export * from './StickyFooter';

@@ -32,6 +32,7 @@ export interface BookingDetailProps {
     };
     member?: {
       name: string;
+      color?: string | null;
     } | null;
     status: BookingStatus;
     location?: {
@@ -206,11 +207,26 @@ export function BookingDetail({
         <>
           <Divider />
           <View style={[styles.section, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md }]}>
-            <InfoRow
-              icon="person-outline"
-              label="Avec"
-              value={booking.member.name}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {booking.member.color && (
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: booking.member.color,
+                    marginRight: spacing.sm,
+                  }}
+                />
+              )}
+              <View style={{ flex: 1 }}>
+                <InfoRow
+                  icon="person-outline"
+                  label="Avec"
+                  value={booking.member.name}
+                />
+              </View>
+            </View>
           </View>
         </>
       )}

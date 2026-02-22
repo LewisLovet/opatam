@@ -2,10 +2,10 @@
  * TimeSlotSection Component
  * Collapsible colored container for time slots grouped by period (morning/afternoon/evening)
  * Uses React Native Animated for smooth collapse/expand animations
- * Scrollable when there are many slots
+ * Measures content dynamically to avoid clipping issues
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, Animated, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
@@ -32,9 +32,8 @@ export interface TimeSlotSectionProps {
   onSelectSlot: (time: string) => void;
 }
 
-// Max rows before scrolling kicks in
-const MAX_VISIBLE_ROWS = 3;
-const ROW_HEIGHT = 52; // slot height + gap
+// Max height before scrolling kicks in
+const MAX_VISIBLE_HEIGHT = 180;
 
 export function TimeSlotSection({
   title,
@@ -48,6 +47,9 @@ export function TimeSlotSection({
   onSelectSlot,
 }: TimeSlotSectionProps) {
   const { colors, spacing, radius } = useTheme();
+
+  // Measure real content height via onLayout
+  const [measuredHeight, setMeasuredHeight] = useState(0);
 
   // Animation value for collapse/expand
   const animatedHeight = useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
@@ -82,12 +84,8 @@ export function TimeSlotSection({
     return null;
   }
 
-  // Calculate dimensions
-  const numRows = Math.ceil(uniqueSlots.length / 4);
-  const needsScroll = numRows > MAX_VISIBLE_ROWS;
-  const contentHeight = numRows * ROW_HEIGHT + spacing.md;
-  const maxVisibleHeight = MAX_VISIBLE_ROWS * ROW_HEIGHT + spacing.md;
-  const expandedHeight = needsScroll ? maxVisibleHeight : contentHeight;
+  const needsScroll = measuredHeight > MAX_VISIBLE_HEIGHT;
+  const expandedHeight = needsScroll ? MAX_VISIBLE_HEIGHT : measuredHeight;
 
   return (
     <View
@@ -143,15 +141,33 @@ export function TimeSlotSection({
         </Animated.View>
       </Pressable>
 
+      {/* Hidden measurer — renders off-screen to get real height */}
+      <View style={styles.measurer} pointerEvents="none">
+        <View
+          onLayout={(e) => setMeasuredHeight(e.nativeEvent.layout.height)}
+          style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.sm }}
+        >
+          <View style={[styles.slotsGrid, { gap: 8 }]}>
+            {uniqueSlots.map((time) => (
+              <View key={time} style={styles.slot}>
+                <Text variant="body" style={styles.slotText}>{time}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+
       {/* Slots Grid - Animated */}
       <Animated.View
         style={[
           styles.slotsOuterContainer,
           {
-            height: animatedHeight.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, expandedHeight],
-            }),
+            height: expandedHeight > 0
+              ? animatedHeight.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, expandedHeight],
+                })
+              : 0,
             opacity: animatedHeight,
           },
         ]}
@@ -251,6 +267,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  measurer: {
+    position: 'absolute',
+    opacity: 0,
+    left: 0,
+    right: 0,
+    // Render off-screen but at full width so layout is accurate
+    top: -9999,
   },
   slotsOuterContainer: {
     overflow: 'hidden',

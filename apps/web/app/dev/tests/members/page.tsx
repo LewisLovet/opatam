@@ -58,6 +58,7 @@ export default function MembersTestPage() {
         email: createEmail,
         phone: createPhone,
         photoURL: null,
+        color: null,
         accessCode,
         locationId: createLocationId,
         isDefault: false,

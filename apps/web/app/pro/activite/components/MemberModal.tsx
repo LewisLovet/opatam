@@ -11,8 +11,9 @@ import {
   ConfirmDialog,
   useToast,
 } from '@/components/ui';
-import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Tag, ChevronRight, ChevronLeft, User, MapPin, Key } from 'lucide-react';
+import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Tag, ChevronRight, ChevronLeft, User, MapPin, Key, Check } from 'lucide-react';
 import type { Member, Location, Service } from '@booking-app/shared';
+import { MEMBER_COLORS } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -34,6 +35,7 @@ export interface MemberFormData {
   name: string;
   email: string;
   phone: string | null;
+  color?: string;
   locationId: string; // NOUVEAU MODÈLE: 1 membre = 1 lieu
   serviceIds: string[];
 }
@@ -72,6 +74,7 @@ export function MemberModal({
     name: '',
     email: '',
     phone: null,
+    color: undefined,
     locationId: '', // NOUVEAU MODÈLE: 1 membre = 1 lieu
     serviceIds: [],
   });
@@ -111,6 +114,7 @@ export function MemberModal({
           name: member.name,
           email: member.email,
           phone: member.phone,
+          color: member.color || undefined,
           locationId: member.locationId, // NOUVEAU MODÈLE: 1 membre = 1 lieu
           serviceIds: memberServiceIds,
         });
@@ -367,6 +371,32 @@ export function MemberModal({
         error={errors.phone}
         hint="Optionnel"
       />
+
+      {/* Color picker */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Couleur
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {MEMBER_COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => setFormData((prev) => ({ ...prev, color }))}
+              className={`
+                w-8 h-8 rounded-full flex items-center justify-center transition-all
+                ${formData.color === color ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-offset-gray-800' : 'hover:scale-110'}
+              `}
+              style={{ backgroundColor: color }}
+              title={color}
+            >
+              {formData.color === color && (
+                <Check className="w-4 h-4 text-white" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 

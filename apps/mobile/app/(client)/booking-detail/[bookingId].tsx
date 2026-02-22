@@ -652,12 +652,27 @@ export default function BookingDetailScreen() {
               colors={colors}
             />
             {booking.memberName && (
-              <InfoRow
-                icon="person-outline"
-                label="Avec"
-                value={booking.memberName}
-                colors={colors}
-              />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {booking.memberColor && (
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: booking.memberColor,
+                      marginRight: spacing.sm,
+                    }}
+                  />
+                )}
+                <View style={{ flex: 1 }}>
+                  <InfoRow
+                    icon="person-outline"
+                    label="Avec"
+                    value={booking.memberName}
+                    colors={colors}
+                  />
+                </View>
+              </View>
             )}
             {hasAddress && (
               <InfoRow

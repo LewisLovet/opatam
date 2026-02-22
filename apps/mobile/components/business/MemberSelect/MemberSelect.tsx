@@ -1,8 +1,3 @@
-/**
- * CategorySelect Component
- * Category picker with modal selection — supports full list of categories
- */
-
 import React, { useState } from 'react';
 import {
   View,
@@ -13,47 +8,34 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { WithId } from '@booking-app/firebase';
+import type { Member } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Divider } from '../../Divider';
 
-export interface CategoryOption {
-  id: string;
-  label: string;
-}
-
-export interface CategorySelectProps {
-  /** Currently selected category id (null = all categories) */
+export interface MemberSelectProps {
   value: string | null;
-  /** Available categories */
-  categories: CategoryOption[];
-  /** Change handler */
-  onChange: (categoryId: string | null) => void;
-  /** Placeholder text */
-  placeholder?: string;
+  members: WithId<Member>[];
+  onChange: (memberId: string | null) => void;
 }
 
-export function CategorySelect({
-  value,
-  categories,
-  onChange,
-  placeholder = 'Toutes les catégories',
-}: CategorySelectProps) {
+export function MemberSelect({ value, members, onChange }: MemberSelectProps) {
   const { colors, spacing, radius } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleSelect = (categoryId: string | null) => {
-    onChange(categoryId);
+  const handleSelect = (memberId: string | null) => {
+    onChange(memberId);
     setIsOpen(false);
   };
 
-  const selectedLabel = value
-    ? categories.find((c) => c.id === value)?.label || value
-    : placeholder;
+  const selectedMember = value ? members.find((m) => m.id === value) : null;
+  const triggerLabel = selectedMember
+    ? selectedMember.name.split(' ')[0]
+    : 'Tous les membres';
 
   return (
     <>
-      {/* Trigger Button */}
       <Pressable
         onPress={() => setIsOpen(true)}
         style={({ pressed }) => [
@@ -69,19 +51,31 @@ export function CategorySelect({
           pressed && { opacity: 0.8 },
         ]}
       >
-        <Ionicons
-          name="grid-outline"
-          size={14}
-          color={value ? colors.primary : colors.textSecondary}
-          style={{ marginRight: spacing.xs }}
-        />
+        {selectedMember ? (
+          <View
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: selectedMember.color || colors.border,
+              marginRight: spacing.xs,
+            }}
+          />
+        ) : (
+          <Ionicons
+            name="people-outline"
+            size={14}
+            color={colors.textSecondary}
+            style={{ marginRight: spacing.xs }}
+          />
+        )}
         <Text
           variant="label"
           color={value ? 'primary' : 'textSecondary'}
           style={styles.triggerText}
           numberOfLines={1}
         >
-          {selectedLabel}
+          {triggerLabel}
         </Text>
         <Ionicons
           name="chevron-down"
@@ -91,7 +85,6 @@ export function CategorySelect({
         />
       </Pressable>
 
-      {/* Modal */}
       <Modal
         visible={isOpen}
         animationType="slide"
@@ -99,14 +92,13 @@ export function CategorySelect({
         onRequestClose={() => setIsOpen(false)}
       >
         <SafeAreaView style={[styles.modal, { backgroundColor: colors.background }]}>
-          {/* Header */}
           <View
             style={[
               styles.modalHeader,
               { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
             ]}
           >
-            <Text variant="h3">Choisir une catégorie</Text>
+            <Text variant="h3">Choisir un membre</Text>
             <Pressable
               onPress={() => setIsOpen(false)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -117,13 +109,11 @@ export function CategorySelect({
 
           <Divider spacing={0} />
 
-          {/* Options List */}
           <FlatList
-            data={[null, ...categories]}
+            data={[null, ...members]}
             keyExtractor={(item) => item?.id || 'all'}
             renderItem={({ item }) => {
               const isSelected = item ? item.id === value : value === null;
-              const label = item ? item.label : 'Toutes les catégories';
 
               return (
                 <Pressable
@@ -134,13 +124,33 @@ export function CategorySelect({
                     pressed && { backgroundColor: colors.surfaceSecondary },
                   ]}
                 >
-                  <Text
-                    variant="body"
-                    color={isSelected ? 'primary' : 'text'}
-                    style={{ fontWeight: isSelected ? '600' : '400' }}
-                  >
-                    {label}
-                  </Text>
+                  <View style={styles.optionLeft}>
+                    {item ? (
+                      <View
+                        style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: 6,
+                          backgroundColor: item.color || colors.border,
+                          marginRight: spacing.sm,
+                        }}
+                      />
+                    ) : (
+                      <Ionicons
+                        name="people-outline"
+                        size={16}
+                        color={isSelected ? colors.primary : colors.text}
+                        style={{ marginRight: spacing.sm }}
+                      />
+                    )}
+                    <Text
+                      variant="body"
+                      color={isSelected ? 'primary' : 'text'}
+                      style={{ fontWeight: isSelected ? '600' : '400' }}
+                    >
+                      {item ? item.name : 'Tous les membres'}
+                    </Text>
+                  </View>
                   {isSelected && (
                     <Ionicons name="checkmark" size={20} color={colors.primary} />
                   )}
@@ -177,5 +187,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     minHeight: 48,
+  },
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
 });

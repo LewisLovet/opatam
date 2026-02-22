@@ -95,6 +95,7 @@ export class BookingService {
       providerPhoto: provider.photoURL,
       memberName: member?.name || null,
       memberPhoto: member?.photoURL || null,
+      memberColor: member?.color || null,
       locationId: validated.locationId,
       locationName: location.name,
       locationAddress: location.address

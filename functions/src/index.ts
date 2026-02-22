@@ -23,6 +23,7 @@ export { recalculateExpiredSlots } from './scheduled/recalculateExpiredSlots';
 export { sendBookingReminders } from './scheduled/sendBookingReminders';
 export { sendDailyAgendaSummary } from './scheduled/sendDailyAgendaSummary';
 export { aggregatePageViews } from './scheduled/aggregatePageViews';
+export { checkExpiredTrials } from './scheduled/checkExpiredTrials';
 
 // ─── Test/Dev callable functions (emulator only) ─────────────────────────────
 // These are only exported when running in the Firebase emulator.

@@ -370,6 +370,7 @@ export default function BlockSlotScreen() {
   const [endDate, setEndDate] = useState(initialDate);
   const [allDay, setAllDay] = useState(true);
   const [reason, setReason] = useState('');
+  const [isCustomReason, setIsCustomReason] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activePicker, setActivePicker] = useState<PickerMode>(null);
@@ -381,9 +382,8 @@ export default function BlockSlotScreen() {
       .then((result) => {
         const activeMembers = (result as WithId<Member>[]).filter((m) => m.isActive);
         setMembers(activeMembers);
-        if (activeMembers.length === 1) {
-          setSelectedMemberIds([activeMembers[0].id]);
-        }
+        // Pre-select all members by default
+        setSelectedMemberIds(activeMembers.map((m) => m.id));
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
@@ -610,16 +610,78 @@ export default function BlockSlotScreen() {
 
         {/* Reason section */}
         <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}>
-          Détails
+          Motif
         </Text>
-        <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
-          <Input
-            label="Motif (optionnel)"
-            value={reason}
-            onChangeText={setReason}
-            placeholder="Vacances, formation, etc."
-          />
-        </Card>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: isCustomReason ? spacing.sm : spacing.xl }}>
+          {['Vacances', 'Formation', 'Maladie', 'Personnel', 'Férié', 'Réunion'].map((label) => {
+            const isSelected = reason === label && !isCustomReason;
+            return (
+              <Pressable
+                key={label}
+                onPress={() => {
+                  setReason(isSelected ? '' : label);
+                  setIsCustomReason(false);
+                }}
+                style={[
+                  s.chip,
+                  {
+                    backgroundColor: isSelected ? colors.primary : colors.surface,
+                    borderColor: isSelected ? colors.primary : colors.border,
+                    borderRadius: radius.full,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.sm,
+                  },
+                ]}
+              >
+                <Text
+                  variant="bodySmall"
+                  style={{ color: isSelected ? '#fff' : colors.text, fontWeight: '500' }}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            onPress={() => {
+              if (isCustomReason) {
+                setIsCustomReason(false);
+                setReason('');
+              } else {
+                setIsCustomReason(true);
+                setReason('');
+              }
+            }}
+            style={[
+              s.chip,
+              {
+                backgroundColor: isCustomReason ? colors.primary : colors.surface,
+                borderColor: isCustomReason ? colors.primary : colors.border,
+                borderRadius: radius.full,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.sm,
+              },
+            ]}
+          >
+            <Text
+              variant="bodySmall"
+              style={{ color: isCustomReason ? '#fff' : colors.text, fontWeight: '500' }}
+            >
+              Autre
+            </Text>
+          </Pressable>
+        </View>
+        {isCustomReason && (
+          <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
+            <Input
+              label="Motif personnalisé"
+              value={reason}
+              onChangeText={setReason}
+              placeholder="Précisez le motif..."
+              autoFocus
+            />
+          </Card>
+        )}
 
         {/* Submit */}
         <Button

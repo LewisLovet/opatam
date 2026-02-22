@@ -138,6 +138,7 @@ export interface Member {
   email: string;
   phone: string | null;
   photoURL: string | null;
+  color: string | null;      // Hex color (#3B82F6), null = use default palette
   accessCode: string;
   locationId: string;        // UN seul lieu par membre
   isDefault: boolean;        // true = membre principal (créé auto à l'inscription)
@@ -241,6 +242,7 @@ export interface Booking {
   providerPhoto: string | null;
   memberName: string | null;
   memberPhoto: string | null;
+  memberColor: string | null;
   locationId: string;
   locationName: string;
   locationAddress: string;

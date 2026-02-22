@@ -5,6 +5,7 @@ import {
   updateLocationSchema,
   normalizeCity,
   getCityRegion,
+  PLAN_LIMITS,
   type CreateLocationInput,
   type UpdateLocationInput,
 } from '@booking-app/shared';
@@ -14,9 +15,22 @@ export class LocationService {
   /**
    * Create a new location
    */
-  async createLocation(providerId: string, input: CreateLocationInput): Promise<WithId<Location>> {
+  async createLocation(providerId: string, input: CreateLocationInput, providerPlan?: string): Promise<WithId<Location>> {
     // Validate input
     const validated = createLocationSchema.parse(input);
+
+    // Check plan location limit
+    if (providerPlan) {
+      const limits = PLAN_LIMITS[providerPlan as keyof typeof PLAN_LIMITS];
+      if (limits) {
+        const activeLocations = await locationRepository.getActiveByProvider(providerId);
+        if (activeLocations.length >= limits.maxLocations) {
+          throw new Error(
+            `Votre plan ${providerPlan} est limité à ${limits.maxLocations} lieu(x) actif(s). Passez au plan supérieur pour ajouter plus de lieux.`
+          );
+        }
+      }
+    }
 
     // Check if this is the first location (make it default)
     const existingLocations = await locationRepository.getByProvider(providerId);
@@ -182,10 +196,23 @@ export class LocationService {
   /**
    * Reactivate location
    */
-  async reactivateLocation(providerId: string, locationId: string): Promise<void> {
+  async reactivateLocation(providerId: string, locationId: string, providerPlan?: string): Promise<void> {
     const location = await locationRepository.getById(providerId, locationId);
     if (!location) {
       throw new Error('Lieu non trouvé');
+    }
+
+    // Check plan location limit before reactivating
+    if (providerPlan) {
+      const limits = PLAN_LIMITS[providerPlan as keyof typeof PLAN_LIMITS];
+      if (limits) {
+        const activeLocations = await locationRepository.getActiveByProvider(providerId);
+        if (activeLocations.length >= limits.maxLocations) {
+          throw new Error(
+            `Votre plan ${providerPlan} est limité à ${limits.maxLocations} lieu(x) actif(s). Passez au plan supérieur pour réactiver ce lieu.`
+          );
+        }
+      }
     }
 
     await locationRepository.toggleActive(providerId, locationId, true);

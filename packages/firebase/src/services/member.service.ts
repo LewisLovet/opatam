@@ -4,6 +4,7 @@ import {
   createMemberSchema,
   updateMemberSchema,
   PLAN_LIMITS,
+  MEMBER_COLORS,
   type CreateMemberInput,
   type UpdateMemberInput,
 } from '@booking-app/shared';
@@ -49,6 +50,7 @@ export class MemberService {
       email: validated.email,
       phone: validated.phone || null,
       photoURL: null,
+      color: validated.color || MEMBER_COLORS[sortOrder % MEMBER_COLORS.length],
       accessCode,
       locationId: validated.locationId,
       isDefault: false, // Les membres créés manuellement ne sont pas par défaut
@@ -83,6 +85,7 @@ export class MemberService {
       email,
       phone: null,
       photoURL: null,
+      color: MEMBER_COLORS[0],
       accessCode,
       locationId,
       isDefault: true, // Membre par défaut

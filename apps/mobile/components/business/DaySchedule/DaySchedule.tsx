@@ -5,6 +5,7 @@
 
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme, type Colors } from '../../../theme';
 import { Text } from '../../Text';
 import { type BookingStatus } from '../BookingStatusBadge';
@@ -17,6 +18,12 @@ export interface DayScheduleBooking {
   serviceName: string;
   status: BookingStatus;
   memberName?: string;
+  memberColor?: string | null;
+}
+
+export interface DayScheduleBlockedSlotMember {
+  name: string;
+  color: string | null;
 }
 
 export interface DayScheduleBlockedSlot {
@@ -24,7 +31,12 @@ export interface DayScheduleBlockedSlot {
   startTime: string; // "09:00"
   endTime: string; // "23:59"
   reason: string | null;
+  /** @deprecated Use members array instead */
   memberName: string | null;
+  /** @deprecated Use members array instead */
+  memberColor: string | null;
+  members: DayScheduleBlockedSlotMember[];
+  isAllMembers: boolean;
   allDay: boolean;
 }
 
@@ -50,6 +62,16 @@ const TIME_COLUMN_WIDTH = 50;
 function parseTime(time: string): number {
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
+}
+
+/** Convert hex color to light tint (20% opacity equivalent) */
+function getLightTint(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  // Blend with white at 20% opacity
+  const blend = (c: number) => Math.round(c * 0.2 + 255 * 0.8);
+  return `rgb(${blend(r)}, ${blend(g)}, ${blend(b)})`;
 }
 
 function getStatusColor(status: BookingStatus, colors: Colors): string {
@@ -287,58 +309,114 @@ export function DaySchedule({
           />
         ))}
 
-        {/* Blocked slots */}
-        {blockedSlots.map((slot) => {
-          let slotStart = parseTime(slot.startTime);
-          let slotEnd = parseTime(slot.endTime);
-          if (slot.allDay) {
-            slotStart = startMinutes;
-            slotEnd = endMinutes;
+        {/* Blocked slots (with overlap columns like bookings) */}
+        {(() => {
+          // Compute overlap columns for blocked slots
+          const blockedWithTimes = blockedSlots.map((slot) => {
+            let slotStart = parseTime(slot.startTime);
+            let slotEnd = parseTime(slot.endTime);
+            if (slot.allDay) { slotStart = startMinutes; slotEnd = endMinutes; }
+            if (slotEnd === 0 && slotStart > 0) slotEnd = 24 * 60;
+            if (slotEnd <= slotStart) slotEnd = 24 * 60;
+            return { slot, slotStart, slotEnd };
+          });
+
+          // Greedy column assignment
+          const columns: { end: number }[] = [];
+          const colAssign: number[] = [];
+          const sorted = [...blockedWithTimes].sort((a, b) => a.slotStart - b.slotStart);
+          for (const item of sorted) {
+            let placed = false;
+            for (let c = 0; c < columns.length; c++) {
+              if (item.slotStart >= columns[c].end) {
+                columns[c].end = item.slotEnd;
+                colAssign[blockedWithTimes.indexOf(item)] = c;
+                placed = true;
+                break;
+              }
+            }
+            if (!placed) {
+              colAssign[blockedWithTimes.indexOf(item)] = columns.length;
+              columns.push({ end: item.slotEnd });
+            }
           }
-          if (slotEnd === 0 && slotStart > 0) slotEnd = 24 * 60;
-          if (slotEnd <= slotStart) slotEnd = 24 * 60;
+          const totalCols = columns.length;
 
-          // Clamp to visible range
-          const visStart = Math.max(slotStart, startMinutes);
-          const visEnd = Math.min(slotEnd, endMinutes);
-          if (visEnd <= visStart) return null;
+          return blockedWithTimes.map((item, idx) => {
+            const { slot, slotStart, slotEnd } = item;
+            const visStart = Math.max(slotStart, startMinutes);
+            const visEnd = Math.min(slotEnd, endMinutes);
+            if (visEnd <= visStart) return null;
 
-          const top = ((visStart - startMinutes) / totalMinutes) * totalHeight;
-          const height = ((visEnd - visStart) / totalMinutes) * totalHeight;
-          const label = slot.reason || 'Indisponible';
+            const top = ((visStart - startMinutes) / totalMinutes) * totalHeight;
+            const height = ((visEnd - visStart) / totalMinutes) * totalHeight;
+            const actualHeight = Math.max(height, 30);
+            const primaryMemberColor = slot.members.length === 1 ? slot.members[0].color : null;
+            const barColor = primaryMemberColor || colors.textMuted;
+            const bgColor = primaryMemberColor ? primaryMemberColor + '12' : colors.surfaceSecondary;
+            const timeLabel = slot.allDay ? 'Journée entière' : `${slot.startTime} - ${slot.endTime}`;
 
-          return (
-            <View
-              key={`blocked-${slot.id}`}
-              style={[
-                styles.blockedBlock,
-                {
-                  top,
-                  height: Math.max(height, 30),
-                  backgroundColor: colors.surfaceSecondary,
-                  borderLeftColor: colors.textMuted,
-                  borderRadius: radius.sm,
-                  padding: spacing.xs,
-                  marginLeft: spacing.xs,
-                },
-              ]}
-            >
-              <View style={styles.blockedRow}>
-                <View style={[styles.blockedIcon, { backgroundColor: colors.border }]}>
-                  <Text variant="caption" style={{ fontSize: 10 }}>🚫</Text>
+            const col = colAssign[idx] ?? 0;
+
+            return (
+              <View
+                key={`blocked-${slot.id}`}
+                style={[
+                  styles.blockedBlock,
+                  {
+                    top,
+                    height: actualHeight,
+                    backgroundColor: bgColor,
+                    borderLeftColor: barColor,
+                    borderRadius: radius.sm,
+                    padding: spacing.xs,
+                    marginLeft: spacing.xs,
+                  },
+                  totalCols > 1
+                    ? {
+                        left: `${col * (100 / totalCols)}%` as any,
+                        width: `${100 / totalCols}%` as any,
+                        right: undefined,
+                      }
+                    : { right: 8 },
+                ]}
+              >
+                <View style={styles.blockedRow}>
+                  <Ionicons name="ban-outline" size={12} color={barColor} style={{ marginRight: 4 }} />
+                  <Text variant="caption" numberOfLines={1} style={{ fontSize: 11, fontWeight: '600', color: barColor, flex: 1 }}>
+                    {slot.reason || 'Indisponible'}
+                  </Text>
                 </View>
-                <Text variant="caption" numberOfLines={1} style={{ fontSize: 11, fontWeight: '500' }} color="textMuted">
-                  {label}
-                </Text>
+                {actualHeight > 38 && (
+                  <Text variant="caption" numberOfLines={1} style={{ fontSize: 10, marginTop: 1 }} color="textSecondary">
+                    {timeLabel}
+                  </Text>
+                )}
+                {actualHeight > 52 && slot.members.length > 0 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                    {slot.members.map((m, i) => (
+                      <View
+                        key={i}
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: 4,
+                          backgroundColor: m.color || colors.textMuted,
+                          marginRight: 3,
+                        }}
+                      />
+                    ))}
+                    <Text variant="caption" numberOfLines={1} style={{ fontSize: 10, fontWeight: '500', flex: 1 }} color="textSecondary">
+                      {slot.isAllMembers
+                        ? 'Tous les membres'
+                        : slot.members.map((m) => m.name.split(' ')[0]).join(', ')}
+                    </Text>
+                  </View>
+                )}
               </View>
-              {slot.memberName && height > 40 && (
-                <Text variant="caption" numberOfLines={1} style={{ fontSize: 10, marginTop: 2 }} color="textMuted">
-                  {slot.memberName}
-                </Text>
-              )}
-            </View>
-          );
-        })}
+            );
+          });
+        })()}
 
         {/* Bookings */}
         {bookings.map((booking) => {
@@ -368,8 +446,10 @@ export function DaySchedule({
                 {
                   top,
                   height: actualHeight,
-                  backgroundColor: getStatusColor(booking.status, colors),
-                  borderLeftColor: getStatusBorderColor(booking.status, colors),
+                  backgroundColor: booking.memberColor
+                    ? getLightTint(booking.memberColor)
+                    : getStatusColor(booking.status, colors),
+                  borderLeftColor: booking.memberColor || getStatusBorderColor(booking.status, colors),
                   borderRadius: radius.sm,
                   padding: spacing.xs,
                   marginLeft: spacing.xs,
@@ -456,21 +536,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 8,
     borderLeftWidth: 3,
-    borderStyle: 'dashed',
     overflow: 'hidden',
-    opacity: 0.7,
   },
   blockedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-  blockedIcon: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   bookingBlock: {
     position: 'absolute',

@@ -70,11 +70,6 @@ function formatPrice(centimes: number): string {
   return euros % 1 === 0 ? `${euros} €` : `${euros.toFixed(2)} €`;
 }
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  return h >= 6 && h < 18 ? 'Bonjour' : 'Bonsoir';
-}
-
 /** Returns "Dans Xh", "Dans X min", or null if booking is in the past */
 function getTimeUntilChip(bookingDate: Date): string | null {
   const now = new Date();
@@ -146,6 +141,7 @@ function TimelineBookingItem({
   status,
   isPast,
   timeChip,
+  memberColor,
   onPress,
   onConfirm,
   onCancel,
@@ -157,13 +153,15 @@ function TimelineBookingItem({
   status: string;
   isPast: boolean;
   timeChip: string | null;
+  memberColor?: string | null;
   onPress: () => void;
   onConfirm?: () => void;
   onCancel?: () => void;
 }) {
   const { colors, spacing, radius } = useTheme();
 
-  const barColor = status === 'confirmed' ? colors.success : status === 'pending' ? colors.warning : colors.error;
+  const statusColor = status === 'confirmed' ? colors.success : status === 'pending' ? colors.warning : colors.error;
+  const barColor = memberColor || statusColor;
 
   const formatDuration = (min: number) => {
     if (min < 60) return `${min} min`;
@@ -556,12 +554,25 @@ export default function ProDashboardScreen() {
         style={[styles.heroGradient, { paddingTop: insets.top + 12 }]}
       >
         <View style={[styles.heroContent, { paddingHorizontal: spacing.lg }]}>
-          <Text variant="h1" style={{ color: '#FFF', fontSize: 28 }}>
-            {getGreeting()}, {firstName}
-          </Text>
-          <Text variant="bodySmall" style={{ color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
-            {formatFrenchDate(today)}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, marginRight: spacing.md }}>
+              <Text variant="h1" style={{ color: '#FFF', fontSize: 28 }} numberOfLines={1}>
+                {provider?.businessName || firstName}
+              </Text>
+              <Text variant="bodySmall" style={{ color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
+                {formatFrenchDate(today)}
+              </Text>
+            </View>
+            {provider?.photoURL && (
+              <View style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderRadius: radius.full }}>
+                <Avatar
+                  imageUrl={provider.photoURL}
+                  name={provider.businessName || ''}
+                  size="lg"
+                />
+              </View>
+            )}
+          </View>
 
           {/* Stat chips */}
           <View style={[styles.heroChips, { marginTop: spacing.md, marginBottom: spacing.sm }]}>
@@ -727,6 +738,7 @@ export default function ProDashboardScreen() {
                     status={booking.status}
                     isPast={isPast}
                     timeChip={timeChip}
+                    memberColor={booking.memberColor}
                     onPress={() => navigateToBooking(booking.id)}
                     onConfirm={booking.status === 'pending' ? () => handleConfirm(booking.id) : undefined}
                     onCancel={booking.status === 'pending' ? () => handleCancel(booking.id) : undefined}

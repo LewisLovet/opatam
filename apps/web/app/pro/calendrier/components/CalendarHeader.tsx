@@ -267,6 +267,7 @@ export function CalendarHeader({
             options={members.map((member) => ({
               id: member.id,
               label: member.name,
+              color: member.color,
             }))}
             icon={<User className="w-4 h-4" />}
             allLabel="Tous les"

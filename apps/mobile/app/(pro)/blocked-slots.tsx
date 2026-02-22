@@ -3,7 +3,7 @@
  * Shows upcoming blocked slots with ability to delete
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -13,7 +13,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text, Card, Loader, EmptyState } from '../../components';
@@ -50,16 +50,67 @@ export default function BlockedSlotsScreen() {
     memberService.getByProvider(providerId).then((res) => setMembers(res as WithId<Member>[])).catch(() => {});
   }, [providerId]);
 
-  const memberNameMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const m of members) map[m.id] = m.name;
+  const memberMap = useMemo(() => {
+    const map: Record<string, WithId<Member>> = {};
+    for (const m of members) map[m.id] = m;
     return map;
   }, [members]);
 
-  const handleDelete = (slot: WithId<BlockedSlot>) => {
+  // Group blocked slots that share the same dates + reason (created together for multiple members)
+  interface SlotGroup {
+    key: string;
+    slots: WithId<BlockedSlot>[];
+    startDate: Date;
+    endDate: Date;
+    allDay: boolean;
+    reason: string | null;
+    memberIds: string[];
+  }
+
+  const groupedSlots = useMemo(() => {
+    const groups: Record<string, SlotGroup> = {};
+    for (const slot of blockedSlots) {
+      const sd = slot.startDate instanceof Date ? slot.startDate : (slot.startDate as any).toDate();
+      const ed = slot.endDate instanceof Date ? slot.endDate : (slot.endDate as any).toDate();
+      // Key: same start + end timestamp + allDay + reason
+      const key = `${sd.getTime()}-${ed.getTime()}-${slot.allDay}-${slot.reason || ''}`;
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          slots: [],
+          startDate: sd,
+          endDate: ed,
+          allDay: slot.allDay,
+          reason: slot.reason,
+          memberIds: [],
+        };
+      }
+      groups[key].slots.push(slot);
+      groups[key].memberIds.push(slot.memberId);
+    }
+    // Sort groups by startDate ascending
+    return Object.values(groups).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  }, [blockedSlots]);
+
+  // Auto-refresh when screen regains focus (e.g. after creating a blocked slot)
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      refresh();
+    }, [refresh]),
+  );
+
+  const handleDeleteGroup = (group: SlotGroup) => {
+    const label = group.slots.length > 1
+      ? `Supprimer ce blocage pour ${group.slots.length} membres ?`
+      : `Supprimer le blocage du ${formatDate(group.startDate)} ?`;
     Alert.alert(
       'Supprimer le blocage',
-      `Supprimer le blocage du ${formatDate(slot.startDate instanceof Date ? slot.startDate : (slot.startDate as any).toDate())} ?`,
+      label,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -68,7 +119,9 @@ export default function BlockedSlotsScreen() {
           onPress: async () => {
             try {
               if (providerId) {
-                await schedulingService.unblockPeriod(providerId, slot.id);
+                await Promise.all(
+                  group.slots.map((slot) => schedulingService.unblockPeriod(providerId, slot.id)),
+                );
                 refresh();
               }
             } catch (error) {
@@ -80,36 +133,92 @@ export default function BlockedSlotsScreen() {
     );
   };
 
-  const renderSlot = ({ item }: { item: WithId<BlockedSlot> }) => {
-    const startDate = item.startDate instanceof Date ? item.startDate : (item.startDate as any).toDate();
-    const endDate = item.endDate instanceof Date ? item.endDate : (item.endDate as any).toDate();
-    const isAllDay = item.allDay;
+  const renderGroup = ({ item: group }: { item: SlotGroup }) => {
+    const { startDate: sd, endDate: ed, allDay: isAllDay, reason: groupReason, memberIds } = group;
+    const isMultiDay = sd.getFullYear() !== ed.getFullYear()
+      || sd.getMonth() !== ed.getMonth()
+      || sd.getDate() !== ed.getDate();
+
+    // Check if all active members are in the group
+    const activeMembers = members.filter((m) => m.isActive);
+    const isAllMembers = activeMembers.length > 1 && memberIds.length >= activeMembers.length;
 
     return (
       <Card padding="md" shadow="sm" style={{ marginBottom: spacing.sm }}>
         <View style={styles.slotRow}>
           <View style={styles.slotInfo}>
-            <Text variant="body" style={{ fontWeight: '600' }}>
-              {formatDate(startDate)}
+            {groupReason && (
+              <Text variant="body" style={{ fontWeight: '600', marginBottom: 2 }}>
+                {groupReason}
+              </Text>
+            )}
+            <Text variant={groupReason ? 'caption' : 'body'} color={groupReason ? 'textSecondary' : 'text'} style={groupReason ? undefined : { fontWeight: '600' }}>
+              {isMultiDay
+                ? `Du ${formatDate(sd)} au ${formatDate(ed)}`
+                : formatDate(sd)}
             </Text>
             <Text variant="caption" color="textSecondary">
               {isAllDay
-                ? 'Journée entière'
-                : `${formatTime(startDate)} - ${formatTime(endDate)}`}
+                ? isMultiDay ? `${Math.round((ed.getTime() - sd.getTime()) / 86400000) + 1} jours` : 'Journée entière'
+                : `${formatTime(sd)} - ${formatTime(ed)}`}
             </Text>
-            {item.reason && (
-              <Text variant="caption" color="textMuted" style={{ marginTop: 4 }}>
-                {item.reason}
-              </Text>
-            )}
-            {item.memberId && (
-              <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                {memberNameMap[item.memberId] || 'Membre'}
-              </Text>
+            {/* Member badges */}
+            {members.length > 1 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs }}>
+                {isAllMembers ? (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: colors.primaryLight,
+                      borderRadius: radius.full,
+                      paddingHorizontal: spacing.sm,
+                      paddingVertical: 3,
+                    }}
+                  >
+                    <Ionicons name="people" size={12} color={colors.primary} style={{ marginRight: spacing.xs }} />
+                    <Text variant="caption" style={{ fontWeight: '600', color: colors.primary }}>
+                      Tous
+                    </Text>
+                  </View>
+                ) : (
+                  memberIds.map((memberId) => {
+                    const member = memberMap[memberId];
+                    const memberName = member?.name || 'Membre';
+                    const memberColor = member?.color || colors.primary;
+                    return (
+                      <View
+                        key={memberId}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: memberColor + '18',
+                          borderRadius: radius.full,
+                          paddingHorizontal: spacing.sm,
+                          paddingVertical: 3,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: memberColor,
+                            marginRight: spacing.xs,
+                          }}
+                        />
+                        <Text variant="caption" style={{ fontWeight: '600', color: memberColor }}>
+                          {memberName.split(' ')[0]}
+                        </Text>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
             )}
           </View>
           <Pressable
-            onPress={() => handleDelete(item)}
+            onPress={() => handleDeleteGroup(group)}
             hitSlop={12}
             style={[
               styles.deleteButton,
@@ -156,9 +265,9 @@ export default function BlockedSlotsScreen() {
         </View>
       ) : (
         <FlatList
-          data={blockedSlots}
-          keyExtractor={(item) => item.id}
-          renderItem={renderSlot}
+          data={groupedSlots}
+          keyExtractor={(item) => item.key}
+          renderItem={renderGroup}
           contentContainerStyle={{ padding: spacing.lg, paddingTop: 0 }}
           refreshControl={
             <RefreshControl refreshing={false} onRefresh={refresh} />

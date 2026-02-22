@@ -7,7 +7,7 @@
  * - Avoid redundant Firebase calls
  */
 
-import React, { createContext, useContext, useReducer, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useMemo, useRef } from 'react';
 import { providerService } from '@booking-app/firebase';
 import type { Provider } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
@@ -206,12 +206,17 @@ function areParamsEqual(a: SearchParams | null, b: SearchParams): boolean {
 export function ProvidersCacheProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cacheReducer, initialState);
 
+  // Refs to always have fresh state values inside callbacks (avoids stale closures)
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   // Search providers with pagination
   const searchProviders = useCallback(
     async (params: SearchParams, pageSize = 10, forceRefresh = false): Promise<WithId<Provider>[]> => {
+      const s = stateRef.current;
       // Check if we already have results for these params (even if empty)
-      if (!forceRefresh && areParamsEqual(state.searchParams, params)) {
-        return state.searchResults;
+      if (!forceRefresh && areParamsEqual(s.searchParams, params)) {
+        return s.searchResults;
       }
 
       dispatch({ type: 'SEARCH_START' });
@@ -247,13 +252,14 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
         return [];
       }
     },
-    [state.searchParams, state.searchResults]
+    []
   );
 
   // Load more providers (next page)
   const loadMoreProviders = useCallback(async (): Promise<WithId<Provider>[]> => {
+    const s = stateRef.current;
     // Don't load more if already loading, no more results, or no previous search
-    if (state.loadingMore || !state.hasMore || !state.searchParams || !state.searchCursor) {
+    if (s.loadingMore || !s.hasMore || !s.searchParams || !s.searchCursor) {
       return [];
     }
 
@@ -267,12 +273,12 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
         query?: string;
       } = {};
 
-      if (state.searchParams.category) filters.category = state.searchParams.category;
-      if (state.searchParams.city) filters.city = state.searchParams.city;
-      if (state.searchParams.region) filters.region = state.searchParams.region;
-      if (state.searchParams.query) filters.query = state.searchParams.query;
+      if (s.searchParams.category) filters.category = s.searchParams.category;
+      if (s.searchParams.city) filters.city = s.searchParams.city;
+      if (s.searchParams.region) filters.region = s.searchParams.region;
+      if (s.searchParams.query) filters.query = s.searchParams.query;
 
-      const result = await providerService.searchPaginated(filters, 10, state.searchCursor);
+      const result = await providerService.searchPaginated(filters, 10, s.searchCursor);
       dispatch({
         type: 'LOAD_MORE_SUCCESS',
         payload: {
@@ -287,14 +293,15 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
       dispatch({ type: 'LOAD_MORE_ERROR', payload: 'Erreur lors du chargement' });
       return [];
     }
-  }, [state.loadingMore, state.hasMore, state.searchParams, state.searchCursor]);
+  }, []);
 
   // Load top providers with cache
   const loadTopProviders = useCallback(
     async (limit = 5, forceRefresh = false): Promise<WithId<Provider>[]> => {
+      const s = stateRef.current;
       // Check if we already have top providers cached
-      if (!forceRefresh && state.topProviders.length > 0) {
-        return state.topProviders;
+      if (!forceRefresh && s.topProviders.length > 0) {
+        return s.topProviders;
       }
 
       dispatch({ type: 'TOP_START' });
@@ -309,22 +316,22 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
         return [];
       }
     },
-    [state.topProviders]
+    []
   );
 
   // Get cached provider by slug
   const getCachedProvider = useCallback(
     (slug: string): WithId<Provider> | null => {
-      return state.providersBySlug[slug] || null;
+      return stateRef.current.providersBySlug[slug] || null;
     },
-    [state.providersBySlug]
+    []
   );
 
   // Fetch provider by slug (from cache or Firebase)
   const fetchProviderBySlug = useCallback(
     async (slug: string): Promise<WithId<Provider> | null> => {
       // Check cache first
-      const cached = state.providersBySlug[slug];
+      const cached = stateRef.current.providersBySlug[slug];
       if (cached) {
         return cached;
       }
@@ -341,7 +348,7 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
         return null;
       }
     },
-    [state.providersBySlug]
+    []
   );
 
   // Add provider to cache

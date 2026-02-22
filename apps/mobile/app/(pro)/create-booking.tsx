@@ -1025,7 +1025,7 @@ export default function CreateBookingScreen() {
 
             {/* Time slots */}
             <ScrollView
-              contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing.lg, paddingBottom: spacing['3xl'] }]}
+              contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing.lg, paddingBottom: selectedSlot ? 120 : spacing['3xl'] }]}
               showsVerticalScrollIndicator={false}
             >
               <Text variant="h3" style={{ marginBottom: spacing.md }}>

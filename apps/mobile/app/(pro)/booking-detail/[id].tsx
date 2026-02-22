@@ -699,13 +699,7 @@ export default function ProBookingDetailScreen() {
     });
   }
 
-  if (booking.memberName) {
-    detailRows.push({
-      icon: 'person-outline',
-      label: 'Membre',
-      value: booking.memberName,
-    });
-  }
+  // memberName is now shown as a chip next to the status badge at the top
 
   if ((booking as any).notes) {
     detailRows.push({
@@ -748,10 +742,33 @@ export default function ProBookingDetailScreen() {
           </Text>
         </View>
 
-        {/* Status badge - large and centered */}
+        {/* Status badge + member chip */}
         <View style={[styles.statusContainer, { marginVertical: spacing.md }]}>
-          <View style={{ alignSelf: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm }}>
             <BookingStatusBadge status={booking.status} size="md" />
+            {booking.memberName && (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: booking.memberColor ? `${booking.memberColor}20` : colors.surfaceSecondary,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.xs,
+                borderRadius: radius.full,
+                gap: spacing.xs,
+              }}>
+                {booking.memberColor && (
+                  <View style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: booking.memberColor,
+                  }} />
+                )}
+                <Text variant="caption" style={{ fontWeight: '600', color: booking.memberColor || colors.text }}>
+                  {booking.memberName}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 

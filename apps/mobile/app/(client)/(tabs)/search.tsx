@@ -28,7 +28,7 @@ import {
   ProviderCardSkeleton,
   EmptyState,
 } from '../../../components';
-import { useProviders, useNavigateToProvider, useUserLocation } from '../../../hooks';
+import { useProviders, useTopProviders, useNavigateToProvider, useUserLocation } from '../../../hooks';
 import {
   REGIONS,
   REGION_NAMES,
@@ -167,6 +167,9 @@ export default function SearchScreen() {
       : { pageSize: 0 } // Won't trigger a fetch
   );
 
+  // Popular providers for suggestions when no results
+  const { providers: suggestedProviders } = useTopProviders(6);
+
   // Handle refresh
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
@@ -233,10 +236,33 @@ export default function SearchScreen() {
           onAction={() => {
             setSearchQuery('');
             setDebouncedQuery('');
+            setSelectedRegion(null);
             setSelectedCity(null);
             setSelectedCategory(null);
           }}
         />
+
+        {suggestedProviders.length > 0 && (
+          <View style={{ marginTop: spacing.xl }}>
+            <Text variant="h3" style={{ marginBottom: spacing.md }}>
+              Prestataires populaires
+            </Text>
+            {suggestedProviders.map((provider) => (
+              <View key={provider.id} style={{ marginBottom: spacing.md }}>
+                <ProviderCard
+                  photoURL={provider.coverPhotoURL || provider.photoURL}
+                  businessName={provider.businessName}
+                  category={provider.category}
+                  city={provider.cities[0] || ''}
+                  rating={provider.rating}
+                  minPrice={provider.minPrice}
+                  onPress={() => navigateToProvider(provider.slug)}
+                  isLoading={isLoading(provider.slug)}
+                />
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     );
   };

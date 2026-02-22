@@ -318,6 +318,24 @@ export class ProviderService {
       return checkResult; // Retourne les elements manquants sans throw
     }
 
+    // Check subscription status before publishing
+    const provider = await providerRepository.getById(providerId);
+    if (provider && this.isTrialExpired(provider)) {
+      return {
+        canPublish: false,
+        missingItems: ['Votre essai gratuit a expiré. Choisissez un plan pour publier votre page.'],
+        completeness: checkResult.completeness,
+      };
+    }
+
+    if (provider && (provider.subscription.status === 'cancelled' || provider.subscription.status === 'incomplete')) {
+      return {
+        canPublish: false,
+        missingItems: ['Votre abonnement n\'est plus actif. Réabonnez-vous pour publier votre page.'],
+        completeness: checkResult.completeness,
+      };
+    }
+
     await providerRepository.togglePublished(providerId, true);
     return checkResult;
   }

@@ -19,6 +19,8 @@ export interface AvatarProps {
   name?: string;
   /** Avatar size */
   size?: AvatarSize;
+  /** Override background color (e.g. member color) */
+  color?: string | null;
   /** Custom style */
   style?: ViewStyle;
 }
@@ -60,6 +62,7 @@ export function Avatar({
   imageUrl,
   name = '?',
   size = 'md',
+  color: colorOverride,
   style,
 }: AvatarProps) {
   const { colors, radius } = useTheme();
@@ -80,7 +83,7 @@ export function Avatar({
   const imageSource = source || (imageUrl ? { uri: imageUrl } : null);
   const showImage = imageSource?.uri && !imageError;
   const initials = getInitials(name);
-  const backgroundColor = getColorFromName(name);
+  const backgroundColor = colorOverride || getColorFromName(name);
 
   return (
     <View

@@ -7,6 +7,7 @@ import { TimeGrid, calculateBlockPosition, calculatePositionFromTimeString, getT
 import { BookingBlock } from './BookingBlock';
 import { PastTimeOverlay, BlockedSlotZone } from './UnavailableZone';
 import { NowIndicator } from './NowIndicator';
+import { computeOverlapLayout } from '../utils/overlapLayout';
 
 // Component for availability slot with hover indicator at mouse position
 function AvailabilitySlotWithHover({
@@ -129,12 +130,21 @@ export function DayView({
   // Determine columns to show
   const columns = useMemo(() => {
     if (!isTeamPlan || selectedMemberId !== 'all') {
-      return [{ id: selectedMemberId, name: '' }];
+      return [{ id: selectedMemberId, name: '', color: null as string | null }];
     }
-    return members.map((m) => ({ id: m.id, name: m.name }));
+    return members.map((m) => ({ id: m.id, name: m.name, color: m.color }));
   }, [isTeamPlan, selectedMemberId, members]);
 
-  // Group bookings by member
+  // Map member ID → color for fallback when booking.memberColor is missing
+  const memberColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    members.forEach((m) => {
+      if (m.color) map[m.id] = m.color;
+    });
+    return map;
+  }, [members]);
+
+  // Group bookings by member, enriching memberColor when missing
   const bookingsByMember = useMemo(() => {
     const grouped: Record<string, WithId<Booking>[]> = {};
 
@@ -143,19 +153,24 @@ export function DayView({
     });
 
     bookings.forEach((booking) => {
+      // Enrich memberColor if missing (for bookings created before the color feature)
+      const enriched = !booking.memberColor && booking.memberId && memberColorMap[booking.memberId]
+        ? { ...booking, memberColor: memberColorMap[booking.memberId] }
+        : booking;
+
       if (selectedMemberId === 'all') {
         const memberId = booking.memberId || 'no-member';
         if (grouped[memberId]) {
-          grouped[memberId].push(booking);
+          grouped[memberId].push(enriched);
         }
       } else {
         grouped[selectedMemberId] = grouped[selectedMemberId] || [];
-        grouped[selectedMemberId].push(booking);
+        grouped[selectedMemberId].push(enriched);
       }
     });
 
     return grouped;
-  }, [bookings, columns, selectedMemberId]);
+  }, [bookings, columns, selectedMemberId, memberColorMap]);
 
   // Handle click on empty slot
   const handleGridClick = (e: React.MouseEvent, memberId: string) => {
@@ -184,8 +199,17 @@ export function DayView({
               <div
                 key={col.id}
                 className="flex-1 min-w-[120px] px-2 py-3 text-center text-sm font-medium text-gray-900 dark:text-white rounded-t-xl bg-white dark:bg-gray-800/60"
+                style={col.color ? { borderBottom: `3px solid ${col.color}` } : undefined}
               >
-                {col.name}
+                <div className="flex items-center justify-center gap-2">
+                  {col.color && (
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: col.color }}
+                    />
+                  )}
+                  {col.name}
+                </div>
               </div>
             ))}
           </div>
@@ -407,25 +431,30 @@ function DayColumn({
         />
       ))}
 
-      {/* Booking blocks */}
-      {bookings.map((booking) => {
-        const { top, height } = calculateBlockPosition(
-          new Date(booking.datetime),
-          new Date(booking.endDatetime),
-          START_HOUR,
-          SLOT_HEIGHT
-        );
-
-        return (
+      {/* Booking blocks — side-by-side when overlapping */}
+      {(() => {
+        const items = bookings.map((booking) => ({
+          booking,
+          ...calculateBlockPosition(
+            new Date(booking.datetime),
+            new Date(booking.endDatetime),
+            START_HOUR,
+            SLOT_HEIGHT
+          ),
+        }));
+        const positioned = computeOverlapLayout(items);
+        return positioned.map((pb) => (
           <BookingBlock
-            key={booking.id}
-            booking={booking}
-            top={top}
-            height={height}
-            onClick={() => onBookingClick(booking)}
+            key={pb.booking.id}
+            booking={pb.booking}
+            top={pb.top}
+            height={pb.height}
+            leftPercent={pb.totalColumns > 1 ? pb.leftPercent : undefined}
+            widthPercent={pb.totalColumns > 1 ? pb.widthPercent : undefined}
+            onClick={() => onBookingClick(pb.booking)}
           />
-        );
-      })}
+        ));
+      })()}
 
       {/* Current time indicator */}
       <NowIndicator

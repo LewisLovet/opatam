@@ -5,10 +5,12 @@ import { Plus } from 'lucide-react';
 import type { Booking, Member, Availability, BlockedSlot } from '@booking-app/shared';
 import { TimeGrid, calculateBlockPosition, calculatePositionFromTimeString, getTimeFromPosition } from './TimeGrid';
 import { BookingBlock } from './BookingBlock';
+import { OverlapPopover } from './OverlapPopover';
 import { SelectMemberPrompt } from './SelectMemberPrompt';
 import { DayHeaderCompact } from './DayHeaderWithGauge';
 import { PastTimeOverlay, BlockedSlotZone } from './UnavailableZone';
 import { NowIndicator } from './NowIndicator';
+import { computeOverlapLayout, type PositionedBooking } from '../utils/overlapLayout';
 
 // Component for availability slot with hover indicator at mouse position
 function AvailabilitySlotWithHover({
@@ -133,10 +135,14 @@ export function WeekView({
   getAvailabilityForDay,
   getBlockedSlotsForDay,
 }: WeekViewProps) {
-  // If team plan and "all members" selected, show member selection prompt
-  if (isTeamPlan && selectedMemberId === 'all' && members.length > 0 && onMemberSelect) {
-    return <SelectMemberPrompt members={members} onSelect={onMemberSelect} />;
-  }
+  // Week view now supports "all members" mode — bookings are distinguished by member color
+
+  // Disambiguation popover state for crowded overlapping bookings
+  const [overlapPopover, setOverlapPopover] = useState<{
+    bookings: WithId<Booking>[];
+    anchorRect: DOMRect;
+  } | null>(null);
+
   // Generate days of the week
   const days = useMemo(() => {
     const result = [];
@@ -148,7 +154,17 @@ export function WeekView({
     return result;
   }, [startDate]);
 
+  // Map member ID → color for fallback when booking.memberColor is missing
+  const memberColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    members.forEach((m) => {
+      if (m.color) map[m.id] = m.color;
+    });
+    return map;
+  }, [members]);
+
   // Group bookings by day (using local date, not UTC)
+  // Also enrich memberColor from members when missing on existing bookings
   const bookingsByDay = useMemo(() => {
     const grouped: Record<string, WithId<Booking>[]> = {};
 
@@ -169,12 +185,16 @@ export function WeekView({
       const bookingDate = new Date(booking.datetime);
       const key = getLocalDateKey(bookingDate);
       if (grouped[key]) {
-        grouped[key].push(booking);
+        // Enrich memberColor if missing (for bookings created before the color feature)
+        const enriched = !booking.memberColor && booking.memberId && memberColorMap[booking.memberId]
+          ? { ...booking, memberColor: memberColorMap[booking.memberId] }
+          : booking;
+        grouped[key].push(enriched);
       }
     });
 
     return grouped;
-  }, [bookings, days]);
+  }, [bookings, days, memberColorMap]);
 
   const isToday = (date: Date) => {
     const today = new Date();
@@ -408,27 +428,49 @@ export function WeekView({
                   />
                 ))}
 
-                {/* Booking blocks */}
-                {dayBookings.map((booking) => {
-                  const { top, height } = calculateBlockPosition(
-                    new Date(booking.datetime),
-                    new Date(booking.endDatetime),
-                    START_HOUR,
-                    SLOT_HEIGHT
-                  );
+                {/* Booking blocks — side-by-side when overlapping */}
+                {(() => {
+                  const items = dayBookings.map((booking) => ({
+                    booking,
+                    ...calculateBlockPosition(
+                      new Date(booking.datetime),
+                      new Date(booking.endDatetime),
+                      START_HOUR,
+                      SLOT_HEIGHT
+                    ),
+                  }));
+                  const positioned = computeOverlapLayout(items);
 
-                  return (
+                  return positioned.map((pb) => (
                     <BookingBlock
-                      key={booking.id}
-                      booking={booking}
-                      top={top}
-                      height={height}
-                      onClick={() => onBookingClick(booking)}
+                      key={pb.booking.id}
+                      booking={pb.booking}
+                      top={pb.top}
+                      height={pb.height}
+                      leftPercent={pb.totalColumns > 1 ? pb.leftPercent : undefined}
+                      widthPercent={pb.totalColumns > 1 ? pb.widthPercent : undefined}
+                      onClick={(e?: React.MouseEvent) => {
+                        // Show disambiguation popover when 3+ bookings overlap
+                        if (pb.totalColumns >= 3 && e) {
+                          const allInGroup = positioned.filter(
+                            (other) =>
+                              other.booking.id === pb.booking.id ||
+                              pb.overlappingIds.includes(other.booking.id)
+                          );
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          setOverlapPopover({
+                            bookings: allInGroup.map((o) => o.booking),
+                            anchorRect: rect,
+                          });
+                        } else {
+                          onBookingClick(pb.booking);
+                        }
+                      }}
                       showMemberName={isTeamPlan && selectedMemberId === 'all'}
                       compact
                     />
-                  );
-                })}
+                  ));
+                })()}
 
                 {/* Current time indicator */}
                 <NowIndicator
@@ -442,6 +484,19 @@ export function WeekView({
           })}
         </div>
       </div>
+
+      {/* Disambiguation popover for crowded overlapping bookings */}
+      {overlapPopover && (
+        <OverlapPopover
+          bookings={overlapPopover.bookings}
+          anchorRect={overlapPopover.anchorRect}
+          onSelect={(booking) => {
+            setOverlapPopover(null);
+            onBookingClick(booking);
+          }}
+          onClose={() => setOverlapPopover(null)}
+        />
+      )}
     </div>
   );
 }

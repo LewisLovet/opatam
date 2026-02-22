@@ -161,6 +161,7 @@ export function EquipeTab() {
           name: data.name,
           email: data.email,
           phone: data.phone,
+          color: data.color,
           locationId: data.locationId, // NOUVEAU MODÈLE: 1 membre = 1 lieu
         });
         memberId = selectedMember.id;
@@ -180,6 +181,7 @@ export function EquipeTab() {
           name: data.name,
           email: data.email,
           phone: data.phone,
+          color: data.color,
           locationId: data.locationId, // NOUVEAU MODÈLE: 1 membre = 1 lieu
           isDefault: false, // Not a default member
           serviceIds: data.serviceIds,

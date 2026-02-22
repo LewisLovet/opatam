@@ -6,6 +6,7 @@ import { ChevronDown, X, Check } from 'lucide-react';
 interface FilterOption {
   id: string;
   label: string;
+  color?: string | null;
 }
 
 interface FilterChipProps {
@@ -152,6 +153,12 @@ export function FilterChip({
               role="option"
               aria-selected={value === option.id}
             >
+              {option.color && (
+                <span
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: option.color }}
+                />
+              )}
               <span className="flex-1 truncate">{option.label}</span>
               {value === option.id && <Check className="w-4 h-4 text-primary-500" />}
             </button>

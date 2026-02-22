@@ -3,22 +3,22 @@
  * User profile information and settings
  */
 
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Pressable,
   Alert,
   Image,
   Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../../theme';
-import { Text, Card, EmptyState, useToast } from '../../../components';
+import { Card, EmptyState, Text, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
+import { useTheme } from '../../../theme';
 
 // Menu item component
 function MenuItem({
@@ -126,7 +126,7 @@ export default function ProfileScreen() {
           {/* App Info */}
           <View style={[styles.appInfo, { marginTop: spacing.xl }]}>
             <Text variant="caption" color="textMuted" align="center">
-              Opatam v1.0.0
+              Opatam v1.0.8
             </Text>
             <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.xs }}>
               Réservez vos rendez-vous en toute simplicité
@@ -268,7 +268,7 @@ export default function ProfileScreen() {
         {/* App Info */}
         <View style={styles.appInfo}>
           <Text variant="caption" color="textMuted" align="center">
-            Opatam v1.0.0
+            Opatam v1.0.8
           </Text>
           <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.xs }}>
             Réservez vos rendez-vous en toute simplicité

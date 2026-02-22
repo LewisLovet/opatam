@@ -4,21 +4,35 @@
  * Redesigned with grouped sections, accent borders, and polished filter UI.
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import type { WithId } from '@booking-app/firebase';
+import { bookingService, memberService, reviewService } from '@booking-app/firebase';
+import type { Booking, BookingStatus, Member } from '@booking-app/shared';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  SectionList,
-  RefreshControl,
-  ScrollView,
-  Pressable,
-  Alert,
   ActivityIndicator,
+  Alert,
   LayoutAnimation,
   Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  SectionList,
+  StyleSheet,
   UIManager,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Avatar,
+  BookingStatusBadge,
+  Loader,
+  Text,
+} from '../../../components';
+import { useAuth, useProvider } from '../../../contexts';
+import { useProviderBookings } from '../../../hooks';
+import { useTheme, type Colors } from '../../../theme';
 
 // Enable LayoutAnimation on Android
 if (
@@ -27,20 +41,6 @@ if (
 ) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme, type Colors } from '../../../theme';
-import {
-  Text,
-  Loader,
-  Avatar,
-  BookingStatusBadge,
-} from '../../../components';
-import { useProvider, useAuth } from '../../../contexts';
-import { useProviderBookings } from '../../../hooks';
-import { memberService, bookingService, reviewService } from '@booking-app/firebase';
-import type { WithId } from '@booking-app/firebase';
-import type { BookingStatus, Member, Booking } from '@booking-app/shared';
 
 const API_URL = process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:3000';
 const PRODUCTION_URL = 'https://opatam.com';
@@ -77,7 +77,7 @@ const STATUS_OPTIONS: StatusOption[] = [
   { label: 'En attente', value: 'pending' },
   { label: 'Confirmés', value: 'confirmed' },
   { label: 'Annulés', value: 'cancelled' },
-  { label: 'No-show', value: 'noshow' },
+  { label: 'Absences', value: 'noshow' },
 ];
 
 const PERIOD_OPTIONS: PeriodOption[] = [
@@ -462,7 +462,7 @@ export default function ProBookingsScreen() {
               borderWidth: 1,
               borderColor: colors.border,
               borderLeftWidth: 3,
-              borderLeftColor: accentColor,
+              borderLeftColor: booking.memberColor || accentColor,
               ...shadows.sm,
             },
           ]}
@@ -972,6 +972,7 @@ export default function ProBookingsScreen() {
                     <Avatar
                       size="sm"
                       name={member.name}
+                      color={member.color}
                       style={{
                         width: 24,
                         height: 24,

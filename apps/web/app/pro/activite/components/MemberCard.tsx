@@ -100,7 +100,7 @@ export function MemberCard({
   };
 
   const servicesDisplay = formatServicesDisplay();
-  const avatarColor = getAvatarColor(member.name);
+  const avatarColor = member.color ? '' : getAvatarColor(member.name);
   const initials = getInitials(member.name);
 
   return (
@@ -121,6 +121,7 @@ export function MemberCard({
               w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0
               ${avatarColor}
             `}
+            style={member.color ? { backgroundColor: member.color } : undefined}
           >
             {member.photoURL ? (
               <img

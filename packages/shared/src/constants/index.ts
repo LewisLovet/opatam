@@ -34,6 +34,23 @@ export function getCategoryLabel(categoryId: string): string {
 }
 
 /**
+ * Default member color palette (10 distinct colors)
+ * Assigned round-robin by sortOrder at creation
+ */
+export const MEMBER_COLORS = [
+  '#3B82F6', // blue
+  '#8B5CF6', // violet
+  '#EC4899', // pink
+  '#F97316', // orange
+  '#22C55E', // green
+  '#14B8A6', // teal
+  '#6366F1', // indigo
+  '#EF4444', // red
+  '#F59E0B', // amber
+  '#06B6D4', // cyan
+] as const;
+
+/**
  * Booking status labels
  */
 export const BOOKING_STATUS = {
@@ -91,6 +108,7 @@ export const SUBSCRIPTION_PLANS = {
  * Plan member limits
  */
 export const PLAN_LIMITS = {
+  trial: { maxMembers: 1, maxLocations: 1 },
   solo: { maxMembers: 1, maxLocations: 1 },
   team: { maxMembers: 5, maxLocations: 5 },
   test: { maxMembers: 5, maxLocations: 5 },

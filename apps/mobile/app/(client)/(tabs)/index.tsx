@@ -88,16 +88,41 @@ function formatBookingDate(datetime: Date | any): string {
   return `${dateStr} à ${timeStr}`;
 }
 
-/** Returns "Dans Xh", "Dans X min", or null if booking is in the past */
+/** Returns a human-readable countdown chip label, or null if in the past */
 function getTimeUntilChip(bookingDate: Date): string | null {
   const now = new Date();
   const diffMs = bookingDate.getTime() - now.getTime();
   if (diffMs <= 0) return null;
-  const diffMin = Math.round(diffMs / 60000);
-  if (diffMin < 60) return `Dans ${diffMin} min`;
-  const diffH = Math.floor(diffMin / 60);
-  const remainMin = diffMin % 60;
-  return remainMin > 0 ? `Dans ${diffH}h${remainMin.toString().padStart(2, '0')}` : `Dans ${diffH}h`;
+
+  // Check if booking is today
+  const isToday =
+    bookingDate.getFullYear() === now.getFullYear() &&
+    bookingDate.getMonth() === now.getMonth() &&
+    bookingDate.getDate() === now.getDate();
+
+  if (isToday) {
+    const diffMin = Math.round(diffMs / 60000);
+    if (diffMin < 60) return `Dans ${diffMin} min`;
+    const diffH = Math.floor(diffMin / 60);
+    const remainMin = diffMin % 60;
+    return remainMin > 0 ? `Dans ${diffH}h${remainMin.toString().padStart(2, '0')}` : `Dans ${diffH}h`;
+  }
+
+  // Check if booking is tomorrow
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow =
+    bookingDate.getFullYear() === tomorrow.getFullYear() &&
+    bookingDate.getMonth() === tomorrow.getMonth() &&
+    bookingDate.getDate() === tomorrow.getDate();
+
+  if (isTomorrow) return 'Demain';
+
+  // More than 1 day away: show days count
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfBookingDay = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
+  const diffDays = Math.round((startOfBookingDay.getTime() - startOfToday.getTime()) / 86400000);
+  return `Dans ${diffDays} jours`;
 }
 
 // ---------------------------------------------------------------------------

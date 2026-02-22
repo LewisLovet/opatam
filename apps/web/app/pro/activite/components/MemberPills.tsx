@@ -41,6 +41,12 @@ export function MemberPills({
               }
             `}
           >
+            {member.color && (
+              <span
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: member.color }}
+              />
+            )}
             <span>{member.name}</span>
             {location && (
               <span className={`text-xs ${isActive ? 'text-primary-500 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}`}>

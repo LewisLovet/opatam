@@ -37,7 +37,8 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
   // Refs to prevent race conditions
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
-  const loadProvidersRef = useRef<(forceRefresh?: boolean) => Promise<void>>();
+  const loadProvidersRef = useRef<(forceRefresh?: boolean) => Promise<void>>(undefined);
+  const isFirstLoadRef = useRef(true);
 
   const { category = null, city = null, region = null, query = null, pageSize = 10, maxResults } = options;
 
@@ -99,7 +100,10 @@ export function useProviders(options: UseProvidersOptions = {}): UseProvidersRes
   // Load on mount and when filters change
   useEffect(() => {
     mountedRef.current = true;
-    loadProvidersRef.current?.(false);
+    // First load uses cache if available; subsequent filter changes force refresh
+    const forceRefresh = !isFirstLoadRef.current;
+    isFirstLoadRef.current = false;
+    loadProvidersRef.current?.(forceRefresh);
 
     return () => {
       mountedRef.current = false;

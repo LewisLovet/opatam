@@ -27,13 +27,15 @@ import type { Member, BlockedSlot } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
-import { useProviderBookings } from '../../../hooks';
+import { useProviderBookings, useServiceCategories, useServices } from '../../../hooks';
 import {
   Text,
   Loader,
   DaySchedule,
   EmptyState,
   Avatar,
+  CategorySelect,
+  MemberSelect,
   type DayScheduleBooking,
 } from '../../../components';
 
@@ -333,6 +335,12 @@ interface WeekBooking {
   status: string;
   memberId: string | null;
   memberName: string | null;
+  memberColor: string | null;
+}
+
+interface WeekBlockedSlotMember {
+  name: string;
+  color: string | null;
 }
 
 interface WeekBlockedSlot {
@@ -344,7 +352,9 @@ interface WeekBlockedSlot {
   endTime: string | null;
   reason: string | null;
   memberName: string | null;
-  memberId: string;
+  memberColor: string | null;
+  members: WeekBlockedSlotMember[];
+  isAllMembers: boolean;
 }
 
 interface WeekViewProps {
@@ -354,6 +364,7 @@ interface WeekViewProps {
   blockedSlots?: WeekBlockedSlot[];
   onDayPress: (date: Date) => void;
   onBookingPress: (id: string) => void;
+  onDisambiguate?: (bookings: WeekBooking[]) => void;
   showMemberAvatars: boolean;
   startHour?: number;
   endHour?: number;
@@ -368,6 +379,7 @@ function WeekView({
   blockedSlots = [],
   onDayPress,
   onBookingPress,
+  onDisambiguate,
   showMemberAvatars,
   startHour = DEFAULT_WEEK_START_HOUR,
   endHour = DEFAULT_WEEK_END_HOUR,
@@ -431,6 +443,15 @@ function WeekView({
     const top = ((nowMinutes - startMin) / (endMin - startMin)) * totalHeight;
     return { top, dayIdx: todayIdx };
   }, [weekDays, totalHeight, startHour, endHour]);
+
+  /** Convert hex color to light tint (20% opacity equivalent) */
+  function getLightTint(hex: string): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const blend = (c: number) => Math.round(c * 0.2 + 255 * 0.8);
+    return `rgb(${blend(r)}, ${blend(g)}, ${blend(b)})`;
+  }
 
   function getStatusBarColor(status: string): string {
     switch (status) {
@@ -647,6 +668,9 @@ function WeekView({
                     if (clampEnd <= clampStart) return null;
                     const bsTop = (clampStart / (weekTotalHours * 60)) * totalHeight;
                     const bsHeight = ((clampEnd - clampStart) / (weekTotalHours * 60)) * totalHeight;
+                    const primaryColor = bs.members.length === 1 ? bs.members[0].color : null;
+                    const bsBarColor = primaryColor || colors.textMuted;
+                    const bsBgColor = primaryColor ? primaryColor + '15' : colors.surfaceSecondary;
                     return (
                       <View
                         key={`blocked-${bs.id}-${dayIdx}`}
@@ -655,9 +679,12 @@ function WeekView({
                           {
                             top: bsTop,
                             height: Math.max(bsHeight, 6),
-                            backgroundColor: colors.surfaceSecondary,
+                            backgroundColor: bsBgColor,
+                            borderLeftWidth: 2,
+                            borderLeftColor: bsBarColor,
                             borderRadius: radius.sm,
                             marginHorizontal: 1,
+                            borderStyle: 'dashed',
                           },
                         ]}
                       >
@@ -665,11 +692,29 @@ function WeekView({
                           <Text
                             variant="caption"
                             numberOfLines={1}
-                            style={{ fontSize: 7, lineHeight: 9 }}
-                            color="textMuted"
+                            style={{ fontSize: 7, lineHeight: 9, fontWeight: '600', color: bsBarColor }}
                           >
                             {bs.reason || 'Bloqué'}
                           </Text>
+                        )}
+                        {bsHeight > 20 && bs.members.length > 1 && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1, marginTop: 1 }}>
+                            {bs.isAllMembers ? (
+                              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.textMuted }} />
+                            ) : (
+                              bs.members.slice(0, 3).map((m, i) => (
+                                <View
+                                  key={i}
+                                  style={{
+                                    width: 5,
+                                    height: 5,
+                                    borderRadius: 3,
+                                    backgroundColor: m.color || colors.textMuted,
+                                  }}
+                                />
+                              ))
+                            )}
+                          </View>
                         )}
                       </View>
                     );
@@ -707,7 +752,16 @@ function WeekView({
                         key={booking.id}
                         onPress={(e) => {
                           e.stopPropagation?.();
-                          onBookingPress(booking.id);
+                          // When 3+ bookings overlap and columns are very narrow, show disambiguation
+                          if (layout.totalColumns >= 3 && onDisambiguate) {
+                            const overlapping = dayBookings.filter((b) => {
+                              const bLayout = overlapLayout[b.id];
+                              return bLayout && bLayout.totalColumns >= 3;
+                            });
+                            onDisambiguate(overlapping);
+                          } else {
+                            onBookingPress(booking.id);
+                          }
                         }}
                         style={[
                           styles.weekBookingBar,
@@ -717,11 +771,11 @@ function WeekView({
                             left: colLeft,
                             right: undefined,
                             width: colWidth,
-                            backgroundColor: getStatusBgColor(
-                              booking.status,
-                            ),
+                            backgroundColor: booking.memberColor
+                              ? getLightTint(booking.memberColor)
+                              : getStatusBgColor(booking.status),
                             borderLeftWidth: 2,
-                            borderLeftColor: getStatusBarColor(
+                            borderLeftColor: booking.memberColor || getStatusBarColor(
                               booking.status,
                             ),
                             borderRadius: radius.sm,
@@ -780,7 +834,7 @@ function WeekView({
                             style={[
                               styles.weekBookingAvatar,
                               {
-                                backgroundColor: getStatusBarColor(booking.status),
+                                backgroundColor: booking.memberColor || getStatusBarColor(booking.status),
                                 borderRadius: 7,
                               },
                             ]}
@@ -858,6 +912,8 @@ export default function CalendarScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [disambiguationBookings, setDisambiguationBookings] = useState<WeekBooking[] | null>(null);
 
   // ---- Date range for the selected day ----
   const dayStart = useMemo(() => startOfDay(selectedDate), [selectedDate]);
@@ -913,38 +969,82 @@ export default function CalendarScreen() {
     return map;
   }, [members]);
 
-  // ---- Blocked slots for the selected day ----
+  const memberColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of members) {
+      if (m.color) map[m.id] = m.color;
+    }
+    return map;
+  }, [members]);
+
+  // ---- Category filtering ----
+  const { categories } = useServiceCategories(providerId ?? undefined);
+  const { services } = useServices(providerId ?? undefined);
+
+  const serviceCategoryMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    services.forEach((s) => {
+      if (s.categoryId) map[s.id] = s.categoryId;
+    });
+    return map;
+  }, [services]);
+
+  const filteredBookings = useMemo(() => {
+    if (!selectedCategoryId) return bookings;
+    return bookings.filter((b) => serviceCategoryMap[b.serviceId] === selectedCategoryId);
+  }, [bookings, selectedCategoryId, serviceCategoryMap]);
+
+  // ---- Blocked slots for the selected day (grouped by same time + reason) ----
   const dayBlockedSlots = useMemo(() => {
     if (viewMode !== 'day') return [];
-    return blockedSlots
-      .filter((bs) => {
-        if (selectedMemberId && bs.memberId !== selectedMemberId) return false;
-        const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
-        const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
-        return bsStart <= dayEnd && bsEnd >= dayStart;
-      })
-      .map((bs) => {
-        const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
-        const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
-        const memberName = memberNameMap[bs.memberId] || null;
-        if (bs.allDay) {
-          return { id: bs.id, startTime: '00:00', endTime: '23:59', reason: bs.reason, memberName, allDay: true };
-        }
-        return {
-          id: bs.id,
-          startTime: bs.startTime || formatTime(bsStart),
-          endTime: bs.endTime || formatTime(bsEnd),
-          reason: bs.reason,
-          memberName,
-          allDay: false,
-        };
+    const filtered = blockedSlots.filter((bs) => {
+      if (selectedMemberId && bs.memberId !== selectedMemberId) return false;
+      const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
+      const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
+      return bsStart <= dayEnd && bsEnd >= dayStart;
+    });
+
+    // Group by same start/end/allDay/reason
+    const groups: Record<string, { ids: string[]; bs: typeof filtered[0]; members: { name: string; color: string | null }[] }> = {};
+    for (const bs of filtered) {
+      const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
+      const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
+      const startTime = bs.allDay ? '00:00' : (bs.startTime || formatTime(bsStart));
+      const endTime = bs.allDay ? '23:59' : (bs.endTime || formatTime(bsEnd));
+      const key = `${startTime}-${endTime}-${bs.allDay}-${bs.reason || ''}`;
+      if (!groups[key]) {
+        groups[key] = { ids: [], bs, members: [] };
+      }
+      groups[key].ids.push(bs.id);
+      groups[key].members.push({
+        name: memberNameMap[bs.memberId] || 'Membre',
+        color: memberColorMap[bs.memberId] || null,
       });
-  }, [blockedSlots, viewMode, selectedMemberId, dayStart, dayEnd, memberNameMap]);
+    }
+
+    const activeMembers = members.filter((m) => m.isActive !== false);
+    return Object.values(groups).map((g) => {
+      const bsStart = g.bs.startDate instanceof Date ? g.bs.startDate : (g.bs.startDate as any).toDate();
+      const bsEnd = g.bs.endDate instanceof Date ? g.bs.endDate : (g.bs.endDate as any).toDate();
+      const isAllMembers = activeMembers.length > 1 && g.members.length >= activeMembers.length;
+      return {
+        id: g.ids.join('-'),
+        startTime: g.bs.allDay ? '00:00' : (g.bs.startTime || formatTime(bsStart)),
+        endTime: g.bs.allDay ? '23:59' : (g.bs.endTime || formatTime(bsEnd)),
+        reason: g.bs.reason,
+        memberName: g.members[0]?.name || null,
+        memberColor: g.members[0]?.color || null,
+        members: g.members,
+        isAllMembers,
+        allDay: g.bs.allDay,
+      };
+    });
+  }, [blockedSlots, viewMode, selectedMemberId, dayStart, dayEnd, memberNameMap, memberColorMap, members]);
 
   // ---- Transform bookings for Day View ----
   const dayBookings: DayScheduleBooking[] = useMemo(() => {
     if (viewMode !== 'day') return [];
-    return bookings.map((b) => {
+    return filteredBookings.map((b) => {
       const dt =
         b.datetime instanceof Date ? b.datetime : (b.datetime as any).toDate();
       const endDt = addMinutes(dt, b.duration);
@@ -956,14 +1056,15 @@ export default function CalendarScreen() {
         serviceName: b.serviceName,
         status: b.status,
         memberName: (b.memberId && memberNameMap[b.memberId]) || undefined,
+        memberColor: (b.memberId && memberColorMap[b.memberId]) || b.memberColor || null,
       };
     });
-  }, [bookings, viewMode, memberNameMap]);
+  }, [filteredBookings, viewMode, memberNameMap, memberColorMap]);
 
   // ---- Transform bookings for Week View ----
   const weekBookings: WeekBooking[] = useMemo(() => {
     if (viewMode !== 'week') return [];
-    return bookings.map((b) => {
+    return filteredBookings.map((b) => {
       const dt =
         b.datetime instanceof Date ? b.datetime : (b.datetime as any).toDate();
       return {
@@ -975,21 +1076,53 @@ export default function CalendarScreen() {
         status: b.status,
         memberId: b.memberId ?? null,
         memberName: b.memberName ?? null,
+        memberColor: (b.memberId && memberColorMap[b.memberId]) || b.memberColor || null,
       };
     });
-  }, [bookings, viewMode]);
+  }, [filteredBookings, viewMode, memberColorMap]);
 
-  // ---- Blocked slots for week view ----
+  // ---- Blocked slots for week view (grouped by same time + reason) ----
   const weekBlockedSlots = useMemo(() => {
     if (viewMode !== 'week') return [];
-    return blockedSlots
-      .filter((bs) => !selectedMemberId || bs.memberId === selectedMemberId)
-      .map((bs) => {
-        const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
-        const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
-        return { ...bs, startDate: bsStart, endDate: bsEnd, memberName: memberNameMap[bs.memberId] || null };
+    const filtered = blockedSlots.filter((bs) => !selectedMemberId || bs.memberId === selectedMemberId);
+
+    // Group by same start/end timestamps + allDay + reason
+    const groups: Record<string, { slots: typeof filtered; members: WeekBlockedSlotMember[] }> = {};
+    for (const bs of filtered) {
+      const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
+      const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
+      const key = `${bsStart.getTime()}-${bsEnd.getTime()}-${bs.allDay}-${bs.reason || ''}`;
+      if (!groups[key]) {
+        groups[key] = { slots: [], members: [] };
+      }
+      groups[key].slots.push(bs);
+      groups[key].members.push({
+        name: memberNameMap[bs.memberId] || 'Membre',
+        color: memberColorMap[bs.memberId] || null,
       });
-  }, [blockedSlots, viewMode, selectedMemberId, memberNameMap]);
+    }
+
+    const activeMembers = members.filter((m) => m.isActive !== false);
+    return Object.values(groups).map((g) => {
+      const bs = g.slots[0];
+      const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
+      const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
+      const isAllMembers = activeMembers.length > 1 && g.members.length >= activeMembers.length;
+      return {
+        id: g.slots.map((s) => s.id).join('-'),
+        startDate: bsStart,
+        endDate: bsEnd,
+        allDay: bs.allDay,
+        startTime: bs.startTime,
+        endTime: bs.endTime,
+        reason: bs.reason,
+        memberName: g.members[0]?.name || null,
+        memberColor: g.members[0]?.color || null,
+        members: g.members,
+        isAllMembers,
+      };
+    });
+  }, [blockedSlots, viewMode, selectedMemberId, memberNameMap, memberColorMap, members]);
 
   // ---- Compute effective hour range from bookings ----
   const { effectiveStartHour, effectiveEndHour } = useMemo(() => {
@@ -1292,129 +1425,36 @@ export default function CalendarScreen() {
         </View>
       </View>
 
-      {/* ===== Member filter (team plan only) ===== */}
-      {showMemberFilter && (
+      {/* ===== Filters row (member + category dropdowns) ===== */}
+      {(showMemberFilter || categories.length > 0) && (
         <View
-          style={[
-            styles.memberFilterWrapper,
-            {
-              borderBottomWidth: 1,
-              borderBottomColor: colors.divider,
-            },
-          ]}
+          style={{
+            flexDirection: 'row',
+            gap: spacing.sm,
+            paddingHorizontal: spacing.lg,
+            paddingVertical: spacing.sm,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.divider,
+          }}
         >
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.memberFilterContainer,
-              {
-                paddingHorizontal: spacing.lg,
-                gap: spacing.sm,
-                paddingVertical: spacing.sm,
-              },
-            ]}
-          >
-            {/* "Tous" pill */}
-            <Pressable
-              onPress={() => handleMemberSelect(null)}
-              style={({ pressed }) => [
-                styles.memberPill,
-                {
-                  backgroundColor:
-                    selectedMemberId === null
-                      ? colors.primary
-                      : colors.surface,
-                  borderColor:
-                    selectedMemberId === null
-                      ? colors.primary
-                      : colors.border,
-                  borderRadius: radius.full,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm,
-                  opacity: pressed ? 0.8 : 1,
-                },
-              ]}
-            >
-              {selectedMemberId === null && (
-                <Ionicons
-                  name="checkmark"
-                  size={14}
-                  color={colors.textInverse}
-                  style={{ marginRight: spacing.xs }}
-                />
-              )}
-              <Ionicons
-                name="people-outline"
-                size={14}
-                color={
-                  selectedMemberId === null
-                    ? colors.textInverse
-                    : colors.textSecondary
-                }
-                style={{ marginRight: spacing.xs }}
+          {showMemberFilter && (
+            <View style={{ flex: 1 }}>
+              <MemberSelect
+                value={selectedMemberId}
+                members={members}
+                onChange={handleMemberSelect}
               />
-              <Text
-                variant="label"
-                color={
-                  selectedMemberId === null ? 'textInverse' : 'textSecondary'
-                }
-              >
-                Tous
-              </Text>
-            </Pressable>
-
-            {/* Individual member pills */}
-            {members.map((member) => {
-              const isSelected = selectedMemberId === member.id;
-              return (
-                <Pressable
-                  key={member.id}
-                  onPress={() => handleMemberSelect(member.id)}
-                  style={({ pressed }) => [
-                    styles.memberPill,
-                    {
-                      backgroundColor: isSelected
-                        ? colors.primary
-                        : colors.surface,
-                      borderColor: isSelected
-                        ? colors.primary
-                        : colors.border,
-                      borderRadius: radius.full,
-                      paddingHorizontal: spacing.md,
-                      paddingVertical: spacing.sm,
-                      opacity: pressed ? 0.8 : 1,
-                    },
-                  ]}
-                >
-                  {isSelected && (
-                    <Ionicons
-                      name="checkmark"
-                      size={14}
-                      color={colors.textInverse}
-                      style={{ marginRight: spacing.xs }}
-                    />
-                  )}
-                  <Avatar
-                    name={member.name}
-                    size="sm"
-                    style={{
-                      width: 22,
-                      height: 22,
-                      marginRight: spacing.xs,
-                    }}
-                  />
-                  <Text
-                    variant="label"
-                    color={isSelected ? 'textInverse' : 'text'}
-                    numberOfLines={1}
-                  >
-                    {member.name.split(' ')[0]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+            </View>
+          )}
+          {categories.length > 0 && (
+            <View style={{ flex: 1 }}>
+              <CategorySelect
+                value={selectedCategoryId}
+                categories={categories.map((c) => ({ id: c.id, label: c.name }))}
+                onChange={setSelectedCategoryId}
+              />
+            </View>
+          )}
         </View>
       )}
 
@@ -1482,6 +1522,7 @@ export default function CalendarScreen() {
           blockedSlots={weekBlockedSlots}
           onDayPress={handleWeekDayPress}
           onBookingPress={handleBookingPress}
+          onDisambiguate={setDisambiguationBookings}
           showMemberAvatars={members.length > 1}
           startHour={effectiveStartHour}
           endHour={effectiveEndHour}
@@ -1526,6 +1567,120 @@ export default function CalendarScreen() {
           <Ionicons name="add" size={28} color={colors.textInverse} />
         </Pressable>
       </View>
+
+      {/* ===== Disambiguation Bottom Sheet ===== */}
+      <Modal
+        visible={disambiguationBookings !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDisambiguationBookings(null)}
+      >
+        <Pressable
+          style={styles.datePickerOverlay}
+          onPress={() => setDisambiguationBookings(null)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation?.()}
+            style={[
+              styles.datePickerModal,
+              {
+                backgroundColor: colors.surface,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                maxHeight: 400,
+              },
+            ]}
+          >
+            {/* Header */}
+            <View
+              style={[
+                styles.datePickerHeader,
+                {
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.divider,
+                  paddingHorizontal: spacing.lg,
+                  paddingVertical: spacing.md,
+                },
+              ]}
+            >
+              <Text variant="body" style={{ fontWeight: '600' }}>
+                {disambiguationBookings?.length ?? 0} rendez-vous
+              </Text>
+              <Pressable onPress={() => setDisambiguationBookings(null)}>
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {/* Booking list */}
+            <ScrollView style={{ paddingVertical: spacing.xs }}>
+              {disambiguationBookings?.sort((a, b) =>
+                a.datetime.getTime() - b.datetime.getTime()
+              ).map((booking) => {
+                const timeStr = `${booking.datetime.getHours().toString().padStart(2, '0')}:${booking.datetime.getMinutes().toString().padStart(2, '0')}`;
+                const statusColor = booking.status === 'confirmed' ? colors.success
+                  : booking.status === 'pending' ? colors.warning
+                  : colors.textMuted;
+
+                return (
+                  <Pressable
+                    key={booking.id}
+                    onPress={() => {
+                      setDisambiguationBookings(null);
+                      handleBookingPress(booking.id);
+                    }}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: spacing.lg,
+                      paddingVertical: spacing.md,
+                      backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: colors.divider,
+                      gap: spacing.sm,
+                    })}
+                  >
+                    {/* Member color dot */}
+                    {booking.memberColor && (
+                      <View style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: booking.memberColor,
+                      }} />
+                    )}
+
+                    {/* Time */}
+                    <Text variant="label" style={{ fontWeight: '600', minWidth: 40 }}>
+                      {timeStr}
+                    </Text>
+
+                    {/* Status dot */}
+                    <View style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: statusColor,
+                    }} />
+
+                    {/* Client + service */}
+                    <View style={{ flex: 1 }}>
+                      <Text variant="body" numberOfLines={1} style={{ fontWeight: '500' }}>
+                        {booking.clientName}
+                      </Text>
+                      <Text variant="caption" color="textSecondary" numberOfLines={1}>
+                        {booking.serviceName}
+                        {booking.memberName ? ` · ${booking.memberName}` : ''}
+                      </Text>
+                    </View>
+
+                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* ===== Date Picker Modal ===== */}
       {Platform.OS === 'ios' ? (
@@ -1666,19 +1821,6 @@ const styles = StyleSheet.create({
   countBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-
-  // Member filter
-  memberFilterWrapper: {},
-  memberFilterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  memberPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    minHeight: 36,
   },
 
   // Day view
