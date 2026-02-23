@@ -18,6 +18,7 @@ import {
   Globe,
   Heart,
   Lightbulb,
+  Lock,
   Mail,
   MapPin,
   QrCode,
@@ -849,158 +850,222 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Monthly / Yearly toggle */}
-            <div className="flex items-center justify-center gap-3 mb-12">
-              <span
-                className={`text-sm font-medium ${!isYearly ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                Mensuel
-              </span>
-              <button
-                onClick={() => setIsYearly(!isYearly)}
-                className={`relative w-14 h-7 rounded-full transition-colors ${isYearly ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`}
-                aria-label="Basculer entre mensuel et annuel"
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${isYearly ? 'translate-x-7' : ''}`}
-                />
-              </button>
-              <span
-                className={`text-sm font-medium ${isYearly ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                Annuel
-              </span>
-              {isYearly && (
-                <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                  Économisez 33%
-                </span>
-              )}
-            </div>
+            {/* ── Early adopter pricing block ── */}
+            <div className="max-w-5xl mx-auto">
+              <div className="relative overflow-hidden rounded-3xl p-[1px]">
+                {/* Animated golden border */}
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-amber-500/0 via-amber-400/60 to-amber-500/0 animate-shimmer pointer-events-none" />
 
-            {/* Pricing cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto items-stretch">
-              {/* Pro card */}
-              <div className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-gray-300 dark:hover:border-gray-600">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-11 h-11 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    {SUBSCRIPTION_PLANS.solo.name}
-                  </h3>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                  {SUBSCRIPTION_PLANS.solo.description}
-                </p>
+                <div className="relative rounded-[calc(1.5rem-1px)] bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 dark:from-gray-950 dark:via-gray-950 dark:to-black overflow-hidden">
+                  {/* Decorative glow orbs */}
+                  <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-amber-500/8 blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-40 -left-20 w-72 h-72 rounded-full bg-primary-500/5 blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-40 -right-20 w-72 h-72 rounded-full bg-amber-400/5 blur-3xl pointer-events-none" />
 
-                <div className="mb-6">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
-                      {isYearly ? proYearlyPerMonth : proMonthly}&euro;
-                    </span>
-                    <span className="text-base text-gray-500 font-medium">/mois</span>
-                  </div>
-                  {isYearly && (
-                    <p className="text-sm text-gray-500 mt-1">
-                      Facturé {proYearlyTotal}&euro;/an
-                    </p>
-                  )}
-                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-2">
-                    Sans engagement
-                  </p>
-                </div>
-
-                <div className="border-t border-gray-100 dark:border-gray-800 mb-6" />
-
-                <ul className="space-y-3 flex-1">
-                  {SUBSCRIPTION_PLANS.solo.features.map((f) => (
-                    <li key={f} className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
-                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-50 dark:bg-primary-900/20 flex-shrink-0 mt-0.5">
-                        <Check className="w-3 h-3 text-primary-600 dark:text-primary-400" />
+                  {/* ─ Top section: guarantee message ─ */}
+                  <div className="relative px-6 pt-10 pb-8 sm:px-10 sm:pt-12 sm:pb-10">
+                    <div className="flex flex-col items-center text-center">
+                      {/* Badge */}
+                      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 mb-5">
+                        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                        <span className="text-xs font-semibold tracking-wider uppercase text-amber-400">Offre de lancement</span>
                       </div>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
 
-                <Link
-                  href="/register"
-                  className="mt-8 block w-full text-center bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 px-6 py-3.5 font-semibold rounded-xl transition-all duration-200 hover:shadow-lg"
-                >
-                  Démarrer l&apos;essai gratuit
-                </Link>
-              </div>
-
-              {/* Studio card (popular) */}
-              <div className="relative flex flex-col bg-white dark:bg-gray-900 rounded-2xl p-8 border-2 border-primary-500 shadow-xl shadow-primary-500/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary-500/15">
-                {/* Popular badge */}
-                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-lg shadow-primary-500/25">
-                  <Star className="w-3.5 h-3.5" />
-                  Populaire
-                </span>
-
-                {/* Subtle gradient bg */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-primary-50/40 via-white to-white dark:from-primary-900/10 dark:via-gray-900 dark:to-gray-900 pointer-events-none" />
-
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-11 h-11 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                      {SUBSCRIPTION_PLANS.team.name}
-                    </h3>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                    {SUBSCRIPTION_PLANS.team.description}
-                  </p>
-
-                  <div className="mb-6">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
-                        {isYearly ? studioYearlyPerMonth : studioMonthly}&euro;
-                      </span>
-                      <span className="text-base text-gray-500 font-medium">/mois</span>
-                    </div>
-                    {isYearly && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        Facturé {studioYearlyTotal}&euro;/an
-                      </p>
-                    )}
-                    <p className="text-xs text-primary-700 dark:text-primary-300 font-semibold mt-1.5">
-                      Jusqu&apos;à 5 membres inclus
-                    </p>
-                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-2">
-                      Sans engagement
-                    </p>
-                  </div>
-
-                  <div className="border-t border-primary-100 dark:border-primary-900/30 mb-6" />
-
-                  <ul className="space-y-3 flex-1">
-                    {SUBSCRIPTION_PLANS.team.features.map((f) => (
-                      <li key={f} className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
-                        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/20 flex-shrink-0 mt-0.5">
-                          <Check className="w-3 h-3 text-primary-600 dark:text-primary-400" />
+                      {/* Icon + Headline inline */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/25 flex-shrink-0">
+                          <Lock className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                         </div>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
+                        <h3 className="text-2xl sm:text-3xl font-bold text-white text-left">
+                          Tarif garanti{' '}
+                          <span className="bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-300 bg-clip-text text-transparent">
+                            à vie
+                          </span>
+                        </h3>
+                      </div>
 
-                  <Link
-                    href="/register"
-                    className="mt-8 block w-full text-center bg-primary-600 text-white hover:bg-primary-700 px-6 py-3.5 font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30"
-                  >
-                    Démarrer l&apos;essai gratuit
-                  </Link>
+                      <p className="text-base text-gray-400 max-w-lg mb-6">
+                        Inscrivez-vous maintenant et verrouillez votre tarif pour toujours,
+                        même si nos prix augmentent.
+                      </p>
+
+                      {/* Trust points */}
+                      <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 text-sm mb-2">
+                        <div className="flex items-center gap-2 text-amber-300/90">
+                          <Check className="w-4 h-4" />
+                          <span>Prix bloqué à vie</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-amber-300/90">
+                          <Check className="w-4 h-4" />
+                          <span>Aucune augmentation</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-amber-300/90">
+                          <Check className="w-4 h-4" />
+                          <span>Premiers inscrits uniquement</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ─ Separator ─ */}
+                  <div className="mx-6 sm:mx-10 border-t border-gray-700/50" />
+
+                  {/* ─ Middle section: toggle + cards ─ */}
+                  <div className="relative px-6 py-8 sm:px-10 sm:py-10">
+                    {/* Monthly / Yearly toggle */}
+                    <div className="flex items-center justify-center gap-3 mb-8">
+                      <span
+                        className={`text-sm font-medium ${!isYearly ? 'text-white' : 'text-gray-500'}`}
+                      >
+                        Mensuel
+                      </span>
+                      <button
+                        onClick={() => setIsYearly(!isYearly)}
+                        className={`relative w-14 h-7 rounded-full transition-colors ${isYearly ? 'bg-primary-600' : 'bg-gray-600'}`}
+                        aria-label="Basculer entre mensuel et annuel"
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${isYearly ? 'translate-x-7' : ''}`}
+                        />
+                      </button>
+                      <span
+                        className={`text-sm font-medium ${isYearly ? 'text-white' : 'text-gray-500'}`}
+                      >
+                        Annuel
+                      </span>
+                      {isYearly && (
+                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-500/15 text-green-400 border border-green-500/20">
+                          Économisez 33%
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Pricing cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch pt-4">
+                      {/* Pro card */}
+                      <div className="flex flex-col bg-white dark:bg-gray-800 rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/20">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-11 h-11 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center">
+                            <Zap className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                          </div>
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            {SUBSCRIPTION_PLANS.solo.name}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                          {SUBSCRIPTION_PLANS.solo.description}
+                        </p>
+
+                        <div className="mb-6">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
+                              {isYearly ? proYearlyPerMonth : proMonthly}&euro;
+                            </span>
+                            <span className="text-base text-gray-500 font-medium">/mois</span>
+                          </div>
+                          {isYearly && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              Facturé {proYearlyTotal}&euro;/an
+                            </p>
+                          )}
+                          <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-2">
+                            Sans engagement
+                          </p>
+                        </div>
+
+                        <div className="border-t border-gray-100 dark:border-gray-700 mb-6" />
+
+                        <ul className="space-y-3 flex-1">
+                          {SUBSCRIPTION_PLANS.solo.features.map((f) => (
+                            <li key={f} className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
+                              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-50 dark:bg-primary-900/20 flex-shrink-0 mt-0.5">
+                                <Check className="w-3 h-3 text-primary-600 dark:text-primary-400" />
+                              </div>
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+
+                        <Link
+                          href="/register"
+                          className="mt-8 block w-full text-center bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 px-6 py-3.5 font-semibold rounded-xl transition-all duration-200 hover:shadow-lg"
+                        >
+                          Démarrer l&apos;essai gratuit
+                        </Link>
+                      </div>
+
+                      {/* Studio card (popular) */}
+                      <div className="relative flex flex-col bg-white dark:bg-gray-800 rounded-2xl p-7 border-2 border-primary-500 shadow-xl shadow-primary-500/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary-500/15">
+                        {/* Popular badge */}
+                        <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-lg shadow-primary-500/25">
+                          <Star className="w-3.5 h-3.5" />
+                          Populaire
+                        </span>
+
+                        <div className="relative">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-11 h-11 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                              <Users className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                              {SUBSCRIPTION_PLANS.team.name}
+                            </h3>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                            {SUBSCRIPTION_PLANS.team.description}
+                          </p>
+
+                          <div className="mb-6">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
+                                {isYearly ? studioYearlyPerMonth : studioMonthly}&euro;
+                              </span>
+                              <span className="text-base text-gray-500 font-medium">/mois</span>
+                            </div>
+                            {isYearly && (
+                              <p className="text-sm text-gray-500 mt-1">
+                                Facturé {studioYearlyTotal}&euro;/an
+                              </p>
+                            )}
+                            <p className="text-xs text-primary-700 dark:text-primary-300 font-semibold mt-1.5">
+                              Jusqu&apos;à 5 membres inclus
+                            </p>
+                            <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-2">
+                              Sans engagement
+                            </p>
+                          </div>
+
+                          <div className="border-t border-primary-100 dark:border-primary-900/30 mb-6" />
+
+                          <ul className="space-y-3 flex-1">
+                            {SUBSCRIPTION_PLANS.team.features.map((f) => (
+                              <li key={f} className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
+                                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/20 flex-shrink-0 mt-0.5">
+                                  <Check className="w-3 h-3 text-primary-600 dark:text-primary-400" />
+                                </div>
+                                {f}
+                              </li>
+                            ))}
+                          </ul>
+
+                          <Link
+                            href="/register"
+                            className="mt-8 block w-full text-center bg-primary-600 text-white hover:bg-primary-700 px-6 py-3.5 font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30"
+                          >
+                            Démarrer l&apos;essai gratuit
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom note */}
+                    <p className="mt-8 text-sm text-gray-500 text-center">
+                      {APP_CONFIG.trialDays} jours d&apos;essai gratuit sur tous les plans. Aucune carte bancaire requise.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <p className="mt-8 text-sm text-gray-500 dark:text-gray-500 text-center">
-              {APP_CONFIG.trialDays} jours d&apos;essai gratuit sur tous les plans. Aucune carte bancaire requise.
-            </p>
           </div>
         </section>
 

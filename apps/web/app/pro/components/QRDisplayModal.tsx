@@ -226,7 +226,7 @@ export function QRDisplayModal({
                 Ajoutez votre lien PayPal pour générer un QR code de paiement.
               </p>
               <a
-                href="/pro/profil?tab=reseaux"
+                href="/pro/profil?tab=profil"
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0070BA] text-white hover:bg-[#005A9E] rounded-lg text-sm font-medium transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />

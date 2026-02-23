@@ -123,11 +123,11 @@ export function PhotoUpload({ onSuccess }: PhotoUploadProps) {
           {provider?.photoURL && (
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleRemove}
               disabled={loading}
-              className="text-error-600 hover:text-error-700 dark:text-error-400"
+              className="text-error-600 border-error-200 hover:bg-error-50 hover:text-error-700 dark:text-error-400 dark:border-error-800 dark:hover:bg-error-900/20"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Supprimer

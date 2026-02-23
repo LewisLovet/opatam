@@ -7,9 +7,8 @@ import { Card, CardHeader, CardBody, Tabs, TabsList, TabsTrigger, TabsContent } 
 import {
   User,
   Image,
-  Share2,
   Globe,
-  Eye,
+  ExternalLink,
 } from 'lucide-react';
 import {
   ProfileForm,
@@ -20,7 +19,7 @@ import {
   PublicationSection,
 } from './components';
 
-const TAB_IDS = ['infos', 'photos', 'reseaux', 'publication'] as const;
+const TAB_IDS = ['publication', 'profil', 'portfolio'] as const;
 
 export default function ProfilPage() {
   const { provider } = useAuth();
@@ -29,7 +28,7 @@ export default function ProfilPage() {
 
   const tabFromUrl = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(
-    TAB_IDS.includes(tabFromUrl as typeof TAB_IDS[number]) ? tabFromUrl! : 'infos'
+    TAB_IDS.includes(tabFromUrl as typeof TAB_IDS[number]) ? tabFromUrl! : 'publication'
   );
 
   // Sync URL → state
@@ -45,26 +44,38 @@ export default function ProfilPage() {
   };
 
   const tabs = [
-    { id: 'infos', label: 'Infos', icon: <User className="w-4 h-4" /> },
-    { id: 'photos', label: 'Photos', icon: <Image className="w-4 h-4" /> },
-    { id: 'reseaux', label: 'Réseaux', icon: <Share2 className="w-4 h-4" /> },
     { id: 'publication', label: 'Visibilité', icon: <Globe className="w-4 h-4" /> },
+    { id: 'profil', label: 'Profil', icon: <User className="w-4 h-4" /> },
+    { id: 'portfolio', label: 'Portfolio', icon: <Image className="w-4 h-4" /> },
   ];
 
   return (
     <div className="space-y-6 min-w-0">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-          Profil public
-        </h1>
-        <p className="mt-1 text-gray-600 dark:text-gray-400">
-          Gérez les informations visibles par vos clients
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            Profil public
+          </h1>
+          <p className="mt-1 text-gray-600 dark:text-gray-400">
+            Gérez les informations visibles par vos clients
+          </p>
+        </div>
+        {provider?.slug && (
+          <a
+            href={`/p/${provider.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Voir ma page publique
+          </a>
+        )}
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="infos" value={activeTab} onValueChange={handleTabChange}>
+      <Tabs defaultValue="publication" value={activeTab} onValueChange={handleTabChange}>
         {/* Tab List */}
         <TabsList className="w-fit">
           {tabs.map((tab) => (
@@ -75,67 +86,74 @@ export default function ProfilPage() {
           ))}
         </TabsList>
 
-        {/* Infos Tab */}
-        <TabsContent value="infos" className="mt-6">
-          <div className="grid lg:grid-cols-3 gap-6 min-w-0">
-            {/* Main Form */}
-            <div className="lg:col-span-2 min-w-0">
-              <Card className="min-w-0 overflow-hidden">
-                <CardHeader>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Informations generales
-                  </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Ces informations seront visibles sur votre page publique
-                  </p>
-                </CardHeader>
-                <CardBody>
-                  <ProfileForm />
-                </CardBody>
-              </Card>
-            </div>
+        {/* Visibilité Tab (1st - most important) */}
+        <TabsContent value="publication" className="mt-6">
+          <PublicationSection />
+        </TabsContent>
 
-            {/* Profile Photo */}
-            <div>
-              <Card>
-                <CardHeader>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Photo de profil
-                  </h2>
-                </CardHeader>
-                <CardBody>
+        {/* Mon profil Tab (2nd - merged Infos + Photos + Réseaux) */}
+        <TabsContent value="profil" className="mt-6">
+          <div className="space-y-6">
+            {/* Section 1: Identité visuelle (cover + logo together) */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Identité visuelle
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Photo de profil et photo de couverture affichées sur votre page publique
+                </p>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-6">
+                  <CoverPhotoUpload />
+                  <div className="border-t border-gray-200 dark:border-gray-700" />
                   <PhotoUpload />
-                </CardBody>
-              </Card>
-            </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            {/* Section 2: Informations générales */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Informations générales
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Ces informations seront visibles sur votre page publique
+                </p>
+              </CardHeader>
+              <CardBody>
+                <ProfileForm />
+              </CardBody>
+            </Card>
+
+            {/* Section 3: Réseaux sociaux */}
+            <Card className="max-w-2xl">
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Réseaux sociaux
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Ajoutez vos liens pour permettre aux clients de vous suivre
+                </p>
+              </CardHeader>
+              <CardBody>
+                <SocialLinksForm />
+              </CardBody>
+            </Card>
           </div>
         </TabsContent>
 
-        {/* Photos Tab */}
-        <TabsContent value="photos" className="mt-6 space-y-6">
-          {/* Cover Photo */}
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Photo de couverture
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Image affichee en banniere sur votre page publique
-              </p>
-            </CardHeader>
-            <CardBody>
-              <CoverPhotoUpload />
-            </CardBody>
-          </Card>
-
-          {/* Portfolio */}
+        {/* Portfolio Tab (3rd) */}
+        <TabsContent value="portfolio" className="mt-6">
           <Card>
             <CardHeader>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Portfolio
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Montrez vos realisations aux clients potentiels
+                Montrez vos réalisations aux clients potentiels
               </p>
             </CardHeader>
             <CardBody>
@@ -143,56 +161,8 @@ export default function ProfilPage() {
             </CardBody>
           </Card>
         </TabsContent>
-
-        {/* Social Links Tab */}
-        <TabsContent value="reseaux" className="mt-6">
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Réseaux sociaux
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Ajoutez vos liens pour permettre aux clients de vous suivre
-              </p>
-            </CardHeader>
-            <CardBody>
-              <SocialLinksForm />
-            </CardBody>
-          </Card>
-        </TabsContent>
-
-        {/* Visibilité Tab */}
-        <TabsContent value="publication" className="mt-6">
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Visibilité
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Contrôlez la visibilité de votre page
-              </p>
-            </CardHeader>
-            <CardBody>
-              <PublicationSection />
-            </CardBody>
-          </Card>
-        </TabsContent>
       </Tabs>
 
-      {/* Preview Link */}
-      {provider?.slug && (
-        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-10">
-          <a
-            href={`/p/${provider.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-full shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
-          >
-            <Eye className="w-4 h-4" />
-            <span className="text-sm font-medium hidden sm:inline">Aperçu</span>
-          </a>
-        </div>
-      )}
     </div>
   );
 }

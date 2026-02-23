@@ -103,14 +103,16 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
   }, [provider?.businessName, provider?.slug, activeTab]);
 
   return (
-    <div className="flex flex-wrap gap-3">
-      <Button onClick={onCreateBooking} className="flex items-center gap-2">
+    <div className="flex flex-wrap gap-2">
+      <Button onClick={onCreateBooking} size="sm" className="flex items-center gap-2">
         <Plus className="w-4 h-4" />
-        Créer un RDV
+        <span className="hidden sm:inline">Créer un RDV</span>
+        <span className="sm:hidden">RDV</span>
       </Button>
-      <Button variant="outline" onClick={onBlockSlot} className="flex items-center gap-2">
+      <Button variant="outline" onClick={onBlockSlot} size="sm" className="flex items-center gap-2">
         <CalendarOff className="w-4 h-4" />
-        Bloquer un créneau
+        <span className="hidden sm:inline">Bloquer un créneau</span>
+        <span className="sm:hidden">Bloquer</span>
       </Button>
 
       {/* Share button with popover */}
@@ -118,11 +120,12 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
         <div className="relative" ref={popoverRef}>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setShowShare(!showShare)}
             className="flex items-center gap-2"
           >
             <Share2 className="w-4 h-4" />
-            Partager
+            <span className="hidden sm:inline">Partager</span>
           </Button>
 
           {showShare && (
@@ -264,7 +267,7 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
                       PayPal non configuré
                     </p>
                     <a
-                      href="/pro/profil?tab=reseaux"
+                      href="/pro/profil?tab=profil"
                       className="inline-flex items-center gap-1 text-xs font-medium text-[#0070BA] hover:underline"
                     >
                       <ExternalLink className="w-3 h-3" />

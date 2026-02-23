@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button, Badge } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
 import { QRCodeCanvas } from 'qrcode.react';
+import Link from 'next/link';
 import {
   Loader2,
   Globe,
@@ -18,6 +19,7 @@ import {
   Download,
   Printer,
   QrCode,
+  ArrowRight,
 } from 'lucide-react';
 
 // PayPal SVG icon
@@ -208,263 +210,323 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
   }, [provider?.businessName, bookingUrl, paypalUrl, activeQRTab]);
 
   const requirementItems = [
-    { key: 'hasBusinessName', label: 'Nom de l\'entreprise', href: '#profile' },
-    { key: 'hasCategory', label: 'Catégorie', href: '#profile' },
-    { key: 'hasLocation', label: 'Au moins un lieu', href: '/pro/lieux' },
-    { key: 'hasService', label: 'Au moins une prestation', href: '/pro/prestations' },
-    { key: 'hasAvailability', label: 'Disponibilités configurées', href: '/pro/disponibilites' },
+    { key: 'hasBusinessName', label: 'Nom de l\'entreprise', href: '/pro/profil?tab=profil' },
+    { key: 'hasCategory', label: 'Catégorie', href: '/pro/profil?tab=profil' },
+    { key: 'hasLocation', label: 'Au moins un lieu', href: '/pro/activite?tab=lieux' },
+    { key: 'hasService', label: 'Au moins une prestation', href: '/pro/activite?tab=prestations' },
+    { key: 'hasAvailability', label: 'Disponibilités configurées', href: '/pro/activite?tab=disponibilites' },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Current Status */}
-      <div className="flex items-center gap-4">
-        <div
-          className={`p-3 rounded-xl ${
-            provider?.isPublished
-              ? 'bg-success-100 dark:bg-success-900/30 text-success-600 dark:text-success-400'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-          }`}
-        >
-          {provider?.isPublished ? (
-            <Globe className="w-6 h-6" />
-          ) : (
-            <GlobeLock className="w-6 h-6" />
-          )}
-        </div>
-
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              {provider?.isPublished ? 'Page active' : 'Page inactive'}
-            </h3>
-            <Badge variant={provider?.isPublished ? 'success' : 'default'}>
-              {provider?.isPublished ? 'Active' : 'Inactive'}
-            </Badge>
+      {/* Top row: Status + Actions side by side on desktop */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Status Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+          <div className="flex items-center gap-4">
+            <div
+              className={`p-3 rounded-xl ${
+                provider?.isPublished
+                  ? 'bg-success-100 dark:bg-success-900/30 text-success-600 dark:text-success-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              {provider?.isPublished ? (
+                <Globe className="w-6 h-6" />
+              ) : (
+                <GlobeLock className="w-6 h-6" />
+              )}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  {provider?.isPublished ? 'Page active' : 'Page inactive'}
+                </h3>
+                <Badge variant={provider?.isPublished ? 'success' : 'default'}>
+                  {provider?.isPublished ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {provider?.isPublished
+                  ? 'Votre page est visible et accessible par les clients'
+                  : 'Votre page n\'est pas visible par les clients'}
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {provider?.isPublished
-              ? 'Votre page est visible et accessible par les clients'
-              : 'Votre page n\'est pas visible par les clients'}
-          </p>
-        </div>
-      </div>
 
-      {/* Public URL + QR Code (if published) */}
-      {provider?.isPublished && publicUrl && (
-        <div className="space-y-4">
-          {/* URL */}
-          <div className="p-4 bg-success-50 dark:bg-success-900/10 border border-success-200 dark:border-success-800 rounded-lg">
-            <p className="text-sm font-medium text-success-700 dark:text-success-400 mb-2">
-              Votre page est accessible a l&apos;adresse :
-            </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-sm bg-white dark:bg-gray-800 px-3 py-2 rounded border border-success-200 dark:border-success-700 truncate text-gray-900 dark:text-gray-100">
-                {publicUrl}
-              </code>
+          {/* Action buttons */}
+          <div className="flex gap-3 mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
+            {provider?.isPublished ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleUnpublish}
+                disabled={loading}
+                className="text-warning-600 border-warning-300 hover:bg-warning-50 dark:text-warning-400 dark:border-warning-600 dark:hover:bg-warning-900/20"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Désactivation...
+                  </>
+                ) : (
+                  <>
+                    <GlobeLock className="w-4 h-4 mr-2" />
+                    Désactiver ma page
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={handlePublish}
+                disabled={loading || !requirements?.canPublish}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Activation...
+                  </>
+                ) : (
+                  <>
+                    <Globe className="w-4 h-4 mr-2" />
+                    Activer ma page
+                  </>
+                )}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={checkRequirements}
+              disabled={checkingRequirements}
+            >
+              Actualiser
+            </Button>
+          </div>
+        </div>
+
+        {/* Quick links card (if published) */}
+        {provider?.isPublished && publicUrl ? (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+              Votre page publique
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => handleCopy(publicUrl)}
-                className="p-2 text-success-600 hover:text-success-700 dark:text-success-400 dark:hover:text-success-300 transition-colors"
-                title="Copier le lien"
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
               >
-                {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                <div className="p-2.5 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30 transition-colors">
+                  {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                </div>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  {copied ? 'Copié !' : 'Copier le lien'}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Partagez votre URL
+                </span>
               </button>
               <a
                 href={`/p/${provider.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-success-600 hover:text-success-700 dark:text-success-400 dark:hover:text-success-300 transition-colors"
-                title="Voir la page"
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
               >
-                <ExternalLink className="w-5 h-5" />
+                <div className="p-2.5 rounded-lg bg-success-50 dark:bg-success-900/20 text-success-600 dark:text-success-400 group-hover:bg-success-100 dark:group-hover:bg-success-900/30 transition-colors">
+                  <ExternalLink className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  Voir ma page
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Ouvrir dans un nouvel onglet
+                </span>
               </a>
             </div>
           </div>
+        ) : !provider?.isPublished ? (
+          /* Requirements Checklist (if not published) */
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+              <AlertCircle className="w-5 h-5 text-warning-500" />
+              Éléments requis
+            </h4>
 
-          {/* QR Code */}
-          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
-            {/* Tab bar */}
-            <div className="flex bg-gray-200/60 dark:bg-gray-700 rounded-lg p-0.5 mb-4">
-              <button
-                onClick={() => setActiveQRTab('booking')}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  activeQRTab === 'booking'
-                    ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                }`}
-              >
-                <QrCode className="w-3 h-3" />
-                Réservation
-              </button>
-              <button
-                onClick={() => setActiveQRTab('paypal')}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  activeQRTab === 'paypal'
-                    ? 'bg-white dark:bg-gray-600 text-[#0070BA] shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                }`}
-              >
-                <PaypalIcon className="w-3 h-3" />
-                PayPal
-              </button>
-            </div>
+            {checkingRequirements ? (
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Vérification...
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {requirementItems.map((item) => {
+                  const isComplete =
+                    requirements?.completeness[item.key as keyof typeof requirements.completeness];
+                  return (
+                    <li key={item.key} className="flex items-center gap-3">
+                      {isComplete ? (
+                        <CheckCircle className="w-5 h-5 text-success-500 flex-shrink-0" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-warning-400 flex-shrink-0" />
+                      )}
+                      <span
+                        className={`flex-1 text-sm ${
+                          isComplete
+                            ? 'text-gray-900 dark:text-white'
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                      {!isComplete && (
+                        <Link
+                          href={item.href}
+                          className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
+                        >
+                          Configurer
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        ) : null}
+      </div>
 
-            <div className="flex flex-col sm:flex-row gap-5">
-              {/* QR visual */}
-              {activeQRTab === 'booking' ? (
-                <div
-                  ref={qrRef}
-                  className="flex-shrink-0 bg-white p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm self-start"
-                >
-                  <QRCodeCanvas
-                    value={bookingUrl || ''}
-                    size={140}
-                    level="H"
-                    marginSize={0}
-                    imageSettings={provider?.photoURL ? {
-                      src: provider.photoURL,
-                      height: 24,
-                      width: 24,
-                      excavate: true,
-                    } : {
-                      src: '/favicon.ico',
-                      height: 24,
-                      width: 24,
-                      excavate: true,
-                    }}
-                  />
-                </div>
-              ) : paypalUrl ? (
-                <div
-                  ref={qrPaypalRef}
-                  className="flex-shrink-0 bg-white p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm self-start"
-                >
-                  <QRCodeCanvas
-                    value={paypalUrl}
-                    size={140}
-                    level="H"
-                    marginSize={0}
-                    imageSettings={{
-                      src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="%230070BA"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="11" font-weight="bold" font-family="system-ui">PP</text></svg>'),
-                      height: 24,
-                      width: 24,
-                      excavate: true,
-                    }}
-                  />
+      {/* QR Code section (if published) - full width */}
+      {provider?.isPublished && bookingUrl && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+          {/* Tab bar */}
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 mb-5 max-w-xs">
+            <button
+              onClick={() => setActiveQRTab('booking')}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-semibold transition-all ${
+                activeQRTab === 'booking'
+                  ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+              }`}
+            >
+              <QrCode className="w-4 h-4" />
+              Réservation
+            </button>
+            <button
+              onClick={() => setActiveQRTab('paypal')}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-semibold transition-all ${
+                activeQRTab === 'paypal'
+                  ? 'bg-white dark:bg-gray-600 text-[#0070BA] shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+              }`}
+            >
+              <PaypalIcon className="w-4 h-4" />
+              PayPal
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-6">
+            {/* QR visual */}
+            {activeQRTab === 'booking' ? (
+              <div
+                ref={qrRef}
+                className="flex-shrink-0 bg-white p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm self-start"
+              >
+                <QRCodeCanvas
+                  value={bookingUrl || ''}
+                  size={160}
+                  level="H"
+                  marginSize={0}
+                  imageSettings={provider?.photoURL ? {
+                    src: provider.photoURL,
+                    height: 28,
+                    width: 28,
+                    excavate: true,
+                  } : {
+                    src: '/favicon.ico',
+                    height: 28,
+                    width: 28,
+                    excavate: true,
+                  }}
+                />
+              </div>
+            ) : paypalUrl ? (
+              <div
+                ref={qrPaypalRef}
+                className="flex-shrink-0 bg-white p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm self-start"
+              >
+                <QRCodeCanvas
+                  value={paypalUrl}
+                  size={160}
+                  level="H"
+                  marginSize={0}
+                  imageSettings={{
+                    src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="%230070BA"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="11" font-weight="bold" font-family="system-ui">PP</text></svg>'),
+                    height: 28,
+                    width: 28,
+                    excavate: true,
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="flex-shrink-0 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 self-start flex flex-col items-center justify-center" style={{ width: 192, height: 192 }}>
+                <PaypalIcon className="w-8 h-8 text-[#0070BA] mb-2" />
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">Non configuré</p>
+              </div>
+            )}
+
+            {/* Info + actions */}
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                {activeQRTab === 'booking' ? (
+                  <>
+                    <QrCode className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                    QR code de réservation
+                  </>
+                ) : (
+                  <>
+                    <PaypalIcon className="w-5 h-5 text-[#0070BA]" />
+                    QR code PayPal
+                  </>
+                )}
+              </h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                {activeQRTab === 'booking'
+                  ? 'Affichez-le dans votre établissement ou sur vos supports de communication. Vos clients scannent et réservent directement.'
+                  : paypalUrl
+                    ? 'Vos clients scannent ce QR code pour vous payer directement via PayPal.'
+                    : 'Configurez votre lien PayPal depuis l\'onglet Profil.'}
+              </p>
+
+              {(activeQRTab === 'booking' || paypalUrl) ? (
+                <div className="flex flex-wrap gap-3 mt-4">
+                  <button
+                    onClick={handleDownloadQr}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Télécharger
+                  </button>
+                  <button
+                    onClick={handlePrintQr}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Imprimer
+                  </button>
                 </div>
               ) : (
-                <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700/50 p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 self-start flex flex-col items-center justify-center" style={{ width: 172, height: 172 }}>
-                  <PaypalIcon className="w-8 h-8 text-[#0070BA] mb-2" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">Non configuré</p>
-                </div>
+                <Link
+                  href="/pro/profil?tab=profil"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#0070BA] text-white hover:bg-[#005A9E] rounded-lg text-sm font-medium transition-colors mt-4"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Configurer PayPal
+                </Link>
               )}
-
-              {/* Info + actions */}
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 text-sm">
-                  {activeQRTab === 'booking' ? (
-                    <>
-                      <QrCode className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                      QR code de réservation
-                    </>
-                  ) : (
-                    <>
-                      <PaypalIcon className="w-4 h-4 text-[#0070BA]" />
-                      QR code PayPal
-                    </>
-                  )}
-                </h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {activeQRTab === 'booking'
-                    ? 'Affichez-le dans votre établissement ou sur vos supports de communication. Vos clients scannent et réservent directement.'
-                    : paypalUrl
-                      ? 'Vos clients scannent ce QR code pour vous payer directement via PayPal.'
-                      : 'Configurez votre lien PayPal depuis l\'onglet Réseaux de votre profil.'}
-                </p>
-
-                {(activeQRTab === 'booking' || paypalUrl) ? (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <button
-                      onClick={handleDownloadQr}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-xs font-medium transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      Télécharger
-                    </button>
-                    <button
-                      onClick={handlePrintQr}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg text-xs font-medium transition-colors"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      Imprimer
-                    </button>
-                  </div>
-                ) : (
-                  <a
-                    href="/pro/profil?tab=reseaux"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0070BA] text-white hover:bg-[#005A9E] rounded-lg text-xs font-medium transition-colors mt-3"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Configurer PayPal
-                  </a>
-                )}
-
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 truncate">
-                  {activeQRTab === 'booking' ? bookingUrl : paypalUrl || ''}
-                </p>
-              </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Requirements Checklist */}
-      {!provider?.isPublished && (
-        <div className="space-y-4">
-          <h4 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-warning-500" />
-            Elements requis pour l&apos;activation
-          </h4>
-
-          {checkingRequirements ? (
-            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Verification...
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {requirementItems.map((item) => {
-                const isComplete =
-                  requirements?.completeness[item.key as keyof typeof requirements.completeness];
-                return (
-                  <li key={item.key} className="flex items-center gap-3">
-                    {isComplete ? (
-                      <CheckCircle className="w-5 h-5 text-success-500" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-gray-300 dark:text-gray-600" />
-                    )}
-                    <span
-                      className={
-                        isComplete
-                          ? 'text-gray-900 dark:text-white'
-                          : 'text-gray-500 dark:text-gray-400'
-                      }
-                    >
-                      {item.label}
-                    </span>
-                    {!isComplete && (
-                      <a
-                        href={item.href}
-                        className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
-                      >
-                        Configurer
-                      </a>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
         </div>
       )}
 
@@ -474,59 +536,6 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
           {error}
         </div>
       )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-3">
-        {provider?.isPublished ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleUnpublish}
-            disabled={loading}
-            className="text-warning-600 border-warning-300 hover:bg-warning-50 dark:text-warning-400 dark:border-warning-600 dark:hover:bg-warning-900/20"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Désactivation...
-              </>
-            ) : (
-              <>
-                <GlobeLock className="w-4 h-4 mr-2" />
-                Désactiver
-              </>
-            )}
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            onClick={handlePublish}
-            disabled={loading || !requirements?.canPublish}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Activation...
-              </>
-            ) : (
-              <>
-                <Globe className="w-4 h-4 mr-2" />
-                Activer ma page
-              </>
-            )}
-          </Button>
-        )}
-
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={checkRequirements}
-          disabled={checkingRequirements}
-        >
-          Actualiser le statut
-        </Button>
-      </div>
-
     </div>
   );
 }

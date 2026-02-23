@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input, Textarea, Select, Button } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
 import { CATEGORIES, APP_CONFIG } from '@booking-app/shared';
-import { Loader2, ExternalLink } from 'lucide-react';
+import { Loader2, ExternalLink, Copy, Check } from 'lucide-react';
 
 interface ProfileFormProps {
   onSuccess?: () => void;
@@ -78,6 +78,23 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${provider.slug}`
     : null;
 
+  const [copied, setCopied] = useState(false);
+  const handleCopyUrl = useCallback(async () => {
+    if (!publicUrl) return;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = publicUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [publicUrl]);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Business Name */}
@@ -113,24 +130,32 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
       />
 
       {/* Slug Preview */}
-      {provider?.slug && (
+      {provider?.slug && publicUrl && (
         <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-hidden">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             URL de votre page publique
           </p>
           <div className="flex items-center gap-2 min-w-0">
-            <code className="flex-1 min-w-0 text-sm text-primary-600 dark:text-primary-400 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-gray-200 dark:border-gray-700 truncate block overflow-hidden">
+            <code className="flex-1 min-w-0 text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-gray-200 dark:border-gray-700 truncate block overflow-hidden">
               {publicUrl}
             </code>
+            <button
+              type="button"
+              onClick={handleCopyUrl}
+              className="flex-shrink-0 p-2 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Copier le lien"
+            >
+              {copied ? <Check className="w-4 h-4 text-success-500" /> : <Copy className="w-4 h-4" />}
+            </button>
             {provider.isPublished && (
               <a
                 href={`/p/${provider.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
+                className="flex-shrink-0 p-2 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 title="Voir la page"
               >
-                <ExternalLink className="w-5 h-5" />
+                <ExternalLink className="w-4 h-4" />
               </a>
             )}
           </div>

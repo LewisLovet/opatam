@@ -113,14 +113,14 @@ export default function DashboardPage() {
         }
       }
 
-      // 3. Profile not published
+      // 3. Profile not published — CRITICAL
       if (!provider.isPublished) {
         alerts.push({
           id: 'unpublished',
-          message: "Votre page n'est pas encore active",
-          action: 'Activer',
+          message: "Votre page n'est pas encore visible par vos clients",
+          action: 'Activer maintenant',
           href: '/pro/profil?tab=publication',
-          priority: 'high',
+          priority: 'critical',
         });
       }
 
@@ -130,7 +130,7 @@ export default function DashboardPage() {
           id: 'no-photo',
           message: 'Ajoutez une photo de profil',
           action: 'Ajouter',
-          href: '/pro/profil?tab=photos',
+          href: '/pro/profil?tab=profil',
           priority: 'medium',
         });
       }
@@ -141,7 +141,7 @@ export default function DashboardPage() {
           id: 'no-portfolio',
           message: 'Ajoutez des photos à votre portfolio',
           action: 'Ajouter',
-          href: '/pro/profil?tab=photos',
+          href: '/pro/profil?tab=portfolio',
           priority: 'low',
         });
       }
@@ -334,12 +334,14 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Desktop: side-by-side (greeting left, buttons right) */}
+      {/* Mobile: stacked (info line then buttons line) */}
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             {greeting}, {user?.displayName?.split(' ')[0] || 'Prestataire'}
           </h1>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-600 dark:text-gray-400">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
             {provider?.businessName && (
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 {provider.businessName}
@@ -350,7 +352,7 @@ export default function DashboardPage() {
             <span>•</span>
             <Link
               href="/pro/profil?tab=publication"
-              className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 font-medium transition-colors ${
                 provider?.isPublished
                   ? 'text-success-600 dark:text-success-400 hover:text-success-700 dark:hover:text-success-300'
                   : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
@@ -366,19 +368,18 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-2">
+        {/* Buttons: stacked below on mobile/tablet, inline right on lg+ */}
+        <div className="flex flex-wrap items-center gap-2 lg:flex-shrink-0">
+          <QuickActions onCreateBooking={handleCreateBooking} onBlockSlot={handleBlockSlot} />
           {provider?.isPublished && bookingUrl && (
             <button
               onClick={() => setIsQRModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
             >
               <QrCode className="w-4 h-4" />
               <span className="hidden sm:inline">Afficher le QR code</span>
-              <span className="sm:hidden">QR code</span>
             </button>
           )}
-          <QuickActions onCreateBooking={handleCreateBooking} onBlockSlot={handleBlockSlot} />
         </div>
       </div>
 
