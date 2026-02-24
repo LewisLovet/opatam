@@ -22,6 +22,7 @@ import {
   RecentActivity,
   QuickActions,
   QRDisplayModal,
+  TeamSection,
   type Alert,
 } from './components';
 import { getStartOfWeek, getEndOfWeek, getDaysRemaining, formatFullDate } from '@/lib/date-utils';
@@ -419,6 +420,16 @@ export default function DashboardPage() {
 
       {/* Alerts */}
       <AlertCard alerts={alerts} />
+
+      {/* Team Section (Team plan only) */}
+      {isTeamPlan && members.length > 0 && (
+        <TeamSection
+          members={members}
+          locations={locations}
+          todayBookings={todayBookings}
+          providerId={provider!.id}
+        />
+      )}
 
       {/* Main Content Grid */}
       <div className="grid lg:grid-cols-2 gap-6">

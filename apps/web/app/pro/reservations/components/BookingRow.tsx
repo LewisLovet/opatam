@@ -151,12 +151,23 @@ export function BookingRow({
         <td className="px-4 py-4">
           {member ? (
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center ${!member.color ? 'bg-gray-100 dark:bg-gray-700' : ''}`}
+                style={member.color ? { backgroundColor: `${member.color}20` } : undefined}
+              >
+                <span
+                  className={`text-xs font-medium ${!member.color ? 'text-gray-600 dark:text-gray-300' : ''}`}
+                  style={member.color ? { color: member.color } : undefined}
+                >
                   {member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                 </span>
               </div>
-              <span className="text-sm text-gray-700 dark:text-gray-300">{member.name}</span>
+              <span
+                className={`text-sm font-medium ${!member.color ? 'text-gray-700 dark:text-gray-300' : ''}`}
+                style={member.color ? { color: member.color } : undefined}
+              >
+                {member.name}
+              </span>
             </div>
           ) : (
             <span className="text-sm text-gray-400 dark:text-gray-500">-</span>

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, X, Filter, User } from 'lucide-react';
 import type { Member } from '@booking-app/shared';
+import { FilterChip } from '../../calendrier/components/FilterChip';
 
 type WithId<T> = { id: string } & T;
 
@@ -269,59 +270,59 @@ export function BookingFilters({
   return (
     <div className="space-y-4">
       {/* Top row: Status + Member filters */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         {/* Status filter */}
-        <select
-          value={filters.status}
-          onChange={(e) => onChange({ status: e.target.value as BookingStatusFilter })}
-          className="px-3 py-2 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-        >
-          {STATUS_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <FilterChip
+          label="statuts"
+          value={filters.status === 'all' ? null : filters.status}
+          options={STATUS_OPTIONS.filter(o => o.value !== 'all').map((option) => ({
+            id: option.value,
+            label: option.label,
+          }))}
+          icon={<Filter className="w-4 h-4" />}
+          allLabel="Tous les"
+          onChange={(value) => onChange({ status: (value || 'all') as BookingStatusFilter })}
+        />
 
         {/* Member filter (Team plan only) */}
         {isTeamPlan && members.length > 0 && (
-          <select
-            value={filters.memberId}
-            onChange={(e) => onChange({ memberId: e.target.value })}
-            className="px-3 py-2 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-          >
-            <option value="all">Tous les membres</option>
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.name}
-              </option>
-            ))}
-          </select>
+          <FilterChip
+            label="membres"
+            value={filters.memberId === 'all' ? null : filters.memberId}
+            options={members.map((member) => ({
+              id: member.id,
+              label: member.name,
+              color: member.color,
+            }))}
+            icon={<User className="w-4 h-4" />}
+            allLabel="Tous les"
+            onChange={(value) => onChange({ memberId: value || 'all' })}
+          />
         )}
 
         {/* Reset button */}
         {hasActiveFilters && (
           <button
             onClick={onReset}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
             Réinitialiser
           </button>
         )}
       </div>
 
       {/* Bottom row: Period selector */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         {/* Period type toggle buttons */}
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-gray-50 dark:bg-gray-800/50">
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 sm:p-1 bg-gray-50 dark:bg-gray-800/50">
           {PERIOD_OPTIONS.map((option) => (
             <button
               key={option.value}
               onClick={() => handlePeriodChange(option.value)}
               className={`
-                relative px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200
-                ${option.value === 'custom' ? 'flex items-center gap-1.5' : ''}
+                relative px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all duration-200
+                ${option.value === 'custom' ? 'flex items-center gap-1' : ''}
                 ${
                   filters.periodType === option.value
                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
@@ -329,7 +330,7 @@ export function BookingFilters({
                 }
               `}
             >
-              {option.value === 'custom' && <Calendar className="w-4 h-4" />}
+              {option.value === 'custom' && <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
               {option.label}
             </button>
           ))}
@@ -337,28 +338,28 @@ export function BookingFilters({
 
         {/* Navigation arrows */}
         {canNavigate && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             <button
               onClick={() => handleNavigate(-1)}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               aria-label="Période précédente"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={() => handleNavigate(1)}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               aria-label="Période suivante"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         )}
 
         {/* Current period display */}
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 rounded-lg">
-          <Calendar className="w-4 h-4" />
-          <span className="text-sm font-medium capitalize">
+        <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 rounded-lg">
+          <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+          <span className="text-xs sm:text-sm font-medium capitalize">
             {formatDateRange(start, end, filters.periodType)}
           </span>
         </div>
@@ -370,7 +371,7 @@ export function BookingFilters({
               type="date"
               value={filters.startDate}
               onChange={(e) => handleCustomDateChange(e.target.value)}
-              className="px-3 py-2 text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               autoFocus
             />
           </div>
@@ -380,7 +381,7 @@ export function BookingFilters({
         {filters.periodOffset !== 0 && canNavigate && (
           <button
             onClick={() => onChange({ periodOffset: 0 })}
-            className="px-3 py-1.5 text-sm text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+            className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
           >
             Revenir à maintenant
           </button>

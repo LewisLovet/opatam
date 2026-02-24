@@ -323,7 +323,7 @@ export function PrestationsTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Vos prestations</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -331,12 +331,12 @@ export function PrestationsTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleOpenCreateCategory}>
-            <FolderPlus className="w-4 h-4 mr-2" />
-            Nouvelle catégorie
+          <Button variant="outline" size="sm" onClick={handleOpenCreateCategory}>
+            <FolderPlus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nouvelle catégorie</span>
           </Button>
-          <Button onClick={handleCreate}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button size="sm" onClick={handleCreate}>
+            <Plus className="w-4 h-4 mr-1.5" />
             Ajouter
           </Button>
         </div>

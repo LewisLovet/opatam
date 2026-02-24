@@ -1,7 +1,8 @@
 'use client';
 
 import type { Member } from '@booking-app/shared';
-import { X } from 'lucide-react';
+import { X, Star, User } from 'lucide-react';
+import { FilterChip } from '../../calendrier/components/FilterChip';
 
 type WithId<T> = { id: string } & T;
 
@@ -18,6 +19,14 @@ interface ReviewFiltersProps {
   isTeamPlan: boolean;
 }
 
+const RATING_OPTIONS = [
+  { id: '5', label: '5 étoiles' },
+  { id: '4', label: '4 étoiles' },
+  { id: '3', label: '3 étoiles' },
+  { id: '2', label: '2 étoiles' },
+  { id: '1', label: '1 étoile' },
+];
+
 export function ReviewFilters({
   filters,
   onChange,
@@ -28,49 +37,41 @@ export function ReviewFilters({
   const hasActiveFilters = filters.memberId !== null || filters.rating !== null;
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2">
       {/* Member filter (Team plan only) */}
       {isTeamPlan && members.length > 0 && (
-        <select
-          value={filters.memberId || 'all'}
-          onChange={(e) =>
-            onChange({ memberId: e.target.value === 'all' ? null : e.target.value })
-          }
-          className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          <option value="all">Tous les membres</option>
-          {members.map((member) => (
-            <option key={member.id} value={member.id}>
-              {member.name}
-            </option>
-          ))}
-        </select>
+        <FilterChip
+          label="membres"
+          value={filters.memberId}
+          options={members.map((member) => ({
+            id: member.id,
+            label: member.name,
+            color: member.color,
+          }))}
+          icon={<User className="w-4 h-4" />}
+          allLabel="Tous les"
+          onChange={(value) => onChange({ memberId: value })}
+        />
       )}
 
       {/* Rating filter */}
-      <select
-        value={filters.rating || 'all'}
-        onChange={(e) =>
-          onChange({ rating: e.target.value === 'all' ? null : Number(e.target.value) })
-        }
-        className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-      >
-        <option value="all">Toutes les notes</option>
-        <option value="5">5 etoiles</option>
-        <option value="4">4 etoiles</option>
-        <option value="3">3 etoiles</option>
-        <option value="2">2 etoiles</option>
-        <option value="1">1 etoile</option>
-      </select>
+      <FilterChip
+        label="notes"
+        value={filters.rating !== null ? String(filters.rating) : null}
+        options={RATING_OPTIONS}
+        icon={<Star className="w-4 h-4" />}
+        allLabel="Toutes les"
+        onChange={(value) => onChange({ rating: value ? Number(value) : null })}
+      />
 
       {/* Reset button */}
       {hasActiveFilters && (
         <button
           onClick={onReset}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
         >
-          <X className="w-4 h-4" />
-          Reinitialiser
+          <X className="w-3.5 h-3.5" />
+          Réinitialiser
         </button>
       )}
     </div>

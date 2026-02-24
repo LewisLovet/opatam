@@ -36,6 +36,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "versionCode": 2,
       "package": "com.kamerleontech.opatam",
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,

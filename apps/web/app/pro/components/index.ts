@@ -4,3 +4,4 @@ export { TodayBookings } from './TodayBookings';
 export { RecentActivity } from './RecentActivity';
 export { QuickActions } from './QuickActions';
 export { QRDisplayModal } from './QRDisplayModal';
+export { TeamSection } from './TeamSection';

@@ -51,6 +51,8 @@ export default function PlanningPage() {
     <PlanningView
       accessCode={session.accessCode}
       memberName={session.memberName}
+      memberId={session.memberId}
+      providerId={session.providerId}
       onLogout={handleLogout}
     />
   );

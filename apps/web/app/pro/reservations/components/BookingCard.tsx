@@ -252,9 +252,14 @@ export function BookingCard({
                 {formatDuration(booking.duration)}
               </span>
               {isTeamPlan && member && (
-                <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                  <User className="w-3 h-3" />
-                  {member.name}
+                <span className="flex items-center gap-1.5 text-xs font-medium">
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: member.color || '#6B7280' }}
+                  />
+                  <span style={member.color ? { color: member.color } : undefined} className={member.color ? '' : 'text-gray-500 dark:text-gray-400'}>
+                    {member.name}
+                  </span>
                 </span>
               )}
             </div>
