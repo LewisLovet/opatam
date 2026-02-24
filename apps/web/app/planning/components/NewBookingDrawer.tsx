@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft,
   Loader2,
@@ -202,6 +202,10 @@ export function NewBookingDrawer({
 
       setStep('success');
       onBookingCreated();
+      // Auto-close after showing confirmation
+      setTimeout(() => {
+        handleClose();
+      }, 2000);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
