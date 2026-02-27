@@ -16,9 +16,119 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Card, EmptyState, Text, useToast } from '../../../components';
+import { Card, EmptyState, Input, Text, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
 import { useTheme } from '../../../theme';
+
+// Delete account confirmation modal
+function DeleteAccountModal({
+  visible,
+  onCancel,
+  onConfirm,
+  isDeleting,
+  colors,
+  spacing,
+}: {
+  visible: boolean;
+  onCancel: () => void;
+  onConfirm: (password: string) => void;
+  isDeleting: boolean;
+  colors: any;
+  spacing: any;
+}) {
+  const [password, setPassword] = useState('');
+
+  if (!visible) return null;
+
+  return (
+    <View style={deleteStyles.overlay}>
+      <View style={[deleteStyles.modal, { backgroundColor: colors.background }]}>
+        <View style={[deleteStyles.iconCircle, { backgroundColor: '#fee2e2' }]}>
+          <Ionicons name="warning-outline" size={32} color="#dc2626" />
+        </View>
+        <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>
+          Supprimer votre compte
+        </Text>
+        <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.sm }}>
+          Cette action est irréversible. Toutes vos données seront supprimées définitivement.
+        </Text>
+        <View style={{ marginTop: spacing.lg, width: '100%' }}>
+          <Input
+            label="Mot de passe"
+            placeholder="Entrez votre mot de passe"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+        </View>
+        <View style={[deleteStyles.actions, { marginTop: spacing.lg }]}>
+          <Pressable
+            onPress={onCancel}
+            disabled={isDeleting}
+            style={[deleteStyles.cancelButton, { borderColor: colors.border }]}
+          >
+            <Text variant="body" style={{ fontWeight: '600' }}>Annuler</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onConfirm(password)}
+            disabled={isDeleting || !password}
+            style={[deleteStyles.deleteButton, { opacity: (!password || isDeleting) ? 0.5 : 1 }]}
+          >
+            {isDeleting ? (
+              <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>Suppression...</Text>
+            ) : (
+              <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>Supprimer</Text>
+            )}
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const deleteStyles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+    paddingHorizontal: 24,
+  },
+  modal: {
+    width: '100%',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  deleteButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#dc2626',
+    alignItems: 'center',
+  },
+});
 
 // Menu item component
 function MenuItem({
@@ -65,8 +175,10 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
-  const { userData, isAuthenticated, signOut } = useAuth();
+  const { userData, isAuthenticated, signOut, deleteAccount } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -94,6 +206,22 @@ export default function ProfileScreen() {
         },
       ]
     );
+  };
+
+  const handleDeleteAccount = async (password: string) => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount(password);
+      setShowDeleteModal(false);
+      router.replace('/(auth)');
+    } catch (error: any) {
+      showToast({
+        variant: 'error',
+        message: error.message || 'Erreur lors de la suppression',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleNotImplemented = (feature: string) => {
@@ -251,13 +379,22 @@ export default function ProfileScreen() {
           </Card>
         </View>
 
-        {/* Logout */}
+        {/* Logout & Delete */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
           <Card padding="none" shadow="sm">
             <MenuItem
               icon="log-out-outline"
               label="Se déconnecter"
               onPress={handleLogout}
+              showArrow={false}
+              danger
+              colors={colors}
+            />
+            <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+            <MenuItem
+              icon="trash-outline"
+              label="Supprimer mon compte"
+              onPress={() => setShowDeleteModal(true)}
               showArrow={false}
               danger
               colors={colors}
@@ -275,6 +412,16 @@ export default function ProfileScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Delete Account Modal */}
+      <DeleteAccountModal
+        visible={showDeleteModal}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteAccount}
+        isDeleting={isDeleting}
+        colors={colors}
+        spacing={spacing}
+      />
     </View>
   );
 }

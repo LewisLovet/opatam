@@ -198,9 +198,7 @@ export default function ClientRegisterScreen() {
       newErrors.password = 'Le mot de passe doit contenir au moins 6 caractères';
     }
 
-    if (!phone.trim()) {
-      newErrors.phone = 'Le numéro de téléphone est requis';
-    } else {
+    if (phone.trim()) {
       const cleanedPhone = phone.replace(/\s/g, '');
       if (!/^0[67]\d{8}$/.test(cleanedPhone)) {
         newErrors.phone = 'Format invalide (ex: 06 12 34 56 78)';
@@ -225,7 +223,7 @@ export default function ClientRegisterScreen() {
     setIsSubmitting(true);
 
     try {
-      const cleanedPhone = phone.replace(/\s/g, '');
+      const cleanedPhone = phone.trim() ? phone.replace(/\s/g, '') : undefined;
       await signUp(email.trim(), password, firstName.trim(), cleanedPhone);
 
       showToast({
@@ -370,7 +368,7 @@ export default function ClientRegisterScreen() {
             />
 
             <Input
-              label="Téléphone"
+              label="Téléphone (optionnel)"
               placeholder="06 12 34 56 78"
               value={phone}
               onChangeText={(text) => {

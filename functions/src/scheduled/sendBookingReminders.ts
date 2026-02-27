@@ -37,6 +37,15 @@ export const sendBookingReminders = onSchedule(
     serverTracker.startContext('sendBookingReminders');
     console.log('=== sendBookingReminders started ===');
 
+    // Skip reminders during quiet hours (23h–6h Paris time)
+    const parisHour = new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false });
+    const hour = parseInt(parisHour, 10);
+    if (hour >= 23 || hour < 6) {
+      console.log(`Quiet hours (${hour}h Paris) — skipping reminders`);
+      serverTracker.endContext();
+      return;
+    }
+
     const db = admin.firestore();
     const now = new Date();
     const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000); // now + 25 hours

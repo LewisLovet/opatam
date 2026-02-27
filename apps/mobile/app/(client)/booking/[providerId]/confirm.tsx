@@ -10,13 +10,15 @@ import {
   ScrollView,
   Pressable,
   Linking,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { bookingService } from '@booking-app/firebase';
 import { useTheme } from '../../../../theme';
-import { Text, Card, Button, EmptyState, Avatar, useToast } from '../../../../components';
+import { Text, Card, Button, EmptyState, Avatar, Input, useToast } from '../../../../components';
 import { useBooking } from '../../../../contexts';
 import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
@@ -61,8 +63,19 @@ export default function ConfirmBookingScreen() {
   const { locations } = useLocations(providerId);
   const location = locations.find((l) => l.id === locationId);
 
+  // Phone state — pre-fill from profile if available
+  const [phone, setPhone] = useState(userData?.phone || '');
+
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Phone validation
+  const isPhoneValid = (() => {
+    const cleaned = phone.replace(/[\s.\-()]/g, '');
+    if (!/^(\+)?[0-9]+$/.test(cleaned)) return false;
+    const digitCount = cleaned.replace(/\D/g, '').length;
+    return digitCount >= 8 && digitCount <= 15;
+  })();
 
   // Handle booking confirmation
   const handleConfirm = async () => {
@@ -84,9 +97,19 @@ export default function ConfirmBookingScreen() {
       return;
     }
 
+    // Validate phone
+    if (!phone.trim() || !isPhoneValid) {
+      showToast({
+        variant: 'error',
+        message: 'Veuillez entrer un numéro de téléphone valide',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      const cleanedPhone = phone.replace(/\s/g, '');
       await bookingService.createBooking({
         providerId: provider.id,
         serviceId: service.id,
@@ -97,7 +120,7 @@ export default function ConfirmBookingScreen() {
         clientInfo: {
           name: userData.displayName || 'Client',
           email: userData.email,
-          phone: userData.phone || '',
+          phone: cleanedPhone,
         },
       });
 
@@ -268,6 +291,22 @@ export default function ConfirmBookingScreen() {
           )}
         </Card>
 
+        {/* Phone field */}
+        <Card padding="lg" shadow="sm" style={{ marginTop: spacing.lg }}>
+          <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Vos coordonnées
+          </Text>
+          <Input
+            label="Téléphone"
+            placeholder="06 12 34 56 78"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            error={phone.length > 0 && !isPhoneValid ? 'Numéro de téléphone invalide' : undefined}
+          />
+        </Card>
+
         {/* Provider info */}
         <Card padding="md" shadow="sm" style={{ marginTop: spacing.lg }}>
           <View style={styles.providerRow}>
@@ -330,7 +369,7 @@ export default function ConfirmBookingScreen() {
           title={isAuthenticated ? 'Confirmer la réservation' : 'Se connecter pour réserver'}
           onPress={handleConfirm}
           loading={isSubmitting}
-          disabled={isSubmitting}
+          disabled={isSubmitting || (isAuthenticated && !isPhoneValid)}
         />
       </View>
     </View>

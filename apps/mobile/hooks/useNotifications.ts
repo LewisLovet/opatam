@@ -107,7 +107,7 @@ export function useNotifications() {
       userRepository
         .removePushToken(previousUid, currentTokenRef.current)
         .then(() => console.log('Push token removed from previous user:', previousUid))
-        .catch((err) => console.error('Error removing push token:', err));
+        .catch(() => { /* Ignore — document may have been deleted (account deletion) */ });
       currentTokenRef.current = null;
     }
 

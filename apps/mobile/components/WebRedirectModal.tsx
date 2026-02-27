@@ -1,16 +1,16 @@
 /**
  * WebRedirectModal
  * Blocking screen shown to providers whose subscription has expired.
- * Cannot be dismissed — the only action is to open the web app or sign out.
- * Shows user info (name) and a logout button.
+ * Cannot be dismissed — the only action is to refresh or sign out.
  * Shows a success/congratulation screen after account activation.
+ *
+ * NOTE: No external payment links — Apple IAP compliance (Guideline 3.1.1).
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
-  Linking,
   Pressable,
   ScrollView,
   ActivityIndicator,
@@ -70,10 +70,6 @@ export function WebRedirectModal({ visible }: WebRedirectModalProps) {
 
   if (!visible && !activated) return null;
 
-  const handleOpenWeb = () => {
-    Linking.openURL('https://opatam.com/pro/parametres?tab=abonnement');
-  };
-
   const handleRefresh = async () => {
     didRequestRefresh.current = true;
     setRefreshing(true);
@@ -119,7 +115,7 @@ export function WebRedirectModal({ visible }: WebRedirectModalProps) {
 
             <Text style={[styles.successDescription, { color: colors.textSecondary }]}>
               {displayName ? `Félicitations ${displayName} ! ` : 'Félicitations ! '}
-              Votre abonnement est maintenant actif. Profitez de toutes les fonctionnalités.
+              Votre compte est maintenant actif. Profitez de toutes les fonctionnalités.
             </Text>
 
             <Button
@@ -154,60 +150,32 @@ export function WebRedirectModal({ visible }: WebRedirectModalProps) {
           ) : null}
 
           {/* Icon */}
-          <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
-            <Ionicons name="globe-outline" size={36} color={colors.primary} />
+          <View style={[styles.iconContainer, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="time-outline" size={36} color="#D97706" />
           </View>
 
           {/* Title */}
           <Text style={[styles.title, { color: colors.text }]}>
-            Continuez sur le web
+            Période d'essai terminée
           </Text>
 
           {/* Description */}
           <Text style={[styles.description, { color: colors.textSecondary }]}>
-            Pour profiter de toutes les fonctionnalités et gérer votre compte, rendez-vous sur opatam.com depuis votre navigateur.
+            Votre période d'essai est arrivée à son terme. Pour continuer à utiliser Opatam, activez votre compte depuis votre espace web.
           </Text>
 
-          {/* Features hint */}
-          <View style={[styles.featuresBox, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
-            {[
-              { icon: 'settings-outline' as const, label: 'Gérer votre abonnement' },
-              { icon: 'document-text-outline' as const, label: 'Configurer votre page' },
-              { icon: 'apps-outline' as const, label: 'Accéder à toutes les options' },
-            ].map((feature) => (
-              <View key={feature.label} style={styles.featureRow}>
-                <Ionicons name={feature.icon} size={20} color={colors.primary} />
-                <Text style={[styles.featureText, { color: colors.text }]}>{feature.label}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Primary action */}
+          {/* Refresh status */}
           <Button
-            title="Ouvrir dans le navigateur"
-            onPress={handleOpenWeb}
+            title={refreshing ? 'Vérification...' : "J'ai activé mon compte"}
+            onPress={handleRefresh}
+            loading={refreshing}
+            disabled={refreshing}
             fullWidth
           />
 
           <Text style={[styles.hint, { color: colors.textMuted }]}>
             Vous pourrez revenir sur l'app une fois votre compte activé.
           </Text>
-
-          {/* Refresh status */}
-          <Pressable
-            onPress={handleRefresh}
-            disabled={refreshing}
-            style={[styles.refreshButton, { borderColor: colors.border }]}
-          >
-            {refreshing ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Ionicons name="refresh-outline" size={18} color={colors.primary} />
-            )}
-            <Text style={[styles.refreshText, { color: colors.primary }]}>
-              {refreshing ? 'Vérification...' : "J'ai activé mon compte"}
-            </Text>
-          </Pressable>
 
           {/* Sign out */}
           <Pressable onPress={handleSignOut} style={styles.signOutButton}>
@@ -273,43 +241,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  featuresBox: {
-    width: '100%',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-    marginBottom: 28,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  featureText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
   hint: {
     fontSize: 12,
     textAlign: 'center',
     marginTop: 16,
-  },
-  refreshButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    width: '100%',
-  },
-  refreshText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   signOutButton: {
     flexDirection: 'row',

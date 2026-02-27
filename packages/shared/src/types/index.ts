@@ -267,7 +267,7 @@ export interface Booking {
 export interface ClientInfo {
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
 }
 
 // Review types

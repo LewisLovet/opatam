@@ -19,7 +19,7 @@ interface Booking {
   clientInfo: {
     name: string;
     email: string;
-    phone: string;
+    phone?: string;
   };
 }
 

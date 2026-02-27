@@ -1,6 +1,15 @@
 {
   "indexes": [
     {
+      "collectionGroup": "pageViewsDaily",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "providerId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+
+    {
       "collectionGroup": "providers",
       "queryScope": "COLLECTION",
       "fields": [

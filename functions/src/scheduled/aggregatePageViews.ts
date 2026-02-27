@@ -42,12 +42,15 @@ export const aggregatePageViews = onSchedule(
     const yesterdayStr = getDateStr(yesterday);
 
     // Date boundaries for last7/last30 days
-    const last7Date = new Date(now);
-    last7Date.setDate(last7Date.getDate() - 7);
+    // We want the last 7 completed days (yesterday included) = days -1 to -7
+    // and last 30 completed days = days -1 to -30
+    // Since we query with >=, use day -6 and day -29 (relative to yesterday)
+    const last7Date = new Date(yesterday);
+    last7Date.setDate(last7Date.getDate() - 6);
     const last7Str = getDateStr(last7Date);
 
-    const last30Date = new Date(now);
-    last30Date.setDate(last30Date.getDate() - 30);
+    const last30Date = new Date(yesterday);
+    last30Date.setDate(last30Date.getDate() - 29);
     const last30Str = getDateStr(last30Date);
 
     // Get all providers with page views

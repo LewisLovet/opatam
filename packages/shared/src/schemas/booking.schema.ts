@@ -31,7 +31,7 @@ export const clientInfoSchema = z.object({
     .email({ message: 'Format d\'email invalide' }),
   phone: z
     .string({ required_error: 'Le numéro de téléphone est requis' })
-    .refine(isValidPhone, { message: 'Numéro de téléphone invalide' }),
+    .refine((val) => isValidPhone(val), { message: 'Numéro de téléphone invalide' }),
 });
 
 // Create booking schema

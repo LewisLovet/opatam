@@ -29,6 +29,24 @@ export class BookingService {
       throw new Error('Prestataire non trouvé');
     }
 
+    // Check subscription status
+    const { plan, subscription } = provider;
+    if (subscription) {
+      const validUntilRaw = subscription.validUntil;
+      const validDate = validUntilRaw instanceof Date
+        ? validUntilRaw
+        : (validUntilRaw as any)?.toDate?.()
+          || (validUntilRaw ? new Date(validUntilRaw as any) : null);
+
+      const isSubscriptionValid =
+        (plan !== 'trial' && subscription.status !== 'cancelled' && subscription.status !== 'incomplete') ||
+        (plan === 'trial' && validDate && new Date() <= validDate);
+
+      if (!isSubscriptionValid) {
+        throw new Error('Ce prestataire n\'accepte pas de réservations pour le moment');
+      }
+    }
+
     // Get service
     const service = await serviceRepository.getById(validated.providerId, validated.serviceId);
     if (!service) {

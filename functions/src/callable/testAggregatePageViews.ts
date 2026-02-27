@@ -55,12 +55,14 @@ export const testAggregatePageViews = onCall(
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = getDateStr(yesterday);
 
-    const last7Date = new Date(now);
-    last7Date.setDate(last7Date.getDate() - 7);
+    // Last 7 completed days = yesterday to yesterday-6
+    // Last 30 completed days = yesterday to yesterday-29
+    const last7Date = new Date(yesterday);
+    last7Date.setDate(last7Date.getDate() - 6);
     const last7Str = getDateStr(last7Date);
 
-    const last30Date = new Date(now);
-    last30Date.setDate(last30Date.getDate() - 30);
+    const last30Date = new Date(yesterday);
+    last30Date.setDate(last30Date.getDate() - 29);
     const last30Str = getDateStr(last30Date);
 
     const details: ProviderDetail[] = [];

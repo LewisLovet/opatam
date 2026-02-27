@@ -460,7 +460,7 @@ export default function ProDashboardScreen() {
   // -- Setup alerts ----------------------------------------------------------
   const setupAlerts = useMemo(() => {
     if (!provider) return [];
-    const alerts: { id: string; icon: keyof typeof Ionicons.glyphMap; message: string; url: string; color: string }[] = [];
+    const alerts: { id: string; icon: keyof typeof Ionicons.glyphMap; message: string; url?: string; color: string }[] = [];
 
     // 1. Page not published (highest priority)
     if (!provider.isPublished) {
@@ -493,26 +493,6 @@ export default function ProDashboardScreen() {
         url: 'https://opatam.com/pro/activite?tab=prestations',
         color: colors.warning,
       });
-    }
-
-    // 4. Trial expiring (≤ 7 days)
-    if (provider.subscription?.plan === 'trial' && provider.subscription?.validUntil) {
-      const validDate = provider.subscription.validUntil instanceof Date
-        ? provider.subscription.validUntil
-        : (provider.subscription.validUntil as any)?.toDate?.()
-          || new Date(provider.subscription.validUntil as any);
-      const daysLeft = Math.max(0, Math.ceil((validDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-      if (daysLeft <= 7) {
-        alerts.push({
-          id: 'trial',
-          icon: 'time-outline',
-          message: daysLeft === 0
-            ? 'Votre essai a expiré'
-            : `Essai gratuit : ${daysLeft} jour${daysLeft > 1 ? 's' : ''} restant${daysLeft > 1 ? 's' : ''}`,
-          url: 'https://opatam.com/pro/parametres?tab=abonnement',
-          color: daysLeft <= 3 ? colors.error : colors.warning,
-        });
-      }
     }
 
     return alerts;
@@ -601,14 +581,15 @@ export default function ProDashboardScreen() {
             {setupAlerts.map((alert) => (
               <Pressable
                 key={alert.id}
-                onPress={() => Linking.openURL(alert.url)}
+                onPress={alert.url ? () => Linking.openURL(alert.url!) : undefined}
+                disabled={!alert.url}
                 style={({ pressed }) => [
                   styles.alertCard,
                   {
                     backgroundColor: colors.surface,
                     borderRadius: radius.lg,
                     borderLeftColor: alert.color,
-                    opacity: pressed ? 0.85 : 1,
+                    opacity: pressed && alert.url ? 0.85 : 1,
                   },
                 ]}
               >
@@ -616,7 +597,9 @@ export default function ProDashboardScreen() {
                 <Text variant="bodySmall" style={{ flex: 1, fontWeight: '500' }} numberOfLines={1}>
                   {alert.message}
                 </Text>
-                <Ionicons name="open-outline" size={14} color={colors.textMuted} />
+                {alert.url && (
+                  <Ionicons name="open-outline" size={14} color={colors.textMuted} />
+                )}
               </Pressable>
             ))}
           </View>

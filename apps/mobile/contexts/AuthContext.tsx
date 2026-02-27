@@ -10,7 +10,10 @@ import {
   auth,
   authService,
   userRepository,
+  providerService,
   onAuthChange,
+  reauthenticateUser,
+  deleteCurrentUser,
   OAuthProvider,
   type User as FirebaseUser,
 } from '@booking-app/firebase';
@@ -32,6 +35,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, displayName: string, phone?: string) => Promise<void>;
   signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   refreshUserData: () => Promise<void>;
 }
@@ -161,6 +165,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Delete account
+  const deleteAccount = async (password: string) => {
+    if (!user?.uid) throw new Error('Aucun utilisateur connecté');
+
+    try {
+      // Reauthenticate before deletion
+      await reauthenticateUser(password);
+
+      // Delete provider data if user is a provider
+      if (userData?.providerId) {
+        await providerService.deleteProvider(userData.providerId);
+      }
+
+      // Clear userData before deleting so the push token cleanup hook
+      // won't try to update a deleted document
+      setUserData(null);
+
+      // Delete Firestore user document
+      await userRepository.delete(user.uid);
+
+      // Delete Firebase Auth account
+      await deleteCurrentUser();
+    } catch (error: any) {
+      const code = error?.code || '';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        throw new Error('Mot de passe incorrect');
+      }
+      throw new Error(error.message || 'Erreur lors de la suppression du compte');
+    }
+  };
+
   // Reset password
   const resetPassword = async (email: string) => {
     try {
@@ -193,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signInWithApple,
         signOut,
+        deleteAccount,
         resetPassword,
         refreshUserData,
       }}
