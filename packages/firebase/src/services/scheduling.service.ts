@@ -272,7 +272,9 @@ export class SchedulingService {
       if (!validated.startTime || !validated.endTime) {
         throw new Error('Les heures sont requises si ce n\'est pas une journée entière');
       }
-      if (validated.startTime >= validated.endTime) {
+      // Only compare times if same day — different days allow any time combination
+      const sameDay = validated.startDate.toDateString() === validated.endDate.toDateString();
+      if (sameDay && validated.startTime >= validated.endTime) {
         throw new Error('L\'heure de fin doit être après l\'heure de début');
       }
     }

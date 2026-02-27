@@ -35,8 +35,9 @@ interface AddressSuggestion {
   coordinates: { latitude: number; longitude: number };
 }
 
-async function searchAddress(query: string, limit = 5): Promise<AddressSuggestion[]> {
+async function searchAddress(query: string, limit = 5, type?: string): Promise<AddressSuggestion[]> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
+  if (type) params.set('type', type);
   const response = await fetch(`https://api-adresse.data.gouv.fr/search?${params}`);
   if (!response.ok) return [];
   const json = await response.json();
@@ -103,6 +104,13 @@ export default function LocationsScreen() {
   const [addressLoading, setAddressLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // City autocomplete (for cityOnly mode)
+  const [cityQuery, setCityQuery] = useState('');
+  const [citySuggestions, setCitySuggestions] = useState<AddressSuggestion[]>([]);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [cityLoading, setCityLoading] = useState(false);
+  const cityDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+
   const loadData = useCallback(async () => {
     if (!providerId) return;
     try {
@@ -144,13 +152,40 @@ export default function LocationsScreen() {
     setSuggestions([]);
   }, []);
 
-  useEffect(() => { return () => { if (debounceRef.current) clearTimeout(debounceRef.current); }; }, []);
+  // City search (municipality type)
+  const handleCitySearch = useCallback((query: string) => {
+    setCityQuery(query);
+    if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
+    if (query.length < 2) { setCitySuggestions([]); setShowCitySuggestions(false); setCityLoading(false); return; }
+    setCityLoading(true);
+    cityDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchAddress(query, 5, 'municipality');
+        setCitySuggestions(results);
+        setShowCitySuggestions(results.length > 0);
+      } catch { setCitySuggestions([]); setShowCitySuggestions(false); }
+      finally { setCityLoading(false); }
+    }, 300);
+  }, []);
+
+  const handleCitySelect = useCallback((s: AddressSuggestion) => {
+    setCityQuery(s.city);
+    setForm((p) => ({ ...p, city: s.city, postalCode: s.postcode }));
+    setShowCitySuggestions(false);
+    setCitySuggestions([]);
+  }, []);
+
+  useEffect(() => { return () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
+  }; }, []);
 
   // Modal open
   const openCreate = () => {
     setEditingId(null);
     setForm(DEFAULT_FORM);
     setAddressQuery('');
+    setCityQuery('');
     setShowModal(true);
   };
 
@@ -168,6 +203,7 @@ export default function LocationsScreen() {
       cityOnly: isCityOnly,
     });
     setAddressQuery(loc.address || '');
+    setCityQuery(loc.city || '');
     setShowModal(true);
   };
 
@@ -346,121 +382,162 @@ export default function LocationsScreen() {
               </Pressable>
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <View style={{ gap: spacing.md }}>
-                <Input label="Nom du lieu" placeholder="Ex: Salon principal" value={form.name} onChangeText={(t) => setForm((p) => ({ ...p, name: t }))} autoCapitalize="words" />
+              <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} automaticallyAdjustKeyboardInsets>
+                <View style={{ gap: spacing.md }}>
+                  <Input label="Nom du lieu" placeholder="Ex: Salon principal" value={form.name} onChangeText={(t) => setForm((p) => ({ ...p, name: t }))} autoCapitalize="words" />
 
-                {/* Type */}
-                <View>
-                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>Type</Text>
-                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                    {(['fixed', 'mobile'] as const).map((type) => (
-                      <Pressable
-                        key={type}
-                        onPress={() => setForm((p) => ({ ...p, type }))}
-                        style={[
-                          styles.typeChip,
-                          {
-                            backgroundColor: form.type === type ? colors.primaryLight : colors.surfaceSecondary,
-                            borderRadius: radius.md,
-                            borderColor: form.type === type ? colors.primary : 'transparent',
-                            padding: spacing.sm,
-                            paddingHorizontal: spacing.md,
-                          },
-                        ]}
-                      >
-                        <Ionicons name={type === 'fixed' ? 'business-outline' : 'car-outline'} size={18} color={form.type === type ? colors.primary : colors.textMuted} />
-                        <Text variant="bodySmall" color={form.type === type ? 'primary' : 'textSecondary'} style={{ marginLeft: spacing.xs, fontWeight: form.type === type ? '600' : '400' }}>
-                          {type === 'fixed' ? 'Fixe' : 'Mobile'}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-
-                {/* City only toggle (fixed type) */}
-                {form.type === 'fixed' && (
-                  <Pressable
-                    onPress={() => {
-                      const newCityOnly = !form.cityOnly;
-                      setForm((p) => ({
-                        ...p,
-                        cityOnly: newCityOnly,
-                        ...(newCityOnly ? { address: '' } : {}),
-                      }));
-                      if (newCityOnly) {
-                        setAddressQuery('');
-                        setSuggestions([]);
-                        setShowSuggestions(false);
-                      }
-                    }}
-                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs }}
-                  >
-                    <Ionicons
-                      name={form.cityOnly ? 'checkbox' : 'square-outline'}
-                      size={22}
-                      color={form.cityOnly ? colors.primary : colors.textMuted}
-                    />
-                    <View style={{ marginLeft: spacing.sm, flex: 1 }}>
-                      <Text variant="bodySmall" style={{ fontWeight: '500' }}>Ville uniquement</Text>
-                      <Text variant="caption" color="textMuted">Ne pas afficher d'adresse précise</Text>
+                  {/* Type */}
+                  <View>
+                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>Type</Text>
+                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                      {(['fixed', 'mobile'] as const).map((type) => (
+                        <Pressable
+                          key={type}
+                          onPress={() => setForm((p) => ({ ...p, type }))}
+                          style={[
+                            styles.typeChip,
+                            {
+                              backgroundColor: form.type === type ? colors.primaryLight : colors.surfaceSecondary,
+                              borderRadius: radius.md,
+                              borderColor: form.type === type ? colors.primary : 'transparent',
+                              padding: spacing.sm,
+                              paddingHorizontal: spacing.md,
+                            },
+                          ]}
+                        >
+                          <Ionicons name={type === 'fixed' ? 'business-outline' : 'car-outline'} size={18} color={form.type === type ? colors.primary : colors.textMuted} />
+                          <Text variant="bodySmall" color={form.type === type ? 'primary' : 'textSecondary'} style={{ marginLeft: spacing.xs, fontWeight: form.type === type ? '600' : '400' }}>
+                            {type === 'fixed' ? 'Fixe' : 'Mobile'}
+                          </Text>
+                        </Pressable>
+                      ))}
                     </View>
-                  </Pressable>
-                )}
+                  </View>
 
-                {/* Address autocomplete (only if not cityOnly) */}
-                {!form.cityOnly && (
-                  <View style={{ zIndex: 10 }}>
-                    <Input
-                      label="Adresse"
-                      placeholder="Saisissez une adresse..."
-                      value={addressQuery || form.address}
-                      onChangeText={handleAddressSearch}
-                      autoCapitalize="words"
-                      rightIcon={
-                        addressLoading ? (
-                          <ActivityIndicator size="small" color={colors.primary} />
-                        ) : (
-                          <Ionicons name="location-outline" size={18} color={colors.textMuted} />
-                        )
-                      }
-                    />
-                    {showSuggestions && suggestions.length > 0 && (
-                      <View style={[styles.suggestionsBox, { backgroundColor: '#FFFFFF', borderColor: colors.border, borderRadius: radius.lg }]}>
-                        {suggestions.map((s, i) => (
-                          <Pressable
-                            key={s.label + i}
-                            onPress={() => handleAddressSelect(s)}
-                            style={({ pressed }) => [styles.suggestionItem, { padding: spacing.md, backgroundColor: pressed ? colors.primaryLight : 'transparent', borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.border }]}
-                          >
-                            <Ionicons name="location" size={16} color={colors.primary} style={{ marginTop: 2 }} />
-                            <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                              <Text variant="bodySmall" style={{ fontWeight: '500' }}>{s.name}</Text>
-                              <Text variant="caption" color="textMuted">{s.postcode} {s.city}</Text>
-                            </View>
-                          </Pressable>
-                        ))}
+                  {/* City only toggle (fixed type) */}
+                  {form.type === 'fixed' && (
+                    <Pressable
+                      onPress={() => {
+                        const newCityOnly = !form.cityOnly;
+                        setForm((p) => ({
+                          ...p,
+                          cityOnly: newCityOnly,
+                          ...(newCityOnly ? { address: '' } : {}),
+                        }));
+                        if (newCityOnly) {
+                          setAddressQuery('');
+                          setSuggestions([]);
+                          setShowSuggestions(false);
+                        } else {
+                          setCityQuery('');
+                          setCitySuggestions([]);
+                          setShowCitySuggestions(false);
+                        }
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs }}
+                    >
+                      <Ionicons
+                        name={form.cityOnly ? 'checkbox' : 'square-outline'}
+                        size={22}
+                        color={form.cityOnly ? colors.primary : colors.textMuted}
+                      />
+                      <View style={{ marginLeft: spacing.sm, flex: 1 }}>
+                        <Text variant="bodySmall" style={{ fontWeight: '500' }}>Ville uniquement</Text>
+                        <Text variant="caption" color="textMuted">Ne pas afficher d'adresse précise</Text>
                       </View>
-                    )}
-                  </View>
-                )}
+                    </Pressable>
+                  )}
 
-                <View style={{ flexDirection: 'row', gap: spacing.md }}>
-                  <View style={{ flex: 1 }}>
-                    <Input label="Code postal" placeholder="75001" value={form.postalCode} onChangeText={(t) => setForm((p) => ({ ...p, postalCode: t }))} keyboardType="number-pad" />
+                  {/* Address autocomplete (only if not cityOnly) */}
+                  {!form.cityOnly && (
+                    <View style={{ zIndex: 10 }}>
+                      <Input
+                        label="Adresse"
+                        placeholder="Saisissez une adresse..."
+                        value={addressQuery || form.address}
+                        onChangeText={handleAddressSearch}
+                        autoCapitalize="words"
+                        rightIcon={
+                          addressLoading ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <Ionicons name="location-outline" size={18} color={colors.textMuted} />
+                          )
+                        }
+                      />
+                      {showSuggestions && suggestions.length > 0 && (
+                        <View style={[styles.suggestionsBox, { backgroundColor: '#FFFFFF', borderColor: colors.border, borderRadius: radius.lg }]}>
+                          {suggestions.map((s, i) => (
+                            <Pressable
+                              key={s.label + i}
+                              onPress={() => handleAddressSelect(s)}
+                              style={({ pressed }) => [styles.suggestionItem, { padding: spacing.md, backgroundColor: pressed ? colors.primaryLight : 'transparent', borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.border }]}
+                            >
+                              <Ionicons name="location" size={16} color={colors.primary} style={{ marginTop: 2 }} />
+                              <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                                <Text variant="bodySmall" style={{ fontWeight: '500' }}>{s.name}</Text>
+                                <Text variant="caption" color="textMuted">{s.postcode} {s.city}</Text>
+                              </View>
+                            </Pressable>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* City autocomplete (cityOnly mode) */}
+                  {form.cityOnly && (
+                    <View style={{ zIndex: 10 }}>
+                      <Input
+                        label="Rechercher une ville"
+                        placeholder="Saisissez une ville..."
+                        value={cityQuery}
+                        onChangeText={handleCitySearch}
+                        autoCapitalize="words"
+                        rightIcon={
+                          cityLoading ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+                          )
+                        }
+                      />
+                      {showCitySuggestions && citySuggestions.length > 0 && (
+                        <View style={[styles.suggestionsBox, { backgroundColor: '#FFFFFF', borderColor: colors.border, borderRadius: radius.lg }]}>
+                          {citySuggestions.map((s, i) => (
+                            <Pressable
+                              key={s.label + i}
+                              onPress={() => handleCitySelect(s)}
+                              style={({ pressed }) => [styles.suggestionItem, { padding: spacing.md, backgroundColor: pressed ? colors.primaryLight : 'transparent', borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.border }]}
+                            >
+                              <Ionicons name="location" size={16} color={colors.primary} style={{ marginTop: 2 }} />
+                              <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                                <Text variant="bodySmall" style={{ fontWeight: '500' }}>{s.city}</Text>
+                                <Text variant="caption" color="textMuted">{s.postcode}</Text>
+                              </View>
+                            </Pressable>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                    <View style={{ flex: 1 }}>
+                      <Input label="Code postal" placeholder="75001" value={form.postalCode} disabled />
+                    </View>
+                    <View style={{ flex: 2 }}>
+                      <Input label="Ville" placeholder="Paris" value={form.city} disabled />
+                    </View>
                   </View>
-                  <View style={{ flex: 2 }}>
-                    <Input label="Ville" placeholder="Paris" value={form.city} onChangeText={(t) => setForm((p) => ({ ...p, city: t }))} autoCapitalize="words" />
-                  </View>
+
+                  {form.type === 'mobile' && (
+                    <Input label="Rayon de déplacement (km)" placeholder="20" value={form.travelRadius} onChangeText={(t) => setForm((p) => ({ ...p, travelRadius: t }))} keyboardType="number-pad" />
+                  )}
+
+                  <Input label="Description (optionnel)" placeholder="Informations complémentaires" value={form.description} onChangeText={(t) => setForm((p) => ({ ...p, description: t }))} multiline numberOfLines={3} />
                 </View>
-
-                {form.type === 'mobile' && (
-                  <Input label="Rayon de déplacement (km)" placeholder="20" value={form.travelRadius} onChangeText={(t) => setForm((p) => ({ ...p, travelRadius: t }))} keyboardType="number-pad" />
-                )}
-
-                <Input label="Description (optionnel)" placeholder="Informations complémentaires" value={form.description} onChangeText={(t) => setForm((p) => ({ ...p, description: t }))} multiline numberOfLines={3} />
-              </View>
-            </ScrollView>
+              </ScrollView>
 
             <View style={[styles.stickyFooter, { padding: spacing.lg, paddingBottom: insets.bottom + spacing.sm, borderTopColor: colors.border }]}>
               <Button variant="primary" title={isSaving ? 'Enregistrement...' : 'Enregistrer'} onPress={handleSave} loading={isSaving} disabled={isSaving} fullWidth />

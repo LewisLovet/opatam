@@ -489,7 +489,7 @@ export default function BlockSlotScreen() {
         </Text>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, paddingBottom: spacing['3xl'] }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, paddingBottom: spacing['3xl'] }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         {/* Member selection */}
         {members.length > 1 && (
           <View style={{ marginBottom: spacing.lg }}>

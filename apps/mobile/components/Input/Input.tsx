@@ -3,7 +3,7 @@
  * TextInput with label, error state, helper text, and icons
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import {
   View,
   TextInput,
@@ -11,6 +11,9 @@ import {
   StyleSheet,
   Pressable,
   Animated,
+  InputAccessoryView,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
@@ -69,6 +72,7 @@ export function Input({
   const { colors, radius, spacing, typography } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const focusAnim = useRef(new Animated.Value(0)).current;
+  const accessoryId = useId();
 
   const handleFocus = () => {
     setIsFocused(true);
@@ -121,7 +125,8 @@ export function Input({
             borderColor: animatedBorderColor,
             borderRadius: radius.md,
             backgroundColor,
-            minHeight: multiline ? 44 * numberOfLines : 44,
+            minHeight: multiline ? 80 : 44,
+            alignItems: multiline ? 'flex-start' : 'center',
           },
           disabled && styles.disabled,
         ]}
@@ -139,7 +144,7 @@ export function Input({
               color: disabled ? colors.disabledText : colors.text,
               fontSize: typography.fontSize.base,
               paddingHorizontal: spacing.md,
-              paddingVertical: spacing.md,
+              paddingVertical: multiline ? spacing.sm : spacing.md,
             },
             leftIcon ? { paddingLeft: spacing.xs } : undefined,
             rightIcon ? { paddingRight: spacing.xs } : undefined,
@@ -158,6 +163,8 @@ export function Input({
           multiline={multiline}
           numberOfLines={numberOfLines}
           textAlignVertical={multiline ? 'top' : 'center'}
+          returnKeyType={multiline ? undefined : 'done'}
+          inputAccessoryViewID={multiline && Platform.OS === 'ios' ? accessoryId : undefined}
           {...props}
         />
 
@@ -181,6 +188,16 @@ export function Input({
         >
           {error || helperText}
         </Text>
+      )}
+
+      {multiline && Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID={accessoryId}>
+          <View style={[styles.accessoryBar, { borderTopColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
+            <Pressable onPress={() => Keyboard.dismiss()} style={styles.accessoryBtn} hitSlop={8}>
+              <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
       )}
     </View>
   );
@@ -215,5 +232,16 @@ const styles = StyleSheet.create({
   },
   helperText: {
     // Dynamic styles applied inline
+  },
+  accessoryBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  accessoryBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
 });

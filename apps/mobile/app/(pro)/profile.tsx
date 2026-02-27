@@ -1219,6 +1219,7 @@ const styles = StyleSheet.create({
   coverImage: {
     width: '100%',
     height: 160,
+    backgroundColor: '#FFFFFF',
   },
   coverPlaceholder: {
     width: '100%',
@@ -1250,6 +1251,7 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     borderWidth: 3,
+    backgroundColor: '#FFFFFF',
   },
   logoEditBadge: {
     position: 'absolute',
@@ -1342,6 +1344,7 @@ const styles = StyleSheet.create({
   portfolioImage: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#FFFFFF',
   },
   portfolioDeleteBtn: {
     position: 'absolute',

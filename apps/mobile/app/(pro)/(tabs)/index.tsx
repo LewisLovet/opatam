@@ -448,7 +448,8 @@ export default function ProDashboardScreen() {
 
   const today = new Date();
   const firstName = user?.displayName?.split(' ')[0] || provider?.businessName || 'Pro';
-  const { todayBookings, pendingBookings, weekBookingsCount, weekBookingsPerDay, locations, services, averageRating } = data;
+  const { todayBookings, pendingBookings, weekBookingsCount, weekBookingsPerDay, locations, services, members, averageRating } = data;
+  const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
 
   const todayRevenue = todayBookings
     .filter((b) => b.status === 'confirmed')
@@ -457,30 +458,41 @@ export default function ProDashboardScreen() {
   const now = new Date();
   const passedTodayCount = todayBookings.filter((b) => toDate(b.datetime).getTime() < now.getTime()).length;
 
+  // -- Team helpers -----------------------------------------------------------
+  const getMemberBookings = useCallback((memberId: string) => {
+    return todayBookings.filter((b) => b.memberId === memberId);
+  }, [todayBookings]);
+
+  const getLocationName = useCallback((locationId: string) => {
+    return locations.find((l) => l.id === locationId)?.name || '';
+  }, [locations]);
+
   // -- Setup alerts ----------------------------------------------------------
   const setupAlerts = useMemo(() => {
     if (!provider) return [];
-    const alerts: { id: string; icon: keyof typeof Ionicons.glyphMap; message: string; url?: string; color: string }[] = [];
+    const alerts: { id: string; icon: keyof typeof Ionicons.glyphMap; message: string; route?: string; action?: string; color: string }[] = [];
 
-    // 1. Page not published (highest priority)
+    // 1. Pending bookings (urgent)
+    if (pendingBookings.length > 0) {
+      alerts.push({
+        id: 'pending',
+        icon: 'time-outline',
+        message: `${pendingBookings.length} RDV en attente de confirmation`,
+        route: '/(pro)/(tabs)/calendar',
+        action: 'Voir',
+        color: colors.warning,
+      });
+    }
+
+    // 2. Page not published (critical)
     if (!provider.isPublished) {
       alerts.push({
         id: 'unpublished',
         icon: 'eye-off-outline',
-        message: 'Votre page n\'est pas encore active',
-        url: 'https://opatam.com/pro/profil?tab=publication',
+        message: 'Votre page n\'est pas encore visible',
+        route: '/(pro)/profile',
+        action: 'Activer',
         color: colors.error,
-      });
-    }
-
-    // 2. No locations
-    if (locations.length === 0) {
-      alerts.push({
-        id: 'no-location',
-        icon: 'location-outline',
-        message: 'Ajoutez un lieu pour recevoir des réservations',
-        url: 'https://opatam.com/pro/activite?tab=lieux',
-        color: colors.warning,
       });
     }
 
@@ -490,13 +502,104 @@ export default function ProDashboardScreen() {
         id: 'no-service',
         icon: 'pricetag-outline',
         message: 'Créez votre première prestation',
-        url: 'https://opatam.com/pro/activite?tab=prestations',
+        route: '/(pro)/services',
+        action: 'Créer',
         color: colors.warning,
       });
     }
 
+    // 4. No locations
+    if (locations.length === 0) {
+      alerts.push({
+        id: 'no-location',
+        icon: 'location-outline',
+        message: 'Ajoutez un lieu pour recevoir des réservations',
+        route: '/(pro)/locations',
+        action: 'Ajouter',
+        color: colors.warning,
+      });
+    }
+
+    // 5. No profile photo
+    if (!provider.photoURL) {
+      alerts.push({
+        id: 'no-photo',
+        icon: 'camera-outline',
+        message: 'Ajoutez une photo de profil',
+        route: '/(pro)/profile',
+        action: 'Ajouter',
+        color: colors.textMuted,
+      });
+    }
+
+    // 6. No portfolio photos
+    if (!provider.portfolioPhotos || provider.portfolioPhotos.length === 0) {
+      alerts.push({
+        id: 'no-portfolio',
+        icon: 'images-outline',
+        message: 'Ajoutez des photos à votre portfolio',
+        route: '/(pro)/profile',
+        action: 'Ajouter',
+        color: colors.textMuted,
+      });
+    }
+
     return alerts;
-  }, [provider, locations.length, services.length, colors]);
+  }, [provider, pendingBookings.length, locations.length, services.length, colors]);
+
+  // -- Setup progress (completeness checklist) --------------------------------
+  const setupSteps = useMemo(() => {
+    if (!provider) return [];
+    return [
+      {
+        id: 'photo',
+        label: 'Photo de profil',
+        icon: 'camera-outline' as keyof typeof Ionicons.glyphMap,
+        done: !!provider.photoURL,
+        route: '/(pro)/profile',
+      },
+      {
+        id: 'description',
+        label: 'Description',
+        icon: 'document-text-outline' as keyof typeof Ionicons.glyphMap,
+        done: !!provider.description && provider.description.length > 10,
+        route: '/(pro)/profile',
+      },
+      {
+        id: 'services',
+        label: 'Au moins 1 prestation',
+        icon: 'pricetag-outline' as keyof typeof Ionicons.glyphMap,
+        done: services.length > 0,
+        route: '/(pro)/services',
+      },
+      {
+        id: 'locations',
+        label: 'Au moins 1 lieu',
+        icon: 'location-outline' as keyof typeof Ionicons.glyphMap,
+        done: locations.length > 0,
+        route: '/(pro)/locations',
+      },
+      {
+        id: 'portfolio',
+        label: 'Photos portfolio',
+        icon: 'images-outline' as keyof typeof Ionicons.glyphMap,
+        done: !!provider.portfolioPhotos && provider.portfolioPhotos.length > 0,
+        route: '/(pro)/profile',
+      },
+      {
+        id: 'published',
+        label: 'Page publiée',
+        icon: 'globe-outline' as keyof typeof Ionicons.glyphMap,
+        done: !!provider.isPublished,
+        route: '/(pro)/profile',
+      },
+    ];
+  }, [provider, services.length, locations.length]);
+
+  const completedSteps = setupSteps.filter((s) => s.done).length;
+  const totalSteps = setupSteps.length;
+  const progressPct = totalSteps > 0 ? completedSteps / totalSteps : 0;
+  const isSetupComplete = completedSteps === totalSteps;
 
   // Find the next upcoming booking (first one not yet passed)
   const sortedToday = [...todayBookings].sort((a, b) => toDate(a.datetime).getTime() - toDate(b.datetime).getTime());
@@ -581,15 +684,15 @@ export default function ProDashboardScreen() {
             {setupAlerts.map((alert) => (
               <Pressable
                 key={alert.id}
-                onPress={alert.url ? () => Linking.openURL(alert.url!) : undefined}
-                disabled={!alert.url}
+                onPress={alert.route ? () => router.push(alert.route as any) : undefined}
+                disabled={!alert.route}
                 style={({ pressed }) => [
                   styles.alertCard,
                   {
                     backgroundColor: colors.surface,
                     borderRadius: radius.lg,
                     borderLeftColor: alert.color,
-                    opacity: pressed && alert.url ? 0.85 : 1,
+                    opacity: pressed && alert.route ? 0.85 : 1,
                   },
                 ]}
               >
@@ -597,11 +700,84 @@ export default function ProDashboardScreen() {
                 <Text variant="bodySmall" style={{ flex: 1, fontWeight: '500' }} numberOfLines={1}>
                   {alert.message}
                 </Text>
-                {alert.url && (
-                  <Ionicons name="open-outline" size={14} color={colors.textMuted} />
+                {alert.route && alert.action && (
+                  <View style={{ backgroundColor: alert.color + '18', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                    <Text variant="caption" style={{ color: alert.color, fontWeight: '600', fontSize: 11 }}>{alert.action}</Text>
+                  </View>
                 )}
               </Pressable>
             ))}
+          </View>
+        )}
+
+        {/* ── Setup Progress Card ── */}
+        {!isSetupComplete && (
+          <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg }}>
+            <Card padding="lg" shadow="sm">
+              {/* Header */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="rocket-outline" size={18} color={colors.primary} />
+                  </View>
+                  <View>
+                    <Text variant="body" style={{ fontWeight: '700' }}>Configurez votre espace</Text>
+                    <Text variant="caption" color="textSecondary">{completedSteps}/{totalSteps} étapes complétées</Text>
+                  </View>
+                </View>
+                <Text variant="h3" style={{ color: colors.primary, fontWeight: '800' }}>{Math.round(progressPct * 100)}%</Text>
+              </View>
+
+              {/* Progress bar */}
+              <View style={{ height: 6, backgroundColor: colors.surfaceSecondary, borderRadius: 3, marginBottom: spacing.md, overflow: 'hidden' }}>
+                <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.primary, width: `${progressPct * 100}%` }} />
+              </View>
+
+              {/* Checklist */}
+              <View style={{ gap: spacing.sm }}>
+                {setupSteps.map((step) => (
+                  <Pressable
+                    key={step.id}
+                    onPress={step.done ? undefined : () => router.push(step.route as any)}
+                    disabled={step.done}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <View style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 11,
+                      borderWidth: step.done ? 0 : 1.5,
+                      borderColor: colors.border,
+                      backgroundColor: step.done ? colors.success : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {step.done && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                    </View>
+                    <Ionicons name={step.icon} size={16} color={step.done ? colors.textMuted : colors.text} />
+                    <Text
+                      variant="bodySmall"
+                      style={{
+                        flex: 1,
+                        fontWeight: step.done ? '400' : '500',
+                        textDecorationLine: step.done ? 'line-through' : 'none',
+                        color: step.done ? colors.textMuted : colors.text,
+                      }}
+                    >
+                      {step.label}
+                    </Text>
+                    {!step.done && (
+                      <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            </Card>
           </View>
         )}
 
@@ -645,6 +821,94 @@ export default function ProDashboardScreen() {
             <QuickAction icon="storefront-outline" label="Aperçu" onPress={handleViewShop} />
             <QuickAction icon="globe-outline" label="En ligne" onPress={handleViewOnline} />
             <QuickAction icon="create-outline" label="Modifier" onPress={handleEditShop} />
+          </View>
+        )}
+
+        {/* ── Team Section ── */}
+        {isTeamPlan && members.length > 1 && (
+          <View style={{ marginBottom: spacing.xl }}>
+            <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <Text variant="h3">Mon équipe</Text>
+                  <View style={[styles.countBadge, { backgroundColor: colors.primaryLight, borderRadius: radius.full, marginLeft: spacing.sm }]}>
+                    <Text variant="caption" color="primary" style={{ fontWeight: '700' }}>{members.length}</Text>
+                  </View>
+                </View>
+                <Pressable onPress={() => router.push('/(pro)/members')} hitSlop={8}>
+                  <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>Gérer →</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}
+            >
+              {members.map((member) => {
+                const memberBookings = getMemberBookings(member.id);
+                const locationName = getLocationName(member.locationId);
+                const initials = member.name
+                  .split(' ')
+                  .map((w: string) => w[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2);
+                const memberColor = member.color || colors.primary;
+
+                return (
+                  <View
+                    key={member.id}
+                    style={[
+                      styles.memberCard,
+                      {
+                        backgroundColor: colors.surface,
+                        borderRadius: radius.xl,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    {/* Colored top accent */}
+                    <View style={[styles.memberAccent, { backgroundColor: memberColor, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]} />
+
+                    {/* Avatar */}
+                    <View style={{ alignItems: 'center', marginTop: -20 }}>
+                      {member.photoURL ? (
+                        <Image
+                          source={{ uri: member.photoURL }}
+                          style={[styles.memberAvatar, { borderColor: colors.surface }]}
+                        />
+                      ) : (
+                        <View style={[styles.memberAvatar, { backgroundColor: memberColor, borderColor: colors.surface }]}>
+                          <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
+                            {initials}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Info */}
+                    <Text variant="body" style={{ fontWeight: '600', textAlign: 'center', marginTop: spacing.xs }} numberOfLines={1}>
+                      {member.name}
+                    </Text>
+                    {locationName ? (
+                      <Text variant="caption" color="textMuted" style={{ textAlign: 'center', marginTop: 2 }} numberOfLines={1}>
+                        {locationName}
+                      </Text>
+                    ) : null}
+
+                    {/* Today's bookings stat */}
+                    <View style={[styles.memberStat, { backgroundColor: memberColor + '12', borderRadius: radius.lg, marginTop: spacing.sm }]}>
+                      <Ionicons name="calendar-outline" size={13} color={memberColor} />
+                      <Text variant="caption" style={{ color: memberColor, fontWeight: '600', marginLeft: 4 }}>
+                        {memberBookings.length === 0 ? 'Aucun RDV' : `${memberBookings.length} RDV`}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
           </View>
         )}
 
@@ -1222,5 +1486,34 @@ const styles = StyleSheet.create({
     height: 64,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // Team member cards
+  memberCard: {
+    width: 140,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingBottom: 14,
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  memberAccent: {
+    height: 32,
+    width: '100%',
+    marginBottom: 0,
+  },
+  memberAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
 });

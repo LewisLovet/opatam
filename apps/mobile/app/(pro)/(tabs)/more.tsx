@@ -133,7 +133,40 @@ const deleteStyles = StyleSheet.create({
 });
 
 // ---------------------------------------------------------------------------
-// Menu Item
+// Grid Item (for "Mon enseigne" section)
+// ---------------------------------------------------------------------------
+
+function GridItem({
+  icon,
+  label,
+  onPress,
+  colors,
+}: {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  colors: any;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        s.gridItem,
+        { opacity: pressed ? 0.7 : 1 },
+      ]}
+    >
+      <View style={[s.gridIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
+        <Ionicons name={icon as any} size={24} color={colors.primary} />
+      </View>
+      <Text variant="caption" color="textSecondary" style={s.gridLabel} numberOfLines={2}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Menu Item (for list sections)
 // ---------------------------------------------------------------------------
 
 function MenuItem({
@@ -277,54 +310,71 @@ export default function MoreScreen() {
           </Card>
         </View>
 
-        {/* Mon enseigne */}
+        {/* Profil public — carte mise en avant */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          <Pressable
+            onPress={() => router.push('/(pro)/profile')}
+            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+          >
+            <View style={[s.profileCard, { borderColor: provider?.isPublished ? '#BBF7D0' : colors.border }]}>
+              <View style={[s.profileCardGradient, { backgroundColor: provider?.isPublished ? '#F0FDF4' : colors.surfaceSecondary }]}>
+                <View style={s.profileCardContent}>
+                  <View style={[s.profileCardIcon, { backgroundColor: provider?.isPublished ? '#DCFCE7' : (colors.primaryLight || '#e4effa') }]}>
+                    <Ionicons name="globe-outline" size={22} color={provider?.isPublished ? '#16A34A' : colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body" style={{ fontWeight: '600' }}>Ma vitrine</Text>
+                    <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                      {provider?.isPublished ? 'Votre page est visible en ligne' : 'Votre page n\'est pas encore publiée'}
+                    </Text>
+                  </View>
+                  <View style={s.profileCardRight}>
+                    <View style={[s.statusBadge, { backgroundColor: provider?.isPublished ? '#DCFCE7' : colors.surfaceSecondary }]}>
+                      <View style={[s.statusDot, { backgroundColor: provider?.isPublished ? '#16A34A' : colors.textMuted }]} />
+                      <Text variant="caption" style={{ fontWeight: '600', color: provider?.isPublished ? '#16A34A' : colors.textMuted, fontSize: 11 }}>
+                        {provider?.isPublished ? 'En ligne' : 'Hors ligne'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginTop: 4 }} />
+                  </View>
+                </View>
+              </View>
+            </View>
+          </Pressable>
+        </View>
+
+        {/* Mon enseigne — grille d'icônes */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
             Mon enseigne
           </Text>
-          <Card padding="none" shadow="sm">
-            <MenuItem
-              icon="cut-outline"
-              label="Prestations"
-              onPress={() => router.push('/(pro)/services')}
-              colors={colors}
-            />
-            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
-            <MenuItem
-              icon="location-outline"
-              label="Lieux"
-              onPress={() => router.push('/(pro)/locations')}
-              colors={colors}
-            />
-            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
-            <MenuItem
-              icon="people-outline"
-              label="Équipe"
-              onPress={() => router.push('/(pro)/members')}
-              colors={colors}
-            />
-            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
-            <MenuItem
-              icon="time-outline"
-              label="Disponibilités"
-              onPress={() => router.push('/(pro)/availability')}
-              colors={colors}
-            />
-          </Card>
-        </View>
-
-        {/* Profil & Publication */}
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
-          <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Profil
-          </Text>
-          <Card padding="none" shadow="sm">
-            <MenuItem
-              icon="person-circle-outline"
-              label="Profil & Publication"
-              onPress={() => router.push('/(pro)/profile')}
-              colors={colors}
-            />
+          <Card padding="md" shadow="sm">
+            <View style={s.grid}>
+              <GridItem
+                icon="cut-outline"
+                label="Prestations"
+                onPress={() => router.push('/(pro)/services')}
+                colors={colors}
+              />
+              <GridItem
+                icon="location-outline"
+                label="Lieux"
+                onPress={() => router.push('/(pro)/locations')}
+                colors={colors}
+              />
+              <GridItem
+                icon="people-outline"
+                label="Équipe"
+                onPress={() => router.push('/(pro)/members')}
+                colors={colors}
+              />
+              <GridItem
+                icon="time-outline"
+                label="Disponibilités"
+                onPress={() => router.push('/(pro)/availability')}
+                colors={colors}
+              />
+            </View>
           </Card>
         </View>
 
@@ -477,6 +527,67 @@ const s = StyleSheet.create({
   },
   providerDetails: {
     flex: 1,
+  },
+  profileCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  profileCardGradient: {
+    padding: 14,
+  },
+  profileCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileCardIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  profileCardRight: {
+    alignItems: 'flex-end',
+    marginLeft: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 5,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  gridItem: {
+    alignItems: 'center',
+    width: 72,
+  },
+  gridIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridLabel: {
+    marginTop: 6,
+    textAlign: 'center',
+    fontWeight: '500',
+    fontSize: 11,
+    lineHeight: 14,
   },
   menuItem: {
     flexDirection: 'row',

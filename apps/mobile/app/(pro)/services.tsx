@@ -579,6 +579,7 @@ export default function ServicesScreen() {
               contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
+              automaticallyAdjustKeyboardInsets
             >
               <View style={{ gap: spacing.md }}>
                 <Input
