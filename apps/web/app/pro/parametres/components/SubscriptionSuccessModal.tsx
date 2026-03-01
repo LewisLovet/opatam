@@ -493,7 +493,7 @@ export function SubscriptionSuccessModal({
               >
                 {isPro
                   ? '1 agenda \u2022 1 lieu \u2022 0\u00A0% commission'
-                  : 'Jusqu\u2019\u00e0 5 agendas \u2022 5 lieux \u2022 0\u00A0% commission'}
+                  : 'Jusqu\u2019\u00e0 10 agendas \u2022 10 lieux \u2022 0\u00A0% commission'}
               </p>
             </div>
 

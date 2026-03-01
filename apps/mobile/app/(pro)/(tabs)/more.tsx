@@ -12,6 +12,7 @@ import {
   Alert,
   Image,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -413,6 +414,20 @@ export default function MoreScreen() {
             Paramètres
           </Text>
           <Card padding="none" shadow="sm">
+            <MenuItem
+              icon="card-outline"
+              label="Gérer mon abonnement"
+              onPress={() => {
+                // Open native subscription management (App Store / Play Store)
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('https://apps.apple.com/account/subscriptions');
+                } else {
+                  Linking.openURL('https://play.google.com/store/account/subscriptions');
+                }
+              }}
+              colors={colors}
+            />
+            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="calendar-outline"
               label="Paramètres de réservation"

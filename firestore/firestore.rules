@@ -9,12 +9,12 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     function isProviderAdmin(providerId) {
-      return isAuthenticated() &&
-        get(/databases/$(database)/documents/providers/$(providerId)).data.userId == request.auth.uid;
+      // Provider.id === User.id, pas besoin de get() supplémentaire
+      return isAuthenticated() && request.auth.uid == providerId;
     }
 
     function isBookingParticipant(booking) {
@@ -25,49 +25,62 @@ service cloud.firestore {
     // === USERS ===
 
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      // Chaque utilisateur ne peut lire/écrire que son propre document
+      allow read: if isOwner(userId);
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
-      allow delete: if false;
+      allow delete: if isOwner(userId);
     }
 
     // === PROVIDERS ===
 
     match /providers/{providerId} {
-      // Lecture publique (fiches prestataires)
+      // Lecture publique (fiches prestataires, recherche, booking flow)
       allow read: if true;
       allow create: if isAuthenticated();
       allow update: if isProviderAdmin(providerId);
-      allow delete: if false;
+      allow delete: if isProviderAdmin(providerId);
 
       // --- MEMBERS ---
       match /members/{memberId} {
-        // Lecture publique (pour afficher les membres sur la fiche)
+        // Lecture publique (affichage équipe + collectionGroup query par accessCode)
         allow read: if true;
         allow write: if isProviderAdmin(providerId);
       }
 
       // --- LOCATIONS ---
       match /locations/{locationId} {
+        // Lecture publique (affichage lieux sur fiche + booking flow)
         allow read: if true;
         allow write: if isProviderAdmin(providerId);
       }
 
       // --- SERVICES ---
       match /services/{serviceId} {
+        // Lecture publique (affichage prestations + booking flow)
+        allow read: if true;
+        allow write: if isProviderAdmin(providerId);
+      }
+
+      // --- SERVICE CATEGORIES ---
+      match /serviceCategories/{categoryId} {
+        // Lecture publique (groupement des prestations dans booking flow)
         allow read: if true;
         allow write: if isProviderAdmin(providerId);
       }
 
       // --- AVAILABILITY ---
       match /availability/{availabilityId} {
+        // Lecture publique (calcul créneaux disponibles côté client)
         allow read: if true;
         allow write: if isProviderAdmin(providerId);
       }
 
       // --- BLOCKED SLOTS ---
       match /blockedSlots/{slotId} {
-        allow read: if isProviderAdmin(providerId);
+        // Lecture publique : nécessaire pour le calcul des créneaux disponibles
+        // (schedulingService.getAvailableSlots lit les blockedSlots côté client)
+        allow read: if true;
         allow write: if isProviderAdmin(providerId);
       }
     }
@@ -78,10 +91,13 @@ service cloud.firestore {
       // Lecture : client concerné ou admin du provider
       allow read: if isAuthenticated() && isBookingParticipant(resource.data);
 
-      // Création : tout le monde (réservation web sans compte)
-      allow create: if true;
+      // Création : tout le monde (réservation web publique sans compte)
+      // Validation : si clientId fourni, doit correspondre à l'utilisateur authentifié
+      allow create: if
+        request.resource.data.clientId == null ||
+        (isAuthenticated() && request.resource.data.clientId == request.auth.uid);
 
-      // Mise à jour : participant uniquement
+      // Mise à jour : participant authentifié uniquement
       allow update: if isAuthenticated() && isBookingParticipant(resource.data);
 
       allow delete: if false;
@@ -90,13 +106,15 @@ service cloud.firestore {
     // === REVIEWS ===
 
     match /reviews/{reviewId} {
-      // Lecture : client ou admin
-      allow read: if isAuthenticated() && (
-        resource.data.clientId == request.auth.uid ||
-        isProviderAdmin(resource.data.providerId)
-      );
+      // Lecture publique des avis publics, lecture privée pour le client/admin
+      allow read: if
+        resource.data.isPublic == true ||
+        (isAuthenticated() && (
+          resource.data.clientId == request.auth.uid ||
+          isProviderAdmin(resource.data.providerId)
+        ));
 
-      // Création : client authentifié uniquement
+      // Création : client authentifié uniquement, doit être l'auteur
       allow create: if isAuthenticated() &&
         request.resource.data.clientId == request.auth.uid;
 
@@ -121,6 +139,13 @@ service cloud.firestore {
         allow create: if isAuthenticated();
         allow update, delete: if false;
       }
+    }
+
+    // === WEBHOOK LOGS (monitoring, écrit uniquement par Admin SDK) ===
+
+    match /_webhookLogs/{logId} {
+      allow read: if false;
+      allow write: if false;
     }
   }
 }

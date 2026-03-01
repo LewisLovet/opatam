@@ -83,10 +83,10 @@ export const SUBSCRIPTION_PLANS = {
     baseMonthlyPrice: 2990, // 29,90€ TTC
     baseYearlyPrice: 23900, // 239€ TTC/an (19,92€/mois — économie 33%)
     features: [
-      'Jusqu\'à 5 agendas synchronisés',
+      'Jusqu\'à 10 agendas synchronisés',
       '0% de commission, même en équipe',
       'Assignation des prestations par membre',
-      'Multi-lieux (jusqu\'à 5 adresses)',
+      'Multi-lieux (jusqu\'à 10 adresses)',
       'Page publique d\'équipe professionnelle',
       'Tout le plan Pro inclus',
     ],
@@ -110,8 +110,8 @@ export const SUBSCRIPTION_PLANS = {
 export const PLAN_LIMITS = {
   trial: { maxMembers: 1, maxLocations: 1 },
   solo: { maxMembers: 1, maxLocations: 1 },
-  team: { maxMembers: 5, maxLocations: 5 },
-  test: { maxMembers: 5, maxLocations: 5 },
+  team: { maxMembers: 10, maxLocations: 10 },
+  test: { maxMembers: 10, maxLocations: 10 },
 } as const;
 
 /**

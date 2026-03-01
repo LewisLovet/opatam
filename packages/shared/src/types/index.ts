@@ -120,6 +120,8 @@ export interface ProviderSettings {
   notificationPreferences?: ProviderNotificationPreferences;
 }
 
+export type PaymentSource = 'stripe' | 'apple' | 'google' | null;
+
 export interface Subscription {
   plan: ProviderPlan;
   tier: 'standard' | 'advanced';
@@ -130,6 +132,9 @@ export interface Subscription {
   status: 'trialing' | 'active' | 'past_due' | 'cancelled' | 'incomplete';
   currentPeriodEnd: Date | null;
   cancelAtPeriodEnd: boolean;
+  // Payment source tracking (for cross-platform subscription management)
+  paymentSource: PaymentSource;
+  revenuecatAppUserId: string | null;
 }
 
 // Member types (Teams)

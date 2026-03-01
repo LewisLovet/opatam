@@ -110,6 +110,8 @@ export class ProviderService {
         status: 'trialing',
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
+        paymentSource: null,
+        revenuecatAppUserId: null,
       },
       isPublished: false,
       isVerified: false,

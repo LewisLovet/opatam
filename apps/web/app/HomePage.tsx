@@ -61,7 +61,7 @@ const faqItems = [
   {
     question: 'Comment gérer les rendez-vous de mon équipe depuis un seul outil ?',
     answer:
-      'Le plan Studio (29,90\u20AC/mois) permet de gérer jusqu\'à 5 agendas synchronisés. Chaque membre a son propre planning et ses prestations. Vous pouvez leur envoyer le récap quotidien de leur journée, les notifier individuellement de chaque rendez-vous, et garder la vue d\'ensemble sur toute l\'équipe.',
+      'Le plan Studio (29,90\u20AC/mois) permet de gérer jusqu\'à 10 agendas synchronisés. Chaque membre a son propre planning et ses prestations. Vous pouvez leur envoyer le récap quotidien de leur journée, les notifier individuellement de chaque rendez-vous, et garder la vue d\'ensemble sur toute l\'équipe.',
   },
   {
     question: 'Comment réduire les rendez-vous manqués et les oublis de mes clients ?',
@@ -71,7 +71,7 @@ const faqItems = [
   {
     question: 'Combien coûte un logiciel de réservation en ligne professionnel ?',
     answer:
-      'OPATAM propose deux formules sans engagement : le plan Pro à 17,90\u20AC/mois (ou 179\u20AC/an) pour les indépendants, et le plan Studio à 29,90\u20AC/mois (ou 239\u20AC/an) pour les équipes jusqu\'à 5 personnes. Essai gratuit de 30 jours, sans carte bancaire.',
+      'OPATAM propose deux formules sans engagement : le plan Pro à 17,90\u20AC/mois (ou 179\u20AC/an) pour les indépendants, et le plan Studio à 29,90\u20AC/mois (ou 239\u20AC/an) pour les équipes jusqu\'à 10 personnes. Essai gratuit de 30 jours, sans carte bancaire.',
   },
   {
     question: 'Peut-on utiliser un agenda de réservation en ligne sur téléphone ?',
@@ -164,7 +164,7 @@ const secondaryFeatures = [
   { icon: QrCode, title: 'QR Code personnalisé', description: 'Affichez-le en boutique ou sur vos cartes — vos clients scannent et réservent' },
   { icon: Bell, title: 'Rappels automatiques', description: 'Vos clients reçoivent un rappel 24h et 2h avant leur rendez-vous' },
   { icon: BarChart3, title: 'Tableau de bord', description: 'Suivez vos réservations, vos vues et votre activité en temps réel' },
-  { icon: MapPin, title: 'Multi-lieux', description: "Gérez jusqu'à 5 adresses avec des disponibilités par lieu" },
+  { icon: MapPin, title: 'Multi-lieux', description: "Gérez jusqu'à 10 adresses avec des disponibilités par lieu" },
   { icon: Mail, title: 'Récap quotidien', description: "Recevez chaque soir l'agenda du lendemain, pour vous et votre équipe" },
   { icon: Smartphone, title: 'App mobile', description: 'Gérez vos rendez-vous depuis votre téléphone, où que vous soyez' },
   { icon: Shield, title: 'Données sécurisées', description: 'Hébergement en Europe, conforme RGPD, vos données vous appartiennent' },
@@ -1028,7 +1028,7 @@ export default function LandingPage() {
                               </p>
                             )}
                             <p className="text-xs text-primary-700 dark:text-primary-300 font-semibold mt-1.5">
-                              Jusqu&apos;à 5 membres inclus
+                              Jusqu&apos;à 10 membres inclus
                             </p>
                             <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-2">
                               Sans engagement

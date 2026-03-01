@@ -60,9 +60,12 @@ interface WizardData {
   description: string;
   // Step 2 — Location
   locationName: string;
+  locationType: 'fixed' | 'mobile';
+  cityOnly: boolean;
   address: string;
   postalCode: string;
   city: string;
+  geopoint: { latitude: number; longitude: number } | null;
   // Step 3 — Service
   serviceName: string;
   serviceDuration: number;
@@ -93,9 +96,12 @@ const DEFAULT_DATA: WizardData = {
   category: '',
   description: '',
   locationName: '',
+  locationType: 'fixed',
+  cityOnly: false,
   address: '',
   postalCode: '',
   city: '',
+  geopoint: null,
   serviceName: '',
   serviceDuration: 60,
   servicePrice: '',
@@ -252,8 +258,9 @@ interface AddressSuggestion {
 
 const BAN_API_URL = 'https://api-adresse.data.gouv.fr/search';
 
-async function searchAddress(query: string, limit = 5): Promise<AddressSuggestion[]> {
+async function searchAddress(query: string, limit = 5, type?: string): Promise<AddressSuggestion[]> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
+  if (type) params.set('type', type);
   const response = await fetch(`${BAN_API_URL}?${params}`);
   if (!response.ok) return [];
   const json = await response.json();
@@ -292,6 +299,13 @@ export default function ProRegisterScreen() {
   const [addressLoading, setAddressLoading] = useState(false);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const addressDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // City autocomplete (for cityOnly mode)
+  const [cityQuery, setCityQuery] = useState('');
+  const [citySuggestions, setCitySuggestions] = useState<AddressSuggestion[]>([]);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const cityDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -353,13 +367,50 @@ export default function ProRegisterScreen() {
     updateField('address', suggestion.name);
     updateField('city', suggestion.city);
     updateField('postalCode', suggestion.postcode);
+    updateField('geopoint', suggestion.coordinates);
     setShowAddressSuggestions(false);
     setAddressSuggestions([]);
+  }, []);
+
+  // City search (municipality type — for cityOnly mode)
+  const handleCitySearch = useCallback((query: string) => {
+    setCityQuery(query);
+    if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
+    if (query.length < 2) {
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
+      setCityLoading(false);
+      return;
+    }
+    setCityLoading(true);
+    cityDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchAddress(query, 5, 'municipality');
+        setCitySuggestions(results);
+        setShowCitySuggestions(results.length > 0);
+      } catch {
+        setCitySuggestions([]);
+        setShowCitySuggestions(false);
+      } finally {
+        setCityLoading(false);
+      }
+    }, 300);
+  }, []);
+
+  const handleCitySelect = useCallback((suggestion: AddressSuggestion) => {
+    setCityQuery(suggestion.city);
+    updateField('city', suggestion.city);
+    updateField('postalCode', suggestion.postcode);
+    updateField('address', '');
+    updateField('geopoint', suggestion.coordinates);
+    setShowCitySuggestions(false);
+    setCitySuggestions([]);
   }, []);
 
   useEffect(() => {
     return () => {
       if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+      if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
     };
   }, []);
 
@@ -375,8 +426,10 @@ export default function ProRegisterScreen() {
         return null;
       case 1:
         if (!data.locationName.trim()) return 'Le nom du lieu est requis';
-        if (!data.city.trim()) return 'La ville est requise';
-        if (!data.postalCode.trim()) return 'Le code postal est requis';
+        if (!data.city.trim() || !data.postalCode.trim())
+          return data.cityOnly
+            ? 'Veuillez sélectionner une ville dans les suggestions'
+            : 'Veuillez sélectionner une adresse dans les suggestions';
         return null;
       case 2:
         if (!data.serviceName.trim()) return 'Le nom de la prestation est requis';
@@ -461,14 +514,14 @@ export default function ProRegisterScreen() {
 
       const location = await locationService.createLocation(provider.id, {
         name: data.locationName.trim(),
-        address: data.address.trim() || '',
+        address: data.cityOnly ? '' : data.address.trim(),
         postalCode: data.postalCode.trim(),
         city: data.city.trim(),
         country: 'France',
-        geopoint: null,
+        geopoint: data.geopoint,
         description: null,
-        type: 'fixed',
-        travelRadius: null,
+        type: data.locationType,
+        travelRadius: data.locationType === 'mobile' ? 20 : null,
         photoURLs: [],
       });
 
@@ -677,80 +730,233 @@ export default function ProRegisterScreen() {
         autoCapitalize="words"
       />
 
-      {/* Address with autocomplete */}
-      <View style={{ zIndex: 10 }}>
-        <Input
-          label="Adresse"
-          placeholder="Saisissez une adresse..."
-          value={addressQuery || data.address}
-          onChangeText={handleAddressSearch}
-          autoCapitalize="words"
-          rightIcon={
-            addressLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Ionicons name="location-outline" size={18} color={colors.textMuted} />
-            )
-          }
-        />
-        {showAddressSuggestions && addressSuggestions.length > 0 && (
-          <View
-            style={[
-              styles.suggestionsContainer,
-              {
-                backgroundColor: '#FFFFFF',
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-              },
-            ]}
-          >
-            {addressSuggestions.map((suggestion, index) => (
+      {/* Location type selector */}
+      <View>
+        <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+          Type de lieu
+        </Text>
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {([
+            { value: 'fixed' as const, label: 'Fixe', icon: 'storefront-outline' as const },
+            { value: 'mobile' as const, label: 'Mobile', icon: 'car-outline' as const },
+          ]).map((opt) => {
+            const isSelected = data.locationType === opt.value;
+            return (
               <Pressable
-                key={suggestion.label + index}
-                onPress={() => handleAddressSelect(suggestion)}
-                style={({ pressed }) => [
-                  styles.suggestionItem,
+                key={opt.value}
+                onPress={() => {
+                  updateField('locationType', opt.value);
+                  if (opt.value === 'mobile') {
+                    updateField('cityOnly', true);
+                  }
+                }}
+                style={[
+                  styles.typeOption,
                   {
-                    padding: spacing.md,
-                    backgroundColor: pressed ? colors.primaryLight : 'transparent',
-                    borderTopWidth: index > 0 ? 1 : 0,
-                    borderTopColor: colors.border,
+                    flex: 1,
+                    borderColor: isSelected ? colors.primary : colors.border,
+                    backgroundColor: isSelected ? (colors.primaryLight || '#e4effa') : colors.surface,
+                    borderRadius: radius.lg,
                   },
                 ]}
               >
-                <Ionicons name="location" size={16} color={colors.primary} style={{ marginTop: 2 }} />
-                <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                  <Text variant="bodySmall" style={{ fontWeight: '500' }}>{suggestion.name}</Text>
-                  <Text variant="caption" color="textMuted">
-                    {suggestion.postcode} {suggestion.city}
-                  </Text>
-                </View>
+                <Ionicons
+                  name={opt.icon}
+                  size={20}
+                  color={isSelected ? colors.primary : colors.textMuted}
+                />
+                <Text
+                  variant="bodySmall"
+                  style={{
+                    fontWeight: '600',
+                    marginTop: 4,
+                    color: isSelected ? colors.primary : colors.text,
+                  }}
+                >
+                  {opt.label}
+                </Text>
               </Pressable>
-            ))}
-          </View>
-        )}
+            );
+          })}
+        </View>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: spacing.md }}>
-        <View style={{ flex: 1 }}>
-          <Input
-            label="Code postal"
-            placeholder="75001"
-            value={data.postalCode}
-            onChangeText={(t) => updateField('postalCode', t)}
-            keyboardType="number-pad"
+      {/* City only toggle (only for fixed type) */}
+      {data.locationType === 'fixed' && (
+        <Pressable
+          onPress={() => {
+            const newVal = !data.cityOnly;
+            updateField('cityOnly', newVal);
+            // Reset address fields when switching
+            if (newVal) {
+              updateField('address', '');
+              setAddressQuery('');
+              setAddressSuggestions([]);
+              setShowAddressSuggestions(false);
+            } else {
+              setCityQuery('');
+              setCitySuggestions([]);
+              setShowCitySuggestions(false);
+            }
+            updateField('city', '');
+            updateField('postalCode', '');
+            updateField('geopoint', null);
+          }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            paddingVertical: spacing.xs,
+          }}
+        >
+          <Ionicons
+            name={data.cityOnly ? 'checkbox' : 'square-outline'}
+            size={22}
+            color={data.cityOnly ? colors.primary : colors.textMuted}
           />
+          <Text variant="bodySmall" color="textSecondary">
+            Ville uniquement (sans adresse précise)
+          </Text>
+        </Pressable>
+      )}
+
+      {/* Address autocomplete (only if NOT cityOnly) */}
+      {!data.cityOnly && (
+        <View style={{ zIndex: 10 }}>
+          <Input
+            label="Adresse"
+            placeholder="Saisissez une adresse..."
+            value={addressQuery || data.address}
+            onChangeText={handleAddressSearch}
+            autoCapitalize="words"
+            rightIcon={
+              addressLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="location-outline" size={18} color={colors.textMuted} />
+              )
+            }
+          />
+          {showAddressSuggestions && addressSuggestions.length > 0 && (
+            <View
+              style={[
+                styles.suggestionsContainer,
+                {
+                  backgroundColor: '#FFFFFF',
+                  borderColor: colors.border,
+                  borderRadius: radius.lg,
+                },
+              ]}
+            >
+              {addressSuggestions.map((suggestion, index) => (
+                <Pressable
+                  key={suggestion.label + index}
+                  onPress={() => handleAddressSelect(suggestion)}
+                  style={({ pressed }) => [
+                    styles.suggestionItem,
+                    {
+                      padding: spacing.md,
+                      backgroundColor: pressed ? colors.primaryLight : 'transparent',
+                      borderTopWidth: index > 0 ? 1 : 0,
+                      borderTopColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Ionicons name="location" size={16} color={colors.primary} style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                    <Text variant="bodySmall" style={{ fontWeight: '500' }}>{suggestion.name}</Text>
+                    <Text variant="caption" color="textMuted">
+                      {suggestion.postcode} {suggestion.city}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
-        <View style={{ flex: 2 }}>
+      )}
+
+      {/* City autocomplete (cityOnly or mobile mode) */}
+      {data.cityOnly && (
+        <View style={{ zIndex: 10 }}>
           <Input
             label="Ville"
-            placeholder="Paris"
-            value={data.city}
-            onChangeText={(t) => updateField('city', t)}
+            placeholder="Rechercher une ville..."
+            value={cityQuery}
+            onChangeText={handleCitySearch}
             autoCapitalize="words"
+            rightIcon={
+              cityLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+              )
+            }
           />
+          {showCitySuggestions && citySuggestions.length > 0 && (
+            <View
+              style={[
+                styles.suggestionsContainer,
+                {
+                  backgroundColor: '#FFFFFF',
+                  borderColor: colors.border,
+                  borderRadius: radius.lg,
+                },
+              ]}
+            >
+              {citySuggestions.map((suggestion, index) => (
+                <Pressable
+                  key={suggestion.label + index}
+                  onPress={() => handleCitySelect(suggestion)}
+                  style={({ pressed }) => [
+                    styles.suggestionItem,
+                    {
+                      padding: spacing.md,
+                      backgroundColor: pressed ? colors.primaryLight : 'transparent',
+                      borderTopWidth: index > 0 ? 1 : 0,
+                      borderTopColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Ionicons name="location" size={16} color={colors.primary} style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                    <Text variant="bodySmall" style={{ fontWeight: '500' }}>{suggestion.city}</Text>
+                    <Text variant="caption" color="textMuted">
+                      {suggestion.postcode}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
-      </View>
+      )}
+
+      {/* Postal code & city — read-only, filled by API */}
+      {(data.postalCode || data.city) && (
+        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+          <View style={{ flex: 1 }}>
+            <Input
+              label="Code postal"
+              placeholder="—"
+              value={data.postalCode}
+              onChangeText={() => {}}
+              disabled
+              keyboardType="number-pad"
+            />
+          </View>
+          <View style={{ flex: 2 }}>
+            <Input
+              label="Ville"
+              placeholder="—"
+              value={data.city}
+              onChangeText={() => {}}
+              disabled
+              autoCapitalize="words"
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 
@@ -899,6 +1105,9 @@ export default function ProRegisterScreen() {
             <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>Lieu</Text>
           </View>
           <Text variant="body" style={{ fontWeight: '500' }}>{data.locationName}</Text>
+          <Text variant="bodySmall" color="textSecondary">
+            {data.locationType === 'mobile' ? 'Mobile' : 'Fixe'}{data.cityOnly ? ' — ville uniquement' : ''}
+          </Text>
           <Text variant="bodySmall" color="textSecondary">
             {[data.address, data.postalCode, data.city].filter(Boolean).join(', ')}
           </Text>
@@ -1460,5 +1669,11 @@ const styles = StyleSheet.create({
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+  },
+  typeOption: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderWidth: 1.5,
   },
 });

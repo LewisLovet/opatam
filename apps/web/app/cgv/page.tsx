@@ -37,8 +37,8 @@ export default function CGVPage() {
 
               <h3 className="mt-4 mb-2 font-semibold text-gray-900">Plan Studio</h3>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Mensuel : 29,90 &euro;/mois (jusqu&apos;&agrave; 5 membres inclus)</li>
-                <li>Annuel : 239 &euro;/an (jusqu&apos;&agrave; 5 membres inclus)</li>
+                <li>Mensuel : 29,90 &euro;/mois (jusqu&apos;&agrave; 10 membres inclus)</li>
+                <li>Annuel : 239 &euro;/an (jusqu&apos;&agrave; 10 membres inclus)</li>
               </ul>
 
               <p className="mt-3">Les tarifs sont indiqués en euros TTC. KamerleonTech étant auto-entrepreneur, la TVA n&apos;est pas applicable (article 293 B du CGI).</p>

@@ -255,8 +255,8 @@ function PlanCard({
   const displayPrice = formatPrice(price.unitAmount);
   const intervalLabel = price.interval === 'year' ? '/an' : '/mois';
 
-  // Team plan includes up to 5 members
-  const memberPriceLabel = plan === 'team' ? 'Jusqu\u2019à 5 membres inclus' : null;
+  // Team plan includes up to 10 members
+  const memberPriceLabel = plan === 'team' ? 'Jusqu\u2019à 10 membres inclus' : null;
 
   return (
     <div

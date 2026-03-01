@@ -25,13 +25,13 @@ const CONTEXT_CONFIG = {
     title: 'Développez votre équipe',
     subtitle: 'Coordonnez plusieurs professionnels et boostez votre activité.',
     currentLimit: '1 membre',
-    upgradeLimit: 'jusqu\'à 5 membres',
+    upgradeLimit: 'jusqu\'à 10 membres',
   },
   locations: {
     title: 'Ouvrez de nouveaux lieux',
     subtitle: 'Gérez plusieurs adresses et touchez plus de clients.',
     currentLimit: '1 lieu',
-    upgradeLimit: 'jusqu\'à 5 lieux',
+    upgradeLimit: 'jusqu\'à 10 lieux',
   },
 };
 
@@ -39,12 +39,12 @@ const STUDIO_HIGHLIGHTS = [
   {
     icon: Users,
     title: 'Agendas synchronisés',
-    description: 'Jusqu\'à 5 professionnels avec planning coordonné',
+    description: 'Jusqu\'à 10 professionnels avec planning coordonné',
   },
   {
     icon: MapPin,
     title: 'Multi-lieux',
-    description: 'Gérez jusqu\'à 5 adresses différentes',
+    description: 'Gérez jusqu\'à 10 adresses différentes',
   },
   {
     icon: Calendar,

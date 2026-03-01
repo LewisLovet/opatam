@@ -390,10 +390,10 @@ function generateWelcomeHtml(planName: 'Pro' | 'Studio'): string {
       'Prêt en 5 minutes, sans formation',
     ],
     Studio: [
-      'Jusqu\'à 5 agendas synchronisés',
+      'Jusqu\'à 10 agendas synchronisés',
       '0% de commission, même en équipe',
       'Assignation des prestations par membre',
-      'Multi-lieux (jusqu\'à 5 adresses)',
+      'Multi-lieux (jusqu\'à 10 adresses)',
       'Page publique d\'équipe professionnelle',
       'Tout le plan Pro inclus',
     ],

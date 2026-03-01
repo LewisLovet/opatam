@@ -386,10 +386,9 @@ export class SchedulingService {
         const dayEnd = new Date(currentDate);
         dayEnd.setDate(dayEnd.getDate() + 1);
 
-        const existingBookings = await bookingRepository.getUpcoming(dayStart, dayEnd);
+        const existingBookings = await bookingRepository.getUpcomingByProvider(providerId, dayStart, dayEnd);
         const relevantBookings = existingBookings.filter(
           (b) =>
-            b.providerId === providerId &&
             b.memberId === memberId &&
             (b.status === 'confirmed' || b.status === 'pending')
         );
@@ -503,11 +502,10 @@ export class SchedulingService {
     }
 
     // Check for existing bookings
-    const existingBookings = await bookingRepository.getUpcoming(datetime, endDatetime);
+    const existingBookings = await bookingRepository.getUpcomingByProvider(providerId, datetime, endDatetime);
     const hasConflict = existingBookings.some(
       (b) =>
         b.id !== excludeBookingId && // Exclure le booking actuel (pour reschedule)
-        b.providerId === providerId &&
         b.memberId === memberId &&
         (b.status === 'confirmed' || b.status === 'pending') &&
         this.timesOverlap(datetime, endDatetime, b.datetime, b.endDatetime)

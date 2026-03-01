@@ -155,6 +155,12 @@ async function handleCheckoutCompleted(
   const existingData = providerDoc.data();
   const existingPlan = existingData?.plan ?? 'solo';
   const plan = stripeSubscription.metadata?.plan || existingPlan;
+
+  // Log if we're overriding an IAP subscription (user chose to pay via Stripe instead)
+  const existingSource = existingData?.subscription?.paymentSource;
+  if (existingSource === 'apple' || existingSource === 'google') {
+    console.log(`[STRIPE-WEBHOOK] Note: Provider ${providerId} switching from ${existingSource} IAP to Stripe`);
+  }
   console.log(`[STRIPE-WEBHOOK] Plan from metadata: ${stripeSubscription.metadata?.plan ?? 'MISSING'}, existing: ${existingPlan} → using: ${plan}`);
 
   const rawEnd = getSubscriptionPeriodEnd(stripeSubscription);
@@ -188,6 +194,7 @@ async function handleCheckoutCompleted(
     'subscription.stripeSubscriptionId': subscriptionId,
     'subscription.cancelAtPeriodEnd': stripeSubscription.cancel_at_period_end,
     'subscription.memberCount': activeMemberCount,
+    'subscription.paymentSource': 'stripe',
     updatedAt: FieldValue.serverTimestamp(),
   };
 
@@ -216,10 +223,10 @@ async function handleCheckoutCompleted(
           'Prêt en 5 minutes, sans formation',
         ],
         Studio: [
-          'Jusqu\'à 5 agendas synchronisés',
+          'Jusqu\'à 10 agendas synchronisés',
           '0% de commission, même en équipe',
           'Assignation des prestations par membre',
-          'Multi-lieux (jusqu\'à 5 adresses)',
+          'Multi-lieux (jusqu\'à 10 adresses)',
           'Page publique d\'équipe professionnelle',
           'Tout le plan Pro inclus',
         ],
