@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Modal,
   ModalHeader,
@@ -9,11 +9,14 @@ import {
   Button,
   Input,
   ConfirmDialog,
+  Avatar,
   useToast,
 } from '@/components/ui';
-import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Tag, ChevronRight, ChevronLeft, User, MapPin, Key, Check } from 'lucide-react';
+import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Tag, ChevronRight, ChevronLeft, User, MapPin, Key, Check, Camera, X } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { uploadFile, storagePaths, memberService } from '@booking-app/firebase';
 import type { Member, Location, Service } from '@booking-app/shared';
-import { MEMBER_COLORS } from '@booking-app/shared';
+import { MEMBER_COLORS, APP_CONFIG } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -38,6 +41,7 @@ export interface MemberFormData {
   color?: string;
   locationId: string; // NOUVEAU MODÈLE: 1 membre = 1 lieu
   serviceIds: string[];
+  photoFile?: File | null;
 }
 
 type TabId = 'info' | 'assignments' | 'code';
@@ -56,6 +60,7 @@ export function MemberModal({
   upcomingBookingsCount = 0,
 }: MemberModalProps) {
   const toast = useToast();
+  const { provider } = useAuth();
   const isEditing = !!member;
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -65,6 +70,12 @@ export function MemberModal({
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [currentCode, setCurrentCode] = useState<string>('');
+
+  // Photo upload
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // For editing: current tab | For creation: current step (1 or 2)
   const [activeTab, setActiveTab] = useState<TabId>('info');
@@ -119,6 +130,7 @@ export function MemberModal({
           serviceIds: memberServiceIds,
         });
         setCurrentCode(member.accessCode);
+        setPhotoURL(member.photoURL || null);
         setActiveTab('info');
       } else {
         // Default to first active location for new members
@@ -136,6 +148,8 @@ export function MemberModal({
           serviceIds: availableServiceIds,
         });
         setCurrentCode('');
+        setPhotoURL(null);
+        setPendingPhotoFile(null);
         setCreationStep(1);
       }
       setErrors({});
@@ -161,6 +175,61 @@ export function MemberModal({
       return prev;
     });
   }, [isOpen, formData.locationId, services]);
+
+  // Photo upload handlers
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !provider) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image');
+      return;
+    }
+    if (file.size > APP_CONFIG.maxMemberPhotoSize) {
+      toast.error("L'image ne doit pas dépasser 5 Mo");
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      if (member) {
+        // Editing: upload immediately
+        const path = `${storagePaths.memberPhotos(provider.id, member.id)}/${Date.now()}_${file.name}`;
+        const url = await uploadFile(path, file, { contentType: file.type });
+        await memberService.updatePhoto(provider.id, member.id, url);
+        setPhotoURL(url);
+        toast.success('Photo mise à jour');
+      } else {
+        // Creating: store file for upload after creation
+        setPhotoURL(URL.createObjectURL(file));
+        setPendingPhotoFile(file);
+      }
+    } catch {
+      toast.error('Erreur lors du téléchargement');
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!provider) return;
+    if (member) {
+      setUploadingPhoto(true);
+      try {
+        await memberService.updatePhoto(provider.id, member.id, '');
+        setPhotoURL(null);
+        toast.success('Photo supprimée');
+      } catch {
+        toast.error('Erreur lors de la suppression');
+      } finally {
+        setUploadingPhoto(false);
+      }
+    } else {
+      setPhotoURL(null);
+      setPendingPhotoFile(null);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -247,7 +316,7 @@ export function MemberModal({
 
     setLoading(true);
     try {
-      await onSave(formData);
+      await onSave({ ...formData, photoFile: pendingPhotoFile });
       onClose();
     } catch (error) {
       console.error('Save error:', error);
@@ -337,6 +406,59 @@ export function MemberModal({
   // JSX for Info section (inline to preserve focus)
   const infoContent = (
     <div className="space-y-4">
+      {/* Avatar upload */}
+      <div className="flex items-center gap-4">
+        <div className="relative">
+          {photoURL ? (
+            <img
+              src={photoURL}
+              alt="Avatar"
+              className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
+            />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: formData.color || '#6366F1' }}
+            >
+              <Camera className="w-6 h-6 text-white" />
+            </div>
+          )}
+          {uploadingPhoto && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+              <Loader2 className="w-5 h-5 text-white animate-spin" />
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoChange}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingPhoto}
+            className="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium"
+          >
+            {photoURL ? 'Changer la photo' : 'Ajouter une photo'}
+          </button>
+          {photoURL && (
+            <button
+              type="button"
+              onClick={handleRemovePhoto}
+              disabled={uploadingPhoto}
+              className="text-xs text-error-600 dark:text-error-400 hover:underline"
+            >
+              Supprimer
+            </button>
+          )}
+          <p className="text-xs text-gray-400 dark:text-gray-500">Facultatif · Max 5 Mo</p>
+        </div>
+      </div>
+
       {/* Name */}
       <Input
         label="Nom"

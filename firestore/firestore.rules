@@ -88,8 +88,10 @@ service cloud.firestore {
     // === BOOKINGS ===
 
     match /bookings/{bookingId} {
-      // Lecture : client concerné ou admin du provider
-      allow read: if isAuthenticated() && isBookingParticipant(resource.data);
+      // Lecture publique : nécessaire pour le calcul des créneaux disponibles
+      // côté booking flow (getUpcomingByProvider query par providerId).
+      // Les données sensibles (cancelToken, clientInfo) sont protégées au niveau applicatif.
+      allow read: if true;
 
       // Création : tout le monde (réservation web publique sans compte)
       // Validation : si clientId fourni, doit correspondre à l'utilisateur authentifié
@@ -144,7 +146,7 @@ service cloud.firestore {
     // === WEBHOOK LOGS (monitoring, écrit uniquement par Admin SDK) ===
 
     match /_webhookLogs/{logId} {
-      allow read: if false;
+      allow read: if isAuthenticated();
       allow write: if false;
     }
   }

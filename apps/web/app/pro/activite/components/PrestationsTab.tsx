@@ -246,12 +246,16 @@ export function PrestationsTab() {
 
   // ─── Render helpers ─────────────────────────────────────────────
 
+  const activeMembers = members.filter((m) => m.isActive);
+
   const renderServiceList = (list: WithId<Service>[]) => (
     <div className="space-y-3">
       {list.map((service, index) => (
         <ServiceCard
           key={service.id}
           service={service}
+          members={activeMembers}
+          allMembers={activeMembers}
           onToggleActive={handleToggleActive}
           onClick={() => handleEdit(service)}
           onMoveUp={() => handleMove(service.id, 'up')}

@@ -35,7 +35,7 @@ import {
   Loader,
   Text,
 } from '../../../components';
-import { useAuth, useProvider } from '../../../contexts';
+import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
 import { useProviderDashboard, useProviderStats, useReviews } from '../../../hooks';
 import { useTheme } from '../../../theme';
 
@@ -332,6 +332,7 @@ export default function ProDashboardScreen() {
   const router = useRouter();
   const { provider, providerId, refreshProvider } = useProvider();
   const { user } = useAuth();
+  const sub = useSubscriptionStatus();
   const { data, isLoading, refresh } = useProviderDashboard(providerId, provider?.rating?.average);
   const { stats } = useProviderStats(providerId);
   const { reviews } = useReviews(providerId ?? undefined);
@@ -678,6 +679,25 @@ export default function ProDashboardScreen() {
           <RefreshControl refreshing={isLoading} onRefresh={handleRefresh} tintColor={colors.primary} />
         }
       >
+        {/* ── Subscription expired banner ── */}
+        {sub.needsSubscription && (
+          <Pressable
+            onPress={() => router.push('/(pro)/paywall')}
+            style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}
+          >
+            <View style={{ backgroundColor: '#FEF2F2', borderRadius: radius.lg, borderWidth: 1, borderColor: '#FECACA', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Ionicons name="alert-circle" size={22} color="#DC2626" />
+              <View style={{ flex: 1 }}>
+                <Text variant="body" style={{ fontWeight: '600', color: '#991B1B' }}>Abonnement requis</Text>
+                <Text variant="caption" style={{ color: '#B91C1C', marginTop: 2 }}>
+                  Abonnez-vous pour continuer à utiliser toutes les fonctionnalités.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#DC2626" />
+            </View>
+          </Pressable>
+        )}
+
         {/* ── Setup Alerts ── */}
         {setupAlerts.length > 0 && (
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md, gap: spacing.xs }}>
@@ -844,7 +864,7 @@ export default function ProDashboardScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}
+              contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
             >
               {members.map((member) => {
                 const memberBookings = getMemberBookings(member.id);
@@ -858,54 +878,85 @@ export default function ProDashboardScreen() {
                 const memberColor = member.color || colors.primary;
 
                 return (
-                  <View
+                  <Pressable
                     key={member.id}
-                    style={[
+                    onPress={() => router.push(`/(pro)/(tabs)/calendar?memberId=${member.id}` as any)}
+                    style={({ pressed }) => [
                       styles.memberCard,
                       {
                         backgroundColor: colors.surface,
                         borderRadius: radius.xl,
                         borderColor: colors.border,
+                        opacity: pressed ? 0.9 : 1,
                       },
                     ]}
                   >
-                    {/* Colored top accent */}
-                    <View style={[styles.memberAccent, { backgroundColor: memberColor, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]} />
+                    {/* Subtle gradient background with member color */}
+                    <LinearGradient
+                      colors={[memberColor + '12', 'transparent']}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 80,
+                        borderTopLeftRadius: radius.xl,
+                        borderTopRightRadius: radius.xl,
+                      }}
+                    />
 
                     {/* Avatar */}
-                    <View style={{ alignItems: 'center', marginTop: -20 }}>
+                    <View style={{ alignItems: 'center', marginTop: spacing.md }}>
                       {member.photoURL ? (
                         <Image
                           source={{ uri: member.photoURL }}
-                          style={[styles.memberAvatar, { borderColor: colors.surface }]}
+                          style={[styles.memberAvatar, { borderColor: memberColor + '30' }]}
                         />
                       ) : (
-                        <View style={[styles.memberAvatar, { backgroundColor: memberColor, borderColor: colors.surface }]}>
-                          <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
+                        <View style={[styles.memberAvatar, { backgroundColor: memberColor, borderColor: memberColor + '30' }]}>
+                          <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
                             {initials}
                           </Text>
                         </View>
                       )}
+                      {/* Online indicator dot */}
+                      <View style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: memberColor,
+                        position: 'absolute',
+                        bottom: 0,
+                        right: '50%',
+                        marginRight: -22,
+                        borderWidth: 2,
+                        borderColor: colors.surface,
+                      }} />
                     </View>
 
                     {/* Info */}
-                    <Text variant="body" style={{ fontWeight: '600', textAlign: 'center', marginTop: spacing.xs }} numberOfLines={1}>
+                    <Text variant="body" style={{ fontWeight: '700', textAlign: 'center', marginTop: spacing.sm, fontSize: 14 }} numberOfLines={1}>
                       {member.name}
                     </Text>
                     {locationName ? (
-                      <Text variant="caption" color="textMuted" style={{ textAlign: 'center', marginTop: 2 }} numberOfLines={1}>
-                        {locationName}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 3 }}>
+                        <Ionicons name="location-outline" size={11} color={colors.textMuted} />
+                        <Text variant="caption" color="textMuted" style={{ marginLeft: 2, fontSize: 11 }} numberOfLines={1}>
+                          {locationName}
+                        </Text>
+                      </View>
                     ) : null}
 
                     {/* Today's bookings stat */}
-                    <View style={[styles.memberStat, { backgroundColor: memberColor + '12', borderRadius: radius.lg, marginTop: spacing.sm }]}>
-                      <Ionicons name="calendar-outline" size={13} color={memberColor} />
-                      <Text variant="caption" style={{ color: memberColor, fontWeight: '600', marginLeft: 4 }}>
-                        {memberBookings.length === 0 ? 'Aucun RDV' : `${memberBookings.length} RDV`}
+                    <View style={[styles.memberStat, { backgroundColor: memberColor + '15', borderRadius: radius.full, marginTop: spacing.sm }]}>
+                      <Text variant="caption" style={{ color: memberColor, fontWeight: '700', fontSize: 13 }}>
+                        {memberBookings.length}
+                      </Text>
+                      <Text variant="caption" style={{ color: memberColor, fontWeight: '500', marginLeft: 3, fontSize: 11 }}>
+                        RDV
                       </Text>
                     </View>
-                  </View>
+                  </Pressable>
                 );
               })}
             </ScrollView>
@@ -1490,30 +1541,26 @@ const styles = StyleSheet.create({
 
   // Team member cards
   memberCard: {
-    width: 140,
+    width: 130,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingBottom: 14,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  memberAccent: {
-    height: 32,
-    width: '100%',
-    marginBottom: 0,
+    alignItems: 'center' as const,
+    overflow: 'hidden' as const,
   },
   memberAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   memberStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
 });

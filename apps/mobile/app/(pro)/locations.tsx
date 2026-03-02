@@ -1,9 +1,10 @@
 /**
  * Locations Management Screen
  * List, create, edit, delete, toggle active/inactive locations.
+ * Shows assigned members per location with reassignment bottom sheet.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -18,10 +19,10 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
-import { Text, Button, Input, Card, useToast } from '../../components';
+import { Text, Button, Input, Card, Avatar, useToast } from '../../components';
 import { useProvider } from '../../contexts';
-import { locationService, type WithId } from '@booking-app/firebase';
-import type { Location } from '@booking-app/shared/types';
+import { locationService, memberService, type WithId } from '@booking-app/firebase';
+import type { Location, Member } from '@booking-app/shared/types';
 
 // ---------------------------------------------------------------------------
 // Address Autocomplete (BAN)
@@ -88,8 +89,27 @@ export default function LocationsScreen() {
   const { providerId } = useProvider();
 
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
+  const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Assignment modal
+  const [assignLocationId, setAssignLocationId] = useState<string | null>(null);
+  const [assignLocationName, setAssignLocationName] = useState('');
+  const [pendingAssignments, setPendingAssignments] = useState<Record<string, string>>({});
+  const [isSavingAssign, setIsSavingAssign] = useState(false);
+
+  // Group members by locationId
+  const membersByLocation = useMemo(() => {
+    const map: Record<string, WithId<Member>[]> = {};
+    for (const m of members) {
+      if (!m.isActive) continue;
+      const key = m.locationId;
+      if (!map[key]) map[key] = [];
+      map[key].push(m);
+    }
+    return map;
+  }, [members]);
 
   // Modal
   const [showModal, setShowModal] = useState(false);
@@ -114,8 +134,12 @@ export default function LocationsScreen() {
   const loadData = useCallback(async () => {
     if (!providerId) return;
     try {
-      const locs = await locationService.getByProvider(providerId);
+      const [locs, mems] = await Promise.all([
+        locationService.getByProvider(providerId),
+        memberService.getActiveByProvider(providerId),
+      ]);
       setLocations(locs);
+      setMembers(mems);
     } catch (err) {
       showToast({ variant: 'error', message: 'Erreur lors du chargement' });
     } finally {
@@ -282,6 +306,58 @@ export default function LocationsScreen() {
     }
   };
 
+  // Open assignment sheet
+  const openAssignSheet = (loc: WithId<Location>) => {
+    setAssignLocationId(loc.id);
+    setAssignLocationName(loc.name);
+    // Build current assignments: memberId → locationId
+    const current: Record<string, string> = {};
+    for (const m of members) {
+      if (!m.isActive) continue;
+      current[m.id] = m.locationId;
+    }
+    setPendingAssignments(current);
+  };
+
+  // Toggle member in pending assignments
+  const toggleMemberAssignment = (memberId: string) => {
+    if (!assignLocationId) return;
+    setPendingAssignments((prev) => {
+      const current = prev[memberId];
+      if (current === assignLocationId) {
+        // Can't unassign — every member needs a location, do nothing
+        return prev;
+      }
+      return { ...prev, [memberId]: assignLocationId };
+    });
+  };
+
+  // Save assignments
+  const handleSaveAssignments = async () => {
+    if (!providerId || !assignLocationId) return;
+    setIsSavingAssign(true);
+    try {
+      const changes: Promise<void>[] = [];
+      for (const m of members) {
+        if (!m.isActive) continue;
+        const newLocId = pendingAssignments[m.id];
+        if (newLocId && newLocId !== m.locationId) {
+          changes.push(memberService.changeLocation(providerId, m.id, newLocId));
+        }
+      }
+      if (changes.length > 0) {
+        await Promise.all(changes);
+        showToast({ variant: 'success', message: 'Membres mis à jour' });
+        loadData();
+      }
+      setAssignLocationId(null);
+    } catch (err: any) {
+      showToast({ variant: 'error', message: err?.message || 'Erreur' });
+    } finally {
+      setIsSavingAssign(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
@@ -364,6 +440,47 @@ export default function LocationsScreen() {
                       </Pressable>
                     )}
                   </View>
+
+                  {/* Members assigned to this location */}
+                  <View style={[styles.membersDivider, { backgroundColor: colors.border }]} />
+                  <Pressable
+                    onPress={(e) => { e.stopPropagation(); openAssignSheet(loc); }}
+                    style={({ pressed }) => [styles.membersRow, { opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    {(membersByLocation[loc.id] || []).length > 0 ? (
+                      <>
+                        <View style={styles.avatarStack}>
+                          {(membersByLocation[loc.id] || []).slice(0, 4).map((m, i) => (
+                            <View key={m.id} style={[styles.avatarWrapper, { marginLeft: i > 0 ? -8 : 0, zIndex: 10 - i }]}>
+                              <Avatar
+                                imageUrl={m.photoURL}
+                                name={m.name}
+                                size="sm"
+                                color={m.color}
+                              />
+                            </View>
+                          ))}
+                          {(membersByLocation[loc.id] || []).length > 4 && (
+                            <View style={[styles.avatarWrapper, styles.avatarMore, { marginLeft: -8, backgroundColor: colors.surfaceSecondary }]}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>
+                                +{(membersByLocation[loc.id] || []).length - 4}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text variant="caption" color="textSecondary" style={{ flex: 1, marginLeft: 8 }}>
+                          {(membersByLocation[loc.id] || []).map((m) => m.name.split(' ')[0]).join(', ')}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
+                        Aucun membre assigné
+                      </Text>
+                    )}
+                    <View style={[styles.assignButton, { backgroundColor: colors.primaryLight }]}>
+                      <Ionicons name="person-add-outline" size={14} color={colors.primary} />
+                    </View>
+                  </Pressable>
                 </Card>
               </Pressable>
             ))}
@@ -545,6 +662,99 @@ export default function LocationsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Member Assignment Modal ── */}
+      <Modal visible={assignLocationId !== null} transparent animationType="slide" onRequestClose={() => setAssignLocationId(null)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setAssignLocationId(null)}>
+          <Pressable style={[styles.assignModalContent, { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]} onPress={(e) => e.stopPropagation()}>
+            {/* Handle bar */}
+            <View style={styles.handleBar}>
+              <View style={[styles.handle, { backgroundColor: colors.border }]} />
+            </View>
+
+            <View style={[styles.assignModalHeader, { paddingHorizontal: spacing.lg, paddingBottom: spacing.md }]}>
+              <View style={{ flex: 1 }}>
+                <Text variant="h3" style={{ fontWeight: '600' }}>Membres</Text>
+                <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>{assignLocationName}</Text>
+              </View>
+              <Pressable onPress={() => setAssignLocationId(null)} hitSlop={8}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing['3xl'] }} showsVerticalScrollIndicator={false}>
+              {members.filter((m) => m.isActive).length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: spacing['2xl'] }}>
+                  <Ionicons name="people-outline" size={40} color={colors.textMuted} />
+                  <Text variant="body" color="textMuted" align="center" style={{ marginTop: spacing.sm }}>
+                    Aucun membre actif.{'\n'}Créez des membres depuis la page Équipe.
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ gap: 2 }}>
+                  {members.filter((m) => m.isActive).map((m) => {
+                    const isAssigned = pendingAssignments[m.id] === assignLocationId;
+                    const currentLoc = locations.find((l) => l.id === m.locationId);
+                    const pendingLoc = locations.find((l) => l.id === pendingAssignments[m.id]);
+                    const hasChanged = pendingAssignments[m.id] !== m.locationId;
+
+                    return (
+                      <Pressable
+                        key={m.id}
+                        onPress={() => toggleMemberAssignment(m.id)}
+                        style={({ pressed }) => [
+                          styles.assignMemberRow,
+                          {
+                            backgroundColor: isAssigned ? colors.primaryLight : pressed ? colors.surfaceSecondary : 'transparent',
+                            borderRadius: radius.md,
+                          },
+                        ]}
+                      >
+                        <Avatar
+                          imageUrl={m.photoURL}
+                          name={m.name}
+                          size="sm"
+                          color={m.color}
+                        />
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                          <Text variant="body" style={{ fontWeight: '500' }}>{m.name}</Text>
+                          <Text variant="caption" color="textMuted">
+                            {hasChanged
+                              ? `${currentLoc?.name || '?'} → ${pendingLoc?.name || '?'}`
+                              : isAssigned
+                                ? 'Ce lieu'
+                                : currentLoc?.name || '—'}
+                          </Text>
+                        </View>
+                        <View style={[
+                          styles.assignCheck,
+                          {
+                            backgroundColor: isAssigned ? colors.primary : 'transparent',
+                            borderColor: isAssigned ? colors.primary : colors.border,
+                          },
+                        ]}>
+                          {isAssigned && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={[styles.stickyFooter, { padding: spacing.lg, paddingBottom: insets.bottom + spacing.sm, borderTopColor: colors.border }]}>
+              <Button
+                variant="primary"
+                title={isSavingAssign ? 'Enregistrement...' : 'Confirmer'}
+                onPress={handleSaveAssignments}
+                loading={isSavingAssign}
+                disabled={isSavingAssign}
+                fullWidth
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -565,4 +775,64 @@ const styles = StyleSheet.create({
   stickyFooter: { borderTopWidth: 1 },
   suggestionsBox: { position: 'absolute', top: '100%', left: 0, right: 0, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5, marginTop: 4 },
   suggestionItem: { flexDirection: 'row', alignItems: 'flex-start' },
+  // Member avatars in location card
+  membersDivider: { height: 1, marginTop: 12, marginBottom: 0 },
+  membersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 10,
+  },
+  avatarStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarWrapper: {
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 16,
+  },
+  avatarMore: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assignButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Assignment modal
+  assignModalContent: { maxHeight: '70%' },
+  handleBar: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+  },
+  assignModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  assignMemberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  assignCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

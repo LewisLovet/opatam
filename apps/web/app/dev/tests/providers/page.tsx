@@ -84,6 +84,8 @@ export default function ProvidersTestPage() {
           status: 'trialing',
           currentPeriodEnd: null,
           cancelAtPeriodEnd: false,
+          paymentSource: null,
+          revenuecatAppUserId: null,
         },
         isPublished: false,
         isVerified: false,

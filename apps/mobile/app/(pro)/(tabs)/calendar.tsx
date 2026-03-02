@@ -21,7 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { memberService, schedulingService } from '@booking-app/firebase';
 import type { Member, BlockedSlot } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
@@ -902,6 +902,7 @@ export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { providerId, provider } = useProvider();
+  const { memberId: memberIdParam } = useLocalSearchParams<{ memberId?: string }>();
 
   // ---- State ----
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -911,7 +912,7 @@ export default function CalendarScreen() {
   });
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [members, setMembers] = useState<WithId<Member>[]>([]);
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(memberIdParam ?? null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [disambiguationBookings, setDisambiguationBookings] = useState<WeekBooking[] | null>(null);
 
@@ -948,6 +949,13 @@ export default function CalendarScreen() {
       })
       .catch(() => setMembers([]));
   }, [providerId]);
+
+  // ---- Apply memberId from route params (e.g. navigating from Members screen) ----
+  useEffect(() => {
+    if (memberIdParam) {
+      setSelectedMemberId(memberIdParam);
+    }
+  }, [memberIdParam]);
 
   // ---- Fetch blocked slots for the current range ----
   const [blockedSlots, setBlockedSlots] = useState<WithId<BlockedSlot>[]>([]);

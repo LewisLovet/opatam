@@ -23,8 +23,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../theme';
-import { Text, Button, Input, Card, useToast } from '../../components';
-import { useProvider } from '../../contexts';
+import { Text, Button, Input, Card, useToast, SubscriptionRequiredModal } from '../../components';
+import { useProvider, useSubscriptionStatus } from '../../contexts';
 import { providerService, uploadFile, storagePaths } from '@booking-app/firebase';
 import { CATEGORIES, APP_CONFIG } from '@booking-app/shared/constants';
 import QRCode from 'react-native-qrcode-svg';
@@ -107,6 +107,8 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { provider, providerId, refreshProvider } = useProvider();
+  const sub = useSubscriptionStatus();
+  const [showSubModal, setShowSubModal] = useState(false);
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'publication' | 'profile' | 'social'>('publication');
@@ -372,6 +374,10 @@ export default function ProfileScreen() {
   // Publish / Unpublish
   const handlePublish = async () => {
     if (!providerId) return;
+    if (sub.needsSubscription) {
+      setShowSubModal(true);
+      return;
+    }
     setPublishing(true);
     try {
       const result = await providerService.publishProvider(providerId);
@@ -452,6 +458,13 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Subscription required modal */}
+      <SubscriptionRequiredModal
+        visible={showSubModal}
+        onClose={() => setShowSubModal(false)}
+        context="Publiez votre page et rendez-vous visible auprès de vos clients avec un abonnement Pro."
+      />
+
       {/* Header */}
       <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
         <View style={styles.headerRow}>

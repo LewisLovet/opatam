@@ -2,20 +2,52 @@
 
 import { useState } from 'react';
 import { Badge, Switch } from '@/components/ui';
-import { Building2, Car, Star } from 'lucide-react';
-import type { Location } from '@booking-app/shared';
+import { Building2, Car, Star, Users } from 'lucide-react';
+import type { Location, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
 interface LocationCardProps {
   location: WithId<Location>;
+  members?: WithId<Member>[];
   onToggleActive: (locationId: string, isActive: boolean) => Promise<void>;
   onSetDefault: (locationId: string) => Promise<void>;
   onClick: () => void;
 }
 
+function MemberAvatar({ member }: { member: WithId<Member> }) {
+  const initials = member.name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  if (member.photoURL) {
+    return (
+      <img
+        src={member.photoURL}
+        alt={member.name}
+        title={member.name}
+        className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
+      />
+    );
+  }
+
+  return (
+    <span
+      title={member.name}
+      className="flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold text-white ring-2 ring-white dark:ring-gray-800"
+      style={{ backgroundColor: member.color || '#6B7280' }}
+    >
+      {initials}
+    </span>
+  );
+}
+
 export function LocationCard({
   location,
+  members = [],
   onToggleActive,
   onSetDefault,
   onClick,
@@ -96,6 +128,28 @@ export function LocationCard({
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
                 {location.description}
               </p>
+            )}
+
+            {/* Assigned members */}
+            {members.length > 0 && (
+              <div className="mt-3 flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <div className="flex items-center -space-x-1.5">
+                  {members.slice(0, 5).map((member) => (
+                    <MemberAvatar key={member.id} member={member} />
+                  ))}
+                  {members.length > 5 && (
+                    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-[10px] font-semibold text-gray-600 dark:text-gray-300 ring-2 ring-white dark:ring-gray-800">
+                      +{members.length - 5}
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {members.length === 1
+                    ? members[0].name
+                    : `${members.length} membres`}
+                </span>
+              </div>
             )}
 
             {/* Set as default button */}

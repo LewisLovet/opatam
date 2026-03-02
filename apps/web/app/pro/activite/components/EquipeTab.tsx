@@ -8,6 +8,8 @@ import {
   locationService,
   catalogService,
   bookingRepository,
+  uploadFile,
+  storagePaths,
 } from '@booking-app/firebase';
 import { Loader2, Users, Plus } from 'lucide-react';
 import { MemberCard } from './MemberCard';
@@ -187,6 +189,17 @@ export function EquipeTab() {
           serviceIds: data.serviceIds,
         });
         memberId = newMember.id;
+
+        // Upload photo if one was selected during creation
+        if (data.photoFile) {
+          try {
+            const path = `${storagePaths.memberPhotos(provider.id, memberId)}/${Date.now()}_${data.photoFile.name}`;
+            const photoURL = await uploadFile(path, data.photoFile, { contentType: data.photoFile.type });
+            await memberService.updatePhoto(provider.id, memberId, photoURL);
+          } catch {
+            // Non-blocking: member created but photo upload failed
+          }
+        }
 
         // Update service assignments for new member (already included above, but keep for safety)
         await updateServiceMemberAssignments(memberId, data.serviceIds);

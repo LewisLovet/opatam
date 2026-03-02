@@ -324,7 +324,7 @@ export default function RevenueCatTestPage() {
                       <Badge
                         variant={
                           log.status === 'processed' ? 'success' :
-                          log.status === 'error' ? 'destructive' :
+                          log.status === 'error' ? 'error' :
                           'default'
                         }
                       >

@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { Badge, Switch } from '@/components/ui';
 import { ChevronUp, ChevronDown, Clock, Euro } from 'lucide-react';
-import type { Service } from '@booking-app/shared';
+import type { Service, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
 interface ServiceCardProps {
   service: WithId<Service>;
+  members?: WithId<Member>[];
+  allMembers?: WithId<Member>[];
   onToggleActive: (serviceId: string, isActive: boolean) => Promise<void>;
   onClick: () => void;
   onMoveUp?: () => void;
@@ -42,6 +44,8 @@ function formatPrice(cents: number): string {
 
 export function ServiceCard({
   service,
+  members = [],
+  allMembers = [],
   onToggleActive,
   onClick,
   onMoveUp,
@@ -51,6 +55,12 @@ export function ServiceCard({
   showOrder = false,
   orderNumber,
 }: ServiceCardProps) {
+  // Determine which members perform this service
+  const assignedMembers = service.memberIds
+    ? members.filter((m) => service.memberIds?.includes(m.id))
+    : allMembers; // null = all members
+  const isAllMembers = !service.memberIds && allMembers.length > 0;
+  const showMembers = allMembers.length > 0;
   const [toggling, setToggling] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
@@ -145,6 +155,31 @@ export function ServiceCard({
                   {formatPrice(service.price)}
                 </span>
               </div>
+
+              {/* Assigned members */}
+              {showMembers && (
+                <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                  {isAllMembers ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-900/20 text-[11px] font-semibold text-primary-600 dark:text-primary-400">
+                      Tous les membres
+                    </span>
+                  ) : (
+                    assignedMembers.map((member) => (
+                      <span
+                        key={member.id}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-gray-700 dark:text-gray-300"
+                        style={{ backgroundColor: (member.color || '#6B7280') + '18' }}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: member.color || '#6B7280' }}
+                        />
+                        {member.name.split(' ')[0]}
+                      </span>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Status badge (desktop) + Toggle (mobile) */}

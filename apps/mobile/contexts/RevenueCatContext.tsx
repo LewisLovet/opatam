@@ -25,9 +25,9 @@ import Purchases, {
 import { useAuth } from './AuthContext';
 import { useProvider } from './ProviderContext';
 
-// RevenueCat API keys (test mode)
-const REVENUECAT_API_KEY_IOS = 'appl_test_placeholder'; // TODO: Replace with real Apple API key from RevenueCat
-const REVENUECAT_API_KEY_ANDROID = 'goog_test_placeholder'; // TODO: Replace with real Google API key from RevenueCat
+// RevenueCat API keys (from .env.local via EXPO_PUBLIC_ prefix)
+const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '';
+const REVENUECAT_API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || '';
 
 // Entitlement IDs (must match RevenueCat dashboard)
 const ENTITLEMENT_SOLO = 'solo_access';

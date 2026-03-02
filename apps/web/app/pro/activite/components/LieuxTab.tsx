@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
-import { locationService } from '@booking-app/firebase';
+import { locationService, memberService } from '@booking-app/firebase';
 import { Plus, MapPin, Loader2 } from 'lucide-react';
 import { LocationCard } from './LocationCard';
 import { LocationModal, type LocationFormData } from './LocationModal';
-import type { Location } from '@booking-app/shared';
+import type { Location, Member } from '@booking-app/shared';
 import { PLAN_LIMITS } from '@booking-app/shared';
 import { UpgradeTeamModal } from '@/components/modals/UpgradeTeamModal';
 
@@ -19,6 +19,7 @@ export function LieuxTab() {
 
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
+  const [members, setMembers] = useState<WithId<Member>[]>([]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<WithId<Location> | null>(null);
@@ -32,13 +33,18 @@ export function LieuxTab() {
   const isAtLocationLimit = activeLocations.length >= maxLocations;
   const isSoloPlan = plan === 'solo' || plan === 'trial';
 
+  const isTeamPlan = plan === 'team';
+
   // Fetch data
   const fetchData = useCallback(async () => {
     if (!provider) return;
 
     setLoading(true);
     try {
-      const locationsData = await locationService.getByProvider(provider.id);
+      const [locationsData, membersData] = await Promise.all([
+        locationService.getByProvider(provider.id),
+        isTeamPlan ? memberService.getActiveByProvider(provider.id) : Promise.resolve([]),
+      ]);
       // Sort: default first, then by name
       setLocations(
         locationsData.sort((a, b) => {
@@ -47,13 +53,14 @@ export function LieuxTab() {
           return a.name.localeCompare(b.name);
         })
       );
+      setMembers(membersData);
     } catch (error) {
       console.error('Fetch error:', error);
       toast.error('Erreur lors du chargement des lieux');
     } finally {
       setLoading(false);
     }
-  }, [provider, toast]);
+  }, [provider, isTeamPlan, toast]);
 
   useEffect(() => {
     fetchData();
@@ -227,6 +234,7 @@ export function LieuxTab() {
             <LocationCard
               key={location.id}
               location={location}
+              members={members.filter((m) => m.locationId === location.id)}
               onToggleActive={handleToggleActive}
               onSetDefault={handleSetDefault}
               onClick={() => handleEdit(location)}

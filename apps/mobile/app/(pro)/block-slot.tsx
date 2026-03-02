@@ -20,8 +20,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../../theme';
-import { Text, Button, Card, Switch, Input, Loader } from '../../components';
-import { useProvider } from '../../contexts';
+import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal } from '../../components';
+import { useProvider, useSubscriptionStatus } from '../../contexts';
 import { schedulingService, memberService } from '@booking-app/firebase';
 import type { Member } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
@@ -354,7 +354,14 @@ export default function BlockSlotScreen() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const { providerId } = useProvider();
+  const sub = useSubscriptionStatus();
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
+
+  // Subscription guard
+  const [showSubModal, setShowSubModal] = useState(false);
+  useEffect(() => {
+    if (sub.needsSubscription) setShowSubModal(true);
+  }, [sub.needsSubscription]);
 
   const initialDate = (() => {
     if (dateParam) {
@@ -479,6 +486,13 @@ export default function BlockSlotScreen() {
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
+      {/* Subscription required modal */}
+      <SubscriptionRequiredModal
+        visible={showSubModal}
+        onClose={() => { setShowSubModal(false); router.back(); }}
+        context="Bloquez des créneaux et gérez votre planning avec un abonnement Pro."
+      />
+
       {/* Header */}
       <View style={[s.header, { padding: spacing.lg, paddingBottom: spacing.md }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>

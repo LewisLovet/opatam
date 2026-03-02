@@ -128,17 +128,19 @@ export function StepSlot({
       setError(null);
 
       try {
-        const startDate = new Date(selectedDate);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(selectedDate);
-        endDate.setHours(23, 59, 59, 999);
+        // Send the calendar date string (YYYY-MM-DD) to avoid timezone shift.
+        // Previously, toISOString() converted local midnight to UTC which could
+        // shift to the previous day (e.g. 8 mars 00:00 CET → 7 mars 23:00 UTC).
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
 
         const params = new URLSearchParams({
           providerId,
           serviceId,
           memberId,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
+          date: dateStr,
         });
 
         const response = await fetch(`/api/slots?${params}`);

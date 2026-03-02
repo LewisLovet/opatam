@@ -41,8 +41,9 @@ import {
   Avatar,
   Divider,
   TimeSlotSection,
+  SubscriptionRequiredModal,
 } from '../../components';
-import { useProvider, useAuth } from '../../contexts';
+import { useProvider, useAuth, useSubscriptionStatus } from '../../contexts';
 import {
   catalogService,
   schedulingService,
@@ -311,7 +312,14 @@ export default function CreateBookingScreen() {
   const router = useRouter();
   const { providerId } = useProvider();
   const { user } = useAuth();
+  const sub = useSubscriptionStatus();
   const { date: dateParam, memberId: memberIdParam } = useLocalSearchParams<{ date?: string; memberId?: string }>();
+
+  // Subscription guard — show modal if trial expired
+  const [showSubModal, setShowSubModal] = useState(false);
+  useEffect(() => {
+    if (sub.needsSubscription) setShowSubModal(true);
+  }, [sub.needsSubscription]);
 
   // -- Step state -------------------------------------------------------------
   const [step, setStep] = useState<Step>(1);
@@ -784,6 +792,13 @@ export default function CreateBookingScreen() {
   // -- Render -----------------------------------------------------------------
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Subscription required modal */}
+      <SubscriptionRequiredModal
+        visible={showSubModal}
+        onClose={() => { setShowSubModal(false); router.back(); }}
+        context="Créez des rendez-vous en illimité avec un abonnement Pro. Gérez votre agenda comme un pro."
+      />
+
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm }]}>
         <Pressable

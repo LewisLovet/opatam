@@ -246,25 +246,47 @@ export default function CalendarPage() {
     (date: Date, memberId: string | null, locationId: string) => {
       const dayOfWeek = date.getDay();
 
-      // First try to find member-specific availability
-      let found = availabilities.find(
-        (a) =>
-          a.dayOfWeek === dayOfWeek &&
-          (a.locationId === locationId || locationId === 'all') &&
-          (a.memberId === memberId || (!a.memberId && !memberId))
-      );
-
-      // Fallback to location-level availability if member-specific not found
-      if (!found && memberId) {
-        found = availabilities.find(
+      // When a specific member is selected, find their availability
+      if (memberId) {
+        const found = availabilities.find(
           (a) =>
             a.dayOfWeek === dayOfWeek &&
             (a.locationId === locationId || locationId === 'all') &&
-            !a.memberId
+            a.memberId === memberId
         );
+        return found;
       }
 
-      return found;
+      // "All members" mode — merge availabilities from all members.
+      // The day is open if at least one member is open, and we use the
+      // widest time range across all members so the calendar isn't grayed out.
+      const dayAvailabilities = availabilities.filter(
+        (a) =>
+          a.dayOfWeek === dayOfWeek &&
+          (a.locationId === locationId || locationId === 'all') &&
+          a.isOpen &&
+          a.slots.length > 0
+      );
+
+      if (dayAvailabilities.length === 0) return undefined;
+
+      // Merge all slots and compute the earliest start / latest end
+      const allSlots = dayAvailabilities.flatMap((a) => a.slots);
+      const earliestStart = allSlots.reduce(
+        (min, s) => (s.start < min ? s.start : min),
+        allSlots[0].start
+      );
+      const latestEnd = allSlots.reduce(
+        (max, s) => (s.end > max ? s.end : max),
+        allSlots[0].end
+      );
+
+      // Return a synthetic availability covering the full range
+      return {
+        ...dayAvailabilities[0],
+        isOpen: true,
+        slots: [{ start: earliestStart, end: latestEnd }],
+      };
     },
     [availabilities]
   );

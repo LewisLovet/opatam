@@ -15,6 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, Button } from '../../components';
 import { useTheme } from '../../theme';
@@ -38,6 +39,9 @@ const PACKAGE_MAP = {
 export default function PaywallScreen() {
   const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const navigation = useNavigation();
+  const canGoBack = navigation.canGoBack();
   const { userData, signOut } = useAuth();
   const { refreshProvider } = useProvider();
   const { currentOffering, purchasePackage, restorePurchases, isReady } = useRevenueCat();
@@ -106,8 +110,9 @@ export default function PaywallScreen() {
     try {
       const success = await purchasePackage(pkg.identifier);
       if (success) {
-        // Refresh provider data so the subscription gate opens
         await refreshProvider();
+        // Close paywall modal if navigable
+        if (canGoBack) router.back();
       }
     } catch (error: any) {
       Alert.alert(
@@ -167,6 +172,16 @@ export default function PaywallScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      {/* Close button when opened as modal */}
+      {canGoBack && (
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.closeButton}
+        >
+          <Ionicons name="close" size={24} color={colors.text} />
+        </Pressable>
+      )}
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
@@ -328,6 +343,18 @@ export default function PaywallScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 16,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollContent: {
     paddingHorizontal: 20,

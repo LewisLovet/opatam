@@ -76,3 +76,7 @@ export { NotificationInitializer } from './NotificationInitializer';
 
 // Logo
 export { Logo, LogoWhite } from './Logo';
+
+// Subscription Modals
+export { SubscriptionRequiredModal } from './SubscriptionRequiredModal';
+export { UpgradeToStudioModal } from './UpgradeToStudioModal';

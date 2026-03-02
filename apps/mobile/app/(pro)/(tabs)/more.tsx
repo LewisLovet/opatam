@@ -19,9 +19,18 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Card, Input, Text, useToast } from '../../../components';
-import { useAuth, useProvider } from '../../../contexts';
+import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
 import { useTheme } from '../../../theme';
+
+/** Map internal plan IDs to user-facing labels */
+const PLAN_LABELS: Record<string, string> = {
+  solo: 'Pro',
+  team: 'Studio',
+  trial: 'Essai',
+  test: 'Test',
+};
 
 // Delete account confirmation modal
 function DeleteAccountModal({
@@ -220,6 +229,7 @@ export default function MoreScreen() {
   const { showToast } = useToast();
   const { signOut, deleteAccount, userData } = useAuth();
   const { provider } = useProvider();
+  const sub = useSubscriptionStatus();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
@@ -263,11 +273,6 @@ export default function MoreScreen() {
       <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
           <Text variant="h1" style={{ color: '#FFFFFF' }}>Plus</Text>
-          {provider?.businessName ? (
-            <Text variant="caption" style={{ color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs }}>
-              {provider.businessName}
-            </Text>
-          ) : null}
         </View>
       </View>
 
@@ -310,6 +315,105 @@ export default function MoreScreen() {
             </View>
           </Card>
         </View>
+
+        {/* Subscription Card — premium design */}
+        <Pressable
+          onPress={() => {
+            if (sub.isActive) {
+              if (Platform.OS === 'ios') {
+                Linking.openURL('https://apps.apple.com/account/subscriptions');
+              } else {
+                Linking.openURL('https://play.google.com/store/account/subscriptions');
+              }
+            } else {
+              router.push('/(pro)/paywall');
+            }
+          }}
+          style={({ pressed }) => [{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg, opacity: pressed ? 0.92 : 1 }]}
+        >
+          <View style={s.subCard}>
+            <LinearGradient
+              colors={
+                sub.isActive
+                  ? ['#0F172A', '#1E3A5F']
+                  : sub.isTrialing
+                    ? ['#1E40AF', '#3B82F6']
+                    : ['#7C2D12', '#DC2626']
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.subCardGradient}
+            >
+              {/* Decorative circles */}
+              <View style={[s.subCardDecorCircle, { top: -20, right: -20, opacity: 0.08 }]} />
+              <View style={[s.subCardDecorCircle, { bottom: -30, left: -10, opacity: 0.05, width: 80, height: 80, borderRadius: 40 }]} />
+
+              <View style={s.subCardHeader}>
+                <View style={s.subCardIconContainer}>
+                  <Ionicons
+                    name={sub.isActive ? 'diamond' : sub.isTrialing ? 'time-outline' : 'alert-circle'}
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                </View>
+                <View style={s.subCardBadge}>
+                  <Text style={s.subCardBadgeText}>
+                    {sub.isActive
+                      ? PLAN_LABELS[sub.plan || ''] || 'Pro'
+                      : sub.isTrialing
+                        ? 'Essai'
+                        : 'Expiré'}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={s.subCardTitle}>
+                {sub.isActive
+                  ? `Plan ${PLAN_LABELS[sub.plan || ''] || 'Pro'}`
+                  : sub.isTrialing
+                    ? 'Période d\'essai'
+                    : 'Aucun abonnement'}
+              </Text>
+              <Text style={s.subCardSubtitle}>
+                {sub.isActive
+                  ? 'Votre abonnement est actif'
+                  : sub.isTrialing
+                    ? 'Profitez de toutes les fonctionnalités'
+                    : 'Abonnez-vous pour continuer'}
+              </Text>
+
+              <View style={s.subCardFooter}>
+                <Text style={s.subCardAction}>
+                  {sub.isActive ? 'Gérer' : 'Voir les offres'}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+              </View>
+            </LinearGradient>
+          </View>
+        </Pressable>
+
+        {/* Subscription expired banner */}
+        {sub.needsSubscription && (
+          <Pressable
+            onPress={() => router.push('/(pro)/paywall')}
+            style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}
+          >
+            <View style={s.expiredBanner}>
+              <View style={s.expiredBannerContent}>
+                <Ionicons name="alert-circle" size={22} color="#DC2626" />
+                <View style={{ flex: 1 }}>
+                  <Text variant="body" style={{ fontWeight: '600', color: '#991B1B' }}>
+                    Abonnement requis
+                  </Text>
+                  <Text variant="caption" style={{ color: '#B91C1C', marginTop: 2 }}>
+                    Votre essai est terminé. Abonnez-vous pour continuer à utiliser toutes les fonctionnalités.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#DC2626" />
+              </View>
+            </View>
+          </Pressable>
+        )}
 
         {/* Profil public — carte mise en avant */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
@@ -414,20 +518,6 @@ export default function MoreScreen() {
             Paramètres
           </Text>
           <Card padding="none" shadow="sm">
-            <MenuItem
-              icon="card-outline"
-              label="Gérer mon abonnement"
-              onPress={() => {
-                // Open native subscription management (App Store / Play Store)
-                if (Platform.OS === 'ios') {
-                  Linking.openURL('https://apps.apple.com/account/subscriptions');
-                } else {
-                  Linking.openURL('https://play.google.com/store/account/subscriptions');
-                }
-              }}
-              colors={colors}
-            />
-            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="calendar-outline"
               label="Paramètres de réservation"
@@ -629,5 +719,88 @@ const s = StyleSheet.create({
   appInfo: {
     alignItems: 'center',
     paddingHorizontal: 24,
+  },
+  subCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    // Shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  subCardGradient: {
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  subCardDecorCircle: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
+  },
+  subCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  subCardIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subCardBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  subCardBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  subCardTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  subCardSubtitle: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  subCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 4,
+  },
+  subCardAction: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  expiredBanner: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    overflow: 'hidden',
+  },
+  expiredBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
   },
 });

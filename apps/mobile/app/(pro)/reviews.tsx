@@ -429,14 +429,18 @@ export default function ReviewsScreen() {
                 </View>
 
                 {/* Member badge */}
-                {review.memberId && getMemberName(review.memberId) && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm }}>
-                    <Ionicons name="person-outline" size={12} color={colors.textMuted} />
-                    <Text variant="caption" color="textMuted" style={{ marginLeft: 4 }}>
-                      {getMemberName(review.memberId)}
-                    </Text>
-                  </View>
-                )}
+                {review.memberId && getMemberName(review.memberId) && (() => {
+                  const mbr = members.find((m) => m.id === review.memberId);
+                  const mbrColor = mbr?.color || colors.primary;
+                  return (
+                    <View style={[styles.memberBadge, { backgroundColor: mbrColor + '15' }]}>
+                      <View style={[styles.memberBadgeDot, { backgroundColor: mbrColor }]} />
+                      <Text variant="caption" style={{ color: mbrColor, fontWeight: '600' }}>
+                        {getMemberName(review.memberId)}
+                      </Text>
+                    </View>
+                  );
+                })()}
 
                 {/* Comment */}
                 {review.comment && (
@@ -555,5 +559,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  memberBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 6,
+  },
+  memberBadgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
 });

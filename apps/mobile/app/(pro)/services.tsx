@@ -405,43 +405,76 @@ export default function ServicesScreen() {
   // Render service card
   // ---------------------------------------------------------------------------
 
-  const renderServiceCard = (service: WithId<Service>) => (
-    <Pressable
-      key={service.id}
-      onPress={() => openEdit(service)}
-      style={({ pressed }) => ({ opacity: pressed ? 0.95 : 1 })}
-    >
-      <Card padding="md" shadow="sm">
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1, marginRight: spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <Text variant="body" style={{ fontWeight: '600' }}>{service.name}</Text>
-              {!service.isActive && (
-                <View style={[styles.badge, { backgroundColor: '#FEE2E2' }]}>
-                  <Text variant="caption" style={{ color: '#DC2626', fontWeight: '600', fontSize: 10 }}>Inactif</Text>
+  const renderServiceCard = (service: WithId<Service>) => {
+    // Resolve assigned members for this service
+    const assignedMembers = service.memberIds
+      ? members.filter((m) => service.memberIds!.includes(m.id))
+      : null; // null = all members
+    // If all active members are selected, treat as "Tous"
+    const activeMembers = members.filter((m) => m.isActive);
+    const isAllMembers = !assignedMembers
+      || (activeMembers.length > 0 && assignedMembers.length >= activeMembers.length);
+
+    return (
+      <Pressable
+        key={service.id}
+        onPress={() => openEdit(service)}
+        style={({ pressed }) => ({ opacity: pressed ? 0.95 : 1 })}
+      >
+        <Card padding="md" shadow="sm">
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, marginRight: spacing.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <Text variant="body" style={{ fontWeight: '600' }}>{service.name}</Text>
+                {!service.isActive && (
+                  <View style={[styles.badge, { backgroundColor: '#FEE2E2' }]}>
+                    <Text variant="caption" style={{ color: '#DC2626', fontWeight: '600', fontSize: 10 }}>Inactif</Text>
+                  </View>
+                )}
+              </View>
+              <Text variant="bodySmall" color="textSecondary" style={{ marginTop: 2 }}>
+                {formatDuration(service.duration)} • {formatPrice(service.price)}
+              </Text>
+              {service.description && (
+                <Text variant="caption" color="textMuted" numberOfLines={1} style={{ marginTop: 4 }}>
+                  {service.description}
+                </Text>
+              )}
+              {/* Member chips */}
+              {members.length > 1 && (
+                <View style={styles.memberChipsRow}>
+                  {isAllMembers ? (
+                    <View style={[styles.memberChip, { backgroundColor: colors.primaryLight }]}>
+                      <Ionicons name="people-outline" size={11} color={colors.primary} />
+                      <Text style={[styles.memberChipText, { color: colors.primary }]}>
+                        Tous les membres
+                      </Text>
+                    </View>
+                  ) : (
+                    assignedMembers!.map((m) => (
+                      <View key={m.id} style={[styles.memberChip, { backgroundColor: (m.color || colors.primary) + '15' }]}>
+                        <View style={[styles.memberChipDot, { backgroundColor: m.color || colors.primary }]} />
+                        <Text style={[styles.memberChipText, { color: m.color || colors.primary }]}>
+                          {m.name.split(' ')[0]}
+                        </Text>
+                      </View>
+                    ))
+                  )}
                 </View>
               )}
             </View>
-            <Text variant="bodySmall" color="textSecondary" style={{ marginTop: 2 }}>
-              {formatDuration(service.duration)} • {formatPrice(service.price)}
-            </Text>
-            {service.description && (
-              <Text variant="caption" color="textMuted" numberOfLines={1} style={{ marginTop: 4 }}>
-                {service.description}
-              </Text>
-            )}
+            <Pressable
+              onPress={(e) => { e.stopPropagation(); handleDelete(service); }}
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 4 })}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+            </Pressable>
           </View>
-          <Pressable
-            onPress={(e) => { e.stopPropagation(); handleDelete(service); }}
-            hitSlop={12}
-            style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 4 })}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
-          </Pressable>
-        </View>
-      </Card>
-    </Pressable>
-  );
+        </Card>
+      </Pressable>
+    );
+  };
 
   // ---------------------------------------------------------------------------
   // Render
@@ -728,14 +761,37 @@ export default function ServicesScreen() {
                 {members.length > 1 && (
                   <View>
                     <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>
-                      Membres (laisser vide = tous)
+                      Membres
                     </Text>
+                    {/* "Tous" toggle */}
+                    <Pressable
+                      onPress={() => setForm((p) => ({ ...p, memberIds: null }))}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs }}
+                    >
+                      <Ionicons
+                        name={form.memberIds === null ? 'radio-button-on' : 'radio-button-off'}
+                        size={22}
+                        color={form.memberIds === null ? colors.primary : colors.textMuted}
+                      />
+                      <Ionicons name="people-outline" size={16} color={form.memberIds === null ? colors.primary : colors.textMuted} style={{ marginLeft: spacing.sm }} />
+                      <Text variant="body" style={{ marginLeft: spacing.xs, fontWeight: form.memberIds === null ? '600' : '400', color: form.memberIds === null ? colors.primary : colors.text }}>
+                        Tous les membres
+                      </Text>
+                    </Pressable>
+                    {/* Individual members */}
                     {members.map((mbr) => {
                       const isSelected = (form.memberIds || []).includes(mbr.id);
                       return (
                         <Pressable
                           key={mbr.id}
-                          onPress={() => toggleMemberId(mbr.id)}
+                          onPress={() => {
+                            if (form.memberIds === null) {
+                              // Switching from "all" to specific: select only this one
+                              setForm((p) => ({ ...p, memberIds: [mbr.id] }));
+                            } else {
+                              toggleMemberId(mbr.id);
+                            }
+                          }}
                           style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs }}
                         >
                           <Ionicons
@@ -846,4 +902,9 @@ const styles = StyleSheet.create({
   categoryModalContent: { width: '100%', padding: 24 },
   categoryDeleteBtn: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
   categoryActionBtn: { paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: 'transparent', alignItems: 'center' },
+  // Member chips on service cards
+  memberChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  memberChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, gap: 5 },
+  memberChipDot: { width: 6, height: 6, borderRadius: 3 },
+  memberChipText: { fontSize: 11, fontWeight: '600' },
 });

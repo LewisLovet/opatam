@@ -8,19 +8,36 @@ export async function GET(request: NextRequest) {
     const providerId = searchParams.get('providerId');
     const serviceId = searchParams.get('serviceId');
     const memberId = searchParams.get('memberId');
-    const startDateStr = searchParams.get('startDate');
-    const endDateStr = searchParams.get('endDate');
 
-    // Validate required parameters
-    if (!providerId || !serviceId || !memberId || !startDateStr || !endDateStr) {
+    if (!providerId || !serviceId || !memberId) {
       return NextResponse.json(
         { error: 'Paramètres manquants' },
         { status: 400 }
       );
     }
 
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
+    // Support both new `date` param (YYYY-MM-DD, timezone-safe) and legacy startDate/endDate
+    const dateStr = searchParams.get('date');
+    const startDateStr = searchParams.get('startDate');
+    const endDateStr = searchParams.get('endDate');
+
+    let startDate: Date;
+    let endDate: Date;
+
+    if (dateStr) {
+      // New format: YYYY-MM-DD — parse as local midnight to avoid timezone shift
+      const [y, m, d] = dateStr.split('-').map(Number);
+      startDate = new Date(y, m - 1, d, 0, 0, 0, 0);
+      endDate = new Date(y, m - 1, d, 23, 59, 59, 999);
+    } else if (startDateStr && endDateStr) {
+      startDate = new Date(startDateStr);
+      endDate = new Date(endDateStr);
+    } else {
+      return NextResponse.json(
+        { error: 'Paramètre date ou startDate/endDate requis' },
+        { status: 400 }
+      );
+    }
 
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       return NextResponse.json(

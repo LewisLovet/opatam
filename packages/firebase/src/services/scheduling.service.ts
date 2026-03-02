@@ -439,6 +439,9 @@ export class SchedulingService {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    // Sort by datetime to ensure chronological order regardless of availability window order
+    availableSlots.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+
     return availableSlots;
   }
 

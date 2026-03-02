@@ -15,21 +15,25 @@ import {
   ActivityIndicator,
   RefreshControl,
   Switch,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../theme';
-import { Text, Button, Input, Card, useToast } from '../../components';
-import { useProvider } from '../../contexts';
+import { Text, Button, Input, Card, useToast, SubscriptionRequiredModal, UpgradeToStudioModal } from '../../components';
+import { useProvider, useSubscriptionStatus } from '../../contexts';
 import {
   memberService,
   locationRepository,
+  uploadFile,
+  storagePaths,
   type WithId,
 } from '@booking-app/firebase';
 import type { Member, Location } from '@booking-app/shared/types';
-import { MEMBER_COLORS } from '@booking-app/shared/constants';
+import { MEMBER_COLORS, APP_CONFIG } from '@booking-app/shared/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,6 +65,7 @@ export default function MembersScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { provider, providerId } = useProvider();
+  const sub = useSubscriptionStatus();
 
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
@@ -69,6 +74,10 @@ export default function MembersScreen() {
   const [showCodeFor, setShowCodeFor] = useState<string | null>(null);
   const [togglingMember, setTogglingMember] = useState<string | null>(null);
   const [sendingAgenda, setSendingAgenda] = useState<string | null>(null);
+
+  // Subscription modals
+  const [showSubModal, setShowSubModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Modal
   const [showModal, setShowModal] = useState(false);
@@ -80,6 +89,18 @@ export default function MembersScreen() {
   // Code modal
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [codeModalMember, setCodeModalMember] = useState<WithId<Member> | null>(null);
+
+  // Deactivation confirmation modal
+  const [deactivateTarget, setDeactivateTarget] = useState<WithId<Member> | null>(null);
+
+  // Delete confirmation / blocked modal
+  const [deleteTarget, setDeleteTarget] = useState<WithId<Member> | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Photo upload
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!providerId) return;
@@ -101,14 +122,28 @@ export default function MembersScreen() {
   useEffect(() => { loadData(); }, [loadData]);
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
-  // Modal open
+  // Modal open — with subscription checks
   const openCreate = () => {
+    // Check if subscription is expired
+    if (sub.needsSubscription) {
+      setShowSubModal(true);
+      return;
+    }
+    // Check if Solo plan limit reached (1 member max for solo/trial)
+    const isSoloOrTrial = sub.plan === 'solo' || sub.plan === 'trial';
+    if (isSoloOrTrial && members.length >= 1) {
+      setShowUpgradeModal(true);
+      return;
+    }
     setEditingId(null);
+    const usedColors = new Set(members.map((m) => m.color).filter(Boolean));
+    const firstAvailable = MEMBER_COLORS.find((c) => !usedColors.has(c)) || MEMBER_COLORS[0];
     setForm({
       ...DEFAULT_FORM,
       locationId: locations[0]?.id || '',
-      color: MEMBER_COLORS[members.length % MEMBER_COLORS.length],
+      color: firstAvailable,
     });
+    setPhotoURL(null);
     setShowModal(true);
   };
 
@@ -121,7 +156,65 @@ export default function MembersScreen() {
       locationId: member.locationId,
       color: member.color || MEMBER_COLORS[0],
     });
+    setPhotoURL(member.photoURL || null);
     setShowModal(true);
+  };
+
+  // Photo pick & upload
+  const handlePickPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission requise', "Autorisez l'accès à vos photos pour ajouter un avatar.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    // If editing an existing member, upload immediately
+    if (editingId && providerId) {
+      setUploadingPhoto(true);
+      try {
+        const uri = result.assets[0].uri;
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const path = `${storagePaths.memberPhotos(providerId, editingId)}/${Date.now()}.jpg`;
+        const downloadURL = await uploadFile(path, blob, { contentType: 'image/jpeg' });
+        await memberService.updatePhoto(providerId, editingId, downloadURL);
+        setPhotoURL(downloadURL);
+        showToast({ variant: 'success', message: 'Photo mise à jour' });
+      } catch {
+        showToast({ variant: 'error', message: 'Erreur lors du téléchargement' });
+      } finally {
+        setUploadingPhoto(false);
+      }
+    } else {
+      // For new member, just store the local URI — we'll upload after creation
+      setPhotoURL(result.assets[0].uri);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (editingId && providerId) {
+      setUploadingPhoto(true);
+      try {
+        await memberService.updatePhoto(providerId, editingId, '');
+        setPhotoURL(null);
+        showToast({ variant: 'success', message: 'Photo supprimée' });
+      } catch {
+        showToast({ variant: 'error', message: 'Erreur' });
+      } finally {
+        setUploadingPhoto(false);
+      }
+    } else {
+      setPhotoURL(null);
+    }
   };
 
   // Save
@@ -146,13 +239,25 @@ export default function MembersScreen() {
         }
         showToast({ variant: 'success', message: 'Membre modifié' });
       } else {
-        await memberService.createMember(providerId, {
+        const newMember = await memberService.createMember(providerId, {
           name: form.name.trim(),
           email: form.email.trim(),
           phone: form.phone.trim() || null,
           locationId: form.locationId,
           color: form.color,
         });
+        // Upload photo if one was selected during creation
+        if (photoURL) {
+          try {
+            const response = await fetch(photoURL);
+            const blob = await response.blob();
+            const path = `${storagePaths.memberPhotos(providerId, newMember.id)}/${Date.now()}.jpg`;
+            const downloadURL = await uploadFile(path, blob, { contentType: 'image/jpeg' });
+            await memberService.updatePhoto(providerId, newMember.id, downloadURL);
+          } catch {
+            // Non-blocking: member created but photo failed
+          }
+        }
         showToast({ variant: 'success', message: 'Membre ajouté' });
       }
       setShowModal(false);
@@ -170,28 +275,45 @@ export default function MembersScreen() {
       showToast({ variant: 'error', message: 'Impossible de supprimer le membre principal' });
       return;
     }
-    Alert.alert('Supprimer le membre', `Supprimer "${member.name}" ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer',
-        style: 'destructive',
-        onPress: async () => {
-          if (!providerId) return;
-          try {
-            await memberService.deleteMember(providerId, member.id);
-            showToast({ variant: 'success', message: 'Membre supprimé' });
-            loadData();
-          } catch (err: any) {
-            showToast({ variant: 'error', message: err?.message || 'Erreur' });
-          }
-        },
-      },
-    ]);
+    setDeleteBlocked(false);
+    setDeleteTarget(member);
+  };
+
+  const confirmDelete = async () => {
+    if (!providerId || !deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await memberService.deleteMember(providerId, deleteTarget.id);
+      setDeleteTarget(null);
+      showToast({ variant: 'success', message: 'Membre supprimé' });
+      loadData();
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('réservations futures')) {
+        setDeleteBlocked(true);
+      } else {
+        setDeleteTarget(null);
+        showToast({ variant: 'error', message: msg || 'Erreur' });
+      }
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Toggle active/inactive
-  const handleToggleActive = async (member: WithId<Member>) => {
+  const handleToggleActive = (member: WithId<Member>) => {
     if (!providerId || member.isDefault) return;
+    if (member.isActive) {
+      // Show confirmation modal before deactivating
+      setDeactivateTarget(member);
+    } else {
+      confirmToggle(member);
+    }
+  };
+
+  const confirmToggle = async (member: WithId<Member>) => {
+    if (!providerId) return;
+    setDeactivateTarget(null);
     setTogglingMember(member.id);
     try {
       if (member.isActive) {
@@ -285,6 +407,212 @@ export default function MembersScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Subscription modals */}
+      <SubscriptionRequiredModal
+        visible={showSubModal}
+        onClose={() => setShowSubModal(false)}
+        context="Abonnez-vous pour accéder à toutes les fonctionnalités et développer votre activité."
+      />
+      <UpgradeToStudioModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        context="Le plan Pro est limité à 1 membre. Passez au plan Studio pour ajouter jusqu'à 10 membres et gérer votre équipe."
+      />
+
+      {/* Deactivation confirmation modal */}
+      <Modal visible={!!deactivateTarget} transparent animationType="fade">
+        <Pressable style={styles.deactivateOverlay} onPress={() => setDeactivateTarget(null)}>
+          <Pressable style={[styles.deactivateCard, { backgroundColor: colors.surface, borderRadius: radius.xl }]}>
+            {/* Icon */}
+            <View style={[styles.deactivateIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="warning-outline" size={28} color="#D97706" />
+            </View>
+
+            <Text variant="h3" style={{ textAlign: 'center', marginTop: spacing.md }}>
+              Désactiver {deactivateTarget?.name} ?
+            </Text>
+
+            <Text variant="bodySmall" color="textMuted" style={{ textAlign: 'center', marginTop: spacing.xs }}>
+              Voici ce qui se passe quand vous désactivez un membre :
+            </Text>
+
+            {/* Info items */}
+            <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+              <View style={styles.deactivateRow}>
+                <View style={[styles.deactivateRowIcon, { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
+                </View>
+                <Text variant="bodySmall" style={{ flex: 1 }}>
+                  Les rendez-vous existants sont <Text variant="bodySmall" style={{ fontWeight: '700' }}>conservés</Text> et restent visibles dans l'agenda
+                </Text>
+              </View>
+
+              <View style={styles.deactivateRow}>
+                <View style={[styles.deactivateRowIcon, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="close-circle" size={18} color="#DC2626" />
+                </View>
+                <Text variant="bodySmall" style={{ flex: 1 }}>
+                  Les clients ne pourront <Text variant="bodySmall" style={{ fontWeight: '700' }}>plus prendre de rendez-vous</Text> avec ce membre
+                </Text>
+              </View>
+
+              <View style={styles.deactivateRow}>
+                <View style={[styles.deactivateRowIcon, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="close-circle" size={18} color="#DC2626" />
+                </View>
+                <Text variant="bodySmall" style={{ flex: 1 }}>
+                  Le membre n'apparaîtra <Text variant="bodySmall" style={{ fontWeight: '700' }}>plus sur votre page de réservation</Text>
+                </Text>
+              </View>
+
+              <View style={styles.deactivateRow}>
+                <View style={[styles.deactivateRowIcon, { backgroundColor: '#DBEAFE' }]}>
+                  <Ionicons name="refresh-circle" size={18} color="#2563EB" />
+                </View>
+                <Text variant="bodySmall" style={{ flex: 1 }}>
+                  Vous pouvez <Text variant="bodySmall" style={{ fontWeight: '700' }}>réactiver</Text> le membre à tout moment
+                </Text>
+              </View>
+            </View>
+
+            {/* Buttons */}
+            <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
+              <Button
+                variant="primary"
+                title="Désactiver"
+                onPress={() => deactivateTarget && confirmToggle(deactivateTarget)}
+                style={{ backgroundColor: '#DC2626' }}
+              />
+              <Button
+                variant="outline"
+                title="Annuler"
+                onPress={() => setDeactivateTarget(null)}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Delete confirmation / blocked modal */}
+      <Modal visible={!!deleteTarget} transparent animationType="fade">
+        <Pressable style={styles.deactivateOverlay} onPress={() => setDeleteTarget(null)}>
+          <Pressable style={[styles.deactivateCard, { backgroundColor: colors.surface, borderRadius: radius.xl }]}>
+            {deleteBlocked ? (
+              <>
+                {/* Blocked state */}
+                <View style={[styles.deactivateIcon, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="hand-left-outline" size={28} color="#DC2626" />
+                </View>
+
+                <Text variant="h3" style={{ textAlign: 'center', marginTop: spacing.md }}>
+                  Suppression impossible
+                </Text>
+
+                <Text variant="bodySmall" color="textMuted" style={{ textAlign: 'center', marginTop: spacing.xs }}>
+                  {deleteTarget?.name} ne peut pas être supprimé pour le moment :
+                </Text>
+
+                <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+                  <View style={styles.deactivateRow}>
+                    <View style={[styles.deactivateRowIcon, { backgroundColor: '#FEF3C7' }]}>
+                      <Ionicons name="calendar" size={18} color="#D97706" />
+                    </View>
+                    <Text variant="bodySmall" style={{ flex: 1 }}>
+                      Ce membre a des <Text variant="bodySmall" style={{ fontWeight: '700' }}>rendez-vous futurs confirmés</Text> ou en attente
+                    </Text>
+                  </View>
+
+                  <View style={styles.deactivateRow}>
+                    <View style={[styles.deactivateRowIcon, { backgroundColor: '#DBEAFE' }]}>
+                      <Ionicons name="arrow-forward-circle" size={18} color="#2563EB" />
+                    </View>
+                    <Text variant="bodySmall" style={{ flex: 1 }}>
+                      Vous devez d'abord <Text variant="bodySmall" style={{ fontWeight: '700' }}>annuler ou réassigner</Text> ces rendez-vous
+                    </Text>
+                  </View>
+
+                  <View style={styles.deactivateRow}>
+                    <View style={[styles.deactivateRowIcon, { backgroundColor: '#DCFCE7' }]}>
+                      <Ionicons name="swap-horizontal" size={18} color="#16A34A" />
+                    </View>
+                    <Text variant="bodySmall" style={{ flex: 1 }}>
+                      Sinon, vous pouvez <Text variant="bodySmall" style={{ fontWeight: '700' }}>désactiver</Text> le membre à la place (les RDV seront conservés)
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ marginTop: spacing.lg }}>
+                  <Button
+                    variant="outline"
+                    title="Compris"
+                    onPress={() => setDeleteTarget(null)}
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                {/* Confirmation state */}
+                <View style={[styles.deactivateIcon, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="trash-outline" size={28} color="#DC2626" />
+                </View>
+
+                <Text variant="h3" style={{ textAlign: 'center', marginTop: spacing.md }}>
+                  Supprimer {deleteTarget?.name} ?
+                </Text>
+
+                <Text variant="bodySmall" color="textMuted" style={{ textAlign: 'center', marginTop: spacing.xs }}>
+                  Cette action est irréversible. Voici ce qui sera supprimé :
+                </Text>
+
+                <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+                  <View style={styles.deactivateRow}>
+                    <View style={[styles.deactivateRowIcon, { backgroundColor: '#FEE2E2' }]}>
+                      <Ionicons name="close-circle" size={18} color="#DC2626" />
+                    </View>
+                    <Text variant="bodySmall" style={{ flex: 1 }}>
+                      Le profil et les <Text variant="bodySmall" style={{ fontWeight: '700' }}>disponibilités</Text> du membre seront supprimés
+                    </Text>
+                  </View>
+
+                  <View style={styles.deactivateRow}>
+                    <View style={[styles.deactivateRowIcon, { backgroundColor: '#DCFCE7' }]}>
+                      <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
+                    </View>
+                    <Text variant="bodySmall" style={{ flex: 1 }}>
+                      L'historique des <Text variant="bodySmall" style={{ fontWeight: '700' }}>rendez-vous passés</Text> sera conservé
+                    </Text>
+                  </View>
+
+                  <View style={styles.deactivateRow}>
+                    <View style={[styles.deactivateRowIcon, { backgroundColor: '#FEF3C7' }]}>
+                      <Ionicons name="information-circle" size={18} color="#D97706" />
+                    </View>
+                    <Text variant="bodySmall" style={{ flex: 1 }}>
+                      Préférez la <Text variant="bodySmall" style={{ fontWeight: '700' }}>désactivation</Text> si vous pensez en avoir besoin plus tard
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
+                  <Button
+                    variant="primary"
+                    title={isDeleting ? 'Suppression...' : 'Supprimer définitivement'}
+                    onPress={confirmDelete}
+                    disabled={isDeleting}
+                    style={{ backgroundColor: '#DC2626' }}
+                  />
+                  <Button
+                    variant="outline"
+                    title="Annuler"
+                    onPress={() => setDeleteTarget(null)}
+                  />
+                </View>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomColor: colors.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -322,11 +650,18 @@ export default function MembersScreen() {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     {/* Avatar */}
-                    <View style={[styles.avatar, { backgroundColor: member.color || colors.primary }]}>
-                      <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
-                        {getInitials(member.name)}
-                      </Text>
-                    </View>
+                    {member.photoURL ? (
+                      <Image
+                        source={{ uri: member.photoURL }}
+                        style={[styles.avatar, { backgroundColor: colors.border }]}
+                      />
+                    ) : (
+                      <View style={[styles.avatar, { backgroundColor: member.color || colors.primary }]}>
+                        <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+                          {getInitials(member.name)}
+                        </Text>
+                      </View>
+                    )}
 
                     {/* Info */}
                     <View style={{ flex: 1, marginLeft: spacing.md }}>
@@ -409,7 +744,18 @@ export default function MembersScreen() {
                       <Ionicons name="mail-outline" size={16} color={colors.primary} />
                     )}
                     <Text variant="caption" color="primary" style={{ marginLeft: 4, fontWeight: '500' }}>
-                      Envoyer récap + code
+                      Récap + code
+                    </Text>
+                  </Pressable>
+
+                  <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
+                  <Pressable
+                    onPress={() => router.push(`/(pro)/(tabs)/calendar?memberId=${member.id}` as any)}
+                    style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.5 : 1 }]}
+                  >
+                    <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                    <Text variant="caption" color="primary" style={{ marginLeft: 4, fontWeight: '500' }}>
+                      Agenda
                     </Text>
                   </Pressable>
 
@@ -444,6 +790,37 @@ export default function MembersScreen() {
 
             <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <View style={{ gap: spacing.md }}>
+                {/* Avatar picker */}
+                <View style={{ alignItems: 'center', marginBottom: spacing.sm }}>
+                  <Pressable onPress={handlePickPhoto} disabled={uploadingPhoto} style={{ alignItems: 'center' }}>
+                    {photoURL ? (
+                      <View>
+                        <Image
+                          source={{ uri: photoURL }}
+                          style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.border }}
+                        />
+                        {uploadingPhoto && (
+                          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 40, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+                            <ActivityIndicator color="#FFFFFF" />
+                          </View>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: form.color || colors.primary, justifyContent: 'center', alignItems: 'center' }}>
+                        <Ionicons name="camera-outline" size={28} color="#FFFFFF" />
+                      </View>
+                    )}
+                    <Text variant="caption" color="primary" style={{ marginTop: spacing.xs, fontWeight: '500' }}>
+                      {photoURL ? 'Changer la photo' : 'Ajouter une photo'}
+                    </Text>
+                  </Pressable>
+                  {photoURL && (
+                    <Pressable onPress={handleRemovePhoto} disabled={uploadingPhoto} style={{ marginTop: 4 }}>
+                      <Text variant="caption" style={{ color: '#DC2626', fontSize: 11 }}>Supprimer</Text>
+                    </Pressable>
+                  )}
+                </View>
+
                 <Input label="Nom" placeholder="Prénom du membre" value={form.name} onChangeText={(t) => setForm((p) => ({ ...p, name: t }))} autoCapitalize="words" />
                 <Input label="Email" placeholder="email@exemple.com" value={form.email} onChangeText={(t) => setForm((p) => ({ ...p, email: t }))} keyboardType="email-address" autoCapitalize="none" />
                 <Input label="Téléphone (optionnel)" placeholder="06 12 34 56 78" value={form.phone} onChangeText={(t) => setForm((p) => ({ ...p, phone: t }))} keyboardType="phone-pad" />
@@ -452,21 +829,28 @@ export default function MembersScreen() {
                 <View>
                   <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>Couleur</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                    {MEMBER_COLORS.map((c) => (
-                      <Pressable
-                        key={c}
-                        onPress={() => setForm((p) => ({ ...p, color: c }))}
-                        style={[
-                          styles.colorSwatch,
-                          { backgroundColor: c },
-                          form.color === c && { borderWidth: 3, borderColor: colors.text },
-                        ]}
-                      >
-                        {form.color === c && (
-                          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                        )}
-                      </Pressable>
-                    ))}
+                    {MEMBER_COLORS.map((c) => {
+                      const takenByOther = members.some((m) => m.color === c && m.id !== editingId);
+                      return (
+                        <Pressable
+                          key={c}
+                          onPress={() => { if (!takenByOther) setForm((p) => ({ ...p, color: c })); }}
+                          style={[
+                            styles.colorSwatch,
+                            { backgroundColor: c },
+                            takenByOther && { opacity: 0.25 },
+                            form.color === c && { borderWidth: 3, borderColor: colors.text },
+                          ]}
+                        >
+                          {form.color === c && (
+                            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                          )}
+                          {takenByOther && (
+                            <Ionicons name="close" size={16} color="#FFFFFF" />
+                          )}
+                        </Pressable>
+                      );
+                    })}
                   </View>
                 </View>
 
@@ -648,4 +1032,10 @@ const styles = StyleSheet.create({
   codeDisplay: { paddingVertical: 20, paddingHorizontal: 16, alignItems: 'center' },
   codeActionBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1 },
   closeCodeBtn: { paddingVertical: 14, alignItems: 'center' },
+  // Deactivation modal
+  deactivateOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
+  deactivateCard: { width: '100%', padding: 24 },
+  deactivateIcon: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', alignSelf: 'center' },
+  deactivateRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  deactivateRowIcon: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 1 },
 });

@@ -1,10 +1,10 @@
 /**
- * Welcome Gate Screen
- * Choose between Client or Pro registration
+ * Welcome Screen
+ * Primary choice: Sign in or Create account
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Pressable, Animated, Dimensions } from 'react-native';
+import { View, StyleSheet, Pressable, Animated, Easing, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -45,7 +45,6 @@ function FloatingBubble({ bubble }: { bubble: Bubble }) {
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Fade in
     Animated.timing(opacity, {
       toValue: 1,
       duration: 1000,
@@ -53,66 +52,37 @@ function FloatingBubble({ bubble }: { bubble: Bubble }) {
       useNativeDriver: true,
     }).start();
 
-    // Floating animation Y
+    const easeInOut = Easing.inOut(Easing.sin);
+
     const floatY = Animated.loop(
       Animated.sequence([
-        Animated.timing(translateY, {
-          toValue: -30,
-          duration: bubble.duration / 2,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: bubble.duration / 2,
-          useNativeDriver: true,
-        }),
+        Animated.timing(translateY, { toValue: -30, duration: bubble.duration / 2, easing: easeInOut, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0, duration: bubble.duration / 2, easing: easeInOut, useNativeDriver: true }),
       ])
     );
 
-    // Floating animation X (subtle horizontal movement)
     const floatX = Animated.loop(
       Animated.sequence([
-        Animated.timing(translateX, {
-          toValue: 15,
-          duration: bubble.duration / 2 + 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateX, {
-          toValue: -15,
-          duration: bubble.duration / 2 + 1000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(translateX, { toValue: 15, duration: bubble.duration / 3, easing: easeInOut, useNativeDriver: true }),
+        Animated.timing(translateX, { toValue: -15, duration: bubble.duration / 3, easing: easeInOut, useNativeDriver: true }),
+        Animated.timing(translateX, { toValue: 0, duration: bubble.duration / 3, easing: easeInOut, useNativeDriver: true }),
       ])
     );
 
-    // Scale pulse
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(scale, {
-          toValue: 1,
-          duration: bubble.duration / 2,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scale, {
-          toValue: 0.85,
-          duration: bubble.duration / 2,
-          useNativeDriver: true,
-        }),
+        Animated.timing(scale, { toValue: 1, duration: bubble.duration / 2, easing: easeInOut, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 0.85, duration: bubble.duration / 2, easing: easeInOut, useNativeDriver: true }),
       ])
     );
 
-    // Start animations with delay
     setTimeout(() => {
       floatY.start();
       floatX.start();
       pulse.start();
     }, bubble.delay);
 
-    return () => {
-      floatY.stop();
-      floatX.stop();
-      pulse.stop();
-    };
+    return () => { floatY.stop(); floatX.stop(); pulse.stop(); };
   }, []);
 
   return (
@@ -134,35 +104,21 @@ function FloatingBubble({ bubble }: { bubble: Bubble }) {
   );
 }
 
-export default function WelcomeGateScreen() {
-  const { colors, spacing, radius } = useTheme();
+export default function WelcomeScreen() {
+  const { spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  // Card entrance animations
+  // Entrance animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const logoScale = useRef(new Animated.Value(0.8)).current;
 
   useEffect(() => {
-    // Entrance animations
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(logoScale, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -184,20 +140,17 @@ export default function WelcomeGateScreen() {
         style={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.xl,
+            paddingTop: insets.top + spacing['2xl'],
             paddingBottom: insets.bottom + spacing.lg,
             paddingHorizontal: spacing.lg,
           },
         ]}
       >
-        {/* Logo section with animation */}
+        {/* Logo + tagline */}
         <Animated.View
           style={[
             styles.logoSection,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: logoScale }],
-            },
+            { opacity: fadeAnim, transform: [{ scale: logoScale }] },
           ]}
         >
           <Logo size="3xl" showText={false} />
@@ -211,134 +164,54 @@ export default function WelcomeGateScreen() {
             color="textSecondary"
             style={[styles.subtitle, { marginTop: spacing.sm }]}
           >
-            Que souhaitez-vous faire ?
+            Réservez ou gérez vos rendez-vous{'\n'}en toute simplicité
           </Text>
         </Animated.View>
 
-        {/* Cards section with entrance animation */}
+        {/* CTA buttons */}
         <Animated.View
           style={[
-            styles.cardsSection,
-            { gap: spacing.md },
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
+            styles.ctaSection,
+            { gap: spacing.md, opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
           ]}
         >
-          {/* Client Card */}
-          <Pressable
-            onPress={() => router.push('/(auth)/client')}
-            style={({ pressed }) => [
-              styles.card,
-              styles.cardClient,
-              {
-                backgroundColor: '#FFFFFF',
-                borderColor: 'rgba(59, 130, 246, 0.15)',
-                borderRadius: radius.xl || 20,
-                padding: spacing.lg,
-                transform: [{ scale: pressed ? 0.97 : 1 }],
-              },
-            ]}
-          >
-            <View style={styles.cardContent}>
-              <LinearGradient
-                colors={['#EFF6FF', '#DBEAFE']}
-                style={styles.cardIcon}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="person-outline" size={26} color="#3B82F6" />
-              </LinearGradient>
-
-              <View style={styles.cardTextContainer}>
-                <Text variant="h3" style={styles.cardTitle}>
-                  Je cherche un professionnel
-                </Text>
-                <Text variant="caption" color="textSecondary" style={styles.cardSubtitle}>
-                  Réservez chez coiffeurs, spas, coachs...
-                </Text>
-              </View>
-
-              <View style={styles.arrowContainer}>
-                <Ionicons name="arrow-forward" size={18} color="#3B82F6" />
-              </View>
-            </View>
-          </Pressable>
-
-          {/* Pro Card */}
-          <Pressable
-            onPress={() => router.push('/(auth)/pro')}
-            style={({ pressed }) => [
-              styles.card,
-              styles.cardPro,
-              {
-                borderRadius: radius.xl || 20,
-                padding: spacing.lg,
-                transform: [{ scale: pressed ? 0.97 : 1 }],
-                overflow: 'hidden',
-              },
-            ]}
-          >
-            {/* Background gradient for pro card */}
-            <LinearGradient
-              colors={['#EFF6FF', '#DBEAFE']}
-              style={StyleSheet.absoluteFill}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-
-            <View style={styles.cardContent}>
-              <LinearGradient
-                colors={['#3B82F6', '#2563EB']}
-                style={styles.cardIcon}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="briefcase-outline" size={26} color="#FFFFFF" />
-              </LinearGradient>
-
-              <View style={styles.cardTextContainer}>
-                <Text variant="h3" style={styles.cardTitle}>
-                  Je suis professionnel
-                </Text>
-                <Text variant="caption" color="textSecondary" style={styles.cardSubtitle}>
-                  Gérez vos réservations et développez votre activité
-                </Text>
-              </View>
-
-              <View style={[styles.arrowContainer, styles.arrowContainerPro]}>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              </View>
-            </View>
-          </Pressable>
-        </Animated.View>
-
-        {/* Login section - more prominent */}
-        <Animated.View style={[styles.loginSection, { opacity: fadeAnim }]}>
-          <View style={[styles.loginDivider, { marginBottom: spacing.md }]}>
-            <View style={[styles.dividerLine, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]} />
-            <Text variant="caption" color="textSecondary" style={styles.dividerText}>
-              Déjà inscrit ?
-            </Text>
-            <View style={[styles.dividerLine, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]} />
-          </View>
-
+          {/* Se connecter — primary action */}
           <Pressable
             onPress={() => router.push('/(auth)/login')}
             style={({ pressed }) => [
-              styles.loginButton,
-              {
-                borderColor: '#3B82F6',
-                borderRadius: radius.lg || 16,
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-              },
+              styles.primaryBtn,
+              { borderRadius: radius.xl || 20, transform: [{ scale: pressed ? 0.97 : 1 }] },
             ]}
           >
-            <Ionicons name="log-in-outline" size={20} color="#3B82F6" style={{ marginRight: 8 }} />
-            <Text variant="body" color="primary" style={styles.loginButtonText}>
-              Se connecter
+            <LinearGradient
+              colors={['#3B82F6', '#2563EB']}
+              style={[StyleSheet.absoluteFill, { borderRadius: radius.xl || 20 }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <Ionicons name="log-in-outline" size={22} color="#FFFFFF" style={{ marginRight: 10 }} />
+            <Text variant="body" style={styles.primaryBtnText}>Se connecter</Text>
+          </Pressable>
+
+          {/* Séparateur */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text variant="caption" color="textSecondary" style={styles.dividerText}>
+              ou
             </Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Créer un compte — secondary action */}
+          <Pressable
+            onPress={() => router.push('/(auth)/choose-type')}
+            style={({ pressed }) => [
+              styles.secondaryBtn,
+              { borderRadius: radius.xl || 20, transform: [{ scale: pressed ? 0.97 : 1 }] },
+            ]}
+          >
+            <Ionicons name="person-add-outline" size={20} color="#3B82F6" style={{ marginRight: 10 }} />
+            <Text variant="body" style={styles.secondaryBtnText}>Créer un compte</Text>
           </Pressable>
         </Animated.View>
       </View>
@@ -347,40 +220,14 @@ export default function WelcomeGateScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  bubblesContainer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  bubble: {
-    position: 'absolute',
-  },
-  content: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  bubblesContainer: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  bubble: { position: 'absolute' },
+  content: { flex: 1 },
   logoSection: {
     alignItems: 'center',
-    paddingVertical: 24,
-  },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 28,
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  logoText: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 3,
-    color: '#FFFFFF',
   },
   title: {
     textAlign: 'center',
@@ -390,90 +237,52 @@ const styles = StyleSheet.create({
   subtitle: {
     textAlign: 'center',
     fontSize: 16,
+    lineHeight: 24,
   },
-  cardsSection: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  card: {
-    width: '100%',
-  },
-  cardClient: {
-    borderWidth: 1,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  cardPro: {
-    borderWidth: 2,
-    borderColor: '#3B82F6',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 6,
-  },
-  cardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cardIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  cardTextContainer: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cardSubtitle: {
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  arrowContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrowContainerPro: {
-    backgroundColor: '#3B82F6',
-  },
-  loginSection: {
-    paddingTop: 8,
+  ctaSection: {
     paddingBottom: 8,
   },
-  loginDivider: {
+  primaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 56,
+    overflow: 'hidden',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 17,
+  },
+  divider: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   dividerLine: {
     flex: 1,
     height: 1,
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
   },
   dividerText: {
     paddingHorizontal: 16,
   },
-  loginButton: {
+  secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 52,
+    height: 56,
     borderWidth: 2,
+    borderColor: '#3B82F6',
     backgroundColor: 'rgba(59, 130, 246, 0.05)',
   },
-  loginButtonText: {
-    fontWeight: '600',
-    fontSize: 15,
+  secondaryBtnText: {
+    color: '#3B82F6',
+    fontWeight: '700',
+    fontSize: 17,
   },
 });
