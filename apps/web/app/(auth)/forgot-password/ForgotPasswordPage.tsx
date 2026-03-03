@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, Input } from '@/components/ui';
-import { authService } from '@booking-app/firebase';
+import { callRequestPasswordReset } from '@booking-app/firebase';
 import { ArrowLeft, CheckCircle, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      await authService.resetPassword(email);
+      await callRequestPasswordReset(email);
       setSuccess(true);
     } catch (err) {
       setError(getErrorMessage(err));

@@ -268,11 +268,11 @@ export default async function ProviderPage({ params }: PageProps) {
         addressCountry: 'FR',
       },
     }),
-    ...(provider.averageRating && provider.averageRating > 0 && {
+    ...(provider.rating?.average && provider.rating.average > 0 && {
       aggregateRating: {
         '@type': 'AggregateRating',
-        ratingValue: provider.averageRating.toFixed(1),
-        reviewCount: provider.reviewCount || reviews.length,
+        ratingValue: provider.rating.average.toFixed(1),
+        reviewCount: provider.rating.count || reviews.length,
       },
     }),
     ...(minPrice !== null && {
