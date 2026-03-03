@@ -53,34 +53,18 @@ export default function PaywallScreen() {
 
   const displayName = userData?.displayName || '';
 
-  // Get prices from RevenueCat offerings or fall back to constants
+  // Format price from cents to display string
+  const formatPrice = (cents: number): string => {
+    const euros = (cents / 100).toFixed(2).replace('.', ',');
+    return `${euros} €`;
+  };
+
+  // Get prices from constants (hardcoded, reliable)
   const getPrice = (plan: 'solo' | 'team', cycle: BillingCycle): string => {
-    if (!currentOffering) {
-      // Fallback to constants
-      if (plan === 'solo') {
-        return cycle === 'monthly'
-          ? `${(SUBSCRIPTION_PLANS.solo.monthlyPrice / 100).toFixed(2).replace('.', ',')} €`
-          : `${(SUBSCRIPTION_PLANS.solo.yearlyPrice / 100).toFixed(2).replace('.', ',')} €`;
-      }
-      return cycle === 'monthly'
-        ? `${(SUBSCRIPTION_PLANS.team.baseMonthlyPrice / 100).toFixed(2).replace('.', ',')} €`
-        : `${(SUBSCRIPTION_PLANS.team.baseYearlyPrice / 100).toFixed(2).replace('.', ',')} €`;
+    if (plan === 'solo') {
+      return formatPrice(cycle === 'monthly' ? SUBSCRIPTION_PLANS.solo.monthlyPrice : SUBSCRIPTION_PLANS.solo.yearlyPrice);
     }
-
-    // Try to find the package in offerings
-    const pkg = currentOffering.availablePackages.find((p) => {
-      const id = p.product.identifier.toLowerCase();
-      const planMatch = plan === 'solo' ? id.includes('solo') : id.includes('team');
-      const cycleMatch = cycle === 'monthly' ? id.includes('monthly') : id.includes('yearly');
-      return planMatch && cycleMatch;
-    });
-
-    if (pkg) {
-      return pkg.product.priceString;
-    }
-
-    // Final fallback
-    return '—';
+    return formatPrice(cycle === 'monthly' ? SUBSCRIPTION_PLANS.team.baseMonthlyPrice : SUBSCRIPTION_PLANS.team.baseYearlyPrice);
   };
 
   const getMonthlyEquivalent = (plan: 'solo' | 'team'): string => {

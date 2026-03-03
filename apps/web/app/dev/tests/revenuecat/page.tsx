@@ -198,7 +198,10 @@ export default function RevenueCatTestPage() {
     try {
       const res = await fetch('/api/revenuecat/webhook', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_RC_WEBHOOK_SECRET || ''}`,
+        },
         body: JSON.stringify(payload),
       });
 

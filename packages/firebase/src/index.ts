@@ -8,6 +8,7 @@ export {
   createUserWithEmail,
   signOutUser,
   resetPassword,
+  confirmResetPassword,
   onAuthChange,
   getCurrentUser,
   updateUserEmail,

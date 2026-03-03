@@ -1094,7 +1094,7 @@ export default function ProDashboardScreen() {
           <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
             <View style={[styles.sectionHeader, { marginBottom: spacing.md }]}>
               <Text variant="h3">Derniers avis</Text>
-              <Pressable onPress={() => router.push('/(pro)/(tabs)/more')} hitSlop={8}>
+              <Pressable onPress={() => router.push('/(pro)/reviews')} hitSlop={8}>
                 <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>Voir tout →</Text>
               </Pressable>
             </View>

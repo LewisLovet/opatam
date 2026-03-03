@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../theme';
 import { Text, Card, EmptyState } from '../../../components';
 import { useClientBookings } from '../../../hooks';
@@ -139,7 +140,7 @@ function BookingCardSkeleton({ colors }: { colors: any }) {
 }
 
 export default function BookingsScreen() {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
@@ -287,20 +288,43 @@ export default function BookingsScreen() {
             />
           </Card>
         ) : currentBookings.length === 0 ? (
-          // Empty state
-          <Card padding="lg" shadow="sm">
-            <EmptyState
-              icon={activeTab === 'upcoming' ? 'calendar-outline' : 'time-outline'}
-              title={activeTab === 'upcoming' ? 'Aucun RDV à venir' : 'Aucun historique'}
-              description={
-                activeTab === 'upcoming'
-                  ? 'Vous n\'avez pas de rendez-vous prévu'
-                  : 'Vos anciens rendez-vous apparaîtront ici'
-              }
-              actionLabel={activeTab === 'upcoming' ? 'Rechercher' : undefined}
-              onAction={activeTab === 'upcoming' ? () => router.push('/(client)/(tabs)/search') : undefined}
-            />
-          </Card>
+          // Empty state — gradient design
+          <Pressable
+            onPress={activeTab === 'upcoming' ? () => router.push('/(client)/(tabs)/search') : undefined}
+            disabled={activeTab !== 'upcoming'}
+            style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+          >
+            <LinearGradient
+              colors={[colors.primaryLight, colors.surface]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.emptyBookingCard, { borderRadius: radius.lg, borderColor: colors.primary + '20', borderWidth: 1 }]}
+            >
+              <View style={[styles.emptyBookingIcon, { backgroundColor: colors.primary + '15', borderRadius: radius.full }]}>
+                <Ionicons
+                  name={activeTab === 'upcoming' ? 'calendar-outline' : 'time-outline'}
+                  size={28}
+                  color={colors.primary}
+                />
+              </View>
+              <Text variant="body" style={{ fontWeight: '600', marginTop: spacing.md }}>
+                {activeTab === 'upcoming' ? 'Aucun RDV à venir' : 'Aucun historique'}
+              </Text>
+              <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs, textAlign: 'center' }}>
+                {activeTab === 'upcoming'
+                  ? 'Trouvez un prestataire et réservez votre prochain rendez-vous en quelques clics'
+                  : 'Vos anciens rendez-vous apparaîtront ici'}
+              </Text>
+              {activeTab === 'upcoming' && (
+                <View style={[styles.emptyBookingBtn, { backgroundColor: colors.primary, borderRadius: radius.full, marginTop: spacing.lg }]}>
+                  <Ionicons name="search-outline" size={16} color="#FFF" />
+                  <Text variant="body" style={{ color: '#FFF', fontWeight: '600', marginLeft: spacing.xs }}>
+                    Rechercher
+                  </Text>
+                </View>
+              )}
+            </LinearGradient>
+          </Pressable>
         ) : (
           // Bookings list
           currentBookings.map((booking) => (
@@ -376,5 +400,22 @@ const styles = StyleSheet.create({
   skeletonLine: {
     height: 14,
     borderRadius: 4,
+  },
+  emptyBookingCard: {
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+  },
+  emptyBookingIcon: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyBookingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
 });

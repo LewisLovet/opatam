@@ -1393,3 +1393,4 @@ Gérer mon abonnement : ${appConfig.url}/pro/parametres?tab=abonnement
 L'équipe ${appConfig.name}
   `.trim();
 }
+

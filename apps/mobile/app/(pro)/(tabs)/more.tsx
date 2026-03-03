@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { reauthenticateUser, updateUserPassword } from '@booking-app/firebase';
 import { Card, Input, Text, useToast } from '../../../components';
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
 import { useTheme } from '../../../theme';
@@ -142,6 +143,119 @@ const deleteStyles = StyleSheet.create({
   },
 });
 
+// Change password modal
+function ChangePasswordModal({
+  visible,
+  onClose,
+  colors,
+  spacing,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  colors: any;
+  spacing: any;
+}) {
+  const { showToast } = useToast();
+  const [currentPassword, setCurrentPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  const reset = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  const handleSubmit = async () => {
+    if (newPassword.length < 6) {
+      showToast({ variant: 'error', message: '6 caractères minimum' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast({ variant: 'error', message: 'Les mots de passe ne correspondent pas' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await reauthenticateUser(currentPassword);
+      await updateUserPassword(newPassword);
+      showToast({ variant: 'success', message: 'Mot de passe modifié' });
+      reset();
+      onClose();
+    } catch (error: any) {
+      const msg = error.code === 'auth/wrong-password'
+        ? 'Mot de passe actuel incorrect'
+        : error.message || 'Erreur lors du changement';
+      showToast({ variant: 'error', message: msg });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!visible) return null;
+
+  const canSubmit = currentPassword && newPassword.length >= 6 && confirmPassword && !loading;
+
+  return (
+    <View style={deleteStyles.overlay}>
+      <View style={[deleteStyles.modal, { backgroundColor: colors.background }]}>
+        <View style={[deleteStyles.iconCircle, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
+          <Ionicons name="lock-closed-outline" size={32} color={colors.primary} />
+        </View>
+        <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>
+          Changer le mot de passe
+        </Text>
+        <View style={{ marginTop: spacing.lg, width: '100%', gap: spacing.sm }}>
+          <Input
+            label="Mot de passe actuel"
+            placeholder="Votre mot de passe actuel"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+          <Input
+            label="Nouveau mot de passe"
+            placeholder="6 caractères minimum"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+          <Input
+            label="Confirmer"
+            placeholder="Retapez le nouveau mot de passe"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+        </View>
+        <View style={[deleteStyles.actions, { marginTop: spacing.lg }]}>
+          <Pressable
+            onPress={() => { reset(); onClose(); }}
+            disabled={loading}
+            style={[deleteStyles.cancelButton, { borderColor: colors.border }]}
+          >
+            <Text variant="body" style={{ fontWeight: '600' }}>Annuler</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+            style={[deleteStyles.deleteButton, { backgroundColor: colors.primary, opacity: canSubmit ? 1 : 0.5 }]}
+          >
+            <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+              {loading ? 'Modification...' : 'Modifier'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Grid Item (for "Mon enseigne" section)
 // ---------------------------------------------------------------------------
@@ -232,6 +346,7 @@ export default function MoreScreen() {
   const sub = useSubscriptionStatus();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [showPasswordModal, setShowPasswordModal] = React.useState(false);
 
   const handleDeleteAccount = async (password: string) => {
     setIsDeleting(true);
@@ -531,6 +646,13 @@ export default function MoreScreen() {
               onPress={() => router.push('/(pro)/notification-settings')}
               colors={colors}
             />
+            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
+            <MenuItem
+              icon="lock-closed-outline"
+              label="Changer le mot de passe"
+              onPress={() => setShowPasswordModal(true)}
+              colors={colors}
+            />
           </Card>
         </View>
 
@@ -603,6 +725,14 @@ export default function MoreScreen() {
         onCancel={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteAccount}
         isDeleting={isDeleting}
+        colors={colors}
+        spacing={spacing}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        visible={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
         colors={colors}
         spacing={spacing}
       />

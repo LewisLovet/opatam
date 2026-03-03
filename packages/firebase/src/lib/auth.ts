@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  confirmPasswordReset as firebaseConfirmPasswordReset,
   onAuthStateChanged,
   OAuthProvider,
   signInWithCredential,
@@ -135,6 +136,16 @@ export async function deleteCurrentUser(): Promise<void> {
   const user = auth.currentUser;
   if (!user) throw new Error('No user logged in');
   return firebaseDeleteUser(user);
+}
+
+/**
+ * Confirm password reset with oobCode from email link
+ */
+export async function confirmResetPassword(
+  oobCode: string,
+  newPassword: string
+): Promise<void> {
+  return firebaseConfirmPasswordReset(auth, oobCode, newPassword);
 }
 
 // Re-export types and functions for convenience

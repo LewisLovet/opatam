@@ -248,18 +248,56 @@ export default async function ProviderPage({ params }: PageProps) {
     effectiveFrom: a.effectiveFrom ? a.effectiveFrom.toISOString() : null,
   }));
 
+  // JSON-LD structured data for SEO (LocalBusiness + AggregateRating)
+  const city = provider.cities?.[0] || '';
+  const location = locations[0];
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: provider.businessName,
+    description: provider.description || `${provider.businessName} — ${provider.category}`,
+    url: `https://opatam.com/p/${provider.slug}`,
+    ...(provider.photoURL && { image: provider.photoURL }),
+    ...(provider.coverPhotoURL && { image: provider.coverPhotoURL }),
+    ...(location && {
+      address: {
+        '@type': 'PostalAddress',
+        ...(location.address && { streetAddress: location.address }),
+        addressLocality: location.city,
+        postalCode: location.postalCode,
+        addressCountry: 'FR',
+      },
+    }),
+    ...(provider.averageRating && provider.averageRating > 0 && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: provider.averageRating.toFixed(1),
+        reviewCount: provider.reviewCount || reviews.length,
+      },
+    }),
+    ...(minPrice !== null && {
+      priceRange: `À partir de ${(minPrice / 100).toFixed(0)} €`,
+    }),
+  };
+
   return (
-    <ProviderPageClient
-      provider={serializedProvider}
-      services={serializedServices}
-      serviceCategories={serializedServiceCategories}
-      locations={serializedLocations}
-      members={serializedMembers}
-      reviews={serializedReviews}
-      availabilities={serializedAvailabilities}
-      minPrice={minPrice}
-      nextAvailableDate={nextAvailableDate}
-      memberAvailabilities={memberAvailabilities}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ProviderPageClient
+        provider={serializedProvider}
+        services={serializedServices}
+        serviceCategories={serializedServiceCategories}
+        locations={serializedLocations}
+        members={serializedMembers}
+        reviews={serializedReviews}
+        availabilities={serializedAvailabilities}
+        minPrice={minPrice}
+        nextAvailableDate={nextAvailableDate}
+        memberAvailabilities={memberAvailabilities}
+      />
+    </>
   );
 }

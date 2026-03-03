@@ -241,28 +241,6 @@ export default function SearchScreen() {
             setSelectedCategory(null);
           }}
         />
-
-        {suggestedProviders.length > 0 && (
-          <View style={{ marginTop: spacing.xl }}>
-            <Text variant="h3" style={{ marginBottom: spacing.md }}>
-              Prestataires populaires
-            </Text>
-            {suggestedProviders.map((provider) => (
-              <View key={provider.id} style={{ marginBottom: spacing.md }}>
-                <ProviderCard
-                  photoURL={provider.coverPhotoURL || provider.photoURL}
-                  businessName={provider.businessName}
-                  category={provider.category}
-                  city={provider.cities[0] || ''}
-                  rating={provider.rating}
-                  minPrice={provider.minPrice}
-                  onPress={() => navigateToProvider(provider.slug)}
-                  isLoading={isLoading(provider.slug)}
-                />
-              </View>
-            ))}
-          </View>
-        )}
       </View>
     );
   };
@@ -322,13 +300,37 @@ export default function SearchScreen() {
     </View>
   );
 
-  // Render footer
+  // Render footer (loading indicator + suggestions)
   const renderFooter = () => {
-    if (!loadingMore) return null;
     return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={colors.primary} />
-      </View>
+      <>
+        {loadingMore && (
+          <View style={styles.footerLoader}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
+        {!loading && suggestedProviders.length > 0 && (
+          <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl, paddingBottom: spacing.xl }}>
+            <Text variant="h3" style={{ marginBottom: spacing.md }}>
+              Prestataires populaires
+            </Text>
+            {suggestedProviders.map((provider) => (
+              <View key={provider.id} style={{ marginBottom: spacing.md }}>
+                <ProviderCard
+                  photoURL={provider.coverPhotoURL || provider.photoURL}
+                  businessName={provider.businessName}
+                  category={provider.category}
+                  city={provider.cities[0] || ''}
+                  rating={provider.rating}
+                  minPrice={provider.minPrice}
+                  onPress={() => navigateToProvider(provider.slug)}
+                  isLoading={isLoading(provider.slug)}
+                />
+              </View>
+            ))}
+          </View>
+        )}
+      </>
     );
   };
 
