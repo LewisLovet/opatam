@@ -15,6 +15,9 @@ admin.initializeApp();
 
 // ─── Production functions (deployed) ─────────────────────────────────────────
 
+// Callable
+export { requestPasswordReset } from './callable/requestPasswordReset';
+
 // Triggers
 export { onBookingWrite } from './triggers/onBookingWrite';
 

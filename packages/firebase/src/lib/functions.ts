@@ -58,5 +58,31 @@ export async function callTestPushNotification(
   return result.data;
 }
 
+// ============================================
+// Europe-West1 Functions (production callables)
+// ============================================
+
+let euFunctionsInstance: Functions | null = null;
+function getEuFunctions(): Functions {
+  if (!euFunctionsInstance) {
+    euFunctionsInstance = getFunctions(getFirebaseApp(), 'europe-west1');
+  }
+  return euFunctionsInstance;
+}
+
+/**
+ * Request password reset — sends branded email via Cloud Function
+ */
+export async function callRequestPasswordReset(
+  email: string
+): Promise<{ success: boolean }> {
+  const callable = httpsCallable<{ email: string }, { success: boolean }>(
+    getEuFunctions(),
+    'requestPasswordReset'
+  );
+  const result = await callable({ email });
+  return result.data;
+}
+
 // Re-export for convenience
 export { httpsCallable, type Functions, type HttpsCallableResult };

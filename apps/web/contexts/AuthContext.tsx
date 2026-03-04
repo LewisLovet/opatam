@@ -17,6 +17,7 @@ interface AuthContextType {
   // Computed
   isAuthenticated: boolean;
   isProvider: boolean;
+  isAdmin: boolean;
   hasCompletedOnboarding: boolean;
 
   // Actions

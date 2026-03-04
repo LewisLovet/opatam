@@ -1394,3 +1394,88 @@ L'équipe ${appConfig.name}
   `.trim();
 }
 
+// ─── Password Reset Email ─────────────────────────────────────────────────
+
+export interface PasswordResetEmailData {
+  email: string;
+  resetLink: string;
+  name?: string;
+}
+
+export async function sendPasswordResetEmail(data: PasswordResetEmailData): Promise<EmailResult> {
+  console.log('[EMAIL] Sending password reset email to:', data.email);
+
+  if (!isValidEmail(data.email)) {
+    return { success: false, error: 'Invalid email format' };
+  }
+
+  try {
+    const greeting = data.name ? `Bonjour ${data.name},` : 'Bonjour,';
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background-color:#f4f4f5;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;">
+    <tr><td align="center" style="padding:40px 20px;">
+      <table role="presentation" style="max-width:480px;width:100%;border-collapse:collapse;background-color:#ffffff;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+        <tr><td style="padding:32px 32px 24px;text-align:center;">
+          <img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height:48px;max-width:200px;" />
+        </td></tr>
+        <tr><td style="padding:0 32px 24px;">
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#3f3f46;">${greeting}</p>
+          <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#3f3f46;">Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour en choisir un nouveau.</p>
+          <table role="presentation" style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+            <tr><td align="center">
+              <a href="${data.resetLink}" style="display:inline-block;padding:14px 32px;background-color:#1a6daf;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;border-radius:8px;">Réinitialiser mon mot de passe</a>
+            </td></tr>
+          </table>
+          <div style="background-color:#f4f4f5;border-radius:8px;padding:16px;margin-bottom:24px;">
+            <p style="margin:0;font-size:13px;color:#71717a;text-align:center;">Ce lien expire dans <strong>1 heure</strong>. Si vous n'avez pas fait cette demande, ignorez cet email.</p>
+          </div>
+          <p style="margin:0;font-size:13px;color:#a1a1aa;">Si le bouton ne fonctionne pas, copiez ce lien :</p>
+          <p style="margin:8px 0 0;font-size:12px;color:#a1a1aa;word-break:break-all;">${data.resetLink}</p>
+        </td></tr>
+        <tr><td style="padding:24px 32px 32px;border-top:1px solid #e4e4e7;">
+          <p style="margin:0;font-size:14px;color:#71717a;text-align:center;">L'équipe <strong>${appConfig.name}</strong></p>
+        </td></tr>
+      </table>
+      <p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;text-align:center;">Cet email a été envoyé automatiquement par ${appConfig.name}.</p>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+    const text = `${greeting}
+
+Vous avez demandé à réinitialiser votre mot de passe.
+Cliquez sur le lien ci-dessous pour en choisir un nouveau :
+
+${data.resetLink}
+
+Ce lien expire dans 1 heure. Si vous n'avez pas fait cette demande, ignorez cet email.
+
+L'équipe ${appConfig.name}`;
+
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.email,
+      replyTo: emailConfig.replyTo,
+      subject: 'Réinitialisez votre mot de passe Opatam',
+      html,
+      text,
+    });
+
+    if (error) {
+      console.error('[EMAIL] Resend error:', error);
+      return { success: false, error: String(error) };
+    }
+
+    console.log('[EMAIL] Password reset email sent successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAIL] Exception:', error);
+    return { success: false, error: String(error) };
+  }
+}
+

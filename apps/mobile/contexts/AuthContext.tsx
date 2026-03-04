@@ -196,11 +196,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Reset password
+  // Reset password (branded email via Cloud Function)
   const resetPassword = async (email: string) => {
     try {
-      await authService.resetPassword(email);
+      const { callRequestPasswordReset } = await import('@booking-app/firebase');
+      await callRequestPasswordReset(email);
     } catch (error: any) {
+      console.error('[AUTH] resetPassword error:', error);
       const code = error?.code || '';
       throw new Error(getFirebaseErrorMessage(code));
     }

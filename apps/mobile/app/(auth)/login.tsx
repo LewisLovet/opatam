@@ -465,12 +465,6 @@ export default function LoginScreen() {
               </View>
             ) : (
               <View style={styles.footerColumn}>
-                <View style={[styles.proInfoBanner, { backgroundColor: 'rgba(26, 109, 175, 0.06)', borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: 'rgba(26, 109, 175, 0.12)' }]}>
-                  <Ionicons name="information-circle-outline" size={18} color={colors.primary} style={{ marginRight: 8, marginTop: 1 }} />
-                  <Text variant="caption" color="textSecondary" style={{ flex: 1, lineHeight: 18 }}>
-                    L'inscription pro se fait sur le site web. Connectez-vous ici si vous avez déjà un compte.
-                  </Text>
-                </View>
                 <Pressable
                   onPress={() => router.push('/(auth)/pro')}
                   style={({ pressed }) => [styles.footerRow, { marginTop: spacing.md, opacity: pressed ? 0.7 : 1 }]}

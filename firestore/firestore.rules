@@ -149,5 +149,17 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if false;
     }
+
+    // === ADMIN CONFIG (accessible uniquement via Admin SDK côté serveur) ===
+
+    match /config/{configId} {
+      allow read, write: if false;
+    }
+
+    // === ADMIN LOGS (accessible uniquement via Admin SDK côté serveur) ===
+
+    match /adminLogs/{logId} {
+      allow read, write: if false;
+    }
   }
 }
