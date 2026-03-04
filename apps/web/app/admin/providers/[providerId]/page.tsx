@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminProviderService } from '@/services/admin';
 import type { ProviderDetail } from '@/services/admin/types';
@@ -45,12 +46,8 @@ const statusLabels: Record<string, string> = {
   incomplete: 'Incomplet',
 };
 
-export default function AdminProviderDetailPage({
-  params,
-}: {
-  params: Promise<{ providerId: string }>;
-}) {
-  const { providerId } = use(params);
+export default function AdminProviderDetailPage() {
+  const { providerId } = useParams<{ providerId: string }>();
   const { user: authUser } = useAuth();
   const [detail, setDetail] = useState<ProviderDetail | null>(null);
   const [loading, setLoading] = useState(true);

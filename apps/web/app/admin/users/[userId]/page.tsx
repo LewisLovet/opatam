@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminUserService } from '@/services/admin';
 import type { UserDetail } from '@/services/admin/types';
@@ -28,8 +29,8 @@ const statusColors: Record<string, 'warning' | 'success' | 'error' | 'info'> = {
   noshow: 'info',
 };
 
-export default function AdminUserDetailPage({ params }: { params: Promise<{ userId: string }> }) {
-  const { userId } = use(params);
+export default function AdminUserDetailPage() {
+  const { userId } = useParams<{ userId: string }>();
   const { user: authUser } = useAuth();
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);

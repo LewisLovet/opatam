@@ -6,7 +6,7 @@ import { adminStatsService } from '@/services/admin';
 import type { RevenueStats } from '@/services/admin/types';
 import { AdminStatCard } from '@/app/admin/components';
 import { Loader } from '@/components/ui';
-import { DollarSign, CreditCard, Clock, XCircle } from 'lucide-react';
+import { Euro, CreditCard, Clock, XCircle } from 'lucide-react';
 
 function formatCurrency(amountInCents: number): string {
   return (amountInCents / 100).toLocaleString('fr-FR', {
@@ -116,7 +116,7 @@ export default function AdminRevenuePage() {
         <AdminStatCard
           label="MRR"
           value={data.mrr}
-          icon={<DollarSign className="w-5 h-5 text-red-500" />}
+          icon={<Euro className="w-5 h-5 text-red-500" />}
           format="currency"
         />
         <AdminStatCard

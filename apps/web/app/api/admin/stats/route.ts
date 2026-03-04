@@ -255,14 +255,10 @@ async function getRevenueStats(): Promise<RevenueStats> {
   let activeCount = 0;
   let trialCount = 0;
   const planCounts: Record<string, { count: number; mrr: number }> = {};
+  const productNameCache: Record<string, string> = {};
 
   // Page through active subscriptions to compute MRR + plan breakdown
-  // Expand product to get its name instead of just the ID
-  for await (const sub of stripe.subscriptions.list({
-    status: 'active',
-    limit: 100,
-    expand: ['data.items.data.price.product'],
-  })) {
+  for await (const sub of stripe.subscriptions.list({ status: 'active', limit: 100 })) {
     activeCount++;
     for (const item of sub.items.data) {
       const amount = item.price?.unit_amount || 0;
@@ -270,14 +266,47 @@ async function getRevenueStats(): Promise<RevenueStats> {
       const monthlyAmount = interval === 'year' ? Math.round(amount / 12) : amount;
       mrr += monthlyAmount;
 
-      // Resolve human-readable plan name: product.name > price.nickname > fallback
-      const product = item.price?.product as Stripe.Product | string | undefined;
-      const productName = typeof product === 'object' ? product?.name : undefined;
-      const planName = productName || item.price?.nickname || 'Autre';
-      if (!planCounts[planName]) planCounts[planName] = { count: 0, mrr: 0 };
-      planCounts[planName].count++;
-      planCounts[planName].mrr += monthlyAmount;
+      // Collect product ID for later name resolution
+      const productId = typeof item.price?.product === 'string'
+        ? item.price.product
+        : (item.price?.product as Stripe.Product)?.id;
+      const key = item.price?.nickname || productId || 'autre';
+      if (!planCounts[key]) planCounts[key] = { count: 0, mrr: 0 };
+      planCounts[key].count++;
+      planCounts[key].mrr += monthlyAmount;
+
+      // Track product IDs that need name resolution
+      if (productId && !productNameCache[productId]) {
+        productNameCache[productId] = productId; // placeholder
+      }
     }
+  }
+
+  // Resolve product IDs to human-readable names
+  const productIds = Object.keys(productNameCache);
+  if (productIds.length > 0) {
+    await Promise.all(
+      productIds.map(async (id) => {
+        try {
+          const product = await stripe.products.retrieve(id);
+          productNameCache[id] = product.name || id;
+        } catch {
+          // keep the ID as fallback
+        }
+      })
+    );
+
+    // Rebuild planCounts with resolved names
+    const resolved: Record<string, { count: number; mrr: number }> = {};
+    for (const [key, data] of Object.entries(planCounts)) {
+      const name = productNameCache[key] || key;
+      if (!resolved[name]) resolved[name] = { count: 0, mrr: 0 };
+      resolved[name].count += data.count;
+      resolved[name].mrr += data.mrr;
+    }
+    // Replace planCounts contents
+    for (const k of Object.keys(planCounts)) delete planCounts[k];
+    Object.assign(planCounts, resolved);
   }
 
   // Count trialing subscriptions

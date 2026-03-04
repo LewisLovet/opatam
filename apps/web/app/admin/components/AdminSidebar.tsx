@@ -9,7 +9,7 @@ import {
   Briefcase,
   Calendar,
   Star,
-  DollarSign,
+  Euro,
   LogOut,
   Menu,
   X,
@@ -47,7 +47,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Réservations', href: '/admin/bookings', icon: <Calendar className="w-5 h-5" /> },
       { label: 'Avis', href: '/admin/reviews', icon: <Star className="w-5 h-5" /> },
-      { label: 'Revenue', href: '/admin/revenue', icon: <DollarSign className="w-5 h-5" /> },
+      { label: 'Revenue', href: '/admin/revenue', icon: <Euro className="w-5 h-5" /> },
     ],
   },
 ];
