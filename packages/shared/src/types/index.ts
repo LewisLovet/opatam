@@ -32,6 +32,8 @@ export interface User {
   cancellationCount: number;
   pushTokens: string[]; // Expo push tokens for notifications (device-specific)
   notificationSettings?: NotificationSettings;
+  isAdmin?: boolean; // Admin dashboard access (only set for platform admins)
+  isDisabled?: boolean; // Disabled by admin
   createdAt: Date;
   updatedAt: Date;
 }

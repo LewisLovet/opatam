@@ -20,6 +20,7 @@ export { requestPasswordReset } from './callable/requestPasswordReset';
 
 // Triggers
 export { onBookingWrite } from './triggers/onBookingWrite';
+export { onUserWrite, onProviderWrite, onBookingWriteStats, onReviewWrite } from './triggers/onStatsUpdate';
 
 // Scheduled
 export { recalculateExpiredSlots } from './scheduled/recalculateExpiredSlots';

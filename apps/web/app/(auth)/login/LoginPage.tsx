@@ -82,7 +82,10 @@ function LoginContent() {
       const redirectUrl = searchParams.get('redirect');
 
       // Redirect based on user role
-      if (user.role === 'client') {
+      if (user.isAdmin) {
+        // Admin → admin dashboard
+        router.push('/admin');
+      } else if (user.role === 'client') {
         // Clients should use the mobile app
         router.push('/telechargement');
       } else if (redirectUrl && user.providerId) {

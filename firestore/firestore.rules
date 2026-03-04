@@ -150,6 +150,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // === STATS (pré-calculées par Cloud Functions, lecture serveur uniquement) ===
+
+    match /stats/{statId} {
+      allow read, write: if false;
+    }
+
     // === ADMIN CONFIG (accessible uniquement via Admin SDK côté serveur) ===
 
     match /config/{configId} {

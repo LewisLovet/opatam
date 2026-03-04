@@ -126,6 +126,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Computed values
   const isAuthenticated = firebaseUser !== null && user !== null;
   const isProvider = user?.role === 'provider';
+  const isAdmin = user?.isAdmin === true;
   const hasCompletedOnboarding = isProvider && user?.providerId !== null;
 
   const value: AuthContextType = {
@@ -135,6 +136,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loading,
     isAuthenticated,
     isProvider,
+    isAdmin,
     hasCompletedOnboarding,
     refreshUser,
     refreshProvider,
