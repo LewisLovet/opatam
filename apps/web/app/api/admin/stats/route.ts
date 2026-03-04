@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { getStripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
-import type { DashboardStats, TrendData, CategoryData, RevenueStats } from '@/services/admin/types';
+import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent } from '@/services/admin/types';
 
 /** Return JSON with Cache-Control header to avoid redundant Firestore reads */
 function jsonWithCache(data: unknown, maxAgeSeconds: number) {
@@ -53,6 +53,18 @@ export async function GET(request: NextRequest) {
     if (type === 'revenue') {
       const data = await getRevenueStats();
       return jsonWithCache(data, 300);
+    }
+
+    // Analytics (cache 5 min — heavy aggregations)
+    if (type === 'analytics') {
+      const data = await getAnalyticsData(db);
+      return jsonWithCache(data, 300);
+    }
+
+    // Activity feed (cache 1 min — fresh data desired)
+    if (type === 'activity') {
+      const data = await getActivityFeed(db);
+      return jsonWithCache(data, 60);
     }
 
     // Default: dashboard stats (cache 5 min — most expensive query)
@@ -244,6 +256,253 @@ async function getBookingsByCategory(db: FirebaseFirestore.Firestore): Promise<C
       count,
     }))
     .sort((a, b) => b.count - a.count);
+}
+
+async function getAnalyticsData(db: FirebaseFirestore.Firestore): Promise<AnalyticsData> {
+  const now = new Date();
+  const threeMonthsAgo = new Date(now);
+  threeMonthsAgo.setDate(threeMonthsAgo.getDate() - 90);
+  const twelveMonthsAgo = new Date(now);
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+  const categoryLabels: Record<string, string> = {
+    coiffure: 'Coiffure',
+    barbier: 'Barbier',
+    esthetique: 'Esthétique',
+    massage: 'Massage',
+    onglerie: 'Onglerie',
+    tatouage: 'Tatouage',
+    maquillage: 'Maquillage',
+    soin_visage: 'Soin visage',
+    Autre: 'Autre',
+  };
+
+  // Parallel queries — all use select() for minimal data transfer
+  const [providersSnap, bookingsSnap, usersSnap, statsDoc] = await Promise.all([
+    db.collection('providers').select('businessName', 'photoURL', 'category', 'cities', 'rating').get(),
+    db.collection('bookings').where('createdAt', '>=', threeMonthsAgo).select('providerId', 'datetime', 'status', 'category').get(),
+    db.collection('users').where('createdAt', '>=', twelveMonthsAgo).select('role', 'createdAt').get(),
+    db.doc('stats/dashboard').get(),
+  ]);
+
+  // ── Top cities ──
+  const cityProviders: Record<string, number> = {};
+  providersSnap.docs.forEach((doc) => {
+    const cities: string[] = doc.data().cities || [];
+    cities.forEach((city) => {
+      if (city) cityProviders[city] = (cityProviders[city] || 0) + 1;
+    });
+  });
+
+  const cityBookings: Record<string, number> = {};
+  // Count bookings per provider, then map to their cities
+  const bookingsByProvider: Record<string, number> = {};
+  bookingsSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    if (d.providerId) {
+      bookingsByProvider[d.providerId] = (bookingsByProvider[d.providerId] || 0) + 1;
+    }
+  });
+
+  // Map provider bookings to their cities
+  providersSnap.docs.forEach((doc) => {
+    const cities: string[] = doc.data().cities || [];
+    const provBookings = bookingsByProvider[doc.id] || 0;
+    if (provBookings > 0) {
+      cities.forEach((city) => {
+        if (city) cityBookings[city] = (cityBookings[city] || 0) + provBookings;
+      });
+    }
+  });
+
+  const topCities = Object.keys(cityProviders)
+    .map((city) => ({
+      city,
+      providers: cityProviders[city] || 0,
+      bookings: cityBookings[city] || 0,
+    }))
+    .sort((a, b) => b.providers - a.providers)
+    .slice(0, 10);
+
+  // ── Top providers ──
+  const topProviders = providersSnap.docs
+    .map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        businessName: d.businessName || 'Sans nom',
+        photoURL: d.photoURL || undefined,
+        category: categoryLabels[d.category] || d.category || 'Autre',
+        bookings: bookingsByProvider[doc.id] || 0,
+        rating: d.rating?.average || 0,
+        ratingCount: d.rating?.count || 0,
+      };
+    })
+    .sort((a, b) => b.bookings - a.bookings)
+    .slice(0, 10);
+
+  // ── Signups by month ──
+  const signupsByMonthMap: Record<string, { clients: number; providers: number }> = {};
+  // Init last 12 months
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    signupsByMonthMap[key] = { clients: 0, providers: 0 };
+  }
+
+  usersSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    const created = d.createdAt?.toDate?.() || new Date(d.createdAt);
+    const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
+    if (signupsByMonthMap[key]) {
+      if (d.role === 'provider') {
+        signupsByMonthMap[key].providers++;
+      } else {
+        signupsByMonthMap[key].clients++;
+      }
+    }
+  });
+
+  const signupsByMonth = Object.entries(signupsByMonthMap).map(([month, data]) => ({
+    month,
+    clients: data.clients,
+    providers: data.providers,
+  }));
+
+  // ── Peak hours ──
+  const hourCounts: number[] = new Array(24).fill(0);
+  bookingsSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    const dt = d.datetime?.toDate?.() || (d.datetime ? new Date(d.datetime) : null);
+    if (dt && !isNaN(dt.getTime())) {
+      hourCounts[dt.getHours()]++;
+    }
+  });
+
+  const peakHours = hourCounts.map((count, hour) => ({ hour, count }));
+
+  // ── Category breakdown ──
+  const providersByCategory: Record<string, number> = {};
+  providersSnap.docs.forEach((doc) => {
+    const cat = doc.data().category || 'Autre';
+    providersByCategory[cat] = (providersByCategory[cat] || 0) + 1;
+  });
+
+  const bookingsByCategoryStats: Record<string, number> = statsDoc.data()?.bookingsByCategory || {};
+
+  const allCategories = new Set([...Object.keys(providersByCategory), ...Object.keys(bookingsByCategoryStats)]);
+  const categoryBreakdown = Array.from(allCategories)
+    .map((category) => ({
+      category,
+      label: categoryLabels[category] || category,
+      providers: providersByCategory[category] || 0,
+      bookings: bookingsByCategoryStats[category] || 0,
+    }))
+    .filter((c) => c.providers > 0 || c.bookings > 0)
+    .sort((a, b) => b.bookings - a.bookings);
+
+  return {
+    topCities,
+    topProviders,
+    signupsByMonth,
+    peakHours,
+    categoryBreakdown,
+  };
+}
+
+async function getActivityFeed(db: FirebaseFirestore.Firestore): Promise<ActivityEvent[]> {
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+  // 4 parallel queries, each limited to recent docs
+  const [providersSnap, bookingsSnap, reviewsSnap, usersSnap] = await Promise.all([
+    db.collection('providers')
+      .where('createdAt', '>=', twoDaysAgo)
+      .orderBy('createdAt', 'desc')
+      .limit(10)
+      .select('businessName', 'createdAt')
+      .get(),
+    db.collection('bookings')
+      .where('createdAt', '>=', twoDaysAgo)
+      .orderBy('createdAt', 'desc')
+      .limit(15)
+      .select('clientName', 'providerName', 'status', 'createdAt')
+      .get(),
+    db.collection('reviews')
+      .where('createdAt', '>=', twoDaysAgo)
+      .orderBy('createdAt', 'desc')
+      .limit(10)
+      .select('clientName', 'rating', 'providerName', 'createdAt')
+      .get(),
+    db.collection('users')
+      .where('createdAt', '>=', twoDaysAgo)
+      .orderBy('createdAt', 'desc')
+      .limit(10)
+      .select('displayName', 'role', 'createdAt')
+      .get(),
+  ]);
+
+  const events: ActivityEvent[] = [];
+
+  // New providers
+  providersSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    const ts = d.createdAt?.toDate?.() || new Date(d.createdAt);
+    events.push({
+      id: `prov-${doc.id}`,
+      type: 'new_provider',
+      title: 'Nouveau prestataire',
+      description: d.businessName || 'Sans nom',
+      timestamp: ts.toISOString(),
+      metadata: { providerId: doc.id },
+    });
+  });
+
+  // Bookings (new + cancelled)
+  bookingsSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    const ts = d.createdAt?.toDate?.() || new Date(d.createdAt);
+    const isCancelled = d.status === 'cancelled' || d.status === 'cancelled_by_provider' || d.status === 'cancelled_by_client';
+
+    events.push({
+      id: `book-${doc.id}`,
+      type: isCancelled ? 'cancelled_booking' : 'new_booking',
+      title: isCancelled ? 'Annulation' : 'Nouvelle réservation',
+      description: `${d.clientName || 'Client'} chez ${d.providerName || 'Prestataire'}`,
+      timestamp: ts.toISOString(),
+      metadata: { bookingId: doc.id },
+    });
+  });
+
+  // Reviews
+  reviewsSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    const ts = d.createdAt?.toDate?.() || new Date(d.createdAt);
+    events.push({
+      id: `rev-${doc.id}`,
+      type: 'new_review',
+      title: 'Nouvel avis',
+      description: `${d.clientName || 'Client'} — ${d.rating || 0}★`,
+      timestamp: ts.toISOString(),
+    });
+  });
+
+  // New users
+  usersSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    const ts = d.createdAt?.toDate?.() || new Date(d.createdAt);
+    events.push({
+      id: `user-${doc.id}`,
+      type: 'new_user',
+      title: 'Nouvel utilisateur',
+      description: d.displayName || 'Utilisateur',
+      timestamp: ts.toISOString(),
+    });
+  });
+
+  // Sort by timestamp desc, return top 30
+  events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return events.slice(0, 30);
 }
 
 async function getRevenueStats(): Promise<RevenueStats> {

@@ -1,4 +1,4 @@
-import type { DashboardStats, TrendData, CategoryData, RevenueStats } from './types';
+import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent } from './types';
 
 const BASE_URL = '/api/admin/stats';
 
@@ -45,6 +45,22 @@ export const adminStatsService = {
       headers: headers(adminUid),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des revenus');
+    return res.json();
+  },
+
+  async getAnalytics(adminUid: string): Promise<AnalyticsData> {
+    const res = await fetch(`${BASE_URL}?type=analytics`, {
+      headers: headers(adminUid),
+    });
+    if (!res.ok) throw new Error('Erreur lors du chargement des analytics');
+    return res.json();
+  },
+
+  async getActivityFeed(adminUid: string): Promise<ActivityEvent[]> {
+    const res = await fetch(`${BASE_URL}?type=activity`, {
+      headers: headers(adminUid),
+    });
+    if (!res.ok) throw new Error('Erreur lors du chargement de l\'activité');
     return res.json();
   },
 };

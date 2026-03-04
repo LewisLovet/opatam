@@ -133,6 +133,27 @@ export interface StripePayment {
   created: string;
 }
 
+// ── Phase 3: Analytics ──
+
+export interface AnalyticsData {
+  topCities: { city: string; providers: number; bookings: number }[];
+  topProviders: { id: string; businessName: string; photoURL?: string; category: string; bookings: number; rating: number; ratingCount: number }[];
+  signupsByMonth: { month: string; clients: number; providers: number }[];
+  peakHours: { hour: number; count: number }[];
+  categoryBreakdown: { category: string; label: string; providers: number; bookings: number }[];
+}
+
+export interface ActivityEvent {
+  id: string;
+  type: 'new_provider' | 'new_booking' | 'cancelled_booking' | 'new_review' | 'new_user';
+  title: string;
+  description: string;
+  timestamp: string;
+  metadata?: Record<string, string>;
+}
+
+// ── Provider Detail ──
+
 export interface ProviderDetail {
   provider: WithId<Provider>;
   user: WithId<User>;

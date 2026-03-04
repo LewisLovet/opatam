@@ -18,6 +18,7 @@ import {
   Users,
   Briefcase,
   Clock,
+  ExternalLink,
 } from 'lucide-react';
 
 const categoryLabels: Record<string, string> = {
@@ -218,6 +219,17 @@ export default function AdminProviderDetailPage() {
             >
               {provider.isPublished ? 'Dépublier' : 'Publier'}
             </Button>
+            {provider.slug && (
+              <a
+                href={`/p/${provider.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Voir la page
+              </a>
+            )}
           </div>
         </div>
       </div>

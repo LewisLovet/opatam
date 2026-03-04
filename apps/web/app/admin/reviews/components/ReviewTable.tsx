@@ -1,8 +1,9 @@
 'use client';
 
 import { Star, Eye, EyeOff, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Badge } from '@/components/ui';
+import { ConfirmModal } from '../../components/ConfirmModal';
 
 interface ReviewItem {
   id: string;
@@ -47,24 +48,57 @@ function truncate(text: string | null, maxLength = 50): string {
 
 export function ReviewTable({ items, onToggleVisibility, onDelete }: ReviewTableProps) {
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'toggle' | 'delete';
+    reviewId: string;
+    review: ReviewItem;
+  } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const handleToggle = async (reviewId: string, currentIsPublic: boolean) => {
-    setTogglingIds((prev) => new Set(prev).add(reviewId));
+  const handleConfirm = useCallback(async () => {
+    if (!confirmAction) return;
+    setActionLoading(true);
     try {
-      await onToggleVisibility(reviewId, !currentIsPublic);
+      if (confirmAction.type === 'toggle') {
+        setTogglingIds((prev) => new Set(prev).add(confirmAction.reviewId));
+        await onToggleVisibility(confirmAction.reviewId, !confirmAction.review.isPublic);
+        setTogglingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(confirmAction.reviewId);
+          return next;
+        });
+      } else {
+        await onDelete(confirmAction.reviewId);
+      }
+      setConfirmAction(null);
+    } catch {
+      // keep modal open on error
     } finally {
-      setTogglingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(reviewId);
-        return next;
-      });
+      setActionLoading(false);
     }
-  };
+  }, [confirmAction, onToggleVisibility, onDelete]);
 
-  const handleDelete = (reviewId: string) => {
-    if (window.confirm('Supprimer cet avis ? Cette action est irr\u00e9versible.')) {
-      onDelete(reviewId);
+  const getModalProps = () => {
+    if (!confirmAction) return { title: '', description: '', confirmLabel: '', confirmVariant: 'primary' as const };
+
+    if (confirmAction.type === 'delete') {
+      return {
+        title: 'Supprimer cet avis',
+        description: `L'avis de "${confirmAction.review.clientName}" (${confirmAction.review.rating}/5) pour "${confirmAction.review.providerName}" sera supprime definitivement. Cette action est irreversible.`,
+        confirmLabel: 'Supprimer',
+        confirmVariant: 'danger' as const,
+      };
     }
+
+    const willBePublic = !confirmAction.review.isPublic;
+    return {
+      title: willBePublic ? 'Rendre cet avis public' : 'Masquer cet avis',
+      description: willBePublic
+        ? `L'avis de "${confirmAction.review.clientName}" (${confirmAction.review.rating}/5) sera visible sur la page publique de "${confirmAction.review.providerName}".`
+        : `L'avis de "${confirmAction.review.clientName}" (${confirmAction.review.rating}/5) ne sera plus visible sur la page publique de "${confirmAction.review.providerName}".`,
+      confirmLabel: willBePublic ? 'Rendre public' : 'Masquer',
+      confirmVariant: 'primary' as const,
+    };
   };
 
   if (items.length === 0) {
@@ -172,7 +206,7 @@ export function ReviewTable({ items, onToggleVisibility, onDelete }: ReviewTable
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleToggle(review.id, review.isPublic)}
+                      onClick={() => setConfirmAction({ type: 'toggle', reviewId: review.id, review })}
                       disabled={togglingIds.has(review.id)}
                       className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
                       title={review.isPublic ? 'Rendre priv\u00e9' : 'Rendre public'}
@@ -184,7 +218,7 @@ export function ReviewTable({ items, onToggleVisibility, onDelete }: ReviewTable
                       )}
                     </button>
                     <button
-                      onClick={() => handleDelete(review.id)}
+                      onClick={() => setConfirmAction({ type: 'delete', reviewId: review.id, review })}
                       className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       title="Supprimer"
                     >
@@ -257,7 +291,7 @@ export function ReviewTable({ items, onToggleVisibility, onDelete }: ReviewTable
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleToggle(review.id, review.isPublic)}
+                  onClick={() => setConfirmAction({ type: 'toggle', reviewId: review.id, review })}
                   disabled={togglingIds.has(review.id)}
                   className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
                   title={review.isPublic ? 'Rendre priv\u00e9' : 'Rendre public'}
@@ -269,7 +303,7 @@ export function ReviewTable({ items, onToggleVisibility, onDelete }: ReviewTable
                   )}
                 </button>
                 <button
-                  onClick={() => handleDelete(review.id)}
+                  onClick={() => setConfirmAction({ type: 'delete', reviewId: review.id, review })}
                   className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   title="Supprimer"
                 >
@@ -280,6 +314,14 @@ export function ReviewTable({ items, onToggleVisibility, onDelete }: ReviewTable
           </div>
         ))}
       </div>
+
+      <ConfirmModal
+        open={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleConfirm}
+        loading={actionLoading}
+        {...getModalProps()}
+      />
     </>
   );
 }

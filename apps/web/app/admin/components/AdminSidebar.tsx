@@ -10,6 +10,8 @@ import {
   Calendar,
   Star,
   Euro,
+  BarChart3,
+  Activity,
   LogOut,
   Menu,
   X,
@@ -48,6 +50,13 @@ const navGroups: NavGroup[] = [
       { label: 'Réservations', href: '/admin/bookings', icon: <Calendar className="w-5 h-5" /> },
       { label: 'Avis', href: '/admin/reviews', icon: <Star className="w-5 h-5" /> },
       { label: 'Revenue', href: '/admin/revenue', icon: <Euro className="w-5 h-5" /> },
+    ],
+  },
+  {
+    label: 'Analyse',
+    items: [
+      { label: 'Analytics', href: '/admin/analytics', icon: <BarChart3 className="w-5 h-5" /> },
+      { label: 'Activité', href: '/admin/activity', icon: <Activity className="w-5 h-5" /> },
     ],
   },
 ];

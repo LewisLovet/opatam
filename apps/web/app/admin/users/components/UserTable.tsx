@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { ChevronRight, ShieldCheck, Ban } from 'lucide-react';
 import { Badge } from '@/components/ui';
 
@@ -18,6 +17,7 @@ interface UserItem {
 
 interface UserTableProps {
   items: UserItem[];
+  onUserClick: (userId: string) => void;
 }
 
 const roleLabels: Record<string, string> = {
@@ -32,7 +32,7 @@ const roleBadgeVariant: Record<string, 'info' | 'success' | 'warning'> = {
   both: 'warning',
 };
 
-export function UserTable({ items }: UserTableProps) {
+export function UserTable({ items, onUserClick }: UserTableProps) {
   if (items.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center text-gray-400 text-sm">
@@ -67,7 +67,8 @@ export function UserTable({ items }: UserTableProps) {
             {items.map((user) => (
               <tr
                 key={user.id}
-                className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                onClick={() => onUserClick(user.id)}
+                className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
               >
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
@@ -117,12 +118,9 @@ export function UserTable({ items }: UserTableProps) {
                   )}
                 </td>
                 <td className="px-5 py-3">
-                  <Link
-                    href={`/admin/users/${user.id}`}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors inline-flex"
-                  >
+                  <span className="p-1.5 rounded-lg inline-flex">
                     <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </Link>
+                  </span>
                 </td>
               </tr>
             ))}
@@ -133,10 +131,10 @@ export function UserTable({ items }: UserTableProps) {
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
         {items.map((user) => (
-          <Link
+          <div
             key={user.id}
-            href={`/admin/users/${user.id}`}
-            className="block bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700"
+            onClick={() => onUserClick(user.id)}
+            className="block bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
@@ -169,7 +167,7 @@ export function UserTable({ items }: UserTableProps) {
               </div>
               <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
             </div>
-          </Link>
+          </div>
         ))}
       </div>
     </>

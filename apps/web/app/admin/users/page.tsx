@@ -6,6 +6,7 @@ import { adminUserService } from '@/services/admin';
 import type { UserFilters as UserFiltersType, PaginatedResult } from '@/services/admin/types';
 import { UserFilters } from './components/UserFilters';
 import { UserTable } from './components/UserTable';
+import { UserDetailModal } from './components/UserDetailModal';
 import { Loader } from '@/components/ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -15,6 +16,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PaginatedResult<any> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const loadUsers = useCallback(async () => {
     if (!user?.id) return;
@@ -60,7 +62,7 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         <>
-          <UserTable items={result?.items || []} />
+          <UserTable items={result?.items || []} onUserClick={setSelectedUserId} />
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -88,6 +90,11 @@ export default function AdminUsersPage() {
           )}
         </>
       )}
+      <UserDetailModal
+        open={!!selectedUserId}
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+      />
     </div>
   );
 }
