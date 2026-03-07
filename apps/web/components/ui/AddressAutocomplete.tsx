@@ -17,6 +17,7 @@ export interface AddressSuggestion {
   type: string;
   score: number;
   coordinates: { latitude: number; longitude: number };
+  region: string | null;
 }
 
 export interface AddressAutocompleteProps {
@@ -58,22 +59,29 @@ async function searchAddress(
   if (!response.ok) return [];
 
   const data = await response.json();
-  return (data.features ?? []).map((f: any) => ({
-    label: f.properties.label,
-    name: f.properties.name,
-    city: f.properties.city,
-    postcode: f.properties.postcode,
-    street: f.properties.street ?? null,
-    housenumber: f.properties.housenumber ?? null,
-    context: f.properties.context,
-    citycode: f.properties.citycode,
-    type: f.properties.type,
-    score: f.properties.score,
-    coordinates: {
-      latitude: f.geometry.coordinates[1],
-      longitude: f.geometry.coordinates[0],
-    },
-  }));
+  return (data.features ?? []).map((f: any) => {
+    // Extract region from context (format: "75, Paris, Île-de-France")
+    const contextParts = (f.properties.context || '').split(', ');
+    const region = contextParts.length >= 3 ? contextParts[contextParts.length - 1] : null;
+
+    return {
+      label: f.properties.label,
+      name: f.properties.name,
+      city: f.properties.city,
+      postcode: f.properties.postcode,
+      street: f.properties.street ?? null,
+      housenumber: f.properties.housenumber ?? null,
+      context: f.properties.context,
+      citycode: f.properties.citycode,
+      type: f.properties.type,
+      score: f.properties.score,
+      coordinates: {
+        latitude: f.geometry.coordinates[1],
+        longitude: f.geometry.coordinates[0],
+      },
+      region,
+    };
+  });
 }
 
 // --- Component ---

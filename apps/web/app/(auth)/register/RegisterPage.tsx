@@ -71,6 +71,7 @@ interface WizardData {
   postalCode: string;
   city: string;
   geopoint: { latitude: number; longitude: number } | null;
+  region: string | null;
   // Step 3 - Service
   serviceName: string;
   serviceDuration: number;
@@ -83,6 +84,7 @@ interface WizardData {
   // Step 6 - Account
   displayName: string;
   email: string;
+  confirmEmail: string;
   phone: string;
   password: string;
   confirmPassword: string;
@@ -109,6 +111,7 @@ const DEFAULT_DATA: WizardData = {
   postalCode: '',
   city: '',
   geopoint: null,
+  region: null,
   serviceName: '',
   serviceDuration: 60,
   servicePrice: 0,
@@ -116,6 +119,7 @@ const DEFAULT_DATA: WizardData = {
   availability: DEFAULT_AVAILABILITY,
   displayName: '',
   email: '',
+  confirmEmail: '',
   phone: '',
   password: '',
   confirmPassword: '',
@@ -289,6 +293,10 @@ export default function RegisterPage() {
           setError('Adresse email invalide');
           return false;
         }
+        if (data.email.trim().toLowerCase() !== data.confirmEmail.trim().toLowerCase()) {
+          setError('Les adresses email ne correspondent pas');
+          return false;
+        }
         if (!data.phone.trim()) {
           setError('Veuillez entrer votre numéro de téléphone');
           return false;
@@ -355,6 +363,7 @@ export default function RegisterPage() {
       type: 'fixed',
       travelRadius: null,
       photoURLs: [],
+      region: data.region,
     });
     const locationId = location.id;
 
@@ -523,7 +532,7 @@ export default function RegisterPage() {
           const checked = e.target.checked;
           updateData({
             cityOnly: checked,
-            ...(checked ? { address: '', geopoint: null, postalCode: '', city: '' } : {}),
+            ...(checked ? { address: '', geopoint: null, postalCode: '', city: '', region: null } : {}),
           });
         }}
         label="Ville uniquement"
@@ -534,13 +543,14 @@ export default function RegisterPage() {
         <AddressAutocomplete
           label="Adresse"
           value={data.address}
-          onChange={(value) => updateData({ address: value, postalCode: '', city: '', geopoint: null })}
+          onChange={(value) => updateData({ address: value, postalCode: '', city: '', geopoint: null, region: null })}
           onSelect={(suggestion: AddressSuggestion) => {
             updateData({
               address: suggestion.label,
               postalCode: suggestion.postcode,
               city: suggestion.city,
               geopoint: suggestion.coordinates,
+              region: suggestion.region,
             });
           }}
           placeholder="Commencez à taper votre adresse..."
@@ -551,12 +561,13 @@ export default function RegisterPage() {
         <AddressAutocomplete
           label="Ville"
           value={data.city}
-          onChange={(value) => updateData({ city: value, postalCode: '', geopoint: null })}
+          onChange={(value) => updateData({ city: value, postalCode: '', geopoint: null, region: null })}
           onSelect={(suggestion: AddressSuggestion) => {
             updateData({
               city: suggestion.city,
               postalCode: suggestion.postcode,
               geopoint: suggestion.coordinates,
+              region: suggestion.region,
             });
           }}
           placeholder="Rechercher une ville..."
@@ -895,6 +906,19 @@ export default function RegisterPage() {
             placeholder="vous@exemple.com"
             value={data.email}
             onChange={(e) => updateData({ email: e.target.value })}
+            disabled={loading}
+            className="pl-10"
+          />
+          <Mail className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
+        </div>
+
+        <div className="relative">
+          <Input
+            type="email"
+            label="Confirmer l'adresse email"
+            placeholder="vous@exemple.com"
+            value={data.confirmEmail}
+            onChange={(e) => updateData({ confirmEmail: e.target.value })}
             disabled={loading}
             className="pl-10"
           />

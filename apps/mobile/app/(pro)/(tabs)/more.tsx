@@ -802,13 +802,11 @@ const s = StyleSheet.create({
   },
   grid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    gap: 12,
+    justifyContent: 'space-between',
   },
   gridItem: {
     alignItems: 'center',
-    width: 72,
+    flex: 1,
   },
   gridIconContainer: {
     width: 48,

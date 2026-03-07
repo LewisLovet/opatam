@@ -37,6 +37,7 @@ export interface LocationFormData {
   type: LocationType;
   travelRadius: number | null;
   geopoint?: { latitude: number; longitude: number } | null;
+  region?: string | null;
 }
 
 export function LocationModal({
@@ -144,6 +145,7 @@ export function LocationModal({
       postalCode: suggestion.postcode,
       city: suggestion.city,
       geopoint: suggestion.coordinates,
+      region: suggestion.region,
     }));
     setErrors((prev) => ({ ...prev, address: '', postalCode: '', city: '' }));
   };
@@ -389,6 +391,7 @@ export function LocationModal({
                   city: suggestion.city,
                   postalCode: suggestion.postcode,
                   geopoint: suggestion.coordinates,
+                  region: suggestion.region,
                 }));
                 setErrors((prev) => ({ ...prev, city: '', postalCode: '' }));
               }}

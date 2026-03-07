@@ -5,6 +5,7 @@ import {
   updateLocationSchema,
   normalizeCity,
   getCityRegion,
+  getRegionFromCoords,
   PLAN_LIMITS,
   type CreateLocationInput,
   type UpdateLocationInput,
@@ -15,7 +16,7 @@ export class LocationService {
   /**
    * Create a new location
    */
-  async createLocation(providerId: string, input: CreateLocationInput, providerPlan?: string): Promise<WithId<Location>> {
+  async createLocation(providerId: string, input: CreateLocationInput & { region?: string | null }, providerPlan?: string): Promise<WithId<Location>> {
     // Validate input
     const validated = createLocationSchema.parse(input);
 
@@ -55,8 +56,8 @@ export class LocationService {
       throw new Error('Erreur lors de la création du lieu');
     }
 
-    // Update provider's cities
-    await this.updateProviderCities(providerId);
+    // Update provider's cities (pass region from address API if available)
+    await this.updateProviderCities(providerId, input.region ?? undefined);
 
     return location;
   }
@@ -67,10 +68,13 @@ export class LocationService {
   async updateLocation(
     providerId: string,
     locationId: string,
-    input: UpdateLocationInput
+    input: UpdateLocationInput & { region?: string | null }
   ): Promise<void> {
+    // Extract region before validation (not part of location schema)
+    const { region: regionOverride, ...locationInput } = input;
+
     // Validate input
-    const validated = updateLocationSchema.parse(input);
+    const validated = updateLocationSchema.parse(locationInput);
 
     // Check location exists
     const location = await locationRepository.getById(providerId, locationId);
@@ -82,7 +86,7 @@ export class LocationService {
 
     // Update provider's cities if city or isActive changed
     if (validated.city !== undefined || validated.isActive !== undefined) {
-      await this.updateProviderCities(providerId);
+      await this.updateProviderCities(providerId, regionOverride ?? undefined);
     }
   }
 
@@ -278,7 +282,7 @@ export class LocationService {
    * Recalculate and update provider's cities array and geopoint
    * Called after location create/update/delete
    */
-  async updateProviderCities(providerId: string): Promise<void> {
+  async updateProviderCities(providerId: string, regionOverride?: string): Promise<void> {
     const activeLocations = await locationRepository.getActiveByProvider(providerId);
 
     // Extract and normalize unique cities
@@ -296,9 +300,15 @@ export class LocationService {
       activeLocations.find((l) => l.geopoint)?.geopoint ??
       null;
 
-    // Determine region from default/first active location's city
-    const defaultCity = defaultLocation?.city || activeLocations[0]?.city || null;
-    const region = defaultCity ? getCityRegion(defaultCity) : null;
+    // Determine region: use override from address API, then city lookup, then GPS fallback
+    let region: string | null = regionOverride ?? null;
+    if (!region) {
+      const defaultCity = defaultLocation?.city || activeLocations[0]?.city || null;
+      region = defaultCity ? getCityRegion(defaultCity) : null;
+    }
+    if (!region && geopoint) {
+      region = getRegionFromCoords(geopoint.latitude, geopoint.longitude);
+    }
 
     const cities = Array.from(citiesSet).sort();
     await providerRepository.update(providerId, { cities, geopoint, region });

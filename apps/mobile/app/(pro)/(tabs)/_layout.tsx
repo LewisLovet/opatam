@@ -18,6 +18,7 @@ export default function ProTabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarPosition: 'bottom',
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopWidth: 1,

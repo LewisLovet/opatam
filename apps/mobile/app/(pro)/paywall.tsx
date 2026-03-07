@@ -13,6 +13,7 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
@@ -75,7 +76,15 @@ export default function PaywallScreen() {
   };
 
   const handlePurchase = async () => {
-    if (!currentOffering || purchasing) return;
+    if (purchasing) return;
+
+    if (!currentOffering) {
+      Alert.alert(
+        'Offres indisponibles',
+        'Impossible de charger les offres d\'abonnement. Vérifiez votre connexion internet et réessayez.',
+      );
+      return;
+    }
 
     // Find the right package by product identifier
     const pkg = currentOffering.availablePackages.find((p) => {
@@ -286,22 +295,49 @@ export default function PaywallScreen() {
 
         {/* Purchase Button */}
         <View style={styles.purchaseSection}>
-          <Button
-            title={purchasing ? 'Traitement en cours...' : `S'abonner — ${getPrice(selectedPlan, billingCycle)}/${billingCycle === 'monthly' ? 'mois' : 'an'}`}
-            onPress={handlePurchase}
-            loading={purchasing}
-            disabled={purchasing || !isReady}
-            fullWidth
-          />
-
-          {!isReady && (
+          {!isReady ? (
             <View style={styles.loadingOfferings}>
               <ActivityIndicator size="small" color={colors.textMuted} />
               <Text style={[styles.loadingText, { color: colors.textMuted }]}>
                 Chargement des offres...
               </Text>
             </View>
+          ) : !currentOffering ? (
+            <View style={styles.loadingOfferings}>
+              <Ionicons name="warning-outline" size={16} color="#DC2626" />
+              <Text style={[styles.loadingText, { color: '#DC2626' }]}>
+                Impossible de charger les offres. Vérifiez votre connexion.
+              </Text>
+            </View>
+          ) : (
+            <Button
+              title={purchasing ? 'Traitement en cours...' : `S'abonner — ${getPrice(selectedPlan, billingCycle)}/${billingCycle === 'monthly' ? 'mois' : 'an'}`}
+              onPress={handlePurchase}
+              loading={purchasing}
+              disabled={purchasing}
+              fullWidth
+            />
           )}
+        </View>
+
+        {/* Legal notice */}
+        <Text style={[styles.legalText, { color: colors.textMuted }]}>
+          L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période en cours. Le paiement est débité sur votre compte Apple. Vous pouvez gérer et annuler vos abonnements dans les réglages de votre compte Apple.
+        </Text>
+
+        {/* Legal links */}
+        <View style={styles.legalLinks}>
+          <Pressable onPress={() => Linking.openURL('https://opatam.com/cgu')}>
+            <Text style={[styles.legalLinkText, { color: colors.primary }]}>
+              Conditions d'utilisation
+            </Text>
+          </Pressable>
+          <Text style={{ color: colors.textMuted }}>·</Text>
+          <Pressable onPress={() => Linking.openURL('https://opatam.com/confidentialite')}>
+            <Text style={[styles.legalLinkText, { color: colors.primary }]}>
+              Politique de confidentialité
+            </Text>
+          </Pressable>
         </View>
 
         {/* Footer links */}
@@ -490,6 +526,24 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
+  },
+  // Legal
+  legalText: {
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  legalLinkText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   // Footer
   footer: {

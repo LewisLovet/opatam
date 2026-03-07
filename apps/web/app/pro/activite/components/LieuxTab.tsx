@@ -131,6 +131,7 @@ export function LieuxTab() {
         type: data.type,
         travelRadius: data.travelRadius,
         geopoint: data.geopoint ?? null,
+        region: data.region,
       });
 
       // If setting as default
@@ -152,6 +153,7 @@ export function LieuxTab() {
         type: data.type,
         travelRadius: data.travelRadius,
         geopoint: data.geopoint ?? null,
+        region: data.region,
       });
 
       // If setting as default
