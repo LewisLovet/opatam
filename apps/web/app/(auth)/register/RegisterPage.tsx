@@ -441,6 +441,7 @@ export default function RegisterPage() {
       // Redirect to login with success message
       router.push('/login?registered=true');
     } catch (err) {
+      console.error('[Register] ERROR:', err);
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);

@@ -51,7 +51,7 @@ const faqItems = [
   {
     question: 'Existe-t-il une alternative à Planity ou Doctolib sans commission ?',
     answer:
-      'Oui. Contrairement aux plateformes qui prélèvent un pourcentage sur chaque réservation, OPATAM fonctionne avec un abonnement fixe à partir de 17,90\u20AC/mois — 0% de commission, quel que soit votre volume de rendez-vous. Vous gardez 100% de vos revenus.',
+      'Oui. Contrairement aux plateformes qui prélèvent un pourcentage sur chaque réservation, OPATAM fonctionne avec un abonnement fixe à partir de 19,90\u20AC/mois — 0% de commission, quel que soit votre volume de rendez-vous. Vous gardez 100% de vos revenus.',
   },
   {
     question: 'Comment permettre à mes clients de réserver en ligne sans créer de compte ?',
@@ -71,7 +71,7 @@ const faqItems = [
   {
     question: 'Combien coûte un logiciel de réservation en ligne professionnel ?',
     answer:
-      'OPATAM propose deux formules sans engagement : le plan Pro à 17,90\u20AC/mois (ou 179\u20AC/an) pour les indépendants, et le plan Studio à 29,90\u20AC/mois (ou 239\u20AC/an) pour les équipes jusqu\'à 10 personnes. Essai gratuit de 30 jours, sans carte bancaire.',
+      'OPATAM propose deux formules sans engagement : le plan Pro à 19,90\u20AC/mois (ou 199\u20AC/an) pour les indépendants, et le plan Studio à 29,90\u20AC/mois (ou 299\u20AC/an) pour les équipes jusqu\'à 10 personnes. Essai gratuit de 30 jours, sans carte bancaire.',
   },
   {
     question: 'Peut-on utiliser un agenda de réservation en ligne sur téléphone ?',
@@ -87,13 +87,13 @@ const faqItems = [
 
 // ─── Comparison Data ────────────────────────────────────────────────
 const comparisonRows = [
-  { label: 'Tarif mensuel', opatam: '17,90\u20AC', others: 'De 0\u20AC* à 90\u20AC/mois' },
+  { label: 'Tarif mensuel', opatam: '19,90\u20AC', others: 'De 0\u20AC* à 90\u20AC/mois' },
   { label: 'Commissions sur vos réservations', opatam: '0%', others: "Jusqu'à 20% ou 1\u20AC par RDV" },
   { label: "Période d'essai", opatam: '30 jours gratuits', others: 'Souvent limitée ou absente' },
   { label: 'Rappels automatiques', opatam: 'Inclus', others: 'Parfois en option payante' },
   { label: 'Vitrine en ligne personnalisée', opatam: 'Inclus', others: 'Incluse mais modèles limités' },
   { label: 'Engagement', opatam: 'Sans engagement', others: "Variable selon l'offre" },
-  { label: 'Coût réel annuel (exemple)', opatam: '179,00\u20AC', others: 'De 300\u20AC à 1 080\u20AC**' },
+  { label: 'Coût réel annuel (exemple)', opatam: '199,00\u20AC', others: 'De 300\u20AC à 1 080\u20AC**' },
 ];
 
 // ─── Testimonials Data ──────────────────────────────────────────────
@@ -935,7 +935,7 @@ export default function LandingPage() {
                       </span>
                       {isYearly && (
                         <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-500/15 text-green-400 border border-green-500/20">
-                          Économisez 33%
+                          Économisez 17%
                         </span>
                       )}
                     </div>

@@ -61,6 +61,12 @@ export async function GET(request: NextRequest) {
       return jsonWithCache(data, 300);
     }
 
+    // Recent signups (cache 1 min)
+    if (type === 'recent-signups') {
+      const data = await getRecentSignups(db);
+      return jsonWithCache(data, 60);
+    }
+
     // Activity feed (cache 1 min — fresh data desired)
     if (type === 'activity') {
       const data = await getActivityFeed(db);
@@ -503,6 +509,51 @@ async function getActivityFeed(db: FirebaseFirestore.Firestore): Promise<Activit
   // Sort by timestamp desc, return top 30
   events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   return events.slice(0, 30);
+}
+
+async function getRecentSignups(db: FirebaseFirestore.Firestore) {
+  // Fetch last 10 providers and last 30 users (filter clients in-memory to avoid composite index)
+  const [providersSnap, usersSnap] = await Promise.all([
+    db.collection('providers')
+      .orderBy('createdAt', 'desc')
+      .limit(10)
+      .select('businessName', 'category', 'photoURL', 'subscription', 'cities', 'createdAt')
+      .get(),
+    db.collection('users')
+      .orderBy('createdAt', 'desc')
+      .limit(30)
+      .select('displayName', 'email', 'photoURL', 'role', 'createdAt')
+      .get(),
+  ]);
+
+  const providers = providersSnap.docs.map((doc) => {
+    const d = doc.data();
+    return {
+      id: doc.id,
+      businessName: d.businessName || 'Sans nom',
+      category: d.category || '',
+      photoURL: d.photoURL || null,
+      plan: d.subscription?.plan || 'trial',
+      city: d.cities?.[0] || null,
+      createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+    };
+  });
+
+  const clients = usersSnap.docs
+    .filter((doc) => doc.data().role === 'client')
+    .slice(0, 10)
+    .map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        displayName: d.displayName || null,
+        email: d.email || null,
+        photoURL: d.photoURL || null,
+        createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+      };
+    });
+
+  return { providers, clients };
 }
 
 async function getRevenueStats(): Promise<RevenueStats> {

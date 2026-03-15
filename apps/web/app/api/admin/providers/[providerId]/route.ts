@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminFirestore } from '@/lib/firebase-admin';
+import { getAdminFirestore, getAdminAuth } from '@/lib/firebase-admin';
 
 async function verifyAdmin(uid: string) {
   const db = getAdminFirestore();
@@ -70,6 +70,7 @@ export async function GET(
       isPublished: providerData.isPublished || false,
       isVerified: providerData.isVerified || false,
       cities: providerData.cities || [],
+      region: providerData.region || null,
       createdAt: providerData.createdAt?.toDate?.()?.toISOString() || null,
       updatedAt: providerData.updatedAt?.toDate?.()?.toISOString() || null,
     };
@@ -120,6 +121,7 @@ export async function GET(
         name: d.name,
         address: d.address,
         city: d.city,
+        postalCode: d.postalCode || null,
         type: d.type,
         isActive: d.isActive,
         isDefault: d.isDefault,
@@ -198,6 +200,77 @@ export async function PATCH(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[admin/providers/[providerId]] PATCH Error:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/admin/providers/[providerId]
+ * Completely deletes a provider account: subcollections, provider doc, user doc, Firebase Auth
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ providerId: string }> }
+) {
+  try {
+    const adminUid = request.headers.get('x-admin-uid');
+    if (!adminUid) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
+    if (!(await verifyAdmin(adminUid))) {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    const { providerId } = await params;
+    const db = getAdminFirestore();
+    const auth = getAdminAuth();
+
+    const providerDoc = await db.collection('providers').doc(providerId).get();
+    if (!providerDoc.exists) {
+      return NextResponse.json({ error: 'Prestataire non trouvé' }, { status: 404 });
+    }
+
+    const providerData = providerDoc.data()!;
+    const userId = providerData.userId;
+
+    // 1. Delete all provider subcollections in parallel
+    const subcollections = ['members', 'locations', 'services', 'availabilities', 'blockedSlots'];
+    await Promise.all(
+      subcollections.map(async (subcol) => {
+        const snap = await db.collection('providers').doc(providerId).collection(subcol).get();
+        const batch = db.batch();
+        snap.docs.forEach((doc) => batch.delete(doc.ref));
+        if (snap.size > 0) await batch.commit();
+      })
+    );
+
+    // 2. Delete provider document
+    await db.collection('providers').doc(providerId).delete();
+
+    // 3. Delete user document from Firestore
+    if (userId) {
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        await db.collection('users').doc(userId).delete();
+      }
+    }
+
+    // 4. Delete Firebase Auth account
+    if (userId) {
+      try {
+        await auth.deleteUser(userId);
+      } catch (authErr: any) {
+        // User may already be deleted from Auth
+        if (authErr.code !== 'auth/user-not-found') {
+          console.error('[admin/providers/DELETE] Auth deletion error:', authErr);
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('[admin/providers/[providerId]] DELETE Error:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }

@@ -62,4 +62,40 @@ export const adminProviderService = {
     });
     if (!res.ok) throw new Error('Erreur lors de la modification');
   },
+
+  async fixRegion(
+    adminUid: string,
+    providerId: string
+  ): Promise<{ providerId: string; fixed: boolean; region?: string; error?: string }> {
+    const res = await fetch(`${BASE_URL}/fix-regions`, {
+      method: 'POST',
+      headers: headers(adminUid),
+      body: JSON.stringify({ providerId }),
+    });
+    if (!res.ok) throw new Error('Erreur lors de la correction de la région');
+    return res.json();
+  },
+
+  async deleteProvider(
+    adminUid: string,
+    providerId: string
+  ): Promise<void> {
+    const res = await fetch(`${BASE_URL}/${providerId}`, {
+      method: 'DELETE',
+      headers: headers(adminUid),
+    });
+    if (!res.ok) throw new Error('Erreur lors de la suppression du compte');
+  },
+
+  async fixAllRegions(
+    adminUid: string
+  ): Promise<{ total: number; fixed: number; skipped: number; errors?: string[] }> {
+    const res = await fetch(`${BASE_URL}/fix-regions`, {
+      method: 'POST',
+      headers: headers(adminUid),
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) throw new Error('Erreur lors de la correction des régions');
+    return res.json();
+  },
 };

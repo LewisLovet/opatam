@@ -152,6 +152,31 @@ export interface ActivityEvent {
   metadata?: Record<string, string>;
 }
 
+// ── Recent Signups ──
+
+export interface RecentSignup {
+  id: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+  createdAt: string | null;
+}
+
+export interface RecentProvider {
+  id: string;
+  businessName: string;
+  category: string;
+  photoURL: string | null;
+  plan: string;
+  city: string | null;
+  createdAt: string | null;
+}
+
+export interface RecentSignups {
+  providers: RecentProvider[];
+  clients: RecentSignup[];
+}
+
 // ── Provider Detail ──
 
 export interface ProviderDetail {

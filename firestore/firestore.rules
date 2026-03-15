@@ -85,6 +85,14 @@ service cloud.firestore {
       }
     }
 
+    // === COLLECTION GROUP: MEMBERS ===
+    // Nécessaire pour les collectionGroup queries (ex: recherche par accessCode)
+    // La règle imbriquée sous /providers/{providerId}/members/ ne suffit pas
+    // pour les collectionGroup queries
+    match /{path=**}/members/{memberId} {
+      allow read: if true;
+    }
+
     // === BOOKINGS ===
 
     match /bookings/{bookingId} {

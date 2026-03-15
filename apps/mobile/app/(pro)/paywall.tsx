@@ -22,20 +22,9 @@ import { Text, Button } from '../../components';
 import { useTheme } from '../../theme';
 import { useAuth, useProvider, useRevenueCat } from '../../contexts';
 import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
+import type { PurchasesPackage } from 'react-native-purchases';
 
 type BillingCycle = 'monthly' | 'annual';
-
-// Map RevenueCat package identifiers to display info
-const PACKAGE_MAP = {
-  monthly: {
-    solo: '$rc_monthly', // RevenueCat standard identifier for monthly
-    team: '$rc_monthly',
-  },
-  annual: {
-    solo: '$rc_annual', // RevenueCat standard identifier for annual
-    team: '$rc_annual',
-  },
-} as const;
 
 export default function PaywallScreen() {
   const { colors, spacing } = useTheme();
@@ -54,48 +43,48 @@ export default function PaywallScreen() {
 
   const displayName = userData?.displayName || '';
 
-  // Format price from cents to display string
-  const formatPrice = (cents: number): string => {
-    const euros = (cents / 100).toFixed(2).replace('.', ',');
-    return `${euros} €`;
+  // Find a RevenueCat package matching plan + cycle
+  const findPackage = (plan: 'solo' | 'team', cycle: BillingCycle): PurchasesPackage | undefined => {
+    if (!currentOffering) return undefined;
+    return currentOffering.availablePackages.find((p) => {
+      const id = p.product.identifier.toLowerCase();
+      const planMatch = plan === 'solo' ? id.includes('solo') : id.includes('team');
+      const cycleMatch = cycle === 'monthly' ? id.includes('monthly') : id.includes('yearly');
+      return planMatch && cycleMatch;
+    });
   };
 
-  // Get prices from constants (hardcoded, reliable)
+  // Get price string from RevenueCat (App Store price), fallback to hardcoded
   const getPrice = (plan: 'solo' | 'team', cycle: BillingCycle): string => {
-    if (plan === 'solo') {
-      return formatPrice(cycle === 'monthly' ? SUBSCRIPTION_PLANS.solo.monthlyPrice : SUBSCRIPTION_PLANS.solo.yearlyPrice);
-    }
-    return formatPrice(cycle === 'monthly' ? SUBSCRIPTION_PLANS.team.baseMonthlyPrice : SUBSCRIPTION_PLANS.team.baseYearlyPrice);
+    const pkg = findPackage(plan, cycle);
+    if (pkg) return pkg.product.priceString;
+    // Fallback if offerings not loaded yet
+    const cents = plan === 'solo'
+      ? (cycle === 'monthly' ? SUBSCRIPTION_PLANS.solo.monthlyPrice : SUBSCRIPTION_PLANS.solo.yearlyPrice)
+      : (cycle === 'monthly' ? SUBSCRIPTION_PLANS.team.baseMonthlyPrice : SUBSCRIPTION_PLANS.team.baseYearlyPrice);
+    return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
   };
 
   const getMonthlyEquivalent = (plan: 'solo' | 'team'): string => {
-    if (plan === 'solo') {
-      return `${(SUBSCRIPTION_PLANS.solo.yearlyPrice / 100 / 12).toFixed(2).replace('.', ',')} €/mois`;
+    const pkg = findPackage(plan, 'annual');
+    if (pkg) {
+      const monthlyPrice = pkg.product.price / 12;
+      return `${monthlyPrice.toFixed(2).replace('.', ',')} €/mois`;
     }
-    return `${(SUBSCRIPTION_PLANS.team.baseYearlyPrice / 100 / 12).toFixed(2).replace('.', ',')} €/mois`;
+    // Fallback
+    const yearlyPrice = plan === 'solo' ? SUBSCRIPTION_PLANS.solo.yearlyPrice : SUBSCRIPTION_PLANS.team.baseYearlyPrice;
+    return `${(yearlyPrice / 100 / 12).toFixed(2).replace('.', ',')} €/mois`;
   };
 
   const handlePurchase = async () => {
     if (purchasing) return;
 
-    if (!currentOffering) {
+    const pkg = findPackage(selectedPlan, billingCycle);
+    if (!pkg) {
       Alert.alert(
         'Offres indisponibles',
         'Impossible de charger les offres d\'abonnement. Vérifiez votre connexion internet et réessayez.',
       );
-      return;
-    }
-
-    // Find the right package by product identifier
-    const pkg = currentOffering.availablePackages.find((p) => {
-      const id = p.product.identifier.toLowerCase();
-      const planMatch = selectedPlan === 'solo' ? id.includes('solo') : id.includes('team');
-      const cycleMatch = billingCycle === 'monthly' ? id.includes('monthly') : id.includes('yearly');
-      return planMatch && cycleMatch;
-    });
-
-    if (!pkg) {
-      Alert.alert('Erreur', 'Offre non disponible. Veuillez réessayer.');
       return;
     }
 

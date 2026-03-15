@@ -121,6 +121,16 @@ export function RevenueCatProvider({ children }: { children: ReactNode }) {
     const fetchOfferings = async () => {
       try {
         const offerings = await Purchases.getOfferings();
+        if (__DEV__ && offerings.current) {
+          console.log('[RevenueCat] Packages:',
+            offerings.current.availablePackages.map((p) => ({
+              id: p.product.identifier,
+              priceString: p.product.priceString,
+              price: p.product.price,
+              currencyCode: p.product.currencyCode,
+            }))
+          );
+        }
         setCurrentOffering(offerings.current);
       } catch (error) {
         console.error('[RevenueCat] Offerings error:', error);

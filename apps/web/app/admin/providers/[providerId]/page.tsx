@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminProviderService } from '@/services/admin';
 import type { ProviderDetail } from '@/services/admin/types';
@@ -19,6 +19,9 @@ import {
   Briefcase,
   Clock,
   ExternalLink,
+  AlertTriangle,
+  RefreshCw,
+  Trash2,
 } from 'lucide-react';
 
 const categoryLabels: Record<string, string> = {
@@ -49,11 +52,14 @@ const statusLabels: Record<string, string> = {
 
 export default function AdminProviderDetailPage() {
   const { providerId } = useParams<{ providerId: string }>();
+  const router = useRouter();
   const { user: authUser } = useAuth();
   const [detail, setDetail] = useState<ProviderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [togglingVerified, setTogglingVerified] = useState(false);
   const [togglingPublished, setTogglingPublished] = useState(false);
+  const [fixingRegion, setFixingRegion] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!authUser?.id) return;
@@ -103,6 +109,44 @@ export default function AdminProviderDetailPage() {
       console.error('Error toggling published:', err);
     } finally {
       setTogglingPublished(false);
+    }
+  };
+
+  const handleFixRegion = async () => {
+    if (!authUser?.id || !detail) return;
+    setFixingRegion(true);
+    try {
+      const result = await adminProviderService.fixRegion(authUser.id, providerId);
+      if (result.fixed && result.region) {
+        setDetail({
+          ...detail,
+          provider: { ...detail.provider, region: result.region },
+        });
+      } else {
+        alert(`Impossible de corriger la région : ${result.error || 'Erreur inconnue'}`);
+      }
+    } catch (err) {
+      console.error('Error fixing region:', err);
+      alert('Erreur lors de la correction de la région');
+    } finally {
+      setFixingRegion(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!authUser?.id || !detail) return;
+    const name = detail.provider.businessName || 'ce prestataire';
+    if (!confirm(`Supprimer le compte de "${name}" ? Cette action est irréversible.\n\nTout sera supprimé :\n- Compte Firebase Auth\n- Document utilisateur\n- Établissement et toutes ses données (services, membres, lieux, disponibilités)`)) return;
+    if (!confirm(`Dernière confirmation : êtes-vous sûr de vouloir supprimer définitivement "${name}" ?`)) return;
+
+    setDeleting(true);
+    try {
+      await adminProviderService.deleteProvider(authUser.id, providerId);
+      router.push('/admin/providers');
+    } catch (err) {
+      console.error('Error deleting provider:', err);
+      alert('Erreur lors de la suppression du compte');
+      setDeleting(false);
     }
   };
 
@@ -171,6 +215,28 @@ export default function AdminProviderDetailPage() {
               {provider.cities?.length > 0 && ` \u00b7 ${provider.cities.join(', ')}`}
             </p>
 
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-sm text-gray-500 dark:text-gray-400">Région :</span>
+              {provider.region ? (
+                <Badge variant="info" size="sm">{provider.region}</Badge>
+              ) : (
+                <span className="inline-flex items-center gap-1">
+                  <Badge variant="error" size="sm">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    Non renseignée
+                  </Badge>
+                  <button
+                    onClick={handleFixRegion}
+                    disabled={fixingRegion}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${fixingRegion ? 'animate-spin' : ''}`} />
+                    Corriger
+                  </button>
+                </span>
+              )}
+            </div>
+
             {provider.rating && provider.rating.count > 0 && (
               <div className="flex items-center gap-1 mt-2">
                 <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -230,6 +296,16 @@ export default function AdminProviderDetailPage() {
                 Voir la page
               </a>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDelete}
+              loading={deleting}
+              className="!border-red-300 !text-red-600 hover:!bg-red-50 dark:!border-red-700 dark:!text-red-400 dark:hover:!bg-red-900/20"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Supprimer le compte
+            </Button>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, CheckCircle, XCircle, Star } from 'lucide-react';
+import { ChevronRight, CheckCircle, XCircle, Star, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui';
 
 interface ProviderItem {
@@ -15,6 +15,7 @@ interface ProviderItem {
   isVerified: boolean;
   rating: { average: number; count: number };
   cities: string[];
+  region: string | null;
   createdAt: string | null;
 }
 
@@ -110,6 +111,12 @@ export function ProviderTable({ items }: ProviderTableProps) {
                         {categoryLabels[provider.category] || provider.category}
                         {provider.cities.length > 0 && ` \u00b7 ${provider.cities[0]}`}
                       </p>
+                      {!provider.region && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-red-500 mt-0.5">
+                          <AlertTriangle className="w-3 h-3" />
+                          Région manquante
+                        </span>
+                      )}
                     </div>
                   </div>
                 </td>
@@ -199,6 +206,12 @@ export function ProviderTable({ items }: ProviderTableProps) {
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {categoryLabels[provider.category] || provider.category}
                 </p>
+                {!provider.region && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-red-500">
+                    <AlertTriangle className="w-3 h-3" />
+                    Région manquante
+                  </span>
+                )}
               </div>
               <div className="flex flex-col items-end gap-1">
                 <Badge variant={planBadgeVariant[provider.plan] || 'primary'} size="sm">

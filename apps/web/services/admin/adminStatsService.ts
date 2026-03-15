@@ -1,4 +1,4 @@
-import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent } from './types';
+import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent, RecentSignups } from './types';
 
 const BASE_URL = '/api/admin/stats';
 
@@ -53,6 +53,14 @@ export const adminStatsService = {
       headers: headers(adminUid),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des analytics');
+    return res.json();
+  },
+
+  async getRecentSignups(adminUid: string): Promise<RecentSignups> {
+    const res = await fetch(`${BASE_URL}?type=recent-signups`, {
+      headers: headers(adminUid),
+    });
+    if (!res.ok) throw new Error('Erreur lors du chargement des inscriptions récentes');
     return res.json();
   },
 

@@ -102,8 +102,8 @@ export default function CGUPage() {
               <h3 className="mt-4 mb-2 font-semibold text-gray-900">Offres d&apos;abonnement</h3>
               <p>L&apos;accès aux fonctionnalités professionnelles de la Plateforme est soumis à la souscription d&apos;un abonnement payant, après une période d&apos;essai gratuite de 30 jours. Deux formules sont proposées :</p>
               <ul className="mt-2 list-disc pl-6 space-y-1">
-                <li><strong>Pro (Solo) :</strong> destiné aux indépendants — 19,99 €/mois ou 199,99 €/an</li>
-                <li><strong>Studio (Équipe) :</strong> destiné aux équipes — 29,99 €/mois ou 299,99 €/an</li>
+                <li><strong>Pro (Solo) :</strong> destiné aux indépendants — 19,90 €/mois ou 199 €/an</li>
+                <li><strong>Studio (Équipe) :</strong> destiné aux équipes — 29,90 €/mois ou 299 €/an</li>
               </ul>
               <p className="mt-2">Les prix sont indiqués en euros TTC. Ils peuvent être modifiés à tout moment, la modification prenant effet au prochain renouvellement.</p>
 

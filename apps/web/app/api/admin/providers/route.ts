@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
         isVerified: data.isVerified || false,
         rating: data.rating || { average: 0, count: 0 },
         cities: data.cities || [],
+        region: data.region || null,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
       };
     });

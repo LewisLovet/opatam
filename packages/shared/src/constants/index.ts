@@ -67,8 +67,8 @@ export const SUBSCRIPTION_PLANS = {
   solo: {
     name: 'Pro',
     description: "L'essentiel pour les indépendants. Gérez vos rendez-vous et développez votre activité — sans commission.",
-    monthlyPrice: 1999, // 19,99€ TTC
-    yearlyPrice: 19999, // 199,99€ TTC (16,67€/mois)
+    monthlyPrice: 1990, // 19,90€ TTC
+    yearlyPrice: 19900, // 199€ TTC
     features: [
       'Réservations illimitées, 0% de commission',
       'Votre vitrine en ligne professionnelle',
@@ -80,8 +80,8 @@ export const SUBSCRIPTION_PLANS = {
   team: {
     name: 'Studio',
     description: 'La solution complète pour les équipes. Coordonnez vos agendas, gérez plusieurs lieux et offrez une expérience pro.',
-    baseMonthlyPrice: 2999, // 29,99€ TTC
-    baseYearlyPrice: 29999, // 299,99€ TTC/an (25,00€/mois)
+    baseMonthlyPrice: 2990, // 29,90€ TTC
+    baseYearlyPrice: 29900, // 299€ TTC/an
     features: [
       'Jusqu\'à 10 agendas synchronisés',
       '0% de commission, même en équipe',
