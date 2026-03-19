@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import {
   Alert,
   Dimensions,
@@ -22,7 +22,6 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   View,
 } from 'react-native';
@@ -34,7 +33,33 @@ import {
   EmptyState,
   Loader,
   Text,
+  TrialReminderBanner,
 } from '../../../components';
+// Lazy-load StoryShare components — they depend on native modules (react-native-qrcode-svg,
+// react-native-view-shot) that may not be available in all builds.
+const LazyStoryShareModal = lazy(() =>
+  import('../../../components/StoryShare/StoryShareModal').then((m) => ({ default: m.StoryShareModal }))
+);
+const LazyShareFAB = lazy(() =>
+  import('../../../components/StoryShare/ShareFAB').then((m) => ({ default: m.ShareFAB }))
+);
+
+/** Error boundary — swallows crashes from native module loading failures */
+class NativeModuleBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.warn('[NativeModuleBoundary] Caught error:', error.message);
+  }
+  render() {
+    return this.state.hasError ? null : this.props.children;
+  }
+}
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
 import { useProviderDashboard, useProviderStats, useReviews } from '../../../hooks';
 import { useTheme } from '../../../theme';
@@ -397,6 +422,7 @@ export default function ProDashboardScreen() {
   // -- Share establishment ---------------------------------------------------
 
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showStoryModal, setShowStoryModal] = useState(false);
   const [activeQRTab, setActiveQRTab] = useState<'booking' | 'paypal'>('booking');
   const shopUrl = provider?.slug ? `https://opatam.com/p/${provider.slug}` : null;
   const paypalLink = provider?.socialLinks?.paypal || null;
@@ -414,15 +440,6 @@ export default function ProDashboardScreen() {
     }
   }, [shopUrl]);
 
-  const handleShare = useCallback(async () => {
-    if (!shopUrl) return;
-    try {
-      await Share.share({
-        message: `Réservez chez ${provider?.businessName || 'nous'} sur Opatam : ${shopUrl}`,
-        url: shopUrl,
-      });
-    } catch {}
-  }, [shopUrl, provider?.businessName]);
 
   const handleViewShop = useCallback(() => {
     if (!provider?.slug) return;
@@ -698,6 +715,13 @@ export default function ProDashboardScreen() {
           </Pressable>
         )}
 
+        {/* ── Trial reminder banner (≤7 days) ── */}
+        {!sub.needsSubscription && sub.daysRemaining != null && sub.daysRemaining <= 7 && (
+          <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
+            <TrialReminderBanner daysRemaining={sub.daysRemaining} />
+          </View>
+        )}
+
         {/* ── Setup Alerts ── */}
         {setupAlerts.length > 0 && (
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md, gap: spacing.xs }}>
@@ -837,7 +861,6 @@ export default function ProDashboardScreen() {
         {provider?.slug && (
           <View style={[styles.quickActions, { paddingHorizontal: spacing.lg, marginBottom: spacing.xl }]}>
             <QuickAction icon="qr-code-outline" label="QR Code" onPress={() => setShowQRModal(true)} />
-            <QuickAction icon="share-social-outline" label="Partager" onPress={handleShare} />
             <QuickAction icon="storefront-outline" label="Aperçu" onPress={handleViewShop} />
             <QuickAction icon="globe-outline" label="En ligne" onPress={handleViewOnline} />
             <QuickAction icon="create-outline" label="Modifier" onPress={handleEditShop} />
@@ -1270,6 +1293,29 @@ export default function ProDashboardScreen() {
           </Pressable>
         </Modal>
       )}
+
+      {/* Share FAB — lazy loaded with error boundary for native module safety */}
+      {shopUrl && (
+        <NativeModuleBoundary>
+          <Suspense fallback={null}>
+            <LazyShareFAB
+              shopUrl={shopUrl}
+              businessName={provider?.businessName || ''}
+              onCreateStory={() => setShowStoryModal(true)}
+            />
+          </Suspense>
+        </NativeModuleBoundary>
+      )}
+
+      {/* Story Share Modal — lazy loaded with error boundary */}
+      <NativeModuleBoundary>
+        <Suspense fallback={null}>
+          <LazyStoryShareModal
+            visible={showStoryModal}
+            onClose={() => setShowStoryModal(false)}
+          />
+        </Suspense>
+      </NativeModuleBoundary>
     </View>
   );
 }

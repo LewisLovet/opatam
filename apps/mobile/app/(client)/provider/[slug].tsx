@@ -3,16 +3,16 @@
  * Full provider profile with tabbed layout: Prestations, Avis, Infos
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   RefreshControl,
   Pressable,
-  ActivityIndicator,
   Image,
   Linking,
+  Animated,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +49,9 @@ import {
   useOpeningHours,
   useMembers,
 } from '../../../hooks';
+import { useProvidersCache } from '../../../contexts';
 import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
+import { ASSETS } from '@booking-app/shared/constants';
 import { analyticsService, type WithId } from '@booking-app/firebase';
 
 type TabId = 'prestations' | 'avis' | 'infos';
@@ -104,6 +106,10 @@ export default function ProviderDetailScreen() {
   const isPreview = preview === '1';
   const router = useRouter();
   const { showToast } = useToast();
+
+  // Instant cached data for splash (available before useProvider resolves)
+  const { getCachedProvider } = useProvidersCache();
+  const cachedProvider = getCachedProvider(slug);
 
   // Fetch provider data
   const { provider, loading: loadingProvider, error: providerError, refresh: refreshProvider } = useProvider(slug);
@@ -194,11 +200,56 @@ export default function ProviderDetailScreen() {
   // Get selected service
   const selectedService = services.find((s) => s.id === selectedServiceId);
 
-  // Loading state - show skeleton while data is loading
-  if (loadingProvider) {
+  // Splash → content fade transition
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const splashOpacity = useRef(new Animated.Value(1)).current;
+  const [showSplash, setShowSplash] = useState(true);
+
+  const splashReadyRef = useRef<number>(Date.now());
+
+  const dismissSplash = useCallback(() => {
+    if (!showSplash) return;
+    Animated.parallel([
+      Animated.timing(splashOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, delay: 200, useNativeDriver: true }),
+    ]).start(() => setShowSplash(false));
+  }, [showSplash, splashOpacity, fadeAnim]);
+
+  // Dismiss splash when provider is loaded (min 1s display)
+  useEffect(() => {
+    if (!loadingProvider && provider) {
+      const elapsed = Date.now() - splashReadyRef.current;
+      const remaining = Math.max(0, 1000 - elapsed);
+      const timer = setTimeout(dismissSplash, remaining);
+      return () => clearTimeout(timer);
+    }
+  }, [loadingProvider, provider, dismissSplash]);
+
+  // Force dismiss after 5s max, even if still loading
+  useEffect(() => {
+    const timer = setTimeout(dismissSplash, 5000);
+    return () => clearTimeout(timer);
+  }, [dismissSplash]);
+
+  // Splash pulse animation
+  const splashPulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!showSplash) return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(splashPulse, { toValue: 0.6, duration: 800, useNativeDriver: true }),
+        Animated.timing(splashPulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [showSplash, splashPulse]);
+
+  // Loading state — branded splash screen
+  if (loadingProvider || showSplash) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Floating Back Button - positioned in safe area over image */}
+        {/* Back button */}
         <Pressable
           onPress={() => router.back()}
           style={[
@@ -213,41 +264,42 @@ export default function ProviderDetailScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Header skeleton */}
-          <ProviderHeaderSkeleton />
+        {/* Splash */}
+        {showSplash && (
+          <Animated.View style={[styles.splashContainer, { opacity: splashOpacity }]}>
+            <View style={styles.splashContent}>
+              {/* Provider avatar from cache (instant) or Opatam logo fallback */}
+              {(cachedProvider?.photoURL || provider?.photoURL) ? (
+                <Image
+                  source={{ uri: cachedProvider?.photoURL || provider?.photoURL }}
+                  style={styles.splashAvatar}
+                />
+              ) : (
+                <Ionicons name="storefront-outline" size={48} color={colors.primary} />
+              )}
 
-          {/* Provider Info skeleton */}
-          <View style={{ padding: spacing.lg }}>
-            <View style={{ gap: spacing.sm }}>
-              <Skeleton width="100%" height={16} />
-              <Skeleton width="90%" height={16} />
-              <Skeleton width="60%" height={14} style={{ marginTop: spacing.xs }} />
+              {(cachedProvider?.businessName || provider?.businessName) ? (
+                <Text variant="h2" style={[styles.splashName, { color: colors.text }]}>
+                  {cachedProvider?.businessName || provider?.businessName}
+                </Text>
+              ) : null}
+
+              {/* Loading indicator */}
+              <Animated.View style={[styles.splashLoader, { opacity: splashPulse }]}>
+                <View style={[styles.splashDot, { backgroundColor: colors.primary }]} />
+                <View style={[styles.splashDot, { backgroundColor: colors.primary, opacity: 0.6 }]} />
+                <View style={[styles.splashDot, { backgroundColor: colors.primary, opacity: 0.3 }]} />
+              </Animated.View>
             </View>
-          </View>
+          </Animated.View>
+        )}
 
-          {/* Tab bar skeleton */}
-          <View style={{ flexDirection: 'row', paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
-            {[1, 2, 3].map((i) => (
-              <View key={i} style={{ flex: 1, alignItems: 'center', paddingVertical: spacing.sm }}>
-                <Skeleton width={80} height={16} />
-              </View>
-            ))}
-          </View>
-
-          {/* Services skeleton */}
-          <View style={{ paddingHorizontal: spacing.lg }}>
-            <Card padding="md" shadow="sm">
-              {[1, 2, 3].map((i) => (
-                <View key={i} style={{ marginBottom: i < 3 ? spacing.md : 0 }}>
-                  <Skeleton width="70%" height={18} />
-                  <Skeleton width="50%" height={14} style={{ marginTop: spacing.xs }} />
-                  <Skeleton width="30%" height={14} style={{ marginTop: spacing.xs }} />
-                </View>
-              ))}
-            </Card>
-          </View>
-        </ScrollView>
+        {/* Content fading in behind splash */}
+        {provider && !loadingProvider && (
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
+            {/* Will be replaced by the main return below after splash is gone */}
+          </Animated.View>
+        )}
       </View>
     );
   }
@@ -316,6 +368,7 @@ export default function ProviderDetailScreen() {
           businessName={provider.businessName}
           category={provider.category}
           rating={provider.rating}
+          isVerified={provider.isVerified}
         />
 
         {/* Description + Availability + Social (above tabs) */}
@@ -461,7 +514,11 @@ export default function ProviderDetailScreen() {
             <View>
               {loadingServices ? (
                 <View style={styles.sectionLoading}>
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <View style={[styles.splashDot, { backgroundColor: colors.primary }]} />
+                    <View style={[styles.splashDot, { backgroundColor: colors.primary, opacity: 0.6 }]} />
+                    <View style={[styles.splashDot, { backgroundColor: colors.primary, opacity: 0.3 }]} />
+                  </View>
                 </View>
               ) : services.length === 0 ? (
                 <Card padding="lg" shadow="sm">
@@ -522,7 +579,11 @@ export default function ProviderDetailScreen() {
               {/* Reviews List */}
               {loadingReviews ? (
                 <View style={styles.sectionLoading}>
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <View style={[styles.splashDot, { backgroundColor: colors.primary }]} />
+                    <View style={[styles.splashDot, { backgroundColor: colors.primary, opacity: 0.6 }]} />
+                    <View style={[styles.splashDot, { backgroundColor: colors.primary, opacity: 0.3 }]} />
+                  </View>
                 </View>
               ) : reviews.length === 0 ? (
                 <Card padding="lg" shadow="sm">
@@ -685,5 +746,38 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
+  },
+  splashContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  splashContent: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  splashAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  splashLogo: {
+    width: 60,
+    height: 60,
+  },
+  splashName: {
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  splashLoader: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+  },
+  splashDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

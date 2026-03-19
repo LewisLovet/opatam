@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://opatam.com/cgu',
   },
+  robots: { index: false, follow: false },
 };
 
 export default function CGUPage() {

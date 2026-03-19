@@ -117,6 +117,20 @@ export function useSubscriptionStatus() {
   const isTest = plan === 'test';
   const needsSubscription = !isActive && !isTrialing && !trialValid && !isTest;
 
+  // Calculate days remaining for trial
+  let daysRemaining: number | null = null;
+  if (plan === 'trial' && subscription?.validUntil) {
+    const raw = subscription.validUntil;
+    const validDate = raw instanceof Date
+      ? raw
+      : (raw as any)?.toDate?.()
+        || (raw ? new Date(raw as any) : null);
+    if (validDate) {
+      const diff = validDate.getTime() - Date.now();
+      daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    }
+  }
+
   return {
     isActive,
     isTrialing: isTrialing || trialValid,
@@ -124,5 +138,6 @@ export function useSubscriptionStatus() {
     needsSubscription,
     plan: plan || null,
     status: subscription?.status || null,
+    daysRemaining,
   };
 }

@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, ShieldCheck, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Loader2, ShieldCheck, Eye, EyeOff, KeyRound, ArrowRight } from 'lucide-react';
 
 interface AdminGuardProps {
   children: React.ReactNode;
@@ -238,6 +239,14 @@ export function AdminGuard({ children }: AdminGuardProps) {
                 'Créer et accéder'
               )}
             </button>
+
+            <Link
+              href="/pro"
+              className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+            >
+              Aller à l&apos;interface pro
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </div>
@@ -303,6 +312,14 @@ export function AdminGuard({ children }: AdminGuardProps) {
                 'Accéder'
               )}
             </button>
+
+            <Link
+              href="/pro"
+              className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+            >
+              Aller à l&apos;interface pro
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </div>

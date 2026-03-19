@@ -50,11 +50,6 @@ const faqItems = [
       'OPATAM est conçu spécialement pour les indépendants et petites équipes : agenda en ligne, page de réservation personnalisée, rappels automatiques, application mobile — le tout sans commission et prêt en 5 minutes. Plus de 15 secteurs d\'activité sont pris en charge (beauté, bien-être, coaching, artisans, et bien d\'autres).',
   },
   {
-    question: 'Existe-t-il une alternative à Planity ou Doctolib sans commission ?',
-    answer:
-      'Oui. Contrairement aux plateformes qui prélèvent un pourcentage sur chaque réservation, OPATAM fonctionne avec un abonnement fixe à partir de 19,90\u20AC/mois — 0% de commission, quel que soit votre volume de rendez-vous. Vous gardez 100% de vos revenus.',
-  },
-  {
     question: 'Comment permettre à mes clients de réserver en ligne sans créer de compte ?',
     answer:
       'Avec OPATAM, vos clients réservent en renseignant simplement leur nom, email et téléphone — en 3 clics. Aucun compte à créer, aucun mot de passe. Vous recevez un lien personnalisé et un QR code à partager sur vos réseaux, par SMS ou à afficher en boutique.',

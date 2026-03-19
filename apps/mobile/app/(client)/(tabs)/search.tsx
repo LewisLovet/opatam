@@ -195,6 +195,7 @@ export default function SearchScreen() {
         city={item.cities[0] || ''}
         rating={item.rating}
         minPrice={item.minPrice}
+        isVerified={item.isVerified}
         onPress={() => navigateToProvider(item.slug)}
         isLoading={isLoading(item.slug)}
       />
@@ -323,6 +324,7 @@ export default function SearchScreen() {
                   city={provider.cities[0] || ''}
                   rating={provider.rating}
                   minPrice={provider.minPrice}
+                  isVerified={provider.isVerified}
                   onPress={() => navigateToProvider(provider.slug)}
                   isLoading={isLoading(provider.slug)}
                 />

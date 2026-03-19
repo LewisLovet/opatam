@@ -2,7 +2,7 @@
   "expo": {
     "name": "Opatam",
     "slug": "opatam",
-    "version": "1.2.5",
+    "version": "1.2.6.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "opatam",
@@ -28,7 +28,13 @@
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "Opatam utilise votre position pour vous suggérer des prestataires à proximité."
+        "NSLocationWhenInUseUsageDescription": "Opatam utilise votre position pour vous suggérer des prestataires à proximité.",
+        "LSApplicationQueriesSchemes": [
+          "instagram",
+          "instagram-stories",
+          "fb",
+          "snapchat"
+        ]
       }
     },
     "android": {
@@ -74,7 +80,17 @@
       ],
       "./plugins/withDisableExtraTranslationLint",
       "@react-native-community/datetimepicker",
-      "./plugins/withFollyFix"
+      "./plugins/withFollyFix",
+      [
+        "react-native-share",
+        {
+          "android": [
+            "com.instagram.android",
+            "com.facebook.katana",
+            "com.snapchat.android"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

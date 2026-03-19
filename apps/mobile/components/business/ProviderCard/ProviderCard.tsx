@@ -3,8 +3,8 @@
  * Card displaying provider info with smooth image loading via expo-image
  */
 
-import React from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Rating, formatDistance, getCategoryLabel, capitalizeWords } from '@booking-app/shared';
@@ -27,6 +27,8 @@ export interface ProviderCardProps {
   minPrice: number | null;
   /** Distance in km (from user location) */
   distance?: number;
+  /** Whether the provider is verified */
+  isVerified?: boolean;
   /** Press handler */
   onPress: () => void;
   /** Show loading overlay (for navigation preloading) */
@@ -52,6 +54,7 @@ export function ProviderCard({
   rating,
   minPrice,
   distance,
+  isVerified = false,
   onPress,
   isLoading = false,
 }: ProviderCardProps) {
@@ -60,12 +63,59 @@ export function ProviderCard({
   const hasRating = rating.count > 0;
   const hasValidPrice = minPrice != null && !isNaN(minPrice) && minPrice >= 0;
 
+  // Loading animation
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isLoading) {
+      // Progress bar sweep
+      const progress = Animated.loop(
+        Animated.timing(progressAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      );
+      // Subtle pulse
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 0.85, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ]),
+      );
+      progress.start();
+      pulse.start();
+      return () => {
+        progress.stop();
+        pulse.stop();
+      };
+    } else {
+      progressAnim.setValue(0);
+      pulseAnim.setValue(1);
+    }
+  }, [isLoading, progressAnim, pulseAnim]);
+
   return (
-    <Card padding="none" shadow="md" onPress={onPress} style={[styles.card, isLoading && styles.cardLoading]}>
-      {/* Loading overlay */}
+    <Animated.View style={{ opacity: isLoading ? pulseAnim : 1 }}>
+    <Card padding="none" shadow="md" onPress={onPress} style={styles.card}>
+      {/* Loading progress bar */}
       {isLoading && (
-        <View style={[styles.loadingOverlay, { borderRadius: radius.lg }]}>
-          <ActivityIndicator size="small" color={colors.primary} />
+        <View style={styles.progressTrack}>
+          <Animated.View
+            style={[
+              styles.progressBar,
+              {
+                backgroundColor: colors.primary,
+                transform: [{
+                  translateX: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-200, 400],
+                  }),
+                }],
+              },
+            ]}
+          />
         </View>
       )}
 
@@ -112,9 +162,14 @@ export function ProviderCard({
 
       {/* Content */}
       <View style={[styles.content, { padding: spacing.md }]}>
-        <Text variant="h3" numberOfLines={1} style={{ marginBottom: spacing.xs }}>
-          {businessName}
-        </Text>
+        <View style={styles.nameRow}>
+          <Text variant="h3" numberOfLines={1} style={{ flex: 1 }}>
+            {businessName}
+          </Text>
+          {isVerified && (
+            <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+          )}
+        </View>
 
         <Text variant="caption" color="textSecondary" numberOfLines={1}>
           {getCategoryLabel(category)} • {capitalizeWords(city)}{distance != null && distance !== Infinity ? ` • ${formatDistance(distance)}` : ''}
@@ -133,6 +188,7 @@ export function ProviderCard({
         </View>
       </View>
     </Card>
+    </Animated.View>
   );
 }
 
@@ -140,15 +196,22 @@ const styles = StyleSheet.create({
   card: {
     overflow: 'hidden',
   },
-  cardLoading: {
-    opacity: 0.7,
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  progressTrack: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(0,0,0,0.05)',
     zIndex: 10,
+    overflow: 'hidden',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  progressBar: {
+    width: 120,
+    height: 3,
+    borderRadius: 2,
   },
   imageContainer: {
     position: 'relative',
@@ -177,6 +240,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   content: {},
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

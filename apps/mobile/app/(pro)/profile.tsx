@@ -448,7 +448,7 @@ export default function ProfileScreen() {
       : `https://paypal.me/${provider.socialLinks.paypal}`)
     : null;
 
-  const bookingUrl = provider?.slug ? `https://opatam.com/p/${provider.slug}/reserver` : null;
+  const bookingUrl = provider?.slug ? `https://opatam.com/p/${provider.slug}` : null;
 
   const tabs = [
     { key: 'publication' as const, label: 'Visibilité', icon: 'globe-outline' },

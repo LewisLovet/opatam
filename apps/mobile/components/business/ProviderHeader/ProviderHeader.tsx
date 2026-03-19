@@ -24,6 +24,8 @@ export interface ProviderHeaderProps {
   category: string;
   /** Rating object with average and count */
   rating: Rating;
+  /** Whether the provider is verified */
+  isVerified?: boolean;
   /** Callback when rating is pressed */
   onRatingPress?: () => void;
 }
@@ -42,6 +44,7 @@ export function ProviderHeader({
   businessName,
   category,
   rating,
+  isVerified = false,
   onRatingPress,
 }: ProviderHeaderProps) {
   const { colors, spacing, shadows } = useTheme();
@@ -109,10 +112,20 @@ export function ProviderHeader({
           )}
         </View>
 
-        {/* Name */}
-        <Text variant="h2" align="center" style={{ marginTop: spacing.md }}>
-          {businessName}
-        </Text>
+        {/* Name + Verified Badge */}
+        <View style={[styles.nameRow, { marginTop: spacing.md }]}>
+          <Text variant="h2" align="center">
+            {businessName}
+          </Text>
+          {isVerified && (
+            <View style={[styles.verifiedBadge, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+              <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+                Vérifié
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Category */}
         <Text variant="caption" color="textSecondary" align="center" style={{ marginTop: spacing.xs }}>
@@ -180,5 +193,17 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontWeight: '600',
+  },
+  nameRow: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
 });

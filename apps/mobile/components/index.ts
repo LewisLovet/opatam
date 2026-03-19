@@ -80,3 +80,6 @@ export { Logo, LogoWhite } from './Logo';
 // Subscription Modals
 export { SubscriptionRequiredModal } from './SubscriptionRequiredModal';
 export { UpgradeToStudioModal } from './UpgradeToStudioModal';
+
+// Trial Reminder
+export { TrialReminderBanner } from './TrialReminderBanner';
