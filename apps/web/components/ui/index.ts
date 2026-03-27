@@ -80,3 +80,7 @@ export type { ConfirmDialogProps } from './ConfirmDialog';
 // AddressAutocomplete
 export { AddressAutocomplete } from './AddressAutocomplete';
 export type { AddressAutocompleteProps, AddressSuggestion } from './AddressAutocomplete';
+
+// GoogleAddressAutocomplete
+export { GoogleAddressAutocomplete } from './GoogleAddressAutocomplete';
+export type { GoogleAddressAutocompleteProps, GoogleAddressSuggestion, GoogleAddressComponent } from './GoogleAddressAutocomplete';
