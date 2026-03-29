@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
-import { catalogService, locationService, memberService } from '@booking-app/firebase';
+import { catalogService, locationService, memberService, providerService } from '@booking-app/firebase';
 import { Plus, FolderPlus, Pencil, ChevronRight, Tag, Loader2 } from 'lucide-react';
 import { ServiceCard } from './ServiceCard';
 import { ServiceModal, type ServiceFormData } from './ServiceModal';
@@ -111,6 +111,16 @@ export function PrestationsTab() {
       // Revert on error
       setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, isActive: !isActive } : s)));
       toast.error(error instanceof Error ? error.message : 'Erreur lors de la mise à jour');
+    }
+  };
+
+  // Update portfolio photos on provider (called when new photo uploaded via ServiceModal)
+  const handlePortfolioUpdate = async (newPhotos: string[]) => {
+    if (!provider) return;
+    try {
+      await providerService.updateProvider(provider.id, { portfolioPhotos: newPhotos });
+    } catch (err) {
+      console.error('Failed to update portfolio:', err);
     }
   };
 
@@ -386,6 +396,9 @@ export function PrestationsTab() {
         members={members}
         categories={categories}
         isTeamPlan={isTeamPlan}
+        providerId={provider?.id ?? ''}
+        portfolioPhotos={provider?.portfolioPhotos ?? []}
+        onPortfolioUpdate={handlePortfolioUpdate}
         onSave={handleSaveService}
         onDelete={handleDeleteService}
       />

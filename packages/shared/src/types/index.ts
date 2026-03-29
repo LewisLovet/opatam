@@ -121,6 +121,7 @@ export interface ProviderSettings {
   cancellationDeadline: number;      // Hours before appointment for cancellation (default: 24)
   slotInterval?: number;             // Minutes between each bookable slot (default: 15)
   notificationPreferences?: ProviderNotificationPreferences;
+  bookingNotice?: string | null;     // Texte libre affiche avant confirmation de reservation
 }
 
 export type PaymentSource = 'stripe' | 'apple' | 'google' | null;
@@ -188,6 +189,7 @@ export interface ServiceCategory {
 export interface Service {
   name: string;
   description: string | null;
+  photoURL: string | null;  // URL d'une photo du portfolio provider
   duration: number;
   price: number;
   bufferTime: number;

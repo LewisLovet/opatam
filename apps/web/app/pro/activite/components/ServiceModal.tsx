@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import {
   Modal,
   ModalHeader,
@@ -11,9 +12,11 @@ import {
   Textarea,
   Select,
   ConfirmDialog,
+  ImageCropModal,
 } from '@/components/ui';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, ImagePlus, X, Check, Crop } from 'lucide-react';
 import type { Service, ServiceCategory, Location, Member } from '@booking-app/shared';
+import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
 
 type WithId<T> = { id: string } & T;
 
@@ -25,6 +28,12 @@ interface ServiceModalProps {
   members: WithId<Member>[];
   categories: WithId<ServiceCategory>[];
   isTeamPlan: boolean;
+  /** Provider ID for uploading new photos to portfolio */
+  providerId: string;
+  /** Existing portfolio photos to select from */
+  portfolioPhotos: string[];
+  /** Callback when a new photo is uploaded (to refresh provider data) */
+  onPortfolioUpdate?: (newPhotos: string[]) => void;
   onSave: (data: ServiceFormData) => Promise<void>;
   onDelete?: (serviceId: string) => Promise<void>;
 }
@@ -32,6 +41,7 @@ interface ServiceModalProps {
 export interface ServiceFormData {
   name: string;
   description: string | null;
+  photoURL: string | null;
   duration: number;
   price: number; // in cents
   bufferTime: number;
@@ -57,6 +67,9 @@ export function ServiceModal({
   members,
   categories,
   isTeamPlan,
+  providerId,
+  portfolioPhotos,
+  onPortfolioUpdate,
   onSave,
   onDelete,
 }: ServiceModalProps) {
@@ -65,10 +78,15 @@ export function ServiceModal({
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<ServiceFormData>({
     name: '',
     description: null,
+    photoURL: null,
     duration: 60,
     price: 0,
     bufferTime: 0,
@@ -84,6 +102,7 @@ export function ServiceModal({
         setFormData({
           name: service.name,
           description: service.description,
+          photoURL: service.photoURL ?? null,
           duration: service.duration,
           price: service.price,
           bufferTime: service.bufferTime,
@@ -96,6 +115,7 @@ export function ServiceModal({
         setFormData({
           name: '',
           description: null,
+          photoURL: null,
           duration: 60,
           price: 0,
           bufferTime: 0,
@@ -108,6 +128,58 @@ export function ServiceModal({
       setShowDeleteConfirm(false);
     }
   }, [isOpen, service, locations]);
+
+  // When a new file is selected, create a local preview URL and open crop modal
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrors((prev) => ({ ...prev, photo: 'Le fichier doit être une image' }));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, photo: 'La photo ne doit pas depasser 5 Mo' }));
+      return;
+    }
+
+    setErrors((prev) => ({ ...prev, photo: '' }));
+    const localUrl = URL.createObjectURL(file);
+    setCropImageUrl(localUrl);
+    setShowCropModal(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // When selecting an existing portfolio photo → open crop
+  const handleSelectPortfolioPhoto = (url: string) => {
+    setCropImageUrl(url);
+    setShowCropModal(true);
+  };
+
+  // After crop is done → upload cropped version and link to service
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setUploading(true);
+    setErrors((prev) => ({ ...prev, photo: '' }));
+
+    try {
+      const path = `${storagePaths.providerPortfolio(providerId)}/crop-${Date.now()}.jpg`;
+      const url = await uploadFile(path, croppedBlob, { contentType: 'image/jpeg' });
+      // Add cropped photo to portfolio
+      const newPhotos = [...portfolioPhotos, url];
+      onPortfolioUpdate?.(newPhotos);
+      // Link to this service
+      setFormData((prev) => ({ ...prev, photoURL: url }));
+    } catch {
+      setErrors((prev) => ({ ...prev, photo: 'Erreur lors de l\'upload' }));
+    } finally {
+      setUploading(false);
+      // Cleanup local URL if it was a local file
+      if (cropImageUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(cropImageUrl);
+      }
+      setCropImageUrl(null);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -244,6 +316,107 @@ export function ServiceModal({
             rows={3}
             hint="Optionnel - visible par les clients lors de la réservation"
           />
+
+          {/* Photo (from portfolio) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Photo <span className="text-gray-400 font-normal">(optionnel)</span>
+            </label>
+
+            {/* Selected photo preview */}
+            {formData.photoURL && (
+              <div className="relative inline-flex items-end gap-2 mb-3">
+                <div className="relative">
+                  <Image
+                    src={formData.photoURL}
+                    alt="Photo de la prestation"
+                    width={120}
+                    height={120}
+                    className="rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                    style={{ width: 120, height: 120 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, photoURL: null }))}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCropImageUrl(formData.photoURL);
+                    setShowCropModal(true);
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Crop className="w-3 h-3" />
+                  Recadrer
+                </button>
+              </div>
+            )}
+
+            {/* Portfolio gallery */}
+            {portfolioPhotos.length > 0 && (
+              <div className="grid grid-cols-5 gap-2 mb-2">
+                {portfolioPhotos.map((url) => (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() => handleSelectPortfolioPhoto(url)}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      formData.photoURL === url
+                        ? 'border-primary-500 ring-2 ring-primary-500/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <Image
+                      src={url}
+                      alt=""
+                      fill
+                      className="object-cover"
+                    />
+                    {formData.photoURL === url && (
+                      <div className="absolute inset-0 bg-primary-500/20 flex items-center justify-center">
+                        <Check className="w-5 h-5 text-white drop-shadow" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Upload new photo button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ImagePlus className="w-4 h-4" />
+              )}
+              {uploading ? 'Upload en cours...' : 'Ajouter une photo'}
+            </button>
+            <p className="mt-1 text-xs text-gray-400">
+              {portfolioPhotos.length > 0
+                ? 'Selectionnez une photo du portfolio ou ajoutez-en une nouvelle'
+                : 'La photo sera ajoutee a votre portfolio'}
+            </p>
+            {errors.photo && (
+              <p className="mt-1 text-sm text-red-500">{errors.photo}</p>
+            )}
+          </div>
 
           {/* Duration & Price */}
           <div className="grid grid-cols-2 gap-4">
@@ -431,6 +604,21 @@ export function ServiceModal({
         loading={deleting}
         variant="danger"
       />
+
+      {/* Image crop modal */}
+      {cropImageUrl && (
+        <ImageCropModal
+          isOpen={showCropModal}
+          onClose={() => {
+            setShowCropModal(false);
+            if (cropImageUrl.startsWith('blob:')) URL.revokeObjectURL(cropImageUrl);
+            setCropImageUrl(null);
+          }}
+          imageUrl={cropImageUrl}
+          aspect={1}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </Modal>
   );
 }

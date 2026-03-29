@@ -383,6 +383,7 @@ export default function RegisterPage() {
     await serviceRepository.create(provider.id, {
       name: data.serviceName,
       description: data.serviceDescription || null,
+      photoURL: null,
       duration: data.serviceDuration,
       price: data.servicePrice * 100, // Convert to cents
       bufferTime: 0,

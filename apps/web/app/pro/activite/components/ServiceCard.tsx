@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Badge, Switch } from '@/components/ui';
 import { ChevronUp, ChevronDown, Clock, Euro } from 'lucide-react';
 import type { Service, Member } from '@booking-app/shared';
@@ -132,6 +133,19 @@ export function ServiceCard({
         {/* Main content - clickable */}
         <div className="flex-1 min-w-0 p-3 sm:p-4" onClick={onClick}>
           <div className="flex items-start justify-between gap-2 sm:gap-4">
+            {/* Photo thumbnail */}
+            {service.photoURL && (
+              <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden">
+                <Image
+                  src={service.photoURL}
+                  alt={service.name}
+                  width={56}
+                  height={56}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+
             <div className="flex-1 min-w-0">
               {/* Service name */}
               <h3 className="font-semibold text-gray-900 dark:text-white truncate text-sm sm:text-base">

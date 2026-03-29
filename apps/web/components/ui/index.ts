@@ -87,3 +87,6 @@ export type { GoogleAddressAutocompleteProps, GoogleAddressSuggestion, GoogleAdd
 
 // CountrySelect
 export { CountrySelect } from './CountrySelect';
+
+// ImageCropModal
+export { ImageCropModal } from './ImageCropModal';

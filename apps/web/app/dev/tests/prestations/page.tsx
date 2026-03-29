@@ -50,6 +50,7 @@ export default function ServicesTestPage() {
       const id = await serviceRepository.create(providerId, {
         name: createName,
         description: null,
+        photoURL: null,
         duration: parseInt(createDuration, 10),
         price: parseInt(createPrice, 10),
         bufferTime: 0,

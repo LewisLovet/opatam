@@ -28,6 +28,7 @@ export class CatalogService {
     const serviceId = await serviceRepository.create(providerId, {
       name: validated.name,
       description: validated.description || null,
+      photoURL: validated.photoURL ?? null,
       duration: validated.duration,
       price: validated.price,
       bufferTime: validated.bufferTime || 0,
@@ -285,6 +286,7 @@ export class CatalogService {
     const newServiceId = await serviceRepository.create(providerId, {
       name: `${service.name} (copie)`,
       description: service.description,
+      photoURL: service.photoURL,
       duration: service.duration,
       price: service.price,
       bufferTime: service.bufferTime,
