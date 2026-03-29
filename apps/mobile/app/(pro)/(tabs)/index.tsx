@@ -452,15 +452,8 @@ export default function ProDashboardScreen() {
   }, [shopUrl]);
 
   const handleEditShop = useCallback(() => {
-    Alert.alert(
-      'Redirection vers le web',
-      'La modification de votre boutique se fait depuis l\'interface web.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Continuer', onPress: () => Linking.openURL('https://opatam.com/pro/') },
-      ],
-    );
-  }, []);
+    router.push('/(pro)/profile');
+  }, [router]);
 
   // -- Derived values (all hooks must be called before any early return) -----
 

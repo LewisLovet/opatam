@@ -43,7 +43,7 @@ const PAGE_SIZE = 10;
 const MAX_BROWSE_RESULTS = 100;
 
 // Map CATEGORIES constant to the format CategorySelect expects
-const categoryOptions = CATEGORIES.map((c) => ({ id: c.id, label: c.label }));
+const categoryOptions = CATEGORIES.map((c) => ({ id: c.id, label: c.label, icon: c.icon }));
 
 export default function SearchScreen() {
   const { colors, spacing, radius } = useTheme();
@@ -312,9 +312,20 @@ export default function SearchScreen() {
         )}
         {!loading && suggestedProviders.length > 0 && (
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl, paddingBottom: spacing.xl }}>
-            <Text variant="h3" style={{ marginBottom: spacing.md }}>
-              Prestataires populaires
-            </Text>
+            {/* Section header */}
+            <View style={[styles.popularHeader, { marginBottom: spacing.md }]}>
+              <View style={[styles.popularHeaderIcon, { backgroundColor: `${colors.primary}15` }]}>
+                <Ionicons name="trending-up" size={16} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="h3" style={{ fontWeight: '700' }}>
+                  Populaires
+                </Text>
+                <Text variant="caption" color="textMuted">
+                  Les prestataires les mieux notés
+                </Text>
+              </View>
+            </View>
             {suggestedProviders.map((provider) => (
               <View key={provider.id} style={{ marginBottom: spacing.md }}>
                 <ProviderCard
@@ -494,5 +505,17 @@ const styles = StyleSheet.create({
   },
   emptyListContent: {
     flexGrow: 1,
+  },
+  popularHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  popularHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

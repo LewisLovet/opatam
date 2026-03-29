@@ -96,7 +96,7 @@ export function useSubscriptionStatus() {
   const { provider, isLoading } = useProvider();
 
   if (isLoading || !provider) {
-    return { isActive: false, isTrialing: false, isExpired: false, needsSubscription: false, plan: null as string | null, status: null as string | null };
+    return { isActive: false, isTrialing: false, isExpired: false, needsSubscription: false, plan: null as string | null, status: null as string | null, daysRemaining: null as number | null, paymentSource: null as string | null };
   }
 
   const { plan, subscription } = provider;
@@ -139,5 +139,6 @@ export function useSubscriptionStatus() {
     plan: plan || null,
     status: subscription?.status || null,
     daysRemaining,
+    paymentSource: subscription?.paymentSource || null,
   };
 }

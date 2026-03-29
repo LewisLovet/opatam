@@ -393,7 +393,23 @@ export default function AvailabilityScreen() {
       {/* Header */}
       <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
+          <Pressable
+            onPress={() => {
+              if (isDirty) {
+                Alert.alert(
+                  'Modifications non sauvegardées',
+                  'Voulez-vous quitter sans enregistrer vos modifications ?',
+                  [
+                    { text: 'Rester', style: 'cancel' },
+                    { text: 'Quitter', style: 'destructive', onPress: () => router.back() },
+                  ]
+                );
+              } else {
+                router.back();
+              }
+            }}
+            hitSlop={12}
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </Pressable>
           <Text variant="h3" style={{ color: '#FFFFFF', flex: 1, marginLeft: spacing.sm }}>
@@ -568,11 +584,12 @@ export default function AvailabilityScreen() {
                           style={{ transform: [{ scale: 0.8 }] }}
                         />
                         <Text
-                          variant="body"
+                          variant="caption"
                           style={{
                             fontWeight: '600',
+                            fontSize: 13,
                             color: day.isOpen ? colors.text : colors.textMuted,
-                            width: 48,
+                            width: 40,
                           }}
                         >
                           {DAY_SHORT[day.dayOfWeek]}

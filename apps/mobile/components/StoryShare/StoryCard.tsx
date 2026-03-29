@@ -4,7 +4,7 @@
  * Generates a beautiful story image with:
  * - Provider photo / logo
  * - Business name & category
- * - Top 3 services with prices OR weekly hours (grouped)
+ * - Up to 5 services with prices OR weekly hours (grouped)
  * - QR code for booking
  * - OPATAM branding
  *
@@ -130,7 +130,7 @@ export function StoryCard({
   weekSchedule = [],
   gradientColors = ['#ffffff', '#f0f4f8', '#e2e8f0'],
 }: StoryCardProps) {
-  const topServices = services.slice(0, 3);
+  const topServices = services.slice(0, 5);
   const subtitle = [category, city].filter(Boolean).join(' • ').toUpperCase();
   const hasContent = displayMode !== 'none' && (
     displayMode === 'services' ? topServices.length > 0 : weekSchedule.length > 0
@@ -140,6 +140,9 @@ export function StoryCard({
     () => displayMode === 'hours' ? groupHours(weekSchedule) : [],
     [displayMode, weekSchedule],
   );
+
+  // QR code only shown in 'none' mode (renamed "QR Code")
+  const showQR = displayMode === 'none';
 
   return (
     <View style={styles.container}>
@@ -186,16 +189,16 @@ export function StoryCard({
 
           {/* Services */}
           {displayMode === 'services' && topServices.length > 0 && (
-            <View style={styles.cardSection}>
-              <Text style={styles.sectionTitle}>Nos prestations</Text>
+            <View style={[styles.cardSection, topServices.length > 3 && styles.cardSectionCompact]}>
+              <Text style={[styles.sectionTitle, topServices.length > 3 && { marginBottom: 8 }]}>Nos prestations</Text>
               {topServices.map((service, index) => (
-                <View key={index} style={styles.serviceRow}>
+                <View key={index} style={[styles.serviceRow, topServices.length > 3 && { marginBottom: 6 }]}>
                   <View style={styles.serviceDot} />
-                  <Text style={styles.serviceName} numberOfLines={1}>
+                  <Text style={[styles.serviceName, topServices.length > 3 && { fontSize: 13 }]} numberOfLines={1}>
                     {service.name}
                   </Text>
                   <View style={styles.serviceLine} />
-                  <Text style={styles.servicePrice}>
+                  <Text style={[styles.servicePrice, topServices.length > 3 && { fontSize: 14 }]}>
                     {service.price === 0 ? 'Gratuit' : `${(service.price / 100).toFixed(0)}€`}
                   </Text>
                 </View>
@@ -227,24 +230,26 @@ export function StoryCard({
           {/* Spacer */}
           <View style={{ flex: 1 }} />
 
-          {/* QR Code section */}
-          <View style={styles.qrSection}>
-            <View style={styles.qrContainer}>
-              {QRCode ? (
-                <QRCode
-                  value={bookingUrl}
-                  size={hasContent ? 100 : 140}
-                  backgroundColor="white"
-                  color="#111827"
-                />
-              ) : (
-                <View style={{ width: hasContent ? 100 : 140, height: hasContent ? 100 : 140, backgroundColor: '#f3f4f6', borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 10, color: '#9ca3af' }}>QR</Text>
-                </View>
-              )}
+          {/* QR Code section — only in QR Code mode */}
+          {showQR && (
+            <View style={styles.qrSection}>
+              <View style={styles.qrContainer}>
+                {QRCode ? (
+                  <QRCode
+                    value={bookingUrl}
+                    size={140}
+                    backgroundColor="white"
+                    color="#111827"
+                  />
+                ) : (
+                  <View style={{ width: 140, height: 140, backgroundColor: '#f3f4f6', borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 10, color: '#9ca3af' }}>QR</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.qrLabel}>Scannez pour réserver</Text>
             </View>
-            <Text style={styles.qrLabel}>Scannez pour réserver</Text>
-          </View>
+          )}
 
           {/* Branding */}
           <View style={styles.brandingSection}>
@@ -255,7 +260,7 @@ export function StoryCard({
                 style={styles.brandingLogo}
                 resizeMode="contain"
               />
-              <Text style={styles.brandingText}>{APP_CONFIG.name}</Text>
+              <Text style={styles.brandingText}>opatam.com</Text>
             </View>
             <View style={styles.brandingDivider} />
           </View>
@@ -371,6 +376,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderWidth: 1,
     borderColor: 'rgba(26,109,175,0.1)',
+  },
+  cardSectionCompact: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
   },
 
   // Services

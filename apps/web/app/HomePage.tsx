@@ -36,6 +36,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { PlayStoreWaitlistModal } from '@/components/common/PlayStoreWaitlistModal';
+import { SocialLinks } from '@/components/common/SocialLinks';
 
 // ─── Helpers ────────────────────────────────────────────────────────
 function formatPrice(cents: number): string {
@@ -1190,6 +1191,12 @@ export default function LandingPage() {
                   Bientôt
                 </span>
               </button>
+            </div>
+
+            {/* Social links */}
+            <div className="mt-8">
+              <p className="text-sm text-white/50 mb-3">Suivez-nous</p>
+              <SocialLinks variant="light" className="justify-center" />
             </div>
           </div>
         </section>

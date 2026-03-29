@@ -20,6 +20,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 
@@ -44,10 +45,15 @@ import type { DayScheduleItem } from './StoryCard';
 // Try to import react-native-share (only available in dev client / production builds)
 let RNShare: typeof import('react-native-share').default | null = null;
 try {
-  RNShare = require('react-native-share').default;
+  const mod = require('react-native-share');
+  RNShare = mod.default || mod;
 } catch {
-  // Not available in Expo Go — will use expo-sharing fallback
+  // react-native-share not available (e.g. Expo Go)
 }
+
+// Facebook App ID required for Instagram Stories & Facebook Stories sharing
+// Create one at https://developers.facebook.com if not yet available
+const FACEBOOK_APP_ID = '2649028388814234';
 
 type WithId<T> = { id: string } & T;
 
@@ -67,14 +73,13 @@ interface SocialNetwork {
 
 const NETWORKS: SocialNetwork[] = [
   { key: 'instagram', label: 'Instagram', icon: 'logo-instagram', color: '#E1306C' },
-  { key: 'snapchat', label: 'Snapchat', icon: 'logo-snapchat', color: '#FFFC00' },
-  { key: 'facebook', label: 'Facebook', icon: 'logo-facebook', color: '#1877F2' },
+  { key: 'share', label: 'Partager', icon: 'share-outline', color: '#555555' },
 ];
 
 const DISPLAY_MODES: { key: DisplayMode; label: string; icon: string }[] = [
   { key: 'services', label: 'Prestations', icon: 'pricetags-outline' },
   { key: 'hours', label: 'Horaires', icon: 'time-outline' },
-  { key: 'none', label: 'Aucun', icon: 'remove-circle-outline' },
+  { key: 'none', label: 'QR Code', icon: 'qr-code-outline' },
 ];
 
 export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
@@ -87,14 +92,19 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const [loadingServices, setLoadingServices] = useState(true);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('services');
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
+  const [showLinkReminder, setShowLinkReminder] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Fetch opening hours
-  const { weekSchedule, loading: loadingHours } = useOpeningHours(provider?.id);
+  const { weekSchedule, loading: loadingHours, refresh: refreshHours } = useOpeningHours(provider?.id);
 
-  // Fetch services when modal opens
+  // Fetch services + refresh hours when modal opens
   useEffect(() => {
     if (!visible || !provider) return;
     let cancelled = false;
+
+    // Refresh hours to pick up any changes made in availability screen
+    refreshHours();
 
     (async () => {
       setLoadingServices(true);
@@ -102,8 +112,8 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
         const data = await catalogService.getActiveByProvider(provider.id);
         if (!cancelled) {
           setServices(data);
-          // Pre-select first 3
-          setSelectedServiceIds(new Set(data.slice(0, 3).map((s) => s.id)));
+          // Pre-select first 5
+          setSelectedServiceIds(new Set(data.slice(0, 5).map((s) => s.id)));
         }
       } catch (err) {
         console.error('[StoryShare] Error loading services:', err);
@@ -178,21 +188,37 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     return true;
   }, []);
 
-  const handleShareInstagram = useCallback(async () => {
+  // Copy booking link to clipboard
+  const handleCopyLink = useCallback(async () => {
+    await Clipboard.setStringAsync(bookingUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }, [bookingUrl]);
+
+  // Instagram — show link reminder modal first
+  const handleShareInstagram = useCallback(() => {
+    setLinkCopied(false);
+    setShowLinkReminder(true);
+  }, []);
+
+  // Actual Instagram sharing (called after user confirms from reminder modal)
+  const proceedShareInstagram = useCallback(async () => {
+    setShowLinkReminder(false);
     setSharing('instagram');
     try {
+      const installed = await checkAppInstalled('instagram', 'Instagram', '389801252', 'com.instagram.android');
+      if (!installed) return;
+
       const fileUri = await captureStory();
-      if (!fileUri) {
-        Alert.alert('Erreur', 'Impossible de capturer l\'image.');
-        return;
-      }
+      if (!fileUri) { Alert.alert('Erreur', 'Impossible de capturer l\'image.'); return; }
 
       if (RNShare) {
-        await RNShare.open({
+        await RNShare.shareSingle({
           social: RNShare.Social.INSTAGRAM_STORIES as any,
           type: 'image/png',
           url: fileUri,
           backgroundImage: fileUri,
+          appId: FACEBOOK_APP_ID,
         } as any);
       } else {
         await fallbackShare(fileUri);
@@ -200,71 +226,30 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     } catch (error: any) {
       if (error?.message?.includes?.('User did not share')) return;
       if (error?.code === 'ECANCELLED' || error?.code === 'ERR_SHARING_ABORTED') return;
-      await checkAppInstalled('instagram', 'Instagram', '389801252', 'com.instagram.android');
+      const fileUri = await captureStory();
+      if (fileUri) await fallbackShare(fileUri);
     } finally {
       setSharing(null);
     }
   }, [captureStory, fallbackShare, checkAppInstalled]);
 
-  const handleShareSnapchat = useCallback(async () => {
-    setSharing('snapchat');
+  // Generic share — opens system share sheet
+  const handleGenericShare = useCallback(async () => {
+    setSharing('share');
     try {
       const fileUri = await captureStory();
-      if (!fileUri) {
-        Alert.alert('Erreur', 'Impossible de capturer l\'image.');
-        return;
-      }
-
-      if (RNShare) {
-        await RNShare.open({
-          social: RNShare.Social.SNAPCHAT as any,
-          type: 'image/png',
-          url: fileUri,
-        } as any);
-      } else {
-        await fallbackShare(fileUri);
-      }
-    } catch (error: any) {
-      if (error?.message?.includes?.('User did not share')) return;
-      if (error?.code === 'ECANCELLED' || error?.code === 'ERR_SHARING_ABORTED') return;
-      await checkAppInstalled('snapchat', 'Snapchat', '447188370', 'com.snapchat.android');
+      if (!fileUri) { Alert.alert('Erreur', 'Impossible de capturer l\'image.'); return; }
+      await fallbackShare(fileUri);
+    } catch {
+      // Ignore
     } finally {
       setSharing(null);
     }
-  }, [captureStory, fallbackShare, checkAppInstalled]);
-
-  const handleShareFacebook = useCallback(async () => {
-    setSharing('facebook');
-    try {
-      const fileUri = await captureStory();
-      if (!fileUri) {
-        Alert.alert('Erreur', 'Impossible de capturer l\'image.');
-        return;
-      }
-
-      if (RNShare) {
-        await RNShare.open({
-          social: RNShare.Social.FACEBOOK_STORIES as any,
-          type: 'image/png',
-          url: fileUri,
-          backgroundImage: fileUri,
-        } as any);
-      } else {
-        await fallbackShare(fileUri);
-      }
-    } catch (error: any) {
-      if (error?.message?.includes?.('User did not share')) return;
-      if (error?.code === 'ECANCELLED' || error?.code === 'ERR_SHARING_ABORTED') return;
-      await checkAppInstalled('fb', 'Facebook', '284882215', 'com.facebook.katana');
-    } finally {
-      setSharing(null);
-    }
-  }, [captureStory, fallbackShare, checkAppInstalled]);
+  }, [captureStory, fallbackShare]);
 
   const networkHandlers: Record<string, () => void> = {
     instagram: handleShareInstagram,
-    snapchat: handleShareSnapchat,
-    facebook: handleShareFacebook,
+    share: handleGenericShare,
   };
 
   if (!provider) return null;
@@ -279,8 +264,8 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
       if (next.has(id)) {
         next.delete(id);
       } else {
-        // Max 3
-        if (next.size >= 3) return prev;
+        // Max 5
+        if (next.size >= 5) return prev;
         next.add(id);
       }
       return next;
@@ -392,12 +377,12 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           {displayMode === 'services' && services.length > 0 && (
             <View style={styles.sectionSpacing}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                Prestations affichées (3 max)
+                Prestations affichées (5 max)
               </Text>
               <View style={[styles.customizeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 {services.map((service) => {
                   const selected = selectedServiceIds.has(service.id);
-                  const disabledMax = !selected && selectedServiceIds.size >= 3;
+                  const disabledMax = !selected && selectedServiceIds.size >= 5;
                   return (
                     <Pressable
                       key={service.id}
@@ -471,6 +456,68 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             </View>
           </View>
         </ScrollView>
+
+        {/* Link reminder modal for Instagram */}
+        <Modal
+          visible={showLinkReminder}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowLinkReminder(false)}
+        >
+          <Pressable style={styles.reminderOverlay} onPress={() => setShowLinkReminder(false)}>
+            <Pressable style={[styles.reminderCard, { backgroundColor: colors.surface }]} onPress={() => {}}>
+              <View style={[styles.reminderIconCircle, { backgroundColor: `${colors.primary}15` }]}>
+                <Ionicons name="link-outline" size={28} color={colors.primary} />
+              </View>
+
+              <Text style={[styles.reminderTitle, { color: colors.text }]}>
+                N'oubliez pas votre lien !
+              </Text>
+
+              <Text style={[styles.reminderDesc, { color: colors.textSecondary }]}>
+                Instagram ne permet pas d'inclure de lien cliquable dans les stories. Pensez à ajouter votre lien de réservation en sticker pour que vos clients puissent réserver.
+              </Text>
+
+              {/* Copy link button */}
+              <Pressable
+                onPress={handleCopyLink}
+                style={[
+                  styles.reminderCopyButton,
+                  {
+                    backgroundColor: linkCopied ? '#10b981' : colors.surface,
+                    borderColor: linkCopied ? '#10b981' : colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
+                  size={18}
+                  color={linkCopied ? '#fff' : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.reminderCopyText,
+                    { color: linkCopied ? '#fff' : colors.text },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {linkCopied ? 'Lien copié !' : bookingUrl}
+                </Text>
+              </Pressable>
+
+              {/* Continue button */}
+              <Pressable
+                onPress={proceedShareInstagram}
+                style={[styles.reminderContinueButton, { backgroundColor: colors.primary }]}
+              >
+                <Ionicons name="logo-instagram" size={20} color="#fff" />
+                <Text style={styles.reminderContinueText}>
+                  Partager sur Instagram
+                </Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </View>
     </Modal>
   );
@@ -605,5 +652,75 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.4,
+  },
+
+  // Link reminder modal
+  reminderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  reminderCard: {
+    width: '100%',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  reminderIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  reminderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  reminderDesc: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  reminderCopyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    width: '100%',
+    marginTop: 4,
+  },
+  reminderCopyText: {
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+  reminderContinueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    width: '100%',
+    marginTop: 4,
+  },
+  reminderContinueText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

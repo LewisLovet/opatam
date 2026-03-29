@@ -59,7 +59,9 @@ export const REGIONS: Record<string, string[]> = {
   ],
 };
 
-export const REGION_NAMES = Object.keys(REGIONS);
+export const REGION_NAMES = Object.keys(REGIONS).sort((a, b) =>
+  a.localeCompare(b, 'fr', { sensitivity: 'base' })
+);
 
 /**
  * Normalize a string for comparison (lowercase, remove accents, trim)

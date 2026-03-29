@@ -435,10 +435,12 @@ export default function MoreScreen() {
         <Pressable
           onPress={() => {
             if (sub.isActive) {
-              if (Platform.OS === 'ios') {
-                Linking.openURL('https://apps.apple.com/account/subscriptions');
-              } else {
+              if (sub.paymentSource === 'stripe') {
+                Linking.openURL('https://opatam.com/pro/abonnement');
+              } else if (sub.paymentSource === 'google' || Platform.OS === 'android') {
                 Linking.openURL('https://play.google.com/store/account/subscriptions');
+              } else {
+                Linking.openURL('https://apps.apple.com/account/subscriptions');
               }
             } else {
               router.push('/(pro)/paywall');
@@ -491,7 +493,7 @@ export default function MoreScreen() {
               </Text>
               <Text style={s.subCardSubtitle}>
                 {sub.isActive
-                  ? 'Votre abonnement est actif'
+                  ? `Votre abonnement est actif${sub.paymentSource === 'stripe' ? ' · via le web' : sub.paymentSource === 'apple' ? ' · via Apple' : sub.paymentSource === 'google' ? ' · via Google Play' : ''}`
                   : sub.isTrialing
                     ? 'Profitez de toutes les fonctionnalités'
                     : 'Abonnez-vous pour continuer'}

@@ -13,6 +13,15 @@
       "collectionGroup": "providers",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "plan", "order": "ASCENDING" },
+        { "fieldPath": "isPublished", "order": "ASCENDING" },
+        { "fieldPath": "subscription.validUntil", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "providers",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "isPublished", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
