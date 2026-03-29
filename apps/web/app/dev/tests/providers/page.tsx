@@ -94,6 +94,7 @@ export default function ProvidersTestPage() {
         minPrice: null,
         searchTokens: [],
         geopoint: null,
+        countryCode: 'FR',
         nextAvailableSlot: null,
       });
       return { id, slug, message: 'Provider créé avec succès' };

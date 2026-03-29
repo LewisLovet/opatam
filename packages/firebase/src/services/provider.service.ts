@@ -117,6 +117,7 @@ export class ProviderService {
       isVerified: false,
       cities: [],
       region: null,
+      countryCode: 'FR',
       minPrice: null,
       searchTokens,
       geopoint: null,
@@ -455,7 +456,8 @@ export class ProviderService {
     userLat: number,
     userLon: number,
     city: string | null,
-    maxResults: number = 10
+    maxResults: number = 10,
+    maxDistanceKm: number = 50
   ): Promise<(WithId<Provider> & { distance: number })[]> {
     // Fetch city-local + global in parallel, then merge
     const [cityProviders, allProviders] = await Promise.all([
@@ -473,7 +475,7 @@ export class ProviderService {
       }
     }
 
-    // Calculate distance and sort — providers without geopoint go to the end
+    // Calculate distance, filter by max distance, and sort
     const withDistance = merged
       .map((provider) => {
         const dist = provider.geopoint
@@ -481,6 +483,7 @@ export class ProviderService {
           : Infinity;
         return { ...provider, distance: dist };
       })
+      .filter((p) => p.distance <= maxDistanceKm)
       .sort((a, b) => a.distance - b.distance)
       .slice(0, maxResults);
 

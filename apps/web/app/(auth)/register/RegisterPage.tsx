@@ -20,7 +20,7 @@ import {
   Plus,
   X,
 } from 'lucide-react';
-import { Button, Input, Checkbox, AddressAutocomplete, type AddressSuggestion } from '@/components/ui';
+import { Button, Input, Checkbox, GoogleAddressAutocomplete, type GoogleAddressSuggestion, CountrySelect } from '@/components/ui';
 import { StepIndicator } from '@/components/common/StepIndicator';
 import {
   authService,
@@ -30,7 +30,7 @@ import {
   schedulingService,
   memberService,
 } from '@booking-app/firebase';
-import { CATEGORIES, DAYS_OF_WEEK } from '@booking-app/shared';
+import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel } from '@booking-app/shared';
 
 // Storage key for localStorage
 const STORAGE_KEY = 'opatam-register-wizard';
@@ -66,6 +66,7 @@ interface WizardData {
   description: string;
   // Step 2 - Location
   locationName: string;
+  countryCode: string;
   cityOnly: boolean;
   address: string;
   postalCode: string;
@@ -106,6 +107,7 @@ const DEFAULT_DATA: WizardData = {
   category: '',
   description: '',
   locationName: '',
+  countryCode: 'FR',
   cityOnly: false,
   address: '',
   postalCode: '',
@@ -238,7 +240,7 @@ export default function RegisterPage() {
           return false;
         }
         if (data.cityOnly) {
-          if (!data.city.trim() || !data.postalCode.trim()) {
+          if (!data.city.trim()) {
             setError('Veuillez sélectionner une ville dans la liste');
             return false;
           }
@@ -357,7 +359,8 @@ export default function RegisterPage() {
       address: data.cityOnly ? '' : data.address,
       postalCode: data.postalCode,
       city: data.city,
-      country: 'France',
+      country: getCountryLabel(data.countryCode),
+      countryCode: data.countryCode,
       geopoint: data.cityOnly ? null : data.geopoint,
       description: null,
       type: 'fixed',
@@ -526,6 +529,18 @@ export default function RegisterPage() {
         onChange={(e) => updateData({ locationName: e.target.value })}
       />
 
+      <CountrySelect
+        value={data.countryCode}
+        onChange={(code) => updateData({
+          countryCode: code,
+          address: '',
+          postalCode: '',
+          city: '',
+          geopoint: null,
+          region: null,
+        })}
+      />
+
       <Checkbox
         name="cityOnly"
         checked={data.cityOnly}
@@ -541,39 +556,40 @@ export default function RegisterPage() {
       />
 
       {!data.cityOnly ? (
-        <AddressAutocomplete
+        <GoogleAddressAutocomplete
           label="Adresse"
           value={data.address}
           onChange={(value) => updateData({ address: value, postalCode: '', city: '', geopoint: null, region: null })}
-          onSelect={(suggestion: AddressSuggestion) => {
+          onSelect={(suggestion: GoogleAddressSuggestion) => {
             updateData({
-              address: suggestion.label,
-              postalCode: suggestion.postcode,
-              city: suggestion.city,
+              address: suggestion.formattedAddress,
+              postalCode: suggestion.postalCode ?? '',
+              city: suggestion.locality ?? '',
               geopoint: suggestion.coordinates,
-              region: suggestion.region,
+              region: suggestion.adminArea1,
             });
           }}
-          placeholder="Commencez à taper votre adresse..."
-          hint={!data.geopoint ? 'Sélectionnez une adresse dans la liste pour remplir automatiquement' : undefined}
+          countries={[data.countryCode.toLowerCase()]}
+          placeholder={`Rechercher une adresse...`}
+          hint={!data.geopoint ? 'Selectionnez une adresse dans la liste' : undefined}
           required
         />
       ) : (
-        <AddressAutocomplete
+        <GoogleAddressAutocomplete
           label="Ville"
           value={data.city}
           onChange={(value) => updateData({ city: value, postalCode: '', geopoint: null, region: null })}
-          onSelect={(suggestion: AddressSuggestion) => {
+          onSelect={(suggestion: GoogleAddressSuggestion) => {
             updateData({
-              city: suggestion.city,
-              postalCode: suggestion.postcode,
+              city: suggestion.locality ?? '',
+              postalCode: suggestion.postalCode ?? '',
               geopoint: suggestion.coordinates,
-              region: suggestion.region,
+              region: suggestion.adminArea1,
             });
           }}
+          countries={[data.countryCode.toLowerCase()]}
           placeholder="Rechercher une ville..."
           required
-          type="municipality"
         />
       )}
 

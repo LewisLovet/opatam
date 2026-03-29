@@ -45,11 +45,17 @@ export {
   geopointSchema,
   createLocationSchema,
   updateLocationSchema,
+  POSTAL_CODE_PATTERNS,
+  PHONE_PATTERNS,
+  SUPPORTED_COUNTRY_CODES,
+  isValidPostalCode,
+  isValidPhone,
 } from './location.schema';
 export type {
   GeopointInput,
   CreateLocationInput,
   UpdateLocationInput,
+  SupportedCountryCode,
 } from './location.schema';
 
 // Service schemas

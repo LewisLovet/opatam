@@ -136,6 +136,7 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     address: l.address,
     city: l.city,
     postalCode: l.postalCode,
+    countryCode: l.countryCode || 'FR',
     type: l.type,
   }));
 

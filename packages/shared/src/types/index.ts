@@ -60,6 +60,7 @@ export interface Provider {
   // Denormalized fields for search optimization
   cities: string[];              // Normalized cities from active locations
   region: string | null;         // Region from primary location (e.g., "Île-de-France")
+  countryCode: string;           // ISO 3166-1 alpha-2 from default location (e.g., 'FR')
   minPrice: number | null;       // Minimum price from active services (in centimes)
   searchTokens: string[];        // Normalized words from businessName for search (e.g., ["salon", "hugo"])
   geopoint: { latitude: number; longitude: number } | null; // From default location, for proximity search
@@ -163,6 +164,7 @@ export interface Location {
   address: string;
   city: string;
   postalCode: string;
+  countryCode: string; // ISO 3166-1 alpha-2 (e.g., 'FR', 'BE', 'DE')
   geopoint: { latitude: number; longitude: number } | null;
   description: string | null;
   type: LocationType;

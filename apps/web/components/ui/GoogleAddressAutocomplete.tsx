@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { MapPin, Loader2, X } from 'lucide-react';
 
+// --- Constants ---
+
+/** Countries supported by Opatam (France + neighboring EU countries) */
+export const OPATAM_SUPPORTED_COUNTRIES = ['fr', 'be', 'lu', 'ch', 'de', 'es', 'it', 'nl', 'pt'];
+
 // --- Types ---
 
 export interface GoogleAddressComponent {
@@ -41,7 +46,7 @@ export interface GoogleAddressAutocompleteProps {
   hint?: string;
   required?: boolean;
   disabled?: boolean;
-  /** ISO country codes to restrict search (e.g., ['fr', 'be', 'de']) */
+  /** ISO country codes to restrict search. Defaults to OPATAM_SUPPORTED_COUNTRIES */
   countries?: string[];
   /** Minimum characters before triggering search */
   minChars?: number;
@@ -95,13 +100,10 @@ async function fetchAutocompleteSuggestions(
   }
 
   const response = await fetch(
-    'https://places.googleapis.com/v1/places:autocomplete',
+    `https://places.googleapis.com/v1/places:autocomplete?key=${apiKey}`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }
   );
@@ -121,25 +123,10 @@ async function fetchPlaceDetails(
   apiKey: string,
   sessionToken: string
 ): Promise<GoogleAddressSuggestion | null> {
-  const fieldMask = [
-    'formattedAddress',
-    'addressComponents',
-    'location',
-    'id',
-  ].join(',');
+  // Place Details must go through API route (Google blocks CORS on this endpoint)
+  const params = new URLSearchParams({ placeId, sessionToken });
 
-  const response = await fetch(
-    `https://places.googleapis.com/v1/places/${placeId}`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': fieldMask,
-        'X-Goog-SessionToken': sessionToken,
-      },
-    }
-  );
+  const response = await fetch(`/api/google-places/details?${params}`);
 
   if (!response.ok) {
     console.error('[GoogleAutocomplete] Place Details error:', response.status);
@@ -192,7 +179,7 @@ export function GoogleAddressAutocomplete({
   hint,
   required,
   disabled,
-  countries,
+  countries = OPATAM_SUPPORTED_COUNTRIES,
   minChars = 3,
   debounceMs = 300,
   limit = 5,

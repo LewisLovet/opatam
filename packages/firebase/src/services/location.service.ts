@@ -43,6 +43,7 @@ export class LocationService {
       address: validated.address || '',
       city: validated.city,
       postalCode: validated.postalCode,
+      countryCode: validated.countryCode || 'FR',
       geopoint: validated.geopoint || null,
       description: validated.description || null,
       type: validated.type,
@@ -310,8 +311,11 @@ export class LocationService {
       region = getRegionFromCoords(geopoint.latitude, geopoint.longitude);
     }
 
+    // Get countryCode from default location (fallback to 'FR')
+    const countryCode = defaultLocation?.countryCode ?? activeLocations[0]?.countryCode ?? 'FR';
+
     const cities = Array.from(citiesSet).sort();
-    await providerRepository.update(providerId, { cities, geopoint, region });
+    await providerRepository.update(providerId, { cities, geopoint, region, countryCode });
   }
 }
 

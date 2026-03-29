@@ -49,6 +49,7 @@ export default function LocationsTestPage() {
         address: createAddress,
         city: createCity,
         postalCode: createPostalCode,
+        countryCode: 'FR',
         geopoint: null,
         description: null,
         isDefault: false,

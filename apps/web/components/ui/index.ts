@@ -82,5 +82,8 @@ export { AddressAutocomplete } from './AddressAutocomplete';
 export type { AddressAutocompleteProps, AddressSuggestion } from './AddressAutocomplete';
 
 // GoogleAddressAutocomplete
-export { GoogleAddressAutocomplete } from './GoogleAddressAutocomplete';
+export { GoogleAddressAutocomplete, OPATAM_SUPPORTED_COUNTRIES } from './GoogleAddressAutocomplete';
 export type { GoogleAddressAutocompleteProps, GoogleAddressSuggestion, GoogleAddressComponent } from './GoogleAddressAutocomplete';
+
+// CountrySelect
+export { CountrySelect } from './CountrySelect';

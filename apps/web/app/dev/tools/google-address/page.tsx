@@ -43,8 +43,11 @@ export default function GoogleAddressTestPage() {
   const [selectedAddress, setSelectedAddress] = useState<SelectedAddress | null>(null);
   const [history, setHistory] = useState<SelectedAddress[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState('fr');
+  // Legacy multi-select for raw testing
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
+  const [testMode, setTestMode] = useState<'production' | 'raw'>('production');
 
   const handleSelect = (suggestion: GoogleAddressSuggestion) => {
     const entry = { suggestion, timestamp: new Date() };
@@ -87,66 +90,92 @@ export default function GoogleAddressTestPage() {
           </p>
         </div>
 
-        {/* Country filter */}
-        <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Flag className="w-4 h-4 text-blue-400" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-blue-400">
-                Filtre par pays
-              </h2>
-            </div>
-            <button
-              onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
-              className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors"
-            >
-              {selectedCountries.length === 0 ? 'Tous les pays' : `${selectedCountries.length} pays`}
-              <ChevronDown className={`w-3 h-3 transition-transform ${countryDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {EU_COUNTRIES.map((country) => {
-              const isSelected = selectedCountries.includes(country.code);
-              return (
-                <button
-                  key={country.code}
-                  onClick={() => toggleCountry(country.code)}
-                  className={`
-                    flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                    ${isSelected
-                      ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'
-                      : 'bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600'
-                    }
-                  `}
-                >
-                  <span>{country.flag}</span>
-                  <span>{country.label}</span>
-                  <span className="text-xs opacity-60 uppercase">{country.code}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {selectedCountries.length > 0 && (
-            <button
-              onClick={() => setSelectedCountries([])}
-              className="mt-2 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-            >
-              Reinitialiser le filtre
-            </button>
-          )}
+        {/* Mode toggle */}
+        <div className="mb-6 flex gap-2">
+          <button
+            onClick={() => setTestMode('production')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              testMode === 'production'
+                ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'
+                : 'bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white'
+            }`}
+          >
+            Flow Production
+          </button>
+          <button
+            onClick={() => setTestMode('raw')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              testMode === 'raw'
+                ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'
+                : 'bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white'
+            }`}
+          >
+            Test multi-pays
+          </button>
         </div>
+
+        {/* Raw multi-country filter (test mode only) */}
+        {testMode === 'raw' && (
+          <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Flag className="w-4 h-4 text-blue-400" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-blue-400">
+                  Filtre multi-pays (test)
+                </h2>
+              </div>
+              <button
+                onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors"
+              >
+                {selectedCountries.length === 0 ? 'Tous les pays' : `${selectedCountries.length} pays`}
+                <ChevronDown className={`w-3 h-3 transition-transform ${countryDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {EU_COUNTRIES.map((country) => {
+                const isSelected = selectedCountries.includes(country.code);
+                return (
+                  <button
+                    key={country.code}
+                    onClick={() => toggleCountry(country.code)}
+                    className={`
+                      flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                      ${isSelected
+                        ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'
+                        : 'bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600'
+                      }
+                    `}
+                  >
+                    <span>{country.flag}</span>
+                    <span>{country.label}</span>
+                    <span className="text-xs opacity-60 uppercase">{country.code}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedCountries.length > 0 && (
+              <button
+                onClick={() => setSelectedCountries([])}
+                className="mt-2 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                Reinitialiser le filtre
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Main test area */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Left: Input */}
           <div className="space-y-6">
-            {/* Autocomplete card */}
+            {/* Production flow: Country select + Autocomplete */}
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-blue-400">
-                  Recherche d&apos;adresse
+                  {testMode === 'production' ? 'Flow production' : 'Recherche d\'adresse'}
                 </h2>
                 {selectedAddress && (
                   <button
@@ -159,13 +188,52 @@ export default function GoogleAddressTestPage() {
                 )}
               </div>
 
+              {/* Country selector (production mode) */}
+              {testMode === 'production' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    Pays
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {EU_COUNTRIES.map((country) => (
+                      <button
+                        key={country.code}
+                        onClick={() => {
+                          setSelectedCountry(country.code);
+                          setQuery('');
+                          setSelectedAddress(null);
+                        }}
+                        className={`
+                          flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                          ${selectedCountry === country.code
+                            ? 'bg-blue-500/20 border-2 border-blue-500/60 text-blue-300'
+                            : 'bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600'
+                          }
+                        `}
+                      >
+                        <span className="text-base">{country.flag}</span>
+                        <span className="truncate">{country.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <GoogleAddressAutocomplete
                 label="Adresse"
                 value={query}
                 onChange={setQuery}
                 onSelect={handleSelect}
-                countries={selectedCountries.length > 0 ? selectedCountries : undefined}
-                placeholder="Ex: 12 rue de la Paix, Paris"
+                countries={
+                  testMode === 'production'
+                    ? [selectedCountry]
+                    : selectedCountries.length > 0 ? selectedCountries : undefined
+                }
+                placeholder={
+                  testMode === 'production'
+                    ? `Rechercher une adresse en ${EU_COUNTRIES.find((c) => c.code === selectedCountry)?.label ?? '...'}`
+                    : 'Ex: 12 rue de la Paix, Paris'
+                }
                 hint="Tapez au moins 3 caracteres pour lancer la recherche"
               />
             </div>
@@ -213,9 +281,11 @@ export default function GoogleAddressTestPage() {
                 <div className="flex justify-between">
                   <span className="text-slate-400">Pays filtre</span>
                   <span className="text-white">
-                    {selectedCountries.length === 0
-                      ? 'Aucun (tous)'
-                      : selectedCountries.map((c) => c.toUpperCase()).join(', ')}
+                    {testMode === 'production'
+                      ? selectedCountry.toUpperCase()
+                      : selectedCountries.length === 0
+                        ? 'Aucun (tous)'
+                        : selectedCountries.map((c) => c.toUpperCase()).join(', ')}
                   </span>
                 </div>
               </div>

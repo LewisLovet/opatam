@@ -10,12 +10,14 @@ import {
   Input,
   Textarea,
   Checkbox,
-  AddressAutocomplete,
+  GoogleAddressAutocomplete,
+  CountrySelect,
   ConfirmDialog,
-  type AddressSuggestion,
+  type GoogleAddressSuggestion,
 } from '@/components/ui';
 import { Loader2, Trash2, Building2, Car } from 'lucide-react';
 import type { Location, LocationType } from '@booking-app/shared';
+import { isValidPostalCode } from '@booking-app/shared/schemas';
 
 type WithId<T> = { id: string } & T;
 
@@ -32,6 +34,7 @@ export interface LocationFormData {
   address: string;
   postalCode: string;
   city: string;
+  countryCode: string;
   description: string | null;
   isDefault: boolean;
   type: LocationType;
@@ -59,6 +62,7 @@ export function LocationModal({
     address: '',
     postalCode: '',
     city: '',
+    countryCode: 'FR',
     description: null,
     isDefault: false,
     type: 'fixed',
@@ -74,6 +78,7 @@ export function LocationModal({
           address: location.address,
           postalCode: location.postalCode,
           city: location.city,
+          countryCode: location.countryCode || 'FR',
           description: location.description,
           isDefault: location.isDefault,
           type: location.type || 'fixed',
@@ -86,6 +91,7 @@ export function LocationModal({
           address: '',
           postalCode: '',
           city: '',
+          countryCode: 'FR',
           description: null,
           isDefault: false,
           type: 'fixed',
@@ -138,14 +144,14 @@ export function LocationModal({
     setErrors((prev) => ({ ...prev, travelRadius: '' }));
   };
 
-  const handleAddressSelect = (suggestion: AddressSuggestion) => {
+  const handleAddressSelect = (suggestion: GoogleAddressSuggestion) => {
     setFormData((prev) => ({
       ...prev,
-      address: suggestion.label,
-      postalCode: suggestion.postcode,
-      city: suggestion.city,
+      address: suggestion.formattedAddress,
+      postalCode: suggestion.postalCode ?? '',
+      city: suggestion.locality ?? '',
       geopoint: suggestion.coordinates,
-      region: suggestion.region,
+      region: suggestion.adminArea1,
     }));
     setErrors((prev) => ({ ...prev, address: '', postalCode: '', city: '' }));
   };
@@ -164,8 +170,6 @@ export function LocationModal({
         // City-only: must select a city from autocomplete
         if (!formData.city?.trim()) {
           newErrors.city = 'Veuillez sélectionner une ville';
-        } else if (!formData.postalCode?.trim()) {
-          newErrors.city = 'Veuillez sélectionner une ville dans la liste';
         }
       } else {
         // Full address: must select from autocomplete
@@ -177,10 +181,12 @@ export function LocationModal({
       }
     }
 
-    if (!formData.postalCode?.trim()) {
+    // Postal code: required for full address, optional for city-only
+    if (!cityOnly && formData.postalCode?.trim() && !isValidPostalCode(formData.postalCode, formData.countryCode)) {
+      newErrors.postalCode = 'Code postal invalide';
+    }
+    if (!cityOnly && !formData.postalCode?.trim()) {
       newErrors.postalCode = 'Le code postal est requis';
-    } else if (!/^\d{5}$/.test(formData.postalCode)) {
-      newErrors.postalCode = 'Le code postal doit contenir 5 chiffres';
     }
 
     if (!formData.city?.trim()) {
@@ -349,9 +355,23 @@ export function LocationModal({
             />
           )}
 
+          {/* Country selector */}
+          <CountrySelect
+            value={formData.countryCode}
+            onChange={(code) => setFormData((prev) => ({
+              ...prev,
+              countryCode: code,
+              address: '',
+              postalCode: '',
+              city: '',
+              geopoint: null,
+              region: null,
+            }))}
+          />
+
           {/* Address autocomplete for fixed type without city-only */}
           {formData.type === 'fixed' && !cityOnly && (
-            <AddressAutocomplete
+            <GoogleAddressAutocomplete
               label="Adresse"
               value={formData.address}
               onChange={(value) => {
@@ -365,7 +385,8 @@ export function LocationModal({
                 setErrors((prev) => ({ ...prev, address: '' }));
               }}
               onSelect={handleAddressSelect}
-              placeholder="Ex: 12 rue de la Paix"
+              countries={[formData.countryCode.toLowerCase()]}
+              placeholder="Rechercher une adresse..."
               error={errors.address}
               required
             />
@@ -373,7 +394,7 @@ export function LocationModal({
 
           {/* City autocomplete for fixed type with city-only */}
           {formData.type === 'fixed' && cityOnly && (
-            <AddressAutocomplete
+            <GoogleAddressAutocomplete
               label="Ville"
               value={formData.city}
               onChange={(value) => {
@@ -385,20 +406,20 @@ export function LocationModal({
                 }));
                 setErrors((prev) => ({ ...prev, city: '' }));
               }}
-              onSelect={(suggestion) => {
+              onSelect={(suggestion: GoogleAddressSuggestion) => {
                 setFormData((prev) => ({
                   ...prev,
-                  city: suggestion.city,
-                  postalCode: suggestion.postcode,
+                  city: suggestion.locality ?? '',
+                  postalCode: suggestion.postalCode ?? '',
                   geopoint: suggestion.coordinates,
-                  region: suggestion.region,
+                  region: suggestion.adminArea1,
                 }));
                 setErrors((prev) => ({ ...prev, city: '', postalCode: '' }));
               }}
+              countries={[formData.countryCode.toLowerCase()]}
               placeholder="Rechercher une ville..."
               error={errors.city}
               required
-              type="municipality"
             />
           )}
 
