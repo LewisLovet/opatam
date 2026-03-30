@@ -90,9 +90,15 @@ export function PlayStoreWaitlistModal({ isOpen, onClose }: PlayStoreWaitlistMod
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
               C&apos;est noté !
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               Vous recevrez un email dès que l&apos;application sera disponible sur Google Play.
             </p>
+            <a
+              href="/recherche"
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors mb-4"
+            >
+              Continuer sur le web
+            </a>
             <button
               onClick={onClose}
               className="px-6 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
@@ -115,9 +121,23 @@ export function PlayStoreWaitlistModal({ isOpen, onClose }: PlayStoreWaitlistMod
             <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-2">
               Bientôt sur Android !
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
+            <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
               Laissez votre email pour être informé dès la sortie de l&apos;application sur Google Play.
             </p>
+
+            <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 px-4 py-3 mb-6">
+              <p className="text-sm text-indigo-700 dark:text-indigo-300 text-center mb-3">
+                En attendant, toutes les fonctionnalités sont disponibles sur la version web : recherche, réservation et gestion de vos rendez-vous.
+              </p>
+              <div className="flex justify-center">
+                <a
+                  href="/recherche"
+                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+                >
+                  Continuer sur le web
+                </a>
+              </div>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
