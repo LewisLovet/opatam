@@ -1,3 +1,6 @@
+// Force Paris timezone before any Date operation (Vercel runs in UTC)
+process.env.TZ = 'Europe/Paris';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { schedulingService } from '@booking-app/firebase';
 
@@ -25,7 +28,8 @@ export async function GET(request: NextRequest) {
     let endDate: Date;
 
     if (dateStr) {
-      // New format: YYYY-MM-DD — parse as local midnight to avoid timezone shift
+      // New format: YYYY-MM-DD — parse as local midnight
+      // Server timezone is forced to Europe/Paris via next.config.ts
       const [y, m, d] = dateStr.split('-').map(Number);
       startDate = new Date(y, m - 1, d, 0, 0, 0, 0);
       endDate = new Date(y, m - 1, d, 23, 59, 59, 999);

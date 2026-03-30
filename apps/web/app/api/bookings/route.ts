@@ -1,3 +1,6 @@
+// Force Paris timezone before any Date operation (Vercel runs in UTC)
+process.env.TZ = 'Europe/Paris';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingService, providerService } from '@booking-app/firebase';
 import { createBookingSchema } from '@booking-app/shared';
