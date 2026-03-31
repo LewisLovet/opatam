@@ -171,6 +171,12 @@ export class ProviderRepository extends BaseRepository<Provider> {
    * Text search uses array-contains on searchTokens for word-based matching
    */
   async searchProviders(filters: ProviderSearchFilters): Promise<WithId<Provider>[]> {
+    const isDev = process.env.NODE_ENV === 'development';
+
+    if (isDev) {
+      console.log('[Search] Filters:', JSON.stringify(filters));
+    }
+
     const constraints: QueryConstraint[] = [
       where('isPublished', '==', true),
     ];
@@ -194,6 +200,10 @@ export class ProviderRepository extends BaseRepository<Provider> {
           .replace(/[^a-z0-9]/g, '')
       : null;
 
+    if (isDev && searchToken) {
+      console.log('[Search] Normalized search token:', searchToken);
+    }
+
     // Note: Firestore can only have ONE array-contains per query
     // If we have both city and search query, we need to do client-side filtering for one of them
     if (filters.city && searchToken) {
@@ -203,13 +213,31 @@ export class ProviderRepository extends BaseRepository<Provider> {
 
       const results = await this.query(constraints);
       const normalizedCity = normalizeCity(filters.city);
-      return results.filter((provider) => provider.cities.includes(normalizedCity));
+
+      if (isDev) {
+        console.log(`[Search] City+Query mode: ${results.length} results from Firestore`);
+        results.forEach((p) => {
+          console.log(`  - ${p.businessName} | published:${p.isPublished} | cities:[${p.cities.join(',')}] | tokens:[${p.searchTokens.slice(0, 5).join(',')}...] | category:${p.category} | region:${p.region}`);
+        });
+        console.log(`[Search] Filtering by city "${normalizedCity}"...`);
+      }
+
+      const filtered = results.filter((provider) => provider.cities.includes(normalizedCity));
+
+      if (isDev) {
+        console.log(`[Search] After city filter: ${filtered.length} results`);
+      }
+
+      return filtered;
     }
 
     // Filter by city if provided (uses array-contains on normalized cities)
     if (filters.city) {
       const normalizedCity = normalizeCity(filters.city);
       constraints.push(where('cities', 'array-contains', normalizedCity));
+      if (isDev) {
+        console.log('[Search] City filter (normalized):', normalizedCity);
+      }
     }
 
     // If query provided, use array-contains on searchTokens
@@ -220,7 +248,29 @@ export class ProviderRepository extends BaseRepository<Provider> {
     // Order by rating
     constraints.push(orderBy('rating.average', 'desc'));
 
-    return this.query(constraints);
+    const results = await this.query(constraints);
+
+    if (isDev) {
+      console.log(`[Search] ${results.length} results from Firestore`);
+      results.forEach((p) => {
+        console.log(`  - ${p.businessName} | published:${p.isPublished} | cities:[${p.cities.join(',')}] | tokens:[${p.searchTokens.slice(0, 5).join(',')}...] | category:${p.category} | region:${p.region}`);
+      });
+
+      // In dev, also fetch ALL published providers to help identify missing ones
+      if (results.length === 0) {
+        console.log('[Search] 0 results — fetching ALL published providers for diagnosis...');
+        const allPublished = await this.query([
+          where('isPublished', '==', true),
+          orderBy('rating.average', 'desc'),
+        ]);
+        console.log(`[Search] Total published providers: ${allPublished.length}`);
+        allPublished.forEach((p) => {
+          console.log(`  - ${p.businessName} | cities:[${p.cities.join(',')}] | tokens:[${p.searchTokens.slice(0, 5).join(',')}...] | category:${p.category} | region:${p.region}`);
+        });
+      }
+    }
+
+    return results;
   }
 
   /**

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { providerRepository, type ProviderSearchFilters, type WithId } from '@booking-app/firebase';
-import { CATEGORIES, type Provider } from '@booking-app/shared';
+import { CATEGORIES, SUPPORTED_COUNTRIES, type Provider } from '@booking-app/shared';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import {
@@ -80,6 +80,7 @@ export default function SearchPage({ params }: SearchPageProps) {
   const [urlFilters, setUrlFilters] = useState<{ category?: string; city?: string }>({});
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortOption>('rating');
+  const [selectedCountry, setSelectedCountry] = useState<string | undefined>(undefined);
   const [providers, setProviders] = useState<WithId<Provider>[]>([]);
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,9 +134,13 @@ export default function SearchPage({ params }: SearchPageProps) {
     fetchProviders();
   }, [urlFilters, query]);
 
-  // Sort providers client-side
+  // Filter by country client-side, then sort
   const sortedProviders = useMemo(() => {
-    const sorted = [...providers];
+    let filtered = providers;
+    if (selectedCountry) {
+      filtered = providers.filter((p) => (p.countryCode || 'FR') === selectedCountry);
+    }
+    const sorted = [...filtered];
     switch (sort) {
       case 'rating':
         sorted.sort((a, b) => (b.rating?.average || 0) - (a.rating?.average || 0));
@@ -151,7 +156,7 @@ export default function SearchPage({ params }: SearchPageProps) {
         break;
     }
     return sorted;
-  }, [providers, sort]);
+  }, [providers, sort, selectedCountry]);
 
   // Update URL when filters change
   const updateUrl = useCallback(
@@ -211,6 +216,7 @@ export default function SearchPage({ params }: SearchPageProps) {
     setUrlFilters({});
     setQuery('');
     setSort('rating');
+    setSelectedCountry(undefined);
     router.push('/recherche', { scroll: false });
   }, [router]);
 
@@ -253,13 +259,27 @@ export default function SearchPage({ params }: SearchPageProps) {
               onSelect={handleCategoryChange}
             />
 
-            {/* City Filter + Sort */}
+            {/* Country + City Filter + Sort */}
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <CityFilter
-                selectedCity={urlFilters.city}
-                availableCities={availableCities}
-                onSelect={handleCityChange}
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Country filter */}
+                <select
+                  value={selectedCountry || ''}
+                  onChange={(e) => setSelectedCountry(e.target.value || undefined)}
+                  className="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">Tous les pays</option>
+                  {SUPPORTED_COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+
+                <CityFilter
+                  selectedCity={urlFilters.city}
+                  availableCities={availableCities}
+                  onSelect={handleCityChange}
+                />
+              </div>
 
               <SortSelect value={sort} onChange={handleSortChange} />
             </div>

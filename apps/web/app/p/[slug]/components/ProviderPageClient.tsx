@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { Sparkles } from 'lucide-react';
 import { ProviderHero } from './ProviderHero';
 import { ProviderNav } from './ProviderNav';
 import { SocialLinks } from './SocialLinks';
@@ -34,6 +36,9 @@ interface SerializedProvider {
     average: number;
     count: number;
     distribution: { 1: number; 2: number; 3: number; 4: number; 5: number };
+  };
+  settings?: {
+    bookingNotice?: string | null;
   };
   isPublished: boolean;
   isVerified: boolean;
@@ -155,7 +160,29 @@ export function ProviderPageClient({
   memberAvailabilities = [],
   isDemo = false,
 }: ProviderPageClientProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('prestations');
+  const [showNotice, setShowNotice] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+
+  const bookingNotice = provider.settings?.bookingNotice;
+
+  const handleBookingClick = useCallback((url: string) => {
+    if (bookingNotice) {
+      setPendingUrl(url);
+      setShowNotice(true);
+    } else {
+      router.push(url);
+    }
+  }, [bookingNotice, router]);
+
+  const handleNoticeAccept = () => {
+    setShowNotice(false);
+    if (pendingUrl) {
+      router.push(pendingUrl);
+      setPendingUrl(null);
+    }
+  };
 
   // Track page view (deduplicated per session per provider)
   useEffect(() => {
@@ -213,7 +240,7 @@ export function ProviderPageClient({
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {activeTab === 'prestations' && (
           <>
-            <ServicesSection services={services} categories={serviceCategories} slug={provider.slug} />
+            <ServicesSection services={services} categories={serviceCategories} slug={provider.slug} onBookingClick={bookingNotice ? handleBookingClick : undefined} />
             {/* Portfolio shown below services if available */}
             {hasPortfolio && (
               <PortfolioSection photos={provider.portfolioPhotos} />
@@ -241,6 +268,40 @@ export function ProviderPageClient({
         minPrice={minPrice}
         businessName={provider.businessName}
       />
+
+      {/* Booking Notice Modal */}
+      {showNotice && bookingNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowNotice(false)} />
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                Information importante
+              </h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-line mb-6">
+              {bookingNotice}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowNotice(false)}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Retour
+              </button>
+              <button
+                onClick={handleNoticeAccept}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                J&apos;ai compris, continuer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

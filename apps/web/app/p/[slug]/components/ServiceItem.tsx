@@ -15,6 +15,8 @@ interface ServiceItemProps {
     price: number;
   };
   slug: string;
+  /** If set, intercepts booking click to show a notice before navigating */
+  onBookingClick?: (url: string) => void;
 }
 
 function formatDuration(minutes: number): string {
@@ -34,7 +36,7 @@ function formatPrice(cents: number): string {
   }).format(cents / 100);
 }
 
-export function ServiceItem({ service, slug }: ServiceItemProps) {
+export function ServiceItem({ service, slug, onBookingClick }: ServiceItemProps) {
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -51,7 +53,14 @@ export function ServiceItem({ service, slug }: ServiceItemProps) {
 
   return (
     <Fragment>
-      <Link href={`/p/${slug}/reserver?service=${service.id}`} className="block group">
+      <Link
+        href={`/p/${slug}/reserver?service=${service.id}`}
+        className="block group"
+        onClick={onBookingClick ? (e) => {
+          e.preventDefault();
+          onBookingClick(`/p/${slug}/reserver?service=${service.id}`);
+        } : undefined}
+      >
         <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.01] hover:border-primary-200 dark:hover:border-primary-800">
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
 

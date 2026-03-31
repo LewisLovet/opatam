@@ -23,9 +23,10 @@ interface ServicesSectionProps {
   services: Service[];
   categories?: ServiceCategory[];
   slug: string;
+  onBookingClick?: (url: string) => void;
 }
 
-export function ServicesSection({ services, categories = [], slug }: ServicesSectionProps) {
+export function ServicesSection({ services, categories = [], slug, onBookingClick }: ServicesSectionProps) {
   const hasCategories = categories.length > 0;
 
   // When there are many categories (>3), collapse all except the first by default
@@ -100,7 +101,7 @@ export function ServicesSection({ services, categories = [], slug }: ServicesSec
         </div>
         <div className="space-y-4">
           {services.map((service) => (
-            <ServiceItem key={service.id} service={service} slug={slug} />
+            <ServiceItem key={service.id} service={service} slug={slug} onBookingClick={onBookingClick} />
           ))}
         </div>
       </section>
@@ -142,7 +143,7 @@ export function ServicesSection({ services, categories = [], slug }: ServicesSec
               {!isCollapsed && (
                 <div className="space-y-4">
                   {catServices.map((service) => (
-                    <ServiceItem key={service.id} service={service} slug={slug} />
+                    <ServiceItem key={service.id} service={service} slug={slug} onBookingClick={onBookingClick} />
                   ))}
                 </div>
               )}
@@ -171,7 +172,7 @@ export function ServicesSection({ services, categories = [], slug }: ServicesSec
             {!collapsedCategories.has('__uncategorized__') && (
               <div className="space-y-4">
                 {grouped.uncategorized.map((service) => (
-                  <ServiceItem key={service.id} service={service} slug={slug} />
+                  <ServiceItem key={service.id} service={service} slug={slug} onBookingClick={onBookingClick} />
                 ))}
               </div>
             )}

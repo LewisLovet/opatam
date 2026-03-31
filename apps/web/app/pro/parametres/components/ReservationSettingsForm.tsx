@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Select, Button } from '@/components/ui';
+import { Select, Button, Textarea } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
-import { Loader2, Clock, Calendar, Info, Timer } from 'lucide-react';
+import { Loader2, Clock, Calendar, Info, Timer, MessageSquareWarning } from 'lucide-react';
 
 interface ReservationSettingsFormProps {
   onSuccess?: () => void;
@@ -53,6 +53,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
     minBookingNotice: 2,
     maxBookingAdvance: 60,
     slotInterval: 15,
+    bookingNotice: '',
   });
 
   // Initialize form with provider data
@@ -62,6 +63,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
         minBookingNotice: provider.settings.minBookingNotice ?? 2,
         maxBookingAdvance: provider.settings.maxBookingAdvance ?? 60,
         slotInterval: provider.settings.slotInterval ?? 15,
+        bookingNotice: provider.settings.bookingNotice ?? '',
       });
     }
   }, [provider]);
@@ -88,6 +90,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           minBookingNotice: formData.minBookingNotice,
           maxBookingAdvance: formData.maxBookingAdvance,
           slotInterval: formData.slotInterval,
+          bookingNotice: formData.bookingNotice.trim() || null,
           // Always allow cancellation (no deadline restriction)
           allowClientCancellation: true,
           cancellationDeadline: 0,
@@ -156,6 +159,31 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           options={SLOT_INTERVAL_OPTIONS}
           hint="Fréquence des créneaux proposés aux clients (ex : toutes les 15 min)"
         />
+      </div>
+
+      {/* Booking Notice */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <MessageSquareWarning className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Avertissement avant reservation
+          </label>
+        </div>
+        <Textarea
+          name="bookingNotice"
+          value={formData.bookingNotice}
+          onChange={(e) => {
+            setFormData((prev) => ({ ...prev, bookingNotice: e.target.value }));
+            setError(null);
+            setSuccess(false);
+          }}
+          placeholder="Ex: Merci d'arriver 5 minutes avant votre rendez-vous. En cas d'annulation tardive, des frais pourront s'appliquer."
+          rows={3}
+          hint="Ce message sera affiche aux clients avant la confirmation de leur reservation (max 1000 caracteres)"
+        />
+        <p className="text-xs text-gray-400 text-right">
+          {formData.bookingNotice.length}/1000
+        </p>
       </div>
 
       {/* Info Box */}
