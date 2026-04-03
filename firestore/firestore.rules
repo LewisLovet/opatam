@@ -85,14 +85,6 @@ service cloud.firestore {
       }
     }
 
-    // === COLLECTION GROUP: MEMBERS ===
-    // Nécessaire pour les collectionGroup queries (ex: recherche par accessCode)
-    // La règle imbriquée sous /providers/{providerId}/members/ ne suffit pas
-    // pour les collectionGroup queries
-    match /{path=**}/members/{memberId} {
-      allow read: if true;
-    }
-
     // === BOOKINGS ===
 
     match /bookings/{bookingId} {
@@ -107,8 +99,8 @@ service cloud.firestore {
         request.resource.data.clientId == null ||
         (isAuthenticated() && request.resource.data.clientId == request.auth.uid);
 
-      // Mise à jour : participant authentifié uniquement
-      allow update: if isAuthenticated() && isBookingParticipant(resource.data);
+      // Mise à jour : ouvert (la validation est faite côté applicatif)
+      allow update: if true;
 
       allow delete: if false;
     }
@@ -116,19 +108,19 @@ service cloud.firestore {
     // === REVIEWS ===
 
     match /reviews/{reviewId} {
-      // Lecture publique des avis publics, lecture privée pour le client/admin
-      allow read: if
-        resource.data.isPublic == true ||
-        (isAuthenticated() && (
-          resource.data.clientId == request.auth.uid ||
-          isProviderAdmin(resource.data.providerId)
-        ));
+      // Lecture publique (avis affichés sur les pages providers,
+      // et /avis/[bookingId] doit vérifier si un avis existe déjà, sans auth)
+      allow read: if true;
 
-      // Création : client authentifié uniquement, doit être l'auteur
-      allow create: if isAuthenticated() &&
-        request.resource.data.clientId == request.auth.uid;
+      // Création : tout le monde (dépôt d'avis sans compte via lien email)
+      // La validation (bookingId valide, email correspondant) est faite côté applicatif
+      allow create: if true;
 
-      allow update, delete: if false;
+      // Mise à jour : permise (pour modifier un avis existant via le même lien)
+      // La validation est faite côté applicatif (vérifie que l'email correspond)
+      allow update: if true;
+
+      allow delete: if false;
     }
 
     // === CONVERSATIONS ===
@@ -151,6 +143,12 @@ service cloud.firestore {
       }
     }
 
+    // === COLLECTION GROUP: MEMBERS ===
+    // Nécessaire pour les collectionGroup queries (ex: recherche par accessCode)
+    match /{path=**}/members/{memberId} {
+      allow read: if true;
+    }
+
     // === WEBHOOK LOGS (monitoring, écrit uniquement par Admin SDK) ===
 
     match /_webhookLogs/{logId} {
@@ -158,22 +156,5 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // === STATS (pré-calculées par Cloud Functions, lecture serveur uniquement) ===
-
-    match /stats/{statId} {
-      allow read, write: if false;
-    }
-
-    // === ADMIN CONFIG (accessible uniquement via Admin SDK côté serveur) ===
-
-    match /config/{configId} {
-      allow read, write: if false;
-    }
-
-    // === ADMIN LOGS (accessible uniquement via Admin SDK côté serveur) ===
-
-    match /adminLogs/{logId} {
-      allow read, write: if false;
-    }
   }
 }
