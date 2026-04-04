@@ -73,11 +73,13 @@ interface WizardData {
   city: string;
   geopoint: { latitude: number; longitude: number } | null;
   region: string | null;
-  // Step 3 - Service
-  serviceName: string;
-  serviceDuration: number;
-  servicePrice: number;
-  serviceDescription: string;
+  // Step 3 - Services (multiple)
+  services: {
+    name: string;
+    duration: number;
+    price: number;
+    description: string;
+  }[];
   // Step 4 - Availability (supports multiple slots per day)
   availability: {
     [key: number]: DayAvailability;
@@ -106,7 +108,7 @@ const DEFAULT_DATA: WizardData = {
   businessName: '',
   category: '',
   description: '',
-  locationName: '',
+  locationName: 'Mon salon',
   countryCode: 'FR',
   cityOnly: false,
   address: '',
@@ -114,10 +116,7 @@ const DEFAULT_DATA: WizardData = {
   city: '',
   geopoint: null,
   region: null,
-  serviceName: '',
-  serviceDuration: 60,
-  servicePrice: 0,
-  serviceDescription: '',
+  services: [{ name: '', duration: 60, price: 0, description: '' }],
   availability: DEFAULT_AVAILABILITY,
   displayName: '',
   email: '',
@@ -264,13 +263,19 @@ export default function RegisterPage() {
         }
         return true;
       case 3:
-        if (!data.serviceName.trim()) {
-          setError('Veuillez entrer le nom de la prestation');
+        if (data.services.length === 0) {
+          setError('Ajoutez au moins une prestation');
           return false;
         }
-        if (data.servicePrice < 0) {
-          setError('Veuillez entrer un prix valide');
-          return false;
+        for (let i = 0; i < data.services.length; i++) {
+          if (!data.services[i].name.trim()) {
+            setError(`Veuillez entrer le nom de la prestation ${i + 1}`);
+            return false;
+          }
+          if (data.services[i].price < 0) {
+            setError(`Le prix de la prestation ${i + 1} ne peut pas etre negatif`);
+            return false;
+          }
         }
         return true;
       case 4:
@@ -303,8 +308,10 @@ export default function RegisterPage() {
           setError('Veuillez entrer votre numéro de téléphone');
           return false;
         }
-        if (!/^0[67]\d{8}$/.test(data.phone)) {
-          setError('Numéro de téléphone invalide (format: 06/07 + 8 chiffres)');
+        // Accept international formats: +XX..., 0X...
+        const cleanPhone = data.phone.replace(/[\s.\-]/g, '');
+        if (cleanPhone.length < 8 || !/^(\+\d{8,15}|0\d{8,10})$/.test(cleanPhone)) {
+          setError('Numero de telephone invalide');
           return false;
         }
         if (!data.password || data.password.length < 6) {
@@ -379,20 +386,23 @@ export default function RegisterPage() {
       locationId
     );
 
-    // Create Service
-    await serviceRepository.create(provider.id, {
-      name: data.serviceName,
-      description: data.serviceDescription || null,
-      photoURL: null,
-      duration: data.serviceDuration,
-      price: data.servicePrice * 100, // Convert to cents
-      bufferTime: 0,
-      categoryId: null,
-      isActive: true,
-      locationIds: [locationId],
-      memberIds: [defaultMember.id], // Associate with default member
-      sortOrder: 0,
-    });
+    // Create Services
+    for (let i = 0; i < data.services.length; i++) {
+      const svc = data.services[i];
+      await serviceRepository.create(provider.id, {
+        name: svc.name,
+        description: svc.description || null,
+        photoURL: null,
+        duration: svc.duration,
+        price: svc.price * 100, // Convert to cents
+        bufferTime: 0,
+        categoryId: null,
+        isActive: true,
+        locationIds: [locationId],
+        memberIds: [defaultMember.id],
+        sortOrder: i,
+      });
+    }
 
     // Create Availability for the default member
     // Supports multiple slots per day (ex: 8h-12h, 14h-19h)
@@ -523,12 +533,40 @@ export default function RegisterPage() {
         </p>
       </div>
 
-      <Input
-        label="Nom du lieu"
-        placeholder="Ex: Mon salon, A domicile..."
-        value={data.locationName}
-        onChange={(e) => updateData({ locationName: e.target.value })}
-      />
+      {/* Location name — dropdown with common options + custom */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          Nom du lieu
+        </label>
+        <select
+          value={['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau'].includes(data.locationName) ? data.locationName : '_other'}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === '_other') {
+              updateData({ locationName: '' });
+            } else {
+              updateData({ locationName: val });
+            }
+          }}
+          className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
+        >
+          <option value="Mon salon">Mon salon</option>
+          <option value="Mon cabinet">Mon cabinet</option>
+          <option value="Mon studio">Mon studio</option>
+          <option value="Mon atelier">Mon atelier</option>
+          <option value="A domicile">A domicile</option>
+          <option value="Mon bureau">Mon bureau</option>
+          <option value="_other">Autre...</option>
+        </select>
+        {!['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau'].includes(data.locationName) && (
+          <Input
+            placeholder="Nom personnalise du lieu"
+            value={data.locationName}
+            onChange={(e) => updateData({ locationName: e.target.value })}
+            className="mt-2"
+          />
+        )}
+      </div>
 
       <CountrySelect
         value={data.countryCode}
@@ -542,19 +580,52 @@ export default function RegisterPage() {
         })}
       />
 
-      <Checkbox
-        name="cityOnly"
-        checked={data.cityOnly}
-        onChange={(e) => {
-          const checked = e.target.checked;
-          updateData({
-            cityOnly: checked,
-            ...(checked ? { address: '', geopoint: null, postalCode: '', city: '', region: null } : {}),
-          });
-        }}
-        label="Ville uniquement"
-        description="Ne pas afficher d'adresse précise"
-      />
+      {/* Address type selector */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Type de localisation
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => updateData({ cityOnly: false })}
+            className={`flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+              !data.cityOnly
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+            }`}
+          >
+            <MapPin className="w-5 h-5" />
+            <span>Adresse precise</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              updateData({
+                cityOnly: true,
+                address: '',
+                geopoint: null,
+                postalCode: '',
+                city: '',
+                region: null,
+              });
+            }}
+            className={`flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+              data.cityOnly
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+            }`}
+          >
+            <Building2 className="w-5 h-5" />
+            <span>Ville uniquement</span>
+          </button>
+        </div>
+        <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+          {data.cityOnly
+            ? 'Seule votre ville sera visible par les clients'
+            : 'Votre adresse complete sera visible par les clients'}
+        </p>
+      </div>
 
       {!data.cityOnly ? (
         <GoogleAddressAutocomplete
@@ -594,14 +665,16 @@ export default function RegisterPage() {
         />
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Input
-          label="Code postal"
-          placeholder="75001"
-          value={data.postalCode}
-          readOnly
-          className="bg-gray-50 dark:bg-gray-900 cursor-default"
-        />
+      <div className={`grid gap-3 ${data.cityOnly ? 'grid-cols-1' : 'grid-cols-2'}`}>
+        {!data.cityOnly && (
+          <Input
+            label="Code postal"
+            placeholder="75001"
+            value={data.postalCode}
+            readOnly
+            className="bg-gray-50 dark:bg-gray-900 cursor-default"
+          />
+        )}
         <Input
           label="Ville"
           placeholder="Paris"
@@ -614,6 +687,21 @@ export default function RegisterPage() {
   );
 
   // Step 3 - Service
+  const updateService = (index: number, field: string, value: string | number) => {
+    const updated = [...data.services];
+    updated[index] = { ...updated[index], [field]: value };
+    updateData({ services: updated });
+  };
+
+  const addService = () => {
+    updateData({ services: [...data.services, { name: '', duration: 60, price: 0, description: '' }] });
+  };
+
+  const removeService = (index: number) => {
+    if (data.services.length <= 1) return;
+    updateData({ services: data.services.filter((_, i) => i !== index) });
+  };
+
   const renderStep3 = () => (
     <div className="space-y-5">
       <div className="text-center mb-6">
@@ -621,53 +709,69 @@ export default function RegisterPage() {
           <Tag className="w-7 h-7 text-primary-600 dark:text-primary-400" />
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-          Créez votre première prestation
+          Ajoutez vos prestations
         </h1>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Vous pourrez en ajouter d'autres plus tard
+          Vous pourrez en ajouter ou modifier plus tard
         </p>
       </div>
 
-      <Input
-        label="Nom de la prestation"
-        placeholder="Ex: Coupe femme, Massage relaxant..."
-        value={data.serviceName}
-        onChange={(e) => updateData({ serviceName: e.target.value })}
-      />
+      {data.services.map((svc, index) => (
+        <div key={index} className="relative p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 space-y-3">
+          {/* Header with number and delete */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Prestation {index + 1}
+            </span>
+            {data.services.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeService(index)}
+                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Input
-          type="number"
-          label="Durée (minutes)"
-          placeholder="60"
-          value={data.serviceDuration?.toString() || ''}
-          onChange={(e) => updateData({ serviceDuration: parseInt(e.target.value) || 0 })}
-          min="5"
-          max="480"
-          step="5"
-          hint="De 5 min à 8h"
-        />
-        <Input
-          type="number"
-          label="Prix (EUR)"
-          placeholder="0"
-          value={data.servicePrice || ''}
-          onChange={(e) => updateData({ servicePrice: parseFloat(e.target.value) || 0 })}
-        />
-      </div>
+          <Input
+            label="Nom"
+            placeholder="Ex: Coupe femme, Massage relaxant..."
+            value={svc.name}
+            onChange={(e) => updateService(index, 'name', e.target.value)}
+          />
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-          Description (optionnel)
-        </label>
-        <textarea
-          value={data.serviceDescription}
-          onChange={(e) => updateData({ serviceDescription: e.target.value })}
-          placeholder="Détails sur la prestation..."
-          rows={3}
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-        />
-      </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              type="number"
+              label="Duree (min)"
+              placeholder="60"
+              value={svc.duration?.toString() || ''}
+              onChange={(e) => updateService(index, 'duration', parseInt(e.target.value) || 0)}
+              min="5"
+              max="480"
+              step="5"
+            />
+            <Input
+              type="number"
+              label="Prix (EUR)"
+              placeholder="0"
+              value={svc.price || ''}
+              onChange={(e) => updateService(index, 'price', parseFloat(e.target.value) || 0)}
+            />
+          </div>
+        </div>
+      ))}
+
+      {/* Add service button */}
+      <button
+        type="button"
+        onClick={addService}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-500 dark:text-gray-400 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+      >
+        <Plus className="w-4 h-4" />
+        Ajouter une prestation
+      </button>
     </div>
   );
 
@@ -867,7 +971,7 @@ export default function RegisterPage() {
               <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                 <Tag className="w-3.5 h-3.5" />
                 <span>
-                  {data.serviceName} - {data.servicePrice} EUR
+                  {data.services.length} prestation{data.services.length > 1 ? 's' : ''}{data.services[0]?.name ? ` (${data.services[0].name}${data.services.length > 1 ? ', ...' : ''})` : ''}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">

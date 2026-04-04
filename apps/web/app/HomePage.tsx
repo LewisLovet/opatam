@@ -279,7 +279,7 @@ export default function LandingPage() {
                     href="/register"
                     className="inline-flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 hover:shadow-lg hover:shadow-primary-600/25 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-200 w-full sm:w-auto"
                   >
-                    Démarrer mon essai gratuit
+                    Creer ma page
                   </Link>
                   <Link
                     href="/p/demo"
@@ -1021,7 +1021,7 @@ export default function LandingPage() {
                           href="/register"
                           className="mt-8 block w-full text-center bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 px-6 py-3.5 font-semibold rounded-xl transition-all duration-200 hover:shadow-lg"
                         >
-                          Démarrer l&apos;essai gratuit
+                          Creer ma page
                         </Link>
                       </div>
 
@@ -1083,7 +1083,7 @@ export default function LandingPage() {
                             href="/register"
                             className="mt-8 block w-full text-center bg-primary-600 text-white hover:bg-primary-700 px-6 py-3.5 font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30"
                           >
-                            Démarrer l&apos;essai gratuit
+                            Creer ma page
                           </Link>
                         </div>
                       </div>
@@ -1154,7 +1154,7 @@ export default function LandingPage() {
                 href="/register"
                 className="inline-flex items-center justify-center bg-white text-primary-700 hover:bg-gray-50 px-8 py-4 text-lg font-semibold shadow-lg rounded-lg transition-colors"
               >
-                Démarrer mon essai gratuit
+                Creer ma page
               </Link>
             </div>
             <p className="mt-4 text-sm text-white/80">

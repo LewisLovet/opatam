@@ -1,6 +1,7 @@
 'use client';
 
 import { MapPin, Car, Building2, Navigation, ExternalLink } from 'lucide-react';
+import { getCountryLabel } from '@booking-app/shared/constants';
 
 interface Location {
   id: string;
@@ -8,6 +9,7 @@ interface Location {
   address: string;
   city: string;
   postalCode: string;
+  countryCode?: string;
   type: 'fixed' | 'mobile';
   travelRadius: number | null;
 }
@@ -72,7 +74,10 @@ export function LocationCard({ location }: LocationCardProps) {
                       <br />
                     </>
                   )}
-                  {location.postalCode} {location.city}
+                  {[location.postalCode, location.city].filter(Boolean).join(' ')}
+                  {location.countryCode && location.countryCode !== 'FR' && (
+                    <>, {getCountryLabel(location.countryCode)}</>
+                  )}
                 </p>
 
                 {/* Google Maps link - only with street address */}

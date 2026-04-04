@@ -265,7 +265,7 @@ export default async function ProviderPage({ params }: PageProps) {
         ...(location.address && { streetAddress: location.address }),
         addressLocality: location.city,
         postalCode: location.postalCode,
-        addressCountry: 'FR',
+        addressCountry: location.countryCode || 'FR',
       },
     }),
     ...(provider.rating?.average && provider.rating.average > 0 && {

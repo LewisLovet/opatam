@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// French phone regex: starts with 0, then 6 or 7, then 8 digits
-const frenchPhoneRegex = /^0[67]\d{8}$/;
+// International phone regex: +XX... (8-15 digits) or 0X... (8-10 digits)
+const internationalPhoneRegex = /^(\+\d{8,15}|0\d{8,10})$/;
 
 // Common validation patterns
 const emailSchema = z
@@ -19,7 +19,8 @@ const displayNameSchema = z
 
 const phoneSchema = z
   .string()
-  .regex(frenchPhoneRegex, { message: 'Numéro de téléphone invalide (format: 06/07 + 8 chiffres)' });
+  .transform((v) => v.replace(/[\s.\-]/g, ''))
+  .pipe(z.string().regex(internationalPhoneRegex, { message: 'Numero de telephone invalide' }));
 
 // Login schema
 export const loginSchema = z.object({

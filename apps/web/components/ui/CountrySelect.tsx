@@ -1,6 +1,7 @@
 'use client';
 
 import { SUPPORTED_COUNTRIES } from '@booking-app/shared/constants';
+import { Globe } from 'lucide-react';
 
 const COUNTRY_FLAGS: Record<string, string> = {
   FR: '\u{1F1EB}\u{1F1F7}',
@@ -29,6 +30,9 @@ export function CountrySelect({
   disabled = false,
   className = '',
 }: CountrySelectProps) {
+  const selectedCountry = SUPPORTED_COUNTRIES.find((c) => c.code === value);
+  const flag = COUNTRY_FLAGS[value] ?? '';
+
   return (
     <div className={className}>
       {label && (
@@ -36,26 +40,35 @@ export function CountrySelect({
           {label}
         </label>
       )}
-      <div className="grid grid-cols-3 gap-2">
-        {SUPPORTED_COUNTRIES.map((country) => (
-          <button
-            key={country.code}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(country.code)}
-            className={`
-              flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all
-              disabled:opacity-50 disabled:cursor-not-allowed
-              ${value === country.code
-                ? 'bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-500 text-primary-700 dark:text-primary-300'
-                : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-900 dark:hover:text-white'
-              }
-            `}
-          >
-            <span className="text-base">{COUNTRY_FLAGS[country.code] ?? ''}</span>
-            <span className="truncate">{country.label}</span>
-          </button>
-        ))}
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-base">
+          {flag || <Globe className="w-4 h-4 text-gray-400" />}
+        </div>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="
+            w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm font-medium appearance-none cursor-pointer
+            text-gray-900 dark:text-gray-100
+            bg-white dark:bg-gray-800
+            border-gray-300 dark:border-gray-600
+            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
+            disabled:opacity-50 disabled:cursor-not-allowed
+            transition-colors duration-200
+          "
+        >
+          {SUPPORTED_COUNTRIES.map((country) => (
+            <option key={country.code} value={country.code}>
+              {country.label}
+            </option>
+          ))}
+        </select>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
       </div>
     </div>
   );
