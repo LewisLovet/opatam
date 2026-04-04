@@ -315,9 +315,12 @@ export class ReviewService {
   }
 
   /**
-   * Recalculate provider rating from all public reviews
+   * Recalculate provider rating from all public reviews.
+   * May fail with PERMISSION_DENIED when called from client SDK (non-authenticated user).
+   * In that case, the API route handles recalculation via firebase-admin.
    */
-  private async recalculateProviderRating(providerId: string): Promise<void> {
+  async recalculateProviderRating(providerId: string): Promise<void> {
+    try {
     const reviews = await reviewRepository.getByProvider(providerId);
     const publicReviews = reviews.filter((r) => r.isPublic);
 
@@ -350,6 +353,10 @@ export class ReviewService {
         distribution,
       },
     });
+    } catch (err) {
+      // Silently fail — the API route will handle recalculation via firebase-admin
+      console.warn('[ReviewService] recalculateProviderRating failed (expected if called from client SDK):', err);
+    }
   }
 
   /**
