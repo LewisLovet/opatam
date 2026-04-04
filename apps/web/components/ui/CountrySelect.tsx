@@ -1,7 +1,6 @@
 'use client';
 
 import { SUPPORTED_COUNTRIES } from '@booking-app/shared/constants';
-import { Globe } from 'lucide-react';
 
 const COUNTRY_FLAGS: Record<string, string> = {
   FR: '\u{1F1EB}\u{1F1F7}',
@@ -42,7 +41,7 @@ export function CountrySelect({
       )}
       <div className="relative">
         <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-base">
-          {flag || <Globe className="w-4 h-4 text-gray-400" />}
+          {flag}
         </div>
         <select
           value={value}

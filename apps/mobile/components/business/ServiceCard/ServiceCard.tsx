@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, Image, Modal, Dimensions } from 'react-native';
 import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
@@ -16,6 +16,8 @@ export interface ServiceCardProps {
   name: string;
   /** Service description */
   description?: string | null;
+  /** Photo URL */
+  photoURL?: string | null;
   /** Duration in minutes */
   duration: number;
   /** Price in euros */
@@ -48,6 +50,7 @@ function formatPrice(euros: number): string {
 export function ServiceCard({
   name,
   description,
+  photoURL,
   duration,
   price,
   selected = false,
@@ -56,6 +59,7 @@ export function ServiceCard({
   const { colors, spacing, radius, shadows } = useTheme();
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
+  const [photoFullscreen, setPhotoFullscreen] = useState(false);
 
   const content = (
     <View
@@ -73,11 +77,38 @@ export function ServiceCard({
       ]}
     >
       <View style={[styles.content, { padding: spacing.md }]}>
-        {/* Header: Name + Price Badge */}
-        <View style={styles.header}>
-          <Text variant="body" style={styles.name} numberOfLines={1}>
-            {name}
-          </Text>
+        {/* Top row: Photo + Name + Price */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+          {photoURL && (
+            <Pressable onPress={() => setPhotoFullscreen(true)} style={{ position: 'relative' }}>
+              <Image
+                source={{ uri: photoURL }}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: radius.md,
+                  marginRight: spacing.sm,
+                }}
+                resizeMode="cover"
+              />
+              <View style={{
+                position: 'absolute',
+                bottom: 2,
+                right: spacing.sm + 2,
+                backgroundColor: 'rgba(0,0,0,0.45)',
+                borderRadius: 4,
+                padding: 2,
+              }}>
+                <Ionicons name="expand-outline" size={10} color="#fff" />
+              </View>
+            </Pressable>
+          )}
+          <View style={{ flex: 1 }}>
+            {/* Header: Name + Price Badge */}
+            <View style={styles.header}>
+              <Text variant="body" style={styles.name} numberOfLines={1}>
+                {name}
+              </Text>
           <View
             style={[
               styles.priceBadge,
@@ -101,10 +132,32 @@ export function ServiceCard({
           </View>
         </View>
 
-        {/* Description */}
+            {/* Duration */}
+            <View style={[styles.durationContainer, { marginTop: spacing.xs }]}>
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={colors.textSecondary}
+                style={{ marginRight: spacing.xs }}
+              />
+              <Text variant="caption" color="textSecondary">
+                {formatDuration(duration)}
+              </Text>
+              {selected && (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color={colors.primary}
+                  style={{ marginLeft: 'auto' }}
+                />
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Description — below the photo+title row */}
         {description && (
-          <View style={{ marginTop: spacing.xs }}>
-            {/* Hidden text without line limit to measure real line count */}
+          <View style={{ marginTop: spacing.sm }}>
             {!descClamped && (
               <Text
                 variant="caption"
@@ -144,48 +197,57 @@ export function ServiceCard({
             )}
           </View>
         )}
-
-        {/* Footer: Duration with icon */}
-        <View style={[styles.footer, { marginTop: spacing.sm }]}>
-          <View style={styles.durationContainer}>
-            <Ionicons
-              name="time-outline"
-              size={14}
-              color={colors.textSecondary}
-              style={{ marginRight: spacing.xs }}
-            />
-            <Text variant="caption" color="textSecondary">
-              {formatDuration(duration)}
-            </Text>
-          </View>
-
-          {/* Selection indicator */}
-          {selected && (
-            <Ionicons
-              name="checkmark-circle"
-              size={20}
-              color={colors.primary}
-            />
-          )}
-        </View>
       </View>
     </View>
   );
 
+  const fullscreenModal = photoURL ? (
+    <Modal visible={photoFullscreen} transparent animationType="fade">
+      <Pressable
+        onPress={() => setPhotoFullscreen(false)}
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}
+      >
+        <Pressable
+          onPress={() => setPhotoFullscreen(false)}
+          style={{ position: 'absolute', top: 50, right: 20, zIndex: 10 }}
+        >
+          <Ionicons name="close-circle" size={36} color="#fff" />
+        </Pressable>
+        <Image
+          source={{ uri: photoURL }}
+          style={{
+            width: Dimensions.get('window').width - 40,
+            height: Dimensions.get('window').width - 40,
+            borderRadius: 12,
+          }}
+          resizeMode="contain"
+        />
+      </Pressable>
+    </Modal>
+  ) : null;
+
   if (onPress) {
     return (
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [
-          pressed && styles.pressed,
-        ]}
-      >
-        {content}
-      </Pressable>
+      <>
+        <Pressable
+          onPress={onPress}
+          style={({ pressed }) => [
+            pressed && styles.pressed,
+          ]}
+        >
+          {content}
+        </Pressable>
+        {fullscreenModal}
+      </>
     );
   }
 
-  return content;
+  return (
+    <>
+      {content}
+      {fullscreenModal}
+    </>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -9,8 +9,8 @@
     },
     {
       "name": "mobile",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev:mobile"],
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && pnpm dev:mobile"],
       "port": 8081
     },
     {

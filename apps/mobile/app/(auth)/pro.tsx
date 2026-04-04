@@ -60,17 +60,15 @@ interface WizardData {
   description: string;
   // Step 2 — Location
   locationName: string;
+  countryCode: string;
   locationType: 'fixed' | 'mobile';
   cityOnly: boolean;
   address: string;
   postalCode: string;
   city: string;
   geopoint: { latitude: number; longitude: number } | null;
-  // Step 3 — Service
-  serviceName: string;
-  serviceDuration: number;
-  servicePrice: string;
-  serviceDescription: string;
+  // Step 3 — Services (multiple)
+  services: { name: string; duration: number; price: string; description: string }[];
   // Step 4 — Schedule
   availability: Record<number, DayAvailability>;
   // Step 6 — Account
@@ -95,17 +93,15 @@ const DEFAULT_DATA: WizardData = {
   businessName: '',
   category: '',
   description: '',
-  locationName: '',
+  locationName: 'Mon salon',
+  countryCode: 'FR',
   locationType: 'fixed',
   cityOnly: false,
   address: '',
   postalCode: '',
   city: '',
   geopoint: null,
-  serviceName: '',
-  serviceDuration: 60,
-  servicePrice: '',
-  serviceDescription: '',
+  services: [{ name: '', duration: 60, price: '', description: '' }],
   availability: DEFAULT_AVAILABILITY,
   displayName: '',
   email: '',
@@ -117,7 +113,7 @@ const DEFAULT_DATA: WizardData = {
 const STEPS = [
   { label: 'Activité', icon: 'business-outline' as const, subtitle: 'Parlez-nous de votre activité' },
   { label: 'Lieu', icon: 'location-outline' as const, subtitle: 'Où exercez-vous ?' },
-  { label: 'Prestation', icon: 'pricetag-outline' as const, subtitle: 'Votre première prestation' },
+  { label: 'Prestation', icon: 'pricetag-outline' as const, subtitle: 'Ajoutez vos prestations' },
   { label: 'Horaires', icon: 'time-outline' as const, subtitle: 'Vos disponibilités' },
   { label: 'Aperçu', icon: 'eye-outline' as const, subtitle: 'Vérifiez vos informations' },
   { label: 'Compte', icon: 'person-outline' as const, subtitle: 'Créez votre accès' },
@@ -245,7 +241,7 @@ function FloatingBubble({ bubble }: { bubble: BubbleConfig }) {
 }
 
 // ---------------------------------------------------------------------------
-// Address Autocomplete (BAN — api-adresse.data.gouv.fr)
+// Address Autocomplete (Google Places API New)
 // ---------------------------------------------------------------------------
 
 interface AddressSuggestion {
@@ -253,28 +249,95 @@ interface AddressSuggestion {
   name: string;
   city: string;
   postcode: string;
-  coordinates: { latitude: number; longitude: number };
+  coordinates: { latitude: number; longitude: number } | null;
+  placeId: string;
 }
 
-const BAN_API_URL = 'https://api-adresse.data.gouv.fr/search';
+const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
-async function searchAddress(query: string, limit = 5, type?: string): Promise<AddressSuggestion[]> {
-  const params = new URLSearchParams({ q: query, limit: String(limit) });
-  if (type) params.set('type', type);
-  const response = await fetch(`${BAN_API_URL}?${params}`);
+async function searchAddress(query: string, countryCode: string = 'fr', limit = 5): Promise<AddressSuggestion[]> {
+  if (!GOOGLE_API_KEY) return [];
+  const body: Record<string, unknown> = {
+    input: query,
+    includedRegionCodes: [countryCode.toLowerCase()],
+    includedPrimaryTypes: ['street_address', 'premise', 'subpremise', 'route', 'locality'],
+  };
+  const response = await fetch(
+    `https://places.googleapis.com/v1/places:autocomplete?key=${GOOGLE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }
+  );
   if (!response.ok) return [];
   const json = await response.json();
-  return (json.features ?? []).map((f: any) => ({
-    label: f.properties.label,
-    name: f.properties.name,
-    city: f.properties.city,
-    postcode: f.properties.postcode,
-    coordinates: {
-      latitude: f.geometry.coordinates[1],
-      longitude: f.geometry.coordinates[0],
-    },
+  return (json.suggestions ?? []).slice(0, limit).map((s: any) => ({
+    label: s.placePrediction?.text?.text ?? '',
+    name: s.placePrediction?.structuredFormat?.mainText?.text ?? s.placePrediction?.text?.text ?? '',
+    city: s.placePrediction?.structuredFormat?.secondaryText?.text ?? '',
+    postcode: '',
+    coordinates: null,
+    placeId: s.placePrediction?.placeId ?? '',
   }));
 }
+
+async function fetchPlaceDetails(placeId: string): Promise<{
+  city: string; postcode: string; coordinates: { latitude: number; longitude: number } | null; formattedAddress: string;
+} | null> {
+  if (!GOOGLE_API_KEY || !placeId) return null;
+  const response = await fetch(
+    `https://places.googleapis.com/v1/places/${placeId}?key=${GOOGLE_API_KEY}&fields=formattedAddress,addressComponents,location,id`
+  );
+  if (!response.ok) return null;
+  const place = await response.json();
+  const components: any[] = place.addressComponents ?? [];
+  const getComp = (type: string) => components.find((c: any) => c.types?.includes(type));
+  const locality = getComp('locality') ?? getComp('postal_town') ?? getComp('administrative_area_level_3');
+  const postalCode = getComp('postal_code');
+  return {
+    city: locality?.longText ?? '',
+    postcode: postalCode?.longText ?? '',
+    formattedAddress: place.formattedAddress ?? '',
+    coordinates: place.location ? { latitude: place.location.latitude, longitude: place.location.longitude } : null,
+  };
+}
+
+// Fallback: French government API (BAN) if Google fails or no API key
+async function searchAddressFallbackBAN(query: string, limit = 5, type?: string): Promise<AddressSuggestion[]> {
+  const params = new URLSearchParams({ q: query, limit: String(limit) });
+  if (type) params.set('type', type);
+  try {
+    const response = await fetch(`https://api-adresse.data.gouv.fr/search?${params}`);
+    if (!response.ok) return [];
+    const json = await response.json();
+    return (json.features ?? []).map((f: any) => ({
+      label: f.properties.label,
+      name: f.properties.name,
+      city: f.properties.city,
+      postcode: f.properties.postcode,
+      coordinates: {
+        latitude: f.geometry.coordinates[1],
+        longitude: f.geometry.coordinates[0],
+      },
+      placeId: '',
+    }));
+  } catch {
+    return [];
+  }
+}
+
+const SUPPORTED_COUNTRIES = [
+  { code: 'FR', label: '\u{1F1EB}\u{1F1F7} France' },
+  { code: 'BE', label: '\u{1F1E7}\u{1F1EA} Belgique' },
+  { code: 'LU', label: '\u{1F1F1}\u{1F1FA} Luxembourg' },
+  { code: 'CH', label: '\u{1F1E8}\u{1F1ED} Suisse' },
+  { code: 'DE', label: '\u{1F1E9}\u{1F1EA} Allemagne' },
+  { code: 'ES', label: '\u{1F1EA}\u{1F1F8} Espagne' },
+  { code: 'IT', label: '\u{1F1EE}\u{1F1F9} Italie' },
+  { code: 'NL', label: '\u{1F1F3}\u{1F1F1} Pays-Bas' },
+  { code: 'PT', label: '\u{1F1F5}\u{1F1F9} Portugal' },
+];
 
 // ---------------------------------------------------------------------------
 // Main Component
@@ -292,6 +355,9 @@ export default function ProRegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showDurationModal, setShowDurationModal] = useState(false);
+  const [editingServiceIndex, setEditingServiceIndex] = useState(0);
+  const [showLocationNameModal, setShowLocationNameModal] = useState(false);
+  const [showCountryModal, setShowCountryModal] = useState(false);
 
   // Address autocomplete
   const [addressQuery, setAddressQuery] = useState('');
@@ -336,7 +402,11 @@ export default function ProRegisterScreen() {
     setData((prev) => ({ ...prev, [key]: value }));
   };
 
-  // Address handlers
+  const updateFields = (fields: Partial<WizardData>) => {
+    setData((prev) => ({ ...prev, ...fields }));
+  };
+
+  // Address handlers (Google Places + BAN fallback for FR)
   const handleAddressSearch = useCallback((query: string) => {
     setAddressQuery(query);
     updateField('address', query);
@@ -350,7 +420,11 @@ export default function ProRegisterScreen() {
     setAddressLoading(true);
     addressDebounceRef.current = setTimeout(async () => {
       try {
-        const results = await searchAddress(query);
+        let results = await searchAddress(query, data.countryCode);
+        // Fallback to BAN for France if Google returns nothing
+        if (results.length === 0 && data.countryCode === 'FR') {
+          results = await searchAddressFallbackBAN(query);
+        }
         setAddressSuggestions(results);
         setShowAddressSuggestions(results.length > 0);
       } catch {
@@ -360,19 +434,44 @@ export default function ProRegisterScreen() {
         setAddressLoading(false);
       }
     }, 300);
-  }, []);
+  }, [data.countryCode]);
 
-  const handleAddressSelect = useCallback((suggestion: AddressSuggestion) => {
+  const handleAddressSelect = async (suggestion: AddressSuggestion) => {
     setAddressQuery(suggestion.name);
-    updateField('address', suggestion.name);
-    updateField('city', suggestion.city);
-    updateField('postalCode', suggestion.postcode);
-    updateField('geopoint', suggestion.coordinates);
     setShowAddressSuggestions(false);
     setAddressSuggestions([]);
-  }, []);
 
-  // City search (municipality type — for cityOnly mode)
+    // If we have a placeId (Google), fetch details for city/postcode/coordinates
+    if (suggestion.placeId) {
+      setAddressLoading(true);
+      try {
+        const details = await fetchPlaceDetails(suggestion.placeId);
+        if (details) {
+          updateFields({
+            address: details.formattedAddress,
+            city: details.city,
+            postalCode: details.postcode,
+            geopoint: details.coordinates,
+          });
+          return;
+        }
+      } catch {
+        // fall through to basic data
+      } finally {
+        setAddressLoading(false);
+      }
+    }
+
+    // Fallback: use data from autocomplete directly (BAN or incomplete Google)
+    updateFields({
+      address: suggestion.label || suggestion.name,
+      city: suggestion.city,
+      postalCode: suggestion.postcode,
+      geopoint: suggestion.coordinates,
+    });
+  };
+
+  // City search (Google Places + BAN fallback for FR)
   const handleCitySearch = useCallback((query: string) => {
     setCityQuery(query);
     if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
@@ -385,7 +484,11 @@ export default function ProRegisterScreen() {
     setCityLoading(true);
     cityDebounceRef.current = setTimeout(async () => {
       try {
-        const results = await searchAddress(query, 5, 'municipality');
+        let results = await searchAddress(query, data.countryCode);
+        // Fallback to BAN municipality search for France
+        if (results.length === 0 && data.countryCode === 'FR') {
+          results = await searchAddressFallbackBAN(query, 5, 'municipality');
+        }
         setCitySuggestions(results);
         setShowCitySuggestions(results.length > 0);
       } catch {
@@ -395,17 +498,42 @@ export default function ProRegisterScreen() {
         setCityLoading(false);
       }
     }, 300);
-  }, []);
+  }, [data.countryCode]);
 
-  const handleCitySelect = useCallback((suggestion: AddressSuggestion) => {
-    setCityQuery(suggestion.city);
-    updateField('city', suggestion.city);
-    updateField('postalCode', suggestion.postcode);
-    updateField('address', '');
-    updateField('geopoint', suggestion.coordinates);
+  const handleCitySelect = async (suggestion: AddressSuggestion) => {
+    setCityQuery(suggestion.city || suggestion.name);
     setShowCitySuggestions(false);
     setCitySuggestions([]);
-  }, []);
+
+    // If we have a placeId (Google), fetch details
+    if (suggestion.placeId) {
+      setCityLoading(true);
+      try {
+        const details = await fetchPlaceDetails(suggestion.placeId);
+        if (details) {
+          updateFields({
+            city: details.city,
+            postalCode: details.postcode,
+            address: '',
+            geopoint: details.coordinates,
+          });
+          return;
+        }
+      } catch {
+        // fall through
+      } finally {
+        setCityLoading(false);
+      }
+    }
+
+    // Fallback
+    updateFields({
+      city: suggestion.city || suggestion.name,
+      postalCode: suggestion.postcode,
+      address: '',
+      geopoint: suggestion.coordinates,
+    });
+  };
 
   useEffect(() => {
     return () => {
@@ -426,15 +554,20 @@ export default function ProRegisterScreen() {
         return null;
       case 1:
         if (!data.locationName.trim()) return 'Le nom du lieu est requis';
-        if (!data.city.trim() || !data.postalCode.trim())
+        if (!data.city.trim())
           return data.cityOnly
-            ? 'Veuillez sélectionner une ville dans les suggestions'
-            : 'Veuillez sélectionner une adresse dans les suggestions';
+            ? 'Veuillez selectionner une ville dans les suggestions'
+            : 'Veuillez selectionner une adresse dans les suggestions';
+        if (!data.cityOnly && !data.postalCode.trim())
+          return 'Veuillez selectionner une adresse dans les suggestions';
         return null;
       case 2:
-        if (!data.serviceName.trim()) return 'Le nom de la prestation est requis';
-        if (!data.servicePrice.trim() || isNaN(Number(data.servicePrice)) || Number(data.servicePrice) < 0)
-          return 'Le prix doit être un nombre positif';
+        if (data.services.length === 0) return 'Ajoutez au moins une prestation';
+        for (let i = 0; i < data.services.length; i++) {
+          if (!data.services[i].name.trim()) return `Le nom de la prestation ${i + 1} est requis`;
+          if (!data.services[i].price.trim() || isNaN(Number(data.services[i].price)) || Number(data.services[i].price) < 0)
+            return `Le prix de la prestation ${i + 1} doit etre un nombre positif`;
+        }
         return null;
       case 3: {
         const hasOpenDay = Object.values(data.availability).some((d) => d.isOpen);
@@ -448,7 +581,9 @@ export default function ProRegisterScreen() {
         if (!data.email.trim()) return "L'email est requis";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) return "Format d'email invalide";
         if (!data.phone.trim()) return 'Le téléphone est requis';
-        if (!/^0[67]\d{8}$/.test(data.phone.replace(/\s/g, ''))) return 'Format téléphone invalide (ex: 06 12 34 56 78)';
+        const cleanPhone = data.phone.replace(/[\s.\-]/g, '');
+        if (cleanPhone.length < 8 || !/^(\+\d{8,15}|0\d{8,10})$/.test(cleanPhone))
+          return 'Numero de telephone invalide';
         if (!data.password || data.password.length < 6) return 'Le mot de passe doit contenir au moins 6 caractères';
         if (data.password !== data.confirmPassword) return 'Les mots de passe ne correspondent pas';
         return null;
@@ -518,6 +653,7 @@ export default function ProRegisterScreen() {
         postalCode: data.postalCode.trim(),
         city: data.city.trim(),
         country: 'France',
+        countryCode: data.countryCode,
         geopoint: data.geopoint,
         description: null,
         type: data.locationType,
@@ -532,18 +668,22 @@ export default function ProRegisterScreen() {
         location.id
       );
 
-      await serviceRepository.create(provider.id, {
-        name: data.serviceName.trim(),
-        description: data.serviceDescription.trim() || null,
-        duration: data.serviceDuration,
-        price: Math.round(Number(data.servicePrice) * 100),
-        bufferTime: 0,
-        categoryId: null,
-        isActive: true,
-        locationIds: [location.id],
-        memberIds: [defaultMember.id],
-        sortOrder: 0,
-      });
+      for (let i = 0; i < data.services.length; i++) {
+        const svc = data.services[i];
+        await serviceRepository.create(provider.id, {
+          name: svc.name.trim(),
+          description: svc.description.trim() || null,
+          photoURL: null,
+          duration: svc.duration,
+          price: Math.round(Number(svc.price) * 100),
+          bufferTime: 0,
+          categoryId: null,
+          isActive: true,
+          locationIds: [location.id],
+          memberIds: [defaultMember.id],
+          sortOrder: i,
+        });
+      }
 
       const schedule = Object.entries(data.availability).map(([dayOfWeek, dayData]) => ({
         dayOfWeek: parseInt(dayOfWeek),
@@ -720,15 +860,65 @@ export default function ProRegisterScreen() {
     </View>
   );
 
+  const LOCATION_NAME_OPTIONS = ['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau'];
+
   const renderStep2 = () => (
     <View style={{ gap: spacing.md }}>
-      <Input
-        label="Nom du lieu"
-        placeholder="Ex: Salon principal"
-        value={data.locationName}
-        onChangeText={(t) => updateField('locationName', t)}
-        autoCapitalize="words"
-      />
+      {/* Location name — dropdown style */}
+      <View>
+        <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+          Nom du lieu
+        </Text>
+        <Pressable
+          onPress={() => setShowLocationNameModal(true)}
+          style={({ pressed }) => [
+            styles.selectButton,
+            {
+              borderColor: colors.border,
+              borderRadius: radius.lg,
+              padding: spacing.md,
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}
+        >
+          <Text variant="body">{data.locationName || 'Choisir...'}</Text>
+          <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+        </Pressable>
+        {!LOCATION_NAME_OPTIONS.includes(data.locationName) && data.locationName !== 'Mon salon' && (
+          <Input
+            placeholder="Nom personnalise du lieu"
+            value={LOCATION_NAME_OPTIONS.includes(data.locationName) ? '' : data.locationName}
+            onChangeText={(t) => updateField('locationName', t)}
+            autoCapitalize="words"
+          />
+        )}
+      </View>
+
+      {/* Country — dropdown style */}
+      <View>
+        <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+          Pays
+        </Text>
+        <Pressable
+          onPress={() => setShowCountryModal(true)}
+          style={({ pressed }) => [
+            styles.selectButton,
+            {
+              borderColor: colors.border,
+              borderRadius: radius.lg,
+              padding: spacing.md,
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}
+        >
+          <Text variant="body">
+            {SUPPORTED_COUNTRIES.find((c) => c.code === data.countryCode)?.label ?? 'France'}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+        </Pressable>
+      </View>
 
       {/* Location type selector */}
       <View>
@@ -781,43 +971,63 @@ export default function ProRegisterScreen() {
         </View>
       </View>
 
-      {/* City only toggle (only for fixed type) */}
+      {/* Address type selector (only for fixed type) */}
       {data.locationType === 'fixed' && (
-        <Pressable
-          onPress={() => {
-            const newVal = !data.cityOnly;
-            updateField('cityOnly', newVal);
-            // Reset address fields when switching
-            if (newVal) {
-              updateField('address', '');
-              setAddressQuery('');
-              setAddressSuggestions([]);
-              setShowAddressSuggestions(false);
-            } else {
-              setCityQuery('');
-              setCitySuggestions([]);
-              setShowCitySuggestions(false);
-            }
-            updateField('city', '');
-            updateField('postalCode', '');
-            updateField('geopoint', null);
-          }}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.sm,
-            paddingVertical: spacing.xs,
-          }}
-        >
-          <Ionicons
-            name={data.cityOnly ? 'checkbox' : 'square-outline'}
-            size={22}
-            color={data.cityOnly ? colors.primary : colors.textMuted}
-          />
-          <Text variant="bodySmall" color="textSecondary">
-            Ville uniquement (sans adresse précise)
+        <View>
+          <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+            Type de localisation
           </Text>
-        </Pressable>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <Pressable
+              onPress={() => {
+                updateField('cityOnly', false);
+                setCityQuery('');
+                setCitySuggestions([]);
+                setShowCitySuggestions(false);
+              }}
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                paddingVertical: spacing.md,
+                borderRadius: radius.lg,
+                borderWidth: 2,
+                borderColor: !data.cityOnly ? colors.primary : colors.border,
+                backgroundColor: !data.cityOnly ? (colors.primaryLight || '#e4effa') : colors.surface,
+              }}
+            >
+              <Ionicons name="location-outline" size={20} color={!data.cityOnly ? colors.primary : colors.textMuted} />
+              <Text variant="bodySmall" style={{ fontWeight: '600', marginTop: 4, color: !data.cityOnly ? colors.primary : colors.text }}>
+                Adresse precise
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                updateField('cityOnly', true);
+                updateField('address', '');
+                updateField('city', '');
+                updateField('postalCode', '');
+                updateField('geopoint', null);
+                setAddressQuery('');
+                setAddressSuggestions([]);
+                setShowAddressSuggestions(false);
+              }}
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                paddingVertical: spacing.md,
+                borderRadius: radius.lg,
+                borderWidth: 2,
+                borderColor: data.cityOnly ? colors.primary : colors.border,
+                backgroundColor: data.cityOnly ? (colors.primaryLight || '#e4effa') : colors.surface,
+              }}
+            >
+              <Ionicons name="business-outline" size={20} color={data.cityOnly ? colors.primary : colors.textMuted} />
+              <Text variant="bodySmall" style={{ fontWeight: '600', marginTop: 4, color: data.cityOnly ? colors.primary : colors.text }}>
+                Ville uniquement
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       )}
 
       {/* Address autocomplete (only if NOT cityOnly) */}
@@ -932,20 +1142,22 @@ export default function ProRegisterScreen() {
         </View>
       )}
 
-      {/* Postal code & city — read-only, filled by API */}
+      {/* Postal code & city — read-only, filled by API. Hide postal code in city-only mode. */}
       {(data.postalCode || data.city) && (
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <View style={{ flex: 1 }}>
-            <Input
-              label="Code postal"
-              placeholder="—"
-              value={data.postalCode}
-              onChangeText={() => {}}
-              disabled
-              keyboardType="number-pad"
-            />
-          </View>
-          <View style={{ flex: 2 }}>
+          {!data.cityOnly && data.postalCode ? (
+            <View style={{ flex: 1 }}>
+              <Input
+                label="Code postal"
+                placeholder="—"
+                value={data.postalCode}
+                onChangeText={() => {}}
+                disabled
+                keyboardType="number-pad"
+              />
+            </View>
+          ) : null}
+          <View style={{ flex: data.cityOnly ? 1 : 2 }}>
             <Input
               label="Ville"
               placeholder="—"
@@ -960,55 +1172,147 @@ export default function ProRegisterScreen() {
     </View>
   );
 
+  const updateServiceField = (index: number, field: string, value: string | number) => {
+    const updated = [...data.services];
+    updated[index] = { ...updated[index], [field]: value };
+    updateField('services', updated);
+  };
+
+  const addServiceEntry = () => {
+    updateField('services', [...data.services, { name: '', duration: 60, price: '', description: '' }]);
+  };
+
+  const removeServiceEntry = (index: number) => {
+    if (data.services.length <= 1) return;
+    updateField('services', data.services.filter((_: unknown, i: number) => i !== index));
+  };
+
+  const formatDurationLabel = (min: number) =>
+    min >= 60
+      ? `${Math.floor(min / 60)}h${min % 60 > 0 ? String(min % 60).padStart(2, '0') : ''}`
+      : `${min} min`;
+
   const renderStep3 = () => (
     <View style={{ gap: spacing.md }}>
-      <Input
-        label="Nom de la prestation"
-        placeholder="Ex: Coupe femme"
-        value={data.serviceName}
-        onChangeText={(t) => updateField('serviceName', t)}
-        autoCapitalize="sentences"
-      />
-      <View>
-        <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-          Durée
-        </Text>
-        <Pressable
-          onPress={() => setShowDurationModal(true)}
-          style={({ pressed }) => [
-            styles.selectButton,
-            {
-              borderColor: colors.border,
-              borderRadius: radius.lg,
-              padding: spacing.md,
-              backgroundColor: 'rgba(255,255,255,0.8)',
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
+      {data.services.map((svc: { name: string; duration: number; price: string; description: string }, index: number) => (
+        <View
+          key={index}
+          style={{
+            gap: spacing.sm,
+            padding: spacing.md,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: 'rgba(255,255,255,0.5)',
+          }}
         >
-          <Text variant="body">
-            {data.serviceDuration >= 60
-              ? `${Math.floor(data.serviceDuration / 60)}h${data.serviceDuration % 60 > 0 ? String(data.serviceDuration % 60).padStart(2, '0') : ''}`
-              : `${data.serviceDuration} min`}
-          </Text>
-          <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
-        </Pressable>
-      </View>
-      <Input
-        label="Prix (€)"
-        placeholder="0"
-        value={data.servicePrice}
-        onChangeText={(t) => updateField('servicePrice', t)}
-        keyboardType="decimal-pad"
-      />
-      <Input
-        label="Description (optionnel)"
-        placeholder="Décrivez cette prestation"
-        value={data.serviceDescription}
-        onChangeText={(t) => updateField('serviceDescription', t)}
-        multiline
-        numberOfLines={3}
-      />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Prestation {index + 1}
+            </Text>
+            {data.services.length > 1 && (
+              <Pressable onPress={() => removeServiceEntry(index)} hitSlop={8}>
+                <Ionicons name="close-circle" size={22} color={colors.textMuted} />
+              </Pressable>
+            )}
+          </View>
+
+          <Input
+            label="Nom"
+            placeholder="Ex: Coupe femme"
+            value={svc.name}
+            onChangeText={(t: string) => updateServiceField(index, 'name', t)}
+            autoCapitalize="sentences"
+          />
+
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+                Duree
+              </Text>
+              <Pressable
+                onPress={() => {
+                  setEditingServiceIndex(index);
+                  setShowDurationModal(true);
+                }}
+                style={({ pressed }) => [
+                  styles.selectButton,
+                  {
+                    borderColor: colors.border,
+                    borderRadius: radius.lg,
+                    padding: spacing.md,
+                    backgroundColor: 'rgba(255,255,255,0.8)',
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <Text variant="body">{formatDurationLabel(svc.duration)}</Text>
+                <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Input
+                label="Prix (€)"
+                placeholder="0"
+                value={svc.price}
+                onChangeText={(t: string) => updateServiceField(index, 'price', t)}
+                keyboardType="decimal-pad"
+                disabled={svc.price === '0' && !svc.price}
+              />
+            </View>
+          </View>
+
+          {/* Free toggle */}
+          <Pressable
+            onPress={() => updateServiceField(index, 'price', svc.price === '0' ? '' : '0')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              paddingVertical: spacing.xs,
+            }}
+          >
+            <Ionicons
+              name={svc.price === '0' ? 'checkbox' : 'square-outline'}
+              size={22}
+              color={svc.price === '0' ? colors.primary : colors.textMuted}
+            />
+            <Text variant="bodySmall" style={{ color: svc.price === '0' ? colors.primary : colors.textSecondary }}>
+              RDV gratuit
+            </Text>
+          </Pressable>
+
+          {/* Description */}
+          <Input
+            label="Description (optionnel)"
+            placeholder="Details sur la prestation..."
+            value={svc.description}
+            onChangeText={(t: string) => updateServiceField(index, 'description', t)}
+            multiline
+            numberOfLines={2}
+          />
+        </View>
+      ))}
+
+      <Pressable
+        onPress={addServiceEntry}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing.sm,
+          paddingVertical: spacing.md,
+          borderRadius: radius.lg,
+          borderWidth: 2,
+          borderStyle: 'dashed',
+          borderColor: colors.border,
+        }}
+      >
+        <Ionicons name="add" size={20} color={colors.textMuted} />
+        <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.textMuted }}>
+          Ajouter une prestation
+        </Text>
+      </Pressable>
     </View>
   );
 
@@ -1121,10 +1425,14 @@ export default function ProRegisterScreen() {
             </View>
             <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>Prestation</Text>
           </View>
-          <Text variant="body" style={{ fontWeight: '500' }}>{data.serviceName}</Text>
-          <Text variant="bodySmall" color="textSecondary">
-            {data.serviceDuration} min • {Number(data.servicePrice).toFixed(2)} €
+          <Text variant="body" style={{ fontWeight: '500' }}>
+            {data.services.length} prestation{data.services.length > 1 ? 's' : ''}
           </Text>
+          {data.services.map((svc: { name: string; duration: number; price: string }, i: number) => (
+            <Text key={i} variant="bodySmall" color="textSecondary">
+              {svc.name || '—'} • {svc.duration} min • {Number(svc.price || 0).toFixed(2)} €
+            </Text>
+          ))}
         </View>
 
         {/* Schedule */}
@@ -1460,7 +1768,7 @@ export default function ProRegisterScreen() {
                 return (
                   <Pressable
                     onPress={() => {
-                      updateField('serviceDuration', item);
+                      updateServiceField(editingServiceIndex, 'duration', item);
                       setShowDurationModal(false);
                     }}
                     style={({ pressed }) => [
@@ -1468,7 +1776,7 @@ export default function ProRegisterScreen() {
                       {
                         padding: spacing.md,
                         paddingHorizontal: spacing.lg,
-                        backgroundColor: data.serviceDuration === item
+                        backgroundColor: data.services[editingServiceIndex]?.duration === item
                           ? colors.primaryLight
                           : pressed
                             ? 'rgba(0,0,0,0.03)'
@@ -1479,18 +1787,124 @@ export default function ProRegisterScreen() {
                     <Ionicons
                       name="time-outline"
                       size={18}
-                      color={data.serviceDuration === item ? colors.primary : colors.textMuted}
+                      color={data.services[editingServiceIndex]?.duration === item ? colors.primary : colors.textMuted}
                     />
                     <Text
                       variant="body"
-                      style={{ flex: 1, marginLeft: spacing.sm, fontWeight: data.serviceDuration === item ? '600' : '400' }}
-                      color={data.serviceDuration === item ? 'primary' : 'text'}
+                      style={{ flex: 1, marginLeft: spacing.sm, fontWeight: data.services[editingServiceIndex]?.duration === item ? '600' : '400' }}
+                      color={data.services[editingServiceIndex]?.duration === item ? 'primary' : 'text'}
                     >
                       {label}
                     </Text>
-                    {data.serviceDuration === item && (
+                    {data.services[editingServiceIndex]?.duration === item && (
                       <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                     )}
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Location Name Modal ── */}
+      <Modal visible={showLocationNameModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
+            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+              <Text variant="h3">Nom du lieu</Text>
+              <Pressable onPress={() => setShowLocationNameModal(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={[...LOCATION_NAME_OPTIONS, '_other']}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => {
+                const label = item === '_other' ? 'Autre...' : item;
+                const isSelected = item === '_other'
+                  ? !LOCATION_NAME_OPTIONS.includes(data.locationName)
+                  : data.locationName === item;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      updateField('locationName', item === '_other' ? '' : item);
+                      setShowLocationNameModal(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.listItem,
+                      {
+                        padding: spacing.md,
+                        paddingHorizontal: spacing.lg,
+                        backgroundColor: isSelected ? colors.primaryLight : pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={item === '_other' ? 'create-outline' : 'business-outline'}
+                      size={20}
+                      color={isSelected ? colors.primary : colors.textMuted}
+                    />
+                    <Text
+                      variant="body"
+                      style={{ flex: 1, marginLeft: spacing.sm, fontWeight: isSelected ? '600' : '400' }}
+                      color={isSelected ? 'primary' : 'text'}
+                    >
+                      {label}
+                    </Text>
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Country Modal ── */}
+      <Modal visible={showCountryModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
+            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+              <Text variant="h3">Pays</Text>
+              <Pressable onPress={() => setShowCountryModal(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={SUPPORTED_COUNTRIES}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => {
+                const isSelected = data.countryCode === item.code;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      updateField('countryCode', item.code);
+                      updateField('address', '');
+                      updateField('city', '');
+                      updateField('postalCode', '');
+                      updateField('geopoint', null);
+                      setAddressQuery('');
+                      setCityQuery('');
+                      setShowCountryModal(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.listItem,
+                      {
+                        padding: spacing.md,
+                        paddingHorizontal: spacing.lg,
+                        backgroundColor: isSelected ? colors.primaryLight : pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
+                      },
+                    ]}
+                  >
+                    <Text
+                      variant="body"
+                      style={{ flex: 1, fontWeight: isSelected ? '600' : '400' }}
+                      color={isSelected ? 'primary' : 'text'}
+                    >
+                      {item.label}
+                    </Text>
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
                   </Pressable>
                 );
               }}

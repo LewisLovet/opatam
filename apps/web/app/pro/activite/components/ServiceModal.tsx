@@ -447,6 +447,22 @@ export function ServiceModal({
             />
           </div>
 
+          {/* Free toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.price === 0}
+              onChange={(e) => {
+                setFormData((prev) => ({ ...prev, price: e.target.checked ? 0 : prev.price || 0 }));
+                setErrors((prev) => ({ ...prev, price: '' }));
+              }}
+              className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <span className={`text-sm ${formData.price === 0 ? 'text-primary-600 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+              RDV gratuit
+            </span>
+          </label>
+
           {/* Buffer time */}
           <Select
             label="Temps de battement après RDV"

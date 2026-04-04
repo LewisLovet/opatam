@@ -29,6 +29,9 @@ import {
   type WithId,
 } from '@booking-app/firebase';
 import type { Service, ServiceCategory, Location, Member } from '@booking-app/shared/types';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'react-native';
+import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,6 +40,7 @@ import type { Service, ServiceCategory, Location, Member } from '@booking-app/sh
 interface ServiceFormData {
   name: string;
   description: string;
+  photoURL: string | null;
   durationHours: string;
   durationMinutes: string;
   price: string;
@@ -50,6 +54,7 @@ interface ServiceFormData {
 const DEFAULT_FORM: ServiceFormData = {
   name: '',
   description: '',
+  photoURL: null,
   durationHours: '1',
   durationMinutes: '0',
   price: '',
@@ -269,6 +274,7 @@ export default function ServicesScreen() {
     setForm({
       name: service.name,
       description: service.description || '',
+      photoURL: service.photoURL || null,
       durationHours: hours,
       durationMinutes: minutes,
       price: String(service.price / 100),
@@ -308,6 +314,7 @@ export default function ServicesScreen() {
       const payload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
+        photoURL: form.photoURL,
         duration: totalDuration,
         price: Math.round(Number(form.price) * 100),
         bufferTime: bufferTimeValue,
@@ -622,6 +629,89 @@ export default function ServicesScreen() {
                   onChangeText={(t) => setForm((p) => ({ ...p, name: t }))}
                   autoCapitalize="sentences"
                 />
+
+                {/* Photo */}
+                <View>
+                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+                    Photo <Text variant="caption" color="textMuted">(optionnel)</Text>
+                  </Text>
+
+                  {form.photoURL ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
+                      <View style={{ position: 'relative' }}>
+                        <Image
+                          source={{ uri: form.photoURL }}
+                          style={{ width: 80, height: 80, borderRadius: radius.md }}
+                          resizeMode="cover"
+                        />
+                        <Pressable
+                          onPress={() => setForm((p) => ({ ...p, photoURL: null }))}
+                          style={{ position: 'absolute', top: -6, right: -6 }}
+                        >
+                          <Ionicons name="close-circle" size={22} color={colors.error || '#ef4444'} />
+                        </Pressable>
+                      </View>
+                      <Pressable
+                        onPress={async () => {
+                          const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ['images'],
+                            allowsEditing: true,
+                            aspect: [1, 1],
+                            quality: 0.8,
+                          });
+                          if (!result.canceled && result.assets[0] && providerId) {
+                            const uri = result.assets[0].uri;
+                            const response = await fetch(uri);
+                            const blob = await response.blob();
+                            const path = `${storagePaths.providerPortfolio(providerId)}/crop-${Date.now()}.jpg`;
+                            const url = await uploadFile(path, blob, { contentType: 'image/jpeg' });
+                            setForm((p) => ({ ...p, photoURL: url }));
+                          }
+                        }}
+                        style={{ paddingVertical: spacing.xs }}
+                      >
+                        <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>
+                          Changer
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={async () => {
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                          mediaTypes: ['images'],
+                          allowsEditing: true,
+                          aspect: [1, 1],
+                          quality: 0.8,
+                        });
+                        if (!result.canceled && result.assets[0] && providerId) {
+                          const uri = result.assets[0].uri;
+                          const response = await fetch(uri);
+                          const blob = await response.blob();
+                          const path = `${storagePaths.providerPortfolio(providerId)}/crop-${Date.now()}.jpg`;
+                          const url = await uploadFile(path, blob, { contentType: 'image/jpeg' });
+                          setForm((p) => ({ ...p, photoURL: url }));
+                        }
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: spacing.sm,
+                        paddingVertical: spacing.md,
+                        paddingHorizontal: spacing.md,
+                        borderRadius: radius.lg,
+                        borderWidth: 1,
+                        borderStyle: 'dashed',
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <Ionicons name="image-outline" size={20} color={colors.textMuted} />
+                      <Text variant="bodySmall" color="textMuted" style={{ fontWeight: '500' }}>
+                        Ajouter une photo
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
 
                 {/* Category — inline picker */}
                 {categories.length > 0 && (

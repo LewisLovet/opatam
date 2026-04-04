@@ -13,6 +13,7 @@ import {
   Keyboard,
   ActivityIndicator,
   Pressable,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +37,18 @@ import {
   getCityRegion,
   getRegionFromCoords,
 } from '@booking-app/shared';
+
+const COUNTRY_OPTIONS = [
+  { code: 'FR', label: '\u{1F1EB}\u{1F1F7} France' },
+  { code: 'BE', label: '\u{1F1E7}\u{1F1EA} Belgique' },
+  { code: 'LU', label: '\u{1F1F1}\u{1F1FA} Luxembourg' },
+  { code: 'CH', label: '\u{1F1E8}\u{1F1ED} Suisse' },
+  { code: 'DE', label: '\u{1F1E9}\u{1F1EA} Allemagne' },
+  { code: 'ES', label: '\u{1F1EA}\u{1F1F8} Espagne' },
+  { code: 'IT', label: '\u{1F1EE}\u{1F1F9} Italie' },
+  { code: 'NL', label: '\u{1F1F3}\u{1F1F1} Pays-Bas' },
+  { code: 'PT', label: '\u{1F1F5}\u{1F1F9} Portugal' },
+];
 import type { Provider } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
@@ -54,8 +67,9 @@ export default function SearchScreen() {
   // User location
   const { location: userLocation, loading: locationLoading, refresh: refreshLocation } = useUserLocation();
 
-  // Search state — progressive: Region (mandatory first pick) → City → Category
-  // hasPickedRegion distinguishes "never interacted" from "chose Toutes les régions"
+  // Search state — progressive: Country → Region (FR only) → City → Category
+  const [selectedCountry, setSelectedCountry] = useState<string>('FR');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [hasPickedRegion, setHasPickedRegion] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
@@ -257,10 +271,44 @@ export default function SearchScreen() {
     </View>
   );
 
+  // Handle country change
+  const handleCountryChange = (code: string) => {
+    setSelectedCountry(code);
+    if (code !== 'FR') {
+      setSelectedRegion(null);
+      setSelectedCity(null);
+      setHasPickedRegion(true);
+    }
+  };
+
   // Render refinement filters
   const renderFilters = () => (
     <View style={[styles.filtersContainer, { backgroundColor: colors.background }]}>
-      {/* Active region with change button */}
+      {/* Country selector */}
+      <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: spacing.sm }}>
+        <Pressable
+          onPress={() => setShowCountryPicker(true)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+          }}
+        >
+          <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+            {COUNTRY_OPTIONS.find((c) => c.code === selectedCountry)?.label || '\u{1F1EB}\u{1F1F7} France'}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+        </Pressable>
+      </View>
+
+      {/* Region filter — only for France */}
+      {selectedCountry === 'FR' && (
       <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: spacing.sm }}>
         <RegionSelect
           value={selectedRegion}
@@ -268,6 +316,7 @@ export default function SearchScreen() {
           onChange={handleRegionChange}
         />
       </View>
+      )}
 
       {/* City Select (scoped to selected region — hidden when "Toutes les régions") */}
       {selectedRegion && (
@@ -289,15 +338,8 @@ export default function SearchScreen() {
         />
       </View>
 
-      {/* Results count */}
-      {!loading && !error && (
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
-          <Text variant="caption" color="textSecondary">
-            {providers.length} prestataire{providers.length !== 1 ? 's' : ''} trouvé{providers.length !== 1 ? 's' : ''}
-            {hasMore && ' (affichage partiel)'}
-          </Text>
-        </View>
-      )}
+      {/* Spacer */}
+      <View style={{ height: spacing.sm }} />
     </View>
   );
 
@@ -367,54 +409,150 @@ export default function SearchScreen() {
               Rechercher un prestataire
             </Text>
             <Text variant="body" color="textSecondary" style={{ textAlign: 'center' }}>
-              Commencez par choisir votre région
+              {selectedCountry === 'FR' ? 'Commencez par choisir votre region' : 'Choisissez un pays pour commencer'}
             </Text>
           </View>
 
-          {/* Use my location button */}
+          {/* Country selector */}
           <Pressable
-            onPress={handleUseLocation}
-            disabled={gpsDetecting || locationLoading}
-            style={({ pressed }) => [
-              styles.locationButton,
-              {
-                backgroundColor: colors.primary,
-                borderRadius: radius.md,
-                paddingVertical: spacing.md,
-                paddingHorizontal: spacing.lg,
-                marginBottom: spacing.lg,
-                opacity: (gpsDetecting || locationLoading) ? 0.6 : 1,
-              },
-              pressed && { opacity: 0.8 },
-            ]}
+            onPress={() => setShowCountryPicker(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.md,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              marginBottom: spacing.lg,
+            }}
           >
-            {gpsDetecting || locationLoading ? (
-              <ActivityIndicator size="small" color="#fff" style={{ marginRight: spacing.sm }} />
-            ) : (
-              <Ionicons name="navigate" size={20} color="#fff" style={{ marginRight: spacing.sm }} />
-            )}
-            <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
-              Utiliser ma localisation
+            <Text variant="body" style={{ fontWeight: '600' }}>
+              {COUNTRY_OPTIONS.find((c) => c.code === selectedCountry)?.label || '\u{1F1EB}\u{1F1F7} France'}
             </Text>
+            <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
           </Pressable>
 
-          {/* Divider with "ou" */}
-          <View style={[styles.dividerRow, { marginBottom: spacing.lg }]}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text variant="caption" color="textMuted" style={{ marginHorizontal: spacing.md }}>
-              ou
-            </Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          </View>
+          {/* For non-FR countries, skip region and go directly to results */}
+          {selectedCountry !== 'FR' && (
+            <Pressable
+              onPress={() => {
+                setHasPickedRegion(true);
+                setSelectedRegion(null);
+                setSelectedCity(null);
+              }}
+              style={({ pressed }) => [
+                styles.locationButton,
+                {
+                  backgroundColor: colors.primary,
+                  borderRadius: radius.md,
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.lg,
+                  marginBottom: spacing.lg,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <Ionicons name="search" size={20} color="#fff" style={{ marginRight: spacing.sm }} />
+              <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
+                Rechercher en {COUNTRY_OPTIONS.find((c) => c.code === selectedCountry)?.label.split(' ').slice(1).join(' ') || ''}
+              </Text>
+            </Pressable>
+          )}
 
-          {/* Region select */}
-          <RegionSelect
-            value={selectedRegion}
-            regions={REGION_NAMES}
-            onChange={handleRegionChange}
-            placeholder="Choisir une région"
-          />
+          {/* France only: Use my location + Region select */}
+          {selectedCountry === 'FR' && (
+            <>
+              {/* Use my location button */}
+              <Pressable
+                onPress={handleUseLocation}
+                disabled={gpsDetecting || locationLoading}
+                style={({ pressed }) => [
+                  styles.locationButton,
+                  {
+                    backgroundColor: colors.primary,
+                    borderRadius: radius.md,
+                    paddingVertical: spacing.md,
+                    paddingHorizontal: spacing.lg,
+                    marginBottom: spacing.lg,
+                    opacity: (gpsDetecting || locationLoading) ? 0.6 : 1,
+                  },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                {gpsDetecting || locationLoading ? (
+                  <ActivityIndicator size="small" color="#fff" style={{ marginRight: spacing.sm }} />
+                ) : (
+                  <Ionicons name="navigate" size={20} color="#fff" style={{ marginRight: spacing.sm }} />
+                )}
+                <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
+                  Utiliser ma localisation
+                </Text>
+              </Pressable>
+
+              {/* Divider with "ou" */}
+              <View style={[styles.dividerRow, { marginBottom: spacing.lg }]}>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                <Text variant="caption" color="textMuted" style={{ marginHorizontal: spacing.md }}>
+                  ou
+                </Text>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              </View>
+
+              {/* Region select */}
+              <RegionSelect
+                value={selectedRegion}
+                regions={REGION_NAMES}
+                onChange={handleRegionChange}
+                placeholder="Choisir une region"
+              />
+            </>
+          )}
         </View>
+
+        {/* Country Picker Modal (also needed on initial screen) */}
+        <Modal visible={showCountryPicker} transparent animationType="slide">
+          <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+            <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '60%' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                <Text variant="h3">Pays</Text>
+                <Pressable onPress={() => setShowCountryPicker(false)}>
+                  <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+                </Pressable>
+              </View>
+              <FlatList
+                data={COUNTRY_OPTIONS}
+                keyExtractor={(item) => item.code}
+                renderItem={({ item }) => {
+                  const isSelected = selectedCountry === item.code;
+                  return (
+                    <Pressable
+                      onPress={() => {
+                        handleCountryChange(item.code);
+                        setShowCountryPicker(false);
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: spacing.md,
+                        paddingHorizontal: spacing.lg,
+                        backgroundColor: isSelected ? colors.primaryLight : 'transparent',
+                      }}
+                    >
+                      <Text variant="body" style={{ fontWeight: isSelected ? '600' : '400' }} color={isSelected ? 'primary' : 'text'}>
+                        {item.label}
+                      </Text>
+                      {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                    </Pressable>
+                  );
+                }}
+              />
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -442,7 +580,10 @@ export default function SearchScreen() {
       </View>
 
       <FlatList
-        data={loading && !refreshing ? [] : providers}
+        data={loading && !refreshing ? [] : providers.filter((p) => {
+          const providerCountry = (p as any).countryCode || 'FR';
+          return selectedCountry === 'FR' ? true : providerCountry === selectedCountry;
+        })}
         renderItem={renderProvider}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={renderFilters}
@@ -467,6 +608,47 @@ export default function SearchScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       />
+      {/* Country Picker Modal */}
+      <Modal visible={showCountryPicker} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '60%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text variant="h3">Pays</Text>
+              <Pressable onPress={() => setShowCountryPicker(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={COUNTRY_OPTIONS}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => {
+                const isSelected = selectedCountry === item.code;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      handleCountryChange(item.code);
+                      setShowCountryPicker(false);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingVertical: spacing.md,
+                      paddingHorizontal: spacing.lg,
+                      backgroundColor: isSelected ? colors.primaryLight : 'transparent',
+                    }}
+                  >
+                    <Text variant="body" style={{ fontWeight: isSelected ? '600' : '400' }} color={isSelected ? 'primary' : 'text'}>
+                      {item.label}
+                    </Text>
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
