@@ -25,7 +25,7 @@ import { locationService, memberService, type WithId } from '@booking-app/fireba
 import type { Location, Member } from '@booking-app/shared/types';
 
 // ---------------------------------------------------------------------------
-// Address Autocomplete (BAN)
+// Address Autocomplete (Google Places + BAN fallback)
 // ---------------------------------------------------------------------------
 
 interface AddressSuggestion {
@@ -33,12 +33,41 @@ interface AddressSuggestion {
   name: string;
   city: string;
   postcode: string;
-  coordinates: { latitude: number; longitude: number };
+  coordinates: { latitude: number; longitude: number } | null;
+  placeId: string;
 }
 
-async function searchAddress(query: string, limit = 5, type?: string): Promise<AddressSuggestion[]> {
+const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+
+async function searchAddress(query: string, countryCode: string = 'fr', limit = 5): Promise<AddressSuggestion[]> {
+  if (GOOGLE_API_KEY) {
+    try {
+      const body = {
+        input: query,
+        includedRegionCodes: [countryCode.toLowerCase()],
+        includedPrimaryTypes: ['street_address', 'premise', 'subpremise', 'route', 'locality'],
+      };
+      const response = await fetch(
+        `https://places.googleapis.com/v1/places:autocomplete?key=${GOOGLE_API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      );
+      if (response.ok) {
+        const json = await response.json();
+        const results = (json.suggestions ?? []).slice(0, limit).map((s: any) => ({
+          label: s.placePrediction?.text?.text ?? '',
+          name: s.placePrediction?.structuredFormat?.mainText?.text ?? '',
+          city: s.placePrediction?.structuredFormat?.secondaryText?.text ?? '',
+          postcode: '',
+          coordinates: null,
+          placeId: s.placePrediction?.placeId ?? '',
+        }));
+        if (results.length > 0) return results;
+      }
+    } catch { /* fall through to BAN */ }
+  }
+  // Fallback BAN (France only)
+  if (countryCode.toLowerCase() !== 'fr') return [];
   const params = new URLSearchParams({ q: query, limit: String(limit) });
-  if (type) params.set('type', type);
   const response = await fetch(`https://api-adresse.data.gouv.fr/search?${params}`);
   if (!response.ok) return [];
   const json = await response.json();
@@ -48,8 +77,44 @@ async function searchAddress(query: string, limit = 5, type?: string): Promise<A
     city: f.properties.city,
     postcode: f.properties.postcode,
     coordinates: { latitude: f.geometry.coordinates[1], longitude: f.geometry.coordinates[0] },
+    placeId: '',
   }));
 }
+
+async function fetchPlaceDetails(placeId: string): Promise<{
+  city: string; postcode: string; region: string; coordinates: { latitude: number; longitude: number } | null; formattedAddress: string;
+} | null> {
+  if (!GOOGLE_API_KEY || !placeId) return null;
+  const response = await fetch(
+    `https://places.googleapis.com/v1/places/${placeId}?key=${GOOGLE_API_KEY}&fields=formattedAddress,addressComponents,location,id`
+  );
+  if (!response.ok) return null;
+  const place = await response.json();
+  const components: any[] = place.addressComponents ?? [];
+  const getComp = (type: string) => components.find((c: any) => c.types?.includes(type));
+  const locality = getComp('locality') ?? getComp('postal_town') ?? getComp('administrative_area_level_3');
+  const postalCode = getComp('postal_code');
+  const adminArea1 = getComp('administrative_area_level_1');
+  return {
+    city: locality?.longText ?? '',
+    region: adminArea1?.longText ?? '',
+    postcode: postalCode?.longText ?? '',
+    formattedAddress: place.formattedAddress ?? '',
+    coordinates: place.location ? { latitude: place.location.latitude, longitude: place.location.longitude } : null,
+  };
+}
+
+const COUNTRY_OPTIONS = [
+  { code: 'FR', label: '🇫🇷 France' },
+  { code: 'BE', label: '🇧🇪 Belgique' },
+  { code: 'LU', label: '🇱🇺 Luxembourg' },
+  { code: 'CH', label: '🇨🇭 Suisse' },
+  { code: 'DE', label: '🇩🇪 Allemagne' },
+  { code: 'ES', label: '🇪🇸 Espagne' },
+  { code: 'IT', label: '🇮🇹 Italie' },
+  { code: 'NL', label: '🇳🇱 Pays-Bas' },
+  { code: 'PT', label: '🇵🇹 Portugal' },
+];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,9 +122,11 @@ async function searchAddress(query: string, limit = 5, type?: string): Promise<A
 
 interface LocationFormData {
   name: string;
+  countryCode: string;
   address: string;
   postalCode: string;
   city: string;
+  region: string;
   description: string;
   type: 'fixed' | 'mobile';
   travelRadius: string;
@@ -68,9 +135,11 @@ interface LocationFormData {
 
 const DEFAULT_FORM: LocationFormData = {
   name: '',
+  countryCode: 'FR',
   address: '',
   postalCode: '',
   city: '',
+  region: '',
   description: '',
   type: 'fixed',
   travelRadius: '20',
@@ -152,7 +221,11 @@ export default function LocationsScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
-  // Address search
+  // Pickers
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [showLocationNamePicker, setShowLocationNamePicker] = useState(false);
+
+  // Address search (Google Places + BAN fallback)
   const handleAddressSearch = useCallback((query: string) => {
     setAddressQuery(query);
     setForm((p) => ({ ...p, address: query }));
@@ -161,22 +234,33 @@ export default function LocationsScreen() {
     setAddressLoading(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const results = await searchAddress(query);
+        const results = await searchAddress(query, form.countryCode);
         setSuggestions(results);
         setShowSuggestions(results.length > 0);
       } catch { setSuggestions([]); setShowSuggestions(false); }
       finally { setAddressLoading(false); }
     }, 300);
-  }, []);
+  }, [form.countryCode]);
 
-  const handleAddressSelect = useCallback((s: AddressSuggestion) => {
+  const handleAddressSelect = async (s: AddressSuggestion) => {
     setAddressQuery(s.name);
-    setForm((p) => ({ ...p, address: s.name, city: s.city, postalCode: s.postcode }));
     setShowSuggestions(false);
     setSuggestions([]);
-  }, []);
+    if (s.placeId) {
+      setAddressLoading(true);
+      try {
+        const details = await fetchPlaceDetails(s.placeId);
+        if (details) {
+          setForm((p) => ({ ...p, address: details.formattedAddress, city: details.city, postalCode: details.postcode, region: details.region }));
+          return;
+        }
+      } catch { /* fallback */ }
+      finally { setAddressLoading(false); }
+    }
+    setForm((p) => ({ ...p, address: s.label || s.name, city: s.city, postalCode: s.postcode }));
+  };
 
-  // City search (municipality type)
+  // City search (Google Places + BAN fallback)
   const handleCitySearch = useCallback((query: string) => {
     setCityQuery(query);
     if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
@@ -184,20 +268,31 @@ export default function LocationsScreen() {
     setCityLoading(true);
     cityDebounceRef.current = setTimeout(async () => {
       try {
-        const results = await searchAddress(query, 5, 'municipality');
+        const results = await searchAddress(query, form.countryCode);
         setCitySuggestions(results);
         setShowCitySuggestions(results.length > 0);
       } catch { setCitySuggestions([]); setShowCitySuggestions(false); }
       finally { setCityLoading(false); }
     }, 300);
-  }, []);
+  }, [form.countryCode]);
 
-  const handleCitySelect = useCallback((s: AddressSuggestion) => {
-    setCityQuery(s.city);
-    setForm((p) => ({ ...p, city: s.city, postalCode: s.postcode }));
+  const handleCitySelect = async (s: AddressSuggestion) => {
+    setCityQuery(s.city || s.name);
     setShowCitySuggestions(false);
+    if (s.placeId) {
+      setCityLoading(true);
+      try {
+        const details = await fetchPlaceDetails(s.placeId);
+        if (details) {
+          setForm((p) => ({ ...p, city: details.city, postalCode: details.postcode, region: details.region }));
+          return;
+        }
+      } catch { /* fallback */ }
+      finally { setCityLoading(false); }
+    }
+    setForm((p) => ({ ...p, city: s.city || s.name, postalCode: s.postcode }));
     setCitySuggestions([]);
-  }, []);
+  };
 
   useEffect(() => { return () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -218,6 +313,7 @@ export default function LocationsScreen() {
     const isCityOnly = loc.type === 'fixed' && !loc.address;
     setForm({
       name: loc.name,
+      countryCode: loc.countryCode || 'FR',
       address: loc.address || '',
       postalCode: loc.postalCode,
       city: loc.city,
@@ -236,7 +332,7 @@ export default function LocationsScreen() {
     if (!providerId) return;
     if (!form.name.trim()) { showToast({ variant: 'error', message: 'Le nom est requis' }); return; }
     if (!form.city.trim()) { showToast({ variant: 'error', message: 'La ville est requise' }); return; }
-    if (!form.postalCode.trim()) { showToast({ variant: 'error', message: 'Le code postal est requis' }); return; }
+    if (!form.cityOnly && !form.postalCode.trim()) { showToast({ variant: 'error', message: 'Le code postal est requis' }); return; }
 
     setIsSaving(true);
     try {
@@ -246,6 +342,8 @@ export default function LocationsScreen() {
         postalCode: form.postalCode.trim(),
         city: form.city.trim(),
         country: 'France' as const,
+        countryCode: form.countryCode,
+        region: form.region || null,
         geopoint: null,
         description: form.description.trim() || null,
         type: form.type,
@@ -501,7 +599,66 @@ export default function LocationsScreen() {
 
               <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} automaticallyAdjustKeyboardInsets>
                 <View style={{ gap: spacing.md }}>
-                  <Input label="Nom du lieu" placeholder="Ex: Salon principal" value={form.name} onChangeText={(t) => setForm((p) => ({ ...p, name: t }))} autoCapitalize="words" />
+                  {/* Location name — dropdown with presets + custom */}
+                  <View>
+                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Nom du lieu</Text>
+                    <Pressable
+                      onPress={() => setShowLocationNamePicker((v) => !v)}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                        paddingHorizontal: spacing.md, paddingVertical: spacing.md,
+                        borderRadius: radius.lg, borderWidth: 1,
+                        borderColor: showLocationNamePicker ? colors.primary : colors.border,
+                        backgroundColor: colors.surface,
+                      }}
+                    >
+                      <Text variant="body" style={{ fontWeight: '500', color: form.name ? colors.text : colors.textMuted }}>
+                        {form.name || 'Choisir un nom'}
+                      </Text>
+                      <Ionicons name={showLocationNamePicker ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+                    </Pressable>
+                    {showLocationNamePicker && (
+                      <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, marginTop: spacing.xs, overflow: 'hidden' }}>
+                        {['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne', 'Consultation téléphonique', 'Consultation vidéo', 'Autre...'].map((opt) => {
+                          const isOther = opt === 'Autre...';
+                          const isSelected = isOther
+                            ? !['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne'].includes(form.name)
+                            : form.name === opt;
+                          return (
+                            <Pressable
+                              key={opt}
+                              onPress={() => {
+                                if (isOther) {
+                                  setForm((p) => ({ ...p, name: '' }));
+                                } else {
+                                  setForm((p) => ({ ...p, name: opt }));
+                                }
+                                setShowLocationNamePicker(false);
+                              }}
+                              style={{
+                                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                                paddingVertical: spacing.sm, paddingHorizontal: spacing.md,
+                                backgroundColor: isSelected ? (colors.primaryLight || '#e4effa') : 'transparent',
+                              }}
+                            >
+                              <Text variant="bodySmall" style={{ fontWeight: isSelected ? '600' : '400', color: isSelected ? colors.primary : colors.text }}>
+                                {opt}
+                              </Text>
+                              {isSelected && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    )}
+                    {!['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne', 'Consultation téléphonique', 'Consultation vidéo', ''].includes(form.name) || (form.name === '' && !showLocationNamePicker) ? (
+                      <Input
+                        placeholder="Nom personnalisé du lieu"
+                        value={form.name}
+                        onChangeText={(t) => setForm((p) => ({ ...p, name: t }))}
+                        autoCapitalize="words"
+                      />
+                    ) : null}
+                  </View>
 
                   {/* Type */}
                   <View>
@@ -531,38 +688,92 @@ export default function LocationsScreen() {
                     </View>
                   </View>
 
-                  {/* City only toggle (fixed type) */}
-                  {form.type === 'fixed' && (
+                  {/* Country selector — inline expandable (Modal-in-Modal doesn't work on RN) */}
+                  <View>
+                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Pays</Text>
                     <Pressable
-                      onPress={() => {
-                        const newCityOnly = !form.cityOnly;
-                        setForm((p) => ({
-                          ...p,
-                          cityOnly: newCityOnly,
-                          ...(newCityOnly ? { address: '' } : {}),
-                        }));
-                        if (newCityOnly) {
-                          setAddressQuery('');
-                          setSuggestions([]);
-                          setShowSuggestions(false);
-                        } else {
-                          setCityQuery('');
-                          setCitySuggestions([]);
-                          setShowCitySuggestions(false);
-                        }
+                      onPress={() => setShowCountryPicker((v) => !v)}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                        paddingHorizontal: spacing.md, paddingVertical: spacing.md,
+                        borderRadius: radius.lg, borderWidth: 1,
+                        borderColor: showCountryPicker ? colors.primary : colors.border,
+                        backgroundColor: colors.surface,
                       }}
-                      style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs }}
                     >
-                      <Ionicons
-                        name={form.cityOnly ? 'checkbox' : 'square-outline'}
-                        size={22}
-                        color={form.cityOnly ? colors.primary : colors.textMuted}
-                      />
-                      <View style={{ marginLeft: spacing.sm, flex: 1 }}>
-                        <Text variant="bodySmall" style={{ fontWeight: '500' }}>Ville uniquement</Text>
-                        <Text variant="caption" color="textMuted">Ne pas afficher d'adresse précise</Text>
-                      </View>
+                      <Text variant="body" style={{ fontWeight: '600' }}>
+                        {COUNTRY_OPTIONS.find((c) => c.code === form.countryCode)?.label || '🇫🇷 France'}
+                      </Text>
+                      <Ionicons name={showCountryPicker ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
                     </Pressable>
+                    {showCountryPicker && (
+                      <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, marginTop: spacing.xs, overflow: 'hidden' }}>
+                        {COUNTRY_OPTIONS.map((item) => {
+                          const isSelected = form.countryCode === item.code;
+                          return (
+                            <Pressable
+                              key={item.code}
+                              onPress={() => {
+                                setForm((p) => ({ ...p, countryCode: item.code, address: '', city: '', postalCode: '', region: '' }));
+                                setAddressQuery(''); setCityQuery('');
+                                setShowCountryPicker(false);
+                              }}
+                              style={{
+                                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                                paddingVertical: spacing.sm, paddingHorizontal: spacing.md,
+                                backgroundColor: isSelected ? (colors.primaryLight || '#e4effa') : 'transparent',
+                              }}
+                            >
+                              <Text variant="bodySmall" style={{ fontWeight: isSelected ? '600' : '400', color: isSelected ? colors.primary : colors.text }}>
+                                {item.label}
+                              </Text>
+                              {isSelected && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Address type selector (fixed type) */}
+                  {form.type === 'fixed' && (
+                    <View>
+                      <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Type de localisation</Text>
+                      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                        <Pressable
+                          onPress={() => {
+                            setForm((p) => ({ ...p, cityOnly: false }));
+                            setCityQuery(''); setCitySuggestions([]); setShowCitySuggestions(false);
+                          }}
+                          style={{
+                            flex: 1, alignItems: 'center', paddingVertical: spacing.md, borderRadius: radius.lg,
+                            borderWidth: 2, borderColor: !form.cityOnly ? colors.primary : colors.border,
+                            backgroundColor: !form.cityOnly ? (colors.primaryLight || '#e4effa') : colors.surface,
+                          }}
+                        >
+                          <Ionicons name="location-outline" size={20} color={!form.cityOnly ? colors.primary : colors.textMuted} />
+                          <Text variant="bodySmall" style={{ fontWeight: '600', marginTop: 4, color: !form.cityOnly ? colors.primary : colors.text }}>
+                            Adresse précise
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            setForm((p) => ({ ...p, cityOnly: true, address: '', postalCode: '', city: '' }));
+                            setAddressQuery(''); setSuggestions([]); setShowSuggestions(false);
+                          }}
+                          style={{
+                            flex: 1, alignItems: 'center', paddingVertical: spacing.md, borderRadius: radius.lg,
+                            borderWidth: 2, borderColor: form.cityOnly ? colors.primary : colors.border,
+                            backgroundColor: form.cityOnly ? (colors.primaryLight || '#e4effa') : colors.surface,
+                          }}
+                        >
+                          <Ionicons name="business-outline" size={20} color={form.cityOnly ? colors.primary : colors.textMuted} />
+                          <Text variant="bodySmall" style={{ fontWeight: '600', marginTop: 4, color: form.cityOnly ? colors.primary : colors.text }}>
+                            Ville uniquement
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
                   )}
 
                   {/* Address autocomplete (only if not cityOnly) */}
@@ -629,8 +840,8 @@ export default function LocationsScreen() {
                             >
                               <Ionicons name="location" size={16} color={colors.primary} style={{ marginTop: 2 }} />
                               <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                                <Text variant="bodySmall" style={{ fontWeight: '500' }}>{s.city}</Text>
-                                <Text variant="caption" color="textMuted">{s.postcode}</Text>
+                                <Text variant="bodySmall" style={{ fontWeight: '500' }}>{s.name || s.city}</Text>
+                                <Text variant="caption" color="textMuted">{s.city !== s.name ? s.city : ''} {s.postcode}</Text>
                               </View>
                             </Pressable>
                           ))}
@@ -640,11 +851,13 @@ export default function LocationsScreen() {
                   )}
 
                   <View style={{ flexDirection: 'row', gap: spacing.md }}>
-                    <View style={{ flex: 1 }}>
-                      <Input label="Code postal" placeholder="75001" value={form.postalCode} disabled />
-                    </View>
-                    <View style={{ flex: 2 }}>
-                      <Input label="Ville" placeholder="Paris" value={form.city} disabled />
+                    {!form.cityOnly && form.postalCode ? (
+                      <View style={{ flex: 1 }}>
+                        <Input label="Code postal" placeholder="—" value={form.postalCode} disabled />
+                      </View>
+                    ) : null}
+                    <View style={{ flex: form.cityOnly ? 1 : 2 }}>
+                      <Input label="Ville" placeholder="—" value={form.city} disabled />
                     </View>
                   </View>
 
@@ -754,6 +967,43 @@ export default function LocationsScreen() {
             </View>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Country Picker Modal */}
+      <Modal visible={showCountryPicker} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '60%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text variant="h3">Pays</Text>
+              <Pressable onPress={() => setShowCountryPicker(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            {COUNTRY_OPTIONS.map((item) => {
+              const isSelected = form.countryCode === item.code;
+              return (
+                <Pressable
+                  key={item.code}
+                  onPress={() => {
+                    setForm((p) => ({ ...p, countryCode: item.code, address: '', city: '', postalCode: '' }));
+                    setAddressQuery(''); setCityQuery('');
+                    setShowCountryPicker(false);
+                  }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
+                    backgroundColor: isSelected ? colors.primaryLight : 'transparent',
+                  }}
+                >
+                  <Text variant="body" style={{ fontWeight: isSelected ? '600' : '400' }} color={isSelected ? 'primary' : 'text'}>
+                    {item.label}
+                  </Text>
+                  {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       </Modal>
     </View>
   );

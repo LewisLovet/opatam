@@ -850,17 +850,17 @@ export default function ProRegisterScreen() {
       </View>
 
       <Input
-        label="Description (optionnel)"
+        label={`Description (optionnel) ${data.description.length}/500`}
         placeholder="Décrivez votre activité en quelques mots"
         value={data.description}
-        onChangeText={(t) => updateField('description', t)}
+        onChangeText={(t) => { if (t.length <= 500) updateField('description', t); }}
         multiline
         numberOfLines={3}
       />
     </View>
   );
 
-  const LOCATION_NAME_OPTIONS = ['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau'];
+  const LOCATION_NAME_OPTIONS = ['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne', 'Consultation téléphonique', 'Consultation vidéo'];
 
   const renderStep2 = () => (
     <View style={{ gap: spacing.md }}>
@@ -1130,9 +1130,9 @@ export default function ProRegisterScreen() {
                 >
                   <Ionicons name="location" size={16} color={colors.primary} style={{ marginTop: 2 }} />
                   <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                    <Text variant="bodySmall" style={{ fontWeight: '500' }}>{suggestion.city}</Text>
+                    <Text variant="bodySmall" style={{ fontWeight: '500' }}>{suggestion.name || suggestion.city}</Text>
                     <Text variant="caption" color="textMuted">
-                      {suggestion.postcode}
+                      {suggestion.city !== suggestion.name ? suggestion.city : ''} {suggestion.postcode}
                     </Text>
                   </View>
                 </Pressable>
@@ -1316,8 +1316,63 @@ export default function ProRegisterScreen() {
     </View>
   );
 
+  const applyPreset = (preset: 'classic' | 'morning' | 'split') => {
+    const presets: Record<string, Record<number, DayAvailability>> = {
+      classic: {
+        0: { isOpen: false, slots: [{ start: '09:00', end: '18:00' }] },
+        1: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        2: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        3: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        4: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        5: { isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        6: { isOpen: false, slots: [{ start: '09:00', end: '18:00' }] },
+      },
+      morning: {
+        0: { isOpen: false, slots: [{ start: '08:00', end: '13:00' }] },
+        1: { isOpen: true, slots: [{ start: '08:00', end: '13:00' }] },
+        2: { isOpen: true, slots: [{ start: '08:00', end: '13:00' }] },
+        3: { isOpen: true, slots: [{ start: '08:00', end: '13:00' }] },
+        4: { isOpen: true, slots: [{ start: '08:00', end: '13:00' }] },
+        5: { isOpen: true, slots: [{ start: '08:00', end: '13:00' }] },
+        6: { isOpen: false, slots: [{ start: '08:00', end: '13:00' }] },
+      },
+      split: {
+        0: { isOpen: false, slots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '19:00' }] },
+        1: { isOpen: true, slots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '19:00' }] },
+        2: { isOpen: true, slots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '19:00' }] },
+        3: { isOpen: true, slots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '19:00' }] },
+        4: { isOpen: true, slots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '19:00' }] },
+        5: { isOpen: true, slots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '19:00' }] },
+        6: { isOpen: false, slots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '19:00' }] },
+      },
+    };
+    updateField('availability', presets[preset]);
+  };
+
   const renderStep4 = () => (
     <View style={{ gap: spacing.sm }}>
+      {/* Quick presets */}
+      <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm }}>
+        {[
+          { key: 'classic' as const, label: '9h-18h', icon: 'time-outline' as const },
+          { key: 'morning' as const, label: '8h-13h', icon: 'sunny-outline' as const },
+          { key: 'split' as const, label: '9h-12h / 14h-19h', icon: 'swap-horizontal-outline' as const },
+        ].map((p) => (
+          <Pressable
+            key={p.key}
+            onPress={() => applyPreset(p.key)}
+            style={{
+              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+              paddingVertical: spacing.sm, borderRadius: radius.md,
+              borderWidth: 1, borderColor: colors.border, backgroundColor: 'rgba(255,255,255,0.8)',
+            }}
+          >
+            <Ionicons name={p.icon} size={14} color={colors.primary} />
+            <Text variant="caption" style={{ fontWeight: '600', color: colors.primary, fontSize: 11 }}>{p.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
       {SCHEDULE_DAYS.map(({ value, label }) => {
         const day = data.availability[value];
         return (

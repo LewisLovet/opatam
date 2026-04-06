@@ -539,7 +539,7 @@ export default function RegisterPage() {
           Nom du lieu
         </label>
         <select
-          value={['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau'].includes(data.locationName) ? data.locationName : '_other'}
+          value={['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne', 'Consultation téléphonique', 'Consultation vidéo'].includes(data.locationName) ? data.locationName : '_other'}
           onChange={(e) => {
             const val = e.target.value;
             if (val === '_other') {
@@ -556,9 +556,12 @@ export default function RegisterPage() {
           <option value="Mon atelier">Mon atelier</option>
           <option value="A domicile">A domicile</option>
           <option value="Mon bureau">Mon bureau</option>
+          <option value="RDV en ligne">RDV en ligne</option>
+          <option value="Consultation téléphonique">Consultation téléphonique</option>
+          <option value="Consultation vidéo">Consultation vidéo</option>
           <option value="_other">Autre...</option>
         </select>
-        {!['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau'].includes(data.locationName) && (
+        {!['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne', 'Consultation téléphonique', 'Consultation vidéo'].includes(data.locationName) && (
           <Input
             placeholder="Nom personnalise du lieu"
             value={data.locationName}

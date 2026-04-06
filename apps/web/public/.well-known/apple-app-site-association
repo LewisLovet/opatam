@@ -1,0 +1,24 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["9KX5T72C3J.com.kamerleontech.opatam"],
+        "components": [
+          {
+            "/": "/p/*",
+            "comment": "Provider public pages"
+          },
+          {
+            "/": "/avis/*",
+            "comment": "Review pages"
+          },
+          {
+            "/": "/reservation/confirmation/*",
+            "comment": "Booking confirmation pages"
+          }
+        ]
+      }
+    ]
+  }
+}

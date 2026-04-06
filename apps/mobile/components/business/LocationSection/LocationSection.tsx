@@ -64,8 +64,13 @@ function LocationCard({ location }: LocationCardProps) {
   const countryLabel = location.countryCode && location.countryCode !== 'FR'
     ? `, ${getCountryLabel(location.countryCode)}`
     : '';
+
+  // If address already contains the city (Google formatted address), don't duplicate
+  const addressContainsCity = hasStreetAddress && location.city && location.address.includes(location.city);
   const fullAddress = hasStreetAddress
-    ? `${location.address}, ${[location.postalCode, location.city].filter(Boolean).join(' ')}${countryLabel}`
+    ? addressContainsCity
+      ? location.address
+      : `${location.address}, ${[location.postalCode, location.city].filter(Boolean).join(' ')}${countryLabel}`
     : `${[location.postalCode, location.city].filter(Boolean).join(' ')}${countryLabel}`;
 
   const handleAddressPress = () => {

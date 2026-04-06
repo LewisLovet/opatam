@@ -21,6 +21,7 @@ export { requestPasswordReset } from './callable/requestPasswordReset';
 // Triggers
 export { onBookingWrite } from './triggers/onBookingWrite';
 export { onUserWrite, onProviderWrite, onBookingWriteStats, onReviewWrite } from './triggers/onStatsUpdate';
+export { onReviewCreate } from './triggers/onReviewCreate';
 
 // Scheduled
 export { recalculateExpiredSlots } from './scheduled/recalculateExpiredSlots';
@@ -28,6 +29,12 @@ export { sendBookingReminders } from './scheduled/sendBookingReminders';
 export { sendDailyAgendaSummary } from './scheduled/sendDailyAgendaSummary';
 export { aggregatePageViews } from './scheduled/aggregatePageViews';
 export { checkExpiredTrials } from './scheduled/checkExpiredTrials';
+export { sendSubscriptionReminders } from './scheduled/sendSubscriptionReminders';
+
+// ─── Notification test functions (prod-safe, admin-only) ───────────────────
+// These are deployed to production but require an authenticated admin user.
+export { testSubscriptionReminders } from './callable/testSubscriptionReminders';
+export { testReviewNotification } from './callable/testReviewNotification';
 
 // ─── Test/Dev callable functions (emulator only) ─────────────────────────────
 // These are only exported when running in the Firebase emulator.

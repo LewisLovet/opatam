@@ -23,6 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { reauthenticateUser, updateUserPassword } from '@booking-app/firebase';
 import { Card, Input, Text, useToast } from '../../../components';
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
+import { useBlockedSlots } from '../../../hooks';
 import { useTheme } from '../../../theme';
 
 /** Map internal plan IDs to user-facing labels */
@@ -296,6 +297,7 @@ function GridItem({
 function MenuItem({
   icon,
   label,
+  badge,
   onPress,
   showArrow = true,
   danger = false,
@@ -303,6 +305,7 @@ function MenuItem({
 }: {
   icon: string;
   label: string;
+  badge?: string | number | null;
   onPress: () => void;
   showArrow?: boolean;
   danger?: boolean;
@@ -325,6 +328,11 @@ function MenuItem({
       >
         {label}
       </Text>
+      {badge != null && (
+        <View style={{ backgroundColor: colors.primaryLight || '#e4effa', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginRight: 4 }}>
+          <Text variant="caption" color="primary" style={{ fontWeight: '700', fontSize: 11 }}>{badge}</Text>
+        </View>
+      )}
       {showArrow && (
         <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       )}
@@ -342,7 +350,8 @@ export default function MoreScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { signOut, deleteAccount, userData } = useAuth();
-  const { provider } = useProvider();
+  const { provider, providerId } = useProvider();
+  const { blockedSlots } = useBlockedSlots(providerId ?? null);
   const sub = useSubscriptionStatus();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -549,6 +558,9 @@ export default function MoreScreen() {
                     <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
                       {provider?.isPublished ? 'Votre page est visible en ligne' : 'Votre page n\'est pas encore publiée'}
                     </Text>
+                    <Text variant="caption" color="primary" style={{ marginTop: 4, fontWeight: '600' }}>
+                      Modifier ma page →
+                    </Text>
                   </View>
                   <View style={s.profileCardRight}>
                     <View style={[s.statusBadge, { backgroundColor: provider?.isPublished ? '#DCFCE7' : colors.surfaceSecondary }]}>
@@ -609,6 +621,7 @@ export default function MoreScreen() {
             <MenuItem
               icon="star-outline"
               label="Avis clients"
+              badge={provider?.rating?.count || null}
               onPress={() => router.push('/(pro)/reviews')}
               colors={colors}
             />
@@ -616,6 +629,7 @@ export default function MoreScreen() {
             <MenuItem
               icon="ban-outline"
               label="Créneaux bloqués"
+              badge={blockedSlots?.length || null}
               onPress={() => router.push('/(pro)/blocked-slots')}
               colors={colors}
             />
@@ -713,7 +727,7 @@ export default function MoreScreen() {
         {/* App Info */}
         <View style={s.appInfo}>
           <Text variant="caption" color="textMuted" align="center">
-            Opatam v1.0.4
+            Opatam v1.3.1
           </Text>
           <Text variant="caption" color="textMuted" align="center" style={{ marginTop: 4 }}>
             Gérez votre activité en toute simplicité

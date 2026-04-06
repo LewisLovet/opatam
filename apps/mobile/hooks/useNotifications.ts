@@ -3,11 +3,12 @@
  * Handles push notification registration and token management
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import * as Notifications from 'expo-notifications';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { userRepository } from '@booking-app/firebase';
-import { registerForPushNotifications } from '../utils/notifications';
+import { registerForPushNotifications, getNotificationPermissionStatus } from '../utils/notifications';
 
 interface NotificationResponse {
   notification: Notifications.Notification;
@@ -21,10 +22,12 @@ interface NotificationResponse {
  */
 export function useNotifications() {
   const { user, userData } = useAuth();
+  const router = useRouter();
   const currentTokenRef = useRef<string | null>(null);
   const previousUidRef = useRef<string | null>(null);
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
+  const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
 
   /**
    * Register for push notifications and save token
@@ -58,26 +61,69 @@ export function useNotifications() {
    * Handle notification response (when user taps on notification)
    */
   const handleNotificationResponse = useCallback((response: NotificationResponse) => {
-    console.log('Notification tapped:', response);
     const data = response.notification.request.content.data;
+    if (!data?.bookingId) return;
 
-    // Handle navigation based on notification data
-    if (data?.type === 'booking_reminder') {
-      // Navigate to booking details
-      // router.push(`/bookings/${data.bookingId}`);
-    } else if (data?.type === 'new_message') {
-      // Navigate to conversation
-      // router.push(`/messages/${data.conversationId}`);
+    const bookingId = data.bookingId as string;
+
+    // Pro notifications → pro booking detail
+    if (data.type === 'new_booking') {
+      router.push(`/(pro)/booking-detail/${bookingId}`);
+      return;
     }
-    // Add more notification types as needed
-  }, []);
 
-  // Register for notifications when user is authenticated
+    // Client notifications → client booking detail
+    if (['booking_confirmed', 'booking_cancelled_by_provider', 'booking_rescheduled', 'booking_reminder'].includes(data.type as string)) {
+      router.push(`/(client)/booking-detail/${bookingId}`);
+      return;
+    }
+
+    // Provider cancelled by client → pro booking detail
+    if (data.type === 'booking_cancelled_by_client') {
+      router.push(`/(pro)/booking-detail/${bookingId}`);
+      return;
+    }
+
+    // New review → pro reviews page
+    if (data.type === 'new_review') {
+      router.push('/(pro)/reviews');
+      return;
+    }
+
+    // Subscription expiry / unpublished reminder → pro settings
+    if (data.type === 'subscription_expiry' || data.type === 'unpublished_reminder') {
+      router.push('/(pro)/paywall');
+      return;
+    }
+
+    // Fallback
+    router.push(`/(client)/booking-detail/${bookingId}`);
+  }, [router]);
+
+  // Check permission and show pre-prompt if needed
   useEffect(() => {
-    if (user?.uid && userData) {
-      registerAndSaveToken();
-    }
+    if (!user?.uid || !userData) return;
+
+    (async () => {
+      const status = await getNotificationPermissionStatus();
+      if (status === 'granted') {
+        registerAndSaveToken();
+      } else if (status === 'undetermined') {
+        setShowPermissionPrompt(true);
+      }
+    })();
   }, [user?.uid, userData, registerAndSaveToken]);
+
+  // Called when user accepts the pre-prompt
+  const acceptNotifications = useCallback(async () => {
+    setShowPermissionPrompt(false);
+    await registerAndSaveToken();
+  }, [registerAndSaveToken]);
+
+  // Called when user declines the pre-prompt
+  const declineNotifications = useCallback(() => {
+    setShowPermissionPrompt(false);
+  }, []);
 
   // Set up notification listeners
   useEffect(() => {
@@ -89,10 +135,10 @@ export function useNotifications() {
 
     return () => {
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+        notificationListener.current.remove();
       }
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        responseListener.current.remove();
       }
     };
   }, [handleNotification, handleNotificationResponse]);
@@ -117,5 +163,8 @@ export function useNotifications() {
   return {
     registerAndSaveToken,
     currentToken: currentTokenRef.current,
+    showPermissionPrompt,
+    acceptNotifications,
+    declineNotifications,
   };
 }

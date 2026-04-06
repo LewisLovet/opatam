@@ -329,11 +329,19 @@ export default function ProfileScreen() {
 
     setSavingSocial(true);
     try {
+      // Auto-prefix usernames with full URLs
+      const formatSocial = (value: string, prefix: string) => {
+        const v = value.trim();
+        if (!v) return null;
+        if (v.startsWith('http://') || v.startsWith('https://')) return v;
+        return `${prefix}${v.replace(/^@/, '')}`;
+      };
+
       await providerService.updateProvider(providerId, {
         socialLinks: {
-          instagram: socialForm.instagram.trim() || null,
-          facebook: socialForm.facebook.trim() || null,
-          tiktok: socialForm.tiktok.trim() || null,
+          instagram: formatSocial(socialForm.instagram, 'https://www.instagram.com/'),
+          facebook: formatSocial(socialForm.facebook, 'https://www.facebook.com/'),
+          tiktok: formatSocial(socialForm.tiktok, 'https://www.tiktok.com/@'),
           website: socialForm.website.trim() || null,
           paypal: socialForm.paypal.trim() || null,
         },
@@ -1034,10 +1042,11 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <Input
                       label="Instagram"
-                      placeholder="votre.compte"
+                      placeholder="https://instagram.com/votre_compte"
                       value={socialForm.instagram}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, instagram: v }))}
                       autoCapitalize="none"
+                      hint="Collez le lien de votre profil Instagram"
                     />
                   </View>
                 </View>
@@ -1049,10 +1058,11 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <Input
                       label="Facebook"
-                      placeholder="URL ou nom de page"
+                      placeholder="https://facebook.com/votre_page"
                       value={socialForm.facebook}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, facebook: v }))}
                       autoCapitalize="none"
+                      hint="Collez le lien de votre page Facebook"
                     />
                   </View>
                 </View>
@@ -1064,10 +1074,11 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <Input
                       label="TikTok"
-                      placeholder="@votre.compte"
+                      placeholder="https://tiktok.com/@votre_compte"
                       value={socialForm.tiktok}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, tiktok: v }))}
                       autoCapitalize="none"
+                      hint="Collez le lien de votre profil TikTok"
                     />
                   </View>
                 </View>
@@ -1233,6 +1244,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 160,
     backgroundColor: '#FFFFFF',
+    resizeMode: 'cover' as const,
   },
   coverPlaceholder: {
     width: '100%',

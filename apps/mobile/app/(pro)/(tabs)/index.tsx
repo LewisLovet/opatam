@@ -44,9 +44,10 @@ const LazyShareFAB = lazy(() =>
   import('../../../components/StoryShare/ShareFAB').then((m) => ({ default: m.ShareFAB }))
 );
 
-/** Error boundary — swallows crashes from native module loading failures */
+/** Error boundary — swallows crashes from native module loading failures.
+ *  Resets on each new render cycle (key change) so it can retry. */
 class NativeModuleBoundary extends React.Component<
-  { children: React.ReactNode },
+  { children: React.ReactNode; resetKey?: any },
   { hasError: boolean }
 > {
   state = { hasError: false };
@@ -55,6 +56,12 @@ class NativeModuleBoundary extends React.Component<
   }
   componentDidCatch(error: Error) {
     console.warn('[NativeModuleBoundary] Caught error:', error.message);
+  }
+  componentDidUpdate(prevProps: { resetKey?: any }) {
+    // Reset error state when resetKey changes (e.g. modal re-opened)
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
   }
   render() {
     return this.state.hasError ? null : this.props.children;
@@ -65,6 +72,74 @@ import { useProviderDashboard, useProviderStats, useReviews } from '../../../hoo
 import { useTheme } from '../../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// ── Share Suggestion Banner (swipe to dismiss) ─────────────────────────────
+
+function ShareSuggestionBanner({
+  onShare,
+  onDismiss,
+  spacing,
+  radius,
+}: {
+  onShare: () => void;
+  onDismiss: () => void;
+  spacing: any;
+  radius: any;
+}) {
+  return (
+    <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EFF6FF',
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        padding: spacing.md,
+        gap: spacing.sm,
+      }}>
+        <View style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: '#DBEAFE',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Ionicons name="share-social-outline" size={20} color="#2563EB" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text variant="bodySmall" style={{ fontWeight: '600', color: '#1E40AF' }}>
+            Gagnez en visibilite !
+          </Text>
+          <Text variant="caption" style={{ color: '#3B82F6', marginTop: 2 }}>
+            Partagez votre page pour attirer vos clients du jour.
+          </Text>
+        </View>
+        <View style={{ alignItems: 'center', gap: 6 }}>
+          <Pressable
+            onPress={onShare}
+            style={{
+              backgroundColor: '#2563EB',
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.xs,
+              borderRadius: radius.md,
+            }}
+          >
+            <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+              Partager
+            </Text>
+          </Pressable>
+          <Pressable onPress={onDismiss} hitSlop={12}>
+            <Text variant="caption" style={{ color: '#93C5FD', fontSize: 11 }}>
+              Masquer
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
 const STAT_CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const STAT_CARD_MARGIN = 12;
 
@@ -333,11 +408,8 @@ function StatCardMonth({ revenue, completionRate, bookingsCount, onPress }: { re
         <Ionicons name="wallet-outline" size={18} color={colors.success} />
         <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500' }}>Ce mois</Text>
       </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: spacing.sm }}>
+      <View style={{ marginBottom: spacing.sm }}>
         <Text variant="h2" style={{ fontWeight: '800' }}>{formatPrice(revenue)}</Text>
-        <View style={[styles.completionBadge, { backgroundColor: rateColor + '18', borderRadius: radius.full }]}>
-          <Text variant="bodySmall" style={{ fontWeight: '700', color: rateColor }}>{completionRate}%</Text>
-        </View>
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text variant="caption" color="textMuted">{bookingsCount} RDV ce mois</Text>
@@ -418,6 +490,11 @@ export default function ProDashboardScreen() {
   const navigateToBooking = useCallback((bookingId: string) => {
     router.push(`/(pro)/booking-detail/${bookingId}`);
   }, [router]);
+
+  // -- Share suggestion banner (< 10 views today, published only, local state) --
+  const [sharebannerDismissed, setShareBannerDismissed] = useState(false);
+  const todayViews = liveViews?.today ?? pageViews?.today ?? 0;
+  const showShareBanner = !sharebannerDismissed && todayViews < 10 && provider?.isPublished === true;
 
   // -- Share establishment ---------------------------------------------------
 
@@ -713,6 +790,16 @@ export default function ProDashboardScreen() {
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
             <TrialReminderBanner daysRemaining={sub.daysRemaining} />
           </View>
+        )}
+
+        {/* ── Share suggestion banner (< 10 views today, swipe to dismiss) ── */}
+        {showShareBanner && (
+          <ShareSuggestionBanner
+            onShare={() => setShowStoryModal(true)}
+            onDismiss={() => setShareBannerDismissed(true)}
+            spacing={spacing}
+            radius={radius}
+          />
         )}
 
         {/* ── Setup Alerts ── */}
@@ -1289,7 +1376,7 @@ export default function ProDashboardScreen() {
 
       {/* Share FAB — lazy loaded with error boundary for native module safety */}
       {shopUrl && (
-        <NativeModuleBoundary>
+        <NativeModuleBoundary resetKey={shopUrl}>
           <Suspense fallback={null}>
             <LazyShareFAB
               shopUrl={shopUrl}
@@ -1301,7 +1388,7 @@ export default function ProDashboardScreen() {
       )}
 
       {/* Story Share Modal — lazy loaded with error boundary */}
-      <NativeModuleBoundary>
+      <NativeModuleBoundary resetKey={showStoryModal}>
         <Suspense fallback={null}>
           <LazyStoryShareModal
             visible={showStoryModal}

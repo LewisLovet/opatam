@@ -47,6 +47,7 @@ export const providerSettingsSchema = z.object({
     .max(1000, { message: 'Le texte ne peut pas dépasser 1000 caractères' })
     .nullable()
     .optional(),
+  autoReviewReminder: z.boolean().optional(),
 });
 
 // Create provider schema - MINIMUM requis pour creer un provider

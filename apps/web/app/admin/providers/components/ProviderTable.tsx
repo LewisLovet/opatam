@@ -111,10 +111,15 @@ export function ProviderTable({ items }: ProviderTableProps) {
                         {categoryLabels[provider.category] || provider.category}
                         {provider.cities.length > 0 && ` \u00b7 ${provider.cities[0]}`}
                       </p>
-                      {!provider.region && (
+                      {!provider.region && (!provider.countryCode || provider.countryCode === 'FR') && (
                         <span className="inline-flex items-center gap-0.5 text-[10px] text-red-500 mt-0.5">
                           <AlertTriangle className="w-3 h-3" />
                           Région manquante
+                        </span>
+                      )}
+                      {provider.countryCode && provider.countryCode !== 'FR' && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 mt-0.5">
+                          {provider.countryCode}
                         </span>
                       )}
                     </div>
@@ -206,10 +211,15 @@ export function ProviderTable({ items }: ProviderTableProps) {
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {categoryLabels[provider.category] || provider.category}
                 </p>
-                {!provider.region && (
+                {!provider.region && (!provider.countryCode || provider.countryCode === 'FR') && (
                   <span className="inline-flex items-center gap-0.5 text-[10px] text-red-500">
                     <AlertTriangle className="w-3 h-3" />
                     Région manquante
+                  </span>
+                )}
+                {provider.countryCode && provider.countryCode !== 'FR' && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-500">
+                    {provider.countryCode}
                   </span>
                 )}
               </div>

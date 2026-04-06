@@ -180,16 +180,6 @@ export default function ProNotificationSettingsScreen() {
             />
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingRow
-              icon="checkmark-circle-outline"
-              label="Confirmations"
-              description="Quand un RDV est confirmé"
-              value={prefs.confirmationNotifications}
-              onValueChange={(val) => updatePref('confirmationNotifications', val)}
-              disabled={channelsDisabled}
-              colors={colors}
-            />
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <SettingRow
               icon="close-circle-outline"
               label="Annulations"
               description="Quand un RDV est annulé"

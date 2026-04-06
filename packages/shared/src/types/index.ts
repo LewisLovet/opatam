@@ -122,6 +122,7 @@ export interface ProviderSettings {
   slotInterval?: number;             // Minutes between each bookable slot (default: 15)
   notificationPreferences?: ProviderNotificationPreferences;
   bookingNotice?: string | null;     // Texte libre affiche avant confirmation de reservation
+  autoReviewReminder?: boolean;      // Envoyer automatiquement une demande d'avis apres chaque RDV (default: true)
 }
 
 export type PaymentSource = 'stripe' | 'apple' | 'google' | null;

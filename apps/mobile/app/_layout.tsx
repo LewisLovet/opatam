@@ -5,7 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '../theme';
 import { ToastProvider, NotificationInitializer } from '../components';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
-import { useAppReady } from '../hooks';
+import { useAppReady, useDeepLinks } from '../hooks';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -13,6 +13,9 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
 
   const { isReady, onLayoutRootView } = useAppReady();
+
+  // Handle deep links (universal links)
+  useDeepLinks();
 
   // Don't render anything until ready
   if (!isReady) {

@@ -430,6 +430,14 @@ export default function ServicesScreen() {
       >
         <Card padding="md" shadow="sm">
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            {/* Photo thumbnail */}
+            {service.photoURL && (
+              <Image
+                source={{ uri: service.photoURL }}
+                style={{ width: 48, height: 48, borderRadius: 8, marginRight: spacing.sm }}
+                resizeMode="cover"
+              />
+            )}
             <View style={{ flex: 1, marginRight: spacing.md }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                 <Text variant="body" style={{ fontWeight: '600' }}>{service.name}</Text>

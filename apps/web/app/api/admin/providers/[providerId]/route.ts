@@ -31,13 +31,13 @@ export async function GET(
 
     const providerData = providerDoc.data()!;
 
-    // Fetch related data in parallel (select() for bookings: downloads only doc IDs, not full data)
+    // Fetch related data in parallel
     const [userDoc, servicesSnap, membersSnap, locationsSnap, bookingsSnap] = await Promise.all([
       db.collection('users').doc(providerData.userId).get(),
       db.collection('providers').doc(providerId).collection('services').get(),
       db.collection('providers').doc(providerId).collection('members').get(),
       db.collection('providers').doc(providerId).collection('locations').get(),
-      db.collection('bookings').where('providerId', '==', providerId).select('status').get(),
+      db.collection('bookings').where('providerId', '==', providerId).select('status', 'clientInfo', 'serviceName', 'memberName', 'datetime', 'createdAt', 'price').orderBy('datetime', 'desc').limit(50).get(),
     ]);
 
     const userData = userDoc.exists ? userDoc.data()! : null;
@@ -71,6 +71,7 @@ export async function GET(
       isVerified: providerData.isVerified || false,
       cities: providerData.cities || [],
       region: providerData.region || null,
+      countryCode: providerData.countryCode || 'FR',
       createdAt: providerData.createdAt?.toDate?.()?.toISOString() || null,
       updatedAt: providerData.updatedAt?.toDate?.()?.toISOString() || null,
     };
@@ -128,7 +129,7 @@ export async function GET(
       };
     });
 
-    // Booking stats (from select('status') — only status field downloaded, not full docs)
+    // Booking stats + recent bookings from the same query
     const bookingStats = {
       total: bookingsSnap.size,
       pending: 0,
@@ -137,10 +138,27 @@ export async function GET(
       noshow: 0,
     };
 
-    bookingsSnap.docs.forEach((doc) => {
-      const status = doc.data().status;
+    const recentBookings: any[] = [];
+
+    bookingsSnap.docs.forEach((doc, index) => {
+      const d = doc.data();
+      const status = d.status;
       if (status in bookingStats) {
         (bookingStats as any)[status]++;
+      }
+      // Take first 10 as recent bookings (already sorted by datetime desc)
+      if (index < 10) {
+        recentBookings.push({
+          id: doc.id,
+          clientName: d.clientInfo?.name || 'Client inconnu',
+          clientEmail: d.clientInfo?.email || null,
+          serviceName: d.serviceName || '—',
+          memberName: d.memberName || null,
+          status: d.status,
+          datetime: d.datetime?.toDate?.()?.toISOString() || null,
+          createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+          price: d.price || 0,
+        });
       }
     });
 
@@ -151,6 +169,7 @@ export async function GET(
       members,
       locations,
       bookingStats,
+      recentBookings,
     });
   } catch (error) {
     console.error('[admin/providers/[providerId]] Error:', error);
