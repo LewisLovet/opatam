@@ -541,6 +541,41 @@ export default function MoreScreen() {
           </Pressable>
         )}
 
+        {/* Mon enseigne — grille d'icônes */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Mon enseigne
+          </Text>
+          <Card padding="md" shadow="sm">
+            <View style={s.grid}>
+              <GridItem
+                icon="cut-outline"
+                label="Prestations"
+                onPress={() => router.push('/(pro)/services')}
+                colors={colors}
+              />
+              <GridItem
+                icon="location-outline"
+                label="Lieux"
+                onPress={() => router.push('/(pro)/locations')}
+                colors={colors}
+              />
+              <GridItem
+                icon="people-outline"
+                label="Équipe"
+                onPress={() => router.push('/(pro)/members')}
+                colors={colors}
+              />
+              <GridItem
+                icon="time-outline"
+                label="Disponibilités"
+                onPress={() => router.push('/(pro)/availability')}
+                colors={colors}
+              />
+            </View>
+          </Card>
+        </View>
+
         {/* Profil public — carte mise en avant */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Pressable
@@ -575,41 +610,6 @@ export default function MoreScreen() {
               </View>
             </View>
           </Pressable>
-        </View>
-
-        {/* Mon enseigne — grille d'icônes */}
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
-          <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Mon enseigne
-          </Text>
-          <Card padding="md" shadow="sm">
-            <View style={s.grid}>
-              <GridItem
-                icon="cut-outline"
-                label="Prestations"
-                onPress={() => router.push('/(pro)/services')}
-                colors={colors}
-              />
-              <GridItem
-                icon="location-outline"
-                label="Lieux"
-                onPress={() => router.push('/(pro)/locations')}
-                colors={colors}
-              />
-              <GridItem
-                icon="people-outline"
-                label="Équipe"
-                onPress={() => router.push('/(pro)/members')}
-                colors={colors}
-              />
-              <GridItem
-                icon="time-outline"
-                label="Disponibilités"
-                onPress={() => router.push('/(pro)/availability')}
-                colors={colors}
-              />
-            </View>
-          </Card>
         </View>
 
         {/* Gestion */}

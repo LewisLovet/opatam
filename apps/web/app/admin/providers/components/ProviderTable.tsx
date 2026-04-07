@@ -16,6 +16,7 @@ interface ProviderItem {
   rating: { average: number; count: number };
   cities: string[];
   region: string | null;
+  countryCode: string | null;
   createdAt: string | null;
 }
 
