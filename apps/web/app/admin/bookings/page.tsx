@@ -7,6 +7,7 @@ import type { BookingFilters as BookingFiltersType, PaginatedResult } from '@/se
 import { BookingFilters, BookingTable } from './components';
 import { Loader } from '@/components/ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import type { BookingStatus } from '@booking-app/shared';
 
 export default function AdminBookingsPage() {
   const { user } = useAuth();
@@ -37,15 +38,22 @@ export default function AdminBookingsPage() {
     setPage(1);
   }, [filters]);
 
+  const handleStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
+    if (!user?.id) return;
+    await adminBookingService.updateBookingStatus(user.id, bookingId, newStatus);
+    // Refresh list to reflect change
+    await loadBookings();
+  };
+
   const totalPages = result ? Math.ceil(result.total / result.pageSize) : 0;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">R&eacute;servations</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Réservations</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {result ? `${result.total} r\u00e9servation${result.total > 1 ? 's' : ''}` : 'Chargement...'}
+          {result ? `${result.total} réservation${result.total > 1 ? 's' : ''}` : 'Chargement...'}
         </p>
       </div>
 
@@ -59,7 +67,7 @@ export default function AdminBookingsPage() {
         </div>
       ) : (
         <>
-          <BookingTable items={result?.items || []} />
+          <BookingTable items={result?.items || []} onStatusChange={handleStatusChange} />
 
           {/* Pagination */}
           {totalPages > 1 && (

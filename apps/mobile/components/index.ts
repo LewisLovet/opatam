@@ -73,6 +73,7 @@ export * from './business';
 
 // Notification Initializer
 export { NotificationInitializer } from './NotificationInitializer';
+export { NotificationPermissionPrompt } from './NotificationPermissionPrompt';
 
 // Logo
 export { Logo, LogoWhite } from './Logo';

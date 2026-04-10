@@ -139,7 +139,7 @@ export function Header({
                       active:translate-y-0 active:shadow-[0_1px_2px_rgba(0,0,0,0.1),0_2px_6px_var(--color-primary-600)/20]
                     "
                   >
-                    <span className="relative z-10">Essai gratuit</span>
+                    <span className="relative z-10">Creer ma page</span>
                     {/* Inner highlight */}
                     <div className="absolute inset-x-0 top-0 h-px bg-white/25 rounded-full" />
                   </Link>

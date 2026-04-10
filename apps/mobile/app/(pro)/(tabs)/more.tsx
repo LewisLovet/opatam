@@ -23,6 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { reauthenticateUser, updateUserPassword } from '@booking-app/firebase';
 import { Card, Input, Text, useToast } from '../../../components';
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
+import { useBlockedSlots } from '../../../hooks';
 import { useTheme } from '../../../theme';
 
 /** Map internal plan IDs to user-facing labels */
@@ -296,6 +297,7 @@ function GridItem({
 function MenuItem({
   icon,
   label,
+  badge,
   onPress,
   showArrow = true,
   danger = false,
@@ -303,6 +305,7 @@ function MenuItem({
 }: {
   icon: string;
   label: string;
+  badge?: string | number | null;
   onPress: () => void;
   showArrow?: boolean;
   danger?: boolean;
@@ -325,6 +328,11 @@ function MenuItem({
       >
         {label}
       </Text>
+      {badge != null && (
+        <View style={{ backgroundColor: colors.primaryLight || '#e4effa', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginRight: 4 }}>
+          <Text variant="caption" color="primary" style={{ fontWeight: '700', fontSize: 11 }}>{badge}</Text>
+        </View>
+      )}
       {showArrow && (
         <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       )}
@@ -342,7 +350,8 @@ export default function MoreScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { signOut, deleteAccount, userData } = useAuth();
-  const { provider } = useProvider();
+  const { provider, providerId } = useProvider();
+  const { blockedSlots } = useBlockedSlots(providerId ?? null);
   const sub = useSubscriptionStatus();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -435,10 +444,12 @@ export default function MoreScreen() {
         <Pressable
           onPress={() => {
             if (sub.isActive) {
-              if (Platform.OS === 'ios') {
-                Linking.openURL('https://apps.apple.com/account/subscriptions');
-              } else {
+              if (sub.paymentSource === 'stripe') {
+                Linking.openURL('https://opatam.com/pro/abonnement');
+              } else if (sub.paymentSource === 'google' || Platform.OS === 'android') {
                 Linking.openURL('https://play.google.com/store/account/subscriptions');
+              } else {
+                Linking.openURL('https://apps.apple.com/account/subscriptions');
               }
             } else {
               router.push('/(pro)/paywall');
@@ -491,7 +502,7 @@ export default function MoreScreen() {
               </Text>
               <Text style={s.subCardSubtitle}>
                 {sub.isActive
-                  ? 'Votre abonnement est actif'
+                  ? `Votre abonnement est actif${sub.paymentSource === 'stripe' ? ' · via le web' : sub.paymentSource === 'apple' ? ' · via Apple' : sub.paymentSource === 'google' ? ' · via Google Play' : ''}`
                   : sub.isTrialing
                     ? 'Profitez de toutes les fonctionnalités'
                     : 'Abonnez-vous pour continuer'}
@@ -530,39 +541,6 @@ export default function MoreScreen() {
           </Pressable>
         )}
 
-        {/* Profil public — carte mise en avant */}
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
-          <Pressable
-            onPress={() => router.push('/(pro)/profile')}
-            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-          >
-            <View style={[s.profileCard, { borderColor: provider?.isPublished ? '#BBF7D0' : colors.border }]}>
-              <View style={[s.profileCardGradient, { backgroundColor: provider?.isPublished ? '#F0FDF4' : colors.surfaceSecondary }]}>
-                <View style={s.profileCardContent}>
-                  <View style={[s.profileCardIcon, { backgroundColor: provider?.isPublished ? '#DCFCE7' : (colors.primaryLight || '#e4effa') }]}>
-                    <Ionicons name="globe-outline" size={22} color={provider?.isPublished ? '#16A34A' : colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text variant="body" style={{ fontWeight: '600' }}>Ma vitrine</Text>
-                    <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                      {provider?.isPublished ? 'Votre page est visible en ligne' : 'Votre page n\'est pas encore publiée'}
-                    </Text>
-                  </View>
-                  <View style={s.profileCardRight}>
-                    <View style={[s.statusBadge, { backgroundColor: provider?.isPublished ? '#DCFCE7' : colors.surfaceSecondary }]}>
-                      <View style={[s.statusDot, { backgroundColor: provider?.isPublished ? '#16A34A' : colors.textMuted }]} />
-                      <Text variant="caption" style={{ fontWeight: '600', color: provider?.isPublished ? '#16A34A' : colors.textMuted, fontSize: 11 }}>
-                        {provider?.isPublished ? 'En ligne' : 'Hors ligne'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginTop: 4 }} />
-                  </View>
-                </View>
-              </View>
-            </View>
-          </Pressable>
-        </View>
-
         {/* Mon enseigne — grille d'icônes */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
@@ -598,6 +576,42 @@ export default function MoreScreen() {
           </Card>
         </View>
 
+        {/* Profil public — carte mise en avant */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          <Pressable
+            onPress={() => router.push('/(pro)/profile')}
+            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+          >
+            <View style={[s.profileCard, { borderColor: provider?.isPublished ? '#BBF7D0' : colors.border }]}>
+              <View style={[s.profileCardGradient, { backgroundColor: provider?.isPublished ? '#F0FDF4' : colors.surfaceSecondary }]}>
+                <View style={s.profileCardContent}>
+                  <View style={[s.profileCardIcon, { backgroundColor: provider?.isPublished ? '#DCFCE7' : (colors.primaryLight || '#e4effa') }]}>
+                    <Ionicons name="globe-outline" size={22} color={provider?.isPublished ? '#16A34A' : colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body" style={{ fontWeight: '600' }}>Ma vitrine</Text>
+                    <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                      {provider?.isPublished ? 'Votre page est visible en ligne' : 'Votre page n\'est pas encore publiée'}
+                    </Text>
+                    <Text variant="caption" color="primary" style={{ marginTop: 4, fontWeight: '600' }}>
+                      Modifier ma page →
+                    </Text>
+                  </View>
+                  <View style={s.profileCardRight}>
+                    <View style={[s.statusBadge, { backgroundColor: provider?.isPublished ? '#DCFCE7' : colors.surfaceSecondary }]}>
+                      <View style={[s.statusDot, { backgroundColor: provider?.isPublished ? '#16A34A' : colors.textMuted }]} />
+                      <Text variant="caption" style={{ fontWeight: '600', color: provider?.isPublished ? '#16A34A' : colors.textMuted, fontSize: 11 }}>
+                        {provider?.isPublished ? 'En ligne' : 'Hors ligne'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginTop: 4 }} />
+                  </View>
+                </View>
+              </View>
+            </View>
+          </Pressable>
+        </View>
+
         {/* Gestion */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
@@ -607,6 +621,7 @@ export default function MoreScreen() {
             <MenuItem
               icon="star-outline"
               label="Avis clients"
+              badge={provider?.rating?.count || null}
               onPress={() => router.push('/(pro)/reviews')}
               colors={colors}
             />
@@ -614,6 +629,7 @@ export default function MoreScreen() {
             <MenuItem
               icon="ban-outline"
               label="Créneaux bloqués"
+              badge={blockedSlots?.length || null}
               onPress={() => router.push('/(pro)/blocked-slots')}
               colors={colors}
             />
@@ -711,7 +727,7 @@ export default function MoreScreen() {
         {/* App Info */}
         <View style={s.appInfo}>
           <Text variant="caption" color="textMuted" align="center">
-            Opatam v1.0.4
+            Opatam v1.3.1
           </Text>
           <Text variant="caption" color="textMuted" align="center" style={{ marginTop: 4 }}>
             Gérez votre activité en toute simplicité

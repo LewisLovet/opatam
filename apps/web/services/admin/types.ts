@@ -192,4 +192,15 @@ export interface ProviderDetail {
     cancelled: number;
     noshow: number;
   };
+  recentBookings: {
+    id: string;
+    clientName: string;
+    clientEmail: string | null;
+    serviceName: string;
+    memberName: string | null;
+    status: string;
+    datetime: string | null;
+    createdAt: string | null;
+    price: number;
+  }[];
 }

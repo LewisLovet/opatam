@@ -33,6 +33,7 @@ export interface ServiceCategoryProps {
     id: string;
     name: string;
     description?: string | null;
+    photoURL?: string | null;
     duration: number;
     price: number;
   }>;
@@ -222,6 +223,7 @@ export function ServiceCategory({
               key={service.id}
               name={service.name}
               description={service.description}
+              photoURL={service.photoURL}
               duration={service.duration}
               price={service.price}
               selected={selectedId === service.id}

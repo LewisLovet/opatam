@@ -2,7 +2,7 @@
   "expo": {
     "name": "Opatam",
     "slug": "opatam",
-    "version": "1.2.6.1",
+    "version": "1.3.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "opatam",
@@ -22,6 +22,10 @@
       "bundleIdentifier": "com.kamerleontech.opatam",
       "usesAppleSignIn": true,
       "googleServicesFile": "./GoogleService-Info.plist",
+      "associatedDomains": [
+        "applinks:opatam.com",
+        "applinks:www.opatam.com"
+      ],
       "infoPlist": {
         "CFBundleDevelopmentRegion": "fr",
         "UIBackgroundModes": [
@@ -42,13 +46,25 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 2,
+      "versionCode": 3,
       "package": "com.kamerleontech.opatam",
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "opatam.com", "pathPrefix": "/p/" },
+            { "scheme": "https", "host": "opatam.com", "pathPrefix": "/avis/" },
+            { "scheme": "https", "host": "opatam.com", "pathPrefix": "/reservation/confirmation/" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "notification": {

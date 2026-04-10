@@ -10,12 +10,14 @@ import {
   Input,
   Textarea,
   Checkbox,
-  AddressAutocomplete,
+  GoogleAddressAutocomplete,
+  CountrySelect,
   ConfirmDialog,
-  type AddressSuggestion,
+  type GoogleAddressSuggestion,
 } from '@/components/ui';
 import { Loader2, Trash2, Building2, Car } from 'lucide-react';
 import type { Location, LocationType } from '@booking-app/shared';
+import { isValidPostalCode } from '@booking-app/shared/schemas';
 
 type WithId<T> = { id: string } & T;
 
@@ -32,6 +34,7 @@ export interface LocationFormData {
   address: string;
   postalCode: string;
   city: string;
+  countryCode: string;
   description: string | null;
   isDefault: boolean;
   type: LocationType;
@@ -59,6 +62,7 @@ export function LocationModal({
     address: '',
     postalCode: '',
     city: '',
+    countryCode: 'FR',
     description: null,
     isDefault: false,
     type: 'fixed',
@@ -74,6 +78,7 @@ export function LocationModal({
           address: location.address,
           postalCode: location.postalCode,
           city: location.city,
+          countryCode: location.countryCode || 'FR',
           description: location.description,
           isDefault: location.isDefault,
           type: location.type || 'fixed',
@@ -86,6 +91,7 @@ export function LocationModal({
           address: '',
           postalCode: '',
           city: '',
+          countryCode: 'FR',
           description: null,
           isDefault: false,
           type: 'fixed',
@@ -138,14 +144,14 @@ export function LocationModal({
     setErrors((prev) => ({ ...prev, travelRadius: '' }));
   };
 
-  const handleAddressSelect = (suggestion: AddressSuggestion) => {
+  const handleAddressSelect = (suggestion: GoogleAddressSuggestion) => {
     setFormData((prev) => ({
       ...prev,
-      address: suggestion.label,
-      postalCode: suggestion.postcode,
-      city: suggestion.city,
+      address: suggestion.formattedAddress,
+      postalCode: suggestion.postalCode ?? '',
+      city: suggestion.locality ?? '',
       geopoint: suggestion.coordinates,
-      region: suggestion.region,
+      region: suggestion.adminArea1,
     }));
     setErrors((prev) => ({ ...prev, address: '', postalCode: '', city: '' }));
   };
@@ -164,8 +170,6 @@ export function LocationModal({
         // City-only: must select a city from autocomplete
         if (!formData.city?.trim()) {
           newErrors.city = 'Veuillez sélectionner une ville';
-        } else if (!formData.postalCode?.trim()) {
-          newErrors.city = 'Veuillez sélectionner une ville dans la liste';
         }
       } else {
         // Full address: must select from autocomplete
@@ -177,10 +181,12 @@ export function LocationModal({
       }
     }
 
-    if (!formData.postalCode?.trim()) {
+    // Postal code: required for full address, optional for city-only
+    if (!cityOnly && formData.postalCode?.trim() && !isValidPostalCode(formData.postalCode, formData.countryCode)) {
+      newErrors.postalCode = 'Code postal invalide';
+    }
+    if (!cityOnly && !formData.postalCode?.trim()) {
       newErrors.postalCode = 'Le code postal est requis';
-    } else if (!/^\d{5}$/.test(formData.postalCode)) {
-      newErrors.postalCode = 'Le code postal doit contenir 5 chiffres';
     }
 
     if (!formData.city?.trim()) {
@@ -327,31 +333,67 @@ export function LocationModal({
 
           {/* City-only option for fixed type */}
           {formData.type === 'fixed' && (
-            <Checkbox
-              name="cityOnly"
-              checked={cityOnly}
-              onChange={(e) => {
-                const checked = e.target.checked;
-                setCityOnly(checked);
-                if (checked) {
-                  setFormData((prev) => ({
-                    ...prev,
-                    address: '',
-                    geopoint: null,
-                    postalCode: '',
-                    city: '',
-                  }));
-                }
-                setErrors((prev) => ({ ...prev, address: '', city: '', postalCode: '' }));
-              }}
-              label="Ville uniquement"
-              description="Ne pas afficher d'adresse précise"
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Type de localisation
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCityOnly(false);
+                    setErrors((prev) => ({ ...prev, address: '', city: '', postalCode: '' }));
+                  }}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    !cityOnly
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                  }`}
+                >
+                  Adresse precise
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCityOnly(true);
+                    setFormData((prev) => ({
+                      ...prev,
+                      address: '',
+                      geopoint: null,
+                      postalCode: '',
+                      city: '',
+                    }));
+                    setErrors((prev) => ({ ...prev, address: '', city: '', postalCode: '' }));
+                  }}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    cityOnly
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                  }`}
+                >
+                  Ville uniquement
+                </button>
+              </div>
+            </div>
           )}
+
+          {/* Country selector */}
+          <CountrySelect
+            value={formData.countryCode}
+            onChange={(code) => setFormData((prev) => ({
+              ...prev,
+              countryCode: code,
+              address: '',
+              postalCode: '',
+              city: '',
+              geopoint: null,
+              region: null,
+            }))}
+          />
 
           {/* Address autocomplete for fixed type without city-only */}
           {formData.type === 'fixed' && !cityOnly && (
-            <AddressAutocomplete
+            <GoogleAddressAutocomplete
               label="Adresse"
               value={formData.address}
               onChange={(value) => {
@@ -365,7 +407,8 @@ export function LocationModal({
                 setErrors((prev) => ({ ...prev, address: '' }));
               }}
               onSelect={handleAddressSelect}
-              placeholder="Ex: 12 rue de la Paix"
+              countries={[formData.countryCode.toLowerCase()]}
+              placeholder="Rechercher une adresse..."
               error={errors.address}
               required
             />
@@ -373,7 +416,7 @@ export function LocationModal({
 
           {/* City autocomplete for fixed type with city-only */}
           {formData.type === 'fixed' && cityOnly && (
-            <AddressAutocomplete
+            <GoogleAddressAutocomplete
               label="Ville"
               value={formData.city}
               onChange={(value) => {
@@ -385,39 +428,40 @@ export function LocationModal({
                 }));
                 setErrors((prev) => ({ ...prev, city: '' }));
               }}
-              onSelect={(suggestion) => {
+              onSelect={(suggestion: GoogleAddressSuggestion) => {
                 setFormData((prev) => ({
                   ...prev,
-                  city: suggestion.city,
-                  postalCode: suggestion.postcode,
+                  city: suggestion.locality ?? '',
+                  postalCode: suggestion.postalCode ?? '',
                   geopoint: suggestion.coordinates,
-                  region: suggestion.region,
+                  region: suggestion.adminArea1,
                 }));
                 setErrors((prev) => ({ ...prev, city: '', postalCode: '' }));
               }}
+              countries={[formData.countryCode.toLowerCase()]}
               placeholder="Rechercher une ville..."
               error={errors.city}
               required
-              type="municipality"
             />
           )}
 
-          {/* City and Postal Code - readonly when auto-filled */}
-          <div className="grid grid-cols-3 gap-4">
-            <Input
-              label="Code postal"
-              name="postalCode"
-              value={formData.postalCode}
-              onChange={formData.type === 'fixed' ? undefined : handleChange}
-              readOnly={formData.type === 'fixed'}
-              placeholder="75001"
-              error={errors.postalCode}
-              required
-              maxLength={5}
-              className={formData.type === 'fixed' ? 'bg-gray-50 dark:bg-gray-900 cursor-default' : ''}
-            />
+          {/* City and Postal Code - readonly when auto-filled, postal code hidden in city-only mode */}
+          <div className={`grid gap-4 ${cityOnly ? 'grid-cols-1' : 'grid-cols-3'}`}>
+            {!cityOnly && (
+              <Input
+                label="Code postal"
+                name="postalCode"
+                value={formData.postalCode}
+                onChange={formData.type === 'fixed' ? undefined : handleChange}
+                readOnly={formData.type === 'fixed'}
+                placeholder="75001"
+                error={errors.postalCode}
+                required
+                className={formData.type === 'fixed' ? 'bg-gray-50 dark:bg-gray-900 cursor-default' : ''}
+              />
+            )}
 
-            <div className="col-span-2">
+            <div className={cityOnly ? '' : 'col-span-2'}>
               <Input
                 label={formData.type === 'fixed' ? 'Ville' : 'Zone centrale'}
                 name="city"

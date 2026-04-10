@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     // Order + safety limit (max 500 docs loaded)
     query = query
-      .orderBy('datetime', 'desc')
+      .orderBy('createdAt', 'desc')
       .select(
         'clientInfo',
         'providerName',

@@ -1,6 +1,7 @@
 'use client';
 
 import { MapPin, Car, Building2, Navigation, ExternalLink } from 'lucide-react';
+import { getCountryLabel } from '@booking-app/shared/constants';
 
 interface Location {
   id: string;
@@ -8,6 +9,7 @@ interface Location {
   address: string;
   city: string;
   postalCode: string;
+  countryCode?: string;
   type: 'fixed' | 'mobile';
   travelRadius: number | null;
 }
@@ -19,9 +21,12 @@ interface LocationCardProps {
 export function LocationCard({ location }: LocationCardProps) {
   const isFixed = location.type === 'fixed';
   const hasStreetAddress = !!location.address?.trim();
+  const addressContainsCity = hasStreetAddress && location.city && location.address.includes(location.city);
   const fullAddress = hasStreetAddress
-    ? `${location.address}, ${location.postalCode} ${location.city}`
-    : `${location.postalCode} ${location.city}`;
+    ? addressContainsCity
+      ? location.address
+      : `${location.address}, ${[location.postalCode, location.city].filter(Boolean).join(' ')}`
+    : `${[location.postalCode, location.city].filter(Boolean).join(' ')}`;
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
 
   return (
@@ -66,13 +71,22 @@ export function LocationCard({ location }: LocationCardProps) {
             {isFixed ? (
               <>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  {hasStreetAddress && (
+                  {addressContainsCity ? (
+                    location.address
+                  ) : (
                     <>
-                      {location.address}
-                      <br />
+                      {hasStreetAddress && (
+                        <>
+                          {location.address}
+                          <br />
+                        </>
+                      )}
+                      {[location.postalCode, location.city].filter(Boolean).join(' ')}
+                      {location.countryCode && location.countryCode !== 'FR' && (
+                        <>, {getCountryLabel(location.countryCode)}</>
+                      )}
                     </>
                   )}
-                  {location.postalCode} {location.city}
                 </p>
 
                 {/* Google Maps link - only with street address */}

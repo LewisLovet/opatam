@@ -60,6 +60,7 @@ export interface Provider {
   // Denormalized fields for search optimization
   cities: string[];              // Normalized cities from active locations
   region: string | null;         // Region from primary location (e.g., "Île-de-France")
+  countryCode: string;           // ISO 3166-1 alpha-2 from default location (e.g., 'FR')
   minPrice: number | null;       // Minimum price from active services (in centimes)
   searchTokens: string[];        // Normalized words from businessName for search (e.g., ["salon", "hugo"])
   geopoint: { latitude: number; longitude: number } | null; // From default location, for proximity search
@@ -120,6 +121,8 @@ export interface ProviderSettings {
   cancellationDeadline: number;      // Hours before appointment for cancellation (default: 24)
   slotInterval?: number;             // Minutes between each bookable slot (default: 15)
   notificationPreferences?: ProviderNotificationPreferences;
+  bookingNotice?: string | null;     // Texte libre affiche avant confirmation de reservation
+  autoReviewReminder?: boolean;      // Envoyer automatiquement une demande d'avis apres chaque RDV (default: true)
 }
 
 export type PaymentSource = 'stripe' | 'apple' | 'google' | null;
@@ -163,6 +166,7 @@ export interface Location {
   address: string;
   city: string;
   postalCode: string;
+  countryCode: string; // ISO 3166-1 alpha-2 (e.g., 'FR', 'BE', 'DE')
   geopoint: { latitude: number; longitude: number } | null;
   description: string | null;
   type: LocationType;
@@ -186,6 +190,7 @@ export interface ServiceCategory {
 export interface Service {
   name: string;
   description: string | null;
+  photoURL: string | null;  // URL d'une photo du portfolio provider
   duration: number;
   price: number;
   bufferTime: number;

@@ -3,14 +3,14 @@
   "configurations": [
     {
       "name": "web",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev:web"],
-      "port": 3000
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && pnpm --filter @booking-app/web exec next dev --port 3003"],
+      "port": 3003
     },
     {
       "name": "mobile",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev:mobile"],
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && pnpm dev:mobile"],
       "port": 8081
     },
     {

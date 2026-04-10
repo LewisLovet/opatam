@@ -18,7 +18,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
-import { Text, Button, Card, useToast } from '../../components';
+import { Text, Button, Card, Input, useToast } from '../../components';
+import { Switch as RNSwitch, TextInput } from 'react-native';
 import { useProvider } from '../../contexts';
 import { providerService } from '@booking-app/firebase';
 
@@ -67,6 +68,8 @@ interface SettingsData {
   minBookingNotice: number;
   maxBookingAdvance: number;
   slotInterval: number;
+  bookingNotice: string;
+  autoReviewReminder: boolean;
 }
 
 type PickerField = 'minBookingNotice' | 'maxBookingAdvance' | 'slotInterval';
@@ -112,11 +115,15 @@ export default function BookingSettingsScreen() {
     minBookingNotice: 2,
     maxBookingAdvance: 60,
     slotInterval: 15,
+    bookingNotice: '',
+    autoReviewReminder: true,
   });
   const [originalSettings, setOriginalSettings] = useState<SettingsData>({
     minBookingNotice: 2,
     maxBookingAdvance: 60,
     slotInterval: 15,
+    bookingNotice: '',
+    autoReviewReminder: true,
   });
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -129,6 +136,8 @@ export default function BookingSettingsScreen() {
         minBookingNotice: provider.settings.minBookingNotice ?? 2,
         maxBookingAdvance: provider.settings.maxBookingAdvance ?? 60,
         slotInterval: provider.settings.slotInterval ?? 15,
+        bookingNotice: provider.settings.bookingNotice ?? '',
+        autoReviewReminder: provider.settings.autoReviewReminder ?? true,
       };
       setSettings(data);
       setOriginalSettings(data);
@@ -154,6 +163,8 @@ export default function BookingSettingsScreen() {
           minBookingNotice: settings.minBookingNotice,
           maxBookingAdvance: settings.maxBookingAdvance,
           slotInterval: settings.slotInterval,
+          bookingNotice: settings.bookingNotice.trim() || null,
+          autoReviewReminder: settings.autoReviewReminder,
           allowClientCancellation: true,
           cancellationDeadline: 0,
         },
@@ -243,6 +254,62 @@ export default function BookingSettingsScreen() {
               </React.Fragment>
             );
           })}
+        </Card>
+
+        {/* Booking notice */}
+        <Card padding="md" shadow="sm" style={{ marginTop: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+            <Ionicons name="alert-circle-outline" size={18} color={colors.primary} />
+            <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+              Avertissement avant réservation
+            </Text>
+          </View>
+          <TextInput
+            value={settings.bookingNotice}
+            onChangeText={(t: string) => { if (t.length <= 1000) setSettings((p) => ({ ...p, bookingNotice: t })); }}
+            placeholder="Ex: Merci d'arriver 5 minutes avant votre rendez-vous."
+            multiline
+            numberOfLines={3}
+            style={{
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: 10,
+              padding: 12,
+              fontSize: 14,
+              color: colors.text,
+              textAlignVertical: 'top',
+              minHeight: 80,
+            }}
+            placeholderTextColor={colors.textMuted}
+          />
+          <Text variant="caption" color="textMuted" style={{ textAlign: 'right', marginTop: 4 }}>
+            {settings.bookingNotice.length}/1000
+          </Text>
+          <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
+            Ce message sera affiché aux clients avant la confirmation de leur réservation.
+          </Text>
+        </Card>
+
+        {/* Auto review reminder */}
+        <Card padding="md" shadow="sm" style={{ marginTop: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+              <Ionicons name="star-outline" size={18} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                  Relance automatique des avis
+                </Text>
+                <Text variant="caption" color="textMuted">
+                  Envoyer automatiquement une demande d'avis après chaque rendez-vous.
+                </Text>
+              </View>
+            </View>
+            <RNSwitch
+              value={settings.autoReviewReminder}
+              onValueChange={(v) => setSettings((p) => ({ ...p, autoReviewReminder: v }))}
+              trackColor={{ false: colors.border, true: colors.primary }}
+            />
+          </View>
         </Card>
 
         {/* Info box */}

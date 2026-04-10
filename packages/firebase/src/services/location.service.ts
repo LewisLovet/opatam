@@ -43,6 +43,7 @@ export class LocationService {
       address: validated.address || '',
       city: validated.city,
       postalCode: validated.postalCode,
+      countryCode: validated.countryCode || 'FR',
       geopoint: validated.geopoint || null,
       description: validated.description || null,
       type: validated.type,
@@ -300,18 +301,21 @@ export class LocationService {
       activeLocations.find((l) => l.geopoint)?.geopoint ??
       null;
 
-    // Determine region: use override from address API, then city lookup, then GPS fallback
+    // Get countryCode from default location (fallback to 'FR')
+    const countryCode = defaultLocation?.countryCode ?? activeLocations[0]?.countryCode ?? 'FR';
+
+    // Determine region: use override from address API, then city lookup (FR), then GPS fallback (FR)
     let region: string | null = regionOverride ?? null;
-    if (!region) {
+    if (!region && countryCode === 'FR') {
       const defaultCity = defaultLocation?.city || activeLocations[0]?.city || null;
       region = defaultCity ? getCityRegion(defaultCity) : null;
-    }
-    if (!region && geopoint) {
-      region = getRegionFromCoords(geopoint.latitude, geopoint.longitude);
+      if (!region && geopoint) {
+        region = getRegionFromCoords(geopoint.latitude, geopoint.longitude);
+      }
     }
 
     const cities = Array.from(citiesSet).sort();
-    await providerRepository.update(providerId, { cities, geopoint, region });
+    await providerRepository.update(providerId, { cities, geopoint, region, countryCode });
   }
 }
 

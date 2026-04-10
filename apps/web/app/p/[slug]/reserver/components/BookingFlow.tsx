@@ -27,6 +27,7 @@ interface Provider {
     maxBookingAdvance: number;
     allowClientCancellation: boolean;
     cancellationDeadline: number;
+    bookingNotice?: string | null;
   };
 }
 
@@ -153,6 +154,10 @@ export function BookingFlow({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Booking notice modal
+  const [showNotice, setShowNotice] = useState(false);
+  const [pendingServiceId, setPendingServiceId] = useState<string | null>(null);
+
   // Get selected entities
   const selectedService = useMemo(
     () => services.find((s) => s.id === state.serviceId) || null,
@@ -229,7 +234,7 @@ export function BookingFlow({
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
 
   // Navigation handlers
-  const handleServiceSelect = (serviceId: string) => {
+  const proceedWithService = (serviceId: string) => {
     setState((prev) => ({
       ...prev,
       serviceId,
@@ -254,6 +259,29 @@ export function BookingFlow({
       }
       setCurrentStep('slot');
     }
+  };
+
+  const handleServiceSelect = (serviceId: string) => {
+    const notice = provider.settings.bookingNotice;
+    if (notice) {
+      setPendingServiceId(serviceId);
+      setShowNotice(true);
+    } else {
+      proceedWithService(serviceId);
+    }
+  };
+
+  const handleNoticeAccept = () => {
+    setShowNotice(false);
+    if (pendingServiceId) {
+      proceedWithService(pendingServiceId);
+      setPendingServiceId(null);
+    }
+  };
+
+  const handleNoticeClose = () => {
+    setShowNotice(false);
+    setPendingServiceId(null);
   };
 
   const handleMemberSelect = (memberId: string) => {
@@ -552,6 +580,39 @@ export function BookingFlow({
             provider={provider}
             compact
           />
+        </div>
+      )}
+      {/* Booking Notice Modal */}
+      {showNotice && provider.settings.bookingNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleNoticeClose} />
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                Information importante
+              </h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-line mb-6">
+              {provider.settings.bookingNotice}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleNoticeClose}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Retour
+              </button>
+              <button
+                onClick={handleNoticeAccept}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                J&apos;ai compris, continuer
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -13,6 +13,7 @@ import {
   Image,
   Linking,
   Animated,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -167,9 +168,24 @@ export default function ProviderDetailScreen() {
     setRefreshing(false);
   };
 
-  // Handle service selection
+  // Booking notice
+  const [showBookingNotice, setShowBookingNotice] = useState(false);
+  const [pendingServiceId, setPendingServiceId] = useState<string | null>(null);
+
+  // Handle service selection — show notice if provider has one
   const handleSelectService = (serviceId: string | null) => {
-    setSelectedServiceId(serviceId);
+    if (serviceId && provider?.settings?.bookingNotice) {
+      setPendingServiceId(serviceId);
+      setShowBookingNotice(true);
+    } else {
+      setSelectedServiceId(serviceId);
+    }
+  };
+
+  const confirmServiceAfterNotice = () => {
+    setSelectedServiceId(pendingServiceId);
+    setShowBookingNotice(false);
+    setPendingServiceId(null);
   };
 
   // Handle booking
@@ -538,6 +554,7 @@ export default function ProviderDetailScreen() {
                         id: s.id,
                         name: s.name,
                         description: s.description,
+                        photoURL: s.photoURL,
                         duration: s.duration,
                         price: s.price / 100, // Convert cents to euros
                       }))}
@@ -653,6 +670,36 @@ export default function ProviderDetailScreen() {
           </View>
         </StickyFooter>
       )}
+      {/* Booking Notice Modal */}
+      <Modal visible={showBookingNotice} transparent animationType="fade">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: spacing.lg }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, maxWidth: 340, width: '100%' }}>
+            <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
+              <Ionicons name="alert-circle-outline" size={40} color={colors.primary} />
+            </View>
+            <Text variant="h3" style={{ textAlign: 'center', marginBottom: spacing.sm }}>
+              Information importante
+            </Text>
+            <Text variant="body" color="textSecondary" style={{ textAlign: 'center', marginBottom: spacing.lg }}>
+              {provider?.settings?.bookingNotice}
+            </Text>
+            <View style={{ gap: spacing.sm }}>
+              <Button
+                title="J'ai compris, continuer"
+                onPress={confirmServiceAfterNotice}
+              />
+              <Button
+                title="Retour"
+                variant="ghost"
+                onPress={() => {
+                  setShowBookingNotice(false);
+                  setPendingServiceId(null);
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

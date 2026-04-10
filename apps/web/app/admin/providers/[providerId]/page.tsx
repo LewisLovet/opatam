@@ -60,6 +60,8 @@ export default function AdminProviderDetailPage() {
   const [togglingPublished, setTogglingPublished] = useState(false);
   const [fixingRegion, setFixingRegion] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<ProviderDetail['recentBookings'][number] | null>(null);
+  const [showAllBookings, setShowAllBookings] = useState(false);
 
   useEffect(() => {
     if (!authUser?.id) return;
@@ -215,26 +217,43 @@ export default function AdminProviderDetailPage() {
               {provider.cities?.length > 0 && ` \u00b7 ${provider.cities.join(', ')}`}
             </p>
 
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm text-gray-500 dark:text-gray-400">Région :</span>
-              {provider.region ? (
-                <Badge variant="info" size="sm">{provider.region}</Badge>
-              ) : (
-                <span className="inline-flex items-center gap-1">
-                  <Badge variant="error" size="sm">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    Non renseignée
-                  </Badge>
-                  <button
-                    onClick={handleFixRegion}
-                    disabled={fixingRegion}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${fixingRegion ? 'animate-spin' : ''}`} />
-                    Corriger
-                  </button>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {/* Country */}
+              {provider.countryCode && (
+                <span className="text-sm">
+                  {({ FR: '🇫🇷', BE: '🇧🇪', CH: '🇨🇭', LU: '🇱🇺', DE: '🇩🇪', ES: '🇪🇸', IT: '🇮🇹', PT: '🇵🇹', NL: '🇳🇱' } as Record<string, string>)[provider.countryCode] || '🌍'}{' '}
+                  <span className="text-gray-500 dark:text-gray-400">{provider.countryCode}</span>
                 </span>
               )}
+              {/* Region — only relevant for FR */}
+              {provider.countryCode === 'FR' || !provider.countryCode ? (
+                provider.region ? (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-600">·</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{provider.region}</span>
+                  </>
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    <Badge variant="error" size="sm">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      Région manquante
+                    </Badge>
+                    <button
+                      onClick={handleFixRegion}
+                      disabled={fixingRegion}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${fixingRegion ? 'animate-spin' : ''}`} />
+                      Corriger
+                    </button>
+                  </span>
+                )
+              ) : provider.region ? (
+                <>
+                  <span className="text-gray-300 dark:text-gray-600">·</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-300">{provider.region}</span>
+                </>
+              ) : null}
             </div>
 
             {provider.rating && provider.rating.count > 0 && (
@@ -340,6 +359,138 @@ export default function AdminProviderDetailPage() {
             <p className="text-xs text-gray-400 mt-3">{bookingStats.noshow} no-show(s)</p>
           )}
         </div>
+
+        {/* Recent bookings */}
+        {detail.recentBookings && detail.recentBookings.length > 0 && (() => {
+          const statusColors: Record<string, string> = {
+            confirmed: 'text-emerald-600 bg-emerald-50',
+            pending: 'text-amber-600 bg-amber-50',
+            cancelled: 'text-red-600 bg-red-50',
+            noshow: 'text-gray-600 bg-gray-100',
+          };
+          const statusLabels: Record<string, string> = {
+            confirmed: 'Confirmé',
+            pending: 'En attente',
+            cancelled: 'Annulé',
+            noshow: 'Absent',
+          };
+          const visibleBookings = showAllBookings ? detail.recentBookings : detail.recentBookings.slice(0, 5);
+
+          return (
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 md:col-span-2">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Dernières réservations ({detail.recentBookings.length})
+              </h3>
+              <div className="space-y-1">
+                {visibleBookings.map((b) => (
+                  <div
+                    key={b.id}
+                    onClick={() => setSelectedBooking(b)}
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {b.clientName}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {b.serviceName} {b.memberName ? `· ${b.memberName}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-3">
+                      <span className="text-xs text-gray-500">
+                        {b.datetime ? new Date(b.datetime).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        Pris le {b.createdAt ? new Date(b.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColors[b.status] || 'text-gray-500 bg-gray-100'}`}>
+                        {statusLabels[b.status] || b.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {detail.recentBookings.length > 5 && !showAllBookings && (
+                <button
+                  onClick={() => setShowAllBookings(true)}
+                  className="mt-3 w-full text-center text-sm font-medium text-primary-600 hover:text-primary-700 py-2"
+                >
+                  Voir les {detail.recentBookings.length - 5} autres →
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Booking detail modal */}
+        {selectedBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedBooking(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Détail du RDV</h3>
+                <button onClick={() => setSelectedBooking(null)} className="text-gray-400 hover:text-gray-600">
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Client</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedBooking.clientName}</span>
+                </div>
+                {selectedBooking.clientEmail && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Email</span>
+                    <span className="text-gray-700 dark:text-gray-300">{selectedBooking.clientEmail}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Prestation</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedBooking.serviceName}</span>
+                </div>
+                {selectedBooking.memberName && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Membre</span>
+                    <span className="text-gray-700 dark:text-gray-300">{selectedBooking.memberName}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Date du RDV</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {selectedBooking.datetime ? new Date(selectedBooking.datetime).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Pris le</span>
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {selectedBooking.createdAt ? new Date(selectedBooking.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Prix</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedBooking.price ? `${(selectedBooking.price / 100).toFixed(2)} €` : 'Gratuit'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Statut</span>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${{
+                    confirmed: 'text-emerald-600 bg-emerald-50',
+                    pending: 'text-amber-600 bg-amber-50',
+                    cancelled: 'text-red-600 bg-red-50',
+                    noshow: 'text-gray-600 bg-gray-100',
+                  }[selectedBooking.status] || 'text-gray-500 bg-gray-100'}`}>
+                    ${{ confirmed: 'Confirmé', pending: 'En attente', cancelled: 'Annulé', noshow: 'Absent' }[selectedBooking.status] || selectedBooking.status}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedBooking(null)}
+                className="mt-5 w-full px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Subscription */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">

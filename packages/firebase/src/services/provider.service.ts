@@ -117,6 +117,7 @@ export class ProviderService {
       isVerified: false,
       cities: [],
       region: null,
+      countryCode: 'FR',
       minPrice: null,
       searchTokens,
       geopoint: null,
@@ -455,13 +456,24 @@ export class ProviderService {
     userLat: number,
     userLon: number,
     city: string | null,
-    maxResults: number = 10
+    maxResults: number = 10,
+    maxDistanceKm: number = 50
   ): Promise<(WithId<Provider> & { distance: number })[]> {
+    const isDev = process.env.NODE_ENV === 'development';
+
+    if (isDev) {
+      console.log(`[Nearby] Searching: lat=${userLat}, lon=${userLon}, city="${city}", maxDist=${maxDistanceKm}km`);
+    }
+
     // Fetch city-local + global in parallel, then merge
     const [cityProviders, allProviders] = await Promise.all([
       city ? providerRepository.getPublishedByCity(city, 50) : Promise.resolve([]),
       providerRepository.getPublishedAll(50),
     ]);
+
+    if (isDev) {
+      console.log(`[Nearby] City providers: ${cityProviders.length}, All providers: ${allProviders.length}`);
+    }
 
     // Merge and deduplicate (city providers take priority)
     const seen = new Set<string>();
@@ -473,18 +485,36 @@ export class ProviderService {
       }
     }
 
-    // Calculate distance and sort — providers without geopoint go to the end
+    if (isDev) {
+      console.log(`[Nearby] Merged (deduplicated): ${merged.length}`);
+    }
+
+    // Calculate distance, filter by max distance, and sort
     const withDistance = merged
       .map((provider) => {
         const dist = provider.geopoint
           ? haversineDistance(userLat, userLon, provider.geopoint.latitude, provider.geopoint.longitude)
           : Infinity;
         return { ...provider, distance: dist };
-      })
+      });
+
+    if (isDev) {
+      console.log(`[Nearby] Before distance filter (max ${maxDistanceKm}km):`);
+      withDistance.forEach((p) => {
+        console.log(`  - ${p.businessName} | dist:${p.distance === Infinity ? 'no geopoint' : p.distance.toFixed(1) + 'km'} | published:${p.isPublished} | cities:[${p.cities.join(',')}] | geopoint:${p.geopoint ? `${p.geopoint.latitude.toFixed(4)},${p.geopoint.longitude.toFixed(4)}` : 'null'}`);
+      });
+    }
+
+    const filtered = withDistance
+      .filter((p) => p.distance <= maxDistanceKm)
       .sort((a, b) => a.distance - b.distance)
       .slice(0, maxResults);
 
-    return withDistance;
+    if (isDev) {
+      console.log(`[Nearby] Final results: ${filtered.length}`);
+    }
+
+    return filtered;
   }
 
   /**

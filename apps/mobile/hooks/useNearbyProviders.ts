@@ -42,16 +42,24 @@ export function useNearbyProviders(
 
     try {
       if (userLocation) {
-        // We have location — fetch nearby
+        // We have location — fetch nearby (max 50km)
         const result = await providerService.getNearby(
           userLocation.latitude,
           userLocation.longitude,
           userLocation.city,
-          limit
+          limit,
+          50
         );
         if (mountedRef.current) {
-          setProviders(result);
-          setIsNearby(true);
+          if (result.length > 0) {
+            setProviders(result);
+            setIsNearby(true);
+          } else {
+            // No providers within 50km — fallback to top rated
+            const fallback = await providerService.getTopRated(limit);
+            setProviders(fallback.map((p) => ({ ...p, distance: Infinity })));
+            setIsNearby(false);
+          }
         }
       } else {
         // No location — fallback to top rated

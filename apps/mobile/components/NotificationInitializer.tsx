@@ -1,15 +1,25 @@
 /**
  * NotificationInitializer
- * Component that initializes push notifications
- * Must be rendered inside AuthProvider
+ * Component that initializes push notifications.
+ * Shows a friendly pre-prompt before the system permission dialog.
+ * Must be rendered inside AuthProvider.
  */
 
 import { useNotifications } from '../hooks/useNotifications';
+import { NotificationPermissionPrompt } from './NotificationPermissionPrompt';
 
 export function NotificationInitializer() {
-  // Initialize push notifications
-  useNotifications();
+  const {
+    showPermissionPrompt,
+    acceptNotifications,
+    declineNotifications,
+  } = useNotifications();
 
-  // This component doesn't render anything
-  return null;
+  return (
+    <NotificationPermissionPrompt
+      visible={showPermissionPrompt}
+      onAccept={acceptNotifications}
+      onDecline={declineNotifications}
+    />
+  );
 }

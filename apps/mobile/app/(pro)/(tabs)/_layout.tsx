@@ -7,10 +7,14 @@ import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../../../theme';
+import { useProvider } from '../../../contexts';
+import { useProBookingBadges } from '../../../hooks';
 
 export default function ProTabsLayout() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+  const { provider } = useProvider();
+  const { todayCount, pendingCount } = useProBookingBadges(provider?.id);
 
   return (
     <Tabs
@@ -41,6 +45,8 @@ export default function ProTabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
+          tabBarBadge: todayCount > 0 ? todayCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.primary, fontSize: 10 },
         }}
       />
       <Tabs.Screen
@@ -97,6 +103,8 @@ export default function ProTabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" size={size} color={color} />
           ),
+          tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#F59E0B', fontSize: 10 },
         }}
       />
       <Tabs.Screen

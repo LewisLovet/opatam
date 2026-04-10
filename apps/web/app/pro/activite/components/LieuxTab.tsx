@@ -8,6 +8,7 @@ import { Plus, MapPin, Loader2 } from 'lucide-react';
 import { LocationCard } from './LocationCard';
 import { LocationModal, type LocationFormData } from './LocationModal';
 import type { Location, Member } from '@booking-app/shared';
+import { getCountryLabel } from '@booking-app/shared/constants';
 import { PLAN_LIMITS } from '@booking-app/shared';
 import { UpgradeTeamModal } from '@/components/modals/UpgradeTeamModal';
 
@@ -127,6 +128,7 @@ export function LieuxTab() {
         address: data.address,
         postalCode: data.postalCode,
         city: data.city,
+        countryCode: data.countryCode,
         description: data.description,
         type: data.type,
         travelRadius: data.travelRadius,
@@ -147,7 +149,8 @@ export function LieuxTab() {
         address: data.address,
         postalCode: data.postalCode,
         city: data.city,
-        country: 'France',
+        country: getCountryLabel(data.countryCode),
+        countryCode: data.countryCode,
         description: data.description,
         photoURLs: [],
         type: data.type,

@@ -406,7 +406,7 @@ function PlanCard({
             <>Tester gratuitement</>
           ) : price.trialDays && price.trialDays > 0 ? (
             <>
-              Commencer l&apos;essai gratuit
+              Creer ma page
               <ArrowRight className="w-4 h-4" />
             </>
           ) : (

@@ -22,6 +22,8 @@ import {
   Terminal,
   Sparkles,
   Mail,
+  Globe,
+  MapPin,
 } from 'lucide-react';
 
 interface NavItem {
@@ -116,6 +118,15 @@ const navSections: { title: string; items: NavItem[] }[] = [
         href: '/dev/tools/emails',
         label: 'Emails',
         icon: <Mail className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/tools/address',
+        label: 'Adresse',
+        icon: <MapPin className="w-4 h-4" />,
+        children: [
+          { href: '/dev/tools/address', label: 'API Gouv (FR)', icon: <></> },
+          { href: '/dev/tools/google-address', label: 'Google Places (EU)', icon: <></> },
+        ],
       },
     ],
   },

@@ -2,6 +2,30 @@
 export * from './regions';
 
 /**
+ * Supported countries (France + neighboring EU countries)
+ * Used for address autocomplete filtering and provider search
+ */
+export const SUPPORTED_COUNTRIES = [
+  { code: 'FR', label: 'France' },
+  { code: 'BE', label: 'Belgique' },
+  { code: 'LU', label: 'Luxembourg' },
+  { code: 'CH', label: 'Suisse' },
+  { code: 'DE', label: 'Allemagne' },
+  { code: 'ES', label: 'Espagne' },
+  { code: 'IT', label: 'Italie' },
+  { code: 'NL', label: 'Pays-Bas' },
+  { code: 'PT', label: 'Portugal' },
+] as const;
+
+export type CountryCode = (typeof SUPPORTED_COUNTRIES)[number]['code'];
+
+/** Get the display label for a country code */
+export function getCountryLabel(code: string): string {
+  const country = SUPPORTED_COUNTRIES.find((c) => c.code === code.toUpperCase());
+  return country ? country.label : code;
+}
+
+/**
  * Business categories for providers
  */
 export const CATEGORIES = [

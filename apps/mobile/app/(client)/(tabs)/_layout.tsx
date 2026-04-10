@@ -6,9 +6,13 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
+import { useAuth } from '../../../contexts';
+import { useClientBookingBadges } from '../../../hooks';
 
 export default function TabsLayout() {
   const { colors, spacing } = useTheme();
+  const { user } = useAuth();
+  const { upcomingCount } = useClientBookingBadges(user?.uid ?? null);
 
   return (
     <Tabs
@@ -56,6 +60,8 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar-outline" size={size} color={color} />
           ),
+          tabBarBadge: upcomingCount > 0 ? upcomingCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.primary, fontSize: 10 },
         }}
       />
       <Tabs.Screen
