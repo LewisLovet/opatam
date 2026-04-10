@@ -21,6 +21,13 @@ export const createServiceSchema = z.object({
     .int({ message: 'Le prix doit être en centimes (nombre entier)' })
     .min(0, { message: 'Le prix ne peut pas être négatif' })
     .max(1000000, { message: 'Le prix ne peut pas dépasser 10 000€' }),
+  priceMax: z
+    .number()
+    .int({ message: 'Le prix max doit être en centimes (nombre entier)' })
+    .min(0, { message: 'Le prix max ne peut pas être négatif' })
+    .max(1000000, { message: 'Le prix max ne peut pas dépasser 10 000€' })
+    .nullable()
+    .optional(),
   bufferTime: z
     .number()
     .int()
@@ -56,7 +63,10 @@ export const createServiceSchema = z.object({
     .int()
     .min(0)
     .optional(),
-});
+}).refine(
+  (data) => !data.priceMax || data.priceMax > data.price,
+  { message: 'Le prix max doit être supérieur au prix min', path: ['priceMax'] }
+);
 
 // Update service schema - Tout optionnel
 export const updateServiceSchema = z.object({
@@ -81,6 +91,13 @@ export const updateServiceSchema = z.object({
     .int()
     .min(0)
     .max(1000000)
+    .optional(),
+  priceMax: z
+    .number()
+    .int()
+    .min(0)
+    .max(1000000)
+    .nullable()
     .optional(),
   bufferTime: z
     .number()

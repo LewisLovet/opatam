@@ -22,6 +22,8 @@ export interface ServiceCardProps {
   duration: number;
   /** Price in euros */
   price: number;
+  /** Price max in euros (null = fixed price) */
+  priceMax?: number | null;
   /** Whether this service is selected */
   selected?: boolean;
   /** Press handler */
@@ -42,9 +44,11 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(euros: number): string {
-  if (euros === 0) return 'Gratuit';
-  return euros % 1 === 0 ? `${euros} €` : `${euros.toFixed(2)} €`;
+function formatPrice(euros: number, eurosMax?: number | null): string {
+  if (euros === 0 && !eurosMax) return 'Gratuit';
+  const fmt = (v: number) => (v % 1 === 0 ? `${v} €` : `${v.toFixed(2)} €`);
+  if (eurosMax && eurosMax > euros) return `De ${fmt(euros)} à ${fmt(eurosMax)}`;
+  return fmt(euros);
 }
 
 export function ServiceCard({
@@ -53,6 +57,7 @@ export function ServiceCard({
   photoURL,
   duration,
   price,
+  priceMax,
   selected = false,
   onPress,
 }: ServiceCardProps) {
@@ -127,7 +132,7 @@ export function ServiceCard({
                 { color: selected ? colors.textInverse : colors.primary },
               ]}
             >
-              {formatPrice(price)}
+              {formatPrice(price, priceMax)}
             </Text>
           </View>
         </View>

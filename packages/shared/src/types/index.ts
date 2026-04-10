@@ -193,6 +193,7 @@ export interface Service {
   photoURL: string | null;  // URL d'une photo du portfolio provider
   duration: number;
   price: number;
+  priceMax: number | null;  // prix max en centimes (null = prix fixe, sinon fourchette price → priceMax)
   bufferTime: number;
   categoryId: string | null;
   locationIds: string[];

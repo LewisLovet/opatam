@@ -557,6 +557,7 @@ export default function ProviderDetailScreen() {
                         photoURL: s.photoURL,
                         duration: s.duration,
                         price: s.price / 100, // Convert cents to euros
+                        priceMax: s.priceMax ? s.priceMax / 100 : null,
                       }))}
                       selectedId={isPreview ? null : selectedServiceId}
                       onSelectService={isPreview ? undefined : handleSelectService}

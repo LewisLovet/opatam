@@ -36,6 +36,7 @@ export interface ServiceCategoryProps {
     photoURL?: string | null;
     duration: number;
     price: number;
+    priceMax?: number | null;
   }>;
   /** Currently selected service ID */
   selectedId?: string | null;
@@ -226,6 +227,7 @@ export function ServiceCategory({
               photoURL={service.photoURL}
               duration={service.duration}
               price={service.price}
+              priceMax={service.priceMax}
               selected={selectedId === service.id}
               onPress={onSelectService ? () => onSelectService(service.id) : undefined}
             />

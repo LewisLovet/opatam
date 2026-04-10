@@ -44,6 +44,8 @@ interface ServiceFormData {
   durationHours: string;
   durationMinutes: string;
   price: string;
+  priceMax: string;
+  isPriceRange: boolean;
   bufferTime: string;
   isActive: boolean;
   locationIds: string[];
@@ -58,6 +60,8 @@ const DEFAULT_FORM: ServiceFormData = {
   durationHours: '1',
   durationMinutes: '0',
   price: '',
+  priceMax: '',
+  isPriceRange: false,
   bufferTime: '0',
   isActive: true,
   locationIds: [],
@@ -84,9 +88,11 @@ function formatDuration(min: number): string {
   return `${min} min`;
 }
 
-function formatPrice(cents: number): string {
-  if (cents === 0) return 'Gratuit';
-  return `${(cents / 100).toFixed(2)} €`;
+function formatPrice(cents: number, centsMax?: number | null): string {
+  if (cents === 0 && !centsMax) return 'Gratuit';
+  const fmt = (v: number) => `${(v / 100).toFixed(2)} €`;
+  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
+  return fmt(cents);
 }
 
 // ---------------------------------------------------------------------------
@@ -278,6 +284,8 @@ export default function ServicesScreen() {
       durationHours: hours,
       durationMinutes: minutes,
       price: String(service.price / 100),
+      priceMax: service.priceMax ? String(service.priceMax / 100) : '',
+      isPriceRange: !!service.priceMax,
       bufferTime: String(service.bufferTime),
       isActive: service.isActive,
       locationIds: service.locationIds || [],
@@ -311,12 +319,24 @@ export default function ServicesScreen() {
     setIsSaving(true);
     try {
       const bufferTimeValue = parseInt(form.bufferTime, 10) || 0;
+      const priceMaxCents = form.isPriceRange && form.priceMax.trim()
+        ? Math.round(Number(form.priceMax) * 100)
+        : null;
+      const priceCents = Math.round(Number(form.price) * 100);
+
+      if (priceMaxCents !== null && priceMaxCents <= priceCents) {
+        showToast({ variant: 'error', message: 'Le prix max doit être supérieur au prix min' });
+        setIsSaving(false);
+        return;
+      }
+
       const payload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
         photoURL: form.photoURL,
         duration: totalDuration,
-        price: Math.round(Number(form.price) * 100),
+        price: priceCents,
+        priceMax: priceMaxCents,
         bufferTime: bufferTimeValue,
         isActive: form.isActive,
         locationIds: form.locationIds,
@@ -448,7 +468,7 @@ export default function ServicesScreen() {
                 )}
               </View>
               <Text variant="bodySmall" color="textSecondary" style={{ marginTop: 2 }}>
-                {formatDuration(service.duration)} • {formatPrice(service.price)}
+                {formatDuration(service.duration)} • {formatPrice(service.price, service.priceMax)}
               </Text>
               {service.description && (
                 <Text variant="caption" color="textMuted" numberOfLines={1} style={{ marginTop: 4 }}>
@@ -796,12 +816,45 @@ export default function ServicesScreen() {
                 </View>
 
                 <Input
-                  label="Prix (€)"
+                  label={form.isPriceRange ? 'Prix min (€)' : 'Prix (€)'}
                   placeholder="0"
                   value={form.price}
                   onChangeText={(t) => setForm((p) => ({ ...p, price: t }))}
                   keyboardType="decimal-pad"
                 />
+
+                {form.isPriceRange && (
+                  <Input
+                    label="Prix max (€)"
+                    placeholder="0"
+                    value={form.priceMax}
+                    onChangeText={(t) => setForm((p) => ({ ...p, priceMax: t }))}
+                    keyboardType="decimal-pad"
+                  />
+                )}
+
+                {/* Price options */}
+                <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' }}>
+                  <Pressable
+                    onPress={() => {
+                      setForm((p) => ({
+                        ...p,
+                        isPriceRange: !p.isPriceRange,
+                        priceMax: !p.isPriceRange ? '' : '',
+                      }));
+                    }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                  >
+                    <Ionicons
+                      name={form.isPriceRange ? 'checkbox' : 'square-outline'}
+                      size={20}
+                      color={form.isPriceRange ? colors.primary : colors.textMuted}
+                    />
+                    <Text variant="bodySmall" color={form.isPriceRange ? 'primary' : 'textSecondary'} style={{ fontWeight: form.isPriceRange ? '600' : '400' }}>
+                      Fourchette de prix
+                    </Text>
+                  </Pressable>
+                </View>
 
                 {/* Buffer time — free input with info box */}
                 <View>

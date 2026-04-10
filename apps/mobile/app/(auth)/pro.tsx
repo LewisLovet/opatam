@@ -33,9 +33,10 @@ import {
   locationService,
   memberService,
   serviceRepository,
+  serviceCategoryRepository,
   schedulingService,
 } from '@booking-app/firebase';
-import { CATEGORIES, DAYS_OF_WEEK } from '@booking-app/shared/constants';
+import { CATEGORIES, DAYS_OF_WEEK, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared/constants';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -68,7 +69,7 @@ interface WizardData {
   city: string;
   geopoint: { latitude: number; longitude: number } | null;
   // Step 3 — Services (multiple)
-  services: { name: string; duration: number; price: string; description: string }[];
+  services: { name: string; duration: number; price: string; priceMax: string; description: string; category: string }[];
   // Step 4 — Schedule
   availability: Record<number, DayAvailability>;
   // Step 6 — Account
@@ -101,7 +102,7 @@ const DEFAULT_DATA: WizardData = {
   postalCode: '',
   city: '',
   geopoint: null,
-  services: [{ name: '', duration: 60, price: '', description: '' }],
+  services: [{ name: '', duration: 60, price: '', priceMax: '', description: '', category: '' }],
   availability: DEFAULT_AVAILABILITY,
   displayName: '',
   email: '',
@@ -355,6 +356,10 @@ export default function ProRegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showDurationModal, setShowDurationModal] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [customCategoryText, setCustomCategoryText] = useState('');
+  const [copyFromDay, setCopyFromDay] = useState<number | null>(null);
+  const [copyTargetDays, setCopyTargetDays] = useState<number[]>([]);
   const [editingServiceIndex, setEditingServiceIndex] = useState(0);
   const [showLocationNameModal, setShowLocationNameModal] = useState(false);
   const [showCountryModal, setShowCountryModal] = useState(false);
@@ -668,16 +673,33 @@ export default function ProRegisterScreen() {
         location.id
       );
 
+      // Create ServiceCategories
+      const categoryMap = new Map<string, string>();
+      const uniqueCategories = [...new Set(
+        data.services.map((s) => s.category?.trim()).filter(Boolean)
+      )] as string[];
+      for (let i = 0; i < uniqueCategories.length; i++) {
+        const catId = await serviceCategoryRepository.create(provider.id, {
+          name: uniqueCategories[i],
+          sortOrder: i,
+          isActive: true,
+        });
+        categoryMap.set(uniqueCategories[i], catId);
+      }
+
       for (let i = 0; i < data.services.length; i++) {
         const svc = data.services[i];
+        const catId = svc.category?.trim() ? categoryMap.get(svc.category.trim()) || null : null;
+        const priceMaxCents = svc.priceMax?.trim() ? Math.round(Number(svc.priceMax) * 100) : null;
         await serviceRepository.create(provider.id, {
           name: svc.name.trim(),
           description: svc.description.trim() || null,
           photoURL: null,
           duration: svc.duration,
           price: Math.round(Number(svc.price) * 100),
+          priceMax: priceMaxCents,
           bufferTime: 0,
-          categoryId: null,
+          categoryId: catId,
           isActive: true,
           locationIds: [location.id],
           memberIds: [defaultMember.id],
@@ -1179,7 +1201,7 @@ export default function ProRegisterScreen() {
   };
 
   const addServiceEntry = () => {
-    updateField('services', [...data.services, { name: '', duration: 60, price: '', description: '' }]);
+    updateField('services', [...data.services, { name: '', duration: 60, price: '', priceMax: '', description: '', category: '' }]);
   };
 
   const removeServiceEntry = (index: number) => {
@@ -1194,7 +1216,7 @@ export default function ProRegisterScreen() {
 
   const renderStep3 = () => (
     <View style={{ gap: spacing.md }}>
-      {data.services.map((svc: { name: string; duration: number; price: string; description: string }, index: number) => (
+      {data.services.map((svc: { name: string; duration: number; price: string; priceMax: string; description: string; category: string }, index: number) => (
         <View
           key={index}
           style={{
@@ -1225,10 +1247,38 @@ export default function ProRegisterScreen() {
             autoCapitalize="sentences"
           />
 
+          {/* Category (optional) */}
+          {svc.category ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text variant="caption" color="textSecondary">Catégorie :</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryLight || '#e4effa', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, gap: 4 }}>
+                <Text variant="bodySmall" style={{ color: colors.primary, fontWeight: '600' }}>{svc.category}</Text>
+                <Pressable onPress={() => updateServiceField(index, 'category', '')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color={colors.primary} />
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <View>
+              <Pressable
+                onPress={() => {
+                  setEditingServiceIndex(index);
+                  setShowCategoryPicker(true);
+                }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              >
+                <Ionicons name="add" size={16} color={colors.primary} />
+                <Text variant="bodySmall" style={{ color: colors.primary, fontWeight: '600' }}>
+                  Ajouter une catégorie (facultatif)
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <View style={{ flex: 1 }}>
               <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-                Duree
+                Durée
               </Text>
               <Pressable
                 onPress={() => {
@@ -1252,35 +1302,66 @@ export default function ProRegisterScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Input
-                label="Prix (€)"
+                label={svc.priceMax ? 'Prix min (€)' : 'Prix (€)'}
                 placeholder="0"
                 value={svc.price}
                 onChangeText={(t: string) => updateServiceField(index, 'price', t)}
                 keyboardType="decimal-pad"
-                disabled={svc.price === '0' && !svc.price}
               />
             </View>
+            {!!svc.priceMax && (
+              <View style={{ flex: 1 }}>
+                <Input
+                  label="Prix max (€)"
+                  placeholder="0"
+                  value={svc.priceMax}
+                  onChangeText={(t: string) => updateServiceField(index, 'priceMax', t)}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            )}
           </View>
 
-          {/* Free toggle */}
-          <Pressable
-            onPress={() => updateServiceField(index, 'price', svc.price === '0' ? '' : '0')}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-              paddingVertical: spacing.xs,
-            }}
-          >
-            <Ionicons
-              name={svc.price === '0' ? 'checkbox' : 'square-outline'}
-              size={22}
-              color={svc.price === '0' ? colors.primary : colors.textMuted}
-            />
-            <Text variant="bodySmall" style={{ color: svc.price === '0' ? colors.primary : colors.textSecondary }}>
-              RDV gratuit
-            </Text>
-          </Pressable>
+          {/* Price options */}
+          <View style={{ flexDirection: 'row', gap: spacing.lg, flexWrap: 'wrap' }}>
+            <Pressable
+              onPress={() => {
+                if (svc.priceMax) {
+                  updateServiceField(index, 'priceMax', '');
+                } else {
+                  updateServiceField(index, 'priceMax', svc.price ? String(Number(svc.price) + 10) : '10');
+                }
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
+              <Ionicons
+                name={svc.priceMax ? 'checkbox' : 'square-outline'}
+                size={22}
+                color={svc.priceMax ? colors.primary : colors.textMuted}
+              />
+              <Text variant="bodySmall" style={{ color: svc.priceMax ? colors.primary : colors.textSecondary, fontWeight: svc.priceMax ? '600' : '400' }}>
+                Fourchette de prix
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                const isFree = !svc.price || svc.price === '0';
+                updateServiceField(index, 'price', isFree ? '' : '0');
+                if (!isFree) updateServiceField(index, 'priceMax', '');
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
+              <Ionicons
+                name={(!svc.price || svc.price === '0') && !svc.priceMax ? 'checkbox' : 'square-outline'}
+                size={22}
+                color={(!svc.price || svc.price === '0') && !svc.priceMax ? colors.primary : colors.textMuted}
+              />
+              <Text variant="bodySmall" style={{ color: (!svc.price || svc.price === '0') && !svc.priceMax ? colors.primary : colors.textSecondary }}>
+                RDV gratuit
+              </Text>
+            </Pressable>
+          </View>
 
           {/* Description */}
           <Input
@@ -1400,26 +1481,44 @@ export default function ProRegisterScreen() {
                 />
                 <Text variant="body" style={{ fontWeight: '600', minWidth: 80 }}>{label}</Text>
               </View>
-              {day.isOpen && day.slots.length < 3 && (
-                <Pressable onPress={() => addSlot(value)} hitSlop={8}>
-                  <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
-                </Pressable>
+              {day.isOpen && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  {/* Copy to other days */}
+                  <Pressable
+                    onPress={() => {
+                      setCopyFromDay(value);
+                      setCopyTargetDays([]);
+                    }}
+                    hitSlop={8}
+                    style={{ paddingHorizontal: 6, paddingVertical: 2 }}
+                  >
+                    <Ionicons name="copy-outline" size={18} color={colors.textMuted} />
+                  </Pressable>
+                  {/* Add slot */}
+                  {day.slots.length < 3 && (
+                    <Pressable onPress={() => addSlot(value)} hitSlop={8}>
+                      <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                    </Pressable>
+                  )}
+                </View>
               )}
             </View>
             {day.isOpen && day.slots.map((slot, si) => (
               <View key={si} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, paddingLeft: 52 }}>
                 <Pressable
                   onPress={() => setTimePickerState({ visible: true, dayValue: value, slotIndex: si, field: 'start', currentValue: slot.start })}
-                  style={[styles.timePill, { backgroundColor: colors.primaryLight, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs }]}
+                  style={{ backgroundColor: colors.primaryLight, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(59, 130, 246, 0.15)', flexDirection: 'row', alignItems: 'center', gap: 4 }}
                 >
-                  <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{slot.start}</Text>
+                  <Text variant="body" color="primary" style={{ fontWeight: '700', fontSize: 15 }}>{slot.start}</Text>
+                  <Ionicons name="pencil" size={11} color={colors.primary} />
                 </Pressable>
-                <Text variant="caption" color="textMuted">—</Text>
+                <Text variant="bodySmall" color="textMuted" style={{ fontWeight: '500' }}>à</Text>
                 <Pressable
                   onPress={() => setTimePickerState({ visible: true, dayValue: value, slotIndex: si, field: 'end', currentValue: slot.end })}
-                  style={[styles.timePill, { backgroundColor: colors.primaryLight, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs }]}
+                  style={{ backgroundColor: colors.primaryLight, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(59, 130, 246, 0.15)', flexDirection: 'row', alignItems: 'center', gap: 4 }}
                 >
-                  <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{slot.end}</Text>
+                  <Text variant="body" color="primary" style={{ fontWeight: '700', fontSize: 15 }}>{slot.end}</Text>
+                  <Ionicons name="pencil" size={11} color={colors.primary} />
                 </Pressable>
                 {day.slots.length > 1 && (
                   <Pressable onPress={() => removeSlot(value, si)} hitSlop={8}>
@@ -1483,9 +1582,9 @@ export default function ProRegisterScreen() {
           <Text variant="body" style={{ fontWeight: '500' }}>
             {data.services.length} prestation{data.services.length > 1 ? 's' : ''}
           </Text>
-          {data.services.map((svc: { name: string; duration: number; price: string }, i: number) => (
+          {data.services.map((svc: { name: string; duration: number; price: string; priceMax: string; category: string }, i: number) => (
             <Text key={i} variant="bodySmall" color="textSecondary">
-              {svc.name || '—'} • {svc.duration} min • {Number(svc.price || 0).toFixed(2)} €
+              {svc.name || '—'} • {svc.duration} min • {svc.priceMax ? `${Number(svc.price || 0).toFixed(2)} – ${Number(svc.priceMax).toFixed(2)} €` : `${Number(svc.price || 0).toFixed(2)} €`}{svc.category ? ` • ${svc.category}` : ''}
             </Text>
           ))}
         </View>
@@ -1860,6 +1959,193 @@ export default function ProRegisterScreen() {
             />
           </View>
         </View>
+      </Modal>
+
+      {/* ── Service Category Picker Modal ── */}
+      <Modal visible={showCategoryPicker} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '60%' }]}>
+            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+              <Text variant="h3">Catégorie de prestation</Text>
+              <Pressable onPress={() => { setShowCategoryPicker(false); setCustomCategoryText(''); }}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }}>
+              {/* Already used categories */}
+              {[...new Set(data.services.map((s) => s.category?.trim()).filter(Boolean))].map((cat) => (
+                <Pressable
+                  key={`used-${cat}`}
+                  onPress={() => {
+                    updateServiceField(editingServiceIndex, 'category', cat!);
+                    setShowCategoryPicker(false);
+                    setCustomCategoryText('');
+                  }}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: spacing.md,
+                    paddingHorizontal: spacing.sm,
+                    borderRadius: radius.md,
+                    backgroundColor: pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
+                    gap: spacing.sm,
+                  })}
+                >
+                  <Ionicons name="pricetag" size={18} color={colors.primary} />
+                  <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>{cat}</Text>
+                </Pressable>
+              ))}
+
+              {/* Divider */}
+              {data.services.some((s) => s.category?.trim()) && (
+                <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
+              )}
+
+              {/* Suggestions based on activity */}
+              {(SERVICE_CATEGORY_SUGGESTIONS[data.category] || [])
+                .filter((s) => !data.services.some((sv) => sv.category?.trim() === s))
+                .map((suggestion) => (
+                  <Pressable
+                    key={suggestion}
+                    onPress={() => {
+                      updateServiceField(editingServiceIndex, 'category', suggestion);
+                      setShowCategoryPicker(false);
+                      setCustomCategoryText('');
+                    }}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: spacing.md,
+                      paddingHorizontal: spacing.sm,
+                      borderRadius: radius.md,
+                      backgroundColor: pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
+                      gap: spacing.sm,
+                    })}
+                  >
+                    <Ionicons name="pricetag-outline" size={18} color={colors.textMuted} />
+                    <Text variant="body" style={{ flex: 1 }}>{suggestion}</Text>
+                  </Pressable>
+                ))}
+
+              {/* Custom category */}
+              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
+              <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.sm, marginBottom: spacing.xs }}>
+                Ou entrez un nom personnalisé :
+              </Text>
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label=""
+                    placeholder="Autre catégorie..."
+                    value={customCategoryText}
+                    onChangeText={setCustomCategoryText}
+                    autoCapitalize="sentences"
+                  />
+                </View>
+                <Pressable
+                  onPress={() => {
+                    if (customCategoryText.trim()) {
+                      updateServiceField(editingServiceIndex, 'category', customCategoryText.trim());
+                      setShowCategoryPicker(false);
+                      setCustomCategoryText('');
+                    }
+                  }}
+                  style={{
+                    backgroundColor: colors.primary,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: radius.lg,
+                    justifyContent: 'center',
+                    opacity: customCategoryText.trim() ? 1 : 0.4,
+                  }}
+                >
+                  <Text variant="bodySmall" style={{ color: '#FFF', fontWeight: '600' }}>OK</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Copy Schedule Modal ── */}
+      <Modal visible={copyFromDay !== null} transparent animationType="fade">
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setCopyFromDay(null)}
+        >
+          <Pressable
+            style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '85%', maxWidth: 340 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text variant="h3" style={{ marginBottom: 4 }}>Copier vers</Text>
+            <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.md }}>
+              Copier les horaires de {copyFromDay !== null ? SCHEDULE_DAYS.find((d) => d.value === copyFromDay)?.label : ''} vers :
+            </Text>
+
+            {SCHEDULE_DAYS.filter((d) => d.value !== copyFromDay).map((d) => {
+              const isChecked = copyTargetDays.includes(d.value);
+              return (
+                <Pressable
+                  key={d.value}
+                  onPress={() => setCopyTargetDays((prev) => isChecked ? prev.filter((v) => v !== d.value) : [...prev, d.value])}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8 }}
+                >
+                  <View style={{
+                    width: 22, height: 22, borderRadius: 4, borderWidth: 2,
+                    borderColor: isChecked ? colors.primary : colors.border,
+                    backgroundColor: isChecked ? colors.primary : 'transparent',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {isChecked && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                  </View>
+                  <Text variant="body">{d.label}</Text>
+                </Pressable>
+              );
+            })}
+
+            {/* Quick select */}
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.md }}>
+              <Pressable
+                onPress={() => setCopyTargetDays(SCHEDULE_DAYS.filter((d) => d.value !== copyFromDay && d.value >= 1 && d.value <= 5).map((d) => d.value))}
+                style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.primaryLight || '#e4effa' }}
+              >
+                <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>Lun – Ven</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setCopyTargetDays(SCHEDULE_DAYS.filter((d) => d.value !== copyFromDay).map((d) => d.value))}
+                style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.primaryLight || '#e4effa' }}
+              >
+                <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>Tous</Text>
+              </Pressable>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <Pressable
+                onPress={() => setCopyFromDay(null)}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}
+              >
+                <Text variant="body" style={{ fontWeight: '500' }}>Annuler</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (copyFromDay === null || copyTargetDays.length === 0) return;
+                  const sourceDay = data.availability[copyFromDay];
+                  if (!sourceDay) return;
+                  const updated = { ...data.availability };
+                  copyTargetDays.forEach((dv) => {
+                    updated[dv] = { isOpen: true, slots: [...sourceDay.slots] };
+                  });
+                  updateField('availability', updated);
+                  setCopyFromDay(null);
+                  setCopyTargetDays([]);
+                }}
+                disabled={copyTargetDays.length === 0}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', opacity: copyTargetDays.length === 0 ? 0.4 : 1 }}
+              >
+                <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>Copier</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* ── Location Name Modal ── */}

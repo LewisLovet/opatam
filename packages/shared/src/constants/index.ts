@@ -49,6 +49,29 @@ export const CATEGORIES = [
 export type CategoryId = (typeof CATEGORIES)[number]['id'];
 
 /**
+ * Suggested service category names per provider activity.
+ * Used in registration to propose relevant groupings.
+ * The provider can always choose "Autre" to type a custom name.
+ */
+export const SERVICE_CATEGORY_SUGGESTIONS: Record<string, string[]> = {
+  beauty: ['Soins visage', 'Épilations', 'Maquillage', 'Manucure', 'Extensions cils', 'Soins corps'],
+  wellness: ['Massages', 'Soins énergétiques', 'Relaxation', 'Aromathérapie', 'Réflexologie'],
+  sport: ['Coaching individuel', 'Cours collectifs', 'Bilans', 'Programmes', 'Nutrition'],
+  coaching: ['Séances individuelles', 'Bilans', 'Ateliers', 'Programmes', 'Suivi'],
+  audiovisual: ['Photographie', 'Vidéo', 'Montage', 'Retouche', 'Création graphique'],
+  digital: ['Développement', 'Consulting', 'Formation', 'Design', 'Maintenance'],
+  artisan: ['Réparations', 'Installations', 'Entretien', 'Dépannage', 'Devis'],
+  home: ['Ménage', 'Jardinage', 'Bricolage', 'Garde d\'enfants', 'Aide à domicile'],
+  training: ['Cours particuliers', 'Cours collectifs', 'Ateliers', 'Stages', 'Formations'],
+  events: ['Organisation', 'Décoration', 'Animation', 'DJ', 'Traiteur'],
+  consulting: ['Consulting', 'Audit', 'Accompagnement', 'Formation', 'Stratégie'],
+  mobility: ['Entretien', 'Réparation', 'Diagnostic', 'Nettoyage', 'Contrôle'],
+  pets: ['Toilettage', 'Promenades', 'Garde', 'Éducation', 'Soins'],
+  arts: ['Cours', 'Ateliers', 'Stages', 'Créations sur mesure', 'Expositions'],
+  other: [],
+};
+
+/**
  * Get the display label for a category id
  * Falls back to the id with first letter capitalized if not found
  */
