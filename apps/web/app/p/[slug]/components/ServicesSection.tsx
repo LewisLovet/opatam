@@ -10,6 +10,7 @@ interface Service {
   description: string | null;
   duration: number;
   price: number;
+  priceMax?: number | null;
   categoryId?: string | null;
 }
 

@@ -13,6 +13,7 @@ interface ServiceItemProps {
     photoURL?: string | null;
     duration: number;
     price: number;
+    priceMax?: number | null;
   };
   slug: string;
   /** If set, intercepts booking click to show a notice before navigating */
@@ -26,14 +27,17 @@ function formatDuration(minutes: number): string {
   return rem === 0 ? `${hours}h` : `${hours}h${rem}`;
 }
 
-function formatPrice(cents: number): string {
-  if (cents === 0) return 'Gratuit';
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(cents / 100);
+function formatPrice(cents: number, centsMax?: number | null): string {
+  if (cents === 0 && !centsMax) return 'Gratuit';
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(v / 100);
+  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
+  return fmt(cents);
 }
 
 export function ServiceItem({ service, slug, onBookingClick }: ServiceItemProps) {
@@ -93,7 +97,7 @@ export function ServiceItem({ service, slug, onBookingClick }: ServiceItemProps)
 
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                  {formatPrice(service.price)}
+                  {formatPrice(service.price, service.priceMax)}
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 text-white text-sm font-medium rounded-lg group-hover:bg-primary-700 transition-colors shadow-sm">
                   Reserver

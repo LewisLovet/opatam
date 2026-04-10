@@ -27,10 +27,11 @@ import {
   providerService,
   locationService,
   serviceRepository,
+  serviceCategoryRepository,
   schedulingService,
   memberService,
 } from '@booking-app/firebase';
-import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel } from '@booking-app/shared';
+import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared';
 
 // Storage key for localStorage
 const STORAGE_KEY = 'opatam-register-wizard';
@@ -78,7 +79,9 @@ interface WizardData {
     name: string;
     duration: number;
     price: number;
+    priceMax: number | null;
     description: string;
+    category: string;
   }[];
   // Step 4 - Availability (supports multiple slots per day)
   availability: {
@@ -116,7 +119,7 @@ const DEFAULT_DATA: WizardData = {
   city: '',
   geopoint: null,
   region: null,
-  services: [{ name: '', duration: 60, price: 0, description: '' }],
+  services: [{ name: '', duration: 60, price: 0, priceMax: null as number | null, description: '', category: '' }],
   availability: DEFAULT_AVAILABILITY,
   displayName: '',
   email: '',
@@ -273,7 +276,11 @@ export default function RegisterPage() {
             return false;
           }
           if (data.services[i].price < 0) {
-            setError(`Le prix de la prestation ${i + 1} ne peut pas etre negatif`);
+            setError(`Le prix de la prestation ${i + 1} ne peut pas être négatif`);
+            return false;
+          }
+          if (data.services[i].priceMax !== null && data.services[i].priceMax! <= data.services[i].price) {
+            setError(`Le prix max de la prestation ${i + 1} doit être supérieur au prix min`);
             return false;
           }
         }
@@ -386,17 +393,37 @@ export default function RegisterPage() {
       locationId
     );
 
+    // Create ServiceCategories from unique category names
+    const categoryMap = new Map<string, string>(); // name → id
+    const uniqueCategories = [...new Set(
+      data.services.map((s) => s.category?.trim()).filter(Boolean)
+    )] as string[];
+
+    for (let i = 0; i < uniqueCategories.length; i++) {
+      const catName = uniqueCategories[i];
+      const catId = await serviceCategoryRepository.create(provider.id, {
+        name: catName,
+        sortOrder: i,
+        isActive: true,
+      });
+      categoryMap.set(catName, catId);
+    }
+
     // Create Services
     for (let i = 0; i < data.services.length; i++) {
       const svc = data.services[i];
+      const categoryId = svc.category?.trim()
+        ? categoryMap.get(svc.category.trim()) || null
+        : null;
       await serviceRepository.create(provider.id, {
         name: svc.name,
         description: svc.description || null,
         photoURL: null,
         duration: svc.duration,
         price: svc.price * 100, // Convert to cents
+        priceMax: svc.priceMax ? svc.priceMax * 100 : null,
         bufferTime: 0,
-        categoryId: null,
+        categoryId,
         isActive: true,
         locationIds: [locationId],
         memberIds: [defaultMember.id],
@@ -690,14 +717,14 @@ export default function RegisterPage() {
   );
 
   // Step 3 - Service
-  const updateService = (index: number, field: string, value: string | number) => {
+  const updateService = (index: number, field: string, value: string | number | null) => {
     const updated = [...data.services];
     updated[index] = { ...updated[index], [field]: value };
     updateData({ services: updated });
   };
 
   const addService = () => {
-    updateData({ services: [...data.services, { name: '', duration: 60, price: 0, description: '' }] });
+    updateData({ services: [...data.services, { name: '', duration: 60, price: 0, priceMax: null as number | null, description: '', category: '' }] });
   };
 
   const removeService = (index: number) => {
@@ -744,10 +771,94 @@ export default function RegisterPage() {
             onChange={(e) => updateService(index, 'name', e.target.value)}
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Category (optional) */}
+          {svc.category ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Catégorie :</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-50 text-primary-700 text-sm font-medium">
+                {svc.category}
+                <button
+                  type="button"
+                  onClick={() => updateService(index, 'category', '')}
+                  className="ml-0.5 hover:text-primary-900"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            </div>
+          ) : (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => {
+                  const btn = e.currentTarget;
+                  const dropdown = btn.nextElementSibling as HTMLElement;
+                  if (dropdown) dropdown.classList.toggle('hidden');
+                }}
+                className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Ajouter une catégorie (facultatif)
+              </button>
+              <div className="hidden absolute z-10 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 max-h-48 overflow-y-auto">
+                {/* Suggestions from already-used categories in this form */}
+                {[...new Set(data.services.map((s) => s.category?.trim()).filter(Boolean))].map((cat) => (
+                  <button
+                    key={`used-${cat}`}
+                    type="button"
+                    onClick={(e) => {
+                      updateService(index, 'category', cat!);
+                      (e.currentTarget.closest('.relative')?.querySelector('.hidden') as HTMLElement)?.classList.add('hidden');
+                    }}
+                    className="block w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    {cat}
+                  </button>
+                ))}
+                {/* Divider if there are used categories */}
+                {data.services.some((s) => s.category?.trim()) && (
+                  <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                )}
+                {/* Suggestions based on provider activity */}
+                {(SERVICE_CATEGORY_SUGGESTIONS[data.category] || [])
+                  .filter((s) => !data.services.some((sv) => sv.category?.trim() === s))
+                  .map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={(e) => {
+                        updateService(index, 'category', suggestion);
+                        (e.currentTarget.closest('.relative')?.querySelector('.hidden') as HTMLElement)?.classList.add('hidden');
+                      }}
+                      className="block w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                {/* Custom option */}
+                <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                <div className="px-3 py-2">
+                  <input
+                    type="text"
+                    placeholder="Autre catégorie..."
+                    className="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                        e.preventDefault();
+                        updateService(index, 'category', (e.target as HTMLInputElement).value.trim());
+                        (e.currentTarget.closest('.relative')?.querySelector('.hidden') as HTMLElement)?.classList.add('hidden');
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={`grid gap-3 ${svc.priceMax !== null ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <Input
               type="number"
-              label="Duree (min)"
+              label="Durée (min)"
               placeholder="60"
               value={svc.duration?.toString() || ''}
               onChange={(e) => updateService(index, 'duration', parseInt(e.target.value) || 0)}
@@ -757,25 +868,57 @@ export default function RegisterPage() {
             />
             <Input
               type="number"
-              label="Prix (EUR)"
+              label={svc.priceMax !== null ? 'Prix min (€)' : 'Prix (€)'}
               placeholder="0"
               value={svc.price || ''}
               onChange={(e) => updateService(index, 'price', parseFloat(e.target.value) || 0)}
             />
+            {svc.priceMax !== null && (
+              <Input
+                type="number"
+                label="Prix max (€)"
+                placeholder="0"
+                value={svc.priceMax || ''}
+                onChange={(e) => updateService(index, 'priceMax', parseFloat(e.target.value) || 0)}
+              />
+            )}
           </div>
 
-          {/* Free toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={svc.price === 0}
-              onChange={(e) => updateService(index, 'price', e.target.checked ? 0 : '')}
-              className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-            <span className={`text-sm ${svc.price === 0 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
-              RDV gratuit
-            </span>
-          </label>
+          {/* Price options */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={svc.priceMax !== null}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    updateService(index, 'priceMax', svc.price > 0 ? svc.price + 10 : 10);
+                  } else {
+                    updateService(index, 'priceMax', null);
+                  }
+                }}
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className={`text-sm ${svc.priceMax !== null ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
+                Fourchette de prix
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={(!svc.price || svc.price === 0) && svc.priceMax === null}
+                onChange={(e) => {
+                  updateService(index, 'price', e.target.checked ? 0 : '');
+                  if (e.target.checked) updateService(index, 'priceMax', null);
+                }}
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className={`text-sm ${(!svc.price || svc.price === 0) && svc.priceMax === null ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
+                RDV gratuit
+              </span>
+            </label>
+          </div>
 
           {/* Description */}
           <textarea
@@ -845,6 +988,28 @@ export default function RegisterPage() {
     });
   };
 
+  // Copy schedule picker state
+  const [copyFromDay, setCopyFromDay] = useState<number | null>(null);
+  const [copyTargetDays, setCopyTargetDays] = useState<number[]>([]);
+
+  const openCopyPicker = (sourceDayValue: number) => {
+    setCopyFromDay(sourceDayValue);
+    setCopyTargetDays([]);
+  };
+
+  const applyCopyToDays = () => {
+    if (copyFromDay === null || copyTargetDays.length === 0) return;
+    const sourceDay = data.availability[copyFromDay];
+    if (!sourceDay?.isOpen) return;
+    const updated = { ...data.availability };
+    copyTargetDays.forEach((dv) => {
+      updated[dv] = { isOpen: true, slots: [...sourceDay.slots] };
+    });
+    updateData({ availability: updated });
+    setCopyFromDay(null);
+    setCopyTargetDays([]);
+  };
+
   // Step 4 - Availability
   const renderStep4 = () => (
     <div className="space-y-4">
@@ -856,96 +1021,201 @@ export default function RegisterPage() {
           Vos horaires
         </h1>
         <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-          Cliquez sur + pour ajouter une pause dejeuner
+          Cliquez sur les horaires pour les modifier
         </p>
       </div>
 
-      <div className="space-y-1.5">
+      {/* Presets */}
+      <div className="flex gap-2">
+        {[
+          { label: '9h – 18h', slots: [{ start: '09:00', end: '18:00' }] },
+          { label: '8h – 13h', slots: [{ start: '08:00', end: '13:00' }] },
+          { label: '9h–12h / 14h–19h', slots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '19:00' }] },
+        ].map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            onClick={() => {
+              const updated = { ...data.availability };
+              DAYS_OF_WEEK.forEach((d) => {
+                if (updated[d.value]?.isOpen) {
+                  updated[d.value] = { ...updated[d.value], slots: [...preset.slots] };
+                }
+              });
+              updateData({ availability: updated });
+            }}
+            className="flex-1 py-2 px-1 text-[11px] font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:text-primary-400 rounded-lg border border-primary-200 dark:border-primary-800 transition-colors text-center"
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-2">
         {DAYS_OF_WEEK.map((day) => {
-          // Ensure dayData and slots always exist (fallback to default)
           const dayData = data.availability[day.value] || DEFAULT_AVAILABILITY[day.value];
           const slots = dayData.slots || [{ start: '09:00', end: '18:00' }];
           return (
             <div
               key={day.value}
-              className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+              className={`rounded-xl border transition-colors ${
+                dayData.isOpen
+                  ? 'border-primary-200 dark:border-primary-800 bg-white dark:bg-gray-800'
+                  : 'border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30'
+              }`}
             >
-              {/* Toggle */}
-              <button
-                type="button"
-                onClick={() =>
-                  updateData({
-                    availability: {
-                      ...data.availability,
-                      [day.value]: { ...dayData, isOpen: !dayData.isOpen },
-                    },
-                  })
-                }
-                className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${
-                  dayData.isOpen ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${
-                    dayData.isOpen ? 'left-[14px]' : 'left-0.5'
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                {/* Toggle */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateData({
+                      availability: {
+                        ...data.availability,
+                        [day.value]: { ...dayData, isOpen: !dayData.isOpen },
+                      },
+                    })
+                  }
+                  className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
+                    dayData.isOpen ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                      dayData.isOpen ? 'left-[18px]' : 'left-0.5'
+                    }`}
+                  />
+                </button>
 
-              {/* Day name */}
-              <span className="w-12 text-xs font-medium text-gray-900 dark:text-white truncate">
-                {day.label.slice(0, 3)}
-              </span>
+                {/* Day name */}
+                <span className={`w-20 text-sm font-semibold ${dayData.isOpen ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                  {day.label}
+                </span>
 
-              {/* Time slots or "Fermé" */}
-              {!dayData.isOpen ? (
-                <span className="text-xs text-gray-400 ml-auto">Fermé</span>
-              ) : (
-                <div className="flex items-center gap-1 flex-1 flex-wrap">
-                  {slots.map((slot, slotIndex) => (
-                    <div key={slotIndex} className="flex items-center gap-0.5">
-                      {slotIndex > 0 && <span className="text-gray-300 text-xs mx-0.5">|</span>}
-                      <input
-                        type="time"
-                        value={slot.start}
-                        onChange={(e) => updateSlot(day.value, slotIndex, 'start', e.target.value)}
-                        className="w-[90px] px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base text-gray-900 dark:text-gray-100"
-                      />
-                      <span className="text-gray-400 text-[10px]">-</span>
-                      <input
-                        type="time"
-                        value={slot.end}
-                        onChange={(e) => updateSlot(day.value, slotIndex, 'end', e.target.value)}
-                        className="w-[90px] px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-base text-gray-900 dark:text-gray-100"
-                      />
-                      {/* Remove slot button (only if more than one slot) */}
-                      {slots.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeSlotFromDay(day.value, slotIndex)}
-                          className="p-0.5 text-gray-400 hover:text-error-500 transition-colors"
-                          title="Supprimer"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {/* Add slot button */}
-                  <button
-                    type="button"
-                    onClick={() => addSlotToDay(day.value)}
-                    className="p-0.5 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors ml-1"
-                    title="Ajouter un créneau"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+                {/* Time slots or "Fermé" */}
+                {!dayData.isOpen ? (
+                  <span className="text-xs text-gray-400 italic ml-auto">Fermé</span>
+                ) : (
+                  <div className="flex items-center gap-1.5 flex-1 flex-wrap">
+                    {slots.map((slot, slotIndex) => (
+                      <div key={slotIndex} className="flex items-center gap-1">
+                        {slotIndex > 0 && <span className="text-gray-300 text-xs mx-0.5">·</span>}
+                        <div className="flex items-center gap-1 bg-primary-50 dark:bg-primary-900/30 rounded-lg px-1 border border-primary-100 dark:border-primary-800">
+                          <input
+                            type="time"
+                            value={slot.start}
+                            onChange={(e) => updateSlot(day.value, slotIndex, 'start', e.target.value)}
+                            className="w-[80px] px-1 py-1 bg-transparent text-sm font-medium text-primary-700 dark:text-primary-300 focus:outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute"
+                          />
+                          <span className="text-primary-400 text-xs font-medium">→</span>
+                          <input
+                            type="time"
+                            value={slot.end}
+                            onChange={(e) => updateSlot(day.value, slotIndex, 'end', e.target.value)}
+                            className="w-[80px] px-1 py-1 bg-transparent text-sm font-medium text-primary-700 dark:text-primary-300 focus:outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute"
+                          />
+                        </div>
+                        {slots.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeSlotFromDay(day.value, slotIndex)}
+                            className="p-0.5 text-gray-300 hover:text-red-500 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {/* Add slot (pause) */}
+                    <button
+                      type="button"
+                      onClick={() => addSlotToDay(day.value)}
+                      className="p-1 text-primary-500 hover:text-primary-600 transition-colors"
+                      title="Ajouter une pause"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    {/* Copy to other days */}
+                    <button
+                      type="button"
+                      onClick={() => openCopyPicker(day.value)}
+                      className="ml-auto p-1 text-gray-400 hover:text-primary-600 transition-colors"
+                      title="Copier vers d'autres jours"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
+                        <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
+
+      {/* Copy-to modal */}
+      {copyFromDay !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setCopyFromDay(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Copier vers</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Copier les horaires de <span className="font-semibold text-gray-700 dark:text-gray-200">{DAYS_OF_WEEK.find((d) => d.value === copyFromDay)?.label}</span> vers :
+            </p>
+            <div className="space-y-1.5">
+              {DAYS_OF_WEEK.filter((d) => d.value !== copyFromDay).map((d) => {
+                const isChecked = copyTargetDays.includes(d.value);
+                return (
+                  <label key={d.value} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => setCopyTargetDays((prev) => isChecked ? prev.filter((v) => v !== d.value) : [...prev, d.value])}
+                      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-200">{d.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+            {/* Quick select */}
+            <div className="flex gap-2 mt-3 mb-4">
+              <button
+                type="button"
+                onClick={() => setCopyTargetDays(DAYS_OF_WEEK.filter((d) => d.value !== copyFromDay && d.value >= 1 && d.value <= 5).map((d) => d.value))}
+                className="text-xs font-medium text-primary-600 hover:text-primary-700 px-2 py-1 rounded-md bg-primary-50 dark:bg-primary-900/20"
+              >
+                Lun – Ven
+              </button>
+              <button
+                type="button"
+                onClick={() => setCopyTargetDays(DAYS_OF_WEEK.filter((d) => d.value !== copyFromDay).map((d) => d.value))}
+                className="text-xs font-medium text-primary-600 hover:text-primary-700 px-2 py-1 rounded-md bg-primary-50 dark:bg-primary-900/20"
+              >
+                Tous
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCopyFromDay(null)}
+                className="flex-1 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={applyCopyToDays}
+                disabled={copyTargetDays.length === 0}
+                className="flex-1 py-2 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-40"
+              >
+                Copier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

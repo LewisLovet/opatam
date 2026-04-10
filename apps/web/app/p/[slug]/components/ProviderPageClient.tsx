@@ -52,6 +52,7 @@ interface SerializedService {
   description: string | null;
   duration: number;
   price: number;
+  priceMax?: number | null;
   bufferTime: number;
   categoryId?: string | null;
   locationIds: string[];

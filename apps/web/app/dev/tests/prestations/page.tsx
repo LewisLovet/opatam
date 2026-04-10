@@ -53,6 +53,7 @@ export default function ServicesTestPage() {
         photoURL: null,
         duration: parseInt(createDuration, 10),
         price: parseInt(createPrice, 10),
+        priceMax: null,
         bufferTime: 0,
         categoryId: null,
         locationIds: [createLocationId],

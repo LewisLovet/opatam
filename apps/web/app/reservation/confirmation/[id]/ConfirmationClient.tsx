@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download } from 'lucide-react';
+import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download, Sparkles } from 'lucide-react';
 
 interface Booking {
   id: string;
@@ -335,9 +335,79 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
           </p>
         </div>
 
+        {/* App download CTA */}
+        <div
+          style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }}
+          className={`rounded-xl p-5 mb-3 transition-all duration-500 delay-800 ${
+            mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#111827' }}>
+              <span className="font-bold text-sm" style={{ color: '#ffffff' }}>O</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold mb-0.5" style={{ color: '#111827' }}>
+                Téléchargez l&apos;app Opatam
+              </p>
+              <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
+                Retrouvez vos rendez-vous, recevez des rappels et réservez en un clic.
+              </p>
+              <div className="flex gap-2">
+                <a
+                  href="https://apps.apple.com/app/opatam/id6740091498"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#111827', color: '#ffffff' }}
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5c0 26.2 4.8 53.3 14.4 81.2 12.8 36.9 59 127.7 107.2 126.3 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-93z"/><path d="M262.2 97.3c29.4-35.6 26.5-68.2 25.7-79.7-25.6 1.5-55.1 17.7-72.1 38.2-18.6 22.3-29.6 49.8-27.1 79.6 27.6 2.1 53.4-13.6 73.5-38.1z"/></svg>
+                  App Store
+                </a>
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.opatam.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#111827', color: '#ffffff' }}
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 512 512" fill="currentColor"><path d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z"/></svg>
+                  Google Play
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Pro CTA */}
+        <div
+          style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe' }}
+          className={`rounded-xl p-5 mb-4 transition-all duration-500 delay-900 ${
+            mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-5 h-5" style={{ color: '#2563eb' }} />
+            <p className="text-sm font-semibold" style={{ color: '#1d4ed8' }}>
+              Vous êtes aussi professionnel ?
+            </p>
+          </div>
+          <p className="text-xs mb-3" style={{ color: '#3b82f6' }}>
+            Créez votre page de réservation en ligne en 5 minutes et recevez vos premiers clients dès aujourd&apos;hui.
+          </p>
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors"
+            style={{ color: '#1d4ed8' }}
+          >
+            Créer ma page gratuitement
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+
         {/* Actions */}
         <div
-          className={`space-y-3 transition-all duration-500 delay-800 ${
+          className={`space-y-3 transition-all duration-500 delay-900 ${
             mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
           }`}
         >

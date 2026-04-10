@@ -60,6 +60,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" className={inter.variable}>
+      <head>
+        <meta name="apple-itunes-app" content="app-id=6740091498" />
+      </head>
       <body className="antialiased">
         <Providers>{children as ReactNode}</Providers>
         <DevTools />

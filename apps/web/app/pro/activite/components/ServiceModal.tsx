@@ -44,6 +44,7 @@ export interface ServiceFormData {
   photoURL: string | null;
   duration: number;
   price: number; // in cents
+  priceMax: number | null; // in cents (null = prix fixe)
   bufferTime: number;
   categoryId: string | null;
   locationIds: string[];
@@ -89,6 +90,7 @@ export function ServiceModal({
     photoURL: null,
     duration: 60,
     price: 0,
+    priceMax: null,
     bufferTime: 0,
     categoryId: null,
     locationIds: [],
@@ -105,6 +107,7 @@ export function ServiceModal({
           photoURL: service.photoURL ?? null,
           duration: service.duration,
           price: service.price,
+          priceMax: service.priceMax ?? null,
           bufferTime: service.bufferTime,
           categoryId: service.categoryId ?? null,
           locationIds: service.locationIds,
@@ -118,6 +121,7 @@ export function ServiceModal({
           photoURL: null,
           duration: 60,
           price: 0,
+          priceMax: null,
           bufferTime: 0,
           categoryId: null,
           locationIds: locations.length > 0 ? [locations[0].id] : [],
@@ -190,7 +194,7 @@ export function ServiceModal({
       [name]:
         name === 'duration' || name === 'bufferTime'
           ? parseInt(value, 10)
-          : name === 'price'
+          : name === 'price' || name === 'priceMax'
             ? Math.round(parseFloat(value || '0') * 100) // Convert euros to cents
             : name === 'categoryId'
               ? value || null // empty string → null
@@ -239,6 +243,10 @@ export function ServiceModal({
       newErrors.price = 'Le prix ne peut pas être négatif';
     }
 
+    if (formData.priceMax !== null && formData.priceMax <= formData.price) {
+      newErrors.priceMax = 'Le prix max doit être supérieur au prix min';
+    }
+
     if (formData.locationIds.length === 0) {
       newErrors.locationIds = 'Sélectionnez au moins un lieu';
     }
@@ -285,6 +293,8 @@ export function ServiceModal({
 
   // Convert cents to euros for display
   const priceInEuros = formData.price / 100;
+  const priceMaxInEuros = formData.priceMax ? formData.priceMax / 100 : 0;
+  const isPriceRange = formData.priceMax !== null;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-xl">
@@ -434,7 +444,7 @@ export function ServiceModal({
             />
 
             <Input
-              label="Prix (EUR)"
+              label={isPriceRange ? 'Prix min (EUR)' : 'Prix (EUR)'}
               name="price"
               type="number"
               value={priceInEuros.toString()}
@@ -445,23 +455,63 @@ export function ServiceModal({
               error={errors.price}
               required
             />
+
+            {isPriceRange && (
+              <Input
+                label="Prix max (EUR)"
+                name="priceMax"
+                type="number"
+                value={priceMaxInEuros.toString()}
+                onChange={handleChange}
+                placeholder="0"
+                min="0"
+                step="0.01"
+                error={errors.priceMax}
+                required
+              />
+            )}
           </div>
 
-          {/* Free toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.price === 0}
-              onChange={(e) => {
-                setFormData((prev) => ({ ...prev, price: e.target.checked ? 0 : prev.price || 0 }));
-                setErrors((prev) => ({ ...prev, price: '' }));
-              }}
-              className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-            <span className={`text-sm ${formData.price === 0 ? 'text-primary-600 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
-              RDV gratuit
-            </span>
-          </label>
+          {/* Price options */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isPriceRange}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setFormData((prev) => ({ ...prev, priceMax: prev.price > 0 ? prev.price + 1000 : 1000 }));
+                  } else {
+                    setFormData((prev) => ({ ...prev, priceMax: null }));
+                  }
+                  setErrors((prev) => ({ ...prev, priceMax: '' }));
+                }}
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className={`text-sm ${isPriceRange ? 'text-primary-600 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                Fourchette de prix
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.price === 0 && !isPriceRange}
+                onChange={(e) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    price: e.target.checked ? 0 : prev.price || 0,
+                    priceMax: e.target.checked ? null : prev.priceMax,
+                  }));
+                  setErrors((prev) => ({ ...prev, price: '', priceMax: '' }));
+                }}
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className={`text-sm ${formData.price === 0 && !isPriceRange ? 'text-primary-600 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                RDV gratuit
+              </span>
+            </label>
+          </div>
 
           {/* Buffer time */}
           <Select
