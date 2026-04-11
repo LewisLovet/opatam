@@ -1,10 +1,14 @@
 /**
  * useNextAvailableDate Hook
- * Calculates the next available booking date for a provider
+ * Reads the cached nextAvailableSlot from the provider document.
+ * This value is kept up-to-date by Cloud Functions:
+ *   - onBookingWrite: recalculates after each booking change
+ *   - recalculateExpiredSlots: runs every 2h for stale values
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { schedulingService, memberService, serviceRepository } from '@booking-app/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@booking-app/firebase';
 
 export interface UseNextAvailableDateResult {
   nextAvailableDate: Date | null;
@@ -36,7 +40,6 @@ function formatNextAvailableDate(date: Date | null): string | null {
     return 'Demain';
   }
 
-  // Format as "Lun. 3 février"
   const days = ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'];
   const months = [
     'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
@@ -47,101 +50,50 @@ function formatNextAvailableDate(date: Date | null): string | null {
 }
 
 /**
- * Hook to get the next available booking date for a provider
- * @param providerId - The provider ID
- * @param memberId - Optional member ID (uses default member if not provided)
+ * Hook to get the next available booking date for a provider.
+ * Reads directly from the provider's cached `nextAvailableSlot` field
+ * instead of recalculating (which was doing 60 Firestore queries).
  */
 export function useNextAvailableDate(
   providerId: string | undefined,
-  memberId?: string
 ): UseNextAvailableDateResult {
   const [nextAvailableDate, setNextAvailableDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNextAvailableDate = useCallback(async () => {
+  useEffect(() => {
     if (!providerId) {
       setNextAvailableDate(null);
       setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get member to use (provided or default)
-      let targetMemberId = memberId;
-      if (!targetMemberId) {
-        // Get the default member for this provider
-        const members = await memberService.getActiveByProvider(providerId);
-        const defaultMember = members.find((m) => m.isDefault) || members[0];
-        if (!defaultMember) {
+    // Real-time listener on provider doc for nextAvailableSlot
+    const unsubscribe = onSnapshot(
+      doc(db, 'providers', providerId),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const slot = data.nextAvailableSlot;
+          setNextAvailableDate(slot?.toDate?.() ?? null);
+        } else {
           setNextAvailableDate(null);
-          setLoading(false);
-          return;
         }
-        targetMemberId = defaultMember.id;
-      }
-
-      // Get first active service to use for slot calculation
-      const services = await serviceRepository.getByProvider(providerId);
-      const activeService = services.find((s) => s.isActive);
-      if (!activeService) {
-        setNextAvailableDate(null);
         setLoading(false);
-        return;
+      },
+      (err) => {
+        console.error('Error listening to nextAvailableSlot:', err);
+        setError(err.message || 'Erreur');
+        setLoading(false);
       }
+    );
 
-      // Search for the next available slot, checking day by day
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const maxDaysToCheck = 60; // Check up to 60 days ahead
-      let foundDate: Date | null = null;
-
-      for (let i = 0; i < maxDaysToCheck && !foundDate; i++) {
-        const checkDate = new Date(today);
-        checkDate.setDate(checkDate.getDate() + i);
-
-        const endOfDay = new Date(checkDate);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        try {
-          const slots = await schedulingService.getAvailableSlots({
-            providerId,
-            serviceId: activeService.id!,
-            memberId: targetMemberId,
-            startDate: checkDate,
-            endDate: endOfDay,
-          });
-
-          if (slots.length > 0) {
-            // Found available slots for this day
-            foundDate = checkDate;
-          }
-        } catch {
-          // Day has no availability, continue to next day
-        }
-      }
-
-      setNextAvailableDate(foundDate);
-    } catch (err: any) {
-      console.error('Error fetching next available date:', err);
-      setError(err.message || 'Erreur lors du chargement des disponibilités');
-      setNextAvailableDate(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [providerId, memberId]);
-
-  useEffect(() => {
-    fetchNextAvailableDate();
-  }, [fetchNextAvailableDate]);
+    return () => unsubscribe();
+  }, [providerId]);
 
   const refresh = useCallback(async () => {
-    await fetchNextAvailableDate();
-  }, [fetchNextAvailableDate]);
+    // No-op — the onSnapshot listener keeps it up to date automatically
+  }, []);
 
   const formattedDate = formatNextAvailableDate(nextAvailableDate);
 

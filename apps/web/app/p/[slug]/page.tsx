@@ -193,8 +193,18 @@ export default async function ProviderPage({ params }: PageProps) {
   // Calculate min price from services
   const minPrice = services.length > 0 ? Math.min(...services.map((s) => s.price)) : null;
 
-  // Calculate next available date based on availabilities (per-member for Team plans)
-  const { nextAvailableDate, memberAvailabilities } = calculateAvailabilities(availabilities, members);
+  // Use cached nextAvailableSlot from provider (updated by Cloud Functions on booking changes + every 2h)
+  const nextAvailableDate = provider.nextAvailableSlot
+    ? provider.nextAvailableSlot.toISOString()
+    : null;
+
+  // Per-member availability for Team plans (lightweight: just checks open days, not bookings)
+  const memberAvailabilities: MemberNextAvailability[] = members.map((m) => ({
+    memberId: m.id,
+    memberName: m.name,
+    memberPhoto: m.photoURL,
+    nextDate: getNextDateForMember(m.id, availabilities),
+  }));
 
   // Serialize dates for client component
   const serializedProvider = {
