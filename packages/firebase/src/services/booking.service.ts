@@ -123,6 +123,7 @@ export class BookingService {
       serviceName: service.name,
       duration: service.duration,
       price: service.price,
+      priceMax: service.priceMax ?? null,
       clientInfo: validated.clientInfo!,
       datetime: validated.datetime,
       endDatetime,

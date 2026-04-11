@@ -15,6 +15,7 @@ interface Booking {
   endDatetime: string;
   duration: number;
   price: number;
+  priceMax?: number | null;
   status: string;
   clientInfo: {
     name: string;
@@ -39,14 +40,17 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(cents: number): string {
-  const euros = cents / 100;
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(euros);
+function formatPrice(cents: number, centsMax?: number | null): string {
+  if (cents === 0 && !centsMax) return 'Gratuit';
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(v / 100);
+  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
+  return fmt(cents);
 }
 
 function formatDate(dateStr: string): string {
@@ -223,7 +227,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
                   <Clock className="w-4 h-4" />
                   {formatDuration(booking.duration)}
                 </span>
-                <span>{formatPrice(booking.price)}</span>
+                <span>{formatPrice(booking.price, booking.priceMax)}</span>
               </div>
             </div>
 
@@ -286,7 +290,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
                 Total
               </span>
               <span className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatPrice(booking.price)}
+                {formatPrice(booking.price, booking.priceMax)}
               </span>
             </div>
           </div>

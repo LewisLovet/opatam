@@ -147,6 +147,7 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
     datetime: booking.datetime.toDate(),
     duration: booking.duration || 60, // Default 60 min if not set
     price: booking.price || 0,
+    priceMax: booking.priceMax || null,
     providerName: booking.providerName,
     providerSlug,
     locationName: booking.locationName,
@@ -206,6 +207,7 @@ export async function emailProviderNewBooking(
     datetime: booking.datetime.toDate(),
     duration: booking.duration || 60,
     price: booking.price || 0,
+    priceMax: booking.priceMax || null,
     providerName: booking.providerName,
     locationName: booking.locationName,
     locationAddress: booking.locationAddress,

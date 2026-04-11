@@ -84,6 +84,7 @@ export default function BookingsTestPage() {
         serviceName: 'Test Service',
         duration: 60,
         price: 5000,
+        priceMax: null,
         clientInfo: {
           name: clientName,
           email: clientEmail,

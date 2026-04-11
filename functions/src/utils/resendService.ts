@@ -67,12 +67,16 @@ export function formatTimeFr(date: Date): string {
 }
 
 // Helper to format price (centimes to euros)
-export function formatPriceFr(priceInCentimes: number): string {
-  const priceInEuros = priceInCentimes / 100;
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(priceInEuros);
+export function formatPriceFr(priceInCentimes: number, priceMaxInCentimes?: number | null): string {
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(v / 100);
+  if (priceMaxInCentimes && priceMaxInCentimes > priceInCentimes) {
+    return `De ${fmt(priceInCentimes)} à ${fmt(priceMaxInCentimes)}`;
+  }
+  return fmt(priceInCentimes);
 }
 
 // Helper to format relative time in French ("dans 30 minutes", "dans 1h30", "demain")
@@ -122,6 +126,7 @@ export interface BookingEmailData {
   datetime: Date;
   duration: number;
   price: number;
+  priceMax?: number | null;
   providerName: string;
   providerSlug?: string;
   locationName?: string;
@@ -147,7 +152,7 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
     const formattedTime = formatTimeFr(data.datetime);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
     const formattedEndTime = formatTimeFr(endDate);
-    const formattedPrice = formatPriceFr(data.price);
+    const formattedPrice = formatPriceFr(data.price, data.priceMax);
     const businessName = data.providerName || appConfig.name;
 
     // Generate URLs
@@ -255,6 +260,7 @@ export interface ProviderNewBookingEmailData {
   datetime: Date;
   duration: number;
   price: number;
+  priceMax?: number | null;
   providerName: string;
   locationName?: string;
   locationAddress?: string;
@@ -274,7 +280,7 @@ export async function sendProviderNewBookingEmail(data: ProviderNewBookingEmailD
     const formattedTime = formatTimeFr(data.datetime);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
     const formattedEndTime = formatTimeFr(endDate);
-    const formattedPrice = formatPriceFr(data.price);
+    const formattedPrice = formatPriceFr(data.price, data.priceMax);
     const calendarUrl = `${appConfig.url}/pro/calendrier`;
 
     const { error } = await getResend().emails.send({
@@ -626,7 +632,7 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
     const formattedNewTime = formatTimeFr(data.datetime);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
     const formattedNewEndTime = formatTimeFr(endDate);
-    const formattedPrice = formatPriceFr(data.price);
+    const formattedPrice = formatPriceFr(data.price, data.priceMax);
     const businessName = data.providerName || appConfig.name;
 
     // Generate URLs
@@ -744,7 +750,7 @@ export async function sendReminderEmail(
     const formattedTime = formatTimeFr(data.datetime);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
     const formattedEndTime = formatTimeFr(endDate);
-    const formattedPrice = formatPriceFr(data.price);
+    const formattedPrice = formatPriceFr(data.price, data.priceMax);
     const businessName = data.providerName || appConfig.name;
 
     // Generate URLs

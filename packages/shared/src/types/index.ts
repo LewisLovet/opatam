@@ -263,6 +263,7 @@ export interface Booking {
   serviceName: string;
   duration: number;
   price: number;
+  priceMax: number | null;
   clientInfo: ClientInfo;
   datetime: Date;
   endDatetime: Date;

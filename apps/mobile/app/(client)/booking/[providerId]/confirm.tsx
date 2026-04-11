@@ -219,7 +219,7 @@ export default function ConfirmBookingScreen() {
               <Text variant="caption" color="textSecondary">Prestation</Text>
               <Text variant="body" style={{ fontWeight: '600' }}>{service.name}</Text>
               <Text variant="caption" color="textSecondary">
-                {service.duration} min - {(service.price / 100).toFixed(2)} €
+                {service.duration} min - {service.priceMax ? `De ${(service.price / 100).toFixed(2)} € à ${(service.priceMax / 100).toFixed(2)} €` : `${(service.price / 100).toFixed(2)} €`}
               </Text>
             </View>
           </View>
@@ -328,7 +328,7 @@ export default function ConfirmBookingScreen() {
           <View style={styles.priceRow}>
             <Text variant="body">Total</Text>
             <Text variant="h2" color="primary">
-              {service.price === 0 ? 'Gratuit' : `${(service.price / 100).toFixed(2)} €`}
+              {service.price === 0 && !service.priceMax ? 'Gratuit' : service.priceMax ? `De ${(service.price / 100).toFixed(2)} à ${(service.priceMax / 100).toFixed(2)} €` : `${(service.price / 100).toFixed(2)} €`}
             </Text>
           </View>
           <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>

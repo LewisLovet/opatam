@@ -33,6 +33,7 @@ export default async function ConfirmationPage({ params }: PageProps) {
     endDatetime: booking.endDatetime.toISOString(),
     duration: booking.duration,
     price: booking.price,
+    priceMax: booking.priceMax ?? null,
     status: booking.status,
     clientInfo: booking.clientInfo,
   };

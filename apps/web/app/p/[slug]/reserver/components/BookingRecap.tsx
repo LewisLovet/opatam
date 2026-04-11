@@ -17,6 +17,7 @@ interface Service {
   description: string | null;
   duration: number;
   price: number;
+  priceMax?: number | null;
   bufferTime: number;
   locationIds: string[];
   memberIds: string[] | null;
@@ -68,15 +69,17 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(cents: number): string {
-  if (cents === 0) return 'Gratuit';
-  const euros = cents / 100;
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(euros);
+function formatPrice(cents: number, centsMax?: number | null): string {
+  if (cents === 0 && !centsMax) return 'Gratuit';
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(v / 100);
+  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
+  return fmt(cents);
 }
 
 function formatDate(isoString: string): string {
@@ -107,7 +110,7 @@ export function BookingRecap({
                 {service.name}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {formatDuration(service.duration)} · {formatPrice(service.price)}
+                {formatDuration(service.duration)} · {formatPrice(service.price, service.priceMax)}
               </p>
             </>
           ) : (
@@ -118,7 +121,7 @@ export function BookingRecap({
         </div>
         {service && (
           <span className="text-xl font-bold text-gray-900 dark:text-white">
-            {formatPrice(service.price)}
+            {formatPrice(service.price, service.priceMax)}
           </span>
         )}
       </div>
@@ -255,7 +258,7 @@ export function BookingRecap({
               Total
             </span>
             <span className="text-xl font-bold text-gray-900 dark:text-white">
-              {formatPrice(service.price)}
+              {formatPrice(service.price, service.priceMax)}
             </span>
           </div>
         </div>
