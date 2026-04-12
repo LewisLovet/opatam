@@ -25,6 +25,8 @@ export interface ProviderCardProps {
   rating: Rating;
   /** Minimum price in centimes (null if no services) */
   minPrice: number | null;
+  /** Next available slot (Firestore Date or null) */
+  nextAvailableSlot?: Date | null;
   /** Distance in km (from user location) */
   distance?: number;
   /** Whether the provider is verified */
@@ -46,6 +48,27 @@ function formatPrice(centimes: number): string {
   return euros % 1 === 0 ? `${euros}` : euros.toFixed(2);
 }
 
+function formatNextAvailable(date: any): string | null {
+  if (!date) return null;
+  // Handle Firestore Timestamp, Date, or ISO string
+  const d = date?.toDate ? date.toDate() : date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return null;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dateOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  if (dateOnly < today) return null; // passé
+  if (dateOnly.getTime() === today.getTime()) return "Aujourd'hui";
+  if (dateOnly.getTime() === tomorrow.getTime()) return 'Demain';
+
+  const days = ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'];
+  const months = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
 export function ProviderCard({
   photoURL,
   businessName,
@@ -53,6 +76,7 @@ export function ProviderCard({
   city,
   rating,
   minPrice,
+  nextAvailableSlot,
   distance,
   isVerified = false,
   onPress,
@@ -62,6 +86,7 @@ export function ProviderCard({
 
   const hasRating = rating.count > 0;
   const hasValidPrice = minPrice != null && !isNaN(minPrice) && minPrice >= 0;
+  const nextAvailFormatted = formatNextAvailable(nextAvailableSlot);
 
   // Loading animation
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -184,6 +209,14 @@ export function ProviderCard({
             <Text variant="bodySmall" color="textMuted">
               Prix sur demande
             </Text>
+          )}
+          {nextAvailFormatted && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <Ionicons name="calendar-outline" size={12} color={colors.success || '#16a34a'} />
+              <Text variant="caption" style={{ fontWeight: '600', color: colors.success || '#16a34a', fontSize: 11 }}>
+                {nextAvailFormatted}
+              </Text>
+            </View>
           )}
         </View>
       </View>

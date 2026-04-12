@@ -105,18 +105,23 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
     return null;
   }
 
-  // 4. Récupérer les blockedSlots futurs
+  // 4. Récupérer les blockedSlots futurs (graceful fallback si index manquant)
   const now = new Date();
-  const blockedSlotsSnapshot = await db
-    .collection('providers')
-    .doc(providerId)
-    .collection('blockedSlots')
-    .where('memberId', '==', memberId)
-    .where('endDate', '>=', Timestamp.fromDate(now))
-    .get();
-  serverTracker.trackRead('providers/*/blockedSlots', blockedSlotsSnapshot.size);
-
-  const blockedSlots = blockedSlotsSnapshot.docs.map(doc => doc.data() as BlockedSlot);
+  let blockedSlots: BlockedSlot[] = [];
+  try {
+    const blockedSlotsSnapshot = await db
+      .collection('providers')
+      .doc(providerId)
+      .collection('blockedSlots')
+      .where('memberId', '==', memberId)
+      .where('endDate', '>=', Timestamp.fromDate(now))
+      .get();
+    serverTracker.trackRead('providers/*/blockedSlots', blockedSlotsSnapshot.size);
+    blockedSlots = blockedSlotsSnapshot.docs.map(doc => doc.data() as BlockedSlot);
+  } catch (err) {
+    // Index manquant ou autre erreur — on continue sans les blocked slots
+    console.warn(`Could not fetch blockedSlots for ${providerId}, continuing without:`, (err as Error).message);
+  }
   console.log(`Found ${blockedSlots.length} blocked slots`);
 
   // 5. Récupérer les bookings futurs (2 requêtes séparées pour éviter le problème d'index)

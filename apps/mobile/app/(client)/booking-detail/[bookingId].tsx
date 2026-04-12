@@ -70,12 +70,12 @@ function formatDuration(minutes: number): string {
 }
 
 // Helper to format price
-function formatPrice(cents: number): string {
-  if (cents === 0) return 'Gratuit';
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(cents / 100);
+function formatPrice(cents: number, centsMax?: number | null): string {
+  if (cents === 0 && !centsMax) return 'Gratuit';
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v / 100);
+  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
+  return fmt(cents);
 }
 
 // Status configuration with header colors
@@ -606,7 +606,7 @@ export default function BookingDetailScreen() {
           {/* Price and duration */}
           <View style={styles.priceRow}>
             <Text variant="h3" style={{ fontWeight: '700', color: '#ffffff' }}>
-              {formatPrice(booking.price)}
+              {formatPrice(booking.price, booking.priceMax)}
             </Text>
             <Text variant="body" style={{ marginLeft: spacing.sm, color: 'rgba(255,255,255,0.8)' }}>
               {formatDuration(booking.duration)}

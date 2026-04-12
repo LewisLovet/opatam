@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, Users, Euro, MapPin } from 'lucide-react';
+import { Star, Users, Euro, MapPin, Calendar } from 'lucide-react';
 import { getCategoryLabel, capitalizeWords } from '@booking-app/shared';
 import type { Provider } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
@@ -58,6 +58,22 @@ export function SearchProviderCard({ provider }: SearchProviderCardProps) {
 
   // Has min price
   const hasMinPrice = provider.minPrice !== null && provider.minPrice !== undefined;
+
+  // Next available slot
+  const nextSlot = provider.nextAvailableSlot;
+  const nextAvailLabel = (() => {
+    if (!nextSlot) return null;
+    const d = nextSlot instanceof Date ? nextSlot : new Date(nextSlot as any);
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    if (dateOnly < today) return null;
+    if (dateOnly.getTime() === today.getTime()) return "Aujourd'hui";
+    if (dateOnly.getTime() === tomorrow.getTime()) return 'Demain';
+    return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  })();
 
   return (
     <Link
@@ -165,6 +181,14 @@ export function SearchProviderCard({ provider }: SearchProviderCardProps) {
               </div>
             )}
           </div>
+
+          {/* Next available slot */}
+          {nextAvailLabel && (
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Prochaine dispo : {nextAvailLabel}</span>
+            </div>
+          )}
         </div>
       </article>
     </Link>

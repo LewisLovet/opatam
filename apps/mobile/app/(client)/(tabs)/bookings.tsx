@@ -112,9 +112,18 @@ function BookingCard({
         </View>
         {(booking.locationAddress || booking.locationName) && (
           <View style={[styles.locationRow, { borderTopColor: colors.border }]}>
-            <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-            <Text variant="caption" color="textSecondary" style={{ marginLeft: 4 }} numberOfLines={1}>
-              {booking.locationAddress || booking.locationName}
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+              <Text variant="caption" color="textSecondary" style={{ marginLeft: 4 }} numberOfLines={1}>
+                {booking.locationAddress || booking.locationName}
+              </Text>
+            </View>
+            <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
+              {booking.price === 0 && !booking.priceMax
+                ? 'Gratuit'
+                : booking.priceMax
+                  ? `De ${(booking.price / 100).toFixed(0)} à ${(booking.priceMax / 100).toFixed(0)} €`
+                  : `${(booking.price / 100).toFixed(0)} €`}
             </Text>
           </View>
         )}
