@@ -111,8 +111,7 @@ export function SearchProviderCard({ provider }: SearchProviderCardProps) {
             {/* Price Badge */}
             {hasMinPrice && (
               <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-sm font-semibold">
-                {provider.minPrice! > 0 && <Euro className="w-3.5 h-3.5" />}
-                {formatPrice(provider.minPrice!)}
+                {provider.minPrice === 0 ? 'Gratuit' : `Dès ${formatPrice(provider.minPrice!)} €`}
               </span>
             )}
           </div>

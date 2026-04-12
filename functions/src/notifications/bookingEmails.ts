@@ -23,6 +23,7 @@ interface BookingData {
   datetime: admin.firestore.Timestamp;
   duration?: number;
   price?: number;
+  priceMax?: number | null;
   clientInfo: {
     name: string;
     email: string;
