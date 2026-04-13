@@ -53,6 +53,11 @@ export default function AdminAffiliatesPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [editingAffiliate, setEditingAffiliate] = useState<AffiliateItem | null>(null);
+  const [editCommission, setEditCommission] = useState('');
+  const [editDiscount, setEditDiscount] = useState('');
+  const [editDiscountDuration, setEditDiscountDuration] = useState('once');
+  const [updating, setUpdating] = useState(false);
 
   // Form
   const [form, setForm] = useState({
@@ -116,6 +121,25 @@ export default function AdminAffiliatesPage() {
       await loadAffiliates();
     } catch (err) {
       console.error('Error deleting affiliate:', err);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!user?.id || !editingAffiliate) return;
+    setUpdating(true);
+    setError(null);
+    try {
+      await adminAffiliateService.updateAffiliate(user.id, editingAffiliate.id, {
+        commission: Number(editCommission),
+        discount: editDiscount ? Number(editDiscount) : null,
+        discountDuration: editDiscount ? editDiscountDuration : null,
+      });
+      setEditingAffiliate(null);
+      await loadAffiliates();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -370,17 +394,100 @@ export default function AdminAffiliatesPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingAffiliate(a);
+                          setEditCommission(String(a.commission));
+                          setEditDiscount(a.discount ? String(a.discount) : '');
+                          setEditDiscountDuration(a.discountDuration || 'once');
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-primary-500 transition-colors"
+                        title="Modifier la commission"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg>
+                      </button>
                     <button
                       onClick={() => handleDelete(a.id, a.name)}
                       className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {/* Edit Commission Modal */}
+      {editingAffiliate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setEditingAffiliate(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Modifier l'affilié</h3>
+            <p className="text-sm text-gray-500 mb-4">{editingAffiliate.name} ({editingAffiliate.code})</p>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">Commission (%)</label>
+                <input
+                  type="number"
+                  value={editCommission}
+                  onChange={(e) => setEditCommission(e.target.value)}
+                  min="1"
+                  max="50"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">Réduction filleuls (%)</label>
+                  <input
+                    type="number"
+                    value={editDiscount}
+                    onChange={(e) => setEditDiscount(e.target.value)}
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">Durée</label>
+                  <select
+                    value={editDiscountDuration}
+                    onChange={(e) => setEditDiscountDuration(e.target.value)}
+                    disabled={!editDiscount}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+                  >
+                    <option value="once">1er mois</option>
+                    <option value="repeating_3">3 mois</option>
+                    <option value="repeating_12">1 an</option>
+                    <option value="forever">Permanent</option>
+                  </select>
+                </div>
+              </div>
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditingAffiliate(null)}
+                  className="flex-1 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleUpdate}
+                  disabled={updating || !editCommission}
+                  className="flex-1 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-40"
+                >
+                  {updating ? 'Mise à jour...' : 'Enregistrer'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 text-center">Un email sera envoyé à l'affilié pour l'informer du changement.</p>
+            </div>
+          </div>
         </div>
       )}
     </div>

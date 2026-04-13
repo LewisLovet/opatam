@@ -129,11 +129,30 @@ export default function AffiliateDashboardPage() {
       {affiliate.stripeAccountStatus !== 'active' && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-medium text-amber-800">Configuration Stripe incomplète</p>
-            <p className="text-xs text-amber-600 mt-1">
+            <p className="text-xs text-amber-600 mt-1 mb-3">
               Complétez la configuration de votre compte pour recevoir vos commissions.
             </p>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/affiliates/onboarding', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ affiliateId: affiliate.id }),
+                  });
+                  const data = await res.json();
+                  if (data.url) {
+                    window.open(data.url, '_blank');
+                  }
+                } catch {}
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Configurer mon compte Stripe
+            </button>
           </div>
         </div>
       )}

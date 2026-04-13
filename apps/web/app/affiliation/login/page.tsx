@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@booking-app/firebase';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@booking-app/firebase';
 import { Handshake, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function AffiliateLoginPage() {
@@ -20,7 +21,17 @@ export default function AffiliateLoginPage() {
     setError('');
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+
+      // Check if user is an affiliate
+      const userDoc = await getDoc(doc(db, 'users', credential.user.uid));
+      const userData = userDoc.data();
+      if (!userData?.affiliateId) {
+        await signOut(auth);
+        setError('Ce compte n\'est pas affilié. Contactez-nous pour rejoindre le programme.');
+        setLoading(false);
+        return;
+      }
       // Layout will handle redirect to dashboard
     } catch (err: any) {
       if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {

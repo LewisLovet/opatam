@@ -37,6 +37,23 @@ export const adminAffiliateService = {
     return res.json();
   },
 
+  async updateAffiliate(
+    adminUid: string,
+    affiliateId: string,
+    data: { commission?: number; discount?: number | null; discountDuration?: string | null; isActive?: boolean }
+  ) {
+    const res = await fetch(BASE_URL, {
+      method: 'PATCH',
+      headers: headers(adminUid),
+      body: JSON.stringify({ affiliateId, ...data }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Erreur lors de la mise à jour');
+    }
+    return res.json();
+  },
+
   async deleteAffiliate(adminUid: string, affiliateId: string) {
     const res = await fetch(BASE_URL, {
       method: 'DELETE',
