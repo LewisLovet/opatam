@@ -3,6 +3,7 @@ export { adminUserService } from './adminUserService';
 export { adminProviderService } from './adminProviderService';
 export { adminBookingService } from './adminBookingService';
 export { adminReviewService } from './adminReviewService';
+export { adminAffiliateService } from './adminAffiliateService';
 export type {
   DashboardStats,
   TrendData,

@@ -45,6 +45,7 @@ export class AuthService {
       photoURL: credential.user.photoURL,
       role: 'client',
       providerId: null,
+      affiliateId: null,
       city: null,
       birthYear: null,
       gender: null,
@@ -86,6 +87,7 @@ export class AuthService {
       photoURL: credential.user.photoURL,
       role: 'provider', // Role provider mais pas encore de Provider document
       providerId: null, // Sera rempli à l'onboarding quand le Provider est créé
+      affiliateId: null,
       city: null,
       birthYear: null,
       gender: null,
@@ -126,6 +128,7 @@ export class AuthService {
         photoURL: credential.user.photoURL,
         role: 'client',
         providerId: null,
+        affiliateId: null,
         city: null,
         birthYear: null,
         gender: null,
@@ -163,6 +166,7 @@ export class AuthService {
         photoURL: userCredential.user.photoURL,
         role: 'client',
         providerId: null,
+        affiliateId: null,
         city: null,
         birthYear: null,
         gender: null,

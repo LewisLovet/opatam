@@ -122,6 +122,8 @@ export class ProviderService {
       searchTokens,
       geopoint: null,
       nextAvailableSlot: null,
+      affiliateCode: null,
+      affiliateId: null,
     });
 
     // Update user with providerId (= userId)

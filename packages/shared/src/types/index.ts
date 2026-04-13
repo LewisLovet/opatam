@@ -32,6 +32,7 @@ export interface User {
   cancellationCount: number;
   pushTokens: string[]; // Expo push tokens for notifications (device-specific)
   notificationSettings?: NotificationSettings;
+  affiliateId: string | null; // Lien vers doc affiliates (si cet user est affilié)
   isAdmin?: boolean; // Admin dashboard access (only set for platform admins)
   isDisabled?: boolean; // Disabled by admin
   createdAt: Date;
@@ -66,6 +67,9 @@ export interface Provider {
   geopoint: { latitude: number; longitude: number } | null; // From default location, for proximity search
   // Availability cache (computed by Cloud Functions)
   nextAvailableSlot: Date | null; // Next available booking slot (null if none or not computed)
+  // Affiliation
+  affiliateCode: string | null;  // Code parrain utilisé à l'inscription
+  affiliateId: string | null;    // ID du doc affilié
   // Analytics (pageViews.today incremented in real-time, rest updated nightly)
   stats?: {
     pageViews: PageViewStats;
@@ -328,4 +332,30 @@ export interface Message {
   text: string;
   isRead: boolean;
   sentAt: Date;
+}
+
+// Affiliate types
+export type DiscountDuration = 'once' | 'repeating_3' | 'repeating_12' | 'forever';
+
+export interface Affiliate {
+  userId: string | null;
+  name: string;
+  email: string;
+  code: string;
+  stripeAccountId: string;
+  stripeAccountStatus: 'pending' | 'active' | 'restricted';
+  commission: number;
+  discount: number | null;
+  discountDuration: DiscountDuration | null;
+  stripeCouponId: string | null;
+  stats: {
+    totalReferrals: number;
+    activeReferrals: number;
+    trialReferrals: number;
+    totalRevenue: number;
+    totalCommission: number;
+  };
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
