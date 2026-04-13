@@ -5,10 +5,6 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
   Home,
-  Package,
-  Blocks,
-  Database,
-  Settings,
   CreditCard,
   Zap,
   Sprout,
@@ -17,13 +13,11 @@ import {
   Menu,
   X,
   Lock,
-  ChevronDown,
-  Flame,
   Terminal,
   Sparkles,
   Mail,
-  Globe,
-  MapPin,
+  Handshake,
+  Eye,
 } from 'lucide-react';
 
 interface NavItem {
@@ -45,63 +39,6 @@ const navSections: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: 'Composants',
-    items: [
-      {
-        href: '/dev/components',
-        label: 'UI Components',
-        icon: <Package className="w-4 h-4" />,
-      },
-      {
-        href: '/dev/components-metier',
-        label: 'Composants Metier',
-        icon: <Blocks className="w-4 h-4" />,
-      },
-    ],
-  },
-  {
-    title: 'Tests',
-    items: [
-      {
-        href: '/dev/tests/firebase-connection',
-        label: 'Firebase Connection',
-        icon: <Flame className="w-4 h-4" />,
-      },
-      {
-        href: '/dev/tests',
-        label: 'Repositories',
-        icon: <Database className="w-4 h-4" />,
-        children: [
-          { href: '/dev/tests/users', label: 'Users', icon: <></> },
-          { href: '/dev/tests/providers', label: 'Providers', icon: <></> },
-          { href: '/dev/tests/members', label: 'Members', icon: <></> },
-          { href: '/dev/tests/locations', label: 'Locations', icon: <></> },
-          { href: '/dev/tests/prestations', label: 'Prestations', icon: <></> },
-          { href: '/dev/tests/availability', label: 'Availability', icon: <></> },
-          { href: '/dev/tests/bookings', label: 'Bookings', icon: <></> },
-        ],
-      },
-      {
-        href: '/dev/tests/services',
-        label: 'Services',
-        icon: <Settings className="w-4 h-4" />,
-        children: [
-          { href: '/dev/tests/services/auth', label: 'Auth', icon: <></> },
-          { href: '/dev/tests/services/provider', label: 'Provider', icon: <></> },
-          { href: '/dev/tests/services/members', label: 'Members', icon: <></> },
-          { href: '/dev/tests/services/catalog', label: 'Catalog', icon: <></> },
-          { href: '/dev/tests/services/scheduling', label: 'Scheduling', icon: <></> },
-          { href: '/dev/tests/services/bookings', label: 'Bookings', icon: <></> },
-        ],
-      },
-      {
-        href: '/dev/tests/stripe',
-        label: 'Stripe',
-        icon: <CreditCard className="w-4 h-4" />,
-      },
-    ],
-  },
-  {
     title: 'Outils',
     items: [
       {
@@ -110,101 +47,57 @@ const navSections: { title: string; items: NavItem[] }[] = [
         icon: <Zap className="w-4 h-4" />,
       },
       {
-        href: '/dev/tools/seed',
-        label: 'Données de test',
-        icon: <Sprout className="w-4 h-4" />,
-      },
-      {
         href: '/dev/tools/emails',
         label: 'Emails',
         icon: <Mail className="w-4 h-4" />,
       },
       {
-        href: '/dev/tools/address',
-        label: 'Adresse',
-        icon: <MapPin className="w-4 h-4" />,
-        children: [
-          { href: '/dev/tools/address', label: 'API Gouv (FR)', icon: <></> },
-          { href: '/dev/tools/google-address', label: 'Google Places (EU)', icon: <></> },
-        ],
+        href: '/dev/tools/seed',
+        label: 'Données de test',
+        icon: <Sprout className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/tools/affiliates',
+        label: 'Affiliés',
+        icon: <Handshake className="w-4 h-4" />,
+      },
+    ],
+  },
+  {
+    title: 'Paiements',
+    items: [
+      {
+        href: '/dev/tests/stripe',
+        label: 'Stripe',
+        icon: <CreditCard className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/tests/revenuecat',
+        label: 'RevenueCat',
+        icon: <Eye className="w-4 h-4" />,
       },
     ],
   },
 ];
 
-function NavLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
+function NavLink({ item }: { item: NavItem }) {
   const pathname = usePathname();
-  const hasChildren = item.children && item.children.length > 0;
-
-  const isExactActive = pathname === item.href;
-  const isChildActive = item.children?.some(
-    (child) => pathname === child.href || pathname.startsWith(child.href + '/')
-  );
-  const isActive = isExactActive || isChildActive;
-
-  const [isOpen, setIsOpen] = useState(isActive || false);
-
-  // Keep expanded if a child becomes active (e.g. from navigation)
-  useEffect(() => {
-    if (isChildActive) {
-      setIsOpen(true);
-    }
-  }, [isChildActive]);
-
-  if (hasChildren) {
-    return (
-      <div>
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className={`
-            group w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg transition-all duration-200
-            ${isActive
-              ? 'bg-gradient-to-r from-purple-500/15 to-pink-500/10 text-purple-300 dark:text-purple-300 shadow-[inset_0_1px_0_rgba(168,85,247,0.2)]'
-              : 'text-slate-400 dark:text-slate-400 hover:bg-white/5 dark:hover:bg-white/5 hover:text-slate-200 dark:hover:text-slate-200'
-            }
-          `}
-        >
-          <div className="flex items-center gap-2.5">
-            <span className={`transition-colors duration-200 ${isActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-slate-300'}`}>
-              {item.icon}
-            </span>
-            <span className="font-medium">{item.label}</span>
-          </div>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {isOpen && item.children && (
-          <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-700/50 dark:border-slate-700/50 pl-2">
-            {item.children.map((child) => (
-              <NavLink key={child.href} item={child} depth={depth + 1} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
+  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
   return (
     <Link
       href={item.href}
       className={`
-        group flex items-center gap-2.5 px-3 text-sm rounded-lg transition-all duration-200
-        ${depth > 0 ? 'py-1.5' : 'py-2'}
-        ${isExactActive
-          ? 'bg-gradient-to-r from-purple-500/15 to-pink-500/10 text-white dark:text-white font-medium shadow-[inset_0_1px_0_rgba(168,85,247,0.2)]'
-          : 'text-slate-400 dark:text-slate-400 hover:bg-white/5 dark:hover:bg-white/5 hover:text-slate-200 dark:hover:text-slate-200'
+        group flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200
+        ${isActive
+          ? 'bg-gradient-to-r from-purple-500/15 to-pink-500/10 text-white font-medium shadow-[inset_0_1px_0_rgba(168,85,247,0.2)]'
+          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
         }
       `}
     >
-      {depth === 0 && (
-        <span className={`transition-colors duration-200 ${isExactActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-slate-300'}`}>
-          {item.icon}
-        </span>
-      )}
-      {depth > 0 && (
-        <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-200 ${isExactActive ? 'bg-purple-400' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
-      )}
+      <span className={`transition-colors duration-200 ${isActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-slate-300'}`}>
+        {item.icon}
+      </span>
       <span>{item.label}</span>
     </Link>
   );

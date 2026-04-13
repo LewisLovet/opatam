@@ -156,5 +156,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // === AFFILIATES ===
+
+    match /affiliates/{affiliateId} {
+      allow read: if true;
+      allow write: if false; // Admin SDK only
+    }
+
+    match /_affiliateLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Admin SDK only
+    }
+
   }
 }
