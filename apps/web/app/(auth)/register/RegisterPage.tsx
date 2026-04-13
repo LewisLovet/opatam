@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Mail,
   Lock,
@@ -95,6 +95,9 @@ interface WizardData {
   password: string;
   confirmPassword: string;
   acceptTerms: boolean;
+  // Affiliation
+  referralCode: string;
+  referralInfo: { valid: boolean; affiliateId: string; affiliateName: string; discount: number | null; discountLabel: string | null } | null;
 }
 
 const DEFAULT_AVAILABILITY: { [key: number]: DayAvailability } = {
@@ -128,6 +131,8 @@ const DEFAULT_DATA: WizardData = {
   password: '',
   confirmPassword: '',
   acceptTerms: false,
+  referralCode: '',
+  referralInfo: null,
 };
 
 // Error message helper
@@ -151,8 +156,26 @@ function getErrorMessage(error: unknown): string {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<WizardData>(DEFAULT_DATA);
+
+  // Read ?ref= from URL and verify the code
+  useEffect(() => {
+    const ref = searchParams.get('ref')?.toUpperCase().trim();
+    if (ref && !data.referralCode) {
+      updateData({ referralCode: ref });
+      fetch(`/api/affiliates/verify?code=${ref}`)
+        .then((res) => res.json())
+        .then((info) => {
+          if (info.valid) {
+            updateData({ referralInfo: info });
+          }
+        })
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -367,6 +390,21 @@ export default function RegisterPage() {
       description: data.description,
     });
 
+    // If referral code, link affiliate to provider + increment stats
+    if (data.referralInfo?.valid && data.referralInfo.affiliateId) {
+      await providerService.updateProvider(provider.id, {
+        affiliateCode: data.referralCode,
+        affiliateId: data.referralInfo.affiliateId,
+      } as any);
+
+      // Increment affiliate trialReferrals
+      fetch('/api/affiliates/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: data.referralCode, providerId: provider.id }),
+      }).catch(() => {});
+    }
+
     // Create Location (via service for validation + provider cities update)
     const location = await locationService.createLocation(provider.id, {
       name: data.locationName,
@@ -541,6 +579,52 @@ export default function RegisterPage() {
           className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
         />
         <p className="mt-1 text-xs text-gray-500">{data.description.length}/500</p>
+      </div>
+
+      {/* Referral code */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          Code parrain (facultatif)
+        </label>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Ex: MARIE"
+            value={data.referralCode}
+            onChange={(e) => {
+              const code = e.target.value.toUpperCase();
+              updateData({ referralCode: code, referralInfo: null });
+            }}
+            className="uppercase"
+          />
+          {data.referralCode && !data.referralInfo && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const res = await fetch(`/api/affiliates/verify?code=${data.referralCode}`);
+                  const info = await res.json();
+                  updateData({ referralInfo: info.valid ? info : null });
+                  if (!info.valid) {
+                    setError('Code parrain invalide');
+                    setTimeout(() => setError(''), 3000);
+                  }
+                } catch {}
+              }}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+            >
+              Vérifier
+            </button>
+          )}
+        </div>
+        {data.referralInfo && (
+          <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+            <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <p className="text-sm text-emerald-700 dark:text-emerald-300">
+              Code <span className="font-semibold">{data.referralCode}</span> validé
+              {data.referralInfo.discountLabel && ` — ${data.referralInfo.discountLabel}`}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

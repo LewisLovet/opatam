@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * GET /api/affiliates/verify?code=MARIE
@@ -46,5 +47,42 @@ export async function GET(request: NextRequest) {
   } catch (err: any) {
     console.error('[affiliates/verify] error:', err);
     return NextResponse.json({ valid: false });
+  }
+}
+
+/**
+ * POST /api/affiliates/verify
+ * Register a new referral (increment trialReferrals)
+ * Body: { code, providerId }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const { code, providerId } = await request.json();
+    if (!code || !providerId) {
+      return NextResponse.json({ error: 'code et providerId requis' }, { status: 400 });
+    }
+
+    const db = getAdminFirestore();
+    const snapshot = await db
+      .collection('affiliates')
+      .where('code', '==', code.toUpperCase().trim())
+      .where('isActive', '==', true)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return NextResponse.json({ error: 'Code invalide' }, { status: 404 });
+    }
+
+    await db.collection('affiliates').doc(snapshot.docs[0].id).update({
+      'stats.totalReferrals': FieldValue.increment(1),
+      'stats.trialReferrals': FieldValue.increment(1),
+      updatedAt: new Date(),
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error('[affiliates/verify] POST error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 
 interface CheckoutRequest {
   priceId: string;
@@ -34,10 +35,43 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = getStripe();
+    const db = getAdminFirestore();
+
+    // Check if provider has an affiliate code
+    let affiliateCode: string | null = null;
+    let affiliateId: string | null = null;
+    let stripeCouponId: string | null = null;
+
+    try {
+      const providerDoc = await db.collection('providers').doc(providerId).get();
+      if (providerDoc.exists) {
+        const providerData = providerDoc.data();
+        affiliateCode = providerData?.affiliateCode || null;
+        affiliateId = providerData?.affiliateId || null;
+
+        // If affiliate exists, get the coupon
+        if (affiliateId) {
+          const affiliateDoc = await db.collection('affiliates').doc(affiliateId).get();
+          if (affiliateDoc.exists) {
+            stripeCouponId = affiliateDoc.data()?.stripeCouponId || null;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[STRIPE-CHECKOUT] Could not fetch affiliate info:', err);
+    }
+
+    const metadata = {
+      providerId,
+      ...(plan ? { plan } : {}),
+      ...(affiliateCode ? { affiliateCode } : {}),
+      ...(affiliateId ? { affiliateId } : {}),
+    };
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      allow_promotion_codes: true,
+      allow_promotion_codes: stripeCouponId ? undefined : true, // Disable promo codes if affiliate coupon applied
+      ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
       line_items: [
         {
           price: priceId,
@@ -46,9 +80,9 @@ export async function POST(request: NextRequest) {
       ],
       subscription_data: {
         trial_period_days: trialDays,
-        metadata: { providerId, ...(plan ? { plan } : {}) },
+        metadata,
       },
-      metadata: { providerId, ...(plan ? { plan } : {}) },
+      metadata,
       success_url: successUrl
         ? `${process.env.NEXT_PUBLIC_APP_URL}${successUrl}${successUrl.includes('?') ? '&' : '?'}success=true&session_id={CHECKOUT_SESSION_ID}`
         : `${process.env.NEXT_PUBLIC_APP_URL}/dev/tests/stripe?success=true&session_id={CHECKOUT_SESSION_ID}`,

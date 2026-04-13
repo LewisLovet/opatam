@@ -209,6 +209,70 @@ async function handleCheckoutCompleted(
 
   console.log(`[STRIPE-WEBHOOK] Provider ${providerId} subscription activated (${activeMemberCount} active members)`);
 
+  // Fire-and-forget: affiliate commission transfer
+  try {
+    const affCode = session.metadata?.affiliateCode;
+    const affId = session.metadata?.affiliateId;
+    const amountTotal = session.amount_total; // amount actually paid (after discount)
+
+    if (affId && amountTotal && amountTotal > 0) {
+      const affiliateDoc = await db.collection('affiliates').doc(affId).get();
+      if (affiliateDoc.exists) {
+        const affiliate = affiliateDoc.data()!;
+        if (affiliate.isActive && affiliate.stripeAccountId && affiliate.stripeAccountStatus === 'active') {
+          const commissionCents = Math.round(amountTotal * (affiliate.commission / 100));
+          if (commissionCents > 0) {
+            // Get the latest charge from the session
+            const chargeId = typeof session.payment_intent === 'string'
+              ? (await stripe.paymentIntents.retrieve(session.payment_intent)).latest_charge as string
+              : null;
+
+            if (chargeId) {
+              const transfer = await stripe.transfers.create({
+                amount: commissionCents,
+                currency: 'eur',
+                destination: affiliate.stripeAccountId,
+                source_transaction: chargeId,
+                metadata: {
+                  affiliateCode: affCode || '',
+                  affiliateId: affId,
+                  providerId,
+                },
+              });
+
+              // Update affiliate stats
+              await db.collection('affiliates').doc(affId).update({
+                'stats.activeReferrals': (affiliate.stats?.activeReferrals || 0) + 1,
+                'stats.totalRevenue': (affiliate.stats?.totalRevenue || 0) + amountTotal,
+                'stats.totalCommission': (affiliate.stats?.totalCommission || 0) + commissionCents,
+                updatedAt: new Date(),
+              });
+
+              // Log
+              await db.collection('_affiliateLogs').add({
+                type: 'payment',
+                affiliateId: affId,
+                affiliateCode: affCode,
+                providerId,
+                paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+                transferId: transfer.id,
+                amount: amountTotal,
+                commission: commissionCents,
+                commissionRate: affiliate.commission,
+                source: 'checkout',
+                createdAt: new Date(),
+              });
+
+              console.log(`[STRIPE-WEBHOOK] Affiliate transfer: ${commissionCents} cents to ${affiliate.code} (${transfer.id})`);
+            }
+          }
+        }
+      }
+    }
+  } catch (affiliateErr) {
+    console.error('[STRIPE-WEBHOOK] Affiliate transfer error (non-blocking):', affiliateErr);
+  }
+
   // Fire-and-forget: send welcome email
   try {
     const providerEmail = existingData?.email || existingData?.contactEmail;
