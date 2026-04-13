@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getAdminFirestore, getAdminAuth } from '@/lib/firebase-admin';
+import { getStripeDev } from '@/lib/stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY_DEV || process.env.STRIPE_SECRET_KEY!);
+const stripe = getStripeDev();
 
 async function verifyAdmin(uid: string) {
   const db = getAdminFirestore();
