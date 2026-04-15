@@ -157,7 +157,10 @@ export async function POST(request: NextRequest) {
       });
 
       // Send welcome email with password reset link
-      const resetLink = await auth.generatePasswordResetLink(email);
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const resetLink = await auth.generatePasswordResetLink(email, {
+        url: `${baseUrl}/affiliation/login`,
+      });
       try {
         const { Resend } = await import('resend');
         const resendApiKey = process.env.RESEND_API_KEY;

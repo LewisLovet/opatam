@@ -378,6 +378,66 @@ async function handleInvoicePaid(
   await providerRef.update(invoiceUpdateData);
 
   console.log(`[STRIPE-WEBHOOK] Provider ${providerId} subscription renewed (validUntil: ${newValidUntil?.toISOString() ?? 'null'})`);
+
+  // Affiliate commission on recurring payment
+  try {
+    const providerData = providerDoc.data();
+    const affId = providerData?.affiliateId || stripeSubscription.metadata?.affiliateId;
+    const affCode = providerData?.affiliateCode || stripeSubscription.metadata?.affiliateCode;
+    const amountPaid = invoice.amount_paid; // actual amount paid (after discount)
+
+    if (affId && amountPaid && amountPaid > 0) {
+      const affiliateDoc = await db.collection('affiliates').doc(affId).get();
+      if (affiliateDoc.exists) {
+        const affiliate = affiliateDoc.data()!;
+        if (affiliate.isActive && affiliate.stripeAccountId && affiliate.stripeAccountStatus === 'active') {
+          const commissionCents = Math.round(amountPaid * (affiliate.commission / 100));
+          if (commissionCents > 0) {
+            // Get charge from invoice
+            const chargeId = extractId((invoice as any).charge);
+            if (chargeId) {
+              const transfer = await stripe.transfers.create({
+                amount: commissionCents,
+                currency: 'eur',
+                destination: affiliate.stripeAccountId,
+                source_transaction: chargeId,
+                metadata: {
+                  affiliateCode: affCode || '',
+                  affiliateId: affId,
+                  providerId,
+                  source: 'invoice',
+                },
+              });
+
+              await db.collection('affiliates').doc(affId).update({
+                'stats.totalRevenue': (affiliate.stats?.totalRevenue || 0) + amountPaid,
+                'stats.totalCommission': (affiliate.stats?.totalCommission || 0) + commissionCents,
+                updatedAt: new Date(),
+              });
+
+              await db.collection('_affiliateLogs').add({
+                type: 'payment',
+                affiliateId: affId,
+                affiliateCode: affCode,
+                providerId,
+                paymentIntentId: extractId((invoice as any).payment_intent),
+                transferId: transfer.id,
+                amount: amountPaid,
+                commission: commissionCents,
+                commissionRate: affiliate.commission,
+                source: 'invoice',
+                createdAt: new Date(),
+              });
+
+              console.log(`[STRIPE-WEBHOOK] Affiliate recurring transfer: ${commissionCents} cents to ${affiliate.code} (${transfer.id})`);
+            }
+          }
+        }
+      }
+    }
+  } catch (affiliateErr) {
+    console.error('[STRIPE-WEBHOOK] Affiliate recurring transfer error (non-blocking):', affiliateErr);
+  }
 }
 
 async function handleSubscriptionUpdated(
