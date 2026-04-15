@@ -170,6 +170,12 @@ export default function RegisterPage() {
         .then((info) => {
           if (info.valid) {
             updateData({ referralInfo: info });
+            // Track link click
+            fetch('/api/affiliates/track-click', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: ref }),
+            }).catch(() => {});
           }
         })
         .catch(() => {});

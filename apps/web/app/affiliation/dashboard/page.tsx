@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@booking-app/firebase';
@@ -13,6 +13,10 @@ import {
   Check,
   ExternalLink,
   AlertTriangle,
+  Download,
+  ArrowUpRight,
+  ArrowDownLeft,
+  MousePointerClick,
 } from 'lucide-react';
 
 interface AffiliateData {
@@ -30,12 +34,13 @@ interface AffiliateData {
     trialReferrals: number;
     totalRevenue: number;
     totalCommission: number;
+    linkClicks?: number;
   };
 }
 
 interface LogEntry {
   id: string;
-  type: string;
+  type: 'payment' | 'refund';
   amount: number;
   commission: number;
   affiliateCode: string;
@@ -60,12 +65,11 @@ export default function AffiliateDashboardPage() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
 
-      // Get affiliateId from user doc
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const affiliateId = userDoc.data()?.affiliateId;
       if (!affiliateId) return;
 
-      // Listen to affiliate doc in real-time
+      // Real-time listener on affiliate doc
       const unsub = onSnapshot(doc(db, 'affiliates', affiliateId), (snap) => {
         if (snap.exists()) {
           setAffiliate({ id: snap.id, ...snap.data() } as AffiliateData);
@@ -73,14 +77,13 @@ export default function AffiliateDashboardPage() {
         setLoading(false);
       });
 
-      // Fetch logs
+      // Fetch all logs (payments + refunds)
       try {
         const logsQuery = query(
           collection(db, '_affiliateLogs'),
           where('affiliateId', '==', affiliateId),
-          where('type', '==', 'payment'),
           orderBy('createdAt', 'desc'),
-          limit(20)
+          limit(50)
         );
         const logsSnap = await getDocs(logsQuery);
         setLogs(logsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as LogEntry)));
@@ -101,6 +104,26 @@ export default function AffiliateDashboardPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const exportCSV = () => {
+    if (!logs.length) return;
+    const payments = logs.filter((l) => l.type === 'payment');
+    const header = 'Date,Type,Montant paiement (€),Commission (€),Source\n';
+    const rows = payments.map((l) => {
+      const date = l.createdAt?.toDate
+        ? l.createdAt.toDate().toLocaleDateString('fr-FR')
+        : '—';
+      return `${date},Commission,${(l.amount / 100).toFixed(2)},${(l.commission / 100).toFixed(2)},${l.source || 'checkout'}`;
+    }).join('\n');
+
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `commissions-${affiliate?.code || 'export'}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -116,6 +139,16 @@ export default function AffiliateDashboardPage() {
       </div>
     );
   }
+
+  const payments = logs.filter((l) => l.type === 'payment');
+  const refunds = logs.filter((l) => l.type === 'refund');
+  const thisMonth = payments.filter((l) => {
+    if (!l.createdAt?.toDate) return false;
+    const d = l.createdAt.toDate();
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const thisMonthCommission = thisMonth.reduce((s, l) => s + (l.commission || 0), 0);
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
@@ -143,9 +176,7 @@ export default function AffiliateDashboardPage() {
                     body: JSON.stringify({ affiliateId: affiliate.id }),
                   });
                   const data = await res.json();
-                  if (data.url) {
-                    window.open(data.url, '_blank');
-                  }
+                  if (data.url) window.open(data.url, '_blank');
                 } catch {}
               }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -182,82 +213,161 @@ export default function AffiliateDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <Users className="w-4 h-4 text-blue-600" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-blue-50 rounded-lg">
+              <Users className="w-3.5 h-3.5 text-blue-600" />
             </div>
-            <span className="text-xs text-gray-500">Total filleuls</span>
+            <span className="text-[11px] text-gray-500">Filleuls</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{affiliate.stats.totalReferrals}</p>
+          <p className="text-xl font-bold text-gray-900">{affiliate.stats.totalReferrals}</p>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 bg-amber-50 rounded-lg">
-              <Clock className="w-4 h-4 text-amber-600" />
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-amber-50 rounded-lg">
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
             </div>
-            <span className="text-xs text-gray-500">En essai</span>
+            <span className="text-[11px] text-gray-500">En essai</span>
           </div>
-          <p className="text-2xl font-bold text-amber-600">{affiliate.stats.trialReferrals}</p>
+          <p className="text-xl font-bold text-amber-600">{affiliate.stats.trialReferrals}</p>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 bg-emerald-50 rounded-lg">
-              <TrendingUp className="w-4 h-4 text-emerald-600" />
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-emerald-50 rounded-lg">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
             </div>
-            <span className="text-xs text-gray-500">Convertis</span>
+            <span className="text-[11px] text-gray-500">Convertis</span>
           </div>
-          <p className="text-2xl font-bold text-emerald-600">{affiliate.stats.activeReferrals}</p>
+          <p className="text-xl font-bold text-emerald-600">{affiliate.stats.activeReferrals}</p>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 bg-primary-50 rounded-lg">
-              <Euro className="w-4 h-4 text-primary-600" />
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-primary-50 rounded-lg">
+              <Euro className="w-3.5 h-3.5 text-primary-600" />
             </div>
-            <span className="text-xs text-gray-500">Commission totale</span>
+            <span className="text-[11px] text-gray-500">Total gagné</span>
           </div>
-          <p className="text-2xl font-bold text-primary-600">{(affiliate.stats.totalCommission / 100).toFixed(2)} €</p>
+          <p className="text-xl font-bold text-primary-600">{(affiliate.stats.totalCommission / 100).toFixed(2)} €</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-violet-50 rounded-lg">
+              <Euro className="w-3.5 h-3.5 text-violet-600" />
+            </div>
+            <span className="text-[11px] text-gray-500">Ce mois</span>
+          </div>
+          <p className="text-xl font-bold text-violet-600">{(thisMonthCommission / 100).toFixed(2)} €</p>
         </div>
       </div>
 
-      {/* Commission history */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">Historique des commissions</h2>
+      {/* Link clicks */}
+      {affiliate.stats.linkClicks !== undefined && (
+        <div className="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
+          <div className="p-3 bg-indigo-50 rounded-xl">
+            <MousePointerClick className="w-5 h-5 text-indigo-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">{affiliate.stats.linkClicks} clics sur votre lien</p>
+            <p className="text-xs text-gray-500">Nombre de personnes qui ont visité la page d'inscription via votre lien</p>
+          </div>
+          {affiliate.stats.totalReferrals > 0 && affiliate.stats.linkClicks! > 0 && (
+            <div className="ml-auto text-right">
+              <p className="text-lg font-bold text-indigo-600">
+                {((affiliate.stats.totalReferrals / affiliate.stats.linkClicks!) * 100).toFixed(1)}%
+              </p>
+              <p className="text-[11px] text-gray-400">Taux de conversion</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Transactions */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">Virements et commissions</h2>
+          {payments.length > 0 && (
+            <button
+              onClick={exportCSV}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 px-3 py-1.5 bg-primary-50 rounded-lg transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Exporter CSV
+            </button>
+          )}
         </div>
         {logs.length === 0 ? (
           <div className="p-8 text-center text-gray-400 text-sm">
-            Aucune commission pour le moment. Partagez votre lien pour commencer.
+            Aucun virement pour le moment. Partagez votre lien pour commencer.
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {logs.map((log) => (
-              <div key={log.id} className="px-5 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-900">
-                    Paiement de {(log.amount / 100).toFixed(2)} €
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {log.createdAt?.toDate ? log.createdAt.toDate().toLocaleDateString('fr-FR', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }) : '—'}
-                  </p>
+            {logs.map((log) => {
+              const isRefund = log.type === 'refund';
+              const date = log.createdAt?.toDate
+                ? log.createdAt.toDate().toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : '—';
+
+              return (
+                <div key={log.id} className="px-5 py-3 flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${isRefund ? 'bg-red-50' : 'bg-emerald-50'}`}>
+                    {isRefund ? (
+                      <ArrowDownLeft className="w-4 h-4 text-red-500" />
+                    ) : (
+                      <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-900">
+                      {isRefund ? 'Remboursement' : 'Commission'}
+                      {log.source === 'invoice' ? ' (renouvellement)' : log.source === 'checkout' ? ' (premier paiement)' : ''}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">{date}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-semibold ${isRefund ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {isRefund ? '-' : '+'}{((log.commission || log.amount || 0) / 100).toFixed(2)} €
+                    </p>
+                    {!isRefund && log.amount && (
+                      <p className="text-[11px] text-gray-400">sur {(log.amount / 100).toFixed(2)} € payés</p>
+                    )}
+                  </div>
                 </div>
-                <span className="text-sm font-semibold text-emerald-600">
-                  +{(log.commission / 100).toFixed(2)} €
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
+      </div>
+
+      {/* Summary */}
+      <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Récapitulatif</h3>
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-lg font-bold text-gray-900">{payments.length}</p>
+            <p className="text-xs text-gray-500">Virements reçus</p>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-red-600">{refunds.length}</p>
+            <p className="text-xs text-gray-500">Remboursements</p>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-emerald-600">
+              {((affiliate.stats.totalCommission) / 100).toFixed(2)} €
+            </p>
+            <p className="text-xs text-gray-500">Solde net</p>
+          </div>
+        </div>
       </div>
     </div>
   );
