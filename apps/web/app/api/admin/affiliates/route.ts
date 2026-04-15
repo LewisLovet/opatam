@@ -274,7 +274,7 @@ export async function POST(request: NextRequest) {
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
       refresh_url: `${baseUrl}/affiliation/dashboard`,
-      return_url: `${baseUrl}/affiliation/dashboard`,
+      return_url: `${baseUrl}/affiliation/dashboard?stripe=success`,
       type: 'account_onboarding',
     });
 

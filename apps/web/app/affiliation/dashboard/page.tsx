@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@booking-app/firebase';
@@ -55,11 +56,23 @@ const DURATION_LABELS: Record<string, string> = {
   forever: 'permanent',
 };
 
-export default function AffiliateDashboardPage() {
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [affiliate, setAffiliate] = useState<AffiliateData | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [showStripeSuccess, setShowStripeSuccess] = useState(false);
+
+  // Detect Stripe onboarding success
+  useEffect(() => {
+    if (searchParams.get('stripe') === 'success') {
+      setShowStripeSuccess(true);
+      // Clean URL
+      router.replace('/affiliation/dashboard');
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -152,6 +165,41 @@ export default function AffiliateDashboardPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+      {/* Stripe Success Modal */}
+      {showStripeSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setShowStripeSuccess(false)}>
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-5">
+              <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Félicitations !
+            </h2>
+            <p className="text-sm text-gray-600 mb-2">
+              Votre compte Stripe a été configuré avec succès.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Vous êtes maintenant prêt(e) à recevoir vos commissions. Partagez votre lien et commencez à gagner !
+            </p>
+            <div className="bg-emerald-50 rounded-xl p-4 mb-6">
+              <p className="text-xs text-emerald-600 font-medium mb-1">Votre lien de partage</p>
+              <p className="text-sm font-mono text-emerald-800">opatam.com/register?ref={affiliate.code}</p>
+            </div>
+            <button
+              onClick={() => setShowStripeSuccess(false)}
+              className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              C'est parti !
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Bonjour, {affiliate.name}</h1>
@@ -370,5 +418,13 @@ export default function AffiliateDashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AffiliateDashboardPage() {
+  return (
+    <Suspense>
+      <DashboardContent />
+    </Suspense>
   );
 }
