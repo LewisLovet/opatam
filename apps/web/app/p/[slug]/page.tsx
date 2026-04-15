@@ -261,33 +261,93 @@ export default async function ProviderPage({ params }: PageProps) {
   // JSON-LD structured data for SEO (LocalBusiness + AggregateRating)
   const city = provider.cities?.[0] || '';
   const location = locations[0];
+  const primaryCity = provider.cities?.[0] || '';
+  const categoryLabel = provider.category.charAt(0).toUpperCase() + provider.category.slice(1);
+
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
-    name: provider.businessName,
-    description: provider.description || `${provider.businessName} — ${provider.category}`,
-    url: `https://opatam.com/p/${provider.slug}`,
-    ...(provider.photoURL && { image: provider.photoURL }),
-    ...(provider.coverPhotoURL && { image: provider.coverPhotoURL }),
-    ...(location && {
-      address: {
-        '@type': 'PostalAddress',
-        ...(location.address && { streetAddress: location.address }),
-        addressLocality: location.city,
-        postalCode: location.postalCode,
-        addressCountry: location.countryCode || 'FR',
+    '@graph': [
+      {
+        '@type': 'LocalBusiness',
+        '@id': `https://opatam.com/p/${provider.slug}#business`,
+        name: provider.businessName,
+        description: provider.description || `${provider.businessName} — ${categoryLabel}${primaryCity ? ` à ${primaryCity}` : ''}`,
+        url: `https://opatam.com/p/${provider.slug}`,
+        image: provider.coverPhotoURL || provider.photoURL || undefined,
+        ...(location && {
+          address: {
+            '@type': 'PostalAddress',
+            ...(location.address && { streetAddress: location.address }),
+            addressLocality: location.city,
+            postalCode: location.postalCode,
+            addressCountry: location.countryCode || 'FR',
+          },
+          ...(location.geopoint && {
+            geo: {
+              '@type': 'GeoCoordinates',
+              latitude: location.geopoint.latitude,
+              longitude: location.geopoint.longitude,
+            },
+          }),
+        }),
+        ...(provider.rating?.average && provider.rating.average > 0 && {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: provider.rating.average.toFixed(1),
+            reviewCount: provider.rating.count || reviews.length,
+            bestRating: '5',
+          },
+        }),
+        ...(minPrice !== null && {
+          priceRange: minPrice === 0 ? 'Gratuit' : `À partir de ${(minPrice / 100).toFixed(0)} €`,
+        }),
+        ...(services.length > 0 && {
+          hasOfferCatalog: {
+            '@type': 'OfferCatalog',
+            name: 'Prestations',
+            itemListElement: services.slice(0, 10).map((s) => ({
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: s.name,
+                ...(s.description && { description: s.description }),
+              },
+              price: (s.price / 100).toFixed(2),
+              priceCurrency: 'EUR',
+            })),
+          },
+        }),
       },
-    }),
-    ...(provider.rating?.average && provider.rating.average > 0 && {
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: provider.rating.average.toFixed(1),
-        reviewCount: provider.rating.count || reviews.length,
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Accueil',
+            item: 'https://opatam.com',
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: categoryLabel,
+            item: `https://opatam.com/recherche/${provider.category}`,
+          },
+          ...(primaryCity ? [{
+            '@type': 'ListItem',
+            position: 3,
+            name: primaryCity,
+            item: `https://opatam.com/recherche/${provider.category}/${primaryCity.toLowerCase()}`,
+          }] : []),
+          {
+            '@type': 'ListItem',
+            position: primaryCity ? 4 : 3,
+            name: provider.businessName,
+            item: `https://opatam.com/p/${provider.slug}`,
+          },
+        ],
       },
-    }),
-    ...(minPrice !== null && {
-      priceRange: `À partir de ${(minPrice / 100).toFixed(0)} €`,
-    }),
+    ],
   };
 
   return (
