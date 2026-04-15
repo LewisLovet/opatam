@@ -77,12 +77,26 @@ export const sendBookingReminders = onSchedule(
         const minutesUntil = (bookingDatetime.getTime() - now.getTime()) / (1000 * 60);
         const hoursUntil = minutesUntil / 60;
 
-        // Determine reminder type
+        // Determine if booking is TODAY or TOMORROW in Paris timezone
+        const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+        const parisBooking = new Date(bookingDatetime.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+        const todayStr = `${parisNow.getFullYear()}-${parisNow.getMonth()}-${parisNow.getDate()}`;
+        const bookingStr = `${parisBooking.getFullYear()}-${parisBooking.getMonth()}-${parisBooking.getDate()}`;
+        const tomorrowDate = new Date(parisNow);
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const tomorrowStr = `${tomorrowDate.getFullYear()}-${tomorrowDate.getMonth()}-${tomorrowDate.getDate()}`;
+
+        const isToday = todayStr === bookingStr;
+        const isTomorrow = tomorrowStr === bookingStr;
+
+        // Determine reminder type based on actual calendar day
         let reminderType: '2h' | '24h' | null = null;
         if (hoursUntil <= 3) {
-          reminderType = '2h';
-        } else if (hoursUntil <= 25) {
-          reminderType = '24h';
+          reminderType = '2h'; // Imminent — "dans X heures"
+        } else if (isToday) {
+          reminderType = '2h'; // Still today — use dynamic timing, NOT "demain"
+        } else if (isTomorrow && hoursUntil <= 25) {
+          reminderType = '24h'; // Actually tomorrow — safe to say "demain"
         } else {
           continue; // Not yet time
         }

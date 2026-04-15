@@ -134,6 +134,7 @@ export interface BookingEmailData {
   memberName?: string;
   cancelToken?: string;
   bookingId?: string;
+  bookingNotice?: string | null;
 }
 
 /**
@@ -905,6 +906,10 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                     </table>
                   </div>
+                  ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; Information de ${data.businessName}</p>
+                    <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;">${data.bookingNotice}</p>
+                  </div>` : ''}
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Ajouter à votre calendrier</p>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -1205,6 +1210,10 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                     </table>
                   </div>
+                  ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; Information de ${data.businessName}</p>
+                    <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;">${data.bookingNotice}</p>
+                  </div>` : ''}
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Ajouter à votre calendrier</p>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">

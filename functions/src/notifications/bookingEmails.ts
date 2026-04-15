@@ -141,12 +141,21 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
 
   const providerSlug = await getProviderSlug(booking.providerId);
 
+  // Fetch bookingNotice from provider settings
+  let bookingNotice: string | null = null;
+  try {
+    const providerDoc = await admin.firestore().collection('providers').doc(booking.providerId).get();
+    bookingNotice = providerDoc.data()?.settings?.bookingNotice || null;
+  } catch {
+    // Non-blocking
+  }
+
   return {
     clientEmail: booking.clientInfo.email,
     clientName: booking.clientInfo.name,
     serviceName: booking.serviceName,
     datetime: booking.datetime.toDate(),
-    duration: booking.duration || 60, // Default 60 min if not set
+    duration: booking.duration || 60,
     price: booking.price || 0,
     priceMax: booking.priceMax || null,
     providerName: booking.providerName,
@@ -156,6 +165,7 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
     memberName: booking.memberName,
     cancelToken: booking.cancelToken,
     bookingId,
+    bookingNotice,
   };
 }
 
