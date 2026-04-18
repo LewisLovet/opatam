@@ -2,6 +2,16 @@ import type { PaginatedResult, ProviderFilters, ProviderDetail } from './types';
 
 const BASE_URL = '/api/admin/providers';
 
+export interface ProviderSearchResult {
+  id: string;
+  userId: string;
+  businessName: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  alreadyAffiliate: boolean;
+}
+
 function headers(adminUid: string) {
   return {
     'Content-Type': 'application/json',
@@ -29,6 +39,25 @@ export const adminProviderService = {
     const res = await fetch(`${BASE_URL}?${params}`, { headers: headers(adminUid) });
     if (!res.ok) throw new Error('Erreur lors du chargement des prestataires');
     return res.json();
+  },
+
+  /**
+   * Lightweight search for the admin affiliate creation flow. Returns up
+   * to 10 providers matching the query on businessName/slug, with their
+   * owner email joined in and an `alreadyAffiliate` flag.
+   */
+  async searchForAffiliate(
+    adminUid: string,
+    query: string,
+  ): Promise<ProviderSearchResult[]> {
+    if (query.trim().length < 2) return [];
+    const params = new URLSearchParams({ q: query });
+    const res = await fetch(`${BASE_URL}/search?${params}`, {
+      headers: headers(adminUid),
+    });
+    if (!res.ok) throw new Error('Erreur lors de la recherche');
+    const data = await res.json();
+    return data.results ?? [];
   },
 
   async getProviderDetail(adminUid: string, providerId: string): Promise<ProviderDetail> {

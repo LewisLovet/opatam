@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { adminAffiliateService } from '@/services/admin';
+import { adminAffiliateService, adminProviderService } from '@/services/admin';
+import type { ProviderSearchResult } from '@/services/admin/adminProviderService';
 import { Loader } from '@/components/ui';
 import {
   Handshake,
@@ -15,6 +16,9 @@ import {
   Euro,
   TrendingUp,
   X,
+  Search,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface AffiliateItem {
@@ -69,6 +73,14 @@ export default function AdminAffiliatesPage() {
     discountDuration: 'once',
   });
 
+  // Provider autocomplete state (used in create modal)
+  const [providerQuery, setProviderQuery] = useState('');
+  const [providerResults, setProviderResults] = useState<ProviderSearchResult[]>([]);
+  const [providerSearching, setProviderSearching] = useState(false);
+  const [providerDropdownOpen, setProviderDropdownOpen] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<ProviderSearchResult | null>(null);
+  const providerSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const loadAffiliates = useCallback(async () => {
     if (!user?.id) return;
     try {
@@ -85,6 +97,62 @@ export default function AdminAffiliatesPage() {
     loadAffiliates();
   }, [loadAffiliates]);
 
+  /**
+   * Reset the create-affiliate modal form and its autocomplete state.
+   * Called when opening/closing the modal or after a successful create.
+   */
+  const resetCreateForm = () => {
+    setForm({ name: '', email: '', code: '', commission: '20', discount: '', discountDuration: 'once' });
+    setProviderQuery('');
+    setProviderResults([]);
+    setSelectedProvider(null);
+    setProviderDropdownOpen(false);
+  };
+
+  /**
+   * Debounced provider search — kicks off 250 ms after the user stops typing,
+   * and only if the query has at least 2 characters. Results are 10 providers
+   * max, joined with their owner user for the email field.
+   */
+  const handleProviderSearch = (value: string) => {
+    setProviderQuery(value);
+    setSelectedProvider(null);
+    setProviderDropdownOpen(value.trim().length >= 2);
+
+    if (providerSearchTimeoutRef.current) {
+      clearTimeout(providerSearchTimeoutRef.current);
+    }
+    if (!user?.id || value.trim().length < 2) {
+      setProviderResults([]);
+      return;
+    }
+
+    providerSearchTimeoutRef.current = setTimeout(async () => {
+      setProviderSearching(true);
+      try {
+        const results = await adminProviderService.searchForAffiliate(user.id, value);
+        setProviderResults(results);
+      } catch (err) {
+        console.error('Provider search error:', err);
+        setProviderResults([]);
+      } finally {
+        setProviderSearching(false);
+      }
+    }, 250);
+  };
+
+  /** Prefill the form from the selected provider and collapse the dropdown. */
+  const handleSelectProvider = (provider: ProviderSearchResult) => {
+    setSelectedProvider(provider);
+    setProviderQuery(provider.businessName);
+    setProviderDropdownOpen(false);
+    setForm((prev) => ({
+      ...prev,
+      name: provider.businessName || provider.displayName || prev.name,
+      email: provider.email || prev.email,
+    }));
+  };
+
   const handleCreate = async () => {
     if (!user?.id || !form.name || !form.email || !form.code) return;
     setCreating(true);
@@ -99,7 +167,7 @@ export default function AdminAffiliatesPage() {
         discountDuration: form.discount ? form.discountDuration : null,
       });
       setShowCreate(false);
-      setForm({ name: '', email: '', code: '', commission: '20', discount: '', discountDuration: 'once' });
+      resetCreateForm();
       await loadAffiliates();
 
       // Open onboarding link in new tab
@@ -211,15 +279,95 @@ export default function AdminAffiliatesPage() {
 
       {/* Create Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setShowCreate(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => { setShowCreate(false); resetCreateForm(); }}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Nouvel affilié</h3>
-              <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setShowCreate(false); resetCreateForm(); }} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
+              {/* Provider autocomplete — pre-fill from an existing provider */}
+              <div className="relative">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                  Rechercher un prestataire existant
+                  <span className="text-gray-400 font-normal ml-1.5">(optionnel)</span>
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input
+                    value={providerQuery}
+                    onChange={(e) => handleProviderSearch(e.target.value)}
+                    onFocus={() => providerQuery.trim().length >= 2 && setProviderDropdownOpen(true)}
+                    placeholder="Nom du prestataire..."
+                    className="w-full pl-9 pr-9 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  {providerSearching && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+                  )}
+                  {!providerSearching && (selectedProvider || providerQuery) && (
+                    <button
+                      type="button"
+                      onClick={() => { setProviderQuery(''); setSelectedProvider(null); setProviderResults([]); setProviderDropdownOpen(false); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label="Effacer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdown results */}
+                {providerDropdownOpen && providerQuery.trim().length >= 2 && (
+                  <div className="absolute z-10 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg">
+                    {!providerSearching && providerResults.length === 0 && (
+                      <p className="px-3 py-3 text-xs text-gray-400 text-center">
+                        Aucun prestataire trouvé
+                      </p>
+                    )}
+                    {providerResults.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => handleSelectProvider(p)}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-50 dark:border-gray-700 last:border-b-0"
+                      >
+                        {p.photoURL ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.photoURL} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <Users className="w-4 h-4 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {p.businessName}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {p.email ?? 'Pas d\'email'}
+                          </p>
+                        </div>
+                        {p.alreadyAffiliate && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 flex-shrink-0">
+                            <AlertTriangle className="w-2.5 h-2.5" />
+                            Déjà affilié
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {selectedProvider?.alreadyAffiliate && (
+                  <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1">
+                    <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                    Ce prestataire est déjà affilié. Créer un nouvel affilié remplacera son lien.
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">Nom</label>
                 <input
