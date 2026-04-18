@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     console.log(`[affiliates] Account ${account.id} transfers capability: ${transfersStatus}`);
 
     // Generate onboarding link
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
       refresh_url: `${baseUrl}/dev/tools/affiliates?refresh=true`,
@@ -153,7 +153,7 @@ export async function PATCH(request: NextRequest) {
     // Generate new onboarding link if not fully active
     let onboardingUrl = null;
     if (newStatus !== 'active') {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const accountLink = await stripe.accountLinks.create({
         account: data.stripeAccountId,
         refresh_url: `${baseUrl}/dev/tools/affiliates?refresh=true`,

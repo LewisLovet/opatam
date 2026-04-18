@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Send welcome email with password reset link
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const resetLink = await auth.generatePasswordResetLink(email, {
         url: `${baseUrl}/affiliation/login`,
       });
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Generate onboarding link
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
       refresh_url: `${baseUrl}/affiliation/dashboard`,
