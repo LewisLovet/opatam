@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
 
 async function verifyAdmin(uid: string) {
   const db = getAdminFirestore();
@@ -8,6 +7,13 @@ async function verifyAdmin(uid: string) {
   return userDoc.exists && userDoc.data()?.isAdmin === true;
 }
 
+/**
+ * PATCH /api/admin/reviews/[reviewId] — toggle review visibility.
+ *
+ * Only updates the `isPublic` field. The aggregate `provider.rating`
+ * and `stats/dashboard` counters are recalculated by the
+ * `onReviewRatingUpdate` and `onReviewWrite` Cloud Function triggers.
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ reviewId: string }> }
@@ -32,7 +38,7 @@ export async function PATCH(
     }
 
     // Only allow toggling isPublic
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     if (typeof body.isPublic === 'boolean') {
       updateData.isPublic = body.isPublic;
     }
@@ -51,6 +57,13 @@ export async function PATCH(
   }
 }
 
+/**
+ * DELETE /api/admin/reviews/[reviewId] — delete a review.
+ *
+ * Only deletes the document. The aggregate `provider.rating` and
+ * `stats/dashboard` counters are recalculated by the
+ * `onReviewRatingUpdate` and `onReviewWrite` Cloud Function triggers.
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ reviewId: string }> }
@@ -73,44 +86,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Avis non trouv\u00e9' }, { status: 404 });
     }
 
-    const reviewData = reviewDoc.data()!;
-    const rating = reviewData.rating || 0;
-    const providerId = reviewData.providerId;
-
-    // Delete the review document
     await db.collection('reviews').doc(reviewId).delete();
-
-    // Update stats/dashboard: totalReviews -1, ratingSum - rating
-    await db.collection('stats').doc('dashboard').update({
-      totalReviews: FieldValue.increment(-1),
-      ratingSum: FieldValue.increment(-rating),
-    });
-
-    // Recalculate provider rating from remaining reviews
-    if (providerId) {
-      const remainingReviewsSnap = await db
-        .collection('reviews')
-        .where('providerId', '==', providerId)
-        .select('rating')
-        .get();
-
-      const count = remainingReviewsSnap.size;
-      let newAverage = 0;
-
-      if (count > 0) {
-        let sum = 0;
-        remainingReviewsSnap.docs.forEach((doc) => {
-          sum += doc.data().rating || 0;
-        });
-        newAverage = sum / count;
-      }
-
-      await db.collection('providers').doc(providerId).update({
-        rating: newAverage,
-        reviewCount: count,
-        updatedAt: new Date(),
-      });
-    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

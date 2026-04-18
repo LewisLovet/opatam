@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { reviewService, reviewRepository, bookingRepository } from '@booking-app/firebase';
-import { getAdminFirestore } from '@/lib/firebase-admin';
+import { reviewService, bookingRepository } from '@booking-app/firebase';
 
 interface SubmitReviewRequest {
   bookingId: string;
@@ -9,39 +8,15 @@ interface SubmitReviewRequest {
 }
 
 /**
- * Recalculate provider rating using firebase-admin (bypasses security rules).
- * Called after review creation/update since the client SDK can't update the provider doc.
+ * POST /api/reviews/submit — submit a review for a booking.
+ *
+ * Creates (or updates) the review document. The aggregate
+ * `provider.rating` is recalculated by the `onReviewRatingUpdate`
+ * Cloud Function trigger, which is the single source of truth for
+ * rating aggregation (handles create/update/delete uniformly and
+ * covers all write paths including the mobile client that writes
+ * directly via the Firebase SDK).
  */
-async function recalculateProviderRatingAdmin(providerId: string): Promise<void> {
-  const adminDb = getAdminFirestore();
-
-  // Get all reviews for this provider
-  const reviewsSnapshot = await adminDb
-    .collection('reviews')
-    .where('providerId', '==', providerId)
-    .where('isPublic', '==', true)
-    .get();
-
-  const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  let total = 0;
-
-  reviewsSnapshot.forEach((doc) => {
-    const rating = doc.data().rating as number;
-    if (rating >= 1 && rating <= 5) {
-      distribution[rating]++;
-      total += rating;
-    }
-  });
-
-  const count = reviewsSnapshot.size;
-  const average = count > 0 ? Math.round((total / count) * 10) / 10 : 0;
-
-  // Update provider with firebase-admin (bypasses rules)
-  await adminDb.collection('providers').doc(providerId).update({
-    rating: { average, count, distribution },
-  });
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body: SubmitReviewRequest = await request.json();
@@ -62,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get booking to find providerId
+    // Get booking to find providerId (also validates existence)
     const booking = await bookingRepository.getById(bookingId);
     if (!booking) {
       return NextResponse.json(
@@ -77,14 +52,6 @@ export async function POST(request: NextRequest) {
       rating,
       comment
     );
-
-    // Recalculate provider rating server-side (bypasses Firestore rules)
-    try {
-      await recalculateProviderRatingAdmin(booking.providerId);
-    } catch (ratingErr) {
-      // Non-blocking — the review is saved, rating update can be retried
-      console.error('[REVIEW-SUBMIT] Rating recalculation failed:', ratingErr);
-    }
 
     return NextResponse.json({ success: true, reviewId: review.id });
   } catch (error) {

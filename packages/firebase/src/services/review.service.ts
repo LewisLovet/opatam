@@ -4,7 +4,7 @@ import {
   providerRepository,
   userRepository,
 } from '../repositories';
-import type { Review, Provider } from '@booking-app/shared';
+import type { Review } from '@booking-app/shared';
 import {
   createReviewSchema,
   type CreateReviewInput,
@@ -68,7 +68,8 @@ export class ReviewService {
         throw new Error('Erreur lors de la mise à jour de l\'avis');
       }
 
-      await this.recalculateProviderRating(validated.providerId);
+      // provider.rating is recalculated by the `onReviewRatingUpdate`
+      // Cloud Function trigger. No client-side recalculation needed.
       return updated;
     }
 
@@ -91,14 +92,14 @@ export class ReviewService {
       throw new Error('Erreur lors de la création de l\'avis');
     }
 
-    // Recalculate provider rating
-    await this.recalculateProviderRating(validated.providerId);
-
+    // provider.rating is recalculated by the `onReviewRatingUpdate`
+    // Cloud Function trigger.
     return review;
   }
 
   /**
-   * Update review visibility
+   * Update review visibility.
+   * `provider.rating` is recalculated by the onReviewRatingUpdate Cloud Function trigger.
    */
   async setReviewVisibility(reviewId: string, isPublic: boolean): Promise<void> {
     const review = await reviewRepository.getById(reviewId);
@@ -107,13 +108,11 @@ export class ReviewService {
     }
 
     await reviewRepository.update(reviewId, { isPublic });
-
-    // Recalculate provider rating (only public reviews count)
-    await this.recalculateProviderRating(review.providerId);
   }
 
   /**
-   * Delete a review (admin only)
+   * Delete a review (admin only).
+   * `provider.rating` is recalculated by the onReviewRatingUpdate Cloud Function trigger.
    */
   async deleteReview(reviewId: string, adminUserId: string): Promise<void> {
     const review = await reviewRepository.getById(reviewId);
@@ -128,9 +127,6 @@ export class ReviewService {
     }
 
     await reviewRepository.delete(reviewId);
-
-    // Recalculate provider rating
-    await this.recalculateProviderRating(review.providerId);
   }
 
   /**
@@ -215,7 +211,7 @@ export class ReviewService {
         throw new Error('Erreur lors de la mise à jour de l\'avis');
       }
 
-      await this.recalculateProviderRating(booking.providerId);
+      // provider.rating is recalculated by the onReviewRatingUpdate CF trigger.
       return updated;
     }
 
@@ -237,7 +233,7 @@ export class ReviewService {
           throw new Error('Erreur lors de la mise à jour de l\'avis');
         }
 
-        await this.recalculateProviderRating(booking.providerId);
+        // provider.rating is recalculated by the onReviewRatingUpdate CF trigger.
         return updated;
       }
     }
@@ -261,9 +257,7 @@ export class ReviewService {
       throw new Error('Erreur lors de la création de l\'avis');
     }
 
-    // Recalculate provider rating
-    await this.recalculateProviderRating(booking.providerId);
-
+    // provider.rating is recalculated by the onReviewRatingUpdate CF trigger.
     return review;
   }
 
@@ -312,51 +306,6 @@ export class ReviewService {
    */
   async getClientReviews(clientId: string): Promise<WithId<Review>[]> {
     return reviewRepository.getByClient(clientId);
-  }
-
-  /**
-   * Recalculate provider rating from all public reviews.
-   * May fail with PERMISSION_DENIED when called from client SDK (non-authenticated user).
-   * In that case, the API route handles recalculation via firebase-admin.
-   */
-  async recalculateProviderRating(providerId: string): Promise<void> {
-    try {
-    const reviews = await reviewRepository.getByProvider(providerId);
-    const publicReviews = reviews.filter((r) => r.isPublic);
-
-    if (publicReviews.length === 0) {
-      await providerRepository.update(providerId, {
-        rating: {
-          average: 0,
-          count: 0,
-          distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-        },
-      });
-      return;
-    }
-
-    // Calculate distribution
-    const distribution: Provider['rating']['distribution'] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    let total = 0;
-
-    for (const review of publicReviews) {
-      distribution[review.rating as 1 | 2 | 3 | 4 | 5]++;
-      total += review.rating;
-    }
-
-    const average = total / publicReviews.length;
-
-    await providerRepository.update(providerId, {
-      rating: {
-        average: Math.round(average * 10) / 10, // Round to 1 decimal
-        count: publicReviews.length,
-        distribution,
-      },
-    });
-    } catch (err) {
-      // Silently fail — the API route will handle recalculation via firebase-admin
-      console.warn('[ReviewService] recalculateProviderRating failed (expected if called from client SDK):', err);
-    }
   }
 
   /**
