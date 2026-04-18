@@ -20,9 +20,12 @@ type Distribution = { 1: number; 2: number; 3: number; 4: number; 5: number };
  *     client-side recalculation that could fail silently
  *   - disaster-recovery if ratings drift for any reason
  *
- * Body (optional): { providerId?: string }
+ * Body (optional): { providerId?: string; dryRun?: boolean }
  *   - if providerId is provided, recomputes only that provider
  *   - otherwise recomputes every provider in the database
+ *   - if dryRun is true, returns the list of providers that WOULD change
+ *     without writing anything. Use this to preview the impact before
+ *     running the backfill for real.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -37,6 +40,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const singleProviderId: string | undefined = body?.providerId;
+    const dryRun: boolean = body?.dryRun === true;
 
     const db = getAdminFirestore();
 
@@ -54,6 +58,7 @@ export async function POST(request: NextRequest) {
       count: number;
       average: number;
       changed: boolean;
+      previous?: { count: number; average: number } | null;
     }> = [];
 
     for (const providerId of providerIds) {
@@ -87,22 +92,33 @@ export async function POST(request: NextRequest) {
         currentRating.count !== count ||
         currentRating.average !== average;
 
-      if (changed) {
+      // Only write when something would actually change AND we're not in dry-run
+      if (changed && !dryRun) {
         await providerRef.update({
           rating: { average, count, distribution },
           updatedAt: new Date(),
         });
       }
 
-      results.push({ providerId, count, average, changed });
+      results.push({
+        providerId,
+        count,
+        average,
+        changed,
+        previous: currentRating
+          ? { count: currentRating.count ?? 0, average: currentRating.average ?? 0 }
+          : null,
+      });
     }
 
     const fixed = results.filter((r) => r.changed).length;
 
     return NextResponse.json({
       success: true,
+      dryRun,
       scanned: results.length,
-      fixed,
+      wouldFix: dryRun ? fixed : undefined,
+      fixed: dryRun ? 0 : fixed,
       results: singleProviderId ? results : results.filter((r) => r.changed),
     });
   } catch (error) {
