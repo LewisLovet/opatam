@@ -161,6 +161,19 @@ service cloud.firestore {
     match /affiliates/{affiliateId} {
       allow read: if true;
       allow write: if false; // Admin SDK only
+
+      // Pre-aggregated subcollections maintained by Cloud Function triggers.
+      // Public read so the affiliate dashboard can load them client-side
+      // (same access pattern as the parent affiliates doc).
+      match /monthlyStats/{monthKey} {
+        allow read: if true;
+        allow write: if false; // Cloud Functions only
+      }
+
+      match /topReferrals/{providerId} {
+        allow read: if true;
+        allow write: if false; // Cloud Functions only
+      }
     }
 
     match /_affiliateLogs/{logId} {

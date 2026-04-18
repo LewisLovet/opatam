@@ -23,6 +23,8 @@ export { onBookingWrite } from './triggers/onBookingWrite';
 export { onUserWrite, onProviderWrite, onBookingWriteStats, onReviewWrite } from './triggers/onStatsUpdate';
 export { onReviewCreate } from './triggers/onReviewCreate';
 export { onReviewRatingUpdate } from './triggers/onReviewRatingUpdate';
+export { onAffiliateLogAggregate } from './triggers/onAffiliateLogAggregate';
+export { onProviderReferralAggregate } from './triggers/onProviderReferralAggregate';
 
 // Scheduled
 export { recalculateExpiredSlots } from './scheduled/recalculateExpiredSlots';

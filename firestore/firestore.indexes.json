@@ -10,6 +10,64 @@
     },
 
     {
+      "collectionGroup": "_affiliateLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "affiliateId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "providers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "affiliateId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "providers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isPublished", "order": "ASCENDING" },
+        { "fieldPath": "nextAvailableSlot", "order": "ASCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "providers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isPublished", "order": "ASCENDING" },
+        { "fieldPath": "plan", "order": "ASCENDING" },
+        { "fieldPath": "subscription.validUntil", "order": "ASCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "bookings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "locationId", "order": "ASCENDING" },
+        { "fieldPath": "providerId", "order": "ASCENDING" },
+        { "fieldPath": "datetime", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "bookings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "locationId", "order": "ASCENDING" },
+        { "fieldPath": "memberId", "order": "ASCENDING" },
+        { "fieldPath": "providerId", "order": "ASCENDING" },
+        { "fieldPath": "datetime", "order": "DESCENDING" }
+      ]
+    },
+
+    {
       "collectionGroup": "providers",
       "queryScope": "COLLECTION",
       "fields": [
