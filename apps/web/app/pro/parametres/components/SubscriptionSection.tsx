@@ -20,7 +20,11 @@ import {
   AlertTriangle,
   XCircle,
   ArrowRightLeft,
+  Calendar,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
+import { ChangePlanModal, type ChangePlanPreview } from './ChangePlanModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -251,7 +255,7 @@ function ChoosePlanSection({
   mode?: 'subscribe' | 'change';
   currentPlan?: string | null;
   subscriptionId?: string | null;
-  onPlanChanged?: () => void;
+  onPlanChanged?: (preview: ChangePlanPreview, newPlanLabel: string) => void;
 }) {
   const { provider, user } = useAuth();
   const providerId = (provider as any)?.id || user?.providerId;
@@ -264,7 +268,10 @@ function ChoosePlanSection({
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
   const [activeMemberCount, setActiveMemberCount] = useState<number>(1);
   const [activeLocationCount, setActiveLocationCount] = useState<number>(1);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Change-plan modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalPrice, setModalPrice] = useState<StripePrice | null>(null);
 
   const fetchPrices = useCallback(async () => {
     setLoading(true);
@@ -383,42 +390,21 @@ function ChoosePlanSection({
     }
   };
 
-  const handleChangePlan = async (priceId: string) => {
+  /**
+   * Opening the modal only — the actual API call happens in ChangePlanModal
+   * after the user sees the prorata breakdown and confirms.
+   */
+  const openChangePlanModal = (priceId: string) => {
     if (!providerId || !subscriptionId) return;
+    const price = prices.find((p) => p.id === priceId);
+    if (!price) return;
+    setModalPrice(price);
+    setModalOpen(true);
+  };
 
-    setCheckoutLoading(true);
-    setLoadingPriceId(priceId);
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      const selectedPrice = prices.find((p) => p.id === priceId);
-      const res = await fetch('/api/stripe/change-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subscriptionId,
-          newPriceId: priceId,
-          newPlan: selectedPrice?.plan ?? 'solo',
-          providerId,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || 'Erreur lors du changement de plan');
-        return;
-      }
-
-      setSuccessMessage(`Plan mis à jour vers ${selectedPrice?.planName ?? selectedPrice?.plan}. Les changements seront appliqués sous peu.`);
-      onPlanChanged?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
-    } finally {
-      setCheckoutLoading(false);
-      setLoadingPriceId(null);
-    }
+  const handleModalConfirmed = (preview: ChangePlanPreview) => {
+    if (!modalPrice) return;
+    onPlanChanged?.(preview, modalPrice.planName ?? modalPrice.plan ?? 'Nouveau plan');
   };
 
   const visiblePrices = getVisiblePrices();
@@ -468,14 +454,6 @@ function ChoosePlanSection({
           ? 'Sélectionnez le nouveau plan. La différence sera calculée au prorata.'
           : 'Sélectionnez le plan adapté à votre activité.'}
       </p>
-
-      {/* Success message */}
-      {successMessage && (
-        <div className="flex items-center gap-2 mb-4 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-          <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-          <span className="text-sm text-emerald-700 dark:text-emerald-400">{successMessage}</span>
-        </div>
-      )}
 
       {/* Loading skeleton */}
       {loading && (
@@ -608,7 +586,7 @@ function ChoosePlanSection({
 
               const handleCta = () => {
                 if (mode === 'change') {
-                  handleChangePlan(price.id);
+                  openChangePlanModal(price.id);
                 } else {
                   handleCheckout(price.id);
                 }
@@ -731,6 +709,27 @@ function ChoosePlanSection({
           </div>
         </>
       )}
+
+      {/* Change plan confirmation modal */}
+      {mode === 'change' && modalPrice && subscriptionId && providerId && (
+        <ChangePlanModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          subscriptionId={subscriptionId}
+          newPriceId={modalPrice.id}
+          newPlan={modalPrice.plan ?? 'solo'}
+          providerId={providerId}
+          currentPlanLabel={
+            currentPlan === 'team'
+              ? 'Studio'
+              : currentPlan === 'solo'
+                ? 'Pro'
+                : currentPlan ?? 'Actuel'
+          }
+          newPlanLabel={modalPrice.planName ?? modalPrice.plan ?? 'Nouveau'}
+          onConfirmed={handleModalConfirmed}
+        />
+      )}
     </div>
   );
 }
@@ -837,6 +836,10 @@ function ManageSubscriptionSection({ onChangePlan }: { onChangePlan?: () => void
 export function SubscriptionSection() {
   const { provider, refreshProvider } = useAuth();
   const [showChangePlan, setShowChangePlan] = useState(false);
+  const [successState, setSuccessState] = useState<{
+    preview: ChangePlanPreview;
+    newPlanLabel: string;
+  } | null>(null);
 
   const plan = provider?.plan || 'trial';
   const status = provider?.subscription?.status || 'trialing';
@@ -856,14 +859,27 @@ export function SubscriptionSection() {
     hasStripeCustomer &&
     (status === 'active' || status === 'past_due' || status === 'trialing');
 
-  const handlePlanChanged = () => {
+  const handlePlanChanged = (
+    preview: ChangePlanPreview,
+    newPlanLabel: string,
+  ) => {
     setShowChangePlan(false);
+    setSuccessState({ preview, newPlanLabel });
     // Refresh provider data to reflect the new plan
     refreshProvider?.();
   };
 
   return (
     <div className="space-y-6">
+      {/* Persistent success banner after a plan change */}
+      {successState && (
+        <PlanChangeSuccessBanner
+          preview={successState.preview}
+          newPlanLabel={successState.newPlanLabel}
+          onDismiss={() => setSuccessState(null)}
+        />
+      )}
+
       {/* Section 1: Current Status */}
       <CurrentStatusCard />
 
@@ -886,6 +902,90 @@ export function SubscriptionSection() {
           onChangePlan={() => setShowChangePlan((prev) => !prev)}
         />
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Persistent success banner shown after a plan change confirmation
+// ---------------------------------------------------------------------------
+
+function formatEuroSigned(cents: number): string {
+  const abs = Math.abs(cents / 100).toLocaleString('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return cents < 0 ? `−${abs} €` : `+${abs} €`;
+}
+
+function formatFullDate(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function PlanChangeSuccessBanner({
+  preview,
+  newPlanLabel,
+  onDismiss,
+}: {
+  preview: ChangePlanPreview;
+  newPlanLabel: string;
+  onDismiss: () => void;
+}) {
+  const nextDate = formatFullDate(preview.nextInvoiceDate);
+  const Icon = preview.isUpgrade ? TrendingUp : TrendingDown;
+  const toneClass = preview.isUpgrade
+    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400';
+
+  return (
+    <div
+      className={`rounded-xl border p-5 flex items-start gap-3 ${toneClass}`}
+    >
+      <div className="p-2 rounded-lg bg-white/50 dark:bg-black/20 flex-shrink-0">
+        <Check className="w-5 h-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold">
+          Plan mis à jour vers {newPlanLabel}
+        </p>
+        <p className="text-xs mt-1 opacity-90 leading-relaxed">
+          {preview.isUpgrade ? (
+            <>
+              <span className="font-semibold">
+                {formatEuroSigned(preview.netCents)}
+              </span>{' '}
+              seront ajoutés à votre prochaine facture
+              {nextDate && <> le <span className="font-semibold">{nextDate}</span></>}.
+              Aucun paiement immédiat.
+            </>
+          ) : (
+            <>
+              Un crédit de{' '}
+              <span className="font-semibold">
+                {formatEuroSigned(Math.abs(preview.netCents))}
+              </span>{' '}
+              sera appliqué à votre prochaine facture
+              {nextDate && <> le <span className="font-semibold">{nextDate}</span></>}.
+            </>
+          )}
+        </p>
+        <p className="text-xs mt-2 opacity-75 flex items-center gap-1.5">
+          <Calendar className="w-3 h-3" />
+          Vous recevrez une confirmation par email.
+        </p>
+      </div>
+      <button
+        onClick={onDismiss}
+        aria-label="Masquer"
+        className="p-1 rounded hover:bg-white/30 dark:hover:bg-black/20 flex-shrink-0"
+      >
+        <XCircle className="w-4 h-4 opacity-60" />
+      </button>
     </div>
   );
 }

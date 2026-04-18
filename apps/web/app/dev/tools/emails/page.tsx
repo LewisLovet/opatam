@@ -17,6 +17,8 @@ import {
   Info,
   Handshake,
   UserCheck,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -114,6 +116,24 @@ const EMAIL_TYPES: EmailType[] = [
     activeColor: 'from-emerald-500/20 to-emerald-500/5',
     subject: 'Vous êtes maintenant affilié Opatam !',
     description: 'Envoyé à un utilisateur Opatam existant promu affilié (rappelle qu\'il utilise ses identifiants habituels).',
+  },
+  {
+    id: 'plan-change-upgrade',
+    label: 'Plan ↑ (Pro→Studio)',
+    icon: TrendingUp,
+    color: 'text-indigo-400',
+    activeColor: 'from-indigo-500/20 to-indigo-500/5',
+    subject: 'Votre plan Opatam est passé à Studio',
+    description: 'Envoyé quand un utilisateur upgrade son abonnement (prorata à payer sur la prochaine facture).',
+  },
+  {
+    id: 'plan-change-downgrade',
+    label: 'Plan ↓ (Studio→Pro)',
+    icon: TrendingDown,
+    color: 'text-emerald-400',
+    activeColor: 'from-emerald-500/20 to-emerald-500/5',
+    subject: 'Votre plan Opatam est passé à Pro',
+    description: 'Envoyé quand un utilisateur downgrade son abonnement (crédit au prorata sur la prochaine facture).',
   },
 ];
 

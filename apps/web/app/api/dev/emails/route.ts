@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAffiliateWelcomeEmail } from '@/lib/emails/affiliateWelcome';
+import { generatePlanChangeEmail } from '@/lib/emails/planChange';
 
 // ---------------------------------------------------------------------------
 // Sample data used across all email previews
@@ -498,6 +499,38 @@ function generatePreview(type: string): string {
         discount: null,
         mode: 'existing',
       }).html;
+    case 'plan-change-upgrade': {
+      // Pro → Studio mid-month example: ~15 days left on 19.90 Pro,
+      // ~15 days to charge on 29.90 Studio. Net = ~+5 €.
+      const nextInvoice = new Date();
+      nextInvoice.setDate(1);
+      nextInvoice.setMonth(nextInvoice.getMonth() + 1);
+      return generatePlanChangeEmail({
+        name: 'Studio Beauté Élégance',
+        previousPlanLabel: 'Pro',
+        newPlanLabel: 'Studio',
+        nextInvoiceDate: nextInvoice.toISOString(),
+        creditCents: -995,
+        chargeCents: 1495,
+        netCents: 500,
+        currency: 'eur',
+      }).html;
+    }
+    case 'plan-change-downgrade': {
+      const nextInvoice = new Date();
+      nextInvoice.setDate(1);
+      nextInvoice.setMonth(nextInvoice.getMonth() + 1);
+      return generatePlanChangeEmail({
+        name: 'Studio Beauté Élégance',
+        previousPlanLabel: 'Studio',
+        newPlanLabel: 'Pro',
+        nextInvoiceDate: nextInvoice.toISOString(),
+        creditCents: -1495,
+        chargeCents: 995,
+        netCents: -500,
+        currency: 'eur',
+      }).html;
+    }
     default:
       return '<p>Type de mail inconnu</p>';
   }
@@ -539,6 +572,8 @@ export async function POST(request: NextRequest) {
       'welcome-studio': 'Bienvenue chez Opatam \u2014 Plan Studio activé !',
       'affiliate-welcome-new': 'Bienvenue dans le programme d\'affiliation Opatam',
       'affiliate-welcome-existing': 'Vous êtes maintenant affilié Opatam !',
+      'plan-change-upgrade': 'Votre plan Opatam est passé à Studio',
+      'plan-change-downgrade': 'Votre plan Opatam est passé à Pro',
     };
 
     try {

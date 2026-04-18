@@ -4,6 +4,7 @@ import { getStripe } from '@/lib/stripe';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
+import { generatePlanChangeEmail } from '@/lib/emails/planChange';
 
 // ---------------------------------------------------------------------------
 // Stripe Webhook Handler
@@ -535,6 +536,112 @@ async function handleSubscriptionUpdated(
   console.log(
     `[STRIPE-WEBHOOK] Provider ${providerId} subscription updated: ${status}, cancelAtPeriodEnd: ${fullSub.cancel_at_period_end}, periodEnd: ${periodEnd?.toISOString() ?? 'null'}`,
   );
+
+  // Detect plan change and notify the user. Runs AFTER the Firestore update
+  // so we don't hold up the main flow; failures are logged but non-blocking.
+  const previousPlan = existingData?.plan as string | undefined;
+  if (plan && previousPlan && plan !== previousPlan && plan !== 'trial') {
+    try {
+      await sendPlanChangeEmail({
+        stripe,
+        subscriptionId: fullSub.id,
+        provider: existingData,
+        previousPlan,
+        newPlan: plan,
+      });
+    } catch (err) {
+      console.error('[STRIPE-WEBHOOK] plan-change email failed (non-blocking):', err);
+    }
+  }
+}
+
+const PLAN_LABELS: Record<string, string> = {
+  solo: 'Pro',
+  team: 'Studio',
+  test: 'Test',
+  trial: 'Essai gratuit',
+};
+
+/**
+ * Send the plan-change confirmation email. Pulls the prorata breakdown from
+ * the upcoming invoice preview — that's the source of truth for what Stripe
+ * will actually bill on the next invoice.
+ */
+async function sendPlanChangeEmail(args: {
+  stripe: Stripe;
+  subscriptionId: string;
+  provider: FirebaseFirestore.DocumentData | undefined;
+  previousPlan: string;
+  newPlan: string;
+}): Promise<void> {
+  const { stripe, subscriptionId, provider, previousPlan, newPlan } = args;
+
+  const email = (provider?.email as string | undefined) ?? null;
+  const name = (provider?.businessName as string | undefined)
+    ?? (provider?.ownerName as string | undefined)
+    ?? 'cher partenaire';
+
+  if (!email) {
+    console.warn('[STRIPE-WEBHOOK] Provider has no email, skipping plan-change notification');
+    return;
+  }
+
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey) {
+    console.warn('[STRIPE-WEBHOOK] RESEND_API_KEY not set, skipping plan-change notification');
+    return;
+  }
+
+  // Fetch the upcoming invoice — its prorata lines tell us what was just
+  // queued for the next billing cycle.
+  const preview = await stripe.invoices.createPreview({ subscription: subscriptionId });
+  let creditCents = 0;
+  let chargeCents = 0;
+  for (const line of preview.lines.data) {
+    const amount = line.amount ?? 0;
+    const parent = line.parent;
+    const isProration =
+      parent?.type === 'invoice_item_details'
+        ? parent.invoice_item_details?.proration === true
+        : parent?.type === 'subscription_item_details'
+          ? parent.subscription_item_details?.proration === true
+          : false;
+    if (isProration) {
+      if (amount < 0) creditCents += amount;
+      else chargeCents += amount;
+    }
+  }
+  const netCents = creditCents + chargeCents;
+
+  const periodEndSec =
+    (preview as unknown as { period_end?: number }).period_end ?? null;
+  const nextInvoiceDate = periodEndSec
+    ? new Date(periodEndSec * 1000).toISOString()
+    : null;
+
+  const { subject, html } = generatePlanChangeEmail({
+    name,
+    previousPlanLabel: PLAN_LABELS[previousPlan] ?? previousPlan,
+    newPlanLabel: PLAN_LABELS[newPlan] ?? newPlan,
+    nextInvoiceDate,
+    netCents,
+    creditCents,
+    chargeCents,
+    currency: preview.currency,
+  });
+
+  const resend = new Resend(resendApiKey);
+  const { error } = await resend.emails.send({
+    from: 'Opatam <noreply@kamerleontech.com>',
+    to: email,
+    subject,
+    html,
+  });
+  if (error) {
+    console.error('[STRIPE-WEBHOOK] Resend plan-change email error:', error);
+  } else {
+    console.log(`[STRIPE-WEBHOOK] Plan-change email sent to ${email} (${previousPlan} → ${newPlan})`);
+  }
 }
 
 async function handleSubscriptionDeleted(
