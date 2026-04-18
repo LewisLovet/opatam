@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-import { getStripeDev } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 
 /**
  * POST /api/affiliates/onboarding
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = doc.data()!;
-    const stripe = getStripeDev();
+    const stripe = getStripe();
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     const accountLink = await stripe.accountLinks.create({

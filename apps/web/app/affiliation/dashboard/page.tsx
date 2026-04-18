@@ -101,6 +101,16 @@ function DashboardContent() {
         setLoading(false);
       });
 
+      // Sync Stripe account status on mount. Fire-and-forget — the Firestore
+      // listener above will pick up the update automatically. Runs more
+      // aggressively if we just came back from Stripe onboarding.
+      const justOnboarded = searchParams.get('stripe') === 'success';
+      fetch('/api/affiliates/sync-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ affiliateId, force: justOnboarded }),
+      }).catch(() => {});
+
       try {
         const logsQuery = query(collection(db, '_affiliateLogs'), where('affiliateId', '==', affiliateId), orderBy('createdAt', 'desc'), limit(50));
         const logsSnap = await getDocs(logsQuery);
@@ -110,6 +120,7 @@ function DashboardContent() {
       return () => unsub();
     });
     return () => unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const copyLink = () => {
@@ -200,7 +211,23 @@ function DashboardContent() {
           <div className="flex-1">
             <p className="text-sm font-medium text-amber-800">Configuration Stripe incomplete</p>
             <p className="text-xs text-amber-600 mt-1 mb-3">Completez la configuration pour recevoir vos commissions.</p>
-            <button onClick={async () => { try { const res = await fetch('/api/affiliates/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ affiliateId: affiliate.id }) }); const data = await res.json(); if (data.url) window.open(data.url, '_blank'); } catch {} }} className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors">
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/affiliates/onboarding', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ affiliateId: affiliate.id }),
+                  });
+                  const data = await res.json();
+                  // Redirect in the same tab to avoid popup blockers. Stripe
+                  // sends the user back to /affiliation/dashboard?stripe=success
+                  // once onboarding is complete.
+                  if (data.url) window.location.href = data.url;
+                } catch {}
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
               <ExternalLink className="w-4 h-4" />Configurer mon compte Stripe
             </button>
           </div>

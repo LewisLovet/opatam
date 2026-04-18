@@ -96,6 +96,11 @@ export async function POST(request: NextRequest) {
         await handleSubscriptionDeleted(db, stripe, subscription);
         break;
       }
+      case 'account.updated': {
+        const account = event.data.object as Stripe.Account;
+        await handleConnectAccountUpdated(db, account);
+        break;
+      }
       default:
         console.log(`[STRIPE-WEBHOOK] Unhandled event type: ${event.type}`);
     }
@@ -672,4 +677,64 @@ L'équipe ${appName}
   } else {
     console.log(`[STRIPE-WEBHOOK] Welcome email sent to ${data.providerEmail}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Connect account updates (affiliate onboarding status)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fires whenever a Stripe Connect account changes — typically when an
+ * affiliate finishes or updates their onboarding. We look up the matching
+ * affiliate by stripeAccountId and sync stripeAccountStatus in Firestore.
+ *
+ * This is the reliable counterpart to the on-demand /api/affiliates/sync-status
+ * call the dashboard makes: even if the affiliate closes the tab before
+ * returning to the app, the webhook still updates their record.
+ */
+async function handleConnectAccountUpdated(
+  db: FirebaseFirestore.Firestore,
+  account: Stripe.Account,
+) {
+  console.log(`[STRIPE-WEBHOOK] account.updated: ${account.id}`);
+
+  // Find the affiliate that owns this Connect account
+  const snap = await db
+    .collection('affiliates')
+    .where('stripeAccountId', '==', account.id)
+    .limit(1)
+    .get();
+
+  if (snap.empty) {
+    console.log(`[STRIPE-WEBHOOK] No affiliate found for account ${account.id}`);
+    return;
+  }
+
+  const docRef = snap.docs[0].ref;
+  const data = snap.docs[0].data();
+
+  const transfersStatus = account.capabilities?.transfers || 'not_requested';
+  const newStatus: 'active' | 'pending' | 'restricted' =
+    transfersStatus === 'active'
+      ? 'active'
+      : transfersStatus === 'pending'
+      ? 'pending'
+      : 'restricted';
+
+  const previousStatus = data.stripeAccountStatus as string | undefined;
+  if (previousStatus === newStatus) {
+    console.log(
+      `[STRIPE-WEBHOOK] account ${account.id}: status unchanged (${newStatus})`,
+    );
+    return;
+  }
+
+  await docRef.update({
+    stripeAccountStatus: newStatus,
+    updatedAt: new Date(),
+  });
+
+  console.log(
+    `[STRIPE-WEBHOOK] affiliate ${snap.docs[0].id}: ${previousStatus} → ${newStatus}`,
+  );
 }
