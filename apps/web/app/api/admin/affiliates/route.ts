@@ -69,23 +69,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Create Stripe Connect Custom account
-    const accountToken = await stripe.tokens.create({
-      account: {
-        business_type: 'individual',
-        individual: {
-          first_name: name.split(' ')[0] || name,
-          last_name: name.split(' ').slice(1).join(' ') || 'Affiliate',
-          email,
-        },
-        tos_shown_and_accepted: true,
-      },
-    });
-
+    // Create Express account — affiliate completes onboarding via Stripe hosted form
     const account = await stripe.accounts.create({
-      type: 'custom',
+      type: 'express',
       country: 'FR',
       email,
-      account_token: accountToken.id,
       capabilities: {
         transfers: { requested: true },
       },

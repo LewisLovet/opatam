@@ -54,40 +54,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Le code "${normalizedCode}" existe déjà` }, { status: 409 });
     }
 
-    // Create account token first (required for FR platforms)
-    const accountToken = await stripe.tokens.create({
-      account: {
-        business_type: 'individual',
-        individual: {
-          first_name: name.split(' ')[0] || 'Test',
-          last_name: name.split(' ').slice(1).join(' ') || 'Affiliate',
-          email,
-          dob: { day: 1, month: 1, year: 1990 },
-          address: {
-            line1: '1 Rue de Test',
-            city: 'Paris',
-            postal_code: '75001',
-            country: 'FR',
-          },
-        },
-        tos_shown_and_accepted: true,
-      },
-    });
-
-    // Create Stripe Connect Custom account with token
+    // Create Express account — affiliate completes onboarding via Stripe hosted form
     const account = await stripe.accounts.create({
-      type: 'custom',
+      type: 'express',
       country: 'FR',
       email,
-      account_token: accountToken.id,
       capabilities: {
         transfers: { requested: true },
-      },
-      external_account: {
-        object: 'bank_account',
-        country: 'FR',
-        currency: 'eur',
-        account_number: 'FR1420041010050500013M02606', // Stripe test IBAN
       },
       metadata: {
         affiliateCode: normalizedCode,
