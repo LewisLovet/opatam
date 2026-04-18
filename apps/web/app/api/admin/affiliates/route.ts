@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getAdminFirestore, getAdminAuth } from '@/lib/firebase-admin';
 import { getStripe } from '@/lib/stripe';
+import { generateAffiliateWelcomeEmail } from '@/lib/emails/affiliateWelcome';
 
 const stripe = getStripe();
 
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       });
 
-      // Send welcome email with password reset link
+      // Send welcome email with password reset link (new user)
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const resetLink = await auth.generatePasswordResetLink(email, {
         url: `${baseUrl}/affiliation/login`,
@@ -154,48 +155,19 @@ export async function POST(request: NextRequest) {
         const resendApiKey = process.env.RESEND_API_KEY;
         if (resendApiKey) {
           const resend = new Resend(resendApiKey);
+          const { subject, html } = generateAffiliateWelcomeEmail({
+            name,
+            code: normalizedCode,
+            commission,
+            discount: discount ?? null,
+            mode: 'new',
+            resetLink,
+          });
           await resend.emails.send({
             from: 'Opatam <noreply@kamerleontech.com>',
             to: email,
-            subject: `Bienvenue dans le programme d'affiliation Opatam`,
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 32px 24px;">
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <div style="display: inline-block; background: #4F46E5; color: white; font-weight: bold; font-size: 18px; padding: 12px 20px; border-radius: 12px;">Opatam</div>
-                </div>
-                <h1 style="font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 8px;">Bienvenue ${name} !</h1>
-                <p style="font-size: 14px; color: #6B7280; line-height: 1.6; margin-bottom: 24px;">
-                  Vous avez été invité(e) à rejoindre le programme d'affiliation Opatam. Votre code parrain est <strong style="color: #4F46E5;">${normalizedCode}</strong>.
-                </p>
-                <p style="font-size: 14px; color: #6B7280; line-height: 1.6; margin-bottom: 24px;">
-                  Pour accéder à votre espace affilié, commencez par créer votre mot de passe :
-                </p>
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <a href="${resetLink}" style="display: inline-block; background: #4F46E5; color: white; font-weight: 600; font-size: 14px; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
-                    Créer mon mot de passe
-                  </a>
-                </div>
-                <p style="font-size: 14px; color: #6B7280; line-height: 1.6; margin-bottom: 8px;">
-                  Ensuite, connectez-vous sur votre dashboard :
-                </p>
-                <p style="margin-bottom: 24px;">
-                  <a href="https://opatam.com/affiliation/login" style="font-size: 14px; color: #4F46E5; font-weight: 600;">opatam.com/affiliation/login</a>
-                </p>
-                <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px;">
-                  <p style="font-size: 13px; color: #92400E; margin: 0;">
-                    <strong>Important :</strong> Pour recevoir vos commissions, connectez-vous à votre dashboard et cliquez sur "Configurer mon compte Stripe" pour finaliser votre inscription.
-                  </p>
-                </div>
-                <div style="border-top: 1px solid #E5E7EB; padding-top: 20px; margin-top: 20px;">
-                  <p style="font-size: 12px; color: #9CA3AF;">
-                    Votre commission : ${commission}%${discount ? ` · Réduction filleuls : -${discount}%` : ''}
-                  </p>
-                  <p style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">
-                    Lien de partage : opatam.com/register?ref=${normalizedCode}
-                  </p>
-                </div>
-              </div>
-            `,
+            subject,
+            html,
           });
           console.log(`[admin/affiliates] Welcome email sent to ${email}`);
         } else {
@@ -206,49 +178,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Send welcome email to existing users (no password reset needed)
+    // Send welcome email to existing users (reuses existing login)
     if (!isNewUser && userId) {
       try {
         const { Resend } = await import('resend');
         const resendApiKey = process.env.RESEND_API_KEY;
         if (resendApiKey) {
           const resend = new Resend(resendApiKey);
+          const { subject, html } = generateAffiliateWelcomeEmail({
+            name,
+            code: normalizedCode,
+            commission,
+            discount: discount ?? null,
+            mode: 'existing',
+          });
           const result = await resend.emails.send({
             from: 'Opatam <noreply@kamerleontech.com>',
             to: email,
-            subject: `Vous êtes maintenant affilié Opatam !`,
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 32px 24px;">
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <div style="display: inline-block; background: #4F46E5; color: white; font-weight: bold; font-size: 18px; padding: 12px 20px; border-radius: 12px;">Opatam</div>
-                </div>
-                <h1 style="font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 8px;">Bienvenue ${name} !</h1>
-                <p style="font-size: 14px; color: #6B7280; line-height: 1.6; margin-bottom: 24px;">
-                  Vous faites maintenant partie du programme d'affiliation Opatam. Votre code parrain est <strong style="color: #4F46E5;">${normalizedCode}</strong>.
-                </p>
-                <p style="font-size: 14px; color: #6B7280; line-height: 1.6; margin-bottom: 24px;">
-                  Connectez-vous avec vos identifiants habituels pour accéder à votre dashboard affilié. Pensez à configurer votre compte Stripe depuis le dashboard pour activer la réception de vos commissions.
-                </p>
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <a href="https://opatam.com/affiliation/login" style="display: inline-block; background: #4F46E5; color: white; font-weight: 600; font-size: 14px; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
-                    Accéder à mon dashboard
-                  </a>
-                </div>
-                <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px;">
-                  <p style="font-size: 13px; color: #92400E; margin: 0;">
-                    <strong>Important :</strong> Pour recevoir vos commissions, connectez-vous à votre dashboard et cliquez sur "Configurer mon compte Stripe" pour finaliser votre inscription.
-                  </p>
-                </div>
-                <div style="border-top: 1px solid #E5E7EB; padding-top: 20px; margin-top: 20px;">
-                  <p style="font-size: 12px; color: #9CA3AF;">
-                    Votre commission : ${commission}%${discount ? ` · Réduction filleuls : -${discount}%` : ''}
-                  </p>
-                  <p style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">
-                    Lien de partage : opatam.com/register?ref=${normalizedCode}
-                  </p>
-                </div>
-              </div>
-            `,
+            subject,
+            html,
           });
           console.log(`[admin/affiliates] Welcome email sent to existing user ${email}`, JSON.stringify(result));
         }

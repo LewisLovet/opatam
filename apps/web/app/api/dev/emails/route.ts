@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateAffiliateWelcomeEmail } from '@/lib/emails/affiliateWelcome';
 
 // ---------------------------------------------------------------------------
 // Sample data used across all email previews
@@ -480,6 +481,23 @@ function generatePreview(type: string): string {
       return generateWelcomeHtml('Pro');
     case 'welcome-studio':
       return generateWelcomeHtml('Studio');
+    case 'affiliate-welcome-new':
+      return generateAffiliateWelcomeEmail({
+        name: 'Camille Martin',
+        code: 'CAMILLE20',
+        commission: 20,
+        discount: 50,
+        mode: 'new',
+        resetLink: `${APP_URL}/affiliation/login?sampleToken=preview`,
+      }).html;
+    case 'affiliate-welcome-existing':
+      return generateAffiliateWelcomeEmail({
+        name: 'Julien Bernard',
+        code: 'JULIEN20',
+        commission: 20,
+        discount: null,
+        mode: 'existing',
+      }).html;
     default:
       return '<p>Type de mail inconnu</p>';
   }
@@ -519,6 +537,8 @@ export async function POST(request: NextRequest) {
       'reminder-2h': 'Rappel : votre rendez-vous dans 2 heures - Coupe Homme',
       welcome: 'Bienvenue chez Opatam \u2014 Plan Pro activé !',
       'welcome-studio': 'Bienvenue chez Opatam \u2014 Plan Studio activé !',
+      'affiliate-welcome-new': 'Bienvenue dans le programme d\'affiliation Opatam',
+      'affiliate-welcome-existing': 'Vous êtes maintenant affilié Opatam !',
     };
 
     try {

@@ -15,6 +15,8 @@ import {
   Crown,
   Loader2,
   Info,
+  Handshake,
+  UserCheck,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -94,6 +96,24 @@ const EMAIL_TYPES: EmailType[] = [
     activeColor: 'from-purple-500/20 to-purple-500/5',
     subject: 'Bienvenue chez Opatam \u2014 Plan Studio activé !',
     description: 'Envoyé après souscription au plan Studio (checkout Stripe).',
+  },
+  {
+    id: 'affiliate-welcome-new',
+    label: 'Affilié (nouveau)',
+    icon: Handshake,
+    color: 'text-indigo-400',
+    activeColor: 'from-indigo-500/20 to-indigo-500/5',
+    subject: 'Bienvenue dans le programme d\'affiliation Opatam',
+    description: 'Envoyé à un affilié créé sans compte Opatam préexistant (inclut le lien de création de mot de passe).',
+  },
+  {
+    id: 'affiliate-welcome-existing',
+    label: 'Affilié (existant)',
+    icon: UserCheck,
+    color: 'text-emerald-400',
+    activeColor: 'from-emerald-500/20 to-emerald-500/5',
+    subject: 'Vous êtes maintenant affilié Opatam !',
+    description: 'Envoyé à un utilisateur Opatam existant promu affilié (rappelle qu\'il utilise ses identifiants habituels).',
   },
 ];
 
