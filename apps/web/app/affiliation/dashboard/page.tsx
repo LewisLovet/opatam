@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
   AlertTriangle,
   ExternalLink,
+  QrCode,
 } from 'lucide-react';
 
 import { useAffiliate } from '../_shared/useAffiliate';
@@ -21,6 +22,7 @@ import {
   DURATION_LABELS,
   computeCommission,
 } from '../_shared/constants';
+import { QrShareModal } from '../_shared/QrShareModal';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -33,6 +35,7 @@ function DashboardContent() {
   });
   const [copied, setCopied] = useState(false);
   const [showStripeSuccess, setShowStripeSuccess] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('stripe') === 'success') {
@@ -221,15 +224,34 @@ function DashboardContent() {
           <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-mono truncate">
             opatam.com/register?ref={affiliate.code}
           </div>
-          <button
-            onClick={copyLink}
-            className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-          >
-            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copied ? 'Copie' : 'Copier'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={copyLink}
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Copie' : 'Copier'}
+            </button>
+            <button
+              onClick={() => setQrOpen(true)}
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              title="Voir le QR code"
+            >
+              <QrCode className="w-4 h-4" />
+              QR code
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* QR code modal */}
+      <QrShareModal
+        open={qrOpen}
+        onClose={() => setQrOpen(false)}
+        url={`https://opatam.com/register?ref=${affiliate.code}`}
+        code={affiliate.code}
+        name={affiliate.name}
+      />
 
       {/* === KPIs === */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 mb-6">
