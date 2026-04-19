@@ -6,6 +6,7 @@
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
 import { useProBookingBadges } from '../../../hooks';
@@ -15,6 +16,11 @@ export default function ProTabsLayout() {
   const router = useRouter();
   const { provider } = useProvider();
   const { todayCount, pendingCount } = useProBookingBadges(provider?.id);
+  const insets = useSafeAreaInsets();
+
+  // See comment in (client)/(tabs)/_layout.tsx — same pattern, so the
+  // tab buttons stay above Android's gesture bar / iPhone home indicator.
+  const tabBarContentHeight = 56;
 
   return (
     <Tabs
@@ -28,7 +34,8 @@ export default function ProTabsLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           paddingTop: spacing.xs,
-          height: 85,
+          paddingBottom: insets.bottom,
+          height: tabBarContentHeight + insets.bottom,
           overflow: 'visible',
         },
         tabBarLabelStyle: {

@@ -5,6 +5,7 @@
 
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
 import { useAuth } from '../../../contexts';
 import { useClientBookingBadges } from '../../../hooks';
@@ -13,6 +14,13 @@ export default function TabsLayout() {
   const { colors, spacing } = useTheme();
   const { user } = useAuth();
   const { upcomingCount } = useClientBookingBadges(user?.uid ?? null);
+  const insets = useSafeAreaInsets();
+
+  // Base "content" height of the tab bar (icons + labels), plus the bottom
+  // safe-area inset so the tab buttons sit above Android's gesture bar and
+  // the iPhone home indicator. The tab bar's background stretches down to
+  // the screen edge thanks to paddingBottom.
+  const tabBarContentHeight = 56;
 
   return (
     <Tabs
@@ -26,7 +34,8 @@ export default function TabsLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           paddingTop: spacing.xs,
-          height: 85,
+          paddingBottom: insets.bottom,
+          height: tabBarContentHeight + insets.bottom,
         },
         tabBarLabelStyle: {
           fontSize: 12,
