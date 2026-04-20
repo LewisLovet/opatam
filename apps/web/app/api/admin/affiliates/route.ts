@@ -126,13 +126,16 @@ export async function POST(request: NextRequest) {
       });
       userId = newUser.uid;
 
-      // Create user doc in Firestore
+      // Create user doc in Firestore — role 'affiliate' means this person
+      // only participates in the referral program for now. If they later
+      // register as client or provider, the register flow will upgrade
+      // their role while preserving affiliateId.
       await db.collection('users').doc(userId).set({
         email,
         displayName: name,
         phone: null,
         photoURL: null,
-        role: 'client',
+        role: 'affiliate',
         providerId: null,
         affiliateId: null, // Will be updated below
         city: null,

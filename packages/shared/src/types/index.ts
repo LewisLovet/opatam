@@ -24,7 +24,19 @@ export interface User {
   displayName: string;
   phone: string | null;
   photoURL: string | null;
-  role: 'client' | 'provider' | 'both';
+  /**
+   * Exclusive role per email. One user can only be one of:
+   *  - 'client'    : books appointments at providers
+   *  - 'provider'  : manages a salon / service business
+   *  - 'affiliate' : only promotes Opatam via a referral code (no booking,
+   *                  no salon). Transitional state — the user can later
+   *                  upgrade to 'client' or 'provider' by registering, at
+   *                  which point their affiliateId is preserved.
+   *
+   * The affiliate dimension is orthogonal to client/provider: any role can
+   * ALSO have an affiliateId (a provider who promotes Opatam, for instance).
+   */
+  role: 'client' | 'provider' | 'affiliate';
   providerId: string | null;
   city: string | null;
   birthYear: number | null;
