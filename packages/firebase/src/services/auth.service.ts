@@ -23,20 +23,79 @@ import type { WithId } from '../repositories/base.repository';
 
 export class AuthService {
   /**
-   * Register a new client user
+   * Error thrown when a user tries to register with an email that already
+   * belongs to a real client/provider account. Caught by the UI to show
+   * a "Cet email est déjà utilisé" message with a "Se connecter" CTA.
+   */
+  static readonly EMAIL_ALREADY_USED = 'EMAIL_ALREADY_USED';
+
+  /**
+   * Look up an existing Auth account for this email by attempting to sign
+   * in with the provided password. Used by registerClient/registerProvider
+   * to detect the "upgrade an affiliate account" case.
+   *
+   * Returns the WithId<User> if found, null if no account exists.
+   * Throws if an account exists but the password is wrong.
+   */
+  private async tryLoginExisting(
+    email: string,
+    password: string,
+  ): Promise<{ user: WithId<User>; credential: UserCredential } | null> {
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const userId = credential.user.uid;
+      const user = await userRepository.getById(userId);
+      if (!user) return null; // Auth exists but no Firestore doc — treated as new
+      return { user, credential };
+    } catch (err: any) {
+      // auth/user-not-found or auth/invalid-credential → no account
+      if (
+        err?.code === 'auth/user-not-found' ||
+        err?.code === 'auth/invalid-credential' ||
+        err?.code === 'auth/invalid-email'
+      ) {
+        return null;
+      }
+      // auth/wrong-password → account exists but password incorrect
+      // → propagate so the UI can tell the user
+      throw err;
+    }
+  }
+
+  /**
+   * Register a new client user.
+   *
+   * If an account already exists for this email:
+   *  - and its role is 'affiliate' → upgrade it to 'client' (preserving
+   *    affiliateId). Requires the user's current password to match.
+   *  - and its role is 'client' or 'provider' → reject with EMAIL_ALREADY_USED.
    */
   async registerClient(input: RegisterClientInput): Promise<{ user: WithId<User>; credential: UserCredential }> {
-    // Validate input
     const validated = registerClientSchema.parse(input);
 
-    // Create Firebase Auth user
+    // Upgrade path — existing user (probably an affiliate)
+    const existing = await this.tryLoginExisting(validated.email, validated.password);
+    if (existing) {
+      if (existing.user.role === 'affiliate') {
+        await userRepository.update(existing.user.id, {
+          role: 'client',
+          displayName: validated.displayName,
+          phone: validated.phone || null,
+        });
+        const refreshed = await userRepository.getById(existing.user.id);
+        if (!refreshed) throw new Error('Erreur lors de la mise à jour du compte');
+        return { user: refreshed, credential: existing.credential };
+      }
+      // Real client or provider already exists → refuse duplicate
+      throw new Error(AuthService.EMAIL_ALREADY_USED);
+    }
+
+    // Fresh register
     const credential = await createUserWithEmailAndPassword(
       auth,
       validated.email,
       validated.password
     );
-
-    // Create Firestore user document
     const userId = credential.user.uid;
     await userRepository.createWithId(userId, {
       email: validated.email,
@@ -54,39 +113,50 @@ export class AuthService {
     });
 
     const user = await userRepository.getById(userId);
-    if (!user) {
-      throw new Error('Erreur lors de la création du compte');
-    }
-
+    if (!user) throw new Error('Erreur lors de la création du compte');
     return { user, credential };
   }
 
   /**
-   * Register a new provider user
-   * SIMPLIFIÉ: Crée juste le User avec role: 'provider'
-   * Le Provider document est créé APRÈS, lors de l'onboarding (via providerService.createProvider)
+   * Register a new provider user.
+   *
+   * Same upgrade logic as registerClient — an existing 'affiliate' role
+   * can be upgraded to 'provider' preserving affiliateId. The provider
+   * document itself is created later during onboarding.
    */
   async registerProvider(input: RegisterProviderInput): Promise<{ user: WithId<User>; credential: UserCredential }> {
-    // Validate input
     const validated = registerProviderSchema.parse(input);
 
-    // Create Firebase Auth user
+    const existing = await this.tryLoginExisting(validated.email, validated.password);
+    if (existing) {
+      if (existing.user.role === 'affiliate') {
+        await userRepository.update(existing.user.id, {
+          role: 'provider',
+          displayName: validated.displayName,
+          phone: validated.phone || null,
+          // providerId stays null until provider doc is created in onboarding
+        });
+        const refreshed = await userRepository.getById(existing.user.id);
+        if (!refreshed) throw new Error('Erreur lors de la mise à jour du compte');
+        return { user: refreshed, credential: existing.credential };
+      }
+      throw new Error(AuthService.EMAIL_ALREADY_USED);
+    }
+
+    // Fresh register
     const credential = await createUserWithEmailAndPassword(
       auth,
       validated.email,
       validated.password
     );
-
-    // Create Firestore user document
-    // Note: providerId est null - sera set lors de la creation du Provider (onboarding)
     const userId = credential.user.uid;
     await userRepository.createWithId(userId, {
       email: validated.email,
       displayName: validated.displayName,
       phone: validated.phone || null,
       photoURL: credential.user.photoURL,
-      role: 'provider', // Role provider mais pas encore de Provider document
-      providerId: null, // Sera rempli à l'onboarding quand le Provider est créé
+      role: 'provider',
+      providerId: null,
       affiliateId: null,
       city: null,
       birthYear: null,
@@ -96,10 +166,7 @@ export class AuthService {
     });
 
     const user = await userRepository.getById(userId);
-    if (!user) {
-      throw new Error('Erreur lors de la création du compte');
-    }
-
+    if (!user) throw new Error('Erreur lors de la création du compte');
     return { user, credential };
   }
 
