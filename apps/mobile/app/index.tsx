@@ -31,10 +31,14 @@ export default function Index() {
     );
   }
 
-  // Authenticated → redirect based on role
+  // Authenticated → redirect based on role.
+  // Roles are exclusive: 'client', 'provider', or 'affiliate'.
+  // - 'provider' → pro interface
+  // - 'client' → client interface
+  // - 'affiliate' → client interface too (the affiliate dashboard lives
+  //   on the web for now; the mobile app lets them browse as a guest-like
+  //   client until they upgrade their role by registering).
   if (isAuthenticated && userData) {
-    // Providers go to Pro interface, clients go to Client interface
-    // 'both' role goes to client by default (can switch later)
     if (userData.role === 'provider') {
       return <Redirect href="/(pro)" />;
     }

@@ -32,12 +32,10 @@ export async function GET(request: NextRequest) {
     // Build query with Firestore-level filters where possible
     let query: FirebaseFirestore.Query = db.collection('users');
 
-    // Role filter in Firestore (avoids loading irrelevant docs)
-    // Note: 'both' users count as both client and provider
-    if (role === 'client') {
-      query = query.where('role', 'in', ['client', 'both']);
-    } else if (role === 'provider') {
-      query = query.where('role', 'in', ['provider', 'both']);
+    // Role filter in Firestore (avoids loading irrelevant docs).
+    // Since roles are exclusive, a simple equality filter is enough.
+    if (role === 'client' || role === 'provider' || role === 'affiliate') {
+      query = query.where('role', '==', role);
     }
 
     // Date filters in Firestore

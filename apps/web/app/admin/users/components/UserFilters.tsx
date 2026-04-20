@@ -32,7 +32,7 @@ export function UserFilters({ filters, onChange }: UserFiltersProps) {
         <option value="all">Tous les rôles</option>
         <option value="client">Clients</option>
         <option value="provider">Prestataires</option>
-        <option value="both">Client + Prestataire</option>
+        <option value="affiliate">Affiliés</option>
       </select>
     </div>
   );

@@ -14,7 +14,8 @@ export function AuthGuard({ children, requireProvider = true }: AuthGuardProps) 
   const router = useRouter();
   const { isAuthenticated, hasCompletedOnboarding, loading, user } = useAuth();
 
-  // Check if user is a client only (not provider or 'both')
+  // Roles are exclusive — this guard protects the /pro area, so anyone
+  // who isn't a provider counts as "not allowed here".
   const isClientOnly = user?.role === 'client';
 
   useEffect(() => {

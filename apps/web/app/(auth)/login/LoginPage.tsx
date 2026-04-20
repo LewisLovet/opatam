@@ -85,6 +85,9 @@ function LoginContent() {
       if (user.isAdmin) {
         // Admin → admin dashboard
         router.push('/admin');
+      } else if (user.role === 'affiliate') {
+        // Pure affiliate (no client/provider activity yet) → affiliate space
+        router.push('/affiliation/dashboard');
       } else if (user.role === 'client') {
         // Clients should use the mobile app
         router.push('/telechargement');

@@ -36,7 +36,7 @@ export interface CategoryData {
 
 export interface UserFilters {
   search?: string;
-  role?: 'client' | 'provider' | 'both' | 'all';
+  role?: 'client' | 'provider' | 'affiliate' | 'all';
   dateFrom?: string;
   dateTo?: string;
   city?: string;

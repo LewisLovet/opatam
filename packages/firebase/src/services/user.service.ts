@@ -35,19 +35,6 @@ export class UserService {
   }
 
   /**
-   * Upgrade client to provider role
-   */
-  async upgradeToProvider(userId: string, providerId: string): Promise<void> {
-    const user = await userRepository.getById(userId);
-    if (!user) {
-      throw new Error('Utilisateur non trouvé');
-    }
-
-    const newRole = user.role === 'client' ? 'both' : 'provider';
-    await userRepository.update(userId, { providerId, role: newRole });
-  }
-
-  /**
    * Increment cancellation count (for no-show tracking)
    */
   async incrementCancellationCount(userId: string): Promise<void> {

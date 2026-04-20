@@ -37,10 +37,10 @@ export const onUserWrite = onDocumentWritten(
     const statsRef = db.doc(STATS_DOC);
     const updates: Record<string, FieldValue | Date> = {};
 
-    const wasClient = before?.role === 'client' || before?.role === 'both';
-    const isClient = after?.role === 'client' || after?.role === 'both';
-    const wasProvider = before?.role === 'provider' || before?.role === 'both';
-    const isProvider = after?.role === 'provider' || after?.role === 'both';
+    const wasClient = before?.role === 'client';
+    const isClient = after?.role === 'client';
+    const wasProvider = before?.role === 'provider';
+    const isProvider = after?.role === 'provider';
 
     // User created
     if (!before && after) {
