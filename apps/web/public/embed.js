@@ -31,7 +31,7 @@
   var BASE_URL = scriptSrc.split('/embed.js')[0] || 'https://opatam.com';
 
   // ─── URL construction ─────────────────────────────────────────────────────
-  function buildUrl(slug, options) {
+  function buildUrl(slug, options, mode) {
     var url = BASE_URL + '/p/' + encodeURIComponent(slug) + '/embed';
     var params = [];
     if (options.primary) {
@@ -43,13 +43,20 @@
     if (options.theme) {
       params.push('theme=' + encodeURIComponent(options.theme));
     }
+    // Pass mode so the embed page knows whether to show its mini-header (only in modal).
+    if (mode === 'modal') {
+      params.push('mode=modal');
+    }
+    if (options.service) {
+      params.push('service=' + encodeURIComponent(options.service));
+    }
     return params.length > 0 ? url + '?' + params.join('&') : url;
   }
 
   // ─── Iframe factory ───────────────────────────────────────────────────────
   function createIframe(slug, options, mode) {
     var iframe = document.createElement('iframe');
-    iframe.src = buildUrl(slug, options);
+    iframe.src = buildUrl(slug, options, mode);
     iframe.setAttribute('title', 'Réservation');
     iframe.setAttribute('loading', 'lazy');
     iframe.setAttribute('allow', 'payment; clipboard-write');
@@ -248,6 +255,7 @@
       primary: el.getAttribute('data-primary'),
       radius: el.getAttribute('data-radius'),
       theme: el.getAttribute('data-theme'),
+      service: el.getAttribute('data-service'),
     };
   }
 

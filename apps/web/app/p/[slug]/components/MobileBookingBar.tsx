@@ -7,8 +7,6 @@ interface MobileBookingBarProps {
   slug: string;
   minPrice: number | null;
   businessName: string;
-  /** When embedded in a 3rd-party site via the widget, render inline (not fixed). */
-  isEmbedded?: boolean;
 }
 
 function formatPrice(cents: number): string {
@@ -22,43 +20,7 @@ function formatPrice(cents: number): string {
   }).format(euros);
 }
 
-export function MobileBookingBar({ slug, minPrice, businessName, isEmbedded = false }: MobileBookingBarProps) {
-  // Embed variant: inline CTA at end of content, no fixed positioning (iframe auto-sizes)
-  if (isEmbedded) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
-        <div
-          className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4"
-          style={{ borderRadius: 'var(--embed-radius, 0.75rem)' }}
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              {minPrice !== null ? (
-                <>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    À partir de
-                  </span>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">
-                    {formatPrice(minPrice)}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                  {businessName}
-                </p>
-              )}
-            </div>
-            <Link href={`/p/${slug}/reserver`}>
-              <Button size="lg" className="px-8 font-semibold">
-                Réserver
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+export function MobileBookingBar({ slug, minPrice, businessName }: MobileBookingBarProps) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50">
       <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg">

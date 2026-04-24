@@ -6,57 +6,18 @@ import {
   serviceCategoryRepository,
   locationRepository,
   memberRepository,
-  reviewRepository,
   availabilityRepository,
 } from '@booking-app/firebase';
-import type { WithId } from '@booking-app/firebase';
-import type { Availability, Member } from '@booking-app/shared';
-import { ProviderPageClient } from '../components/ProviderPageClient';
 import {
-  demoProvider,
-  demoServices,
-  demoServiceCategories,
-  demoLocations,
-  demoMembers,
-  demoReviews,
-  demoAvailabilities,
-  getDemoNextAvailableDate,
-  getDemoMemberAvailabilities,
+  demoBookingProvider,
+  demoBookingServices,
+  demoBookingCategories,
+  demoBookingLocations,
+  demoBookingMembers,
+  demoBookingAvailabilities,
 } from '../demoData';
 import { EmbedShell, type EmbedTheme } from './EmbedShell';
-
-interface MemberNextAvailability {
-  memberId: string;
-  memberName: string;
-  memberPhoto: string | null;
-  nextDate: string | null;
-}
-
-/** Copy of the helper in ../page.tsx — kept local to avoid cross-route imports. */
-function getNextDateForMember(
-  memberId: string,
-  availabilities: WithId<Availability>[]
-): string | null {
-  const memberAvailabilities = availabilities.filter(
-    (a) => a.memberId === memberId && a.isOpen && a.slots.length > 0
-  );
-  if (memberAvailabilities.length === 0) return null;
-
-  const openDays = new Set<number>();
-  memberAvailabilities.forEach((a) => openDays.add(a.dayOfWeek));
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let i = 0; i < 60; i++) {
-    const checkDate = new Date(today);
-    checkDate.setDate(checkDate.getDate() + i);
-    if (openDays.has(checkDate.getDay())) {
-      return checkDate.toISOString();
-    }
-  }
-  return null;
-}
+import { EmbedBookingFlow } from './components/EmbedBookingFlow';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -64,15 +25,16 @@ interface PageProps {
     primary?: string;
     radius?: string;
     theme?: string;
+    /** "modal" = popup/floating mode (show mini-header). Default / "inline" = no header. */
+    mode?: string;
+    /** Pre-select a service by id. */
+    service?: string;
   }>;
 }
 
-// Prevent the embed page from appearing in search engines + let it be iframed anywhere
+// Prevent indexing — the embed is meant for iframes, not direct traffic
 export const metadata: Metadata = {
-  robots: {
-    index: false,
-    follow: false,
-  },
+  robots: { index: false, follow: false },
 };
 
 function parseTheme(raw: string | undefined): EmbedTheme {
@@ -93,110 +55,123 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
   const primaryColor = sp.primary || null;
   const radius = parseRadius(sp.radius);
   const theme = parseTheme(sp.theme);
+  const showHeader = sp.mode === 'modal';
+  const preselectedServiceId = sp.service || null;
 
-  // Demo page — serve mock data
+  // ── Demo flow — mock data, no Firestore ────────────────────────────────
   if (slug === 'demo') {
-    const minPrice = Math.min(...demoServices.map((s) => s.price));
     return (
       <EmbedShell primaryColor={primaryColor} radius={radius} theme={theme}>
-        <ProviderPageClient
-          provider={demoProvider}
-          services={demoServices}
-          serviceCategories={demoServiceCategories}
-          locations={demoLocations}
-          members={demoMembers}
-          reviews={demoReviews}
-          availabilities={demoAvailabilities}
-          minPrice={minPrice}
-          nextAvailableDate={getDemoNextAvailableDate()}
-          memberAvailabilities={getDemoMemberAvailabilities()}
+        <EmbedBookingFlow
+          provider={demoBookingProvider}
+          services={demoBookingServices.map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description ?? null,
+            photoURL: null,
+            duration: s.duration,
+            price: s.price,
+            priceMax: null,
+            bufferTime: s.bufferTime,
+            categoryId: s.categoryId ?? null,
+            locationIds: s.locationIds,
+            memberIds: s.memberIds,
+          }))}
+          serviceCategories={demoBookingCategories}
+          locations={demoBookingLocations}
+          members={demoBookingMembers}
+          availabilities={demoBookingAvailabilities}
+          preselectedServiceId={preselectedServiceId}
+          showHeader={showHeader}
           isDemo
-          isEmbedded
         />
       </EmbedShell>
     );
   }
 
-  // Fetch provider by slug
+  // ── Live provider ──────────────────────────────────────────────────────
   const provider = await providerRepository.getBySlug(slug);
+  if (!provider || !provider.isPublished) notFound();
 
-  if (!provider || !provider.isPublished) {
-    notFound();
-  }
-
-  // Fetch all related data in parallel
-  const [services, serviceCategories, locations, members, reviews, availabilities] = await Promise.all([
+  const [services, serviceCategories, locations, members, availabilities] = await Promise.all([
     serviceRepository.getActiveByProvider(provider.id),
     serviceCategoryRepository.getByProvider(provider.id),
     locationRepository.getActiveByProvider(provider.id),
     memberRepository.getActiveByProvider(provider.id),
-    reviewRepository.getRecentByProvider(provider.id, 10),
     availabilityRepository.getByProvider(provider.id),
   ]);
 
-  const minPrice = services.length > 0 ? Math.min(...services.map((s) => s.price)) : null;
+  if (services.length === 0) {
+    return (
+      <EmbedShell primaryColor={primaryColor} radius={radius} theme={theme} providerId={provider.id}>
+        <div className="min-h-[200px] flex flex-col items-center justify-center p-8 text-center">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+            Aucune prestation disponible
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Ce prestataire n&apos;a pas encore configuré ses prestations.
+          </p>
+        </div>
+      </EmbedShell>
+    );
+  }
 
-  const nextAvailableDate = provider.nextAvailableSlot
-    ? provider.nextAvailableSlot.toISOString()
-    : null;
-
-  const memberAvailabilities: MemberNextAvailability[] = members.map((m: WithId<Member>) => ({
-    memberId: m.id,
-    memberName: m.name,
-    memberPhoto: m.photoURL,
-    nextDate: getNextDateForMember(m.id, availabilities),
-  }));
-
-  // Serialize dates (same shape as /p/[slug]/page.tsx)
+  // Slim serialization — only what the flow needs
   const serializedProvider = {
-    ...provider,
-    createdAt: provider.createdAt.toISOString(),
-    updatedAt: provider.updatedAt.toISOString(),
-    subscription: provider.subscription
-      ? {
-          ...provider.subscription,
-          validUntil: provider.subscription.validUntil.toISOString(),
-          currentPeriodEnd: provider.subscription.currentPeriodEnd?.toISOString() ?? null,
-        }
-      : null,
+    id: provider.id,
+    businessName: provider.businessName,
+    slug: provider.slug,
+    photoURL: provider.photoURL,
+    plan: provider.plan,
+    settings: {
+      maxBookingAdvance: provider.settings.maxBookingAdvance,
+      requiresConfirmation: provider.settings.requiresConfirmation,
+      bookingNotice: provider.settings.bookingNotice ?? null,
+    },
   };
 
   const serializedServices = services.map((s) => ({
-    ...s,
+    id: s.id,
+    name: s.name,
+    description: s.description,
+    photoURL: s.photoURL,
+    duration: s.duration,
+    price: s.price,
+    priceMax: s.priceMax ?? null,
+    bufferTime: s.bufferTime,
     categoryId: s.categoryId ?? null,
-    createdAt: s.createdAt.toISOString(),
-    updatedAt: s.updatedAt.toISOString(),
+    locationIds: s.locationIds,
+    memberIds: s.memberIds,
   }));
 
-  const serializedServiceCategories = serviceCategories
+  const serializedCategories = serviceCategories
     .filter((c) => c.isActive)
-    .map((c) => ({
-      id: c.id,
-      name: c.name,
-      sortOrder: c.sortOrder,
-    }));
+    .map((c) => ({ id: c.id, name: c.name, sortOrder: c.sortOrder }));
 
   const serializedLocations = locations.map((l) => ({
-    ...l,
-    createdAt: l.createdAt.toISOString(),
-    updatedAt: l.updatedAt.toISOString(),
+    id: l.id,
+    name: l.name,
+    address: l.address,
+    city: l.city,
+    postalCode: l.postalCode,
+    type: l.type,
   }));
 
   const serializedMembers = members.map((m) => ({
-    ...m,
-    createdAt: m.createdAt.toISOString(),
-    updatedAt: m.updatedAt.toISOString(),
-  }));
-
-  const serializedReviews = reviews.map((r) => ({
-    ...r,
-    createdAt: r.createdAt.toISOString(),
+    id: m.id,
+    name: m.name,
+    photoURL: m.photoURL,
+    locationId: m.locationId,
+    isDefault: m.isDefault,
   }));
 
   const serializedAvailabilities = availabilities.map((a) => ({
-    ...a,
-    updatedAt: a.updatedAt.toISOString(),
-    effectiveFrom: a.effectiveFrom ? a.effectiveFrom.toISOString() : null,
+    id: a.id,
+    memberId: a.memberId,
+    locationId: a.locationId,
+    dayOfWeek: a.dayOfWeek,
+    slots: a.slots,
+    isOpen: a.isOpen,
   }));
 
   return (
@@ -206,18 +181,15 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
       theme={theme}
       providerId={provider.id}
     >
-      <ProviderPageClient
+      <EmbedBookingFlow
         provider={serializedProvider}
         services={serializedServices}
-        serviceCategories={serializedServiceCategories}
+        serviceCategories={serializedCategories}
         locations={serializedLocations}
         members={serializedMembers}
-        reviews={serializedReviews}
         availabilities={serializedAvailabilities}
-        minPrice={minPrice}
-        nextAvailableDate={nextAvailableDate}
-        memberAvailabilities={memberAvailabilities}
-        isEmbedded
+        preselectedServiceId={preselectedServiceId}
+        showHeader={showHeader}
       />
     </EmbedShell>
   );

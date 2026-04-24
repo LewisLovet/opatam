@@ -78,8 +78,13 @@ export function WidgetSection() {
     const params = new URLSearchParams();
     params.set('primary', config.primary.replace(/^#/, ''));
     params.set('radius', String(config.radius));
+    // Popup + floating modes render inside a modal over the host site — show the
+    // mini-header in the preview too so the pro sees exactly what their clients will.
+    if (config.mode !== 'inline') {
+      params.set('mode', 'modal');
+    }
     return `${origin}/p/${slug}/embed?${params.toString()}`;
-  }, [slug, origin, config.primary, config.radius]);
+  }, [slug, origin, config.primary, config.radius, config.mode]);
 
   // Generated snippet based on current tab + config
   const snippet = useMemo(() => {
