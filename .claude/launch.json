@@ -4,9 +4,9 @@
     {
       "name": "web",
       "runtimeExecutable": "/bin/bash",
-      "runtimeArgs": ["-c", "export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && pnpm --filter @booking-app/web exec next dev"],
-      "port": 3000,
-      "autoPort": true
+      "runtimeArgs": ["-c", "export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && pnpm --filter @booking-app/web exec next dev --port 3001"],
+      "port": 3001,
+      "autoPort": false
     },
     {
       "name": "mobile",

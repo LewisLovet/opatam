@@ -9,6 +9,7 @@ import { EmbedServices } from './EmbedServices';
 import { EmbedHeader } from './EmbedHeader';
 import { EmbedFooter } from './EmbedFooter';
 import { EmbedSuccess } from './EmbedSuccess';
+import { EmbedRecap } from './EmbedRecap';
 
 // ─── Types (slim, only what the widget needs) ──────────────────────────────
 
@@ -286,11 +287,11 @@ export function EmbedBookingFlow({
     }
   };
 
-  // ── Small compact recap shown above member/slot/confirm steps ────────────
-  const renderRecap = () => {
+  // Shown on mobile only — on md+ the sidebar replaces this strip
+  const renderMobileRecap = () => {
     if (!selectedService || step === 'services' || step === 'success') return null;
     return (
-      <div className="mb-4 p-2.5 rounded-lg bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30">
+      <div className="md:hidden mb-4 p-2.5 rounded-lg bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30">
         <p className="text-xs text-primary-600 dark:text-primary-400 font-medium uppercase tracking-wide">
           Prestation
         </p>
@@ -301,6 +302,84 @@ export function EmbedBookingFlow({
     );
   };
 
+  // Only member / slot / confirm benefit from a sidebar recap
+  const showSidebar =
+    !!selectedService && (step === 'member' || step === 'slot' || step === 'confirm');
+
+  const stepContent = (
+    <>
+      {/* Error banner */}
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
+      {step === 'services' && (
+        <EmbedServices
+          services={services}
+          categories={serviceCategories}
+          onSelect={handleServiceSelect}
+        />
+      )}
+
+      {step === 'member' && selectedService && (
+        <StepMember
+          members={availableMembers}
+          locations={locations}
+          selectedMemberId={memberId}
+          onSelect={(id) => {
+            const m = members.find((mm) => mm.id === id);
+            setMemberId(id);
+            setLocationId(m?.locationId || null);
+            setSlot(null);
+            setStep('slot');
+          }}
+          onBack={handleBack}
+        />
+      )}
+
+      {step === 'slot' && selectedService && memberId && (
+        <StepSlot
+          providerId={provider.id}
+          serviceId={serviceId!}
+          memberId={memberId}
+          serviceDuration={selectedService.duration + selectedService.bufferTime}
+          maxAdvanceDays={provider.settings.maxBookingAdvance}
+          selectedSlot={slot}
+          onSelect={(s) => {
+            setSlot(s);
+            setStep('confirm');
+          }}
+          onBack={handleBack}
+          openDays={openDays}
+          isDemo={isDemo}
+        />
+      )}
+
+      {step === 'confirm' && selectedService && slot && (
+        <StepConfirm
+          clientInfo={clientInfo}
+          onChange={(info) => setClientInfo((c) => ({ ...c, ...info }))}
+          onSubmit={handleSubmit}
+          onBack={handleBack}
+          isSubmitting={submitting}
+          requiresConfirmation={provider.settings.requiresConfirmation}
+        />
+      )}
+
+      {step === 'success' && selectedService && slot && (
+        <EmbedSuccess
+          serviceName={selectedService.name}
+          memberName={selectedMember?.name || null}
+          locationName={selectedLocation?.name || null}
+          datetime={slot.datetime}
+          onReset={handleReset}
+        />
+      )}
+    </>
+  );
+
   return (
     <div className="min-h-[400px] flex flex-col bg-white dark:bg-gray-900">
       {showHeader && (
@@ -310,79 +389,30 @@ export function EmbedBookingFlow({
         />
       )}
 
-      <div className="flex-1 px-4 pt-4">
-        {/* Recap card (sub-step specific Back button is inside each Step component) */}
-        {renderRecap()}
+      <div className="flex-1 px-4 pt-4 pb-2">
+        {renderMobileRecap()}
 
-        {/* Error banner */}
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
-            {error}
+        {showSidebar ? (
+          // md+: 2-column layout with left-capped content + sticky sidebar
+          <div className="mx-auto max-w-3xl flex flex-col md:flex-row gap-5">
+            <div className="flex-1 min-w-0 md:max-w-md">{stepContent}</div>
+            <aside className="md:w-60 md:flex-shrink-0 md:sticky md:top-4 md:self-start">
+              <EmbedRecap
+                service={{
+                  name: selectedService!.name,
+                  duration: selectedService!.duration,
+                  price: selectedService!.price,
+                  priceMax: selectedService!.priceMax,
+                }}
+                member={selectedMember ? { name: selectedMember.name, photoURL: selectedMember.photoURL } : null}
+                location={selectedLocation ? { name: selectedLocation.name, city: selectedLocation.city } : null}
+                slotDatetime={slot?.datetime ?? null}
+              />
+            </aside>
           </div>
-        )}
-
-        {/* Step content */}
-        {step === 'services' && (
-          <EmbedServices
-            services={services}
-            categories={serviceCategories}
-            onSelect={handleServiceSelect}
-          />
-        )}
-
-        {step === 'member' && selectedService && (
-          <StepMember
-            members={availableMembers}
-            locations={locations}
-            selectedMemberId={memberId}
-            onSelect={(id) => {
-              const m = members.find((mm) => mm.id === id);
-              setMemberId(id);
-              setLocationId(m?.locationId || null);
-              setSlot(null);
-              setStep('slot');
-            }}
-            onBack={handleBack}
-          />
-        )}
-
-        {step === 'slot' && selectedService && memberId && (
-          <StepSlot
-            providerId={provider.id}
-            serviceId={serviceId!}
-            memberId={memberId}
-            serviceDuration={selectedService.duration + selectedService.bufferTime}
-            maxAdvanceDays={provider.settings.maxBookingAdvance}
-            selectedSlot={slot}
-            onSelect={(s) => {
-              setSlot(s);
-              setStep('confirm');
-            }}
-            onBack={handleBack}
-            openDays={openDays}
-            isDemo={isDemo}
-          />
-        )}
-
-        {step === 'confirm' && selectedService && slot && (
-          <StepConfirm
-            clientInfo={clientInfo}
-            onChange={(info) => setClientInfo((c) => ({ ...c, ...info }))}
-            onSubmit={handleSubmit}
-            onBack={handleBack}
-            isSubmitting={submitting}
-            requiresConfirmation={provider.settings.requiresConfirmation}
-          />
-        )}
-
-        {step === 'success' && selectedService && slot && (
-          <EmbedSuccess
-            serviceName={selectedService.name}
-            memberName={selectedMember?.name || null}
-            locationName={selectedLocation?.name || null}
-            datetime={slot.datetime}
-            onReset={handleReset}
-          />
+        ) : (
+          // services / success → full width single column
+          <div className="mx-auto max-w-xl">{stepContent}</div>
         )}
 
         {/* Spinner overlay during submit */}
