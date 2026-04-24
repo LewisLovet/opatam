@@ -396,7 +396,13 @@ export function EmbedBookingFlow({
           // md+: 2-column layout with left-capped content + sticky sidebar
           <div className="mx-auto max-w-3xl flex flex-col md:flex-row gap-5">
             <div className="flex-1 min-w-0 md:max-w-md">{stepContent}</div>
-            <aside className="md:w-60 md:flex-shrink-0 md:sticky md:top-4 md:self-start">
+            {/*
+              md:mt-14 offsets the aside so its top aligns with the calendar /
+              member list / form inside the left column, rather than with the
+              back button + step title above them. Each Step* component's
+              header is `flex items-center gap-3 mb-4` which comes out to ~56px.
+            */}
+            <aside className="md:w-60 md:flex-shrink-0 md:sticky md:top-4 md:self-start md:mt-14">
               <EmbedRecap
                 service={{
                   name: selectedService!.name,
