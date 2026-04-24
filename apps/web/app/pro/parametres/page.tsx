@@ -9,6 +9,7 @@ import {
   QrCode,
   Settings,
   Bell,
+  Code,
 } from 'lucide-react';
 import {
   ReservationSettingsForm,
@@ -16,6 +17,7 @@ import {
   AccountForm,
   SubscriptionSection,
   ShareSection,
+  WidgetSection,
   SubscriptionSuccessModal,
 } from './components';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,6 +53,12 @@ const tabs = [
     label: 'Partage',
     description: 'QR code, liens, partage',
     icon: QrCode,
+  },
+  {
+    id: 'widget',
+    label: 'Widget',
+    description: 'Intégrer sur votre site',
+    icon: Code,
   },
 ];
 
@@ -178,6 +186,7 @@ export default function SettingsPage() {
             {activeTab === 'compte' && <AccountForm />}
             {activeTab === 'abonnement' && <SubscriptionSection />}
             {activeTab === 'partage' && <ShareSection />}
+            {activeTab === 'widget' && <WidgetSection />}
           </div>
         </div>
       </div>

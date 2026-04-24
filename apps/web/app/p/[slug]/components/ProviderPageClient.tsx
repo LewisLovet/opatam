@@ -144,6 +144,8 @@ interface ProviderPageClientProps {
   nextAvailableDate: string | null;
   memberAvailabilities?: MemberNextAvailability[];
   isDemo?: boolean;
+  /** When embedded in a 3rd-party site via the widget — disables fixed bars, analytics, and SEO chrome. */
+  isEmbedded?: boolean;
 }
 
 type TabId = 'prestations' | 'avis' | 'horaires';
@@ -160,6 +162,7 @@ export function ProviderPageClient({
   nextAvailableDate,
   memberAvailabilities = [],
   isDemo = false,
+  isEmbedded = false,
 }: ProviderPageClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('prestations');
@@ -188,6 +191,8 @@ export function ProviderPageClient({
   // Track page view (deduplicated per session per provider)
   useEffect(() => {
     if (isDemo) return;
+    // Embed mode uses its own 'embed' source — tracked inside EmbedShell, not here
+    if (isEmbedded) return;
     const key = `pv_${provider.id}`;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
@@ -196,7 +201,7 @@ export function ProviderPageClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ providerId: provider.id }),
     }).catch(() => {});
-  }, [provider.id, isDemo]);
+  }, [provider.id, isDemo, isEmbedded]);
 
   // Check if has portfolio photos
   const hasPortfolio = provider.portfolioPhotos.length > 0;
@@ -208,9 +213,12 @@ export function ProviderPageClient({
   const isTeam = provider.plan === 'team' && members.length > 1;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 pb-24">
+    <div className={isEmbedded
+      ? 'bg-white dark:bg-gray-900'
+      : 'min-h-screen bg-white dark:bg-gray-900 pb-24'}
+    >
       {/* Demo welcome modal */}
-      {isDemo && <DemoBanner />}
+      {isDemo && !isEmbedded && <DemoBanner />}
 
       {/* Hero Section */}
       <ProviderHero
@@ -263,11 +271,12 @@ export function ProviderPageClient({
         )}
       </div>
 
-      {/* Sticky Booking Bar (all screens) */}
+      {/* Sticky Booking Bar (all screens) — inline variant in embed mode */}
       <MobileBookingBar
         slug={provider.slug}
         minPrice={minPrice}
         businessName={provider.businessName}
+        isEmbedded={isEmbedded}
       />
 
       {/* Booking Notice Modal */}

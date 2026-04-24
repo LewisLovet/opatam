@@ -29,6 +29,28 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        // Embeddable booking widget pages — must be iframable from any origin.
+        source: '/p/:slug/embed',
+        headers: [
+          { key: 'Content-Security-Policy', value: 'frame-ancestors *' },
+          // Explicitly unset X-Frame-Options (some proxies inject SAMEORIGIN by default).
+          { key: 'X-Frame-Options', value: 'ALLOWALL' },
+        ],
+      },
+      {
+        // Loader script for the widget — served cross-origin with short cache.
+        source: '/embed.js',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
