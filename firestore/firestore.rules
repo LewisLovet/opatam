@@ -181,5 +181,19 @@ service cloud.firestore {
       allow write: if false; // Admin SDK only
     }
 
+    // === ARTICLES (blog) ===
+
+    match /articles/{articleId} {
+      // Public can read PUBLISHED articles only. Drafts stay invisible
+      // to the client SDK — they're only accessible via the admin API
+      // (which uses Admin SDK and bypasses these rules).
+      // List queries must filter by status == 'published' or they'll be
+      // rejected the moment they touch a draft document.
+      allow read: if resource.data.status == 'published';
+
+      // All writes go through /api/admin/articles → Admin SDK.
+      allow write: if false;
+    }
+
   }
 }

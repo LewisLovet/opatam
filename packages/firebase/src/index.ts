@@ -128,6 +128,9 @@ export {
   // Message (subcollection)
   MessageRepository,
   messageRepository,
+  // Article (blog)
+  ArticleRepository,
+  articleRepository,
 } from './repositories';
 
 // Utils

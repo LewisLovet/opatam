@@ -27,6 +27,18 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+      {
+        // Author avatar default (https://opatam.com/icon.png) used on blog articles
+        protocol: 'https',
+        hostname: 'opatam.com',
+      },
+      {
+        // YouTube auto-generated video thumbnails (i.ytimg.com/vi/{id}/...).
+        // Used as a fallback cover image on article cards when an article
+        // has a video but no explicit cover.
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
+      },
     ],
   },
   async headers() {

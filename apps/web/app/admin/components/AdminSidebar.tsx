@@ -20,6 +20,7 @@ import {
   Moon,
   ShieldCheck,
   KeyRound,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -59,6 +60,12 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Analytics', href: '/admin/analytics', icon: <BarChart3 className="w-5 h-5" /> },
       { label: 'Activité', href: '/admin/activity', icon: <Activity className="w-5 h-5" /> },
+    ],
+  },
+  {
+    label: 'Contenu',
+    items: [
+      { label: 'Blog', href: '/admin/articles', icon: <FileText className="w-5 h-5" /> },
     ],
   },
 ];

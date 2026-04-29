@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
-import { providerRepository } from '@booking-app/firebase';
+import { providerRepository, articleRepository } from '@booking-app/firebase';
+import { ARTICLE_CATEGORIES } from '@booking-app/shared';
 
 const BASE_URL = 'https://opatam.com';
 
@@ -30,6 +31,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.6,
     },
+    {
+      url: `${BASE_URL}/blog`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
+    // Blog category landing pages
+    ...ARTICLE_CATEGORIES.map((cat) => ({
+      url: `${BASE_URL}/blog/categorie/${cat}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.5,
+    })),
   ];
 
   // Dynamic provider pages — the most important for SEO
@@ -48,5 +62,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('[Sitemap] Error fetching providers:', error);
   }
 
-  return [...staticPages, ...providerPages];
+  // Blog articles
+  let articlePages: MetadataRoute.Sitemap = [];
+  try {
+    const articles = await articleRepository.getPublished(200);
+    articlePages = articles
+      .filter((a) => a.slug)
+      .map((a) => ({
+        url: `${BASE_URL}/blog/${a.slug}`,
+        lastModified: a.updatedAt instanceof Date ? a.updatedAt : new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.7,
+      }));
+  } catch (error) {
+    console.error('[Sitemap] Error fetching articles:', error);
+  }
+
+  return [...staticPages, ...providerPages, ...articlePages];
 }

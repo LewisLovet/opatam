@@ -371,3 +371,61 @@ export interface Affiliate {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// ────────────────────────────────────────────────────────────
+// Blog / Article types
+// ────────────────────────────────────────────────────────────
+
+/**
+ * Categories are exclusive (one per article). "À la une" is NOT a category —
+ * it's a separate boolean flag (`isFeatured`) so an article can be both
+ * "Conseils" AND featured on the homepage.
+ */
+export type ArticleCategory = 'temoignages' | 'conseils' | 'tutoriels';
+
+export const ARTICLE_CATEGORIES: ArticleCategory[] = ['temoignages', 'conseils', 'tutoriels'];
+
+export const ARTICLE_CATEGORY_LABELS: Record<ArticleCategory, string> = {
+  temoignages: 'Témoignages',
+  conseils: 'Conseils',
+  tutoriels: 'Tutoriels',
+};
+
+export type ArticleStatus = 'draft' | 'published';
+
+export interface Article {
+  // Routing + display
+  slug: string;                  // 'comment-fideliser-vos-clients'
+  title: string;
+  excerpt: string;               // ~160 chars — also used as meta description fallback
+  coverImageURL: string | null;  // hero image at top of article + social share fallback
+  body: string;                  // Markdown content
+
+  // Classification
+  category: ArticleCategory;     // exclusive
+  isFeatured: boolean;           // → "À la une" block on the homepage
+
+  // Optional embedded video (YouTube only — we extract the ID at render)
+  videoUrl: string | null;
+  videoCoverURL: string | null;  // poster shown before user clicks play (fallback: YouTube maxres thumb)
+
+  // Author — single text field, defaults to "Équipe Opatam"
+  authorName: string;
+  authorPhotoURL: string | null;
+
+  // Lifecycle
+  status: ArticleStatus;
+  publishedAt: Date | null;      // set when status flips from draft → published
+
+  // SEO overrides (optional — fall back to title / excerpt / coverImageURL when null)
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImageURL: string | null;
+
+  // Stats (incremented when the public article page is viewed, deduped per session)
+  viewCount: number;
+
+  // Standard timestamps
+  createdAt: Date;
+  updatedAt: Date;
+}

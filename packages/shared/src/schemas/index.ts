@@ -139,3 +139,13 @@ export type {
   UpdateConversationInput,
   MessageFilterInput,
 } from './message.schema';
+
+// Article schemas
+export {
+  createArticleSchema,
+  updateArticleSchema,
+} from './article.schema';
+export type {
+  CreateArticleInput,
+  UpdateArticleInput,
+} from './article.schema';

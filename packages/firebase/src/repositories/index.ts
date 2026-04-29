@@ -36,3 +36,6 @@ export { ConversationRepository, conversationRepository } from './conversation.r
 
 // Message repository (subcollection)
 export { MessageRepository, messageRepository } from './message.repository';
+
+// Article repository (top-level — blog)
+export { ArticleRepository, articleRepository } from './article.repository';
