@@ -1,0 +1,3 @@
+template_name,template_content,locale,default_locale,message_type
+booking_reminder,"Bonjour {{customer_name}}, rappel de votre rendez-vous chez {{provider_name}} {{remaining_time}}. Pour toute modification, contactez votre prestataire.",fr,fr,transactional
+booking_reminder,"Hi {{customer_name}}, reminder of your appointment at {{provider_name}} {{remaining_time}}. To make changes, please contact the provider.",en_US,fr,transactional

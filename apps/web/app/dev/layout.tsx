@@ -18,6 +18,7 @@ import {
   Mail,
   Handshake,
   Eye,
+  MessageSquare,
 } from 'lucide-react';
 
 interface NavItem {
@@ -50,6 +51,11 @@ const navSections: { title: string; items: NavItem[] }[] = [
         href: '/dev/tools/emails',
         label: 'Emails',
         icon: <Mail className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/tools/sms',
+        label: 'SMS — Prelude',
+        icon: <MessageSquare className="w-4 h-4" />,
       },
       {
         href: '/dev/tools/seed',

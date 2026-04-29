@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Sparkles,
   Eye,
+  MessageSquare,
 } from 'lucide-react';
 
 const tools = [
@@ -26,6 +27,13 @@ const tools = [
     icon: <Mail className="w-6 h-6" />,
     color: 'bg-pink-500',
     href: '/dev/tools/emails',
+  },
+  {
+    title: 'SMS — Prelude',
+    description: 'Tester l\'envoi de SMS via Prelude Notify (rappels J-1 / H-2).',
+    icon: <MessageSquare className="w-6 h-6" />,
+    color: 'bg-emerald-500',
+    href: '/dev/tools/sms',
   },
   {
     title: 'Données de test',
