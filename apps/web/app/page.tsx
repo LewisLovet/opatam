@@ -1,5 +1,11 @@
 import type { Metadata } from 'next';
+import { articleRepository } from '@booking-app/firebase';
 import LandingPage from './HomePage';
+import type { ArticleCardData } from './blog/components/ArticleCard';
+
+// Refresh the homepage tutorial block every 30 min — new tutorials are
+// rare and ISR keeps Firestore reads tiny.
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: 'Opatam — Réservation en ligne pour professionnels | Sans commission',
@@ -117,14 +123,36 @@ const jsonLd = {
   ],
 };
 
-export default function Page() {
+export default async function Page() {
+  // Tutorials block on the homepage — pulled from the blog with category
+  // 'tutoriels'. Tolerant: an empty list (no tutorial yet, or Firestore
+  // unavailable) just hides the section, never breaks the landing.
+  const tutorialDocs = await articleRepository
+    .getPublishedByCategory('tutoriels', 3)
+    .catch((err) => {
+      console.error('[home] getPublishedByCategory(tutoriels) failed:', err);
+      return [];
+    });
+
+  const tutorials: ArticleCardData[] = tutorialDocs.map((a) => ({
+    slug: a.slug,
+    title: a.title,
+    excerpt: a.excerpt,
+    coverImageURL: a.coverImageURL,
+    category: a.category,
+    videoUrl: a.videoUrl,
+    videoCoverURL: a.videoCoverURL,
+    publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+    authorName: a.authorName,
+  }));
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <LandingPage />
+      <LandingPage tutorials={tutorials} />
     </>
   );
 }

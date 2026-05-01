@@ -37,6 +37,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { PlayStoreWaitlistModal } from '@/components/common/PlayStoreWaitlistModal';
 import { SocialLinks } from '@/components/common/SocialLinks';
+import { TutorialsSection } from '@/components/home/TutorialsSection';
+import type { ArticleCardData } from '@/app/blog/components/ArticleCard';
 
 // ─── Helpers ────────────────────────────────────────────────────────
 function formatPrice(cents: number): string {
@@ -179,7 +181,12 @@ const sectors = [
 // ═════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═════════════════════════════════════════════════════════════════════
-export default function LandingPage() {
+interface LandingPageProps {
+  /** Optional list of published tutorials surfaced just above the FAQ. */
+  tutorials?: ArticleCardData[];
+}
+
+export default function LandingPage({ tutorials = [] }: LandingPageProps) {
   // ── State ─────────────────────────────────────────────────────────
   const [openFaq, setOpenFaq] = useState<number>(0);
   const [isYearly, setIsYearly] = useState(false);
@@ -1099,6 +1106,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* ── Tutoriels — affiché uniquement s'il y a des tutos publiés ─ */}
+        <TutorialsSection tutorials={tutorials} />
 
         {/* ── Section 11 - FAQ ───────────────────────────────────────── */}
         <section id="faq" className="py-16 sm:py-24 bg-white dark:bg-gray-900">
