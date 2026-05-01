@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { getStripe } from '@/lib/stripe';
+import { getStripe, getDepositsAddonPriceId } from '@/lib/stripe';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
@@ -512,10 +512,24 @@ async function handleSubscriptionUpdated(
     .get();
   const activeMemberCount = membersSnapshot.size;
 
+  // Detect whether the deposits add-on (+5€/mo) is on this subscription.
+  // We tolerate a missing env var (returns false) so non-deposit envs
+  // don't blow up here.
+  let depositsAddonActive = false;
+  try {
+    const addonPriceId = getDepositsAddonPriceId();
+    depositsAddonActive = fullSub.items.data.some(
+      (it) => it.price.id === addonPriceId
+    );
+  } catch {
+    // Env var not set — feature flag effectively disabled
+  }
+
   const updateData: Record<string, any> = {
     'subscription.status': status,
     'subscription.cancelAtPeriodEnd': fullSub.cancel_at_period_end,
     'subscription.memberCount': activeMemberCount,
+    depositsAddonActive,
     updatedAt: FieldValue.serverTimestamp(),
   };
 
@@ -805,43 +819,90 @@ async function handleConnectAccountUpdated(
 ) {
   console.log(`[STRIPE-WEBHOOK] account.updated: ${account.id}`);
 
-  // Find the affiliate that owns this Connect account
-  const snap = await db
+  // Connect accounts come from two collections in this app:
+  //  - affiliates/* (commissions sub-merchants — only need 'transfers')
+  //  - providers/* (deposits sub-merchants — need 'card_payments' + 'transfers')
+  // We try both and apply the right status semantics for each.
+
+  const affiliateSnap = await db
     .collection('affiliates')
     .where('stripeAccountId', '==', account.id)
     .limit(1)
     .get();
 
-  if (snap.empty) {
-    console.log(`[STRIPE-WEBHOOK] No affiliate found for account ${account.id}`);
-    return;
-  }
+  if (!affiliateSnap.empty) {
+    const docRef = affiliateSnap.docs[0].ref;
+    const data = affiliateSnap.docs[0].data();
+    const transfersStatus = account.capabilities?.transfers || 'not_requested';
+    const newStatus: 'active' | 'pending' | 'restricted' =
+      transfersStatus === 'active'
+        ? 'active'
+        : transfersStatus === 'pending'
+        ? 'pending'
+        : 'restricted';
 
-  const docRef = snap.docs[0].ref;
-  const data = snap.docs[0].data();
-
-  const transfersStatus = account.capabilities?.transfers || 'not_requested';
-  const newStatus: 'active' | 'pending' | 'restricted' =
-    transfersStatus === 'active'
-      ? 'active'
-      : transfersStatus === 'pending'
-      ? 'pending'
-      : 'restricted';
-
-  const previousStatus = data.stripeAccountStatus as string | undefined;
-  if (previousStatus === newStatus) {
+    const previousStatus = data.stripeAccountStatus as string | undefined;
+    if (previousStatus === newStatus) {
+      console.log(
+        `[STRIPE-WEBHOOK] affiliate account ${account.id}: status unchanged (${newStatus})`,
+      );
+      return;
+    }
+    await docRef.update({ stripeAccountStatus: newStatus, updatedAt: new Date() });
     console.log(
-      `[STRIPE-WEBHOOK] account ${account.id}: status unchanged (${newStatus})`,
+      `[STRIPE-WEBHOOK] affiliate ${affiliateSnap.docs[0].id}: ${previousStatus} → ${newStatus}`,
     );
     return;
   }
 
-  await docRef.update({
-    stripeAccountStatus: newStatus,
-    updatedAt: new Date(),
-  });
+  // Provider Connect account (deposits add-on)
+  const providerSnap = await db
+    .collection('providers')
+    .where('stripeConnectAccountId', '==', account.id)
+    .limit(1)
+    .get();
+
+  if (!providerSnap.empty) {
+    const docRef = providerSnap.docs[0].ref;
+    const data = providerSnap.docs[0].data();
+
+    const cardCap = account.capabilities?.card_payments ?? 'inactive';
+    const transfersCap = account.capabilities?.transfers ?? 'inactive';
+    const newStatus: 'active' | 'pending' | 'restricted' =
+      cardCap === 'active' && transfersCap === 'active'
+        ? 'active'
+        : cardCap === 'pending' || transfersCap === 'pending'
+        ? 'pending'
+        : 'restricted';
+
+    const chargesEnabled = !!account.charges_enabled;
+    const payoutsEnabled = !!account.payouts_enabled;
+
+    const previousStatus = data.stripeConnectStatus as string | undefined;
+    if (
+      previousStatus === newStatus &&
+      data.stripeConnectChargesEnabled === chargesEnabled &&
+      data.stripeConnectPayoutsEnabled === payoutsEnabled
+    ) {
+      console.log(
+        `[STRIPE-WEBHOOK] provider account ${account.id}: status unchanged`,
+      );
+      return;
+    }
+
+    await docRef.update({
+      stripeConnectStatus: newStatus,
+      stripeConnectChargesEnabled: chargesEnabled,
+      stripeConnectPayoutsEnabled: payoutsEnabled,
+      updatedAt: new Date(),
+    });
+    console.log(
+      `[STRIPE-WEBHOOK] provider ${providerSnap.docs[0].id}: ${previousStatus} → ${newStatus} (charges=${chargesEnabled}, payouts=${payoutsEnabled})`,
+    );
+    return;
+  }
 
   console.log(
-    `[STRIPE-WEBHOOK] affiliate ${snap.docs[0].id}: ${previousStatus} → ${newStatus}`,
+    `[STRIPE-WEBHOOK] No affiliate or provider found for account ${account.id}`,
   );
 }

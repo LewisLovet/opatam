@@ -124,6 +124,13 @@ export class ProviderService {
       nextAvailableSlot: null,
       affiliateCode: null,
       affiliateId: null,
+      // Stripe Connect (deposits add-on) — empty by default until the pro
+      // opts in via /pro/parametres → Paiements
+      stripeConnectAccountId: null,
+      stripeConnectStatus: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      depositsAddonActive: false,
     });
 
     // Update user with providerId (= userId)

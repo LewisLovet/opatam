@@ -27,3 +27,20 @@ export function getStripeDev(): Stripe {
   }
   return stripeDevInstance;
 }
+
+/**
+ * Returns the Stripe Price ID for the deposits add-on (+5€/mo).
+ * Mirrors the getStripeDev() pattern: prefer the DEV id when set, fall
+ * back to the live id otherwise.
+ */
+export function getDepositsAddonPriceId(): string {
+  const id =
+    process.env.STRIPE_DEPOSITS_ADDON_PRICE_ID_DEV ||
+    process.env.STRIPE_DEPOSITS_ADDON_PRICE_ID;
+  if (!id) {
+    throw new Error(
+      'STRIPE_DEPOSITS_ADDON_PRICE_ID is not set — create the price in the Stripe dashboard first'
+    );
+  }
+  return id;
+}

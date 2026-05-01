@@ -10,6 +10,7 @@ import {
   Settings,
   Bell,
   Code,
+  Wallet,
 } from 'lucide-react';
 import {
   ReservationSettingsForm,
@@ -18,9 +19,11 @@ import {
   SubscriptionSection,
   ShareSection,
   WidgetSection,
+  PaymentsSection,
   SubscriptionSuccessModal,
 } from './components';
 import { useAuth } from '@/contexts/AuthContext';
+import { canUseDepositsClient } from '@/lib/feature-flags';
 import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
 
 const tabs = [
@@ -49,6 +52,12 @@ const tabs = [
     icon: CreditCard,
   },
   {
+    id: 'paiements',
+    label: 'Paiements',
+    description: 'Acomptes Stripe, IBAN',
+    icon: Wallet,
+  },
+  {
     id: 'partage',
     label: 'Partage',
     description: 'QR code, liens, partage',
@@ -65,10 +74,17 @@ const tabs = [
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { provider } = useAuth();
+  const { user, provider } = useAuth();
+
+  // FIXME(deposits-launch): once FEATURE_FLAGS.depositsPublic flips to
+  // true, this filter becomes a no-op and can be removed. See
+  // lib/feature-flags.ts for the full launch checklist.
+  const visibleTabs = tabs.filter((t) =>
+    t.id === 'paiements' ? canUseDepositsClient(user) : true
+  );
 
   const tabFromUrl = searchParams.get('tab');
-  const validTab = tabs.find((t) => t.id === tabFromUrl);
+  const validTab = visibleTabs.find((t) => t.id === tabFromUrl);
   const [activeTab, setActiveTab] = useState(validTab?.id || 'reservation');
 
   // Detect return from Stripe checkout success
@@ -83,8 +99,12 @@ export default function SettingsPage() {
 
   // Sync URL → state
   useEffect(() => {
-    if (tabFromUrl && tabs.some((t) => t.id === tabFromUrl)) {
+    if (tabFromUrl && visibleTabs.some((t) => t.id === tabFromUrl)) {
       setActiveTab(tabFromUrl);
+    } else if (tabFromUrl === 'paiements' && !canUseDepositsClient(user)) {
+      // FIXME(deposits-launch): direct URL access fallback — remove with the gate
+      setActiveTab('reservation');
+      router.replace('/pro/parametres?tab=reservation', { scroll: false });
     }
   }, [tabFromUrl]);
 
@@ -93,7 +113,7 @@ export default function SettingsPage() {
     router.replace(`/pro/parametres?tab=${tabId}`, { scroll: false });
   };
 
-  const currentTab = tabs.find((t) => t.id === activeTab) ?? tabs[0];
+  const currentTab = visibleTabs.find((t) => t.id === activeTab) ?? visibleTabs[0];
 
   return (
     <div>
@@ -116,7 +136,7 @@ export default function SettingsPage() {
           {/* Sidebar navigation */}
           <nav className="lg:w-60 flex-shrink-0 bg-gray-50 dark:bg-gray-800/50 lg:border-r border-b lg:border-b-0 border-gray-200 dark:border-gray-700">
             <ul className="flex lg:flex-col gap-0 overflow-x-auto lg:overflow-x-visible p-2 lg:p-3">
-              {tabs.map((tab) => {
+              {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
@@ -185,6 +205,7 @@ export default function SettingsPage() {
             {activeTab === 'notifications' && <NotificationsForm />}
             {activeTab === 'compte' && <AccountForm />}
             {activeTab === 'abonnement' && <SubscriptionSection />}
+            {activeTab === 'paiements' && <PaymentsSection />}
             {activeTab === 'partage' && <ShareSection />}
             {activeTab === 'widget' && <WidgetSection />}
           </div>

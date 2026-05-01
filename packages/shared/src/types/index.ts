@@ -82,6 +82,14 @@ export interface Provider {
   // Affiliation
   affiliateCode: string | null;  // Code parrain utilisé à l'inscription
   affiliateId: string | null;    // ID du doc affilié
+
+  // Stripe Connect (acomptes add-on) — nullable until the pro starts onboarding.
+  // Fields are mirrored from Stripe via the account.updated webhook.
+  stripeConnectAccountId: string | null;       // 'acct_...'
+  stripeConnectStatus: 'pending' | 'active' | 'restricted' | null;
+  stripeConnectChargesEnabled: boolean;        // can charge cards on the account
+  stripeConnectPayoutsEnabled: boolean;        // can transfer funds to the bank account
+  depositsAddonActive: boolean;                // gated by the +5€/mo Stripe subscription item
   // Analytics (pageViews.today incremented in real-time, rest updated nightly)
   stats?: {
     pageViews: PageViewStats;
