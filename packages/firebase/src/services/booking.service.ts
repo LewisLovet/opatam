@@ -370,6 +370,7 @@ export class BookingService {
    */
   private getStatusLabel(status: BookingStatus): string {
     const labels: Record<BookingStatus, string> = {
+      pending_payment: 'en attente de paiement',
       pending: 'en attente',
       confirmed: 'confirmée',
       cancelled: 'annulée',

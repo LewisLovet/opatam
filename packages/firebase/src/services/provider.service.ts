@@ -99,6 +99,8 @@ export class ProviderService {
         maxBookingAdvance: 60,
         allowClientCancellation: true,
         cancellationDeadline: 24,
+        // Deposits add-on — opt-in. Pro configures via /pro/parametres → Paiements.
+        depositDefault: null,
       },
       subscription: {
         plan: 'trial',

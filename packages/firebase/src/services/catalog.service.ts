@@ -38,6 +38,9 @@ export class CatalogService {
       memberIds: validated.memberIds || null,
       isActive: true,
       sortOrder,
+      // Deposit override — null by default, configured per service in the
+      // service edit form. Falls back to provider.settings.depositDefault.
+      deposit: null,
     });
 
     const service = await serviceRepository.getById(providerId, serviceId);

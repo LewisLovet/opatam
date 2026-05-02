@@ -48,6 +48,25 @@ export const providerSettingsSchema = z.object({
     .nullable()
     .optional(),
   autoReviewReminder: z.boolean().optional(),
+
+  // Default deposit (acomptes add-on). Always a percentage so it scales
+  // with each service price and can never exceed it.
+  depositDefault: z
+    .object({
+      percent: z
+        .number()
+        .int({ message: "Le pourcentage doit être un entier" })
+        .min(1, { message: "L'acompte doit être d'au moins 1 %" })
+        .max(100, { message: "L'acompte ne peut pas dépasser 100 %" }),
+      refundDeadlineHours: z
+        .number()
+        .int()
+        .min(0, { message: 'Le délai de remboursement doit être positif' })
+        .max(720, { message: 'Le délai ne peut pas dépasser 720 heures (30 jours)' })
+        .default(24),
+    })
+    .nullable()
+    .optional(),
 });
 
 // Create provider schema - MINIMUM requis pour creer un provider

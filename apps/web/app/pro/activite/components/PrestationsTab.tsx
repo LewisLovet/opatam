@@ -137,7 +137,6 @@ export function PrestationsTab() {
       await catalogService.createService(provider.id, {
         ...data,
         isOnline: false,
-        requiresDeposit: false,
       });
       toast.success('Prestation créée');
     }

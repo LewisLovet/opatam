@@ -4,6 +4,12 @@ export const statusConfig: Record<
   BookingStatus,
   { label: string; color: string; bgColor: string; dotColor: string }
 > = {
+  pending_payment: {
+    label: 'En attente paiement',
+    color: 'text-amber-700 dark:text-amber-300',
+    bgColor: 'bg-amber-100 dark:bg-amber-900/30',
+    dotColor: 'bg-amber-500',
+  },
   pending: {
     label: 'En attente',
     color: 'text-warning-700 dark:text-warning-300',

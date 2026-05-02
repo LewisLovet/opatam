@@ -11,8 +11,11 @@ import { Loader } from '@/components/ui';
 import { ArrowLeft, Calendar, Clock, CreditCard, User, Briefcase } from 'lucide-react';
 import type { BookingStatus } from '@booking-app/shared';
 
-// Status transitions: which statuses can move to which
+// Status transitions: which statuses can move to which.
+// `pending_payment` is short-lived (Stripe Checkout) so admins shouldn't
+// move it manually \u2014 webhooks flip it to confirmed/cancelled automatically.
 const STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
+  pending_payment: ['cancelled'],
   pending: ['confirmed', 'cancelled'],
   confirmed: ['cancelled', 'noshow'],
   cancelled: [],
@@ -20,6 +23,7 @@ const STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
 };
 
 const ACTION_LABELS: Record<BookingStatus, string> = {
+  pending_payment: 'En attente paiement',
   pending: 'En attente',
   confirmed: 'Confirmer',
   cancelled: 'Annuler',
@@ -27,6 +31,7 @@ const ACTION_LABELS: Record<BookingStatus, string> = {
 };
 
 const ACTION_COLORS: Record<BookingStatus, string> = {
+  pending_payment: 'bg-amber-500 hover:bg-amber-600 text-white',
   pending: 'bg-yellow-500 hover:bg-yellow-600 text-white',
   confirmed: 'bg-emerald-500 hover:bg-emerald-600 text-white',
   cancelled: 'bg-red-500 hover:bg-red-600 text-white',
@@ -34,6 +39,7 @@ const ACTION_COLORS: Record<BookingStatus, string> = {
 };
 
 const CONFIRM_MESSAGES: Record<BookingStatus, string> = {
+  pending_payment: '',
   pending: '',
   confirmed: 'Voulez-vous confirmer cette r\u00e9servation ?',
   cancelled: 'Voulez-vous annuler cette r\u00e9servation ?',

@@ -11,6 +11,9 @@ import {
   ExternalLink,
   Lock,
   Sparkles,
+  Percent,
+  Clock,
+  Save,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui';
@@ -153,6 +156,60 @@ export function PaymentsSection() {
   const connectActive = status?.status === 'active';
   const canToggleAddon = hasPaidSubscription && connectActive;
   const addonActive = !!provider?.depositsAddonActive;
+
+  // ── Default deposit (acomptes par défaut) — applied to every service ──
+  // Local form state, init from the provider doc; saved via PUT.
+  const existingDefault = provider?.settings?.depositDefault ?? null;
+  const [defaultEnabled, setDefaultEnabled] = useState(false);
+  const [defaultPercent, setDefaultPercent] = useState(30);
+  const [defaultRefundHours, setDefaultRefundHours] = useState(24);
+  const [defaultSaving, setDefaultSaving] = useState(false);
+  const [defaultDirty, setDefaultDirty] = useState(false);
+
+  // Hydrate the form whenever the provider doc changes (login, refresh)
+  useEffect(() => {
+    if (existingDefault) {
+      setDefaultEnabled(true);
+      setDefaultPercent(existingDefault.percent);
+      setDefaultRefundHours(existingDefault.refundDeadlineHours);
+    } else {
+      setDefaultEnabled(false);
+      setDefaultPercent(30);
+      setDefaultRefundHours(24);
+    }
+    setDefaultDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider?.id, existingDefault?.percent, existingDefault?.refundDeadlineHours]);
+
+  const saveDefaultDeposit = async () => {
+    setDefaultSaving(true);
+    setError(null);
+    try {
+      const token = await getIdToken();
+      const body = defaultEnabled
+        ? { percent: defaultPercent, refundDeadlineHours: defaultRefundHours }
+        : { percent: null };
+      const res = await fetch('/api/pro/deposits-default', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      toast.success(
+        defaultEnabled ? 'Acompte par défaut enregistré' : 'Acompte par défaut désactivé'
+      );
+      setDefaultDirty(false);
+      await refreshProvider();
+      router.refresh();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erreur inconnue';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setDefaultSaving(false);
+    }
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────
 
@@ -386,8 +443,9 @@ export function PaymentsSection() {
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Add-on actif. Configurez le montant de l’acompte sur chaque prestation
-              dans la section{' '}
+              Add-on actif. Configurez un acompte par défaut ci-dessous (s'applique à
+              toutes vos prestations) ou définissez un montant spécifique sur chaque
+              prestation depuis{' '}
               <Link
                 href="/pro/services"
                 className="text-primary-600 dark:text-primary-400 hover:underline"
@@ -399,6 +457,131 @@ export function PaymentsSection() {
           </div>
         )}
       </div>
+
+      {/* ── Default deposit configuration ───────────────────────────────── */}
+      {addonActive && (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="min-w-0 flex-1">
+              <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Percent className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                Acompte par défaut
+              </h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Appliqué automatiquement à toutes vos prestations qui n'ont pas de
+                montant spécifique. Toujours en pourcentage du prix de la prestation.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={defaultEnabled}
+              onClick={() => {
+                setDefaultEnabled(!defaultEnabled);
+                setDefaultDirty(true);
+              }}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                defaultEnabled ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                  defaultEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          {defaultEnabled && (
+            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+                    <Percent className="w-3.5 h-3.5" />
+                    Pourcentage
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      step={1}
+                      value={defaultPercent}
+                      onChange={(e) => {
+                        setDefaultPercent(
+                          Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 0))
+                        );
+                        setDefaultDirty(true);
+                      }}
+                      className="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                      %
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                    Ex. 30 % d'un service à 40 € = acompte de 12 €
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" />
+                    Délai de remboursement
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={0}
+                      max={720}
+                      step={1}
+                      value={defaultRefundHours}
+                      onChange={(e) => {
+                        setDefaultRefundHours(
+                          Math.max(0, Math.min(720, parseInt(e.target.value, 10) || 0))
+                        );
+                        setDefaultDirty(true);
+                      }}
+                      className="w-full pl-3 pr-12 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                      heures
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                    {defaultRefundHours === 0
+                      ? "Aucun remboursement automatique"
+                      : `Remboursé si annulation > ${defaultRefundHours}h avant le RDV`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {defaultDirty && (
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
+              <p className="text-xs text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Modifications non enregistrées
+              </p>
+              <button
+                type="button"
+                onClick={saveDefaultDeposit}
+                disabled={defaultSaving}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-50"
+              >
+                {defaultSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Enregistrer
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

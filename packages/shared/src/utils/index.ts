@@ -227,3 +227,65 @@ export function generateSearchTokens(businessName: string): string[] {
 
   return Array.from(tokens);
 }
+
+// ────────────────────────────────────────────────────────────
+// Deposits resolution
+// ────────────────────────────────────────────────────────────
+
+/** Minimal shape needed by `resolveDeposit` — works with both partial
+ *  Service docs and the full type. */
+interface ServiceForDeposit {
+  price: number;
+  deposit?: {
+    type: 'fixed' | 'percent';
+    value: number;
+    refundDeadlineHours: number;
+  } | null;
+}
+
+interface ProviderSettingsForDeposit {
+  depositDefault?: {
+    percent: number;
+    refundDeadlineHours: number;
+  } | null;
+}
+
+/**
+ * Resolve the deposit amount for a given service, applying the override
+ * chain: per-service deposit > provider default > none.
+ *
+ * Returns null when no deposit is required for this combination.
+ *
+ * Pure function — used both client-side (booking flow preview) and
+ * server-side (booking creation, refund logic).
+ */
+export function resolveDeposit(
+  service: ServiceForDeposit,
+  providerSettings: ProviderSettingsForDeposit
+): {
+  amount: number;              // cents
+  refundDeadlineHours: number;
+  source: 'service' | 'default';
+} | null {
+  if (service.deposit) {
+    const amount =
+      service.deposit.type === 'fixed'
+        ? service.deposit.value
+        : Math.round((service.price * service.deposit.value) / 100);
+    return {
+      amount,
+      refundDeadlineHours: service.deposit.refundDeadlineHours,
+      source: 'service',
+    };
+  }
+  if (providerSettings.depositDefault) {
+    return {
+      amount: Math.round(
+        (service.price * providerSettings.depositDefault.percent) / 100
+      ),
+      refundDeadlineHours: providerSettings.depositDefault.refundDeadlineHours,
+      source: 'default',
+    };
+  }
+  return null;
+}

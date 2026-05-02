@@ -1,5 +1,34 @@
 import { z } from 'zod';
 
+/**
+ * Per-service deposit override.
+ *
+ *   type: 'fixed'   → value is in cents, must be ≤ this service's price
+ *                     (refined further in createServiceSchema below)
+ *   type: 'percent' → value is 1-100 (no extra constraint, % is always
+ *                     proportional)
+ *
+ * `null` means: no override — fall back to the provider's `depositDefault`
+ * (or no deposit if the provider hasn't configured one either).
+ */
+export const serviceDepositSchema = z
+  .object({
+    type: z.enum(['fixed', 'percent'], {
+      errorMap: () => ({ message: 'Type d\'acompte invalide (fixed ou percent)' }),
+    }),
+    value: z
+      .number({ required_error: 'Le montant de l\'acompte est requis' })
+      .int({ message: "Le montant doit être un nombre entier" })
+      .min(1, { message: 'Le montant doit être positif' }),
+    refundDeadlineHours: z
+      .number()
+      .int()
+      .min(0, { message: 'Le délai de remboursement doit être positif' })
+      .max(720, { message: 'Le délai ne peut pas dépasser 720 heures (30 jours)' })
+      .default(24),
+  })
+  .nullable();
+
 // Create service schema - MINIMUM requis (name, duration, price)
 export const createServiceSchema = z.object({
   name: z
@@ -57,16 +86,32 @@ export const createServiceSchema = z.object({
     .nullable()
     .optional(),
   isOnline: z.boolean().optional().default(false),
-  requiresDeposit: z.boolean().optional().default(false),
-  depositAmount: z
-    .number()
-    .int()
-    .min(0)
-    .optional(),
-}).refine(
-  (data) => !data.priceMax || data.priceMax > data.price,
-  { message: 'Le prix max doit être supérieur au prix min', path: ['priceMax'] }
-);
+
+  // Per-service deposit override. See serviceDepositSchema above.
+  deposit: serviceDepositSchema.optional(),
+})
+  .refine(
+    (data) => !data.priceMax || data.priceMax > data.price,
+    { message: 'Le prix max doit être supérieur au prix min', path: ['priceMax'] }
+  )
+  .refine(
+    (data) =>
+      !data.deposit ||
+      data.deposit.type !== 'fixed' ||
+      data.deposit.value <= data.price,
+    {
+      message: "L'acompte fixe ne peut pas dépasser le prix de la prestation",
+      path: ['deposit', 'value'],
+    }
+  )
+  .refine(
+    (data) =>
+      !data.deposit || data.deposit.type !== 'percent' || data.deposit.value <= 100,
+    {
+      message: 'Un acompte en pourcentage ne peut pas dépasser 100 %',
+      path: ['deposit', 'value'],
+    }
+  );
 
 // Update service schema - Tout optionnel
 export const updateServiceSchema = z.object({
@@ -126,12 +171,11 @@ export const updateServiceSchema = z.object({
     .nullable()
     .optional(),
   isOnline: z.boolean().optional(),
-  requiresDeposit: z.boolean().optional(),
-  depositAmount: z
-    .number()
-    .int()
-    .min(0)
-    .optional(),
+  // Per-service deposit override. The cross-field constraint (fixed value
+  // ≤ price) lives on createServiceSchema; updates should validate against
+  // the merged record server-side if both `price` and `deposit.value`
+  // change in the same payload.
+  deposit: serviceDepositSchema.optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
 });

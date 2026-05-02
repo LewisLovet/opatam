@@ -147,6 +147,27 @@ export interface ProviderSettings {
   notificationPreferences?: ProviderNotificationPreferences;
   bookingNotice?: string | null;     // Texte libre affiche avant confirmation de reservation
   autoReviewReminder?: boolean;      // Envoyer automatiquement une demande d'avis apres chaque RDV (default: true)
+
+  /**
+   * Default deposit applied to every service unless the service has its own
+   * `deposit` field set (which overrides this). Always a percentage of the
+   * service price — that way it scales naturally across services with
+   * different prices and we never end up with deposit > price.
+   *
+   * Null when the pro hasn't configured a default (or hasn't activated
+   * the deposits add-on at all).
+   */
+  depositDefault?: {
+    percent: number;             // 1-100
+    refundDeadlineHours: number; // hours before booking — 0 = never refund, default 24
+  } | null;
+}
+
+/** Resolved deposit amount + refund policy for a specific (service, provider) pair. */
+export interface ResolvedDeposit {
+  amount: number;              // cents
+  refundDeadlineHours: number;
+  source: 'service' | 'default';
 }
 
 export type PaymentSource = 'stripe' | 'apple' | 'google' | null;
@@ -224,6 +245,21 @@ export interface Service {
   memberIds: string[] | null;
   isActive: boolean;
   sortOrder: number;
+
+  /**
+   * Per-service deposit override. When set, takes precedence over the
+   * provider's `settings.depositDefault`. When null, fall back to the
+   * default. When both are null, no deposit is required.
+   *
+   * - type: 'fixed'   → value is in cents, must be ≤ this service's price
+   * - type: 'percent' → value is 1-100
+   */
+  deposit?: {
+    type: 'fixed' | 'percent';
+    value: number;
+    refundDeadlineHours: number;  // 0 = never refund, default 24
+  } | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -269,7 +305,32 @@ export interface BlockedSlot {
 }
 
 // Booking types
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'noshow';
+//   pending_payment → deposit required, awaiting Stripe Checkout completion.
+//                     The slot is reserved for ~15 min then auto-purged if
+//                     payment doesn't land. Booking flips to 'confirmed' when
+//                     the checkout.session.completed webhook arrives.
+//   pending         → confirmation by the pro is required (deposit optional)
+//   confirmed       → fully confirmed
+//   cancelled       → cancelled by client or pro
+//   noshow          → marked as no-show after the appointment
+export type BookingStatus =
+  | 'pending_payment'
+  | 'pending'
+  | 'confirmed'
+  | 'cancelled'
+  | 'noshow';
+
+export type BookingDepositStatus = 'pending' | 'paid' | 'refunded' | 'failed';
+
+export interface BookingDeposit {
+  amount: number;                 // cents — what the client paid (or owes)
+  refundDeadlineHours: number;    // copied from service/default at booking time
+  paymentIntentId: string | null; // 'pi_...' on the connected account
+  checkoutSessionId: string | null; // 'cs_...' for the hosted checkout
+  status: BookingDepositStatus;
+  paidAt: Date | null;
+  refundedAt: Date | null;
+}
 
 export interface Booking {
   providerId: string;
@@ -298,6 +359,14 @@ export interface Booking {
   cancelToken: string | null;
   remindersSent: Date[];
   reviewRequestSentAt: Date | null;
+
+  /**
+   * Deposit info, present only when this booking required one. The
+   * status flips paid/refunded based on Stripe webhooks. When null,
+   * no deposit was required for this service.
+   */
+  deposit?: BookingDeposit | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
