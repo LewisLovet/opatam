@@ -19,6 +19,7 @@ import {
   Handshake,
   Eye,
   MessageSquare,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 interface NavItem {
@@ -66,6 +67,11 @@ const navSections: { title: string; items: NavItem[] }[] = [
         href: '/dev/tools/affiliates',
         label: 'Affiliés',
         icon: <Handshake className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/tools/stripe-test-switch',
+        label: 'Stripe switch',
+        icon: <ArrowRightLeft className="w-4 h-4" />,
       },
     ],
   },

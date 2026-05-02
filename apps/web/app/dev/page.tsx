@@ -11,6 +11,7 @@ import {
   Sparkles,
   Eye,
   MessageSquare,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 const tools = [
@@ -48,6 +49,13 @@ const tools = [
     icon: <Handshake className="w-6 h-6" />,
     color: 'bg-indigo-500',
     href: '/dev/tools/affiliates',
+  },
+  {
+    title: 'Stripe Test Switch',
+    description: 'Bascule rapidement les IDs Stripe (customer + sub) entre live et test pour un prestataire.',
+    icon: <ArrowRightLeft className="w-6 h-6" />,
+    color: 'bg-orange-500',
+    href: '/dev/tools/stripe-test-switch',
   },
   {
     title: 'Stripe Checkout',
