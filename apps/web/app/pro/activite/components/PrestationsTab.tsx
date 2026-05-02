@@ -400,6 +400,8 @@ export function PrestationsTab() {
         onPortfolioUpdate={handlePortfolioUpdate}
         onSave={handleSaveService}
         onDelete={handleDeleteService}
+        depositsEnabled={!!provider?.depositsAddonActive}
+        defaultDeposit={provider?.settings?.depositDefault ?? null}
       />
 
       {/* Category Modal */}
