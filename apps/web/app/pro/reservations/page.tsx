@@ -8,6 +8,8 @@ import { BookingDetailModal } from '@/components/booking';
 import { useToast } from '@/components/ui';
 import { BookingFilters, BookingList } from './components';
 import type { BookingFiltersState } from './components';
+import { CancelBookingModal } from './components/CancelBookingModal';
+import { auth as firebaseAuth } from '@booking-app/firebase';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -45,6 +47,10 @@ export default function ReservationsPage() {
   // Modal
   const [selectedBooking, setSelectedBooking] = useState<WithId<Booking> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Cancel modal (with refund options)
+  const [cancelTarget, setCancelTarget] = useState<WithId<Booking> | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
   const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -187,14 +193,18 @@ export default function ReservationsPage() {
   };
 
   const handleCancelBooking = async (booking: WithId<Booking>) => {
-    if (!user) return;
+    // Open the cancel modal so the pro can confirm and (if relevant)
+    // pick between refund / no-refund. The actual API call lives there.
+    if (!firebaseAuth.currentUser) {
+      toast.error('Session expirée — reconnectez-vous');
+      return;
+    }
     try {
-      await bookingService.cancelBooking(booking.id, 'provider', user.id);
-      toast.success('Réservation annulée');
-      loadBookings();
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-      toast.error("Erreur lors de l'annulation");
+      const token = await firebaseAuth.currentUser.getIdToken();
+      setAuthToken(token);
+      setCancelTarget(booking);
+    } catch {
+      toast.error('Erreur d\'authentification');
     }
   };
 
@@ -308,6 +318,18 @@ export default function ReservationsPage() {
         }}
         booking={selectedBooking}
         onUpdate={handleBookingUpdate}
+      />
+
+      {/* Cancel modal (with deposit refund options when relevant) */}
+      <CancelBookingModal
+        booking={cancelTarget}
+        authToken={authToken}
+        onClose={() => setCancelTarget(null)}
+        onCancelled={() => {
+          toast.success('Réservation annulée');
+          setCancelTarget(null);
+          loadBookings();
+        }}
       />
     </div>
   );

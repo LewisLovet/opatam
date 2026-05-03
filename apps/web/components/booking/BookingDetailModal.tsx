@@ -12,7 +12,7 @@ import {
   useToast,
 } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingService, schedulingService } from '@booking-app/firebase';
+import { bookingService, schedulingService, auth as firebaseAuth } from '@booking-app/firebase';
 import type { Booking, BookingStatus } from '@booking-app/shared';
 import {
   statusConfig,
@@ -37,6 +37,8 @@ import {
   Ban,
   Star,
   CheckCircle,
+  CheckCircle2,
+  XCircle,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
@@ -159,6 +161,22 @@ export function BookingDetailModal({
   // Group slots by period
   const groupedSlots = useMemo(() => groupSlotsByPeriod(availableSlots), [availableSlots]);
 
+  // Refund eligibility for the cancel-confirmation banner. The deadline
+  // is `booking.datetime - deposit.refundDeadlineHours`. 0h means never
+  // auto-refund.
+  const depositPaid = booking?.deposit?.status === 'paid';
+  const refundEligible = useMemo(() => {
+    if (!booking || !depositPaid) return false;
+    const hours = booking.deposit!.refundDeadlineHours;
+    if (hours <= 0) return false;
+    const datetime = booking.datetime instanceof Date
+      ? booking.datetime
+      : new Date(booking.datetime as unknown as string);
+    const deadline = datetime.getTime() - hours * 60 * 60 * 1000;
+    return Date.now() < deadline;
+  }, [booking, depositPaid]);
+  const pastDeadline = depositPaid && !refundEligible;
+
   // Toggle section expand/collapse
   const toggleSection = (period: Period) => {
     setExpandedSections((prev) => ({
@@ -255,23 +273,43 @@ export function BookingDetailModal({
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancel = async (forceRefund = false) => {
     if (!user) return;
+    if (!firebaseAuth.currentUser) {
+      toast.error('Session expirée — reconnectez-vous');
+      return;
+    }
     setLoading(true);
     try {
       const reason = getCancelReason();
-      await bookingService.cancelBooking(booking.id, 'provider', user.id, reason || undefined);
+      const idToken = await firebaseAuth.currentUser.getIdToken();
+      const res = await fetch('/api/bookings/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          reason: reason || undefined,
+          forceRefund,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de l\'annulation');
 
-      // Cancellation emails are handled by the onBookingWrite Cloud Function
-
-      toast.success('Rendez-vous annulé');
+      toast.success(
+        data.refunded
+          ? 'Rendez-vous annulé et acompte remboursé'
+          : 'Rendez-vous annulé',
+      );
       setShowCancelConfirm(false);
       setCancelReasonType('');
       setCancelReasonCustom('');
       onUpdate();
     } catch (error) {
       console.error('Error cancelling booking:', error);
-      toast.error("Erreur lors de l'annulation");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'annulation");
     } finally {
       setLoading(false);
     }
@@ -510,6 +548,47 @@ export function BookingDetailModal({
         {/* Cancel confirmation */}
         {showCancelConfirm && (
           <div className="p-4 bg-error-50 dark:bg-error-900/20 rounded-xl space-y-3 border border-error-200 dark:border-error-800">
+            {/* Refund-status banner — visible up top so the financial
+                impact is read before the form. Three states matching
+                CancelBookingModal in /pro/reservations. */}
+            {depositPaid && refundEligible && (
+              <div className="rounded-xl p-3 bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-700">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-green-900 dark:text-green-100 uppercase tracking-wide mb-0.5">
+                      Acompte remboursé
+                    </p>
+                    <p className="text-xs text-green-800 dark:text-green-200">
+                      L'acompte de <strong>{formatBookingPrice(booking.deposit!.amount)}</strong> sera automatiquement reversé au client.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {pastDeadline && (
+              <div className="rounded-xl p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                    <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-red-900 dark:text-red-100 uppercase tracking-wide mb-0.5">
+                      Acompte non remboursé
+                    </p>
+                    <p className="text-xs text-red-800 dark:text-red-200 mb-1">
+                      Délai de remboursement (<strong>{booking.deposit!.refundDeadlineHours}h</strong> avant le RDV) dépassé. L'acompte de <strong>{formatBookingPrice(booking.deposit!.amount)}</strong> reste acquis.
+                    </p>
+                    <p className="text-xs text-red-700 dark:text-red-300">
+                      Vous pouvez choisir ci-dessous de rembourser quand même, à titre commercial.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-start gap-2 text-error-700 dark:text-error-300">
               <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <span className="text-sm font-medium">
@@ -530,25 +609,63 @@ export function BookingDetailModal({
                 placeholder="Entrez le motif..."
               />
             )}
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetConfirmations}
-                disabled={loading}
-                className="flex-1"
-              >
-                Non, revenir
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleCancel}
-                disabled={loading}
-                className="flex-1 bg-error-600 hover:bg-error-700 text-white"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Oui, annuler'}
-              </Button>
-            </div>
+
+            {pastDeadline ? (
+              <div className="space-y-2 pt-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleCancel(false)}
+                  disabled={loading}
+                  className="w-full bg-error-600 hover:bg-error-700 text-white"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Annuler sans remboursement'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCancel(true)}
+                  disabled={loading}
+                  className="w-full border-amber-400 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                >
+                  Annuler et rembourser quand même {formatBookingPrice(booking.deposit!.amount)}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetConfirmations}
+                  disabled={loading}
+                  className="w-full"
+                >
+                  Revenir
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetConfirmations}
+                  disabled={loading}
+                  className="flex-1"
+                >
+                  Non, revenir
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleCancel(false)}
+                  disabled={loading}
+                  className="flex-1 bg-error-600 hover:bg-error-700 text-white"
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : refundEligible ? (
+                    `Annuler et rembourser ${formatBookingPrice(booking.deposit!.amount)}`
+                  ) : (
+                    'Oui, annuler'
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

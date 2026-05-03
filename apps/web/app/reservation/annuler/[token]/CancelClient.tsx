@@ -13,7 +13,6 @@ import {
   CheckCircle,
   Loader2
 } from 'lucide-react';
-import { bookingService } from '@booking-app/firebase';
 
 interface Booking {
   id: string;
@@ -33,6 +32,11 @@ interface Booking {
     email: string;
     phone?: string;
   };
+  deposit?: {
+    amount: number;
+    status: 'pending' | 'paid' | 'refunded' | 'failed';
+    refundDeadlineHours: number;
+  } | null;
 }
 
 interface CancelClientProps {
@@ -82,27 +86,51 @@ function formatTime(dateStr: string): string {
   });
 }
 
+// Returns true while cancellation still triggers an automatic deposit
+// refund. The deadline is `booking.datetime - refundDeadlineHours`.
+// 0h means "never auto-refund" → returns false unconditionally.
+function isWithinRefundDeadline(
+  bookingDatetime: string,
+  refundDeadlineHours: number,
+): boolean {
+  if (refundDeadlineHours <= 0) return false;
+  const deadline = new Date(bookingDatetime).getTime() - refundDeadlineHours * 60 * 60 * 1000;
+  return Date.now() < deadline;
+}
+
 export function CancelClient({ booking, token, initialState, cancelledAt }: CancelClientProps) {
   const [state, setState] = useState<'not_found' | 'already_cancelled' | 'past' | 'form' | 'loading' | 'success' | 'error'>(initialState);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [refundedThisCall, setRefundedThisCall] = useState(false);
+
+  const depositPaid = booking?.deposit?.status === 'paid';
+  const refundEligible =
+    depositPaid && isWithinRefundDeadline(
+      booking!.datetime,
+      booking!.deposit!.refundDeadlineHours,
+    );
 
   const handleCancel = async () => {
-    console.log('[CANCEL-CLIENT] ========== START CANCELLATION ==========');
-    console.log('[CANCEL-CLIENT] Token:', token);
-    console.log('[CANCEL-CLIENT] Reason:', reason || 'NOT PROVIDED');
-
     setState('loading');
     setError(null);
 
     try {
-      console.log('[CANCEL-CLIENT] Calling bookingService.cancelBookingByToken...');
-      await bookingService.cancelBookingByToken(token, reason || undefined);
-      console.log('[CANCEL-CLIENT] SUCCESS - Booking cancelled in database');
+      const res = await fetch('/api/bookings/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cancelToken: token,
+          reason: reason || undefined,
+        }),
+      });
+      const data = await res.json();
 
-      // Cancellation emails are handled by the onBookingWrite Cloud Function
+      if (!res.ok) {
+        throw new Error(data.error || 'Une erreur est survenue');
+      }
 
-      console.log('[CANCEL-CLIENT] ========== CANCELLATION COMPLETE ==========');
+      setRefundedThisCall(!!data.refunded);
       setState('success');
     } catch (err) {
       console.error('[CANCEL-CLIENT] ERROR:', err);
@@ -208,6 +236,20 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
           <p className="text-gray-500 dark:text-gray-400 mb-2">
             Votre rendez-vous a bien été annulé.
           </p>
+          {refundedThisCall && booking?.deposit && (
+            <div className="mb-4 mx-auto max-w-md p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                Votre acompte de {formatPrice(booking.deposit.amount)} a été remboursé sur votre moyen de paiement. Comptez 5 à 10 jours ouvrés pour le voir apparaître.
+              </p>
+            </div>
+          )}
+          {!refundedThisCall && depositPaid && (
+            <div className="mb-4 mx-auto max-w-md p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Le délai de remboursement de l'acompte est dépassé. Pour toute demande, contactez directement {booking?.providerName}.
+              </p>
+            </div>
+          )}
           <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">
             Le prestataire a été notifié de cette annulation.
           </p>
@@ -361,6 +403,28 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
             <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          </div>
+        )}
+
+        {/* Refund eligibility callout (deposit bookings only) */}
+        {depositPaid && refundEligible && (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-green-800 dark:text-green-200">
+                Votre acompte de <strong>{formatPrice(booking.deposit!.amount)}</strong> sera remboursé automatiquement.
+              </p>
+            </div>
+          </div>
+        )}
+        {depositPaid && !refundEligible && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                Le délai de remboursement est dépassé. Votre acompte de <strong>{formatPrice(booking.deposit!.amount)}</strong> ne sera pas remboursé automatiquement. Contactez {booking.providerName} pour toute demande.
+              </p>
+            </div>
           </div>
         )}
 

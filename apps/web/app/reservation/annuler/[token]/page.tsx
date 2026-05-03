@@ -46,6 +46,13 @@ export default async function CancelPage({ params }: PageProps) {
         price: booking.price,
         status: booking.status,
         clientInfo: booking.clientInfo,
+        deposit: booking.deposit
+          ? {
+              amount: booking.deposit.amount,
+              status: booking.deposit.status,
+              refundDeadlineHours: booking.deposit.refundDeadlineHours,
+            }
+          : null,
       }
     : null;
 
