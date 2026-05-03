@@ -81,21 +81,21 @@ function LoginContent() {
       // Use redirect param if provided (e.g. from AuthGuard)
       const redirectUrl = searchParams.get('redirect');
 
-      // Redirect based on user role
-      if (user.isAdmin) {
-        // Admin → admin dashboard
+      // Clients keep their forced /telechargement landing — they're
+      // not supposed to navigate /pro/... regardless of any redirect.
+      if (user.role === 'client') {
+        router.push('/telechargement');
+      } else if (redirectUrl) {
+        // Honor the original target for everyone else (admin, pro,
+        // affiliate-with-provider). This is what brings a mobile in-app
+        // browser visitor back to /pro/parametres?tab=paiements after
+        // signing in, instead of landing on the role default.
+        router.push(redirectUrl);
+      } else if (user.isAdmin) {
         router.push('/admin');
       } else if (user.role === 'affiliate') {
-        // Pure affiliate (no client/provider activity yet) → affiliate space
         router.push('/affiliation/dashboard');
-      } else if (user.role === 'client') {
-        // Clients should use the mobile app
-        router.push('/telechargement');
-      } else if (redirectUrl && user.providerId) {
-        // Redirect to the original page (only for authenticated providers)
-        router.push(redirectUrl);
       } else if (user.providerId) {
-        // Provider with completed setup
         router.push('/pro');
       } else {
         // Provider without setup
