@@ -206,12 +206,12 @@ export default function DashboardPage() {
         bookingService.getProviderBookings(provider.id, {
           startDate: startOfWeek,
           endDate: endOfWeek,
-          status: ['pending', 'confirmed'],
+          status: ['pending_payment', 'pending', 'confirmed'],
         }),
         bookingService.getProviderBookings(provider.id, {
           startDate: endOfToday,
           limit: 5,
-          status: ['pending', 'confirmed'],
+          status: ['pending_payment', 'pending', 'confirmed'],
         }),
         bookingService.getProviderBookings(provider.id, {
           status: ['cancelled'],

@@ -61,6 +61,19 @@ const visualStatusStyles: Record<VisualStatus, {
     badge: 'bg-warning-500',
     extra: 'shadow-sm',
   },
+  // Awaiting Stripe Checkout — render with a striped overlay so the
+  // pro reads "this slot is held, but the client hasn't paid yet" at a
+  // glance. The diagonal pattern is what differentiates it from other
+  // amber/orange states (notably 'pending', which is a confirmation
+  // state that doesn't expire).
+  pending_payment: {
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+    border: 'border-amber-400 border-dashed dark:border-amber-600',
+    text: 'text-amber-800 dark:text-amber-200',
+    badge: 'bg-amber-500',
+    extra:
+      'opacity-80 [background-image:repeating-linear-gradient(45deg,transparent_0_6px,rgba(245,158,11,0.18)_6px_8px)]',
+  },
   cancelled: {
     bg: 'bg-error-50/50 dark:bg-error-900/10',
     border: 'border-error-300 dark:border-error-800',
@@ -82,6 +95,7 @@ const statusLabels: Record<VisualStatus, string> = {
   ongoing: 'En cours',
   confirmed: 'Confirmé',
   pending: 'En attente',
+  pending_payment: 'En attente paiement',
   cancelled: 'Annulé',
   noshow: 'Absent',
 };
@@ -121,10 +135,19 @@ export function BookingBlock({
 
   // For past/cancelled/noshow bookings with memberColor, use faded member color instead of grey
   const isPast = visualStatus === 'past' || visualStatus === 'cancelled' || visualStatus === 'noshow';
+  const isPendingPayment = visualStatus === 'pending_payment';
   const hasMemberColor = !!booking.memberColor;
 
   const getMemberColorStyle = () => {
     if (!hasMemberColor) return {};
+    // Pending_payment: keep the diagonal-stripe background visible — only
+    // tint the left border with the member color.
+    if (isPendingPayment) {
+      return {
+        borderLeftWidth: '4px',
+        borderLeftColor: booking.memberColor!,
+      };
+    }
     if (isPast) {
       // Faded member color for past bookings — still identifiable but clearly past
       return {

@@ -15,7 +15,14 @@ interface SlotTooltipProps {
 /**
  * Determines the visual status of a booking based on time and booking status
  */
-export type VisualStatus = 'past' | 'ongoing' | 'confirmed' | 'pending' | 'cancelled' | 'noshow';
+export type VisualStatus =
+  | 'past'
+  | 'ongoing'
+  | 'confirmed'
+  | 'pending'
+  | 'pending_payment'
+  | 'cancelled'
+  | 'noshow';
 
 export function getVisualStatus(booking: Booking): VisualStatus {
   const now = new Date();
@@ -34,7 +41,12 @@ export function getVisualStatus(booking: Booking): VisualStatus {
   // Priority 4: Past (end time has passed)
   if (now > endTime) return 'past';
 
-  // Priority 5: Pending
+  // Priority 5: Awaiting deposit payment — slot is held but not yet a
+  //              real booking. Visually muted so the pro knows it might
+  //              evaporate.
+  if (booking.status === 'pending_payment') return 'pending_payment';
+
+  // Priority 6: Pending pro confirmation
   if (booking.status === 'pending') return 'pending';
 
   // Default: Confirmed future booking
@@ -211,6 +223,10 @@ export function StatusBadge({ status }: { status: VisualStatus }) {
     pending: {
       label: 'En attente',
       className: 'bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-300',
+    },
+    pending_payment: {
+      label: 'En attente paiement',
+      className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
     },
     cancelled: {
       label: 'Annulé',
