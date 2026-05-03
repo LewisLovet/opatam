@@ -353,8 +353,14 @@ export function BookingFlow({
         throw new Error(data.error || 'Une erreur est survenue');
       }
 
-      const { bookingId } = await response.json();
-      router.push(`/reservation/confirmation/${bookingId}`);
+      const data = await response.json();
+      // Deposit-required booking: hop to Stripe Checkout. The booking is
+      // already reserved server-side as pending_payment.
+      if (data.requiresPayment && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      router.push(`/reservation/confirmation/${data.bookingId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
       setIsSubmitting(false);

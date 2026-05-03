@@ -279,6 +279,16 @@ export function EmbedBookingFlow({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Une erreur est survenue');
       }
+      const data = await res.json().catch(() => ({}));
+      // Deposit-required booking: hop the parent window to Stripe Checkout.
+      if (data.requiresPayment && data.checkoutUrl) {
+        if (window.top && window.top !== window.self) {
+          window.top.location.href = data.checkoutUrl;
+        } else {
+          window.location.href = data.checkoutUrl;
+        }
+        return;
+      }
       setStep('success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');

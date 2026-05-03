@@ -170,7 +170,7 @@ export class SchedulingService {
     const relevantBookings = bookings.filter(
       (b) =>
         b.memberId === memberId &&
-        (b.status === 'confirmed' || b.status === 'pending')
+        (b.status === 'confirmed' || b.status === 'pending' || b.status === 'pending_payment')
     );
 
     for (const booking of relevantBookings) {
@@ -390,7 +390,7 @@ export class SchedulingService {
         const relevantBookings = existingBookings.filter(
           (b) =>
             b.memberId === memberId &&
-            (b.status === 'confirmed' || b.status === 'pending')
+            (b.status === 'confirmed' || b.status === 'pending' || b.status === 'pending_payment')
         );
 
         // Generate slots for each availability window
@@ -510,7 +510,7 @@ export class SchedulingService {
       (b) =>
         b.id !== excludeBookingId && // Exclure le booking actuel (pour reschedule)
         b.memberId === memberId &&
-        (b.status === 'confirmed' || b.status === 'pending') &&
+        (b.status === 'confirmed' || b.status === 'pending' || b.status === 'pending_payment') &&
         this.timesOverlap(datetime, endDatetime, b.datetime, b.endDatetime)
     );
 

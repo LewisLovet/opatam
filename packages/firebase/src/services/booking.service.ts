@@ -7,9 +7,10 @@ import {
   userRepository,
 } from '../repositories';
 import { schedulingService } from './scheduling.service';
-import type { Booking, BookingStatus } from '@booking-app/shared';
+import type { Booking, BookingDeposit, BookingStatus } from '@booking-app/shared';
 import {
   createBookingSchema,
+  resolveDeposit,
   type CreateBookingInput,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
@@ -17,9 +18,17 @@ import type { BookingFilters } from '../repositories/booking.repository';
 
 export class BookingService {
   /**
-   * Create a new booking
+   * Create a new booking.
+   *
+   * @param input  Validated booking input.
+   * @param opts.skipDeposit  When true, ignore any deposit configuration on
+   *   the service/provider. Used for pro-created manual bookings where
+   *   payment is handled in person.
    */
-  async createBooking(input: CreateBookingInput): Promise<WithId<Booking>> {
+  async createBooking(
+    input: CreateBookingInput,
+    opts: { skipDeposit?: boolean } = {},
+  ): Promise<WithId<Booking>> {
     // Validate input
     const validated = createBookingSchema.parse(input);
 
@@ -101,8 +110,49 @@ export class BookingService {
     // Generate cancel token
     const cancelToken = this.generateCancelToken();
 
-    // Determine initial status based on provider settings
-    const status: BookingStatus = provider.settings.requiresConfirmation ? 'pending' : 'confirmed';
+    // Resolve deposit — only honored if the provider has the add-on AND a
+    // working Connect account. Otherwise we silently skip (the provider
+    // may have configured a deposit then turned the add-on off).
+    // Pro-side manual bookings opt out via opts.skipDeposit.
+    const depositReady =
+      !opts.skipDeposit &&
+      !!provider.depositsAddonActive &&
+      provider.stripeConnectStatus === 'active' &&
+      !!provider.stripeConnectAccountId;
+    const resolvedDeposit = depositReady
+      ? resolveDeposit(service, provider.settings ?? {})
+      : null;
+
+    // Status precedence:
+    //   deposit required  → pending_payment (Stripe Checkout flow)
+    //   requires confirm  → pending
+    //   else              → confirmed
+    let status: BookingStatus;
+    if (resolvedDeposit) {
+      status = 'pending_payment';
+    } else if (provider.settings.requiresConfirmation) {
+      status = 'pending';
+    } else {
+      status = 'confirmed';
+    }
+
+    const depositField: BookingDeposit | null = resolvedDeposit
+      ? {
+          amount: resolvedDeposit.amount,
+          refundDeadlineHours: resolvedDeposit.refundDeadlineHours,
+          paymentIntentId: null,
+          connectAccountId: null,
+          checkoutSessionId: null,
+          checkoutUrl: null,
+          status: 'pending',
+          paidAt: null,
+          refundedAt: null,
+          refundId: null,
+          refundedBy: null,
+          refundReason: null,
+          reminderSentAt: null,
+        }
+      : null;
 
     // Create booking
     const bookingId = await bookingRepository.create({
@@ -134,6 +184,7 @@ export class BookingService {
       cancelToken,
       remindersSent: [],
       reviewRequestSentAt: null,
+      deposit: depositField,
     });
 
     const booking = await bookingRepository.getById(bookingId);

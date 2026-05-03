@@ -33,6 +33,7 @@ export { sendDailyAgendaSummary } from './scheduled/sendDailyAgendaSummary';
 export { aggregatePageViews } from './scheduled/aggregatePageViews';
 export { checkExpiredTrials } from './scheduled/checkExpiredTrials';
 export { sendSubscriptionReminders } from './scheduled/sendSubscriptionReminders';
+export { purgePendingPaymentBookings } from './scheduled/purgePendingPaymentBookings';
 
 // ─── Notification test functions (prod-safe, admin-only) ───────────────────
 // These are deployed to production but require an authenticated admin user.

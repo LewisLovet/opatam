@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { getStripe, getDepositsAddonPriceId } from '@/lib/stripe';
+import {
+  getStripe,
+  getStripeDev,
+  getDepositsAddonPriceId,
+  getWebhookSecrets,
+} from '@/lib/stripe';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
@@ -56,22 +61,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No signature' }, { status: 400 });
   }
 
-  const stripe = getStripe();
-  let event: Stripe.Event;
+  // Verify the signature against each configured secret in turn. We can
+  // legitimately have multiple in dev (one for platform events, one for
+  // Connect events forwarded from `stripe listen --forward-connect-to`).
+  // We only need ONE to match. The Stripe instance below is just a vehicle
+  // for the static webhooks helper — choice of test/live happens later.
+  let event: Stripe.Event | null = null;
+  let lastError: unknown = null;
+  for (const secret of getWebhookSecrets()) {
+    try {
+      event = getStripe().webhooks.constructEvent(body, signature, secret);
+      break;
+    } catch (err) {
+      lastError = err;
+    }
+  }
 
-  try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!,
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+  if (!event) {
+    const message = lastError instanceof Error ? lastError.message : 'Unknown error';
     console.error('[STRIPE-WEBHOOK] Signature verification failed:', message);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  console.log(`[STRIPE-WEBHOOK] Event type: ${event.type}, ID: ${event.id}`);
+  // Pick the Stripe instance matching the event's environment, so any
+  // follow-up API calls (expand, refund, retrieve…) hit the right
+  // account. Stripe sends livemode=false for test-mode events.
+  const stripe = event.livemode ? getStripe() : getStripeDev();
+
+  console.log(
+    `[STRIPE-WEBHOOK] Event type: ${event.type}, ID: ${event.id}, livemode: ${event.livemode}`
+  );
 
   const db = getAdminFirestore();
 
@@ -79,7 +98,27 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutCompleted(db, stripe, session);
+        // Two flavors of checkout.session.completed live in this app:
+        //  - subscription checkout (metadata.providerId set, no bookingId)
+        //  - booking deposit checkout (metadata.bookingId set, on a
+        //    connected account)
+        if (session.metadata?.bookingId) {
+          await handleDepositCheckoutCompleted(db, session);
+        } else {
+          await handleCheckoutCompleted(db, stripe, session);
+        }
+        break;
+      }
+      case 'checkout.session.expired': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.bookingId) {
+          await handleDepositCheckoutExpired(db, session);
+        }
+        break;
+      }
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        await handleChargeRefunded(db, charge);
         break;
       }
       case 'invoice.paid': {
@@ -513,16 +552,16 @@ async function handleSubscriptionUpdated(
   const activeMemberCount = membersSnapshot.size;
 
   // Detect whether the deposits add-on (+5€/mo) is on this subscription.
-  // We tolerate a missing env var (returns false) so non-deposit envs
-  // don't blow up here.
+  // We tolerate a missing/unconfigured product (returns false) so envs
+  // without the add-on configured don't blow up here.
   let depositsAddonActive = false;
   try {
-    const addonPriceId = getDepositsAddonPriceId();
+    const addonPriceId = await getDepositsAddonPriceId(stripe);
     depositsAddonActive = fullSub.items.data.some(
       (it) => it.price.id === addonPriceId
     );
   } catch {
-    // Env var not set — feature flag effectively disabled
+    // Add-on product not in Stripe yet — feature effectively disabled
   }
 
   const updateData: Record<string, any> = {
@@ -904,5 +943,154 @@ async function handleConnectAccountUpdated(
 
   console.log(
     `[STRIPE-WEBHOOK] No affiliate or provider found for account ${account.id}`,
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Booking deposit checkout (acomptes feature)
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * checkout.session.completed for a booking deposit.
+ *
+ * Flips the booking from `pending_payment` → `confirmed`, marks the
+ * deposit as paid, stores the resulting payment_intent so we can refund
+ * it later. Idempotent — replaying the event is a no-op once paid.
+ */
+async function handleDepositCheckoutCompleted(
+  db: FirebaseFirestore.Firestore,
+  session: Stripe.Checkout.Session,
+) {
+  const bookingId = session.metadata?.bookingId;
+  if (!bookingId) return;
+
+  console.log(`[STRIPE-WEBHOOK] booking deposit completed: ${bookingId}`);
+
+  const bookingRef = db.collection('bookings').doc(bookingId);
+  const snap = await bookingRef.get();
+  if (!snap.exists) {
+    console.warn(`[STRIPE-WEBHOOK] booking ${bookingId} not found`);
+    return;
+  }
+  const booking = snap.data()!;
+
+  // Idempotency — bail if already confirmed/paid
+  if (booking.status === 'confirmed' && booking.deposit?.status === 'paid') {
+    console.log(`[STRIPE-WEBHOOK] booking ${bookingId} already paid, skipping`);
+    return;
+  }
+
+  // Pull the payment_intent id (may be expanded or just an ID)
+  const paymentIntentId = extractId(session.payment_intent);
+
+  await bookingRef.update({
+    status: 'confirmed',
+    'deposit.status': 'paid',
+    'deposit.paidAt': new Date(),
+    'deposit.paymentIntentId': paymentIntentId,
+    'deposit.checkoutSessionId': session.id,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  console.log(
+    `[STRIPE-WEBHOOK] booking ${bookingId}: pending_payment → confirmed (intent ${paymentIntentId})`,
+  );
+}
+
+/**
+ * charge.refunded — fires whenever a charge on a connected account is
+ * refunded (in part or in full). We use it to keep `booking.deposit`
+ * in sync with Stripe when the pro refunds directly via the Stripe
+ * Dashboard rather than going through the in-app cancel flow.
+ *
+ * Idempotent: the in-app refund flow already updates Firestore before
+ * Stripe even fires this event, and the early-return on
+ * `deposit.status === 'refunded'` makes replays a no-op.
+ */
+async function handleChargeRefunded(
+  db: FirebaseFirestore.Firestore,
+  charge: Stripe.Charge,
+) {
+  const paymentIntentId = extractId(charge.payment_intent as any);
+  if (!paymentIntentId) {
+    console.log('[STRIPE-WEBHOOK] charge.refunded with no payment_intent — skipping');
+    return;
+  }
+
+  // The PaymentIntent here is on a connected account (deposits flow).
+  // Find the booking whose deposit references it.
+  const snap = await db
+    .collection('bookings')
+    .where('deposit.paymentIntentId', '==', paymentIntentId)
+    .limit(1)
+    .get();
+
+  if (snap.empty) {
+    console.log(
+      `[STRIPE-WEBHOOK] charge.refunded: no booking for payment_intent ${paymentIntentId}`,
+    );
+    return;
+  }
+
+  const doc = snap.docs[0];
+  const data = doc.data();
+  if (data.deposit?.status === 'refunded') {
+    console.log(
+      `[STRIPE-WEBHOOK] booking ${doc.id} already marked refunded — no-op`,
+    );
+    return;
+  }
+
+  // Pick the latest refund id off the charge for record-keeping.
+  const refundId =
+    charge.refunds?.data?.[0]?.id ?? null;
+
+  await doc.ref.update({
+    'deposit.status': 'refunded',
+    'deposit.refundedAt': new Date(),
+    'deposit.refundId': refundId,
+    // Conservatively credit the dashboard refund to the provider — the
+    // in-app flow would have set this already if it had run.
+    'deposit.refundedBy': 'provider',
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  console.log(
+    `[STRIPE-WEBHOOK] booking ${doc.id}: deposit refunded via Stripe Dashboard (refund ${refundId ?? 'unknown'})`,
+  );
+}
+
+/**
+ * checkout.session.expired for a booking deposit.
+ *
+ * The client started Checkout, walked away, and Stripe gave up. We
+ * delete the booking entirely so the slot is freed for another client.
+ * Defensive: only acts if the booking is still `pending_payment` —
+ * never touches an already-confirmed booking.
+ */
+async function handleDepositCheckoutExpired(
+  db: FirebaseFirestore.Firestore,
+  session: Stripe.Checkout.Session,
+) {
+  const bookingId = session.metadata?.bookingId;
+  if (!bookingId) return;
+
+  console.log(`[STRIPE-WEBHOOK] booking deposit expired: ${bookingId}`);
+
+  const bookingRef = db.collection('bookings').doc(bookingId);
+  const snap = await bookingRef.get();
+  if (!snap.exists) return;
+
+  const booking = snap.data()!;
+  if (booking.status !== 'pending_payment') {
+    console.log(
+      `[STRIPE-WEBHOOK] booking ${bookingId} is ${booking.status} — not deleting`,
+    );
+    return;
+  }
+
+  await bookingRef.delete();
+  console.log(
+    `[STRIPE-WEBHOOK] booking ${bookingId} deleted (deposit checkout expired)`,
   );
 }

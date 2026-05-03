@@ -36,6 +36,12 @@ export default async function ConfirmationPage({ params }: PageProps) {
     priceMax: booking.priceMax ?? null,
     status: booking.status,
     clientInfo: booking.clientInfo,
+    deposit: booking.deposit
+      ? {
+          amount: booking.deposit.amount,
+          status: booking.deposit.status,
+        }
+      : null,
   };
 
   return <ConfirmationClient booking={serializedBooking} />;

@@ -60,7 +60,7 @@ export const createBookingSchema = z.object({
 
 // Update booking status schema
 export const updateBookingStatusSchema = z.object({
-  status: z.enum(['pending', 'confirmed', 'cancelled', 'completed', 'noshow'], {
+  status: z.enum(['pending_payment', 'pending', 'confirmed', 'cancelled', 'completed', 'noshow'], {
     required_error: 'Le statut est requis',
     invalid_type_error: 'Statut invalide',
   }),
@@ -94,7 +94,7 @@ export const bookingFilterSchema = z.object({
   locationId: z.string().optional(),
   serviceId: z.string().optional(),
   clientId: z.string().optional(),
-  status: z.enum(['pending', 'confirmed', 'cancelled', 'completed', 'noshow']).optional(),
+  status: z.enum(['pending_payment', 'pending', 'confirmed', 'cancelled', 'completed', 'noshow']).optional(),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
   limit: z.number().int().min(1).max(100).optional().default(20),

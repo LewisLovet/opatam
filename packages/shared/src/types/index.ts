@@ -326,10 +326,41 @@ export interface BookingDeposit {
   amount: number;                 // cents — what the client paid (or owes)
   refundDeadlineHours: number;    // copied from service/default at booking time
   paymentIntentId: string | null; // 'pi_...' on the connected account
+  /**
+   * When set, the PaymentIntent lives on this connected account (Direct
+   * charges flow — used by the web Stripe Checkout). When null, the PI
+   * lives on the platform (Destination charges flow — used by the
+   * mobile PaymentSheet, with `transfer_data` routing funds to the pro).
+   * Determines which Stripe-Account header is used at refund time.
+   */
+  connectAccountId: string | null;
   checkoutSessionId: string | null; // 'cs_...' for the hosted checkout
+  /** URL of the hosted Stripe Checkout. Stored so we can re-send it as
+   *  a reminder if the client closes the tab mid-checkout. The URL is
+   *  only valid until the session's expires_at (~30 min). */
+  checkoutUrl: string | null;
   status: BookingDepositStatus;
   paidAt: Date | null;
   refundedAt: Date | null;
+  /**
+   * Stripe refund id (`re_...`) on the connected account. Stored after
+   * a successful refund — useful for support/debugging and to make the
+   * refund flow idempotent across webhook retries.
+   */
+  refundId: string | null;
+  /**
+   * Who triggered the refund:
+   *   - 'client'   → cancel-by-token within the deadline window
+   *   - 'provider' → pro-side cancel (in or out of deadline)
+   *   - 'auto'     → reserved for future automation
+   * null when no refund happened.
+   */
+  refundedBy: 'client' | 'provider' | 'auto' | null;
+  /** Optional free-text reason supplied by the pro at force-refund time. */
+  refundReason: string | null;
+  /** Timestamp the "finish your payment" reminder email was sent. Used
+   *  by the cron to avoid sending it twice. Null = never sent. */
+  reminderSentAt: Date | null;
 }
 
 export interface Booking {

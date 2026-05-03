@@ -37,6 +37,11 @@ interface BookingData {
   locationName?: string;
   locationAddress?: string;
   memberName?: string;
+  deposit?: {
+    amount: number;
+    refundDeadlineHours: number;
+    status: 'pending' | 'paid' | 'refunded' | 'failed';
+  } | null;
 }
 
 // Notification event types for email preference checks
@@ -150,6 +155,16 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
     // Non-blocking
   }
 
+  // Surface the deposit only once it's actually paid — at the
+  // pending/failed states there's nothing reassuring to show the client.
+  const depositPaid =
+    booking.deposit && booking.deposit.status === 'paid'
+      ? {
+          amount: booking.deposit.amount,
+          refundDeadlineHours: booking.deposit.refundDeadlineHours,
+        }
+      : null;
+
   return {
     clientEmail: booking.clientInfo.email,
     clientName: booking.clientInfo.name,
@@ -166,6 +181,7 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
     cancelToken: booking.cancelToken,
     bookingId,
     bookingNotice,
+    depositPaid,
   };
 }
 
@@ -210,6 +226,11 @@ export async function emailProviderNewBooking(
     return;
   }
 
+  const depositPaid =
+    booking.deposit && booking.deposit.status === 'paid'
+      ? { amount: booking.deposit.amount }
+      : null;
+
   const result = await sendProviderNewBookingEmail({
     providerEmail,
     clientName: booking.clientInfo.name,
@@ -223,6 +244,7 @@ export async function emailProviderNewBooking(
     locationName: booking.locationName,
     locationAddress: booking.locationAddress,
     memberName: booking.memberName,
+    depositPaid,
   });
 
   console.log('[EMAIL] Provider new booking email result:', result);
@@ -249,6 +271,22 @@ export async function emailClientBookingCancelled(
 
   const providerSlug = await getProviderSlug(booking.providerId);
 
+  // Surface the deposit outcome in the cancellation email. We have
+  // exactly two cases worth telling the client about:
+  //   - status='refunded' → "remboursé X€" (green callout)
+  //   - status='paid'     → "non remboursé X€" (red callout, delay
+  //                         expired and pro chose not to refund)
+  // No deposit at all → no callout.
+  let refundedAmount: number | null = null;
+  let unrefundedAmount: number | null = null;
+  if (booking.deposit) {
+    if (booking.deposit.status === 'refunded') {
+      refundedAmount = booking.deposit.amount;
+    } else if (booking.deposit.status === 'paid') {
+      unrefundedAmount = booking.deposit.amount;
+    }
+  }
+
   const result = await sendCancellationEmail({
     clientEmail: booking.clientInfo.email,
     clientName: booking.clientInfo.name,
@@ -258,6 +296,8 @@ export async function emailClientBookingCancelled(
     providerName: booking.providerName,
     providerSlug,
     locationName: booking.locationName,
+    refundedAmount,
+    unrefundedAmount,
   });
 
   console.log('[EMAIL] Cancellation email result:', result);
@@ -283,6 +323,20 @@ export async function emailProviderBookingCancelled(
     return;
   }
 
+  // Mirror the client-side logic: if the deposit was refunded as part
+  // of the cancellation, tell the pro it'll come off their next payout.
+  // If the deposit was paid but kept (delay expired, no force-refund),
+  // remind them they get to keep the funds.
+  let providerRefundedAmount: number | null = null;
+  let providerUnrefundedAmount: number | null = null;
+  if (booking.deposit) {
+    if (booking.deposit.status === 'refunded') {
+      providerRefundedAmount = booking.deposit.amount;
+    } else if (booking.deposit.status === 'paid') {
+      providerUnrefundedAmount = booking.deposit.amount;
+    }
+  }
+
   const result = await sendProviderCancellationEmail({
     providerEmail,
     clientName: booking.clientInfo.name,
@@ -294,6 +348,8 @@ export async function emailProviderBookingCancelled(
     locationName: booking.locationName,
     memberName: booking.memberName,
     cancelledBy: booking.cancelledBy || 'client',
+    refundedAmount: providerRefundedAmount,
+    unrefundedAmount: providerUnrefundedAmount,
   });
 
   console.log('[EMAIL] Provider cancellation email result:', result);
@@ -365,6 +421,17 @@ export async function handleBookingEmails(
   // Creation - send confirmation email to client + notification email to provider
   if (!beforeData && afterData) {
     const booking = afterData as BookingData;
+
+    // Deposit-required bookings start in `pending_payment`. The client is
+    // mid-Checkout — sending "ta réservation est confirmée" now would lie.
+    // Both confirmation emails are deferred until the deposit is actually
+    // paid (handled in the update branch below, on pending_payment →
+    // confirmed transition).
+    if (booking.status === 'pending_payment') {
+      console.log('[EMAIL] Booking created in pending_payment, deferring confirmation emails until deposit is paid');
+      return;
+    }
+
     console.log('[EMAIL] Booking created, sending confirmation emails');
 
     // Send both emails in parallel (fire and forget pattern per email)
@@ -380,11 +447,22 @@ export async function handleBookingEmails(
     return;
   }
 
-  // Update - check for cancellation or reschedule
+  // Update - check for status transitions, cancellation, or reschedule
   if (beforeData && afterData) {
     const booking = afterData as BookingData;
     const oldStatus = beforeData.status;
     const newStatus = afterData.status;
+
+    // Deposit paid: pending_payment → confirmed. Send the confirmation
+    // emails that were deferred at creation time.
+    if (oldStatus === 'pending_payment' && newStatus === 'confirmed') {
+      console.log('[EMAIL] Deposit paid, sending deferred confirmation emails');
+      await Promise.all([
+        emailClientBookingConfirmed(booking, bookingId),
+        emailProviderNewBooking(booking, bookingId),
+      ]);
+      return;
+    }
 
     // Status changed to cancelled - email both parties
     if (oldStatus !== 'cancelled' && newStatus === 'cancelled') {

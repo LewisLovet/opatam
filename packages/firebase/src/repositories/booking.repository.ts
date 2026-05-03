@@ -125,26 +125,29 @@ export class BookingRepository extends BaseRepository<Booking> {
   }
 
   /**
-   * Get upcoming bookings in date range
+   * Get upcoming bookings in date range.
+   * Includes `pending_payment` so a slot in mid-Stripe-Checkout is treated
+   * as taken (otherwise four clients could grab the same slot in parallel).
    */
   async getUpcoming(from: Date, to: Date): Promise<WithId<Booking>[]> {
     return this.query([
       where('datetime', '>=', Timestamp.fromDate(from)),
       where('datetime', '<=', Timestamp.fromDate(to)),
-      where('status', 'in', ['pending', 'confirmed']),
+      where('status', 'in', ['pending_payment', 'pending', 'confirmed']),
       orderBy('datetime', 'asc'),
     ]);
   }
 
   /**
-   * Get upcoming bookings for a provider
+   * Get upcoming bookings for a provider. Includes `pending_payment` for
+   * the same reason as `getUpcoming` — slot reservation during checkout.
    */
   async getUpcomingByProvider(providerId: string, from: Date, to: Date): Promise<WithId<Booking>[]> {
     return this.query([
       where('providerId', '==', providerId),
       where('datetime', '>=', Timestamp.fromDate(from)),
       where('datetime', '<=', Timestamp.fromDate(to)),
-      where('status', 'in', ['pending', 'confirmed']),
+      where('status', 'in', ['pending_payment', 'pending', 'confirmed']),
       orderBy('datetime', 'asc'),
     ]);
   }
@@ -195,7 +198,7 @@ export class BookingRepository extends BaseRepository<Booking> {
       where('providerId', '==', providerId),
       where('datetime', '>=', Timestamp.fromDate(today)),
       where('datetime', '<', Timestamp.fromDate(tomorrow)),
-      where('status', 'in', ['pending', 'confirmed']),
+      where('status', 'in', ['pending_payment', 'pending', 'confirmed']),
       orderBy('datetime', 'asc'),
     ]);
   }

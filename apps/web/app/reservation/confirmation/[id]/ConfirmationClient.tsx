@@ -22,6 +22,10 @@ interface Booking {
     email: string;
     phone?: string;
   };
+  deposit?: {
+    amount: number;
+    status: 'pending' | 'paid' | 'refunded' | 'failed';
+  } | null;
 }
 
 interface ConfirmationClientProps {
@@ -136,12 +140,41 @@ function downloadIcs(booking: Booking) {
 export function ConfirmationClient({ booking }: ConfirmationClientProps) {
   const [mounted, setMounted] = useState(false);
   const isPending = booking.status === 'pending';
+  // While the deposit hasn't landed (webhook race or client closed Stripe
+  // mid-checkout), the booking is still `pending_payment` server-side.
+  const isPendingPayment = booking.status === 'pending_payment';
+  const depositPaid = booking.deposit?.status === 'paid';
+  const remainingDue = depositPaid
+    ? Math.max(0, booking.price - (booking.deposit?.amount ?? 0))
+    : null;
+  const remainingDueMax =
+    depositPaid && booking.priceMax != null
+      ? Math.max(0, booking.priceMax - (booking.deposit?.amount ?? 0))
+      : null;
 
   // Trigger animation on mount
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 100);
     return () => clearTimeout(timer);
   }, []);
+
+  // While we're in pending_payment, the webhook is still processing —
+  // refresh every 3 s for ~30 s so the page flips to "confirmed" without
+  // the user having to reload.
+  useEffect(() => {
+    if (!isPendingPayment) return;
+    let attempts = 0;
+    const maxAttempts = 10;
+    const id = setInterval(() => {
+      attempts++;
+      if (attempts >= maxAttempts) {
+        clearInterval(id);
+        return;
+      }
+      window.location.reload();
+    }, 3000);
+    return () => clearInterval(id);
+  }, [isPendingPayment]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
@@ -180,15 +213,23 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
               mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}
           >
-            {isPending ? 'Demande envoyée !' : 'Réservation confirmée !'}
+            {isPendingPayment
+              ? 'Paiement en cours de validation…'
+              : isPending
+              ? 'Demande envoyée !'
+              : 'Réservation confirmée !'}
           </h1>
           <p
             className={`text-gray-500 dark:text-gray-400 transition-all duration-500 delay-400 ${
               mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}
           >
-            {isPending
+            {isPendingPayment
+              ? 'Votre paiement vient d\'être effectué et est en cours de validation. Cette page se mettra à jour dans quelques secondes.'
+              : isPending
               ? 'Votre demande de réservation a bien été envoyée. Vous recevrez un email dès que le prestataire aura confirmé.'
+              : depositPaid
+              ? `Votre réservation est confirmée et votre acompte de ${formatPrice(booking.deposit!.amount)} a bien été enregistré. Un email de confirmation vous a été envoyé.`
               : 'Votre réservation a bien été enregistrée. Un email de confirmation vous a été envoyé.'}
           </p>
         </div>
@@ -293,6 +334,26 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
                 {formatPrice(booking.price, booking.priceMax)}
               </span>
             </div>
+            {depositPaid && booking.deposit && (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    Acompte payé
+                  </span>
+                  <span className="font-medium text-green-600 dark:text-green-400">
+                    {formatPrice(booking.deposit.amount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    Reste à régler sur place
+                  </span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {formatPrice(remainingDue ?? 0, remainingDueMax)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

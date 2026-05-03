@@ -448,8 +448,16 @@ export async function handleBookingNotifications(
   // Creation - no push notification needed (client is already using the app)
   // Email confirmation is sent separately via bookingEmails
   if (!beforeData && afterData) {
+    const booking = afterData as BookingData;
+    // Deposit-pending bookings defer the provider notification: nothing to
+    // act on yet, and a "new booking" alert before the deposit clears would
+    // be confusing.
+    if (booking.status === 'pending_payment') {
+      console.log('Booking created in pending_payment, deferring provider notification');
+      return;
+    }
     console.log('Booking created, notifying provider');
-    await notifyProviderNewBooking(afterData as BookingData, bookingId);
+    await notifyProviderNewBooking(booking, bookingId);
     return;
   }
 
@@ -469,6 +477,13 @@ export async function handleBookingNotifications(
     if (oldStatus !== 'confirmed' && newStatus === 'confirmed') {
       console.log('Booking confirmed, notifying client');
       await notifyClientBookingConfirmed(booking);
+      // If we're transitioning out of pending_payment (deposit just paid),
+      // also fire the provider's "new booking" alert that we deferred at
+      // creation time.
+      if (oldStatus === 'pending_payment') {
+        console.log('Deposit paid, firing deferred provider notification');
+        await notifyProviderNewBooking(booking, bookingId);
+      }
       return;
     }
 

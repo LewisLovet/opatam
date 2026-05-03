@@ -75,6 +75,10 @@ export async function GET(request: NextRequest) {
         businessName: provider.businessName,
         slug: provider.slug,
         settings: provider.settings,
+        // Surfaced so the planning drawer can decide whether to offer
+        // the "demander l'acompte au client" checkbox.
+        depositsAddonActive: !!provider.depositsAddonActive,
+        stripeConnectStatus: provider.stripeConnectStatus ?? null,
       },
       services: services.map((s) => ({
         id: s.id,
@@ -84,6 +88,7 @@ export async function GET(request: NextRequest) {
         price: s.price,
         bufferTime: s.bufferTime,
         categoryId: s.categoryId ?? null,
+        deposit: s.deposit ?? null,
       })),
       serviceCategories: serviceCategories
         .filter((c) => c.isActive)

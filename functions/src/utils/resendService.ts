@@ -135,6 +135,16 @@ export interface BookingEmailData {
   cancelToken?: string;
   bookingId?: string;
   bookingNotice?: string | null;
+  /**
+   * Deposit info — present only when this booking required one and it has
+   * been paid. The amount is in cents. Confirmation emails surface this so
+   * the client knows exactly what's already settled vs. what's left to pay
+   * on-site.
+   */
+  depositPaid?: {
+    amount: number;
+    refundDeadlineHours: number;
+  } | null;
 }
 
 /**
@@ -251,6 +261,127 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
 }
 
 /**
+ * Send a "finish your payment" reminder. Triggered ~15 min after a
+ * deposit booking is created and is still in pending_payment — the
+ * client probably closed the Stripe Checkout tab and forgot.
+ *
+ * The Checkout URL is the SAME one given at creation time and remains
+ * valid until the session expires (~30 min). After that the cron
+ * deletes the booking entirely.
+ */
+export interface DepositReminderEmailData {
+  clientEmail: string;
+  clientName: string;
+  serviceName: string;
+  datetime: Date;
+  duration: number;
+  depositAmount: number;
+  providerName: string;
+  checkoutUrl: string;
+  /** Minutes left before the slot is auto-released. Used in the body. */
+  minutesLeft: number;
+  /** When set, the email shows a "Annuler la réservation" link so the
+   *  client can release the slot proactively rather than waiting out
+   *  the timeout. */
+  cancelToken?: string | null;
+}
+
+export async function sendDepositReminderEmail(
+  data: DepositReminderEmailData,
+): Promise<EmailResult> {
+  console.log('[EMAIL] Sending deposit reminder to:', data.clientEmail);
+
+  if (!isValidEmail(data.clientEmail)) {
+    return { success: false, error: 'Invalid email format' };
+  }
+
+  try {
+    const formattedDate = formatDateFr(data.datetime);
+    const formattedTime = formatTimeFr(data.datetime);
+    const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
+    const formattedEndTime = formatTimeFr(endDate);
+    const formattedDeposit = formatPriceFr(data.depositAmount);
+    const cancelUrl = data.cancelToken
+      ? `${appConfig.url}/reservation/annuler/${data.cancelToken}`
+      : null;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+          <tr><td align="center" style="padding: 40px 20px;">
+            <table role="presentation" style="max-width: 480px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <tr><td style="padding: 32px 32px 24px; text-align: center;">
+                <img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height: 48px; max-width: 200px;" />
+              </td></tr>
+              <tr><td style="padding: 0 32px 24px;">
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
+                <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous chez <strong>${data.providerName}</strong> est <strong style="color: #d97706;">en attente du paiement de votre acompte</strong>.</p>
+                <div style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                  <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #c2410c; text-transform: uppercase; letter-spacing: 0.5px;">Rendez-vous en attente</p>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                    <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${formattedDate}</td></tr>
+                    <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedTime} - ${formattedEndTime}</td></tr>
+                    <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Acompte</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${formattedDeposit}</td></tr>
+                  </table>
+                </div>
+                <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">Sans paiement de l'acompte dans les <strong>${data.minutesLeft} minutes</strong>, votre créneau sera automatiquement libéré.</p>
+                <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.checkoutUrl}" style="display: inline-block; padding: 14px 32px; background-color: #d97706; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Régler mon acompte maintenant</a></td></tr></table>
+                ${cancelUrl ? `<p style="margin: 0; font-size: 13px; color: #71717a; text-align: center;">Vous ne pourrez pas honorer ce rendez-vous ? <a href="${cancelUrl}" style="color: #dc2626; text-decoration: underline;">Annuler la réservation</a>.</p>` : ''}
+              </td></tr>
+              <tr><td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
+                <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À très vite,<br><strong>${data.providerName}</strong></p>
+              </td></tr>
+            </table>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.</p>
+          </td></tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Bonjour ${data.clientName},
+
+Votre rendez-vous chez ${data.providerName} est en attente du paiement de votre acompte.
+
+- Prestation : ${data.serviceName}
+- Date : ${formattedDate}
+- Heure : ${formattedTime} - ${formattedEndTime}
+- Acompte : ${formattedDeposit}
+
+Sans paiement de l'acompte dans les ${data.minutesLeft} minutes, votre créneau sera automatiquement libéré.
+
+Régler mon acompte : ${data.checkoutUrl}
+${cancelUrl ? `\nAnnuler la réservation : ${cancelUrl}` : ''}
+
+À très vite,
+${data.providerName}
+    `.trim();
+
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.clientEmail,
+      subject: `Acompte en attente — ${data.serviceName} chez ${data.providerName}`,
+      html,
+      text,
+    });
+
+    if (error) {
+      console.error('[EMAIL] Resend deposit reminder error:', error);
+      return { success: false, error: String(error) };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAIL] Exception:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+/**
  * Send email notification to provider about a new booking
  */
 export interface ProviderNewBookingEmailData {
@@ -266,6 +397,12 @@ export interface ProviderNewBookingEmailData {
   locationName?: string;
   locationAddress?: string;
   memberName?: string;
+  /** Deposit info — present only when the booking required a deposit
+   *  and it has been paid. Surfaces "+ Acompte X€ déjà perçu" in the
+   *  notification so the pro knows what's already settled. */
+  depositPaid?: {
+    amount: number;
+  } | null;
 }
 
 export async function sendProviderNewBookingEmail(data: ProviderNewBookingEmailData): Promise<EmailResult> {
@@ -361,6 +498,7 @@ function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): s
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Membre</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedPrice}</td></tr>
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte perçu</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
                     </table>
                   </div>
                   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -398,6 +536,7 @@ ${data.clientPhone ? `- Téléphone : ${data.clientPhone}` : ''}
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${data.memberName ? `- Membre : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
+${data.depositPaid ? `- Acompte perçu : ${formatPriceFr(data.depositPaid.amount)}` : ''}
 
 Voir mon calendrier : ${data.calendarUrl}
 
@@ -418,6 +557,13 @@ export async function sendCancellationEmail(data: {
   providerName: string;
   providerSlug?: string;
   locationName?: string;
+  /** When set, the email tells the client a refund of this amount
+   *  (in cents) is on its way. Mutually exclusive with `unrefundedAmount`. */
+  refundedAmount?: number | null;
+  /** When set, the email warns the client that the deposit of this
+   *  amount (in cents) is NOT being refunded — typically because the
+   *  cancellation happened past the refund deadline. */
+  unrefundedAmount?: number | null;
 }): Promise<EmailResult> {
   console.log('[EMAIL] Sending cancellation email to:', data.clientEmail);
 
@@ -478,6 +624,11 @@ export async function sendProviderCancellationEmail(data: {
   locationName?: string;
   memberName?: string;
   cancelledBy: 'client' | 'provider';
+  /** When the deposit was refunded as part of this cancellation. */
+  refundedAmount?: number | null;
+  /** When a deposit was paid but NOT refunded (delay expired and pro
+   *  did not override). The pro keeps the funds. */
+  unrefundedAmount?: number | null;
 }): Promise<EmailResult> {
   console.log('[EMAIL] Sending provider cancellation email to:', data.providerEmail);
 
@@ -534,6 +685,8 @@ interface ProviderCancellationTemplateData {
   memberName?: string;
   cancelledBy: 'client' | 'provider';
   calendarUrl: string;
+  refundedAmount?: number | null;
+  unrefundedAmount?: number | null;
 }
 
 function generateProviderCancellationHtml(data: ProviderCancellationTemplateData): string {
@@ -572,6 +725,14 @@ function generateProviderCancellationHtml(data: ProviderCancellationTemplateData
                       ${data.reason ? `<tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a; vertical-align: top;">Motif</td><td style="padding: 8px 0 4px; font-size: 14px; color: #18181b;">${data.reason}</td></tr>` : ''}
                     </table>
                   </div>
+                  ${data.refundedAmount ? `<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Acompte remboursé</p>
+                    <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.5;">L'acompte de <strong>${formatPriceFr(data.refundedAmount)}</strong> a été remboursé au client. Le montant sera prélevé sur votre prochain virement Stripe.</p>
+                  </div>` : ''}
+                  ${data.unrefundedAmount ? `<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Acompte conservé</p>
+                    <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.5;">L'acompte de <strong>${formatPriceFr(data.unrefundedAmount)}</strong> reste acquis (annulation hors délai de remboursement).</p>
+                  </div>` : ''}
                   <table role="presentation" style="width: 100%; border-collapse: collapse;">
                     <tr><td align="center"><a href="${data.calendarUrl}" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Voir mon calendrier</a></td></tr>
                   </table>
@@ -608,6 +769,8 @@ ${data.clientPhone ? `- Téléphone : ${data.clientPhone}` : ''}
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${data.memberName ? `- Membre : ${data.memberName}` : ''}
 ${data.reason ? `- Motif : ${data.reason}` : ''}
+${data.refundedAmount ? `\nAcompte remboursé au client : ${formatPriceFr(data.refundedAmount)} (sera prélevé sur votre prochain virement Stripe).` : ''}
+${data.unrefundedAmount ? `\nAcompte conservé : ${formatPriceFr(data.unrefundedAmount)} (annulation hors délai).` : ''}
 
 Voir mon calendrier : ${data.calendarUrl}
 
@@ -904,6 +1067,8 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>${data.locationAddress.includes(',') ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte payé</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Reste à régler</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} sur place</td></tr>` : ''}
                     </table>
                   </div>
                   ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
@@ -954,6 +1119,8 @@ ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${data.locationAddress ? `- Adresse : ${data.locationAddress}${data.locationAddress.includes(',') ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}` : ''}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
+${data.depositPaid ? `- Acompte payé : ${formatPriceFr(data.depositPaid.amount)}` : ''}
+${data.depositPaid ? `- Reste à régler sur place : ${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)}` : ''}
 
 Ajouter à votre calendrier :
 - Google Calendar : ${data.googleCalendarUrl}
@@ -977,6 +1144,8 @@ interface CancellationTemplateData {
   locationName?: string;
   businessName: string;
   rebookUrl: string;
+  refundedAmount?: number | null;
+  unrefundedAmount?: number | null;
 }
 
 function generateCancellationHtml(data: CancellationTemplateData): string {
@@ -1011,6 +1180,15 @@ function generateCancellationHtml(data: CancellationTemplateData): string {
                       ${data.reason ? `<tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a; vertical-align: top;">Motif</td><td style="padding: 8px 0 4px; font-size: 14px; color: #18181b;">${data.reason}</td></tr>` : ''}
                     </table>
                   </div>
+                  ${data.refundedAmount ? `<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">✓ Acompte remboursé</p>
+                    <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.5;">Votre acompte de <strong>${formatPriceFr(data.refundedAmount)}</strong> est en cours de remboursement sur votre moyen de paiement. Comptez 5 à 10 jours ouvrés pour le voir apparaître.</p>
+                  </div>` : ''}
+                  ${data.unrefundedAmount ? `<div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Acompte non remboursé</p>
+                    <p style="margin: 0 0 4px; font-size: 14px; color: #991b1b; line-height: 1.5;">Votre acompte de <strong>${formatPriceFr(data.unrefundedAmount)}</strong> n'est pas remboursable car la demande d'annulation est intervenue après le délai de remboursement fixé par ${data.businessName}.</p>
+                    <p style="margin: 0; font-size: 13px; color: #991b1b; line-height: 1.5;">Pour toute demande exceptionnelle, contactez directement ${data.businessName}.</p>
+                  </div>` : ''}
                   <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Si vous souhaitez reprendre un nouveau rendez-vous, n'hésitez pas à nous contacter ou à réserver en ligne.</p>
                   <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr><td align="center"><a href="${data.rebookUrl}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Reprendre rendez-vous</a></td></tr></table>
                 </td>
@@ -1042,6 +1220,8 @@ Détails du rendez-vous annulé :
 - Heure : ${data.formattedTime}
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${data.reason ? `- Motif : ${data.reason}` : ''}
+${data.refundedAmount ? `\n✓ Votre acompte de ${formatPriceFr(data.refundedAmount)} est en cours de remboursement (5 à 10 jours ouvrés).` : ''}
+${data.unrefundedAmount ? `\n⚠ Votre acompte de ${formatPriceFr(data.unrefundedAmount)} n'est pas remboursable car la demande d'annulation est intervenue après le délai fixé par ${data.businessName}.` : ''}
 
 Si vous souhaitez reprendre un nouveau rendez-vous, n'hésitez pas à nous contacter ou à réserver en ligne sur ${data.rebookUrl}
 
@@ -1208,6 +1388,8 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                       ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>${data.locationAddress.includes(',') ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte payé</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Reste à régler</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} sur place</td></tr>` : ''}
                     </table>
                   </div>
                   ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
