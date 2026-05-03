@@ -738,23 +738,41 @@ export default function CreateBookingScreen() {
     try {
       setSubmitting(true);
 
-      await bookingService.createBooking({
-        providerId,
-        serviceId: selectedService.id,
-        memberId: selectedSlot.memberId,
-        locationId: memberLocation.id,
-        datetime: new Date(selectedSlot.datetime),
-        clientInfo: {
-          name: clientName.trim(),
-          email: clientEmail.trim(),
-          phone: clientPhone.trim(),
-        },
-        notes: notes.trim() || undefined,
+      // Route through /api/bookings (source:'pro' + askDeposit:true) so
+      // the deposit flow is honored: if the service has an active
+      // deposit configured, the server creates the booking as
+      // pending_payment and emails the client a Stripe Checkout link.
+      // Otherwise the booking is confirmed immediately.
+      const apiUrl = process.env.EXPO_PUBLIC_APP_URL ?? 'https://opatam.com';
+      const res = await fetch(`${apiUrl}/api/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          providerId,
+          serviceId: selectedService.id,
+          memberId: selectedSlot.memberId,
+          locationId: memberLocation.id,
+          datetime: new Date(selectedSlot.datetime).toISOString(),
+          clientInfo: {
+            name: clientName.trim(),
+            email: clientEmail.trim(),
+            phone: clientPhone.trim(),
+          },
+          notes: notes.trim() || undefined,
+          source: 'pro',
+          askDeposit: true,
+        }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Impossible de créer le rendez-vous.');
+      }
 
       Alert.alert(
-        'Rendez-vous créé',
-        'Le rendez-vous a été créé avec succès.',
+        data.paymentRequested ? 'Lien de paiement envoyé' : 'Rendez-vous créé',
+        data.paymentRequested
+          ? `Un email avec un lien de paiement a été envoyé à ${clientEmail.trim()}. La réservation reste en attente jusqu'au paiement (30 min max).`
+          : 'Le rendez-vous a été créé avec succès.',
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (error: any) {

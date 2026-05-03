@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = getStripeDev();
-    const addonPriceId = getDepositsAddonPriceId();
+    const addonPriceId = await getDepositsAddonPriceId(stripe);
 
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     const addonItem = subscription.items.data.find(

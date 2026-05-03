@@ -59,11 +59,26 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "opatam.com", "pathPrefix": "/p/" },
-            { "scheme": "https", "host": "opatam.com", "pathPrefix": "/avis/" },
-            { "scheme": "https", "host": "opatam.com", "pathPrefix": "/reservation/confirmation/" }
+            {
+              "scheme": "https",
+              "host": "opatam.com",
+              "pathPrefix": "/p/"
+            },
+            {
+              "scheme": "https",
+              "host": "opatam.com",
+              "pathPrefix": "/avis/"
+            },
+            {
+              "scheme": "https",
+              "host": "opatam.com",
+              "pathPrefix": "/reservation/confirmation/"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -106,7 +121,15 @@
             "com.snapchat.android"
           ]
         }
-      ]
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.kamerleontech.opatam",
+          "enableGooglePay": true
+        }
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

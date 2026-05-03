@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = getStripeDev();
-    const addonPriceId = getDepositsAddonPriceId();
+    const addonPriceId = await getDepositsAddonPriceId(stripe);
 
     // Already active? Avoid creating a duplicate item.
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);

@@ -3,10 +3,16 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { ThemeProvider } from '../theme';
 import { ToastProvider, NotificationInitializer } from '../components';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
 import { useAppReady, useDeepLinks } from '../hooks';
+
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+// Same merchant ID configured in app.json under the @stripe/stripe-react-native plugin.
+// Required for the Apple Pay button in PaymentSheet to render on iOS.
+const APPLE_PAY_MERCHANT_ID = 'merchant.com.kamerleontech.opatam';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -30,6 +36,11 @@ export default function RootLayout() {
     // on the very first render (important for Android edge-to-edge + tab bar).
     <SafeAreaProvider>
       <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <StripeProvider
+          publishableKey={STRIPE_PUBLISHABLE_KEY}
+          merchantIdentifier={APPLE_PAY_MERCHANT_ID}
+          urlScheme="opatam"
+        >
         <ThemeProvider>
           <AuthProvider>
             <NotificationInitializer />
@@ -62,6 +73,7 @@ export default function RootLayout() {
             </ProvidersCacheProvider>
           </AuthProvider>
         </ThemeProvider>
+        </StripeProvider>
       </View>
     </SafeAreaProvider>
   );

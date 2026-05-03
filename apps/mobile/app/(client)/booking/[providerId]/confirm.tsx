@@ -16,12 +16,14 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { bookingService } from '@booking-app/firebase';
+import { useStripe } from '@stripe/stripe-react-native';
 import { useTheme } from '../../../../theme';
 import { Text, Card, Button, EmptyState, Avatar, Input, useToast } from '../../../../components';
 import { useBooking } from '../../../../contexts';
 import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
+
+const API_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://opatam.com';
 
 // Format date in French
 function formatDate(date: Date): string {
@@ -69,6 +71,9 @@ export default function ConfirmBookingScreen() {
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Stripe PaymentSheet — used when the booked service requires a deposit
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
   // Phone validation
   const isPhoneValid = (() => {
     const cleaned = phone.replace(/[\s.\-()]/g, '');
@@ -110,30 +115,98 @@ export default function ConfirmBookingScreen() {
 
     try {
       const cleanedPhone = phone.replace(/\s/g, '');
-      await bookingService.createBooking({
-        providerId: provider.id,
-        serviceId: service.id,
-        locationId: locationId!,
-        memberId: memberId || undefined,
-        datetime: selectedSlot.datetime,
-        clientId: user?.uid, // Associate booking with logged-in user
-        clientInfo: {
-          name: userData.displayName || 'Client',
-          email: userData.email,
-          phone: cleanedPhone,
-        },
+
+      // Route through /api/bookings (source:'mobile') so the deposit flow
+      // is honored: server creates the booking, computes the deposit, and
+      // returns either { bookingId } (no deposit) or {bookingId,
+      // requiresPayment, paymentIntent, ephemeralKey, customer} (deposit).
+      const res = await fetch(`${API_URL}/api/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          providerId: provider.id,
+          serviceId: service.id,
+          locationId: locationId!,
+          memberId: memberId || undefined,
+          datetime: selectedSlot.datetime,
+          clientId: user?.uid,
+          clientInfo: {
+            name: userData.displayName || 'Client',
+            email: userData.email,
+            phone: cleanedPhone,
+          },
+          source: 'mobile',
+        }),
       });
 
-      // Reset booking state
-      resetBooking();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la réservation');
+      }
 
-      // Show success message
+      if (data.requiresPayment && data.paymentIntent) {
+        // Deposit flow: present PaymentSheet on the connected account.
+        // The booking is reserved as `pending_payment` server-side; the
+        // checkout.session-equivalent webhook (`payment_intent.succeeded`
+        // through `charge.refunded` listening on Connect events) will
+        // flip it to `confirmed`. If the user cancels here, the cron
+        // will purge the booking after 30 min.
+        // No `stripeAccountId` needed — the API uses Destination charges,
+        // so the PaymentIntent is on the platform. Funds get routed to
+        // the pro's connected account via `transfer_data` automatically.
+        const init = await initPaymentSheet({
+          merchantDisplayName: provider.businessName ?? 'Opatam',
+          paymentIntentClientSecret: data.paymentIntent,
+          customerId: data.customer,
+          customerEphemeralKeySecret: data.ephemeralKey,
+          allowsDelayedPaymentMethods: false,
+          applePay: { merchantCountryCode: 'FR' },
+          googlePay: { merchantCountryCode: 'FR', currencyCode: 'EUR' },
+          returnURL: 'opatam://stripe-redirect',
+          defaultBillingDetails: {
+            email: userData.email,
+            name: userData.displayName ?? undefined,
+            phone: cleanedPhone,
+          },
+        });
+        if (init.error) throw new Error(init.error.message);
+
+        const { error: payError } = await presentPaymentSheet();
+        if (payError) {
+          // User cancelled or payment failed. The booking sits in
+          // pending_payment until the cron purges it.
+          if (payError.code === 'Canceled') {
+            showToast({
+              variant: 'info',
+              message: "Paiement annulé. Votre créneau sera libéré sous 30 min.",
+            });
+          } else {
+            showToast({
+              variant: 'error',
+              message: payError.message || 'Échec du paiement',
+            });
+          }
+          return;
+        }
+
+        // Payment succeeded — webhook will flip status to confirmed.
+        // The bookings tab will pick it up on next refresh.
+        resetBooking();
+        showToast({
+          variant: 'success',
+          message: 'Acompte payé — réservation confirmée !',
+        });
+        router.replace('/(client)/(tabs)/bookings');
+        return;
+      }
+
+      // No deposit → booking is already confirmed (or pending pro
+      // confirmation depending on provider settings).
+      resetBooking();
       showToast({
         variant: 'success',
         message: 'Réservation confirmée !',
       });
-
-      // Navigate to bookings tab
       router.replace('/(client)/(tabs)/bookings');
     } catch (error: any) {
       console.error('Booking error:', error);

@@ -664,6 +664,13 @@ export default function MoreScreen() {
             />
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
+              icon="card-outline"
+              label="Paiements & acomptes"
+              onPress={() => router.push('/(pro)/payments')}
+              colors={colors}
+            />
+            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
+            <MenuItem
               icon="lock-closed-outline"
               label="Changer le mot de passe"
               onPress={() => setShowPasswordModal(true)}
