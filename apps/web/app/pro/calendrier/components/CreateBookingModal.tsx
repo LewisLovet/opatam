@@ -12,8 +12,9 @@ import {
   useToast,
 } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingService, catalogService, schedulingService } from '@booking-app/firebase';
+import { catalogService, schedulingService } from '@booking-app/firebase';
 import type { Member, Location, Service } from '@booking-app/shared';
+import { resolveDeposit } from '@booking-app/shared';
 import {
   Loader2,
   ChevronRight,
@@ -154,6 +155,7 @@ export function CreateBookingModal({
   const [services, setServices] = useState<WithId<Service>[]>([]);
   const [availableSlots, setAvailableSlots] = useState<SlotWithMembers[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [askDeposit, setAskDeposit] = useState(true);
 
   const [formData, setFormData] = useState<FormData>({
     locationId: '',
@@ -202,6 +204,7 @@ export function CreateBookingModal({
       });
       setErrors({});
       setAvailableSlots([]);
+      setAskDeposit(true);
     }
   }, [isOpen, initialDate, initialMemberId, initialLocationId, locations]);
 
@@ -441,73 +444,46 @@ export function CreateBookingModal({
       const [year, month, day] = formData.date.split('-').map(Number);
       const datetime = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
-      const bookingData = {
-        providerId: provider.id,
-        locationId: formData.locationId,
-        serviceId: formData.serviceId,
-        memberId: formData.memberId || undefined,
-        datetime,
-        clientInfo: {
-          name: formData.clientName.trim(),
-          email: formData.clientEmail.trim(),
-          phone: formData.clientPhone.trim(),
-        },
-      };
-
-      const booking = await bookingService.createBooking(bookingData);
-
-      // Send confirmation email with bookingId and cancelToken for cancel/review links
-      try {
-        console.log('[CreateBookingModal] Sending confirmation email with:', {
-          bookingId: booking.id,
-          cancelToken: booking.cancelToken ? 'EXISTS' : 'NOT SET',
-        });
-
-        await fetch('/api/bookings/confirmation-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            clientEmail: formData.clientEmail.trim(),
-            clientName: formData.clientName.trim(),
-            serviceName: selectedService?.name || '',
-            datetime: datetime.toISOString(),
-            duration: selectedService?.duration || 0,
-            price: selectedService?.price || 0,
-            providerName: provider.businessName || '',
-            providerSlug: provider.slug,
-            locationName: selectedLocation?.name || '',
-            locationAddress: selectedLocation?.address || '',
-            memberName: selectedMember?.name,
-            // IMPORTANT: Ces paramètres sont nécessaires pour les liens d'annulation et d'avis
-            bookingId: booking.id,
-            cancelToken: booking.cancelToken,
-          }),
-        });
-      } catch (emailError) {
-        console.error('[CreateBookingModal] Error sending confirmation email:', emailError);
-      }
-
-      // Notify provider (fire and forget)
-      fetch('/api/bookings/provider-notification', {
+      // Use the public /api/bookings endpoint with source:'pro' so the
+      // deposit / Checkout / email flow is consistent with the planning
+      // drawer. Bypassing the API (calling bookingService directly) would
+      // skip slot reservation, the deposit-payment-request email, and the
+      // pro-vs-public branching baked into the route.
+      const willAskDeposit = !!resolvedDeposit && askDeposit;
+      const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           providerId: provider.id,
-          clientName: formData.clientName.trim(),
-          clientPhone: formData.clientPhone.trim(),
-          serviceName: selectedService?.name || '',
+          locationId: formData.locationId,
+          serviceId: formData.serviceId,
+          memberId: formData.memberId || undefined,
           datetime: datetime.toISOString(),
-          duration: selectedService?.duration || 0,
-          price: selectedService?.price || 0,
-          locationName: selectedLocation?.name || '',
-          locationAddress: selectedLocation?.address || '',
-          memberName: selectedMember?.name,
-          bookingId: booking.id,
-          type: 'confirmation',
+          clientInfo: {
+            name: formData.clientName.trim(),
+            email: formData.clientEmail.trim(),
+            phone: formData.clientPhone.trim(),
+          },
+          source: 'pro',
+          askDeposit: willAskDeposit,
         }),
-      }).catch(() => {});
+      });
 
-      toast.success('Rendez-vous créé avec succès');
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || 'Erreur lors de la création');
+      }
+
+      // onBookingWrite Cloud Function fires the confirmation/notification
+      // emails (deferred until paid for pending_payment, immediate
+      // otherwise). The deposit-payment-request email is sent by the
+      // /api/bookings route itself when paymentRequested is true.
+
+      toast.success(
+        result.paymentRequested
+          ? `Lien de paiement envoyé à ${formData.clientEmail.trim()}`
+          : 'Rendez-vous créé avec succès',
+      );
       onCreated();
     } catch (error) {
       console.error('Error creating booking:', error);
@@ -523,6 +499,21 @@ export function CreateBookingModal({
   const selectedLocation = locations.find((l) => l.id === formData.locationId);
   const selectedMember = members.find((m) => m.id === formData.memberId);
   const selectedSlot = availableSlots.find((s) => s.time === formData.time);
+
+  // Resolved deposit for the selected service. null when no deposit
+  // applies, or when the deposits add-on isn't ready (Stripe Connect
+  // not active, add-on disabled). Same gating as the public flow.
+  const resolvedDeposit = useMemo(() => {
+    if (!provider || !selectedService) return null;
+    const ready =
+      provider.depositsAddonActive &&
+      provider.stripeConnectStatus === 'active';
+    if (!ready) return null;
+    return resolveDeposit(
+      { price: selectedService.price, deposit: selectedService.deposit },
+      { depositDefault: provider.settings?.depositDefault },
+    );
+  }, [provider, selectedService]);
 
   // Step progress
   // NOUVEAU MODÈLE: member step only if multiple members available for selected slot
@@ -893,6 +884,30 @@ export function CreateBookingModal({
                   {formData.notes && <p className="italic">{formData.notes}</p>}
                 </div>
               </div>
+
+              {resolvedDeposit && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={askDeposit}
+                      onChange={(e) => setAskDeposit(e.target.checked)}
+                      disabled={loading}
+                      className="mt-0.5 w-4 h-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                        Demander l'acompte au client
+                      </p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                        {askDeposit
+                          ? `Un email avec un lien de paiement de ${formatPrice(resolvedDeposit.amount)} sera envoyé. La résa reste en attente jusqu'au paiement (30 min max).`
+                          : "Aucune demande d'acompte. Vous encaisserez en personne."}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
             </div>
           )}
 
@@ -975,6 +990,11 @@ export function CreateBookingModal({
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Création...
+                </>
+              ) : resolvedDeposit && askDeposit ? (
+                <>
+                  <Check className="w-4 h-4 mr-1" />
+                  Créer et envoyer le lien
                 </>
               ) : (
                 <>

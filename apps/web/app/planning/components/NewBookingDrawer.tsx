@@ -13,6 +13,7 @@ import {
   ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody } from '@/components/ui';
+import { resolveDeposit } from '@booking-app/shared';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,11 @@ interface Service {
   price: number;
   bufferTime: number;
   categoryId: string | null;
+  deposit?: {
+    type: 'fixed' | 'percent';
+    value: number;
+    refundDeadlineHours: number;
+  } | null;
 }
 
 interface ServiceCategory {
@@ -36,6 +42,10 @@ interface ProviderSettings {
   requiresConfirmation: boolean;
   maxBookingAdvance: number;
   minBookingNotice: number;
+  depositDefault?: {
+    percent: number;
+    refundDeadlineHours: number;
+  } | null;
   [key: string]: unknown;
 }
 
@@ -45,6 +55,8 @@ interface BookingDataResponse {
     businessName: string;
     slug: string;
     settings: ProviderSettings;
+    depositsAddonActive: boolean;
+    stripeConnectStatus: 'pending' | 'active' | 'restricted' | null;
   };
   services: Service[];
   serviceCategories: ServiceCategory[];
@@ -103,8 +115,10 @@ export function NewBookingDrawer({
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotWithDate | null>(null);
   const [clientInfo, setClientInfo] = useState({ name: '', email: '', phone: '' });
+  const [askDeposit, setAskDeposit] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [paymentRequested, setPaymentRequested] = useState(false);
 
   // Fetch booking data on open
   useEffect(() => {
@@ -143,6 +157,8 @@ export function NewBookingDrawer({
       setSelectedSlot(null);
       setClientInfo({ name: '', email: '', phone: '' });
       setSubmitError(null);
+      setAskDeposit(true);
+      setPaymentRequested(false);
     }, 200);
   };
 
@@ -150,6 +166,23 @@ export function NewBookingDrawer({
     () => data?.services.find((s) => s.id === selectedServiceId) || null,
     [data, selectedServiceId]
   );
+
+  // Resolved deposit for the selected service. null when no deposit
+  // applies (no override + no provider default), or when the deposits
+  // add-on isn't active / Connect isn't ready — those gates exist on the
+  // server too; we mirror them here so we don't show a misleading
+  // checkbox the API would silently ignore.
+  const resolvedDeposit = useMemo(() => {
+    if (!data || !selectedService) return null;
+    const ready =
+      data.provider.depositsAddonActive &&
+      data.provider.stripeConnectStatus === 'active';
+    if (!ready) return null;
+    return resolveDeposit(
+      { price: selectedService.price, deposit: selectedService.deposit },
+      { depositDefault: data.provider.settings.depositDefault },
+    );
+  }, [data, selectedService]);
 
   const openDays = useMemo(() => {
     if (!data) return [];
@@ -182,6 +215,7 @@ export function NewBookingDrawer({
     setSubmitError(null);
 
     try {
+      const willAskDeposit = !!resolvedDeposit && askDeposit;
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -192,6 +226,8 @@ export function NewBookingDrawer({
           locationId: data.member.locationId,
           datetime: selectedSlot.datetime,
           clientInfo,
+          source: 'pro',
+          askDeposit: willAskDeposit,
         }),
       });
 
@@ -200,12 +236,15 @@ export function NewBookingDrawer({
         throw new Error(result.error || 'Erreur lors de la réservation');
       }
 
+      const result = await res.json();
+      setPaymentRequested(!!result.paymentRequested);
       setStep('success');
       onBookingCreated();
-      // Auto-close after showing confirmation
+      // Auto-close after showing confirmation. Give the pro a touch more
+      // time when a payment email was triggered so they can read it.
       setTimeout(() => {
         handleClose();
-      }, 2000);
+      }, result.paymentRequested ? 4000 : 2000);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
@@ -339,6 +378,9 @@ export function NewBookingDrawer({
                   requiresConfirmation={
                     data.provider.settings.requiresConfirmation
                   }
+                  resolvedDeposit={resolvedDeposit}
+                  askDeposit={askDeposit}
+                  onAskDepositChange={setAskDeposit}
                 />
               )}
 
@@ -347,9 +389,11 @@ export function NewBookingDrawer({
                   service={selectedService}
                   slot={selectedSlot}
                   clientName={clientInfo.name}
+                  clientEmail={clientInfo.email}
                   requiresConfirmation={
                     data.provider.settings.requiresConfirmation
                   }
+                  paymentRequested={paymentRequested}
                   onClose={handleClose}
                 />
               )}
@@ -844,6 +888,9 @@ function ClientStep({
   isSubmitting,
   error,
   requiresConfirmation,
+  resolvedDeposit,
+  askDeposit,
+  onAskDepositChange,
 }: {
   clientInfo: { name: string; email: string; phone: string };
   onChange: (info: Partial<typeof clientInfo>) => void;
@@ -852,6 +899,9 @@ function ClientStep({
   isSubmitting: boolean;
   error: string | null;
   requiresConfirmation: boolean;
+  resolvedDeposit: { amount: number; refundDeadlineHours: number; source: 'service' | 'default' } | null;
+  askDeposit: boolean;
+  onAskDepositChange: (v: boolean) => void;
 }) {
   const isNameValid = clientInfo.name.trim().length >= 2;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientInfo.email);
@@ -974,6 +1024,30 @@ function ClientStep({
           </div>
         )}
 
+        {resolvedDeposit && (
+          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={askDeposit}
+                onChange={(e) => onAskDepositChange(e.target.checked)}
+                disabled={isSubmitting}
+                className="mt-0.5 w-4 h-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500"
+              />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                  Demander l'acompte au client
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                  {askDeposit
+                    ? `Un email avec un lien de paiement de ${formatPrice(resolvedDeposit.amount)} sera envoyé. La résa reste en attente jusqu'au paiement.`
+                    : "Aucune demande d'acompte. Vous encaisserez en personne."}
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={!isValid || isSubmitting}
@@ -984,6 +1058,8 @@ function ClientStep({
               <Loader2 className="w-4 h-4 animate-spin" />
               Réservation en cours...
             </>
+          ) : resolvedDeposit && askDeposit ? (
+            'Créer et envoyer le lien de paiement'
           ) : (
             'Confirmer le rendez-vous'
           )}
@@ -999,25 +1075,42 @@ function SuccessStep({
   service,
   slot,
   clientName,
+  clientEmail,
   requiresConfirmation,
+  paymentRequested,
   onClose,
 }: {
   service: Service | null;
   slot: TimeSlotWithDate | null;
   clientName: string;
+  clientEmail: string;
   requiresConfirmation: boolean;
+  paymentRequested: boolean;
   onClose: () => void;
 }) {
+  const iconBg = paymentRequested
+    ? 'bg-amber-100 dark:bg-amber-900/30'
+    : 'bg-green-100 dark:bg-green-900/30';
+  const iconColor = paymentRequested
+    ? 'text-amber-600 dark:text-amber-400'
+    : 'text-green-600 dark:text-green-400';
+
   return (
     <div className="text-center py-4">
-      <div className="mx-auto w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
-        <CalendarCheck className="w-7 h-7 text-green-600 dark:text-green-400" />
+      <div className={`mx-auto w-14 h-14 rounded-full ${iconBg} flex items-center justify-center mb-4`}>
+        <CalendarCheck className={`w-7 h-7 ${iconColor}`} />
       </div>
       <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-        {requiresConfirmation ? 'Rendez-vous créé' : 'Rendez-vous confirmé'}
+        {paymentRequested
+          ? 'Lien de paiement envoyé'
+          : requiresConfirmation
+          ? 'Rendez-vous créé'
+          : 'Rendez-vous confirmé'}
       </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        {requiresConfirmation
+        {paymentRequested
+          ? `Un email a été envoyé à ${clientEmail} avec le lien de paiement. La résa restera en attente jusqu'au paiement (30 min max).`
+          : requiresConfirmation
           ? 'Le rendez-vous est en attente de confirmation.'
           : 'Le rendez-vous a été ajouté à votre planning.'}
       </p>
