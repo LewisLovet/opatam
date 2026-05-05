@@ -85,36 +85,90 @@ async function checkAddon(stripe: Stripe): Promise<CheckResult> {
   }
 }
 
+/**
+ * Stripe has two generations of webhook endpoints:
+ *
+ *  1. **V1 (legacy)** — `stripe.webhookEndpoints.*` API. The endpoint
+ *     object has a `connect: boolean` flag that tells you whether it
+ *     listens to platform events or events from connected accounts.
+ *
+ *  2. **V2 (current)** — `stripe.v2.core.eventDestinations.*` API.
+ *     Same idea but the Connect distinction is in `events_from`:
+ *     `'self'` for platform events, `'other_accounts'` for Connect
+ *     events.
+ *
+ * The Stripe Dashboard now creates Connect endpoints exclusively via
+ * V2, so we have to merge both lists to give the user a true picture.
+ * The webhook handler itself accepts events from either generation —
+ * Stripe signs them the same way and our `getWebhookSecrets()` tries
+ * each configured signing secret.
+ */
 async function checkWebhooks(
   stripe: Stripe,
 ): Promise<{ platform: CheckResult; connect: CheckResult }> {
-  const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
+  // ─── V1 endpoints ─────────────────────────────────────────────────
+  const v1Endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
+  type V1WithConnect = Stripe.WebhookEndpoint & { connect?: boolean };
 
-  // Stripe distinguishes platform vs Connect endpoints via the
-  // `connect` boolean on the endpoint object (not exposed in the
-  // current TS types but present in the JSON). Connect endpoints
-  // receive events from connected accounts; platform endpoints
-  // receive events on the main account.
-  type EndpointWithConnect = Stripe.WebhookEndpoint & { connect?: boolean };
-  const platformEndpoints = endpoints.data.filter(
-    (e) => !(e as EndpointWithConnect).connect,
+  const v1Platform = v1Endpoints.data.filter(
+    (e) => !(e as V1WithConnect).connect,
   );
-  const connectEndpoints = endpoints.data.filter(
-    (e) => (e as EndpointWithConnect).connect === true,
+  const v1Connect = v1Endpoints.data.filter(
+    (e) => (e as V1WithConnect).connect === true,
   );
 
-  const platformEvents = new Set(
-    platformEndpoints.flatMap((e) => e.enabled_events),
-  );
-  const connectEvents = new Set(
-    connectEndpoints.flatMap((e) => e.enabled_events),
-  );
-  const platformWildcard = platformEndpoints.some((e) =>
-    e.enabled_events.includes('*'),
-  );
-  const connectWildcard = connectEndpoints.some((e) =>
-    e.enabled_events.includes('*'),
-  );
+  // ─── V2 event destinations ────────────────────────────────────────
+  // Older SDK versions don't expose the v2 namespace yet — we tolerate
+  // that and fall back to V1-only.
+  let v2Platform: Array<{ id: string; name: string; status: string; enabled_events: string[] }> = [];
+  let v2Connect: typeof v2Platform = [];
+  try {
+    const v2 = (stripe as unknown as {
+      v2?: { core?: { eventDestinations?: { list: (params: { limit: number }) => AsyncIterable<unknown> & { data?: unknown[] } } } };
+    }).v2?.core?.eventDestinations;
+    if (v2) {
+      const page = await (v2.list({ limit: 100 }) as unknown as Promise<{
+        data: Array<{
+          id: string;
+          name: string;
+          status: 'enabled' | 'disabled';
+          enabled_events: string[];
+          events_from?: Array<'self' | 'other_accounts'>;
+        }>;
+      }>);
+      for (const dest of page.data ?? []) {
+        if (dest.status !== 'enabled') continue;
+        const isConnect = dest.events_from?.includes('other_accounts') ?? false;
+        const isPlatform = dest.events_from?.includes('self') ?? !isConnect;
+        const slim = {
+          id: dest.id,
+          name: dest.name,
+          status: dest.status,
+          enabled_events: dest.enabled_events,
+        };
+        if (isConnect) v2Connect.push(slim);
+        if (isPlatform) v2Platform.push(slim);
+      }
+    }
+  } catch {
+    // SDK without v2 support — leave the v2 lists empty.
+  }
+
+  // ─── Merge both generations ───────────────────────────────────────
+  const platformEvents = new Set([
+    ...v1Platform.flatMap((e) => e.enabled_events),
+    ...v2Platform.flatMap((e) => e.enabled_events),
+  ]);
+  const connectEvents = new Set([
+    ...v1Connect.flatMap((e) => e.enabled_events),
+    ...v2Connect.flatMap((e) => e.enabled_events),
+  ]);
+  const platformWildcard =
+    v1Platform.some((e) => e.enabled_events.includes('*')) ||
+    v2Platform.some((e) => e.enabled_events.includes('*'));
+  const connectWildcard =
+    v1Connect.some((e) => e.enabled_events.includes('*')) ||
+    v2Connect.some((e) => e.enabled_events.includes('*'));
 
   const missingPlatform = platformWildcard
     ? []
@@ -123,38 +177,51 @@ async function checkWebhooks(
     ? []
     : REQUIRED_CONNECT_EVENTS.filter((evt) => !connectEvents.has(evt));
 
-  const summarise = (eps: typeof platformEndpoints) =>
+  const platformCount = v1Platform.length + v2Platform.length;
+  const connectCount = v1Connect.length + v2Connect.length;
+
+  const summariseV1 = (eps: Stripe.WebhookEndpoint[]) =>
     eps.map((e) => ({
+      generation: 'v1' as const,
       id: e.id,
       url: e.url,
       status: e.status,
       enabled_events: e.enabled_events,
     }));
 
+  const summariseV2 = (eps: typeof v2Platform) =>
+    eps.map((e) => ({
+      generation: 'v2' as const,
+      id: e.id,
+      name: e.name,
+      status: e.status,
+      enabled_events: e.enabled_events,
+    }));
+
   return {
     platform: {
-      ok: platformEndpoints.length > 0 && missingPlatform.length === 0,
+      ok: platformCount > 0 && missingPlatform.length === 0,
       detail:
-        platformEndpoints.length === 0
+        platformCount === 0
           ? 'Aucun endpoint plateforme configuré'
           : missingPlatform.length === 0
-            ? `${platformEndpoints.length} endpoint(s) plateforme actif(s) — tous les events requis sont écoutés`
+            ? `${platformCount} endpoint(s) plateforme actif(s) — tous les events requis sont écoutés`
             : `Manque sur le webhook plateforme : ${missingPlatform.join(', ')}`,
       data: {
-        endpoints: summarise(platformEndpoints),
+        endpoints: [...summariseV1(v1Platform), ...summariseV2(v2Platform)],
         missingEvents: missingPlatform,
       },
     },
     connect: {
-      ok: connectEndpoints.length > 0 && missingConnect.length === 0,
+      ok: connectCount > 0 && missingConnect.length === 0,
       detail:
-        connectEndpoints.length === 0
-          ? 'Aucun endpoint Connect configuré (créez-en un avec l\'option "Connected accounts" cochée)'
+        connectCount === 0
+          ? 'Aucun endpoint Connect configuré (créez-en un et choisissez "Comptes connectés" comme source)'
           : missingConnect.length === 0
-            ? `${connectEndpoints.length} endpoint(s) Connect actif(s) — tous les events requis sont écoutés`
+            ? `${connectCount} endpoint(s) Connect actif(s) — tous les events requis sont écoutés`
             : `Manque sur le webhook Connect : ${missingConnect.join(', ')}`,
       data: {
-        endpoints: summarise(connectEndpoints),
+        endpoints: [...summariseV1(v1Connect), ...summariseV2(v2Connect)],
         missingEvents: missingConnect,
       },
     },
