@@ -79,6 +79,11 @@ const navSections: { title: string; items: NavItem[] }[] = [
         label: 'Acomptes — check prod',
         icon: <CheckCircle2 className="w-4 h-4" />,
       },
+      {
+        href: '/dev/tools/deposits-playground',
+        label: 'Acomptes — playground',
+        icon: <Sparkles className="w-4 h-4" />,
+      },
     ],
   },
   {
