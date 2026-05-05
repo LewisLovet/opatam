@@ -90,69 +90,71 @@ async function checkWebhooks(
 ): Promise<{ platform: CheckResult; connect: CheckResult }> {
   const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
 
-  // Platform endpoint = api_version specified, application=null,
-  // listens to platform-level events (no Connect-specific events
-  // unless connect:true is set).
+  // Stripe distinguishes platform vs Connect endpoints via the
+  // `connect` boolean on the endpoint object (not exposed in the
+  // current TS types but present in the JSON). Connect endpoints
+  // receive events from connected accounts; platform endpoints
+  // receive events on the main account.
+  type EndpointWithConnect = Stripe.WebhookEndpoint & { connect?: boolean };
   const platformEndpoints = endpoints.data.filter(
-    (e) => e.application === null,
+    (e) => !(e as EndpointWithConnect).connect,
+  );
+  const connectEndpoints = endpoints.data.filter(
+    (e) => (e as EndpointWithConnect).connect === true,
   );
 
-  // A "Connect endpoint" can be either:
-  //  - A dedicated endpoint with the Connect flag (in API: not exposed
-  //    directly, but inferable via the `connect` param being true on
-  //    creation — Stripe doesn't return it)
-  //  - The platform endpoint also listening on Connect events (set
-  //    "Listen to events on connected accounts" in the Dashboard)
-  // We can't tell directly, so we report what events are listened
-  // to and leave it to the human to verify the Connect flag.
-  // Heuristic: if any endpoint listens to Connect-only events
-  // (charge.refunded on Connect doesn't differ from platform but
-  // checkout.session.expired with bookingId metadata does), assume OK.
-  const connectCandidates = platformEndpoints.filter((e) =>
-    e.enabled_events.some((evt) => REQUIRED_CONNECT_EVENTS.includes(evt)),
-  );
-
-  // Find which platform events are missing across ALL endpoints
-  const allListenedEvents = new Set(
+  const platformEvents = new Set(
     platformEndpoints.flatMap((e) => e.enabled_events),
   );
-  const wildcardListening = platformEndpoints.some((e) =>
+  const connectEvents = new Set(
+    connectEndpoints.flatMap((e) => e.enabled_events),
+  );
+  const platformWildcard = platformEndpoints.some((e) =>
+    e.enabled_events.includes('*'),
+  );
+  const connectWildcard = connectEndpoints.some((e) =>
     e.enabled_events.includes('*'),
   );
 
-  const missingPlatform = wildcardListening
+  const missingPlatform = platformWildcard
     ? []
-    : REQUIRED_PLATFORM_EVENTS.filter((evt) => !allListenedEvents.has(evt));
-  const missingConnect = wildcardListening
+    : REQUIRED_PLATFORM_EVENTS.filter((evt) => !platformEvents.has(evt));
+  const missingConnect = connectWildcard
     ? []
-    : REQUIRED_CONNECT_EVENTS.filter((evt) => !allListenedEvents.has(evt));
+    : REQUIRED_CONNECT_EVENTS.filter((evt) => !connectEvents.has(evt));
+
+  const summarise = (eps: typeof platformEndpoints) =>
+    eps.map((e) => ({
+      id: e.id,
+      url: e.url,
+      status: e.status,
+      enabled_events: e.enabled_events,
+    }));
 
   return {
     platform: {
-      ok: missingPlatform.length === 0,
+      ok: platformEndpoints.length > 0 && missingPlatform.length === 0,
       detail:
-        missingPlatform.length === 0
-          ? `${platformEndpoints.length} endpoint(s) actif(s) — tous les events plateforme requis sont écoutés`
-          : `Manque sur le webhook plateforme : ${missingPlatform.join(', ')}`,
+        platformEndpoints.length === 0
+          ? 'Aucun endpoint plateforme configuré'
+          : missingPlatform.length === 0
+            ? `${platformEndpoints.length} endpoint(s) plateforme actif(s) — tous les events requis sont écoutés`
+            : `Manque sur le webhook plateforme : ${missingPlatform.join(', ')}`,
       data: {
-        endpoints: platformEndpoints.map((e) => ({
-          id: e.id,
-          url: e.url,
-          status: e.status,
-          enabled_events: e.enabled_events,
-        })),
+        endpoints: summarise(platformEndpoints),
         missingEvents: missingPlatform,
       },
     },
     connect: {
-      ok: missingConnect.length === 0 && connectCandidates.length > 0,
+      ok: connectEndpoints.length > 0 && missingConnect.length === 0,
       detail:
-        missingConnect.length === 0 && connectCandidates.length > 0
-          ? `${connectCandidates.length} endpoint(s) écoutant les events Connect — vérifiez manuellement le flag "Listen to events on connected accounts"`
-          : missingConnect.length > 0
-            ? `Manque pour les events Connect : ${missingConnect.join(', ')}`
-            : `Aucun endpoint ne semble écouter les events Connect requis`,
+        connectEndpoints.length === 0
+          ? 'Aucun endpoint Connect configuré (créez-en un avec l\'option "Connected accounts" cochée)'
+          : missingConnect.length === 0
+            ? `${connectEndpoints.length} endpoint(s) Connect actif(s) — tous les events requis sont écoutés`
+            : `Manque sur le webhook Connect : ${missingConnect.join(', ')}`,
       data: {
+        endpoints: summarise(connectEndpoints),
         missingEvents: missingConnect,
       },
     },
