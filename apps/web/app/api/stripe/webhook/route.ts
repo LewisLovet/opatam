@@ -126,6 +126,11 @@ export async function POST(request: NextRequest) {
         await handleInvoicePaid(db, stripe, invoice);
         break;
       }
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice;
+        await handleInvoicePaymentFailed(db, stripe, invoice);
+        break;
+      }
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         await handleSubscriptionUpdated(db, stripe, subscription);
@@ -139,6 +144,25 @@ export async function POST(request: NextRequest) {
       case 'account.updated': {
         const account = event.data.object as Stripe.Account;
         await handleConnectAccountUpdated(db, account);
+        break;
+      }
+      case 'account.application.deauthorized': {
+        // Connect-account event: arrives with `account` field set to
+        // the deauthorized acct_… on the platform stream.
+        const accountId = (event as unknown as { account?: string }).account;
+        if (accountId) {
+          await handleAccountDeauthorized(db, accountId);
+        }
+        break;
+      }
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as Stripe.Dispute;
+        await handleChargeDisputeCreated(db, dispute);
+        break;
+      }
+      case 'payment_intent.payment_failed': {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        await handlePaymentIntentFailed(db, intent);
         break;
       }
       default:
@@ -1093,4 +1117,387 @@ async function handleDepositCheckoutExpired(
   console.log(
     `[STRIPE-WEBHOOK] booking ${bookingId} deleted (deposit checkout expired)`,
   );
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// invoice.payment_failed — pro's recurring payment was declined
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Stripe will retry the charge a few times over ~21 days; in between
+ * we mark the subscription `past_due` and email the pro so they can
+ * update their card before Stripe gives up and cancels the sub.
+ *
+ * Idempotent on retries: setting the same status twice is a no-op,
+ * and the "lastPaymentFailedAt" is just refreshed.
+ */
+async function handleInvoicePaymentFailed(
+  db: FirebaseFirestore.Firestore,
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+) {
+  console.log('[STRIPE-WEBHOOK] invoice.payment_failed');
+
+  const subscriptionId = extractId((invoice as any).subscription);
+  if (!subscriptionId) {
+    console.error('[STRIPE-WEBHOOK] No subscription on failed invoice — skipping');
+    return;
+  }
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const providerId = subscription.metadata?.providerId;
+  if (!providerId) {
+    console.warn('[STRIPE-WEBHOOK] No providerId on failed-payment subscription metadata');
+    return;
+  }
+
+  const providerRef = db.collection('providers').doc(providerId);
+  const providerDoc = await providerRef.get();
+  if (!providerDoc.exists) return;
+
+  await providerRef.update({
+    'subscription.status': 'past_due',
+    'subscription.lastPaymentFailedAt': new Date(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  console.log(`[STRIPE-WEBHOOK] Provider ${providerId} marked past_due`);
+
+  // Surface the issue to the pro. Stripe also has its own dunning
+  // emails but they're generic — ours has direct links to update the
+  // card via the Stripe Customer Portal.
+  try {
+    const data = providerDoc.data()!;
+    const email = data.email || data.contactEmail;
+    const name = data.businessName || data.ownerName || 'cher partenaire';
+    if (email) {
+      await sendPaymentFailedEmail({
+        providerEmail: email,
+        providerName: name,
+        amount: invoice.amount_due ?? 0,
+        currency: invoice.currency || 'eur',
+        attemptCount: invoice.attempt_count ?? 1,
+        nextAttempt: invoice.next_payment_attempt
+          ? new Date(invoice.next_payment_attempt * 1000)
+          : null,
+      });
+    }
+  } catch (err) {
+    console.error('[STRIPE-WEBHOOK] payment-failed email error:', err);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// account.application.deauthorized — pro revoked Connect access
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Pro disconnected our app from their Stripe account (rare but
+ * possible — happens if they revoke from the Stripe Dashboard).
+ * Reset their Connect state and disable the deposits add-on so the
+ * UI reflects that they can no longer accept deposit payments.
+ */
+async function handleAccountDeauthorized(
+  db: FirebaseFirestore.Firestore,
+  accountId: string,
+) {
+  console.log(`[STRIPE-WEBHOOK] account.application.deauthorized: ${accountId}`);
+
+  const snap = await db
+    .collection('providers')
+    .where('stripeConnectAccountId', '==', accountId)
+    .limit(1)
+    .get();
+
+  if (snap.empty) {
+    console.log(`[STRIPE-WEBHOOK] No provider for deauthorized account ${accountId}`);
+    return;
+  }
+
+  const docRef = snap.docs[0].ref;
+  await docRef.update({
+    stripeConnectAccountId: null,
+    stripeConnectStatus: null,
+    stripeConnectChargesEnabled: false,
+    stripeConnectPayoutsEnabled: false,
+    depositsAddonActive: false,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  console.log(`[STRIPE-WEBHOOK] provider ${snap.docs[0].id}: Connect deauthorized, deposits disabled`);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// charge.dispute.created — client filed a chargeback on a deposit
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * The client's bank initiated a dispute on the acompte charge.
+ * Stripe puts the funds on hold immediately and the pro has a
+ * deadline (usually ~7 days) to provide evidence or accept the
+ * dispute. We record the dispute on the booking and email the pro
+ * with full context (which client, which RDV, the dispute reason).
+ *
+ * Disputes can fire on either Direct charges (web Checkout, on the
+ * connected account) or Destination charges (mobile, on the
+ * platform). The query by paymentIntentId works for both.
+ */
+async function handleChargeDisputeCreated(
+  db: FirebaseFirestore.Firestore,
+  dispute: Stripe.Dispute,
+) {
+  const paymentIntentId = extractId(dispute.payment_intent as any);
+  if (!paymentIntentId) {
+    console.warn('[STRIPE-WEBHOOK] dispute with no payment_intent — skipping');
+    return;
+  }
+
+  console.log(`[STRIPE-WEBHOOK] charge.dispute.created on ${paymentIntentId}`);
+
+  const snap = await db
+    .collection('bookings')
+    .where('deposit.paymentIntentId', '==', paymentIntentId)
+    .limit(1)
+    .get();
+
+  if (snap.empty) {
+    console.log(`[STRIPE-WEBHOOK] No booking found for disputed PI ${paymentIntentId}`);
+    return;
+  }
+
+  const doc = snap.docs[0];
+  const booking = doc.data();
+
+  await doc.ref.update({
+    'deposit.disputeId': dispute.id,
+    'deposit.disputeStatus': dispute.status,
+    'deposit.disputeReason': dispute.reason,
+    'deposit.disputedAt': new Date(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  // Notify the pro. Without this they only see the generic Stripe
+  // dispute email — our version links it back to the specific RDV.
+  try {
+    const providerDoc = await db.collection('providers').doc(booking.providerId).get();
+    const providerData = providerDoc.data();
+    const providerEmail = providerData?.email || providerData?.contactEmail;
+    if (providerEmail) {
+      await sendDepositDisputeEmail({
+        providerEmail,
+        providerName: providerData?.businessName || 'cher partenaire',
+        clientName: booking.clientInfo?.name || 'le client',
+        serviceName: booking.serviceName,
+        bookingDatetime: booking.datetime?.toDate?.() ?? new Date(),
+        disputedAmount: dispute.amount,
+        currency: dispute.currency || 'eur',
+        disputeReason: dispute.reason,
+        evidenceDeadline: dispute.evidence_details?.due_by
+          ? new Date(dispute.evidence_details.due_by * 1000)
+          : null,
+        bookingId: doc.id,
+      });
+    }
+  } catch (err) {
+    console.error('[STRIPE-WEBHOOK] dispute email error:', err);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// payment_intent.payment_failed — card declined on deposit attempt
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Card declined / 3DS fail / etc. Mostly informational since the
+ * client is still on the Checkout page (or PaymentSheet) and can
+ * retry — Stripe will not auto-retry a PI. We just log it so we can
+ * see decline rates in our analytics later.
+ */
+async function handlePaymentIntentFailed(
+  db: FirebaseFirestore.Firestore,
+  intent: Stripe.PaymentIntent,
+) {
+  const bookingId = intent.metadata?.bookingId;
+  if (!bookingId) return;
+
+  const reason =
+    intent.last_payment_error?.code ||
+    intent.last_payment_error?.decline_code ||
+    'unknown';
+
+  console.log(
+    `[STRIPE-WEBHOOK] payment_intent.payment_failed for booking ${bookingId}: ${reason}`,
+  );
+
+  // Best-effort log on the booking itself for support visibility.
+  // The booking stays in pending_payment so the cron purges it on
+  // the same 30-min schedule if the client doesn't come back.
+  await db
+    .collection('bookings')
+    .doc(bookingId)
+    .update({
+      'deposit.lastFailureCode': reason,
+      'deposit.lastFailureAt': new Date(),
+    })
+    .catch((err) => {
+      console.warn(`[STRIPE-WEBHOOK] couldn't tag booking ${bookingId}:`, err);
+    });
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Email helpers for the new webhook events
+// ────────────────────────────────────────────────────────────────────────
+
+function formatPriceCents(amount: number, currency: string): string {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+  }).format(amount / 100);
+}
+
+async function sendPaymentFailedEmail(args: {
+  providerEmail: string;
+  providerName: string;
+  amount: number;
+  currency: string;
+  attemptCount: number;
+  nextAttempt: Date | null;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[STRIPE-WEBHOOK] RESEND_API_KEY missing, skipping payment-failed email');
+    return;
+  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
+  const portalUrl = `${appUrl}/pro/parametres?tab=abonnement`;
+  const formattedAmount = formatPriceCents(args.amount, args.currency);
+  const nextAttemptStr = args.nextAttempt
+    ? args.nextAttempt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+    : null;
+
+  const subject = `Paiement de votre abonnement Opatam échoué`;
+  const html = `
+    <!DOCTYPE html><html><head><meta charset="utf-8"></head>
+    <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f4f5;">
+      <table style="width:100%;border-collapse:collapse;"><tr><td align="center" style="padding:40px 20px;">
+        <table style="max-width:480px;width:100%;border-collapse:collapse;background:#fff;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+          <tr><td style="padding:32px 32px 24px;">
+            <p style="margin:0 0 16px;font-size:16px;color:#3f3f46;">Bonjour ${args.providerName},</p>
+            <p style="margin:0 0 24px;font-size:16px;color:#3f3f46;">Le paiement de votre abonnement Opatam de <strong>${formattedAmount}</strong> a <strong style="color:#dc2626;">échoué</strong>.</p>
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:20px;margin-bottom:24px;">
+              <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;">Action requise</p>
+              <p style="margin:0;font-size:14px;color:#991b1b;line-height:1.5;">Tentative ${args.attemptCount} sur 4. ${nextAttemptStr ? `Stripe réessaiera le ${nextAttemptStr}.` : ''} Sans paiement réussi, votre abonnement sera annulé sous ~21 jours.</p>
+            </div>
+            <p style="margin:0 0 24px;font-size:15px;color:#3f3f46;">Mettez à jour votre moyen de paiement maintenant pour éviter toute interruption.</p>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:16px;"><tr><td align="center"><a href="${portalUrl}" style="display:inline-block;padding:14px 32px;background:#dc2626;color:#fff;text-decoration:none;font-size:16px;font-weight:600;border-radius:8px;">Mettre à jour mon paiement</a></td></tr></table>
+          </td></tr>
+          <tr><td style="padding:24px 32px 32px;border-top:1px solid #e4e4e7;">
+            <p style="margin:0;font-size:14px;color:#71717a;text-align:center;">L'équipe Opatam</p>
+          </td></tr>
+        </table>
+      </td></tr></table>
+    </body></html>
+  `;
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from: 'Opatam <noreply@kamerleontech.com>',
+    to: args.providerEmail,
+    subject,
+    html,
+  });
+  if (error) console.error('[STRIPE-WEBHOOK] payment-failed email error:', error);
+}
+
+async function sendDepositDisputeEmail(args: {
+  providerEmail: string;
+  providerName: string;
+  clientName: string;
+  serviceName: string;
+  bookingDatetime: Date;
+  disputedAmount: number;
+  currency: string;
+  disputeReason: string;
+  evidenceDeadline: Date | null;
+  bookingId: string;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
+  const formattedAmount = formatPriceCents(args.disputedAmount, args.currency);
+  const formattedDate = args.bookingDatetime.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  const formattedTime = args.bookingDatetime.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const evidenceDateStr = args.evidenceDeadline
+    ? args.evidenceDeadline.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : null;
+
+  // Plain-French translation of common dispute reasons
+  const reasonLabels: Record<string, string> = {
+    fraudulent: 'fraude présumée',
+    duplicate: 'paiement en double',
+    subscription_canceled: 'abonnement annulé',
+    product_unacceptable: 'produit non conforme',
+    product_not_received: 'produit non reçu',
+    unrecognized: 'transaction non reconnue',
+    credit_not_processed: 'remboursement non traité',
+    general: 'litige général',
+  };
+  const reasonFr = reasonLabels[args.disputeReason] ?? args.disputeReason;
+
+  const subject = `⚠️ Litige sur l'acompte de ${args.clientName}`;
+  const html = `
+    <!DOCTYPE html><html><head><meta charset="utf-8"></head>
+    <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f4f5;">
+      <table style="width:100%;border-collapse:collapse;"><tr><td align="center" style="padding:40px 20px;">
+        <table style="max-width:480px;width:100%;border-collapse:collapse;background:#fff;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+          <tr><td style="padding:32px 32px 24px;">
+            <p style="margin:0 0 16px;font-size:16px;color:#3f3f46;">Bonjour ${args.providerName},</p>
+            <p style="margin:0 0 24px;font-size:16px;color:#3f3f46;"><strong>${args.clientName}</strong> a contesté l'acompte de <strong>${formattedAmount}</strong> auprès de sa banque.</p>
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:20px;margin-bottom:24px;">
+              <p style="margin:0 0 12px;font-size:14px;font-weight:600;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;">Litige en cours</p>
+              <table style="width:100%;border-collapse:collapse;">
+                <tr><td style="padding:4px 0;font-size:14px;color:#71717a;width:120px;">Client</td><td style="padding:4px 0;font-size:14px;color:#18181b;font-weight:500;">${args.clientName}</td></tr>
+                <tr><td style="padding:4px 0;font-size:14px;color:#71717a;">Prestation</td><td style="padding:4px 0;font-size:14px;color:#18181b;font-weight:500;">${args.serviceName}</td></tr>
+                <tr><td style="padding:4px 0;font-size:14px;color:#71717a;">RDV</td><td style="padding:4px 0;font-size:14px;color:#18181b;font-weight:500;text-transform:capitalize;">${formattedDate} à ${formattedTime}</td></tr>
+                <tr><td style="padding:4px 0;font-size:14px;color:#71717a;">Motif</td><td style="padding:4px 0;font-size:14px;color:#18181b;">${reasonFr}</td></tr>
+                ${evidenceDateStr ? `<tr><td style="padding:8px 0 4px;font-size:14px;color:#71717a;">Délai</td><td style="padding:8px 0 4px;font-size:14px;color:#dc2626;font-weight:600;">Avant le ${evidenceDateStr}</td></tr>` : ''}
+              </table>
+            </div>
+            <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">L'acompte de <strong>${formattedAmount}</strong> est temporairement gelé par Stripe. Pour le récupérer :</p>
+            <ol style="margin:0 0 24px;padding-left:20px;font-size:14px;color:#3f3f46;line-height:1.6;">
+              <li>Connectez-vous à votre compte Stripe</li>
+              <li>Allez dans <strong>Paiements → Litiges</strong></li>
+              <li>Fournissez les preuves : confirmation de RDV, échanges, etc.</li>
+            </ol>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:16px;"><tr><td align="center"><a href="https://dashboard.stripe.com/disputes" style="display:inline-block;padding:14px 32px;background:#635bff;color:#fff;text-decoration:none;font-size:16px;font-weight:600;border-radius:8px;">Gérer le litige sur Stripe</a></td></tr></table>
+            <p style="margin:0;font-size:13px;color:#71717a;text-align:center;">RDV concerné dans Opatam : <a href="${appUrl}/pro/reservations" style="color:#3b82f6;">voir mes réservations</a></p>
+          </td></tr>
+          <tr><td style="padding:24px 32px 32px;border-top:1px solid #e4e4e7;">
+            <p style="margin:0;font-size:14px;color:#71717a;text-align:center;">L'équipe Opatam</p>
+          </td></tr>
+        </table>
+      </td></tr></table>
+    </body></html>
+  `;
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from: 'Opatam <noreply@kamerleontech.com>',
+    to: args.providerEmail,
+    subject,
+    html,
+  });
+  if (error) console.error('[STRIPE-WEBHOOK] dispute email error:', error);
 }
