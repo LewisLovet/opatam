@@ -149,6 +149,70 @@ export default function DepositsPlaygroundPage() {
     }
   };
 
+  const triggerViaStripe = async (bookingId: string, event: SimEvent, label: string) => {
+    setBusy(`${bookingId}:trigger:${event}`);
+    appendLogs([
+      {
+        ts: new Date().toISOString(),
+        level: 'info',
+        message: `→ stripe trigger "${label}" — l'event va passer par stripe listen + le vrai handler`,
+      },
+    ]);
+    try {
+      const res = await fetch('/api/dev/deposits-playground/stripe-trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, event }),
+      });
+      const data = await res.json();
+      if (data.command) {
+        appendLogs([
+          { ts: new Date().toISOString(), level: 'info', message: `$ ${data.command}` },
+        ]);
+      }
+      if (data.ok) {
+        appendLogs([
+          {
+            ts: new Date().toISOString(),
+            level: 'success',
+            message: `Stripe a émis l'event — vérifie tes terminaux stripe listen + les logs Next.js du webhook`,
+          },
+        ]);
+        if (data.stdout) {
+          for (const line of String(data.stdout).split('\n').filter(Boolean)) {
+            appendLogs([{ ts: new Date().toISOString(), level: 'info', message: `  ${line}` }]);
+          }
+        }
+      } else {
+        appendLogs([
+          {
+            ts: new Date().toISOString(),
+            level: 'error',
+            message: data.error || 'Échec stripe trigger',
+          },
+        ]);
+        if (data.stderr) {
+          for (const line of String(data.stderr).split('\n').filter(Boolean)) {
+            appendLogs([{ ts: new Date().toISOString(), level: 'warn', message: `  ${line}` }]);
+          }
+        }
+      }
+      // Reload after a brief delay so the webhook has time to mutate
+      // before we re-fetch the booking list.
+      setTimeout(() => reload(), 1500);
+    } catch (e) {
+      appendLogs([
+        {
+          ts: new Date().toISOString(),
+          level: 'error',
+          message: e instanceof Error ? e.message : 'Erreur',
+        },
+      ]);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const cleanup = async () => {
     if (!confirm('Supprimer TOUS les bookings playground ?')) return;
     setBusy('cleanup');
@@ -237,7 +301,13 @@ export default function DepositsPlaygroundPage() {
           </div>
         ) : (
           bookings.map((b) => (
-            <BookingCard key={b.id} booking={b} busy={busy} onSimulate={simulate} />
+            <BookingCard
+              key={b.id}
+              booking={b}
+              busy={busy}
+              onSimulate={simulate}
+              onTriggerViaStripe={triggerViaStripe}
+            />
           ))
         )}
       </div>
@@ -328,10 +398,12 @@ function BookingCard({
   booking,
   busy,
   onSimulate,
+  onTriggerViaStripe,
 }: {
   booking: Booking;
   busy: string | null;
   onSimulate: (id: string, event: SimEvent, label: string) => void;
+  onTriggerViaStripe: (id: string, event: SimEvent, label: string) => void;
 }) {
   const isInDeadline = (() => {
     if (!booking.datetime || !booking.deposit) return false;
@@ -372,11 +444,14 @@ function BookingCard({
         </div>
       </div>
 
-      {/* Webhook simulation buttons */}
+      {/* Mode 1 — Direct Firestore mutation (no Stripe involved) */}
       <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <p className="w-full text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
-          Simuler un événement Stripe
-        </p>
+        <div className="w-full flex items-center gap-2 mb-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Mutation directe Firestore
+          </p>
+          <span className="text-xs text-gray-400">— rapide, pas de Stripe</span>
+        </div>
         {EVENTS.map((evt) => {
           const Icon = evt.icon;
           const key = `${booking.id}:${evt.id}`;
@@ -397,6 +472,34 @@ function BookingCard({
                   ? 'border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/20'
                   : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
               }`}
+            >
+              {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
+              {evt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Mode 2 — Real Stripe event via stripe trigger */}
+      <div className="flex flex-wrap gap-2 pt-3">
+        <div className="w-full flex items-center gap-2 mb-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-purple-600 dark:text-purple-400">
+            Via Stripe CLI (réel)
+          </p>
+          <span className="text-xs text-gray-400">
+            — passe par <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">stripe listen</code> et le vrai webhook
+          </span>
+        </div>
+        {EVENTS.map((evt) => {
+          const Icon = evt.icon;
+          const key = `${booking.id}:trigger:${evt.id}`;
+          const isBusy = busy === key;
+          return (
+            <button
+              key={evt.id}
+              onClick={() => onTriggerViaStripe(booking.id, evt.id, evt.label)}
+              disabled={busy !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-900/20 transition-colors disabled:opacity-50"
             >
               {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               {evt.label}
