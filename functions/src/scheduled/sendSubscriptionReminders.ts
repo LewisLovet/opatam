@@ -1,19 +1,21 @@
 /**
  * Scheduled: sendSubscriptionReminders
  *
- * Runs daily at 9:00 AM (Europe/Paris) to send reminders to providers
- * whose subscription is about to expire.
+ * Runs daily at 9:00 AM (Europe/Paris).
  *
- * Sends:
- * - J-7: "Votre abonnement expire dans 7 jours"
- * - J-1: "Votre abonnement expire demain"
- * - J (expired): "Votre page a été dépubliée"
+ * Sends two families of reminders:
  *
- * Also sends reminders to:
- * - Providers with unpublished pages (active subscription but not published)
- * - Providers who haven't shared their page recently (incite to share)
+ * 1. Subscription expiry (every day):
+ *    - J-7: "Votre abonnement expire dans 7 jours"
+ *    - J-1: "Votre abonnement expire demain"
+ *    - J (expired): "Votre page a été dépubliée"
+ *    Dedupe: `expiryRemindersSent: string[]` on the provider doc.
  *
- * Deduplication via expiryRemindersSent field on provider document.
+ * 2. Unpublished page (Monday + Friday only):
+ *    All trial + paid providers whose `isPublished == false`.
+ *    Dedupe: `unpublishedReminderLastSent` (skip if sent in last 24h).
+ *
+ * Both push notifications and email are sent.
  */
 
 import { onSchedule } from 'firebase-functions/v2/scheduler';
@@ -117,12 +119,14 @@ export const sendSubscriptionReminders = onSchedule(
       }
 
       // ─── 2. Unpublished page reminders ────────────────────────────────
-      // Trial providers: send on Monday (1), Wednesday (3), Friday (5)
-      // Active (paid) providers: send once per week max
+      // All providers (trial + paid) get a reminder every Monday and
+      // Friday until they publish. The Firestore where('isPublished', '==',
+      // false) below is the safety net: a published provider is filtered
+      // out at the query level, so the cron physically can't email
+      // someone whose page is up.
 
       const dayOfWeek = now.getDay(); // 0=Sunday, 1=Monday, ...
-      const trialSendDays = [1, 5]; // Monday, Friday
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const sendDays = [1, 5]; // Monday, Friday
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
       const unpublishedSnap = await db
@@ -131,20 +135,20 @@ export const sendSubscriptionReminders = onSchedule(
         .where('subscription.status', 'in', ['active', 'trialing'])
         .get();
 
-      for (const doc of unpublishedSnap.docs) {
+      // Skip the whole loop if today isn't a send day. The dedupe below
+      // (`lastReminder > oneDayAgo`) guarantees at most one email per day
+      // even if someone re-runs the cron.
+      if (!sendDays.includes(dayOfWeek)) {
+        console.log(`Day ${dayOfWeek} is not a send day (Mon/Fri only), skipping unpublished reminders`);
+      }
+
+      for (const doc of (sendDays.includes(dayOfWeek) ? unpublishedSnap.docs : [])) {
         const provider = doc.data();
         const providerId = doc.id;
         const lastReminder = provider.unpublishedReminderLastSent?.toDate?.();
-        const isTrial = provider.plan === 'trial';
 
-        if (isTrial) {
-          // Trial: only send on Mon/Wed/Fri, and not if already sent today
-          if (!trialSendDays.includes(dayOfWeek)) continue;
-          if (lastReminder && lastReminder > oneDayAgo) continue;
-        } else {
-          // Paid: max once per week
-          if (lastReminder && lastReminder > oneWeekAgo) continue;
-        }
+        // Don't send twice in the same day.
+        if (lastReminder && lastReminder > oneDayAgo) continue;
 
         // Get user push tokens
         const userDoc = await db.collection('users').doc(providerId).get();

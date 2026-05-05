@@ -476,6 +476,20 @@ export interface Affiliate {
     totalCommission: number;
   };
   isActive: boolean;
+  /**
+   * Cron-driven onboarding reminder state for affiliates whose Stripe
+   * Connect account is incomplete (status != 'active').
+   *
+   * - `onboardingResumeToken`: random secret put in the email link
+   *   (`/affiliation/finalize?token=…`). Rotated each time we send
+   *   a reminder so old links can't be replayed forever.
+   * - `onboardingResumeTokenExpiresAt`: 7 days from issuance.
+   * - `onboardingReminderLastSent`: throttle so we don't email the
+   *   same affiliate more than once per ~14 days.
+   */
+  onboardingResumeToken?: string | null;
+  onboardingResumeTokenExpiresAt?: Date | null;
+  onboardingReminderLastSent?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

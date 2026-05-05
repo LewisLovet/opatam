@@ -21,7 +21,11 @@ const APP_URL = 'https://opatam.com';
 
 interface TemplateEmailOptions {
   to: string;
-  template: 'subscription_expiry' | 'unpublished_reminder' | 'new_review';
+  template:
+    | 'subscription_expiry'
+    | 'unpublished_reminder'
+    | 'new_review'
+    | 'affiliate_onboarding_reminder';
   data: Record<string, any>;
 }
 
@@ -118,6 +122,29 @@ function getTemplate(template: string, data: Record<string, any>): { subject: st
             <a href="${APP_URL}/pro/profil" class="btn">Publier ma page</a>
           </p>
           <p style="font-size: 13px; color: #6B7280;">Astuce : partagez votre page sur vos réseaux sociaux pour attirer vos premiers clients !</p>
+        `),
+      };
+    }
+
+    case 'affiliate_onboarding_reminder': {
+      const { affiliateName, status, resumeUrl } = data;
+      const statusLabel =
+        status === 'restricted'
+          ? 'restreint'
+          : status === 'pending'
+            ? 'en attente de finalisation'
+            : 'incomplet';
+      return {
+        subject: `Finalisez votre compte affilié Opatam`,
+        html: wrapHtml(`
+          <h1>Votre compte affilié n'est pas encore actif</h1>
+          <p>Bonjour ${affiliateName || ''},</p>
+          <p>Votre compte affilié Opatam est <strong>${statusLabel}</strong>. Tant qu'il ne sera pas actif, nous ne pourrons pas vous reverser vos commissions sur les filleuls que vous nous envoyez.</p>
+          <p>Quelques minutes suffisent pour le finaliser :</p>
+          <p style="text-align: center; margin: 24px 0;">
+            <a href="${resumeUrl}" class="btn">Finaliser mon compte</a>
+          </p>
+          <p style="font-size: 13px; color: #6B7280;">Vous serez redirigé vers Stripe pour fournir les informations légales et bancaires nécessaires (KYC, IBAN). Une fois validé, vos commissions vous seront versées automatiquement.</p>
         `),
       };
     }

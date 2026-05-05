@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 
 export default function FunctionsTestPage() {
   const [providerId, setProviderId] = useState('');
+  const [affiliateId, setAffiliateId] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -138,6 +139,33 @@ export default function FunctionsTestPage() {
                         </div>
                       </Button>
                     ))}
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* Affiliate onboarding reminder */}
+              <Card variant="bordered" className="bg-slate-900/50 border-slate-800">
+                <CardHeader title="Affilié — onboarding incomplet" description="Envoie un email + push avec un lien magique vers /affiliation/finalize" />
+                <CardBody>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <Input
+                        label="Affiliate ID"
+                        placeholder="ID du document affilié à relancer"
+                        value={affiliateId}
+                        onChange={(e) => setAffiliateId(e.target.value)}
+                        hint="Le statut Stripe sera relevé automatiquement"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!affiliateId || loading === 'testAffiliateOnboardingReminder'}
+                      loading={loading === 'testAffiliateOnboardingReminder'}
+                      onClick={() => callFunction('testAffiliateOnboardingReminder', { affiliateId })}
+                    >
+                      Envoyer le rappel
+                    </Button>
                   </div>
                 </CardBody>
               </Card>

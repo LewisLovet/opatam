@@ -42,9 +42,8 @@ export const testSubscriptionReminders = onCall(
     const userDoc = await db.collection('users').doc(providerId).get();
     const pushTokens: string[] = userDoc.data()?.pushTokens || [];
 
-    if (pushTokens.length === 0) {
-      return { success: false, message: 'No push tokens found for this provider' };
-    }
+    // Don't bail when push tokens are missing — admin might want to
+    // verify the email side independently.
 
     const messages: Record<string, { title: string; body: string }> = {
       'j-7': {
@@ -67,14 +66,18 @@ export const testSubscriptionReminders = onCall(
 
     const msg = messages[reminderType];
 
-    const result = await sendPushNotifications(pushTokens, {
-      title: msg.title,
-      body: msg.body,
-      data: {
-        type: reminderType === 'unpublished' ? 'unpublished_reminder' : 'subscription_expiry',
-        providerId,
-      },
-    });
+    // Push: skip silently when no tokens (test should still produce
+    // the email side).
+    const pushResult = pushTokens.length > 0
+      ? await sendPushNotifications(pushTokens, {
+          title: msg.title,
+          body: msg.body,
+          data: {
+            type: reminderType === 'unpublished' ? 'unpublished_reminder' : 'subscription_expiry',
+            providerId,
+          },
+        })
+      : null;
 
     // Send email too
     const email = userDoc.data()?.email;
@@ -101,7 +104,8 @@ export const testSubscriptionReminders = onCall(
       reminderType,
       provider: provider.businessName,
       pushTokens: pushTokens.length,
-      result,
+      result: pushResult,
+      emailSent: !!email,
     };
   }
 );
