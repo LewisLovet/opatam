@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, RefreshCw, AlertCircle, Copy, Check } from 'lucide-react';
 
 interface CheckResult {
   ok: boolean;
@@ -95,6 +95,9 @@ export default function DepositsProdCheckPage() {
             </div>
           )}
 
+          {/* Local testing guide */}
+          <LocalTestingGuide testProductOk={report.test?.addon.ok ?? false} onCloned={load} />
+
           {/* Required events — référence */}
           <details className="border border-gray-200 dark:border-gray-700 rounded-lg">
             <summary className="cursor-pointer p-4 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50">
@@ -122,6 +125,146 @@ export default function DepositsProdCheckPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Local testing guide ───────────────────────────────────────────────
+
+function CopyableCmd({ cmd }: { cmd: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex items-stretch gap-0 bg-gray-900 text-gray-100 rounded-md overflow-hidden font-mono text-xs">
+      <pre className="flex-1 px-3 py-2.5 overflow-x-auto whitespace-pre">{cmd}</pre>
+      <button
+        onClick={async () => {
+          await navigator.clipboard.writeText(cmd);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+        className="px-3 hover:bg-gray-800 transition-colors flex items-center"
+        title="Copier"
+      >
+        {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+}
+
+function LocalTestingGuide({ testProductOk, onCloned }: { testProductOk: boolean; onCloned: () => void }) {
+  const [cloning, setCloning] = useState(false);
+  const [cloneResult, setCloneResult] = useState<string | null>(null);
+
+  const cloneTestProduct = async () => {
+    setCloning(true);
+    setCloneResult(null);
+    try {
+      const res = await fetch('/api/dev/deposits-prod-check/clone-test-product', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setCloneResult(
+        data.created
+          ? `✓ Créé : product=${data.product}, price=${data.price}`
+          : `Déjà présent : product=${data.product}, price=${data.price}`
+      );
+      onCloned();
+    } catch (e) {
+      setCloneResult(`Erreur : ${e instanceof Error ? e.message : 'unknown'}`);
+    } finally {
+      setCloning(false);
+    }
+  };
+
+  return (
+    <details className="border border-blue-200 dark:border-blue-800 rounded-lg bg-blue-50/40 dark:bg-blue-900/10" open>
+      <summary className="cursor-pointer p-4 text-sm font-medium text-blue-900 dark:text-blue-100 hover:bg-blue-100/50 dark:hover:bg-blue-900/20">
+        Tester en local — guide pas-à-pas
+      </summary>
+      <div className="p-4 border-t border-blue-200 dark:border-blue-800 space-y-5 text-sm text-gray-700 dark:text-gray-300">
+        {/* Step 1 — clone product */}
+        <section>
+          <p className="font-semibold text-gray-900 dark:text-white mb-2">1. Produit Sérénité en mode TEST</p>
+          {testProductOk ? (
+            <p className="text-green-700 dark:text-green-300 text-xs">✓ Déjà présent en TEST.</p>
+          ) : (
+            <>
+              <p className="mb-2 text-xs">
+                Le produit n'existe pas encore en mode TEST. Un clic et on copie le LIVE (mêmes valeurs + metadata).
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={cloneTestProduct}
+                  disabled={cloning}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-medium rounded-md transition-colors"
+                >
+                  {cloning && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Cloner le produit en TEST
+                </button>
+                {cloneResult && (
+                  <span className="text-xs text-gray-600 dark:text-gray-400">{cloneResult}</span>
+                )}
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* Step 2 — stripe listen */}
+        <section>
+          <p className="font-semibold text-gray-900 dark:text-white mb-2">2. Lance <code className="text-xs bg-gray-200 dark:bg-gray-800 px-1 rounded">stripe listen</code></p>
+          <p className="mb-2 text-xs">
+            Dans deux terminaux (un pour les events plateforme, un pour les events Connect).
+          </p>
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Terminal 1 — events plateforme</p>
+              <CopyableCmd cmd="stripe listen --forward-to localhost:3000/api/stripe/webhook" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Terminal 2 — events Connect (les events des comptes connectés)</p>
+              <CopyableCmd cmd="stripe listen --forward-connect-to localhost:3000/api/stripe/webhook" />
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+            Chaque terminal affiche un secret <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded text-[11px]">whsec_…</code> à la première ligne.
+          </p>
+        </section>
+
+        {/* Step 3 — env vars */}
+        <section>
+          <p className="font-semibold text-gray-900 dark:text-white mb-2">3. Variables d'env locales</p>
+          <p className="mb-2 text-xs">
+            Dans <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded text-[11px]">apps/web/.env.local</code>, copie les deux secrets affichés par <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded text-[11px]">stripe listen</code> :
+          </p>
+          <CopyableCmd cmd={`STRIPE_WEBHOOK_SECRET_DEV=whsec_…    # secret du terminal 1\nSTRIPE_WEBHOOK_SECRET_DEV_CONNECT=whsec_…    # secret du terminal 2`} />
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+            Notre code (<code className="bg-gray-200 dark:bg-gray-800 px-1 rounded text-[11px]">getWebhookSecrets</code>) essaie les trois secrets — le bon est trouvé automatiquement.
+          </p>
+          <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+            Redémarre <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded text-[11px]">next dev</code> après modification de l'env.
+          </p>
+        </section>
+
+        {/* Step 4 — flow */}
+        <section>
+          <p className="font-semibold text-gray-900 dark:text-white mb-2">4. Flow E2E</p>
+          <ol className="list-decimal list-inside space-y-1 text-xs">
+            <li>Sur ton compte pro de test : active <strong>Stripe Connect</strong> (mode test) et l'add-on Sérénité.</li>
+            <li>Ajoute un acompte sur une prestation — montant minimum 100 (1 €) en cents.</li>
+            <li>Réserve cette prestation depuis une fenêtre privée (ou un autre compte client).</li>
+            <li>Paie l'acompte avec la carte test <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded text-[11px]">4242 4242 4242 4242</code> + n'importe quel CVC + date future.</li>
+            <li>La résa doit flipper en <strong>confirmed</strong> en quelques secondes (vérifie dans <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded text-[11px]">stripe listen</code> et dans l'agenda pro).</li>
+          </ol>
+        </section>
+
+        {/* Step 5 — trigger fictif */}
+        <section>
+          <p className="font-semibold text-gray-900 dark:text-white mb-2">5. Trigger d'event factice (optionnel)</p>
+          <p className="mb-2 text-xs">
+            Pour tester un handler particulier sans faire un vrai paiement (ex : <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded text-[11px]">charge.dispute.created</code>) :
+          </p>
+          <CopyableCmd cmd="stripe trigger charge.dispute.created" />
+        </section>
+      </div>
+    </details>
   );
 }
 
