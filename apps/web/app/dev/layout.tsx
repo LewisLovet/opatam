@@ -20,6 +20,7 @@ import {
   Eye,
   MessageSquare,
   ArrowRightLeft,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface NavItem {
@@ -72,6 +73,11 @@ const navSections: { title: string; items: NavItem[] }[] = [
         href: '/dev/tools/stripe-test-switch',
         label: 'Stripe switch',
         icon: <ArrowRightLeft className="w-4 h-4" />,
+      },
+      {
+        href: '/dev/tools/deposits-prod-check',
+        label: 'Acomptes — check prod',
+        icon: <CheckCircle2 className="w-4 h-4" />,
       },
     ],
   },
