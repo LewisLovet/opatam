@@ -34,7 +34,7 @@ export const FEATURE_FLAGS = {
    *   - apps/web/app/api/pro/deposits-addon/activate/route.ts
    *   - apps/web/app/api/pro/deposits-addon/deactivate/route.ts
    */
-  depositsPublic: false,
+  depositsPublic: true,
 } as const;
 
 /**
