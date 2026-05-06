@@ -121,7 +121,11 @@ export function PaymentsSection() {
     try {
       if (!enable) {
         const ok = window.confirm(
-          'Désactiver l’add-on Acomptes ? Vous garderez la fonctionnalité jusqu’à la fin du mois en cours.'
+          'Désactiver votre abonnement Sérénité ?\n\n' +
+          '• Plus de prélèvement de 5 €/mois\n' +
+          '• Vous gardez l\'accès jusqu\'à la fin de votre période en cours\n' +
+          '• Vous ne pourrez plus demander d\'acomptes après\n\n' +
+          'Confirmer ?'
         );
         if (!ok) {
           setAddonWorking(false);
@@ -381,80 +385,84 @@ export function PaymentsSection() {
         </div>
       )}
 
-      {/* ── Add-on Acomptes toggle ────────────────────────────────────── */}
+      {/* ── Abonnement Sérénité (= add-on acomptes) ───────────────────── */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+        {!addonActive ? (
+          // ─── État: pas souscrit ───────────────────────────────────────
+          <>
+            <div className="flex items-center gap-2 mb-2">
               <h4 className="font-semibold text-gray-900 dark:text-white">
-                Add-on Acomptes
+                Abonnement Sérénité
               </h4>
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
-                +5 €/mois TTC
+                5 €/mois
               </span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Activez la possibilité de demander un acompte sur chaque prestation à la
-              réservation. Réduit drastiquement les no-shows.
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Encaissez un acompte au moment de la réservation pour réduire les no-shows.
+              Annulable à tout moment.
             </p>
-
-            {/* Pre-flight hints */}
             {!hasPaidSubscription && (
               <Link
                 href="/pro/parametres?tab=abonnement"
-                className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-2 hover:underline"
+                className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mb-3 hover:underline"
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
-                Souscrivez à un plan payant pour activer l’add-on
+                Souscrivez à un plan payant d'abord
               </Link>
             )}
             {hasPaidSubscription && !connectActive && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 inline-flex items-center gap-1">
+              <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 inline-flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                Activez d’abord les paiements (Stripe Connect ci-dessus)
+                Activez Stripe Connect ci-dessus d'abord
               </p>
             )}
-          </div>
-
-          {/* Toggle switch */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={addonActive}
-            disabled={addonWorking || (!canToggleAddon && !addonActive)}
-            onClick={() => toggleAddon(!addonActive)}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              addonActive ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
-            }`}
-          >
-            {addonWorking ? (
-              <Loader2 className="absolute left-1/2 -translate-x-1/2 w-3.5 h-3.5 animate-spin text-white" />
-            ) : (
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                  addonActive ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
-              />
-            )}
-          </button>
-        </div>
-
-        {addonActive && (
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Add-on actif. Configurez un acompte par défaut ci-dessous (s'applique à
-              toutes vos prestations) ou définissez un montant spécifique sur chaque
-              prestation depuis{' '}
-              <Link
-                href="/pro/services"
-                className="text-primary-600 dark:text-primary-400 hover:underline"
-              >
-                Prestations
-              </Link>
-              .
-            </p>
-          </div>
+            <button
+              type="button"
+              disabled={addonWorking || !canToggleAddon}
+              onClick={() => toggleAddon(true)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-medium rounded-lg transition-colors"
+            >
+              {addonWorking ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>Souscrire à Sérénité — 5 €/mois</>
+              )}
+            </button>
+          </>
+        ) : (
+          // ─── État: souscrit ───────────────────────────────────────────
+          <>
+            <div className="flex items-start gap-3 mb-3">
+              <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  Abonnement Sérénité actif
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  5 €/mois facturés sur votre prochaine échéance. Vous pouvez configurer
+                  un acompte par défaut ci-dessous, ou un acompte spécifique pour chaque
+                  prestation depuis{' '}
+                  <Link
+                    href="/pro/services"
+                    className="text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    Prestations
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={addonWorking}
+              onClick={() => toggleAddon(false)}
+              className="text-sm text-red-600 dark:text-red-400 hover:underline inline-flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {addonWorking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              Désactiver l'abonnement
+            </button>
+          </>
         )}
       </div>
 
