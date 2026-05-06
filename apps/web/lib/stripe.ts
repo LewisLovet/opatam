@@ -126,22 +126,28 @@ export async function getDepositsAddonPriceId(
 /**
  * Returns the list of webhook signing secrets to try, in priority order.
  *
- * In production we have a single secret (`STRIPE_WEBHOOK_SECRET`). In
- * local dev with `stripe listen` we may have up to two:
- *   - STRIPE_WEBHOOK_SECRET_DEV         → platform events
- *   - STRIPE_WEBHOOK_SECRET_DEV_CONNECT → events from connected accounts
- *     (deposit Checkout Sessions are created on connected accounts, so
- *      their checkout.session.* events come through this stream)
+ * Stripe ships platform events and Connect events on separate endpoint
+ * registrations — each with its own signing secret — even when both
+ * point at the same URL. Deposit Checkout Sessions live on connected
+ * accounts, so their `checkout.session.*` events come through the
+ * Connect stream and need the Connect secret to verify.
+ *
+ *   - STRIPE_WEBHOOK_SECRET             → platform events (prod + dev)
+ *   - STRIPE_WEBHOOK_SECRET_CONNECT     → Connect events (prod)
+ *   - STRIPE_WEBHOOK_SECRET_DEV         → platform events (local stripe listen)
+ *   - STRIPE_WEBHOOK_SECRET_DEV_CONNECT → Connect events (local stripe listen
+ *                                         --forward-connect-to)
  *
  * The webhook handler iterates over this list and accepts whichever
  * secret verifies the signature, so a single endpoint can serve both
- * platform-level and Connect events during dev.
+ * platform and Connect streams.
  */
 export function getWebhookSecrets(): string[] {
   const secrets = [
     process.env.STRIPE_WEBHOOK_SECRET_DEV,
     process.env.STRIPE_WEBHOOK_SECRET_DEV_CONNECT,
     process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_WEBHOOK_SECRET_CONNECT,
   ].filter((s): s is string => !!s);
 
   if (secrets.length === 0) {
