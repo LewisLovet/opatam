@@ -237,9 +237,9 @@ export function generateSearchTokens(businessName: string): string[] {
 interface ServiceForDeposit {
   price: number;
   deposit?: {
-    type: 'fixed' | 'percent';
-    value: number;
-    refundDeadlineHours: number;
+    type: 'fixed' | 'percent' | 'none';
+    value?: number;
+    refundDeadlineHours?: number;
   } | null;
 }
 
@@ -251,10 +251,14 @@ interface ProviderSettingsForDeposit {
 }
 
 /**
- * Resolve the deposit amount for a given service, applying the override
- * chain: per-service deposit > provider default > none.
+ * Resolve the deposit amount for a given service. Three states are
+ * possible on `service.deposit`:
  *
- * Returns null when no deposit is required for this combination.
+ *   - `null` / undefined → fall back to `providerSettings.depositDefault`
+ *   - `{ type: 'none' }` → explicitly disabled, ignore the default
+ *   - `{ type: 'fixed' | 'percent', ... }` → custom override
+ *
+ * Returns null when no deposit is required.
  *
  * Pure function — used both client-side (booking flow preview) and
  * server-side (booking creation, refund logic).
@@ -268,13 +272,18 @@ export function resolveDeposit(
   source: 'service' | 'default';
 } | null {
   if (service.deposit) {
+    if (service.deposit.type === 'none') {
+      // Explicitly opted out of any deposit on this service.
+      return null;
+    }
+    const value = service.deposit.value ?? 0;
     const amount =
       service.deposit.type === 'fixed'
-        ? service.deposit.value
-        : Math.round((service.price * service.deposit.value) / 100);
+        ? value
+        : Math.round((service.price * value) / 100);
     return {
       amount,
-      refundDeadlineHours: service.deposit.refundDeadlineHours,
+      refundDeadlineHours: service.deposit.refundDeadlineHours ?? 24,
       source: 'service',
     };
   }

@@ -61,18 +61,32 @@ export interface ServiceFormData {
   locationIds: string[];
   memberIds: string[] | null;
   /**
-   * Per-service deposit override.
-   *  - null  → fall back to the provider's default deposit (or no deposit)
-   *  - fixed → value is in cents, must be ≤ price
-   *  - percent → value is 1-100
+   * Per-service deposit configuration. Three states:
+   *  - null     → inherit the provider's default deposit (or none)
+   *  - none     → explicitly disabled (overrides the default)
+   *  - fixed    → value in cents, must be ≤ price
+   *  - percent  → value 1-100
    */
-  deposit: {
-    type: 'fixed' | 'percent';
-    value: number;
-    refundDeadlineHours: number;
-  } | null;
+  deposit:
+    | { type: 'fixed' | 'percent'; value: number; refundDeadlineHours: number }
+    | { type: 'none' }
+    | null;
 }
 
+
+/** Coerce the looser Service.deposit shape (Firestore-friendly) into
+ *  the strict discriminated union used by the form. */
+function normalizeDepositForForm(
+  raw: Service['deposit'] | undefined | null,
+): ServiceFormData['deposit'] {
+  if (!raw) return null;
+  if (raw.type === 'none') return { type: 'none' };
+  return {
+    type: raw.type,
+    value: raw.value ?? 0,
+    refundDeadlineHours: raw.refundDeadlineHours ?? 24,
+  };
+}
 
 const BUFFER_TIME_OPTIONS = [
   { value: '0', label: 'Aucun' },
@@ -137,7 +151,10 @@ export function ServiceModal({
           categoryId: service.categoryId ?? null,
           locationIds: service.locationIds,
           memberIds: service.memberIds,
-          deposit: service.deposit ?? null,
+          // Normalize the deposit shape from Firestore (where the Service
+          // type allows partial value/refundDeadlineHours) into the
+          // discriminated form-data union.
+          deposit: normalizeDepositForForm(service.deposit),
         });
       } else {
         // Default values for new service
@@ -278,15 +295,17 @@ export function ServiceModal({
       newErrors.locationIds = 'Sélectionnez au moins un lieu';
     }
 
-    if (formData.deposit) {
-      if (!Number.isFinite(formData.deposit.value) || formData.deposit.value < 1) {
+    // type 'none' has no `value` to validate — only fixed/percent need it.
+    if (formData.deposit && formData.deposit.type !== 'none') {
+      const depositValue = formData.deposit.value ?? 0;
+      if (!Number.isFinite(depositValue) || depositValue < 1) {
         newErrors.depositValue = "Le montant de l'acompte doit être supérieur à 0";
       } else if (
         formData.deposit.type === 'fixed' &&
-        formData.deposit.value > formData.price
+        depositValue > formData.price
       ) {
         newErrors.depositValue = "L'acompte fixe ne peut pas dépasser le prix";
-      } else if (formData.deposit.type === 'percent' && formData.deposit.value > 100) {
+      } else if (formData.deposit.type === 'percent' && depositValue > 100) {
         newErrors.depositValue = 'Le pourcentage ne peut pas dépasser 100 %';
       }
     }
@@ -743,10 +762,20 @@ export function ServiceModal({
 }
 
 // ─── DepositSection ─────────────────────────────────────────────────────
-// Per-service deposit override card. Three states:
-//   1. Add-on disabled → muted card with link to activate
-//   2. Override OFF + default exists → hint "Acompte par défaut X% (= Y€)"
-//   3. Override ON → form (radio fixe/%, value input, refund deadline)
+// Per-service deposit configuration with 3 explicit radio choices:
+//   1. "Acompte par défaut"     → null (inherit provider default)
+//   2. "Acompte personnalisé"   → { type: 'fixed' | 'percent', ... }
+//   3. "Pas d'acompte"          → { type: 'none' }
+//
+// When the add-on isn't active the whole card is locked.
+
+type DepositMode = 'inherit' | 'custom' | 'none';
+
+function depositMode(d: ServiceFormData['deposit']): DepositMode {
+  if (!d) return 'inherit';
+  if (d.type === 'none') return 'none';
+  return 'custom';
+}
 
 interface DepositSectionProps {
   depositsEnabled: boolean;
@@ -765,7 +794,7 @@ function DepositSection({
   onChange,
   error,
 }: DepositSectionProps) {
-  const overrideOn = !!deposit;
+  const mode = depositMode(deposit);
 
   // Add-on not active → locked card with link to /pro/parametres
   if (!depositsEnabled) {
@@ -776,7 +805,7 @@ function DepositSection({
           <div className="text-sm text-gray-600 dark:text-gray-400">
             <p className="font-medium text-gray-900 dark:text-white">Acompte</p>
             <p className="text-xs mt-1">
-              Activez l&apos;add-on Acomptes pour demander un acompte sur cette prestation.{' '}
+              Activez l&apos;abonnement Sérénité pour demander un acompte sur cette prestation.{' '}
               <a
                 href="/pro/parametres?tab=paiements"
                 className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
@@ -790,65 +819,78 @@ function DepositSection({
     );
   }
 
-  // Compute previewed amount for both default and override
+  const fmt = (cents: number) => (cents / 100).toFixed(2).replace('.', ',') + ' €';
   const defaultAmount = defaultDeposit
     ? Math.round((servicePrice * defaultDeposit.percent) / 100)
     : 0;
-  const overrideAmount = deposit
-    ? deposit.type === 'fixed'
-      ? deposit.value
-      : Math.round((servicePrice * deposit.value) / 100)
-    : 0;
+  const overrideAmount =
+    deposit && deposit.type !== 'none'
+      ? deposit.type === 'fixed'
+        ? deposit.value ?? 0
+        : Math.round((servicePrice * (deposit.value ?? 0)) / 100)
+      : 0;
 
-  const fmt = (cents: number) => (cents / 100).toFixed(2).replace('.', ',') + ' €';
+  const setMode = (next: DepositMode) => {
+    if (next === 'inherit') return onChange(null);
+    if (next === 'none') return onChange({ type: 'none' });
+    // 'custom' — seed with sensible defaults if coming from another mode
+    if (mode !== 'custom') {
+      onChange({ type: 'percent', value: 30, refundDeadlineHours: 24 });
+    }
+  };
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 dark:text-white">
-            Acompte spécifique pour cette prestation
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            {overrideOn
-              ? 'Override actif — remplace l\'acompte par défaut.'
-              : defaultDeposit
-              ? `Sans override, l'acompte par défaut s'applique : ${defaultDeposit.percent} % (= ${fmt(defaultAmount)}).`
-              : "Sans override et sans acompte par défaut, aucun acompte ne sera demandé."}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          role="switch"
-          aria-checked={overrideOn}
-          onClick={() =>
-            onChange(
-              overrideOn
-                ? null
-                : { type: 'percent', value: 30, refundDeadlineHours: 24 }
-            )
-          }
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-            overrideOn ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
-          }`}
-        >
-          <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-              overrideOn ? 'translate-x-5' : 'translate-x-0.5'
-            }`}
-          />
-        </button>
+      <div>
+        <p className="text-sm font-medium text-gray-900 dark:text-white">
+          Acompte sur cette prestation
+        </p>
       </div>
 
-      {overrideOn && deposit && (
+      {/* 3 radio choices */}
+      <div className="space-y-2">
+        <DepositRadio
+          checked={mode === 'inherit'}
+          onSelect={() => setMode('inherit')}
+          label={defaultDeposit ? 'Acompte par défaut' : 'Aucun acompte (par défaut)'}
+          hint={
+            defaultDeposit
+              ? `${defaultDeposit.percent} % du prix${
+                  servicePrice > 0 ? ` = ${fmt(defaultAmount)}` : ''
+                } · remboursable jusqu'à ${defaultDeposit.refundDeadlineHours}h avant le RDV`
+              : 'Aucun acompte par défaut configuré → pas d\'acompte demandé sur cette prestation.'
+          }
+        />
+        <DepositRadio
+          checked={mode === 'custom'}
+          onSelect={() => setMode('custom')}
+          label="Acompte personnalisé"
+          hint="Remplace l'acompte par défaut avec une valeur spécifique à cette prestation."
+        />
+        <DepositRadio
+          checked={mode === 'none'}
+          onSelect={() => setMode('none')}
+          label="Pas d'acompte"
+          hint={
+            defaultDeposit
+              ? "Désactive explicitement l'acompte sur cette prestation, même si vous avez un acompte par défaut."
+              : 'Pas d\'acompte demandé sur cette prestation.'
+          }
+        />
+      </div>
+
+      {mode === 'custom' && deposit && deposit.type !== 'none' && (
         <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700">
           {/* Type selector */}
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() =>
-                onChange({ ...deposit, type: 'percent', value: 30 })
+                onChange({
+                  type: 'percent',
+                  value: 30,
+                  refundDeadlineHours: deposit.refundDeadlineHours ?? 24,
+                })
               }
               className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
                 deposit.type === 'percent'
@@ -862,9 +904,9 @@ function DepositSection({
               type="button"
               onClick={() =>
                 onChange({
-                  ...deposit,
                   type: 'fixed',
                   value: Math.min(servicePrice, 1000),
+                  refundDeadlineHours: deposit.refundDeadlineHours ?? 24,
                 })
               }
               className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
@@ -891,16 +933,16 @@ function DepositSection({
                   step={deposit.type === 'percent' ? 1 : 0.01}
                   value={
                     deposit.type === 'percent'
-                      ? deposit.value
-                      : (deposit.value / 100).toFixed(2)
+                      ? deposit.value ?? 0
+                      : ((deposit.value ?? 0) / 100).toFixed(2)
                   }
                   onChange={(e) => {
                     const raw = parseFloat(e.target.value) || 0;
-                    const next =
+                    const nextValue =
                       deposit.type === 'percent'
                         ? Math.round(raw)
                         : Math.round(raw * 100); // euros → cents
-                    onChange({ ...deposit, value: next });
+                    onChange({ ...deposit, value: nextValue });
                   }}
                   className={`w-full pl-3 pr-8 py-2 rounded-lg border ${
                     error ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'
@@ -922,7 +964,7 @@ function DepositSection({
                   min={0}
                   max={720}
                   step={1}
-                  value={deposit.refundDeadlineHours}
+                  value={deposit.refundDeadlineHours ?? 24}
                   onChange={(e) => {
                     const v = Math.max(0, Math.min(720, parseInt(e.target.value, 10) || 0));
                     onChange({ ...deposit, refundDeadlineHours: v });
@@ -944,12 +986,56 @@ function DepositSection({
           <div className="rounded-md bg-gray-50 dark:bg-gray-900/40 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
             <strong className="text-gray-900 dark:text-white">Acompte demandé :</strong>{' '}
             {servicePrice > 0 ? fmt(overrideAmount) : 'configurez d\'abord le prix'}
-            {deposit.refundDeadlineHours === 0
+            {(deposit.refundDeadlineHours ?? 0) === 0
               ? ' · non remboursable'
               : ` · remboursé si annulation > ${deposit.refundDeadlineHours} h avant`}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function DepositRadio({
+  checked,
+  onSelect,
+  label,
+  hint,
+}: {
+  checked: boolean;
+  onSelect: () => void;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full text-left rounded-md border p-3 transition-colors ${
+        checked
+          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`mt-0.5 w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${
+            checked ? 'border-primary-600 bg-primary-600' : 'border-gray-300 dark:border-gray-600'
+          }`}
+        >
+          {checked && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+        </div>
+        <div className="min-w-0">
+          <p
+            className={`text-sm font-medium ${
+              checked ? 'text-primary-900 dark:text-primary-100' : 'text-gray-900 dark:text-white'
+            }`}
+          >
+            {label}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{hint}</p>
+        </div>
+      </div>
+    </button>
   );
 }

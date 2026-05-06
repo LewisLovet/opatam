@@ -247,17 +247,25 @@ export interface Service {
   sortOrder: number;
 
   /**
-   * Per-service deposit override. When set, takes precedence over the
-   * provider's `settings.depositDefault`. When null, fall back to the
-   * default. When both are null, no deposit is required.
+   * Per-service deposit configuration. Three states:
    *
-   * - type: 'fixed'   → value is in cents, must be ≤ this service's price
-   * - type: 'percent' → value is 1-100
+   * - `null` (or undefined) → INHERIT from `provider.settings.depositDefault`.
+   *   If the provider has no default either, no deposit is required.
+   *
+   * - `{ type: 'fixed' | 'percent', ... }` → CUSTOM override on this service.
+   *   Takes precedence over the provider default.
+   *     - 'fixed':   value in cents, must be ≤ the service's price
+   *     - 'percent': value 1-100
+   *
+   * - `{ type: 'none' }` → EXPLICITLY DISABLED on this service.
+   *   Prevents the provider default from applying. Use this when a
+   *   prestation should never collect a deposit even though the
+   *   provider has a default for everything else.
    */
   deposit?: {
-    type: 'fixed' | 'percent';
-    value: number;
-    refundDeadlineHours: number;  // 0 = never refund, default 24
+    type: 'fixed' | 'percent' | 'none';
+    value?: number;                  // unused when type === 'none'
+    refundDeadlineHours?: number;    // unused when type === 'none'
   } | null;
 
   createdAt: Date;

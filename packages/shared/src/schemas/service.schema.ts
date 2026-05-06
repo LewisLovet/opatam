@@ -12,21 +12,28 @@ import { z } from 'zod';
  * (or no deposit if the provider hasn't configured one either).
  */
 export const serviceDepositSchema = z
-  .object({
-    type: z.enum(['fixed', 'percent'], {
-      errorMap: () => ({ message: 'Type d\'acompte invalide (fixed ou percent)' }),
+  .union([
+    // Custom deposit (fixed amount or percentage)
+    z.object({
+      type: z.enum(['fixed', 'percent'], {
+        errorMap: () => ({ message: 'Type d\'acompte invalide (fixed, percent ou none)' }),
+      }),
+      value: z
+        .number({ required_error: 'Le montant de l\'acompte est requis' })
+        .int({ message: "Le montant doit être un nombre entier" })
+        .min(1, { message: 'Le montant doit être positif' }),
+      refundDeadlineHours: z
+        .number()
+        .int()
+        .min(0, { message: 'Le délai de remboursement doit être positif' })
+        .max(720, { message: 'Le délai ne peut pas dépasser 720 heures (30 jours)' })
+        .default(24),
     }),
-    value: z
-      .number({ required_error: 'Le montant de l\'acompte est requis' })
-      .int({ message: "Le montant doit être un nombre entier" })
-      .min(1, { message: 'Le montant doit être positif' }),
-    refundDeadlineHours: z
-      .number()
-      .int()
-      .min(0, { message: 'Le délai de remboursement doit être positif' })
-      .max(720, { message: 'Le délai ne peut pas dépasser 720 heures (30 jours)' })
-      .default(24),
-  })
+    // Explicitly disabled — overrides the provider default with "no deposit".
+    z.object({
+      type: z.literal('none'),
+    }),
+  ])
   .nullable();
 
 // Create service schema - MINIMUM requis (name, duration, price)
@@ -95,18 +102,20 @@ export const createServiceSchema = z.object({
     { message: 'Le prix max doit être supérieur au prix min', path: ['priceMax'] }
   )
   .refine(
-    (data) =>
-      !data.deposit ||
-      data.deposit.type !== 'fixed' ||
-      data.deposit.value <= data.price,
+    (data) => {
+      if (!data.deposit || data.deposit.type !== 'fixed') return true;
+      return data.deposit.value <= data.price;
+    },
     {
       message: "L'acompte fixe ne peut pas dépasser le prix de la prestation",
       path: ['deposit', 'value'],
     }
   )
   .refine(
-    (data) =>
-      !data.deposit || data.deposit.type !== 'percent' || data.deposit.value <= 100,
+    (data) => {
+      if (!data.deposit || data.deposit.type !== 'percent') return true;
+      return data.deposit.value <= 100;
+    },
     {
       message: 'Un acompte en pourcentage ne peut pas dépasser 100 %',
       path: ['deposit', 'value'],
