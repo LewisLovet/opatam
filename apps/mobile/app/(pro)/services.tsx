@@ -29,6 +29,7 @@ import {
   type WithId,
 } from '@booking-app/firebase';
 import type { Service, ServiceCategory, Location, Member } from '@booking-app/shared/types';
+import { resolveDeposit } from '@booking-app/shared';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
@@ -95,6 +96,65 @@ function formatPrice(cents: number, centsMax?: number | null): string {
   return fmt(cents);
 }
 
+// ─── DepositBadge ───────────────────────────────────────────────────────
+// Inline pill summarising the effective deposit on a service. Mirrors the
+// web version (apps/web/.../ServiceCard.tsx).
+function DepositBadge({
+  service,
+  depositsEnabled,
+  defaultDeposit,
+}: {
+  service: WithId<Service>;
+  depositsEnabled: boolean;
+  defaultDeposit: { percent: number; refundDeadlineHours: number } | null;
+}) {
+  if (!depositsEnabled) return null;
+
+  // Explicitly disabled — show a grey "Pas d'acompte" pill.
+  if (service.deposit?.type === 'none') {
+    return (
+      <View
+        style={{
+          alignSelf: 'flex-start',
+          backgroundColor: '#E5E7EB',
+          paddingHorizontal: 8,
+          paddingVertical: 2,
+          borderRadius: 999,
+          marginTop: 4,
+        }}
+      >
+        <Text variant="caption" style={{ color: '#4B5563', fontWeight: '600', fontSize: 11 }}>
+          Pas d&apos;acompte
+        </Text>
+      </View>
+    );
+  }
+
+  const resolved = resolveDeposit(
+    { price: service.price, deposit: service.deposit },
+    { depositDefault: defaultDeposit },
+  );
+  if (!resolved || resolved.amount === 0) return null;
+  const amount = (resolved.amount / 100).toFixed(2).replace('.', ',') + ' €';
+  const suffix = resolved.source === 'service' ? 'perso' : 'défaut';
+  return (
+    <View
+      style={{
+        alignSelf: 'flex-start',
+        backgroundColor: '#DBEAFE',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 999,
+        marginTop: 4,
+      }}
+    >
+      <Text variant="caption" style={{ color: '#1D4ED8', fontWeight: '600', fontSize: 11 }}>
+        Acompte {amount} · {suffix}
+      </Text>
+    </View>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Screen
 // ---------------------------------------------------------------------------
@@ -105,6 +165,12 @@ export default function ServicesScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { provider, providerId } = useProvider();
+
+  // Deposit gates (used to decide whether to show the badge)
+  const depositsEnabled =
+    !!provider?.depositsAddonActive &&
+    provider?.stripeConnectStatus === 'active';
+  const defaultDepositSettings = provider?.settings?.depositDefault ?? null;
 
   const [services, setServices] = useState<WithId<Service>[]>([]);
   const [categories, setCategories] = useState<WithId<ServiceCategory>[]>([]);
@@ -470,6 +536,11 @@ export default function ServicesScreen() {
               <Text variant="bodySmall" color="textSecondary" style={{ marginTop: 2 }}>
                 {formatDuration(service.duration)} • {formatPrice(service.price, service.priceMax)}
               </Text>
+              <DepositBadge
+                service={service}
+                depositsEnabled={depositsEnabled}
+                defaultDeposit={defaultDepositSettings}
+              />
               {service.description && (
                 <Text variant="caption" color="textMuted" numberOfLines={1} style={{ marginTop: 4 }}>
                   {service.description}
