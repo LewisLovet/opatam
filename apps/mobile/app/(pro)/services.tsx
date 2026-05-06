@@ -38,6 +38,9 @@ import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
 // Types
 // ---------------------------------------------------------------------------
 
+type DepositMode = 'inherit' | 'custom' | 'none';
+type DepositCustomType = 'fixed' | 'percent';
+
 interface ServiceFormData {
   name: string;
   description: string;
@@ -52,6 +55,13 @@ interface ServiceFormData {
   locationIds: string[];
   memberIds: string[] | null;
   categoryId: string | null;
+  // Deposit configuration. The 3 modes mirror the web ServiceModal:
+  // inherit (null on save), custom (type fixed/percent + value + hours)
+  // or none (sentinel { type: 'none' }).
+  depositMode: DepositMode;
+  depositType: DepositCustomType;
+  depositValue: string; // % when percent, € when fixed
+  depositRefundHours: string;
 }
 
 const DEFAULT_FORM: ServiceFormData = {
@@ -68,6 +78,10 @@ const DEFAULT_FORM: ServiceFormData = {
   locationIds: [],
   memberIds: null,
   categoryId: null,
+  depositMode: 'inherit',
+  depositType: 'percent',
+  depositValue: '30',
+  depositRefundHours: '24',
 };
 
 function minutesToHoursMinutes(totalMinutes: number): { hours: string; minutes: string } {
@@ -343,6 +357,25 @@ export default function ServicesScreen() {
   const openEdit = (service: WithId<Service>) => {
     setEditingId(service.id);
     const { hours, minutes } = minutesToHoursMinutes(service.duration);
+
+    // Hydrate the deposit fields from whatever shape the service has.
+    let depositMode: DepositMode = 'inherit';
+    let depositType: DepositCustomType = 'percent';
+    let depositValue = '30';
+    let depositRefundHours = '24';
+    if (service.deposit?.type === 'none') {
+      depositMode = 'none';
+    } else if (service.deposit?.type === 'fixed' || service.deposit?.type === 'percent') {
+      depositMode = 'custom';
+      depositType = service.deposit.type;
+      // Fixed values are stored in cents — show in euros for input.
+      depositValue =
+        depositType === 'fixed'
+          ? String((service.deposit.value ?? 0) / 100)
+          : String(service.deposit.value ?? 30);
+      depositRefundHours = String(service.deposit.refundDeadlineHours ?? 24);
+    }
+
     setForm({
       name: service.name,
       description: service.description || '',
@@ -357,6 +390,10 @@ export default function ServicesScreen() {
       locationIds: service.locationIds || [],
       memberIds: service.memberIds,
       categoryId: service.categoryId || null,
+      depositMode,
+      depositType,
+      depositValue,
+      depositRefundHours,
     });
     setExpandedPicker(null);
     setShowModal(true);
@@ -396,6 +433,39 @@ export default function ServicesScreen() {
         return;
       }
 
+      // Build the deposit payload from the form mode + custom inputs.
+      let depositPayload: Service['deposit'] | null;
+      if (form.depositMode === 'inherit') {
+        depositPayload = null;
+      } else if (form.depositMode === 'none') {
+        depositPayload = { type: 'none' };
+      } else {
+        const valueRaw = Number(form.depositValue);
+        const hoursRaw = Number(form.depositRefundHours);
+        if (!Number.isFinite(valueRaw) || valueRaw < 1) {
+          showToast({ variant: 'error', message: "Le montant de l'acompte doit être > 0" });
+          setIsSaving(false);
+          return;
+        }
+        if (form.depositType === 'percent' && valueRaw > 100) {
+          showToast({ variant: 'error', message: 'Le pourcentage ne peut pas dépasser 100' });
+          setIsSaving(false);
+          return;
+        }
+        const valueCents =
+          form.depositType === 'fixed' ? Math.round(valueRaw * 100) : Math.round(valueRaw);
+        if (form.depositType === 'fixed' && valueCents > priceCents) {
+          showToast({ variant: 'error', message: "L'acompte fixe ne peut pas dépasser le prix" });
+          setIsSaving(false);
+          return;
+        }
+        depositPayload = {
+          type: form.depositType,
+          value: valueCents,
+          refundDeadlineHours: Math.max(0, Math.min(720, Math.round(hoursRaw) || 24)),
+        };
+      }
+
       const payload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
@@ -408,6 +478,7 @@ export default function ServicesScreen() {
         locationIds: form.locationIds,
         memberIds: form.memberIds,
         categoryId: form.categoryId,
+        deposit: depositPayload,
       };
 
       if (editingId) {
@@ -957,6 +1028,152 @@ export default function ServicesScreen() {
                   multiline
                   numberOfLines={3}
                 />
+
+                {/* Deposit configuration — only when add-on active */}
+                {depositsEnabled && (
+                  <View>
+                    <Text
+                      variant="bodySmall"
+                      style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}
+                    >
+                      Acompte sur cette prestation
+                    </Text>
+                    {(['inherit', 'custom', 'none'] as DepositMode[]).map((mode) => {
+                      const checked = form.depositMode === mode;
+                      const labels: Record<DepositMode, string> = {
+                        inherit: defaultDepositSettings ? 'Acompte par défaut' : 'Aucun acompte (par défaut)',
+                        custom: 'Acompte personnalisé',
+                        none: "Pas d'acompte",
+                      };
+                      const hints: Record<DepositMode, string> = {
+                        inherit: defaultDepositSettings
+                          ? `${defaultDepositSettings.percent} % du prix · remboursable jusqu'à ${defaultDepositSettings.refundDeadlineHours}h avant le RDV`
+                          : "Aucun acompte par défaut configuré → pas d'acompte demandé.",
+                        custom: "Remplace l'acompte par défaut avec une valeur spécifique.",
+                        none: defaultDepositSettings
+                          ? "Désactive explicitement l'acompte sur cette prestation, même si vous avez un acompte par défaut."
+                          : "Pas d'acompte demandé sur cette prestation.",
+                      };
+                      return (
+                        <Pressable
+                          key={mode}
+                          onPress={() => setForm((p) => ({ ...p, depositMode: mode }))}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'flex-start',
+                            paddingVertical: spacing.sm,
+                            paddingHorizontal: spacing.md,
+                            borderRadius: radius.md,
+                            borderWidth: 1,
+                            borderColor: checked ? colors.primary : colors.border,
+                            backgroundColor: checked ? colors.primaryLight : colors.background,
+                            marginBottom: spacing.xs,
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: 9,
+                              borderWidth: 2,
+                              borderColor: checked ? colors.primary : colors.border,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginTop: 2,
+                              marginRight: spacing.sm,
+                            }}
+                          >
+                            {checked && (
+                              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }} />
+                            )}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                              {labels[mode]}
+                            </Text>
+                            <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                              {hints[mode]}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+
+                    {/* Custom deposit form (only when mode === 'custom') */}
+                    {form.depositMode === 'custom' && (
+                      <View
+                        style={{
+                          marginTop: spacing.sm,
+                          padding: spacing.md,
+                          borderRadius: radius.md,
+                          backgroundColor: colors.surface,
+                          gap: spacing.sm,
+                        }}
+                      >
+                        {/* Type segmented */}
+                        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                          {(['percent', 'fixed'] as DepositCustomType[]).map((t) => {
+                            const sel = form.depositType === t;
+                            return (
+                              <Pressable
+                                key={t}
+                                onPress={() =>
+                                  setForm((p) => ({
+                                    ...p,
+                                    depositType: t,
+                                    depositValue: t === 'percent' ? '30' : '10',
+                                  }))
+                                }
+                                style={{
+                                  flex: 1,
+                                  paddingVertical: spacing.sm,
+                                  borderRadius: radius.sm,
+                                  borderWidth: 1,
+                                  borderColor: sel ? colors.primary : colors.border,
+                                  backgroundColor: sel ? colors.primaryLight : colors.background,
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <Text
+                                  variant="bodySmall"
+                                  style={{
+                                    fontWeight: sel ? '600' : '400',
+                                    color: sel ? colors.primary : colors.textSecondary,
+                                  }}
+                                >
+                                  {t === 'percent' ? 'Pourcentage' : 'Montant fixe'}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+
+                        <Input
+                          label={form.depositType === 'percent' ? 'Pourcentage (%)' : 'Montant (€)'}
+                          placeholder={form.depositType === 'percent' ? '30' : '10'}
+                          value={form.depositValue}
+                          onChangeText={(t) =>
+                            setForm((p) => ({
+                              ...p,
+                              depositValue: t.replace(form.depositType === 'percent' ? /[^0-9]/g : /[^0-9.,]/g, ''),
+                            }))
+                          }
+                          keyboardType={form.depositType === 'percent' ? 'number-pad' : 'decimal-pad'}
+                        />
+                        <Input
+                          label="Délai de remboursement (heures avant le RDV)"
+                          placeholder="24"
+                          value={form.depositRefundHours}
+                          onChangeText={(t) => setForm((p) => ({ ...p, depositRefundHours: t.replace(/[^0-9]/g, '') }))}
+                          keyboardType="number-pad"
+                        />
+                        <Text variant="caption" color="textSecondary">
+                          0 = pas de remboursement automatique. Au-delà du délai, l&apos;acompte n&apos;est pas remboursé en cas d&apos;annulation par le client.
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
 
                 {/* Locations */}
                 {locations.length > 1 && (
