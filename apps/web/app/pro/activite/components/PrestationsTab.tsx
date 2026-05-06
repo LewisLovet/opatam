@@ -257,6 +257,11 @@ export function PrestationsTab() {
 
   const activeMembers = members.filter((m) => m.isActive);
 
+  const depositsEnabled =
+    !!provider?.depositsAddonActive &&
+    provider?.stripeConnectStatus === 'active';
+  const defaultDeposit = provider?.settings?.depositDefault ?? null;
+
   const renderServiceList = (list: WithId<Service>[]) => (
     <div className="space-y-3">
       {list.map((service, index) => (
@@ -273,6 +278,8 @@ export function PrestationsTab() {
           canMoveDown={index < list.length - 1}
           showOrder={list.length > 1}
           orderNumber={index + 1}
+          depositsEnabled={depositsEnabled}
+          defaultDeposit={defaultDeposit}
         />
       ))}
     </div>

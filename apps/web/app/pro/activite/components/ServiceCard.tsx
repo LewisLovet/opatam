@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Badge, Switch } from '@/components/ui';
 import { ChevronUp, ChevronDown, Clock, Euro } from 'lucide-react';
 import type { Service, Member } from '@booking-app/shared';
+import { resolveDeposit } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -20,6 +21,19 @@ interface ServiceCardProps {
   canMoveDown?: boolean;
   showOrder?: boolean;
   orderNumber?: number;
+  /**
+   * When the deposits add-on is active, we surface a small badge on
+   * each service card so the pro can see at a glance whether a
+   * deposit applies (and where it comes from). When the add-on isn't
+   * active, the deposit fields on the service are essentially dead
+   * code, so the badge is hidden entirely.
+   */
+  depositsEnabled?: boolean;
+  /**
+   * Provider-level default deposit. Used to compute the effective
+   * deposit when `service.deposit === null` (inherit case).
+   */
+  defaultDeposit?: { percent: number; refundDeadlineHours: number } | null;
 }
 
 function formatDuration(minutes: number): string {
@@ -43,6 +57,36 @@ function formatPrice(cents: number): string {
   }).format(euros);
 }
 
+/** Compact badge that summarises the effective deposit on this service:
+ *   - explicit none      → grey "Pas d'acompte"
+ *   - custom override    → primary "Acompte: 30 % perso"
+ *   - inherit default    → primary "Acompte: 30 % défaut"
+ *   - no deposit at all  → no badge
+ *
+ * Only rendered when the deposits add-on is active.
+ */
+function depositBadgeProps(
+  service: WithId<Service>,
+  defaultDeposit: { percent: number; refundDeadlineHours: number } | null,
+): { label: string; variant: 'default' | 'primary' | 'warning' } | null {
+  if (service.deposit?.type === 'none') {
+    return { label: "Pas d'acompte", variant: 'default' };
+  }
+  const resolved = resolveDeposit(
+    { price: service.price, deposit: service.deposit },
+    { depositDefault: defaultDeposit },
+  );
+  if (!resolved) return null;
+  // 0 € resolves on free services — no useful info, hide.
+  if (resolved.amount === 0) return null;
+  const amount = (resolved.amount / 100).toFixed(2).replace('.', ',') + ' €';
+  const suffix = resolved.source === 'service' ? 'perso' : 'défaut';
+  return {
+    label: `Acompte ${amount} · ${suffix}`,
+    variant: 'primary',
+  };
+}
+
 export function ServiceCard({
   service,
   members = [],
@@ -55,6 +99,8 @@ export function ServiceCard({
   canMoveDown = true,
   showOrder = false,
   orderNumber,
+  depositsEnabled = false,
+  defaultDeposit = null,
 }: ServiceCardProps) {
   // Determine which members perform this service
   const assignedMembers = service.memberIds
@@ -63,6 +109,8 @@ export function ServiceCard({
   const isAllMembers = !service.memberIds && allMembers.length > 0;
   const showMembers = allMembers.length > 0;
   const [toggling, setToggling] = useState(false);
+
+  const depositBadge = depositsEnabled ? depositBadgeProps(service, defaultDeposit) : null;
 
   const handleToggle = async (checked: boolean) => {
     setToggling(true);
@@ -160,7 +208,7 @@ export function ServiceCard({
               )}
 
               {/* Duration & Price */}
-              <div className="mt-1.5 sm:mt-3 flex items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+              <div className="mt-1.5 sm:mt-3 flex items-center gap-3 sm:gap-4 text-xs sm:text-sm flex-wrap">
                 <span className="flex items-center gap-1 sm:gap-1.5 text-gray-600 dark:text-gray-300">
                   <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
                   {formatDuration(service.duration)}
@@ -168,6 +216,17 @@ export function ServiceCard({
                 <span className="flex items-center gap-1 sm:gap-1.5 font-medium text-gray-900 dark:text-white">
                   {formatPrice(service.price)}
                 </span>
+                {depositBadge && (
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                      depositBadge.variant === 'primary'
+                        ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                    }`}
+                  >
+                    {depositBadge.label}
+                  </span>
+                )}
               </div>
 
               {/* Assigned members */}
