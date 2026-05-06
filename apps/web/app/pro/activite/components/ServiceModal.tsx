@@ -14,7 +14,7 @@ import {
   ConfirmDialog,
   ImageCropModal,
 } from '@/components/ui';
-import { Loader2, Trash2, ImagePlus, X, Check, Crop } from 'lucide-react';
+import { Loader2, Trash2, ImagePlus, X, Check, Crop, Camera, FolderOpen } from 'lucide-react';
 import type { Service, ServiceCategory, Location, Member } from '@booking-app/shared';
 import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
 
@@ -120,6 +120,10 @@ export function ServiceModal({
   const [uploading, setUploading] = useState(false);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
+  // Lazy-show the portfolio gallery so the photo block stays compact
+  // by default. Pros with many portfolio shots don't have to scroll
+  // past all of them every time they edit a service.
+  const [showPortfolio, setShowPortfolio] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<ServiceFormData>({
@@ -174,6 +178,7 @@ export function ServiceModal({
       }
       setErrors({});
       setShowDeleteConfirm(false);
+      setShowPortfolio(false);
     }
   }, [isOpen, service, locations]);
 
@@ -426,37 +431,7 @@ export function ServiceModal({
               </div>
             )}
 
-            {/* Portfolio gallery */}
-            {portfolioPhotos.length > 0 && (
-              <div className="grid grid-cols-5 gap-2 mb-2">
-                {portfolioPhotos.map((url) => (
-                  <button
-                    key={url}
-                    type="button"
-                    onClick={() => handleSelectPortfolioPhoto(url)}
-                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                      formData.photoURL === url
-                        ? 'border-primary-500 ring-2 ring-primary-500/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                  >
-                    <Image
-                      src={url}
-                      alt=""
-                      fill
-                      className="object-cover"
-                    />
-                    {formData.photoURL === url && (
-                      <div className="absolute inset-0 bg-primary-500/20 flex items-center justify-center">
-                        <Check className="w-5 h-5 text-white drop-shadow" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Upload new photo button */}
+            {/* Source choice — 2 buttons side by side */}
             <input
               ref={fileInputRef}
               type="file"
@@ -464,24 +439,70 @@ export function ServiceModal({
               onChange={handlePhotoUpload}
               className="hidden"
             />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-            >
-              {uploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <ImagePlus className="w-4 h-4" />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                {uploading ? 'Upload…' : (formData.photoURL ? 'Changer (appareil)' : "Depuis l'appareil")}
+              </button>
+              {portfolioPhotos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowPortfolio((v) => !v)}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                    showPortfolio
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  {formData.photoURL ? 'Changer (portfolio)' : 'Depuis le portfolio'}
+                  <span className="text-[11px] text-gray-400">({portfolioPhotos.length})</span>
+                </button>
               )}
-              {uploading ? 'Upload en cours...' : 'Ajouter une photo'}
-            </button>
-            <p className="mt-1 text-xs text-gray-400">
-              {portfolioPhotos.length > 0
-                ? 'Selectionnez une photo du portfolio ou ajoutez-en une nouvelle'
-                : 'La photo sera ajoutee a votre portfolio'}
-            </p>
+            </div>
+
+            {/* Portfolio gallery — only when explicitly opened */}
+            {showPortfolio && portfolioPhotos.length > 0 && (
+              <div className="mt-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40">
+                <div className="grid grid-cols-5 gap-2">
+                  {portfolioPhotos.map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => {
+                        handleSelectPortfolioPhoto(url);
+                        setShowPortfolio(false);
+                      }}
+                      className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                        formData.photoURL === url
+                          ? 'border-primary-500 ring-2 ring-primary-500/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <Image src={url} alt="" fill className="object-cover" />
+                      {formData.photoURL === url && (
+                        <div className="absolute inset-0 bg-primary-500/20 flex items-center justify-center">
+                          <Check className="w-5 h-5 text-white drop-shadow" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!formData.photoURL && (
+              <p className="mt-2 text-xs text-gray-400">
+                {portfolioPhotos.length > 0
+                  ? 'Choisissez une photo depuis l\'appareil ou parmi celles déjà dans votre portfolio.'
+                  : 'La photo sera ajoutée à votre portfolio.'}
+              </p>
+            )}
             {errors.photo && (
               <p className="mt-1 text-sm text-red-500">{errors.photo}</p>
             )}
