@@ -87,9 +87,9 @@ export function BookingCard({
         <div className="flex items-center gap-3">
           <div className={`
             flex flex-col items-center justify-center w-12 h-12 rounded-lg
-            ${isToday 
-              ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' 
-              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+            ${isToday
+              ? 'bg-primary-500 dark:bg-primary-600 text-white'
+              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600'
             }
           `}>
             <span className="text-[10px] uppercase font-semibold tracking-wide">
@@ -103,7 +103,7 @@ export function BookingCard({
             <p className="text-sm font-medium text-gray-900 dark:text-white">
               {bookingDate.toLocaleDateString('fr-FR', { month: 'long' })}
             </p>
-            <p className="text-sm text-primary-600 dark:text-primary-400 font-semibold">
+            <p className="text-sm text-primary-700 dark:text-primary-300 font-semibold">
               {formatBookingTime(bookingDate)}
             </p>
           </div>

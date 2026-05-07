@@ -292,7 +292,10 @@ export default function DashboardPage() {
   };
 
   const handleBlockSlot = () => {
-    router.push('/pro/activite?tab=disponibilites');
+    // Send the pro to the calendar with the block-period modal
+    // pre-opened — the inline modal lives there now, no more
+    // detour through the activite page.
+    router.push('/pro/calendrier?action=block');
   };
 
   // Loading skeleton

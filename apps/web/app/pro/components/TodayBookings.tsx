@@ -81,13 +81,16 @@ export function TodayBookings({
                 onClick={() => onBookingClick(booking)}
                 className="w-full flex items-start gap-4 p-4 sm:px-5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
               >
-                {/* Time block */}
-                <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-primary-50 dark:bg-primary-900/20 flex flex-col items-center justify-center">
-                  <span className="text-lg font-bold text-primary-700 dark:text-primary-300 leading-tight">
+                {/* Time block — bright primary badge so the time
+                    is the first thing the pro reads on the row, in
+                    both light and dark modes (the previous tinted
+                    pill blended into the dark surface). */}
+                <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-primary-500 dark:bg-primary-600 flex flex-col items-center justify-center shadow-sm">
+                  <span className="text-lg font-bold text-white leading-tight">
                     {formatTime(new Date(booking.datetime))}
                   </span>
                   {isPending && (
-                    <span className="text-[10px] font-medium text-warning-600 dark:text-warning-400 uppercase">
+                    <span className="text-[10px] font-medium text-white/90 uppercase">
                       En attente
                     </span>
                   )}

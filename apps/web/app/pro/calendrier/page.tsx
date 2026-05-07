@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, schedulingService, memberService, locationService } from '@booking-app/firebase';
 import type { Booking, Member, Location, Availability, BlockedSlot } from '@booking-app/shared';
@@ -20,6 +20,7 @@ type ViewMode = 'day' | 'week';
 export default function CalendarPage() {
   const { user, provider } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -265,6 +266,17 @@ export default function CalendarPage() {
     setBlockModalEndTime(endTime);
     setIsBlockModalOpen(true);
   };
+
+  // Honor `?action=block` (set by /pro QuickActions) — open the
+  // block-period modal once on mount, then strip the param so a
+  // refresh doesn't re-open it.
+  useEffect(() => {
+    if (searchParams.get('action') === 'block') {
+      handleBlockSlot();
+      router.replace('/pro/calendrier');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleEditBlockedPeriod = (id: string) => {
     // Activities have their own edit modal — only plain blocked

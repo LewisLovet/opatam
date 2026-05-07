@@ -61,29 +61,33 @@ interface PeriodConfig {
   iconColor: string;
 }
 
+// Period section headers: neutral surfaces in dark mode keep the
+// labels readable while the icon + text colors carry the visual cue
+// (sunrise/sunset/moon). The previous color-50/color-900/20 tints
+// were too transparent to render distinctly on a dark surface.
 const PERIODS_CONFIG: PeriodConfig[] = [
   {
     key: 'morning',
     label: 'Matin',
     icon: Sun,
-    bgColor: 'bg-amber-50 dark:bg-amber-900/20',
-    textColor: 'text-amber-800 dark:text-amber-200',
+    bgColor: 'bg-amber-50 dark:bg-gray-800',
+    textColor: 'text-amber-800 dark:text-amber-300',
     iconColor: 'text-amber-500',
   },
   {
     key: 'afternoon',
     label: 'Après-midi',
     icon: Sunset,
-    bgColor: 'bg-orange-50 dark:bg-orange-900/20',
-    textColor: 'text-orange-800 dark:text-orange-200',
+    bgColor: 'bg-orange-50 dark:bg-gray-800',
+    textColor: 'text-orange-800 dark:text-orange-300',
     iconColor: 'text-orange-500',
   },
   {
     key: 'evening',
     label: 'Soir',
     icon: Moon,
-    bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
-    textColor: 'text-indigo-800 dark:text-indigo-200',
+    bgColor: 'bg-indigo-50 dark:bg-gray-800',
+    textColor: 'text-indigo-800 dark:text-indigo-300',
     iconColor: 'text-indigo-500',
   },
 ];
@@ -720,9 +724,12 @@ export function BookingDetailModal({
           </div>
         )}
 
-        {/* Reschedule section */}
+        {/* Reschedule section — neutral surface + primary accent on
+            the border/header only. The previous primary-50 / primary-900/20
+            tint blended into both light and dark surrounding modal
+            backgrounds, making the whole section feel washed out. */}
         {showReschedule && (
-          <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl space-y-4 border border-primary-200 dark:border-primary-800">
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-4 border border-primary-200 dark:border-primary-700/50">
             <div className="flex items-center gap-2 text-primary-700 dark:text-primary-300">
               <CalendarClock className="w-5 h-5" />
               <span className="font-medium">Modifier le créneau</span>
@@ -730,7 +737,7 @@ export function BookingDetailModal({
 
             {/* Date picker */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 Nouvelle date
               </label>
               <input
@@ -748,7 +755,7 @@ export function BookingDetailModal({
             {/* Time slots */}
             {rescheduleDate && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Nouveau créneau
                 </label>
                 {loadingSlots ? (
