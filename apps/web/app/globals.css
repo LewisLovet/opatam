@@ -203,3 +203,54 @@ textarea {
 .animate-shimmer {
   animation: shimmer 3s ease-in-out infinite;
 }
+
+/* ── Hero splash animations ──────────────────────────────────────────
+   Used by HeroVideo's loading placeholder. The video may load in
+   under a second on fast connections, so the splash needs to feel
+   intentional ("brand intro frame") rather than busy ("loading
+   spinner"). We avoid foreground motion (no spinner, no progress
+   bar) and instead use ambient background drift + a very slow
+   logo "breathing" scale to keep the frame alive without screaming
+   "wait". */
+@keyframes splash-glow-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50% { transform: translate(40px, -20px) scale(1.15); opacity: 1; }
+}
+
+.animate-splash-glow {
+  animation: splash-glow-drift 14s ease-in-out infinite;
+}
+
+@keyframes splash-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+.animate-splash-breathe {
+  animation: splash-breathe 6s ease-in-out infinite;
+}
+
+@keyframes splash-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-splash-fade-in {
+  animation: splash-fade-in 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Hero video Ken-Burns zoom ───────────────────────────────────────
+   Slow continuous zoom-in/out on the background video to add
+   cinematic motion. The video tag itself is `object-cover` so any
+   scale > 1 just crops slightly — no visible edges. We alternate
+   so it ping-pongs (zoom-in → zoom-out) instead of jumping back to
+   the start every cycle. */
+@keyframes hero-video-zoom {
+  0%   { transform: scale(1);    transform-origin: 50% 50%; }
+  100% { transform: scale(1.08); transform-origin: 50% 50%; }
+}
+
+.animate-hero-video-zoom {
+  animation: hero-video-zoom 24s ease-in-out infinite alternate;
+  will-change: transform;
+}

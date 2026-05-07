@@ -27,7 +27,6 @@ import {
   Smartphone,
   Sparkles,
   Star,
-  UserPlus,
   Users,
   Wrench,
   Zap,
@@ -38,6 +37,8 @@ import { useEffect, useRef, useState } from 'react';
 import { PlayStoreWaitlistModal } from '@/components/common/PlayStoreWaitlistModal';
 import { SocialLinks } from '@/components/common/SocialLinks';
 import { TutorialsSection } from '@/components/home/TutorialsSection';
+import { HowItWorksAnimated } from '@/components/home/HowItWorksAnimated';
+import { HeroVideo } from '@/components/home/HeroVideo';
 import type { ArticleCardData } from '@/app/blog/components/ArticleCard';
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -192,7 +193,7 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
   const [isYearly, setIsYearly] = useState(false);
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [showPlayStoreModal, setShowPlayStoreModal] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
 
   // ── Sticky CTA observer ───────────────────────────────────────────
   useEffect(() => {
@@ -225,189 +226,140 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
       <Header />
 
       <main className="flex-1 overflow-x-hidden">
-        {/* ── Section 2 - Hero ───────────────────────────────────────── */}
+        {/* ── Section 2 - Hero (cinematic full-bleed) ──────────────────
+            Video plays as a full-bleed background; a dark gradient
+            guarantees text legibility on any frame. Content is
+            centered vertically and packed densely (headline, sub,
+            three trust pills, CTAs, disclaimer) so the copy carries
+            the message — the video stays atmospheric, not dominant.
+            Same experience on mobile (video is compressed to ~2.8MB
+            and the loader is the LCP). */}
         <section
           ref={heroRef}
-          className="relative bg-gradient-to-b from-primary-50 to-white dark:from-gray-900 dark:to-gray-900 pt-16 pb-20 sm:pt-24 sm:pb-28"
+          className="relative min-h-[640px] h-[72vh] max-h-[820px] overflow-hidden bg-gray-900"
         >
-          {/* Decorative gradient blur - animated blobs */}
-          <div className="absolute inset-x-0 top-0 -z-10 transform-gpu overflow-hidden blur-3xl" aria-hidden="true">
-            <div
-              className="animate-blob-drift relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-primary-200 to-primary-400 opacity-20 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
-              style={{
-                clipPath:
-                  'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-              }}
-            />
-          </div>
-          {/* Second decorative blob - offset animation */}
-          <div className="absolute inset-x-0 top-20 -z-10 transform-gpu overflow-hidden blur-3xl" aria-hidden="true">
-            <div
-              className="animate-blob-drift-2 relative left-[calc(50%+5rem)] aspect-[1155/678] w-[28rem] -translate-x-1/2 bg-gradient-to-bl from-primary-300 to-primary-500 opacity-15 sm:left-[calc(50%+15rem)] sm:w-[50rem]"
-              style={{
-                clipPath:
-                  'polygon(20% 0%, 80% 10%, 100% 35%, 95% 65%, 75% 100%, 30% 90%, 0% 60%, 5% 30%)',
-              }}
-            />
-          </div>
+          {/* Background loader + video (sibling layers, parent sized) */}
+          <HeroVideo variant="background" />
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="lg:grid lg:grid-cols-2 lg:gap-12 lg:items-center">
-              {/* Left: Copy */}
-              <div className="text-center lg:text-left max-w-2xl mx-auto lg:mx-0">
-                <h1 className="animate-fade-in-up text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white tracking-tight">
-                  Gérez vos rendez-vous en ligne, sans commission
-                </h1>
-                <p className="animate-fade-in-up animation-delay-150 mt-6 text-lg sm:text-xl text-gray-600 dark:text-gray-400">
-                  {APP_CONFIG.name} est la plateforme de réservation en ligne pour les professionnels de services. Vos
-                  clients réservent 24h/24, vous recevez des rappels automatiques et vous ne payez aucune commission.
-                  Prêt en 5 minutes.
-                </p>
+          {/* Vertical dark gradient — keeps text readable on any
+              frame and gives the bottom CTAs the most contrast. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/55 to-black/80"
+          />
+          {/* Extra left-side darkening on wide viewports where the
+              copy is left-aligned. No effect on mobile (centered). */}
+          <div
+            aria-hidden="true"
+            className="hidden lg:block absolute inset-0 bg-gradient-to-r from-black/40 via-black/10 to-transparent"
+          />
 
-                {/* Trust bar */}
-                <div className="animate-fade-in-up animation-delay-300 mt-8 flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3 text-sm font-medium text-gray-600 dark:text-gray-400">
-                  <span className="flex items-center gap-2">
-                    <CalendarCheck className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                    Prêt en 5 min
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <BadgePercent className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                    0% de commission
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                    Dès {proMonthly}&euro;/mois
-                  </span>
-                </div>
+          {/* Foreground content — vertically centered so the copy
+              occupies the optical middle of the frame, not the very
+              bottom corner. */}
+          <div className="relative z-10 h-full flex flex-col justify-center max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+            <div className="max-w-3xl text-center lg:text-left mx-auto lg:mx-0">
+              <h1 className="animate-fade-in-up text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight drop-shadow-lg">
+                Gérez vos rendez-vous en ligne, sans commission
+              </h1>
+              <p className="animate-fade-in-up animation-delay-150 mt-5 sm:mt-6 text-base sm:text-lg lg:text-xl text-white/90 max-w-2xl mx-auto lg:mx-0 drop-shadow-md">
+                {APP_CONFIG.name} est la plateforme de réservation en ligne pour les professionnels de services.
+                Vos clients réservent 24h/24, vous recevez des rappels automatiques et vous ne payez aucune
+                commission. Prêt en 5 minutes.
+              </p>
 
-                {/* CTAs */}
-                <div className="animate-fade-in-up animation-delay-500 mt-10 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
-                  <Link
-                    href="/register"
-                    className="inline-flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 hover:shadow-lg hover:shadow-primary-600/25 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-200 w-full sm:w-auto"
-                  >
-                    Creer ma page
-                  </Link>
-                  <Link
-                    href="/p/demo"
-                    className="inline-flex items-center justify-center border border-primary-300 dark:border-primary-700 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-200 w-full sm:w-auto"
-                  >
-                    Voir une démo
-                  </Link>
-                </div>
-                <p className="animate-fade-in animation-delay-700 mt-4 text-sm text-gray-500 dark:text-gray-500 text-center lg:text-left">
-                  {APP_CONFIG.trialDays} jours gratuits, sans carte bancaire, sans engagement
-                </p>
-
-                {/* App Store badges */}
-                <div className="animate-fade-in animation-delay-700 mt-6 flex flex-row flex-wrap gap-3 justify-center lg:justify-start">
-                  <a
-                    href="https://apps.apple.com/us/app/opatam-agenda-rendez-vous/id6759246218"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2.5 px-5 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors shadow-md"
-                  >
-                    <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-                    </svg>
-                    <div className="text-left">
-                      <div className="text-[10px] leading-tight opacity-80">Télécharger sur l&apos;</div>
-                      <div className="text-base font-semibold leading-tight">App Store</div>
-                    </div>
-                  </a>
-                  <button
-                    onClick={() => setShowPlayStoreModal(true)}
-                    className="inline-flex items-center gap-2.5 px-5 py-3 bg-black/80 text-white rounded-xl hover:bg-gray-800 transition-colors shadow-md relative"
-                  >
-                    <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z" />
-                    </svg>
-                    <div className="text-left">
-                      <div className="text-[10px] leading-tight opacity-80">Bientôt sur</div>
-                      <div className="text-base font-semibold leading-tight">Google Play</div>
-                    </div>
-                    <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-primary-500 text-white text-[10px] font-bold rounded-full shadow">
-                      Bientôt
-                    </span>
-                  </button>
-                </div>
-
-                {/* Mobile mini mockup calendar */}
-                <div className="mt-10 lg:hidden mx-auto max-w-xs">
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-800">
-                    {/* Title bar with dots */}
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                      <div className="flex gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-                      </div>
-                      <div className="flex-1 text-center text-[10px] text-gray-400">Mon agenda</div>
-                    </div>
-                    {/* Mini calendar grid */}
-                    <div className="p-4">
-                      <div className="grid grid-cols-3 gap-2">
-                        {['Lun', 'Mar', 'Mer'].map((day) => (
-                          <div key={day} className="text-center">
-                            <p className="text-[10px] font-medium text-gray-500 mb-1.5">{day}</p>
-                            <div className="space-y-1">
-                              <div className="h-5 rounded bg-primary-200 dark:bg-primary-800" />
-                              <div className="h-8 rounded bg-primary-400 dark:bg-primary-600" />
-                              <div className="h-3 rounded bg-gray-100 dark:bg-gray-700" />
-                              <div className="h-6 rounded bg-primary-300 dark:bg-primary-700" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {/* Trust pills — frosted-glass chips so they read on the
+                  video without losing the cinematic feel. Three core
+                  proof points: speed, no commission, entry price. */}
+              <div className="animate-fade-in-up animation-delay-300 mt-6 sm:mt-7 flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3">
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs sm:text-sm font-medium">
+                  <CalendarCheck className="w-4 h-4 text-primary-300" />
+                  Prêt en 5 min
+                </span>
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs sm:text-sm font-medium">
+                  <BadgePercent className="w-4 h-4 text-primary-300" />
+                  0% de commission
+                </span>
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs sm:text-sm font-medium">
+                  <CreditCard className="w-4 h-4 text-primary-300" />
+                  Dès {proMonthly}&euro;/mois
+                </span>
               </div>
 
-              {/* Right: Dashboard mockup (desktop) */}
-              <div className="hidden lg:block mt-12 lg:mt-0 animate-fade-in-up animation-delay-500">
-                <div className="relative mx-auto max-w-lg animate-float">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-3xl transition-shadow duration-500">
-                    {/* Title bar */}
-                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                      <div className="flex gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-red-400" />
-                        <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                        <div className="w-3 h-3 rounded-full bg-green-400" />
-                      </div>
-                      <div className="flex-1 text-center text-xs text-gray-400">opatam.com/dashboard</div>
-                    </div>
-                    {/* Content */}
-                    <div className="p-6">
-                      <div className="flex items-center gap-3 mb-6">
-                        <Calendar className="w-8 h-8 text-primary-600 dark:text-primary-400" />
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">Mon agenda</p>
-                          <p className="text-xs text-gray-500">Semaine du 3 fevrier</p>
-                        </div>
-                      </div>
-                      {/* Fake calendar blocks */}
-                      <div className="grid grid-cols-5 gap-2">
-                        {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'].map((day) => (
-                          <div key={day} className="text-center">
-                            <p className="text-xs font-medium text-gray-500 mb-2">{day}</p>
-                            <div className="space-y-1.5">
-                              <div className="h-6 rounded bg-primary-200 dark:bg-primary-800" />
-                              <div className="h-10 rounded bg-primary-400 dark:bg-primary-600" />
-                              <div className="h-4 rounded bg-gray-100 dark:bg-gray-700" />
-                              <div className="h-8 rounded bg-primary-300 dark:bg-primary-700" />
-                              <div className="h-5 rounded bg-gray-100 dark:bg-gray-700" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              {/* CTAs — primary solid; secondary frosted-glass outline. */}
+              <div className="animate-fade-in-up animation-delay-500 mt-7 sm:mt-8 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+                <Link
+                  href="/register"
+                  className="inline-flex items-center justify-center bg-primary-600 text-white hover:bg-primary-500 hover:shadow-xl hover:shadow-primary-600/40 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-200 w-full sm:w-auto"
+                >
+                  Créer ma page
+                </Link>
+                <Link
+                  href="/p/demo"
+                  className="inline-flex items-center justify-center border border-white/40 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 hover:border-white/70 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-200 w-full sm:w-auto"
+                >
+                  Voir une démo
+                </Link>
+              </div>
+              <p className="animate-fade-in animation-delay-700 mt-4 text-sm text-white/80 text-center lg:text-left">
+                {APP_CONFIG.trialDays} jours gratuits, sans carte bancaire, sans engagement
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── App Store strip ─────────────────────────────────────────
+            Trust pills moved up into the Hero; this band is the
+            dedicated install path for iOS (live) and Android
+            (waitlist). Stacked + perfectly centered: small caption
+            above, two badges below. Reads as a clean utility band,
+            not as competing chrome. */}
+        <section className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 py-6 sm:py-7">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-xs sm:text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Aussi disponible sur mobile
+              </span>
+              <div className="flex flex-row flex-wrap justify-center gap-3">
+                <a
+                  href="https://apps.apple.com/us/app/opatam-agenda-rendez-vous/id6759246218"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors shadow-sm"
+                >
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+                  </svg>
+                  <div className="text-left">
+                    <div className="text-[10px] leading-tight opacity-80">Télécharger sur l&apos;</div>
+                    <div className="text-sm font-semibold leading-tight">App Store</div>
                   </div>
-                </div>
+                </a>
+                <button
+                  onClick={() => setShowPlayStoreModal(true)}
+                  className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-black/80 text-white rounded-xl hover:bg-gray-800 transition-colors shadow-sm relative"
+                >
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z" />
+                  </svg>
+                  <div className="text-left">
+                    <div className="text-[10px] leading-tight opacity-80">Bientôt sur</div>
+                    <div className="text-sm font-semibold leading-tight">Google Play</div>
+                  </div>
+                  <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-primary-500 text-white text-[10px] font-bold rounded-full shadow">
+                    Bientôt
+                  </span>
+                </button>
               </div>
             </div>
           </div>
         </section>
+
+        {/* ── Tutoriels ─────────────────────────────────────────────────
+            Surfaced right after the Hero so the promise is made
+            tangible before any other proof point. Hidden when the
+            list is empty — the section component handles that. */}
+        <TutorialsSection tutorials={tutorials} />
 
         {/* ── Section 3 - Social Proof Metrics ──────────────────────── */}
         <section className="py-10 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
@@ -686,74 +638,8 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
           </div>
         </section>
 
-        {/* ── Section 7 - How it works ─────────────────────────────── */}
-        <section className="py-16 sm:py-24 bg-gray-50 dark:bg-gray-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                Prêt en 5 minutes, en 3 étapes
-              </h2>
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Pas de formation, pas de technicien à appeler. Vous créez votre page et recevez vos premières
-                réservations aujourd&apos;hui.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
-              {[
-                {
-                  icon: UserPlus,
-                  title: 'Créez votre profil',
-                  description:
-                    'Renseignez votre activité, vos prestations et vos horaires. Notre assistant vous guide pas à pas.',
-                },
-                {
-                  icon: Globe,
-                  title: 'Publiez votre vitrine',
-                  description:
-                    'Votre page professionnelle est en ligne en un clic. Partagez le lien à vos clients par SMS, email ou réseaux sociaux.',
-                },
-                {
-                  icon: CalendarCheck,
-                  title: 'Recevez des réservations',
-                  description:
-                    'Vos clients réservent en autonomie, 24h/24. Vous recevez une notification à chaque nouveau rendez-vous.',
-                },
-              ].map((step, index) => {
-                const Icon = step.icon;
-                return (
-                  <div key={step.title} className="relative text-center">
-                    {index < 2 && (
-                      <div className="hidden md:block absolute top-10 left-[60%] w-[80%] h-0.5 bg-gray-200 dark:bg-gray-700" />
-                    )}
-
-                    <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 mb-6">
-                      <Icon className="w-10 h-10" />
-                      <span className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-primary-600 text-white text-sm font-bold flex items-center justify-center">
-                        {index + 1}
-                      </span>
-                    </div>
-
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">{step.title}</h3>
-                    <p className="text-gray-600 dark:text-gray-400 max-w-xs mx-auto">{step.description}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-12 text-center">
-              <Link
-                href="/register"
-                className="inline-flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 px-8 py-4 text-lg font-semibold rounded-lg transition-colors"
-              >
-                Créer mon profil gratuitement
-              </Link>
-              <p className="mt-4 text-sm text-gray-500 dark:text-gray-500">
-                Essai gratuit {APP_CONFIG.trialDays} jours — Aucune carte bancaire requise
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* ── Section 7 - How it works (animated) ─────────────────── */}
+        <HowItWorksAnimated />
 
         {/* ── Section 8 - Testimonials ───────────────────────────────── */}
         <section id="temoignages" className="py-16 sm:py-24 bg-gray-50 dark:bg-gray-800">
@@ -1107,8 +993,7 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
           </div>
         </section>
 
-        {/* ── Tutoriels — affiché uniquement s'il y a des tutos publiés ─ */}
-        <TutorialsSection tutorials={tutorials} />
+        {/* TutorialsSection moved up — see right after the Hero. */}
 
         {/* ── Section 11 - FAQ ───────────────────────────────────────── */}
         <section id="faq" className="py-16 sm:py-24 bg-white dark:bg-gray-900">
