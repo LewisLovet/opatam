@@ -146,6 +146,23 @@ function WeekDayCell({
     >
       {children}
 
+      {/* Hover line — affordance signalling "you can click-and-drag
+          here". Sits at the cursor's Y, hidden during drag and when
+          the popover is open. */}
+      {drag.hoverY !== null && (
+        <div
+          className="absolute left-0 right-0 pointer-events-none z-[5]"
+          style={{ top: `${drag.hoverY}px` }}
+        >
+          <div className="h-px bg-primary-500/70" />
+          {drag.hoverTime && (
+            <span className="absolute -top-2 left-1 px-1 py-0.5 text-[9px] font-semibold text-white bg-primary-500 rounded shadow-sm leading-none">
+              {drag.hoverTime}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Drag selection rectangle */}
       {drag.dragRect && drag.dragRect.height > 4 && (
         <div

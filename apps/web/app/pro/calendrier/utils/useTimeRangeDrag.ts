@@ -45,6 +45,14 @@ interface UseTimeRangeDragResult {
   dragRect: { top: number; height: number } | null;
   popover: SelectionPopover | null;
   setPopover: (p: SelectionPopover | null) => void;
+  /** Mouse Y inside the column — null when the cursor is outside or
+   *  while a drag is in progress / popover is open. Used by the
+   *  renderer to draw a thin horizontal hover line that signals
+   *  "you can click-and-drag here". */
+  hoverY: number | null;
+  /** Time label ("HH:MM") at hoverY, useful as a small tooltip next
+   *  to the line. */
+  hoverTime: string | null;
   bind: {
     onMouseDown: (e: ReactMouseEvent) => void;
     onMouseMove: (e: ReactMouseEvent) => void;
@@ -64,6 +72,11 @@ export function useTimeRangeDrag({
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const [dragCurrentY, setDragCurrentY] = useState<number | null>(null);
   const [popover, setPopover] = useState<SelectionPopover | null>(null);
+  // Where the cursor is right now inside the column. We surface this
+  // separately from drag tracking so the renderer can draw a hover
+  // line as the affordance — without one, pros don't realise they
+  // can click-and-drag on what looks like an empty grid.
+  const [hoverY, setHoverY] = useState<number | null>(null);
 
   const yToTime = (y: number) => {
     const clamped = Math.max(0, Math.min(y, totalHeight));
@@ -81,9 +94,11 @@ export function useTimeRangeDrag({
   };
 
   const onMouseMove = (e: ReactMouseEvent) => {
-    if (dragStartY === null) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    setDragCurrentY(e.clientY - rect.top);
+    const y = e.clientY - rect.top;
+    setHoverY(y);
+    if (dragStartY === null) return;
+    setDragCurrentY(y);
   };
 
   const onMouseUp = (e: ReactMouseEvent) => {
@@ -110,6 +125,7 @@ export function useTimeRangeDrag({
   };
 
   const onMouseLeave = () => {
+    setHoverY(null);
     if (dragStartY !== null && popover === null) {
       setDragStartY(null);
       setDragCurrentY(null);
@@ -142,11 +158,21 @@ export function useTimeRangeDrag({
         }
       : null;
 
+  // Only surface the hover line when there's no drag in progress
+  // and no popover open — otherwise it would compete with the
+  // selection rectangle / decision UI for the pro's attention.
+  const exposeHoverY = hoverY !== null && dragStartY === null && popover === null
+    ? hoverY
+    : null;
+  const hoverTime = exposeHoverY !== null ? yToTime(exposeHoverY) : null;
+
   return {
     colRef,
     dragRect,
     popover,
     setPopover,
+    hoverY: exposeHoverY,
+    hoverTime,
     bind: { onMouseDown, onMouseMove, onMouseUp, onMouseLeave },
   };
 }
