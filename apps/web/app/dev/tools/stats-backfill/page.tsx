@@ -173,7 +173,7 @@ export default function StatsBackfillDryRunPage() {
     if (!result) return;
     const id = result.provider.id;
     const ok = window.confirm(
-      `⚠️ Backfill PROD\n\nÉcrire ${result.daily.length} daily + ${result.monthly.length} monthly + 1 rolling + ${result.clients.length} clients pour le provider "${result.provider.businessName}" ?\n\nCette opération overwrite les docs existants. Idempotent.`,
+      `⚠️ Backfill PROD\n\nÉcrire ${result.daily.length} daily + ${result.monthly.length} monthly + 1 rolling + ${result.clients.length} clients pour "${result.provider.businessName}" ?\n\nÉcrase les docs providerStats* + providerClients existants pour ce provider. Préserve les champs user-éditables (notes, preferences). Idempotent. Ne touche pas à bookings/users/providers.`,
     );
     if (!ok) return;
     setBackfilling(true);

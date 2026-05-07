@@ -154,6 +154,41 @@ export const runProviderStatsBackfill = onCall<BackfillRequest, Promise<Backfill
     const clientMap = aggregateBookingsToClients(bookings, { providerId, registeredUsers });
     const clientArr: ProviderClient[] = [...clientMap.values()];
 
+    // ★ Preserve user-editable client fields (notes, preferences)
+    //   that the provider may have entered from /pro/clients
+    //   (Phase 2 UI). The aggregation pipeline owns everything
+    //   else; without this read-merge step, re-running the
+    //   backfill (or — once trigger ships — any new booking)
+    //   would wipe notes. One bulk query — much cheaper than
+    //   per-client reads.
+    if (clientArr.length > 0 && performWrites) {
+      const existingSnap = await db
+        .collection('providerClients')
+        .where('providerId', '==', providerId)
+        .get();
+      const existingByKey = new Map<
+        string,
+        {
+          notes: string | null;
+          preferences: Record<string, string> | null;
+        }
+      >();
+      for (const doc of existingSnap.docs) {
+        const d = doc.data();
+        existingByKey.set(d.clientKey, {
+          notes: (d.notes as string | null) ?? null,
+          preferences: (d.preferences as Record<string, string> | null) ?? null,
+        });
+      }
+      for (const c of clientArr) {
+        const existing = existingByKey.get(c.clientKey);
+        if (existing) {
+          if (existing.notes !== null) c.notes = existing.notes;
+          if (existing.preferences !== null) c.preferences = existing.preferences;
+        }
+      }
+    }
+
     const totalRevenue = dailyArr.reduce((s, d) => s + d.revenue, 0);
     const firstDate = dailyArr[0]?.date ?? null;
     const lastDate = dailyArr[dailyArr.length - 1]?.date ?? null;

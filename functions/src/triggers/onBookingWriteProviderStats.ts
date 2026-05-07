@@ -281,6 +281,21 @@ async function recomputeClientDoc(
   const client = clients.get(clientKey);
   const ref = db.collection('providerClients').doc(clientDocId(providerId, clientKey));
   if (client) {
+    // ★ Preserve user-editable fields. The aggregation pipeline owns
+    //   identity + counters + tags, but `notes` and `preferences` are
+    //   written by the provider from /pro/clients (Phase 2 UI). A
+    //   `set({ merge: false })` would wipe them on every booking
+    //   write — read-modify-write here costs us 1 extra read per
+    //   client update, negligible at our scale.
+    const existingSnap = await ref.get();
+    if (existingSnap.exists) {
+      const existing = existingSnap.data() as Partial<{
+        notes: string | null;
+        preferences: Record<string, string> | null;
+      }>;
+      if (existing.notes !== undefined) client.notes = existing.notes;
+      if (existing.preferences !== undefined) client.preferences = existing.preferences;
+    }
     await ref.set(client, { merge: false });
   } else {
     await ref.delete().catch(() => undefined);
