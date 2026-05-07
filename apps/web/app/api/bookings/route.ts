@@ -18,7 +18,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate input
+    // Validate input. Note: we deliberately DON'T pass clientId into the
+    // schema/service. The booking repository uses the client Firestore
+    // SDK (not Admin), and the firestore.rules enforce that any write
+    // with a non-null clientId must come from an authenticated request
+    // matching that uid — but the API has no auth context. So we let
+    // the booking land with clientId=null, then patch it via the Admin
+    // SDK below (which bypasses rules).
     const validated = createBookingSchema.parse({
       providerId: body.providerId,
       serviceId: body.serviceId,
@@ -27,6 +33,10 @@ export async function POST(request: NextRequest) {
       datetime: new Date(body.datetime),
       clientInfo: body.clientInfo,
     });
+    const clientUid: string | null =
+      typeof body.clientId === 'string' && body.clientId.length > 0
+        ? body.clientId
+        : null;
 
     // Check provider subscription is active before accepting booking
     const providerData = await providerService.getById(validated.providerId);
@@ -76,6 +86,17 @@ export async function POST(request: NextRequest) {
     const booking = await bookingService.createBooking(validated, {
       skipDeposit,
     });
+
+    // Stamp the clientId via Admin SDK (bypasses Firestore rules — see
+    // note above the schema parse). Without this the booking is invisible
+    // to "Mes rendez-vous" since useClientBookings queries by clientId.
+    if (clientUid) {
+      await getAdminFirestore()
+        .collection('bookings')
+        .doc(booking.id)
+        .update({ clientId: clientUid });
+      booking.clientId = clientUid;
+    }
 
     // Deposit path: status=pending_payment + booking.deposit populated.
     // Spin up a Stripe Checkout Session on the provider's connected

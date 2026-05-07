@@ -165,6 +165,15 @@ export async function POST(request: NextRequest) {
         await handlePaymentIntentFailed(db, intent);
         break;
       }
+      case 'payment_intent.succeeded': {
+        // Mobile bookings use PaymentSheet, which creates a Destination
+        // PaymentIntent on the platform (no Checkout Session). The
+        // booking confirmation therefore hangs off this event, not
+        // checkout.session.completed.
+        const intent = event.data.object as Stripe.PaymentIntent;
+        await handleDepositPaymentIntentSucceeded(db, intent);
+        break;
+      }
       default:
         console.log(`[STRIPE-WEBHOOK] Unhandled event type: ${event.type}`);
     }
@@ -1018,6 +1027,51 @@ async function handleDepositCheckoutCompleted(
 
   console.log(
     `[STRIPE-WEBHOOK] booking ${bookingId}: pending_payment → confirmed (intent ${paymentIntentId})`,
+  );
+}
+
+/**
+ * payment_intent.succeeded — counterpart of handleDepositCheckoutCompleted
+ * for the mobile flow. Native PaymentSheet creates a PaymentIntent
+ * directly (no Checkout Session), so booking confirmation hangs off
+ * this event instead.
+ *
+ * Idempotent — replaying the event after status=confirmed is a no-op.
+ * Best-effort: PIs without `metadata.bookingId` are unrelated (e.g. the
+ * platform subscription flow) and we skip them silently.
+ */
+async function handleDepositPaymentIntentSucceeded(
+  db: FirebaseFirestore.Firestore,
+  intent: Stripe.PaymentIntent,
+) {
+  const bookingId = intent.metadata?.bookingId;
+  if (!bookingId) return; // not a booking deposit PI
+
+  console.log(`[STRIPE-WEBHOOK] booking deposit PI succeeded: ${bookingId}`);
+
+  const bookingRef = db.collection('bookings').doc(bookingId);
+  const snap = await bookingRef.get();
+  if (!snap.exists) {
+    console.warn(`[STRIPE-WEBHOOK] booking ${bookingId} not found`);
+    return;
+  }
+  const booking = snap.data()!;
+
+  if (booking.status === 'confirmed' && booking.deposit?.status === 'paid') {
+    console.log(`[STRIPE-WEBHOOK] booking ${bookingId} already paid, skipping`);
+    return;
+  }
+
+  await bookingRef.update({
+    status: 'confirmed',
+    'deposit.status': 'paid',
+    'deposit.paidAt': new Date(),
+    'deposit.paymentIntentId': intent.id,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  console.log(
+    `[STRIPE-WEBHOOK] booking ${bookingId}: pending_payment → confirmed (PI ${intent.id})`,
   );
 }
 
