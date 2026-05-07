@@ -1,6 +1,9 @@
 // Provider business stats — pure aggregation logic (daily + monthly
 // + rolling). See ./providerStats.ts for the full pipeline.
 export * from './providerStats';
+// Per-provider client base aggregation (CRM-lite). Same pattern,
+// fed by the same booking write trigger. See ./providerClients.ts.
+export * from './providerClients';
 
 /**
  * Format price from cents to display string

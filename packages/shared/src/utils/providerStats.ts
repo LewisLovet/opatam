@@ -27,12 +27,14 @@ import { DEFAULT_TIMEZONE } from '../constants';
 import type {
   Booking,
   BookingStatus,
+  ProviderClient,
   ProviderStatsDaily,
   ProviderStatsMemberBreakdown,
   ProviderStatsMonthly,
   ProviderStatsRolling,
   ProviderStatsServiceBreakdown,
 } from '../types';
+import { aggregateBookingsToClients } from './providerClients';
 
 // ────────────────────────────────────────────────────────────────
 // Date keys (provider-local timezone)
@@ -521,6 +523,7 @@ export interface FullAggregateResult {
   daily: ProviderStatsDaily[];
   monthly: ProviderStatsMonthly[];
   rolling: ProviderStatsRolling;
+  clients: ProviderClient[];
 }
 
 /**
@@ -528,10 +531,19 @@ export interface FullAggregateResult {
  * the dry-run dev page and the backfill script (which both want
  * the complete picture in one go). The Cloud Function trigger
  * doesn't use this — it computes incremental diffs.
+ *
+ * Optional `registeredUsers` map enriches the clients output with
+ * canonical name/photo/phone for registered Opatam users (preferred
+ * over the denormalised `clientInfo` snapshot on the booking).
  */
 export function aggregateFullPipeline(
   bookings: Booking[],
-  opts: AggregateOptions,
+  opts: AggregateOptions & {
+    registeredUsers?: Record<
+      string,
+      { displayName: string; photoURL: string | null; phone: string | null }
+    >;
+  },
   now: Date = new Date(),
 ): FullAggregateResult {
   const dailyMap = aggregateBookingsToDaily(bookings, opts);
@@ -549,5 +561,21 @@ export function aggregateFullPipeline(
     now,
     opts.timezone,
   );
-  return { daily: dailyArr, monthly: monthlyArr, rolling };
+  const clientsMap = aggregateBookingsToClients(
+    bookings,
+    {
+      providerId: opts.providerId,
+      registeredUsers: opts.registeredUsers,
+    },
+    now,
+  );
+  const clientsArr = [...clientsMap.values()].sort(
+    (a, b) => b.totalRevenue - a.totalRevenue,
+  );
+  return {
+    daily: dailyArr,
+    monthly: monthlyArr,
+    rolling,
+    clients: clientsArr,
+  };
 }

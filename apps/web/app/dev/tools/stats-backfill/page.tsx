@@ -20,7 +20,9 @@
  */
 
 import { useMemo, useState } from 'react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
+  app,
   bookingRepository,
   memberService,
   providerRepository,
@@ -31,6 +33,7 @@ import {
   type Booking,
   type Member,
   type Provider,
+  type ProviderClient,
   type ProviderStatsDaily,
   type ProviderStatsMonthly,
   type ProviderStatsRolling,
@@ -38,9 +41,35 @@ import {
 } from '@booking-app/shared';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
-import { Calculator, Database, Loader2, ShieldAlert } from 'lucide-react';
+import { Calculator, CheckCircle2, Database, Loader2, ShieldAlert, Upload } from 'lucide-react';
+
+/**
+ * Dev-tool dark card. We don't reuse the global `<Card>` here
+ * because that one ships with a white background designed for the
+ * provider/admin areas — would be illegible on /dev's dark theme.
+ */
+function DevSection({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-xl bg-slate-900 border border-slate-800 p-5 sm:p-6">
+      <header className="mb-5 pb-4 border-b border-slate-800/70">
+        <h2 className="text-base font-semibold text-white">{title}</h2>
+        {subtitle && (
+          <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
+        )}
+      </header>
+      <div>{children}</div>
+    </section>
+  );
+}
 
 type WithId<T> = { id: string } & T;
 
@@ -51,7 +80,24 @@ interface DryRunResult {
   daily: ProviderStatsDaily[];
   monthly: ProviderStatsMonthly[];
   rolling: ProviderStatsRolling;
+  clients: ProviderClient[];
   ranAt: Date;
+}
+
+interface BackfillResponse {
+  providerId: string;
+  ranAt: string;
+  performedWrites: boolean;
+  counts: {
+    bookingsScanned: number;
+    daily: number;
+    monthly: number;
+    clients: number;
+    rolling: 1;
+  };
+  totalRevenue: number;
+  firstDate: string | null;
+  lastDate: string | null;
 }
 
 export default function StatsBackfillDryRunPage() {
@@ -59,6 +105,12 @@ export default function StatsBackfillDryRunPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DryRunResult | null>(null);
+
+  // Live backfill state — separate from the dry-run so the user can
+  // re-run the backfill without losing the dry-run preview.
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<BackfillResponse | null>(null);
+  const [backfillError, setBackfillError] = useState<string | null>(null);
 
   const runDryRun = async () => {
     const id = providerId.trim();
@@ -83,15 +135,19 @@ export default function StatsBackfillDryRunPage() {
 
       const membersById: Record<string, { name: string }> = {};
       for (const m of members) {
-        membersById[m.id] = { name: m.displayName };
+        membersById[m.id] = { name: m.name };
       }
 
-      const { daily, monthly, rolling } = aggregateFullPipeline(
+      const { daily, monthly, rolling, clients } = aggregateFullPipeline(
         bookings,
         {
           providerId: id,
           providerName: provider.businessName,
           membersById,
+          // No registeredUsers map at dry-run time — the trigger
+          // and backfill enrich from the users collection on the
+          // server side. The dry-run uses the booking's denormalised
+          // clientInfo, which is good enough to validate logic.
         },
       );
 
@@ -102,6 +158,7 @@ export default function StatsBackfillDryRunPage() {
         daily,
         monthly,
         rolling,
+        clients,
         ranAt: new Date(),
       });
     } catch (err) {
@@ -112,8 +169,36 @@ export default function StatsBackfillDryRunPage() {
     }
   };
 
+  const runBackfill = async () => {
+    if (!result) return;
+    const id = result.provider.id;
+    const ok = window.confirm(
+      `⚠️ Backfill PROD\n\nÉcrire ${result.daily.length} daily + ${result.monthly.length} monthly + 1 rolling + ${result.clients.length} clients pour le provider "${result.provider.businessName}" ?\n\nCette opération overwrite les docs existants. Idempotent.`,
+    );
+    if (!ok) return;
+    setBackfilling(true);
+    setBackfillError(null);
+    setBackfillResult(null);
+    try {
+      const fn = httpsCallable<
+        { providerId: string; performWrites: boolean },
+        BackfillResponse
+      >(getFunctions(app, 'europe-west1'), 'runProviderStatsBackfill');
+      const response = await fn({ providerId: id, performWrites: true });
+      setBackfillResult(response.data);
+    } catch (err) {
+      console.error('[stats-backfill prod]', err);
+      setBackfillError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
   return (
-    <div className="p-6 lg:p-8 bg-slate-950 min-h-screen text-slate-100">
+    // `dark` class enables Tailwind dark: variants on shared UI
+    // components (Tabs, etc.) so they read against the slate-950
+    // page background instead of fighting it with light defaults.
+    <div className="dark p-6 lg:p-8 bg-slate-950 min-h-screen text-slate-100">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div>
@@ -131,45 +216,102 @@ export default function StatsBackfillDryRunPage() {
         </div>
 
         {/* Input */}
-        <Card>
-          <CardHeader title="1. Cible" />
-          <CardBody>
-            <div className="flex flex-col sm:flex-row gap-3 items-end">
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                  Provider ID (Firestore document id de la collection providers)
-                </label>
-                <Input
-                  value={providerId}
-                  onChange={(e) => setProviderId(e.target.value)}
-                  placeholder="ex: rNh3xKmQ8YzVf5pL2tWa"
-                />
-              </div>
-              <Button
-                onClick={runDryRun}
-                disabled={loading || !providerId.trim()}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Calcul…
-                  </>
-                ) : (
-                  'Lancer le dry-run'
-                )}
-              </Button>
+        <DevSection title="1. Cible">
+          <div className="flex flex-col sm:flex-row gap-3 items-end">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Provider ID (Firestore document id de la collection providers)
+              </label>
+              <Input
+                value={providerId}
+                onChange={(e) => setProviderId(e.target.value)}
+                placeholder="ex: rNh3xKmQ8YzVf5pL2tWa"
+                className="bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-500"
+              />
             </div>
-            {error && (
-              <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-start gap-2">
-                <ShieldAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-          </CardBody>
-        </Card>
+            <Button
+              onClick={runDryRun}
+              disabled={loading || !providerId.trim()}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Calcul…
+                </>
+              ) : (
+                'Lancer le dry-run'
+              )}
+            </Button>
+          </div>
+          {error && (
+            <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-start gap-2">
+              <ShieldAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+        </DevSection>
 
         {/* Result */}
-        {result && <DryRunReport result={result} />}
+        {result && (
+          <>
+            <DryRunReport result={result} />
+
+            {/* Live backfill section — appears once a dry-run is
+                available so the user has eyeballed the numbers
+                before pressing the "write to prod" button. */}
+            <DevSection
+              title="3. Backfill prod"
+              subtitle="Écrit les docs providerStats* + providerClients en Firestore via la callable runProviderStatsBackfill (Admin SDK). Idempotent."
+            >
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                <Button
+                  onClick={runBackfill}
+                  disabled={backfilling}
+                  className="!bg-red-600 hover:!bg-red-500 !text-white !border-transparent"
+                >
+                  {backfilling ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Écriture en cours…
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Backfill PROD pour ce provider
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-slate-400">
+                  Confirmation requise. Écrase les docs existants.
+                </p>
+              </div>
+
+              {backfillError && (
+                <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-start gap-2">
+                  <ShieldAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>{backfillError}</span>
+                </div>
+              )}
+
+              {backfillResult && (
+                <div className="mt-4 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm">
+                  <div className="flex items-center gap-2 font-semibold mb-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Backfill exécuté à {new Date(backfillResult.ranAt).toLocaleTimeString('fr-FR')}
+                  </div>
+                  <ul className="space-y-1 text-xs">
+                    <li>• {backfillResult.counts.bookingsScanned} bookings scannés</li>
+                    <li>• {backfillResult.counts.daily} docs providerStatsDaily écrits</li>
+                    <li>• {backfillResult.counts.monthly} docs providerStatsMonthly écrits</li>
+                    <li>• {backfillResult.counts.rolling} doc providerStatsRolling écrit</li>
+                    <li>• {backfillResult.counts.clients} docs providerClients écrits</li>
+                    <li>• Période : {backfillResult.firstDate ?? '—'} → {backfillResult.lastDate ?? '—'}</li>
+                  </ul>
+                </div>
+              )}
+            </DevSection>
+          </>
+        )}
       </div>
     </div>
   );
@@ -185,12 +327,10 @@ function DryRunReport({ result }: { result: DryRunResult }) {
   const lastDate = result.daily[result.daily.length - 1]?.date ?? '—';
 
   return (
-    <Card>
-      <CardHeader
-        title="2. Résultat"
-        subtitle={`Calculé localement le ${result.ranAt.toLocaleString('fr-FR')} — aucune donnée écrite`}
-      />
-      <CardBody>
+    <DevSection
+      title="2. Résultat"
+      subtitle={`Calculé localement le ${result.ranAt.toLocaleString('fr-FR')} — aucune donnée écrite`}
+    >
         {/* Summary strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <SummaryTile
@@ -226,6 +366,9 @@ function DryRunReport({ result }: { result: DryRunResult }) {
             <TabsTrigger value="rolling">
               Rolling
             </TabsTrigger>
+            <TabsTrigger value="clients">
+              Clients ({result.clients.length})
+            </TabsTrigger>
             <TabsTrigger value="raw">
               Bookings bruts ({result.bookings.length})
             </TabsTrigger>
@@ -240,18 +383,20 @@ function DryRunReport({ result }: { result: DryRunResult }) {
           <TabsContent value="rolling">
             <RollingPanel rolling={result.rolling} />
           </TabsContent>
+          <TabsContent value="clients">
+            <ClientsTable clients={result.clients} />
+          </TabsContent>
           <TabsContent value="raw">
             <RawBookingsSample bookings={result.bookings} />
           </TabsContent>
         </Tabs>
-      </CardBody>
-    </Card>
+    </DevSection>
   );
 }
 
 function SummaryTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg bg-slate-900 border border-slate-800 p-4">
+    <div className="rounded-lg bg-slate-950 border border-slate-800 p-4">
       <div className="text-[11px] uppercase tracking-wider text-slate-500">{label}</div>
       <div className="mt-1 text-lg font-semibold text-white truncate">{value}</div>
       {sub && <div className="mt-0.5 text-xs text-slate-400 truncate">{sub}</div>}
@@ -498,6 +643,117 @@ function Heatmap90d({ data }: { data: number[][] }) {
         </table>
       </div>
     </section>
+  );
+}
+
+// ─── Clients tab ────────────────────────────────────────────────────
+
+const TAG_STYLES: Record<string, string> = {
+  new: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
+  regular: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  vip: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30',
+  at_risk: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  lost: 'bg-slate-600/30 text-slate-400 border-slate-600/40',
+  noshow_prone: 'bg-red-500/20 text-red-300 border-red-500/30',
+};
+
+function ClientsTable({ clients }: { clients: ProviderClient[] }) {
+  if (clients.length === 0) {
+    return (
+      <EmptyState label="Aucun client identifié (les bookings totalement anonymes — sans email ni clientId — sont écartés)." />
+    );
+  }
+  // Sort by total revenue desc, ties broken by bookings count.
+  const sorted = useMemo(
+    () =>
+      [...clients].sort(
+        (a, b) =>
+          b.totalRevenue - a.totalRevenue ||
+          b.bookingsCount - a.bookingsCount,
+      ),
+    [clients],
+  );
+  const now = Date.now();
+  return (
+    <div className="overflow-x-auto">
+      <p className="text-xs text-slate-500 mb-3">
+        {clients.length} clients distincts agrégés depuis les bookings du provider.
+        Triés par CA cumulé. Les tags sont calculés depuis les compteurs avec une
+        date de référence = maintenant.
+      </p>
+      <table className="w-full text-sm">
+        <thead className="text-xs uppercase tracking-wider text-slate-500 border-b border-slate-800">
+          <tr>
+            <Th>Nom</Th>
+            <Th>Email / clé</Th>
+            <Th right>RDV</Th>
+            <Th right>Confirmés</Th>
+            <Th right>No-show</Th>
+            <Th right>CA cumulé</Th>
+            <Th>Premier</Th>
+            <Th>Dernier</Th>
+            <Th right>Inactif (j)</Th>
+            <Th>Tags</Th>
+            <Th>Opt-in</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((c) => {
+            const inactiveDays = Math.floor(
+              (now - c.lastBookingAt.getTime()) / (24 * 60 * 60 * 1000),
+            );
+            return (
+              <tr key={c.clientKey} className="border-b border-slate-800/60 hover:bg-slate-900/50">
+                <Td className="font-medium text-white">{c.name || '—'}</Td>
+                <Td className="text-slate-400 max-w-[220px] truncate">
+                  {c.email ?? c.clientKey}
+                </Td>
+                <Td right>{c.bookingsCount}</Td>
+                <Td right className="text-green-300">{c.confirmedCount}</Td>
+                <Td right className={c.noshowCount > 0 ? 'text-red-300' : 'text-slate-500'}>
+                  {c.noshowCount}
+                </Td>
+                <Td right className="font-semibold">{formatPrice(c.totalRevenue)}</Td>
+                <Td mono className="text-xs">
+                  {c.firstBookingAt.toISOString().slice(0, 10)}
+                </Td>
+                <Td mono className="text-xs">
+                  {c.lastBookingAt.toISOString().slice(0, 10)}
+                </Td>
+                <Td right className={inactiveDays > 90 ? 'text-amber-400' : 'text-slate-400'}>
+                  {inactiveDays}
+                </Td>
+                <Td>
+                  <div className="flex flex-wrap gap-1">
+                    {c.tags.length === 0 ? (
+                      <span className="text-slate-600 text-xs">—</span>
+                    ) : (
+                      c.tags.map((t) => (
+                        <span
+                          key={t}
+                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] border ${
+                            TAG_STYLES[t] ?? 'bg-slate-700/30 text-slate-300 border-slate-700'
+                          }`}
+                        >
+                          {t}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </Td>
+                <Td>
+                  {c.marketingOptIn ? (
+                    <span className="text-emerald-400 text-xs">✓</span>
+                  ) : (
+                    <span className="text-slate-600 text-xs">—</span>
+                  )}
+                </Td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

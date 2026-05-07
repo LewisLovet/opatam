@@ -259,6 +259,81 @@ export interface ProviderStatsRolling {
   updatedAt: Date;
 }
 
+// ─── Provider clients (CRM-lite, populated by the same trigger) ─────
+//
+// One document per (provider, distinct client identity) — populated
+// by the same booking write trigger that maintains providerStats*.
+// Stored at `providerClients/{providerId}_{clientKey}` where
+// clientKey is what `getClientKey()` returns (email-prefixed, or
+// id-prefixed for registered users).
+//
+// Used by /pro/clients and (later) by the campaigns segment builder.
+
+/**
+ * Behaviour tags computed nightly from the aggregated stats. Tags
+ * are NOT mutually exclusive — a client can be `vip + at_risk`,
+ * which is exactly the segment to target with a re-activation
+ * campaign. Recomputed in the cron from the denormalised counters
+ * so we don't need to scan bookings.
+ */
+export type ProviderClientTag =
+  | 'new'             // firstBookingAt within last 30 days
+  | 'regular'         // ≥3 confirmed AND lastBookingAt within last 90 days
+  | 'vip'             // ≥10 confirmed OR lifetime revenue ≥ 500€
+  | 'at_risk'         // last booking 60-180 days ago
+  | 'lost'            // last booking > 180 days ago
+  | 'noshow_prone';   // ≥3 bookings AND noshow rate > 20%
+
+export interface ProviderClient {
+  providerId: string;
+  /** `email:foo@bar.com` for anonymous bookers, `id:<userId>` for registered. */
+  clientKey: string;
+
+  // ── Identity (denormalised from the latest booking) ──────────
+  email: string | null;
+  phone: string | null;
+  name: string;
+  /** Set when the booker is a registered Opatam user. */
+  clientId: string | null;
+  /** From `User.photoURL` if registered, else null. */
+  photoURL: string | null;
+
+  // ── Counters (kept fresh by the booking trigger) ─────────────
+  bookingsCount: number;
+  confirmedCount: number;
+  cancelledCount: number;
+  noshowCount: number;
+  /** Sum of `price` over confirmed bookings (cents). */
+  totalRevenue: number;
+
+  firstBookingAt: Date;
+  lastBookingAt: Date;
+
+  // ── Tags (recomputed nightly by the cron) ────────────────────
+  tags: ProviderClientTag[];
+
+  // ── Provider-editable fields (UI on /pro/clients) ────────────
+  /** Free-form notes the provider keeps on this client. */
+  notes: string | null;
+  /** Arbitrary key/value preferences (e.g. "preferred_member": "alex"). */
+  preferences: Record<string, string> | null;
+
+  // ── Marketing consent (RGPD) ─────────────────────────────────
+  /**
+   * True when the most recent booking from this client had
+   * `clientInfo.marketingOptIn === true`. The trigger updates this
+   * on every booking write so a client can opt out by simply
+   * unchecking the box on a future booking. Server-side opt-out
+   * actions also stamp `marketingOptOutAt` for audit.
+   */
+  marketingOptIn: boolean;
+  marketingOptInAt: Date | null;
+  marketingOptOutAt: Date | null;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface SocialLinks {
   instagram: string | null;
   facebook: string | null;
@@ -599,6 +674,19 @@ export interface ClientInfo {
   name: string;
   email: string;
   phone?: string;
+  /**
+   * Marketing opt-in: when `true`, the booker has explicitly
+   * agreed that THIS provider may contact them with promotional
+   * offers (per RGPD, consent must be tied to a named recipient,
+   * not a generic platform-wide flag).
+   *
+   * Optional + backward-compatible: existing bookings without the
+   * field are treated as `false`. The booking-form UI to actually
+   * collect this consent ships separately — when present, this
+   * value flows through the bookings → providerClients aggregation
+   * pipeline and ends up on `ProviderClient.marketingOptIn`.
+   */
+  marketingOptIn?: boolean;
 }
 
 // Review types
