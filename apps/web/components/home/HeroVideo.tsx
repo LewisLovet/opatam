@@ -99,10 +99,22 @@ function HeroVideoLoader() {
   );
 }
 
+/**
+ * Mobile breakpoint — matches Tailwind's `md` (768px). Below this
+ * we serve the portrait-shot version of the video (720×1280) so
+ * the framing on a phone doesn't crop out the human in frame.
+ */
+const MOBILE_MEDIA_QUERY = '(max-width: 767px)';
+
 export function HeroVideo({ variant = 'panel' }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
+  // null = haven't measured yet (SSR + first client paint). Once the
+  // mount effect runs we know the real value. Until then we don't
+  // render the video element at all — the splash covers the area, so
+  // the user sees no flicker, and we never download the wrong source.
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
 
   // Detect prefers-reduced-motion at mount + react to OS changes.
   useEffect(() => {
@@ -114,6 +126,51 @@ export function HeroVideo({ variant = 'panel' }: HeroVideoProps) {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  // Detect mobile viewport at mount + react to resize/orientation.
+  // We swap the video src when this flips so a desktop user resizing
+  // down (or a tablet rotating) gets the correctly-framed shot.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia(MOBILE_MEDIA_QUERY);
+    setIsMobile(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Source resolution. Desktop landscape (1280×720) vs mobile portrait
+  // (720×1280) — same scene, framed for the device.
+  const videoSrc = isMobile ? '/hero-mobile.mp4' : '/hero-loop.mp4';
+
+  // Reset readiness when the src flips so the splash briefly covers
+  // the swap window (resize / orientation change) instead of showing
+  // a blank video element while the new source decodes.
+  useEffect(() => {
+    setVideoReady(false);
+  }, [videoSrc]);
+
+  // Shared video tag. `key` forces React to fully unmount/remount
+  // the element when the src flips, which restarts playback cleanly
+  // and re-fires onCanPlay (so the splash briefly covers the swap).
+  const videoElement =
+    !reducedMotion && isMobile !== null ? (
+      <video
+        key={videoSrc}
+        ref={videoRef}
+        src={videoSrc}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        onCanPlay={() => setVideoReady(true)}
+        aria-hidden="true"
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 animate-hero-video-zoom ${
+          videoReady ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+    ) : null;
+
   if (variant === 'background') {
     // Full-bleed: parent controls sizing (e.g. `h-[72vh]`). We paint
     // the loader, then the video on top once it's ready.
@@ -122,23 +179,7 @@ export function HeroVideo({ variant = 'panel' }: HeroVideoProps) {
         {/* Branded loader sits underneath. Stays in place; the video
             fades IN above it so the handoff is seamless. */}
         <HeroVideoLoader />
-
-        {!reducedMotion && (
-          <video
-            ref={videoRef}
-            src="/hero-loop.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            onCanPlay={() => setVideoReady(true)}
-            aria-hidden="true"
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-              reducedMotion ? '' : 'animate-hero-video-zoom'
-            } ${videoReady ? 'opacity-100' : 'opacity-0'}`}
-          />
-        )}
+        {videoElement}
       </>
     );
   }
@@ -148,23 +189,7 @@ export function HeroVideo({ variant = 'panel' }: HeroVideoProps) {
     <div className="relative mx-auto max-w-lg animate-float">
       <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 aspect-video bg-gray-900 hover:shadow-3xl transition-shadow duration-500">
         <HeroVideoLoader />
-
-        {!reducedMotion && (
-          <video
-            ref={videoRef}
-            src="/hero-loop.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            onCanPlay={() => setVideoReady(true)}
-            aria-hidden="true"
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-              reducedMotion ? '' : 'animate-hero-video-zoom'
-            } ${videoReady ? 'opacity-100' : 'opacity-0'}`}
-          />
-        )}
+        {videoElement}
       </div>
     </div>
   );
