@@ -12,6 +12,7 @@ import {
   Eye,
   MessageSquare,
   ArrowRightLeft,
+  Calculator,
 } from 'lucide-react';
 
 const tools = [
@@ -70,6 +71,13 @@ const tools = [
     icon: <Eye className="w-6 h-6" />,
     color: 'bg-amber-500',
     href: '/dev/tests/revenuecat',
+  },
+  {
+    title: 'Stats backfill — Dry run',
+    description: "Calcule l'agrégation providerStats d'un provider en mémoire, sans rien écrire. À valider avant le backfill prod.",
+    icon: <Calculator className="w-6 h-6" />,
+    color: 'bg-fuchsia-600',
+    href: '/dev/tools/stats-backfill',
   },
 ];
 

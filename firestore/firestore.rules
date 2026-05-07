@@ -195,5 +195,44 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // === PROVIDER STATS (3-tier aggregation) ===
+    //
+    // Three collections feed /pro/statistiques:
+    //   providerStatsDaily/{providerId}_{YYYY-MM-DD}    — live, trigger-updated
+    //   providerStatsMonthly/{providerId}_{YYYY-MM}     — rolled up nightly
+    //   providerStatsRolling/{providerId}               — top-K snapshots
+    //
+    // Read access: each provider can only see their own stats. Unlike
+    // pageViews (denormalised on the public Provider doc), these
+    // collections carry revenue, client identities and per-member
+    // breakdown — so they are NOT public. List queries from the
+    // client must always include `where('providerId', '==', myId)`,
+    // every other doc gets rejected by the per-doc rule.
+    //
+    // Write access: only via the booking write trigger
+    // (onProviderStatsBookingWrite), the nightly consolidation cron
+    // and the backfill script — all three run with the Admin SDK
+    // and bypass these rules entirely.
+
+    match /providerStatsDaily/{docId} {
+      // doc id is `{providerId}_{YYYY-MM-DD}` but we authorize via
+      // the `providerId` field for safety + simpler list rules.
+      allow read: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+      allow write: if false; // Admin SDK only
+    }
+
+    match /providerStatsMonthly/{docId} {
+      // doc id is `{providerId}_{YYYY-MM}` — same pattern.
+      allow read: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+      allow write: if false; // Admin SDK only
+    }
+
+    match /providerStatsRolling/{providerId} {
+      // doc id IS the providerId here, so the existing helper works
+      // and we save the resource.data lookup.
+      allow read: if isProviderAdmin(providerId);
+      allow write: if false; // Admin SDK only
+    }
+
   }
 }

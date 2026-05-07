@@ -113,6 +113,152 @@ export interface PageViewDaily {
   count: number;         // Total views for that day
 }
 
+// ─── Provider business stats (3-tier aggregation) ───────────────────
+// See `lib/providerStats.ts` for the aggregation logic shared by the
+// backfill script, the bookings write-trigger, and the nightly cron.
+//
+// Storage layout:
+//   providerStatsDaily/{providerId}_{YYYY-MM-DD}    — live, trigger-updated
+//   providerStatsMonthly/{providerId}_{YYYY-MM}     — rolled up nightly
+//   providerStatsRolling/{providerId}               — top-K snapshots
+//
+// Why three tiers: see the design doc that prompted this work — daily
+// supports the live "today" KPIs, monthly powers the 12-month trend
+// at fixed cost (12 reads), and rolling stores top-K results that
+// would otherwise need to scan many daily docs at read time.
+
+/**
+ * Per-service breakdown stored inside a Daily/Monthly aggregate doc.
+ * Service name is denormalized from `services/{id}` at booking
+ * creation time (already on the Booking) so we don't need a join
+ * when rendering the "top services" panel.
+ */
+export interface ProviderStatsServiceBreakdown {
+  serviceId: string;
+  serviceName: string;
+  /** Number of bookings (any status — see counts below for filters). */
+  bookingsCount: number;
+  /** Confirmed bookings only — the revenue-contributing ones. */
+  confirmedCount: number;
+  /** Sum of `price` for confirmed bookings (in cents). */
+  revenue: number;
+}
+
+/**
+ * Per-member breakdown — only meaningful when the provider is on a
+ * team plan and has multiple members. `memberId === null` is grouped
+ * under a synthetic "self" entry (the provider themselves).
+ */
+export interface ProviderStatsMemberBreakdown {
+  memberId: string | null;
+  memberName: string;
+  bookingsCount: number;
+  confirmedCount: number;
+  revenue: number;
+}
+
+/**
+ * Daily aggregate — one document per (provider, calendar day). The
+ * `date` field is the booking's `datetime.toISOString().slice(0,10)`
+ * in the provider's timezone. NB: revenue here is the SUM of all
+ * `confirmed` bookings on that calendar day, regardless of hour.
+ * The "confirmed AND datetime in the past" rule is applied at READ
+ * time — the daily for "today" includes future hours and the UI
+ * filters them out by querying live bookings for today only.
+ */
+export interface ProviderStatsDaily {
+  providerId: string;
+  date: string;                     // YYYY-MM-DD
+
+  /** Total bookings written for this day (all statuses). */
+  bookingsCount: number;
+  /** Status breakdown — sums to bookingsCount. */
+  confirmedCount: number;
+  pendingCount: number;
+  pendingPaymentCount: number;
+  cancelledCount: number;
+  noshowCount: number;
+
+  /** Revenue (cents) — sum of `price` over confirmed bookings on this day. */
+  revenue: number;
+
+  /**
+   * Distinct client identities. Hashed (sha256 hex) for privacy so
+   * the aggregate doc carries no raw PII. Used to compute the
+   * `uniqueClients` count for any time window by unioning across
+   * daily docs at read time.
+   */
+  clientHashes: string[];
+  /** Subset of `clientHashes` whose first booking ever falls on this day. */
+  newClientHashes: string[];
+
+  /** Per-service breakdown for "top services" panels. */
+  services: ProviderStatsServiceBreakdown[];
+  /** Per-member breakdown for team-plan dashboards. */
+  members: ProviderStatsMemberBreakdown[];
+
+  /** Hour-of-day distribution (0-23) of bookings — feeds the heatmap. */
+  hourCounts: number[];             // length 24
+
+  updatedAt: Date;
+}
+
+/**
+ * Monthly aggregate — derived nightly from the daily docs of the
+ * month. Same schema as Daily but `date` is YYYY-MM. Used to power
+ * 12-month trend charts at fixed cost (12 reads).
+ */
+export interface ProviderStatsMonthly {
+  providerId: string;
+  month: string;                    // YYYY-MM
+
+  bookingsCount: number;
+  confirmedCount: number;
+  pendingCount: number;
+  pendingPaymentCount: number;
+  cancelledCount: number;
+  noshowCount: number;
+
+  revenue: number;
+
+  clientHashes: string[];
+  newClientHashes: string[];
+
+  services: ProviderStatsServiceBreakdown[];
+  members: ProviderStatsMemberBreakdown[];
+  hourCounts: number[];
+
+  updatedAt: Date;
+}
+
+/**
+ * Rolling snapshots — recomputed nightly. Stores the expensive top-K
+ * rankings (services, clients) and pre-computed time windows so
+ * panels render with a single read regardless of history depth.
+ */
+export interface ProviderStatsRolling {
+  providerId: string;
+
+  /** Top services by revenue, computed for several time windows. */
+  topServices30d: ProviderStatsServiceBreakdown[];
+  topServices90d: ProviderStatsServiceBreakdown[];
+  topServicesAllTime: ProviderStatsServiceBreakdown[];
+
+  /**
+   * Top clients by lifetime revenue. Stored as hashes here to keep
+   * the agg doc PII-free; the UI resolves names by querying recent
+   * `bookings` for each hash on demand (max 10 client lookups).
+   */
+  topClients30d: { clientHash: string; bookingsCount: number; revenue: number }[];
+  topClients90d: { clientHash: string; bookingsCount: number; revenue: number }[];
+  topClientsAllTime: { clientHash: string; bookingsCount: number; revenue: number }[];
+
+  /** Day-of-week × hour-of-day heatmap over the last 90 days. */
+  heatmap90d: number[][];           // [7][24]
+
+  updatedAt: Date;
+}
+
 export interface SocialLinks {
   instagram: string | null;
   facebook: string | null;

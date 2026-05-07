@@ -1,3 +1,7 @@
+// Provider business stats — pure aggregation logic (daily + monthly
+// + rolling). See ./providerStats.ts for the full pipeline.
+export * from './providerStats';
+
 /**
  * Format price from cents to display string
  * @param cents - Price in cents
