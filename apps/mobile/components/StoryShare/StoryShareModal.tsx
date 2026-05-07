@@ -38,9 +38,8 @@ import { APP_CONFIG } from '@booking-app/shared';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
 import { useProvider } from '../../contexts';
-import { useOpeningHours } from '../../hooks/useOpeningHours';
+import { useUpcomingAvailabilities } from '../../hooks/useUpcomingAvailabilities';
 import { StoryCard } from './StoryCard';
-import type { DayScheduleItem } from './StoryCard';
 
 // Try to import react-native-share (only available in dev client / production builds)
 let RNShare: typeof import('react-native-share').default | null = null;
@@ -55,9 +54,35 @@ try {
 // Create one at https://developers.facebook.com if not yet available
 const FACEBOOK_APP_ID = '2649028388814234';
 
+const MONTHS_SHORT = [
+  'janv', 'févr', 'mars', 'avr', 'mai', 'juin',
+  'juill', 'août', 'sept', 'oct', 'nov', 'déc',
+];
+
+/** Build the human-readable date span for a given week offset. Mirrors
+ *  the formatting the story card uses internally so the modal label
+ *  matches what gets captured. */
+function formatWeekRange(offset: number, days: number): string {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() + offset * 7);
+  const end = new Date(start);
+  end.setDate(end.getDate() + days - 1);
+
+  const sameMonth = start.getMonth() === end.getMonth();
+  const sameYear = start.getFullYear() === end.getFullYear();
+  if (sameMonth && sameYear) {
+    return `${start.getDate()} → ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`;
+  }
+  if (sameYear) {
+    return `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]} → ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`;
+  }
+  return `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]} ${start.getFullYear()} → ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`;
+}
+
 type WithId<T> = { id: string } & T;
 
-type DisplayMode = 'services' | 'hours' | 'none';
+type DisplayMode = 'services' | 'availabilities' | 'none';
 
 interface StoryShareModalProps {
   visible: boolean;
@@ -78,7 +103,7 @@ const NETWORKS: SocialNetwork[] = [
 
 const DISPLAY_MODES: { key: DisplayMode; label: string; icon: string }[] = [
   { key: 'services', label: 'Prestations', icon: 'pricetags-outline' },
-  { key: 'hours', label: 'Horaires', icon: 'time-outline' },
+  { key: 'availabilities', label: 'Dispos', icon: 'calendar-outline' },
   { key: 'none', label: 'QR Code', icon: 'qr-code-outline' },
 ];
 
@@ -95,16 +120,35 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const [showLinkReminder, setShowLinkReminder] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // Fetch opening hours
-  const { weekSchedule, loading: loadingHours, refresh: refreshHours } = useOpeningHours(provider?.id);
+  // Story theme — applies globally (services, dispos, QR Code).
+  // 'dark' = navy bg + accent blue, 'light' = the existing white/grey
+  // gradient with primary blue accents. Defaults to light to match
+  // the historical look of the existing share output.
+  const [storyTheme, setStoryTheme] =
+    useState<'light' | 'dark'>('light');
 
-  // Fetch services + refresh hours when modal opens
+  // Week offset (0 = this week, 1 = next, …). Capped at 4 to keep
+  // the share UX focused on near-term planning.
+  const [weekOffset, setWeekOffset] = useState(0);
+  const MAX_WEEK_OFFSET = 4;
+
+  // Fetch upcoming availabilities — only when the user actually opens
+  // the "Dispos" mode, since it triggers a heavier scheduling query.
+  const {
+    grid: availabilityGrid,
+    loading: loadingAvailabilities,
+    refresh: refreshAvailabilities,
+  } = useUpcomingAvailabilities({
+    providerId: provider?.id,
+    days: 7,
+    weekOffset,
+    enabled: visible && displayMode === 'availabilities',
+  });
+
+  // Fetch services when the modal opens
   useEffect(() => {
     if (!visible || !provider) return;
     let cancelled = false;
-
-    // Refresh hours to pick up any changes made in availability screen
-    refreshHours();
 
     (async () => {
       setLoadingServices(true);
@@ -256,7 +300,9 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
 
   const location = provider.cities?.[0] || '';
   const isSharing = sharing !== null;
-  const isLoading = loadingServices || loadingHours;
+  const isLoading =
+    loadingServices ||
+    (displayMode === 'availabilities' && loadingAvailabilities);
 
   const toggleServiceId = useCallback((id: string) => {
     setSelectedServiceIds((prev) => {
@@ -284,7 +330,8 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     services: filteredServices,
     bookingUrl,
     displayMode,
-    weekSchedule: weekSchedule as DayScheduleItem[],
+    availabilityGrid,
+    storyTheme,
   };
 
   return (
@@ -366,6 +413,107 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                       ]}
                     >
                       {mode.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Week selector — only in "Dispos" mode, lets the pro pick
+              which week they want to share. Reads the actual date
+              range straight off the grid so it matches what the story
+              renders. */}
+          {displayMode === 'availabilities' && (
+            <View style={styles.sectionSpacing}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                Semaine
+              </Text>
+              <View
+                style={[
+                  styles.weekSelector,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Pressable
+                  onPress={() => setWeekOffset((o) => Math.max(0, o - 1))}
+                  disabled={weekOffset === 0}
+                  hitSlop={8}
+                  style={[
+                    styles.weekArrow,
+                    weekOffset === 0 && { opacity: 0.3 },
+                  ]}
+                >
+                  <Ionicons name="chevron-back" size={20} color={colors.text} />
+                </Pressable>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={[styles.weekLabel, { color: colors.text }]}>
+                    {weekOffset === 0
+                      ? 'Cette semaine'
+                      : weekOffset === 1
+                        ? 'Semaine prochaine'
+                        : `Dans ${weekOffset} semaines`}
+                  </Text>
+                  <Text style={[styles.weekRange, { color: colors.textSecondary }]}>
+                    {formatWeekRange(weekOffset, 7)}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setWeekOffset((o) => Math.min(MAX_WEEK_OFFSET, o + 1))}
+                  disabled={weekOffset === MAX_WEEK_OFFSET}
+                  hitSlop={8}
+                  style={[
+                    styles.weekArrow,
+                    weekOffset === MAX_WEEK_OFFSET && { opacity: 0.3 },
+                  ]}
+                >
+                  <Ionicons name="chevron-forward" size={20} color={colors.text} />
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* Theme selector — applies to every story mode (services /
+              dispos / QR Code), so the toggle stays visible regardless
+              of what the pro wants to share. */}
+          <View style={styles.sectionSpacing}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+              Thème
+            </Text>
+            <View style={styles.modeRow}>
+              {[
+                { key: 'light', label: 'Clair', icon: 'sunny-outline' },
+                { key: 'dark', label: 'Sombre', icon: 'moon-outline' },
+              ].map((variant) => {
+                const isActive = storyTheme === variant.key;
+                return (
+                  <Pressable
+                    key={variant.key}
+                    onPress={() => setStoryTheme(variant.key as 'light' | 'dark')}
+                    style={[
+                      styles.modeButton,
+                      {
+                        backgroundColor: isActive ? colors.primary : colors.surface,
+                        borderWidth: 1,
+                        borderColor: isActive ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={variant.icon as any}
+                      size={18}
+                      color={isActive ? '#fff' : colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.modeLabel,
+                        { color: isActive ? '#fff' : colors.text },
+                      ]}
+                    >
+                      {variant.label}
                     </Text>
                   </Pressable>
                 );
@@ -609,6 +757,30 @@ const styles = StyleSheet.create({
   modeLabel: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  weekSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  weekArrow: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  weekLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  weekRange: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
   },
   customizeCard: {
     borderRadius: 14,

@@ -69,6 +69,9 @@ export type { ProviderStats, UseProviderStatsResult } from './useProviderStats';
 export { useOpeningHours } from './useOpeningHours';
 export type { DaySchedule, UseOpeningHoursResult } from './useOpeningHours';
 
+export { useUpcomingAvailabilities } from './useUpcomingAvailabilities';
+export type { UpcomingDay } from './useUpcomingAvailabilities';
+
 export { useProBookingBadges, useClientBookingBadges } from './useBookingBadges';
 
 export { useDeepLinks } from './useDeepLinks';
