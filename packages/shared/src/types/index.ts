@@ -245,6 +245,10 @@ export interface Service {
   memberIds: string[] | null;
   isActive: boolean;
   sortOrder: number;
+  /** Hex color (#RRGGBB) used to tint this service's bookings on the
+   *  calendar. When null, the booking falls back to the member's color.
+   *  Lets the pro segment their agenda by service type at a glance. */
+  color?: string | null;
 
   /**
    * Per-service deposit configuration. Three states:
@@ -298,8 +302,29 @@ export interface TimeSlot {
   end: string;
 }
 
-// Blocked slot types
-// Périodes bloquées (vacances, absences, etc.)
+// Blocked slot / activity types
+//
+// A `BlockedSlot` covers two UX flavors backed by the same underlying
+// document — the only thing that distinguishes them is whether
+// `category` is set:
+//
+//   - category === null → "période bloquée" (vacation, absence, training)
+//                         displayed as a grey diagonal zone on the calendar.
+//   - category !== null → "activité" (sport, meeting, perso, …) part of
+//                         the pro's life-planner. Displayed with the
+//                         category color + the optional `title`.
+//
+// Both flavors block client bookings via schedulingService — there's
+// no special-casing in the slot-availability pipeline.
+export type ActivityCategory =
+  | 'sport'
+  | 'meeting'
+  | 'personal'
+  | 'admin'
+  | 'travel'
+  | 'imprevu'
+  | 'other';
+
 export interface BlockedSlot {
   memberId: string;          // Obligatoire - lié au membre
   locationId: string;        // Dénormalisé depuis member.locationId
@@ -309,6 +334,17 @@ export interface BlockedSlot {
   startTime: string | null;  // Si allDay=false
   endTime: string | null;    // Si allDay=false
   reason: string | null;
+  /** When set, this entry is treated as a personal activity instead of
+   *  a generic blocked period. Drives calendar styling and the
+   *  "Activités" management screen. Absent or null for plain periods. */
+  category?: ActivityCategory | null;
+  /** Short label shown on the calendar tile when this is an activity
+   *  (e.g. "Crossfit", "Déjeuner Sarah"). Absent or null for plain periods. */
+  title?: string | null;
+  /** Free-text address where the activity takes place (e.g. "Salle de
+   *  sport, 12 rue X" or "Café Z"). Optional — distinct from the
+   *  internal `locationId` which is always the member's home base. */
+  address?: string | null;
   createdAt: Date;
 }
 
@@ -385,6 +421,9 @@ export interface Booking {
   locationAddress: string;
   serviceId: string;
   serviceName: string;
+  /** Denormalised from Service.color at booking creation so the
+   *  calendar can tint the cell without an extra fetch. */
+  serviceColor?: string | null;
   duration: number;
   price: number;
   priceMax: number | null;

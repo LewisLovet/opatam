@@ -86,6 +86,24 @@ export const blockedSlotSchema = z.object({
     .max(200, { message: 'La raison ne peut pas dépasser 200 caractères' })
     .nullable()
     .optional(),
+  // Activity fields — when both are set, the entry is treated as a
+  // life-planner activity (sport, meeting, …) rather than a generic
+  // blocked period. The slot-availability pipeline doesn't care
+  // either way: both flavors block the calendar.
+  category: z
+    .enum(['sport', 'meeting', 'personal', 'admin', 'travel', 'imprevu', 'other'])
+    .nullable()
+    .optional(),
+  title: z
+    .string()
+    .max(80, { message: 'Le titre ne peut pas dépasser 80 caractères' })
+    .nullable()
+    .optional(),
+  address: z
+    .string()
+    .max(200, { message: 'L\'adresse ne peut pas dépasser 200 caractères' })
+    .nullable()
+    .optional(),
   isRecurring: z.boolean().default(false),
   recurringDays: z
     .array(z.number().int().min(0).max(6))

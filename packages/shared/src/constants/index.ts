@@ -98,6 +98,58 @@ export const MEMBER_COLORS = [
 ] as const;
 
 /**
+ * Service color palette — used in the calendar to tint bookings by
+ * service type. A larger / more varied palette than MEMBER_COLORS so
+ * pros with many services can differentiate them at a glance.
+ * `null` (no color) means the booking falls back to the member color.
+ */
+export const SERVICE_COLORS = [
+  '#3B82F6', // blue
+  '#1D4ED8', // deep blue
+  '#06B6D4', // cyan
+  '#0E7490', // dark cyan
+  '#14B8A6', // teal
+  '#10B981', // emerald
+  '#22C55E', // green
+  '#84CC16', // lime
+  '#EAB308', // yellow
+  '#F59E0B', // amber
+  '#F97316', // orange
+  '#EA580C', // dark orange
+  '#EF4444', // red
+  '#DC2626', // dark red
+  '#EC4899', // pink
+  '#D946EF', // fuchsia
+  '#A855F7', // purple
+  '#8B5CF6', // violet
+  '#6366F1', // indigo
+  '#64748B', // slate
+] as const;
+
+/**
+ * Activity category defaults — drives the visual style of personal
+ * activities on the calendar (sport, meeting, …). Both mobile and
+ * web read from this same map so the agenda looks consistent.
+ *
+ * Each entry: `color` for tinting + `label` for the form picker.
+ * Icon names are kept out of here to avoid coupling the shared
+ * package to a specific icon library — each renderer maps the key
+ * to its own icon set.
+ */
+export const ACTIVITY_CATEGORY_META: Record<
+  'sport' | 'meeting' | 'personal' | 'admin' | 'travel' | 'imprevu' | 'other',
+  { label: string; color: string }
+> = {
+  sport:    { label: 'Sport',    color: '#f97316' },
+  meeting:  { label: 'Meeting',  color: '#8b5cf6' },
+  personal: { label: 'Perso',    color: '#ec4899' },
+  admin:    { label: 'Admin',    color: '#facc15' },
+  travel:   { label: 'Trajet',   color: '#06b6d4' },
+  imprevu:  { label: 'Imprévu',  color: '#ef4444' },
+  other:    { label: 'Autre',    color: '#6b7280' },
+};
+
+/**
  * Booking status labels
  */
 export const BOOKING_STATUS = {

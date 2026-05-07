@@ -288,6 +288,12 @@ export class SchedulingService {
       startTime: validated.allDay ? null : (validated.startTime ?? null),
       endTime: validated.allDay ? null : (validated.endTime ?? null),
       reason: validated.reason || null,
+      // Activity fields — `category` flips this entry from a generic
+      // blocked period into a typed planner activity (sport, meeting,
+      // etc.). null/undefined keeps the legacy "blocked period" UX.
+      category: validated.category ?? null,
+      title: validated.title ?? null,
+      address: validated.address ?? null,
     });
   }
 

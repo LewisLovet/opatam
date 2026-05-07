@@ -171,6 +171,7 @@ export class BookingService {
         : `${location.postalCode} ${location.city}`,
       serviceId: validated.serviceId,
       serviceName: service.name,
+      serviceColor: service.color || null,
       duration: service.duration,
       price: service.price,
       priceMax: service.priceMax ?? null,

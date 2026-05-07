@@ -86,6 +86,7 @@ export const createServiceSchema = z.object({
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, { message: 'Format de couleur invalide (ex: #FF5733)' })
+    .nullable()
     .optional(),
   photoURL: z
     .string()
@@ -173,6 +174,7 @@ export const updateServiceSchema = z.object({
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, { message: 'Format de couleur invalide (ex: #FF5733)' })
+    .nullable()
     .optional(),
   photoURL: z
     .string()
