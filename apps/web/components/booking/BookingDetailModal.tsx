@@ -456,92 +456,109 @@ export function BookingDetailModal({
       <ModalHeader title="Détails du rendez-vous" onClose={onClose} />
 
       <ModalBody className="space-y-4">
-        {/* Status badge */}
-        <div className="flex items-center gap-2">
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.bgColor} ${status.color}`}>
-            {status.label}
-          </span>
-          {booking.status === 'cancelled' && booking.cancelReason && (
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              - {booking.cancelReason}
-            </span>
-          )}
+        {/* ── 1. Client — first thing the pro reads ─────────────── */}
+        <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+          <div className="flex-shrink-0 w-14 h-14 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-700 dark:text-primary-300 text-lg font-bold">
+            {booking.clientInfo.name.trim().charAt(0).toUpperCase() || '?'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs uppercase tracking-wide font-semibold text-gray-500 dark:text-gray-400 mb-0.5">
+              Client
+            </p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate">
+              {booking.clientInfo.name}
+            </h3>
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+              <a
+                href={`mailto:${booking.clientInfo.email}`}
+                className="inline-flex items-center gap-1.5 text-primary-600 dark:text-primary-400 hover:underline"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span className="truncate max-w-[180px]">{booking.clientInfo.email}</span>
+              </a>
+              {booking.clientInfo.phone && (
+                <a
+                  href={`tel:${booking.clientInfo.phone}`}
+                  className="inline-flex items-center gap-1.5 text-primary-600 dark:text-primary-400 hover:underline"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  {booking.clientInfo.phone}
+                </a>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Date and time */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl space-y-3">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+        {/* ── 2. Service + Member + Status ───────────────────────── */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+          <p className="text-xs uppercase tracking-wide font-semibold text-gray-500 dark:text-gray-400 mb-0.5">
+            Prestation
+          </p>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            {booking.serviceName}
+          </h3>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {booking.memberName && (
+              <span
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+                style={{
+                  backgroundColor: booking.memberColor
+                    ? `${booking.memberColor}22`
+                    : undefined,
+                  color: booking.memberColor || undefined,
+                }}
+              >
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor: booking.memberColor || '#9ca3af',
+                  }}
+                />
+                {booking.memberName}
+              </span>
+            )}
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${status.bgColor} ${status.color}`}
+            >
+              {status.label}
+            </span>
+            {booking.status === 'cancelled' && booking.cancelReason && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                — {booking.cancelReason}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ── 3. Logistics — date, time, location, price ─────────── */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl space-y-2.5">
+          <div className="flex items-center gap-3 text-sm">
+            <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
             <span className="text-gray-900 dark:text-white capitalize">
               {formatBookingDate(booking.datetime)}
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          <div className="flex items-center gap-3 text-sm">
+            <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
             <span className="text-gray-900 dark:text-white">
-              {formatBookingTime(booking.datetime)} - {formatBookingTime(booking.endDatetime)} ({booking.duration} min)
+              {formatBookingTime(booking.datetime)} – {formatBookingTime(booking.endDatetime)}
+              <span className="text-gray-500 dark:text-gray-400"> · {booking.duration} min</span>
             </span>
           </div>
-        </div>
-
-        {/* Client info */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Client</h4>
-          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl space-y-2">
-            <div className="flex items-center gap-3">
-              <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-              <span className="text-gray-900 dark:text-white font-medium">
-                {booking.clientInfo.name}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Mail className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-              <a
-                href={`mailto:${booking.clientInfo.email}`}
-                className="text-primary-600 dark:text-primary-400 hover:underline"
-              >
-                {booking.clientInfo.email}
-              </a>
-            </div>
-            {booking.clientInfo.phone && (
-              <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                <a
-                  href={`tel:${booking.clientInfo.phone}`}
-                  className="text-primary-600 dark:text-primary-400 hover:underline"
-                >
-                  {booking.clientInfo.phone}
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Service info */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Prestation</h4>
-          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl space-y-2">
-            <div className="flex items-center gap-3">
-              <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-              <span className="text-gray-900 dark:text-white">{booking.serviceName}</span>
-              <span className="ml-auto font-semibold text-gray-900 dark:text-white">
-                {formatBookingPrice(booking.price)}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <MapPin className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-              <span className="text-gray-600 dark:text-gray-400 text-sm">
+          {booking.locationName && (
+            <div className="flex items-center gap-3 text-sm">
+              <MapPin className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <span className="text-gray-700 dark:text-gray-300">
                 {booking.locationName}
               </span>
             </div>
-            {booking.memberName && (
-              <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                <span className="text-gray-600 dark:text-gray-400 text-sm">
-                  {booking.memberName}
-                </span>
-              </div>
-            )}
+          )}
+          <div className="flex items-center gap-3 text-sm pt-1 border-t border-gray-200 dark:border-gray-700/60">
+            <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+            <span className="text-gray-700 dark:text-gray-300">Prix</span>
+            <span className="ml-auto font-bold text-base text-primary-600 dark:text-primary-400">
+              {formatBookingPrice(booking.price)}
+            </span>
           </div>
         </div>
 

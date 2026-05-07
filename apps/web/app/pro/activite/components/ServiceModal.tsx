@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { Loader2, Trash2, ImagePlus, X, Check, Crop, Camera, FolderOpen } from 'lucide-react';
 import type { Service, ServiceCategory, Location, Member } from '@booking-app/shared';
+import { SERVICE_COLORS } from '@booking-app/shared';
 import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
 
 type WithId<T> = { id: string } & T;
@@ -60,6 +61,9 @@ export interface ServiceFormData {
   categoryId: string | null;
   locationIds: string[];
   memberIds: string[] | null;
+  /** Optional hex color (#RRGGBB) overriding the member color in the
+   *  calendar. null = fall back to member color. */
+  color: string | null;
   /**
    * Per-service deposit configuration. Three states:
    *  - null     → inherit the provider's default deposit (or none)
@@ -137,6 +141,7 @@ export function ServiceModal({
     categoryId: null,
     locationIds: [],
     memberIds: null,
+    color: null,
     deposit: null,
   });
 
@@ -155,6 +160,7 @@ export function ServiceModal({
           categoryId: service.categoryId ?? null,
           locationIds: service.locationIds,
           memberIds: service.memberIds,
+          color: service.color ?? null,
           // Normalize the deposit shape from Firestore (where the Service
           // type allows partial value/refundDeadlineHours) into the
           // discriminated form-data union.
@@ -173,6 +179,7 @@ export function ServiceModal({
           categoryId: null,
           locationIds: locations.length > 0 ? [locations[0].id] : [],
           memberIds: null,
+          color: null,
           deposit: null,
         });
       }
@@ -632,6 +639,47 @@ export function ServiceModal({
               ]}
             />
           )}
+
+          {/* Color picker — tints the booking on the calendar. null
+              means fall back to the member color (existing behaviour). */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Couleur sur le calendrier{' '}
+              <span className="text-gray-400 font-normal">(optionnel)</span>
+            </label>
+            <div className="flex flex-wrap gap-2 items-center">
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, color: null }))}
+                className={`
+                  w-8 h-8 rounded-full flex items-center justify-center transition-all border-2 border-dashed
+                  ${formData.color === null
+                    ? 'border-gray-700 dark:border-gray-300 ring-2 ring-offset-2 ring-gray-400 dark:ring-offset-gray-800'
+                    : 'border-gray-300 dark:border-gray-600 hover:scale-110'}
+                `}
+                title="Aucune (utiliser la couleur du membre)"
+              >
+                <span className="text-xs text-gray-500 dark:text-gray-400">∅</span>
+              </button>
+              {SERVICE_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, color }))}
+                  className={`
+                    w-8 h-8 rounded-full flex items-center justify-center transition-all
+                    ${formData.color === color ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-offset-gray-800' : 'hover:scale-110'}
+                  `}
+                  style={{ backgroundColor: color }}
+                  title={color}
+                >
+                  {formData.color === color && (
+                    <Check className="w-4 h-4 text-white" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Locations */}
           <div>
