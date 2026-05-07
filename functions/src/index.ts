@@ -18,6 +18,8 @@ admin.initializeApp();
 // Callable
 export { requestPasswordReset } from './callable/requestPasswordReset';
 export { runProviderStatsBackfill } from './callable/runProviderStatsBackfill';
+export { backfillAllProviderStats } from './callable/backfillAllProviderStats';
+export { purgeProviderStats } from './callable/purgeProviderStats';
 
 // Triggers
 export { onBookingWrite } from './triggers/onBookingWrite';
