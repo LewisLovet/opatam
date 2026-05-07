@@ -39,3 +39,15 @@ export { MessageRepository, messageRepository } from './message.repository';
 
 // Article repository (top-level — blog)
 export { ArticleRepository, articleRepository } from './article.repository';
+
+// Provider stats repository (3-tier aggregation, read-only)
+export {
+  ProviderStatsRepository,
+  providerStatsRepository,
+} from './providerStats.repository';
+
+// Provider client repository (CRM-lite, read + scoped update)
+export {
+  ProviderClientRepository,
+  providerClientRepository,
+} from './providerClient.repository';

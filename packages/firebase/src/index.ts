@@ -131,6 +131,12 @@ export {
   // Article (blog)
   ArticleRepository,
   articleRepository,
+  // Provider stats (3-tier aggregation)
+  ProviderStatsRepository,
+  providerStatsRepository,
+  // Provider clients (CRM-lite)
+  ProviderClientRepository,
+  providerClientRepository,
 } from './repositories';
 
 // Utils
