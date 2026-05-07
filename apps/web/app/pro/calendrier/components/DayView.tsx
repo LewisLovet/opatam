@@ -1,13 +1,16 @@
 'use client';
 
-import { useMemo, useRef, useState, useCallback } from 'react';
+import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import type { Booking, Member, Availability, BlockedSlot } from '@booking-app/shared';
 import { TimeGrid, calculateBlockPosition, calculatePositionFromTimeString, getTimeFromPosition } from './TimeGrid';
 import { BookingBlock } from './BookingBlock';
-import { PastTimeOverlay, BlockedSlotZone } from './UnavailableZone';
+import { PastTimeOverlay, BlockedSlotZone, ActivityZone } from './UnavailableZone';
+import { ACTIVITY_CATEGORY_META } from '@booking-app/shared';
 import { NowIndicator } from './NowIndicator';
+import { SelectionPopover } from './SelectionPopover';
 import { computeOverlapLayout } from '../utils/overlapLayout';
+import { useTimeRangeDrag } from '../utils/useTimeRangeDrag';
 
 // Component for availability slot with hover indicator at mouse position
 function AvailabilitySlotWithHover({
@@ -105,6 +108,15 @@ interface DayViewProps {
   isTeamPlan: boolean;
   onBookingClick: (booking: WithId<Booking>) => void;
   onSlotClick: (date: Date, memberId?: string) => void;
+  /** Optional — fired when the pro clicks an activity card (a
+   *  blocked-slot with `category` set). Use it to open the edit modal. */
+  onActivityClick?: (id: string) => void;
+  /** Optional — fired when the pro drag-selects a time range and
+   *  picks "Bloquer" in the resulting popover. */
+  onSelectionBlock?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
+  /** Optional — fired when the pro drag-selects a time range and
+   *  picks "Activité" in the resulting popover. */
+  onSelectionActivity?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
   getAvailabilityForDay: (date: Date, memberId: string | null, locationId: string) => WithId<Availability> | undefined;
   getBlockedSlotsForDay: (date: Date, memberId: string | null, locationId: string) => WithId<BlockedSlot>[];
 }
@@ -122,6 +134,9 @@ export function DayView({
   isTeamPlan,
   onBookingClick,
   onSlotClick,
+  onActivityClick,
+  onSelectionBlock,
+  onSelectionActivity,
   getAvailabilityForDay,
   getBlockedSlotsForDay,
 }: DayViewProps) {
@@ -239,6 +254,9 @@ export function DayView({
                 isFirst={colIndex === 0}
                 onBookingClick={onBookingClick}
                 onSlotClick={(e) => handleGridClick(e, col.id)}
+                onActivityClick={onActivityClick}
+                onSelectionBlock={onSelectionBlock}
+                onSelectionActivity={onSelectionActivity}
                 getAvailabilityForDay={getAvailabilityForDay}
                 getBlockedSlotsForDay={getBlockedSlotsForDay}
               />
@@ -258,6 +276,9 @@ interface DayColumnProps {
   isFirst: boolean;
   onBookingClick: (booking: WithId<Booking>) => void;
   onSlotClick: (e: React.MouseEvent) => void;
+  onActivityClick?: (id: string) => void;
+  onSelectionBlock?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
+  onSelectionActivity?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
   getAvailabilityForDay: (date: Date, memberId: string | null, locationId: string) => WithId<Availability> | undefined;
   getBlockedSlotsForDay: (date: Date, memberId: string | null, locationId: string) => WithId<BlockedSlot>[];
 }
@@ -270,6 +291,9 @@ function DayColumn({
   isFirst,
   onBookingClick,
   onSlotClick,
+  onActivityClick,
+  onSelectionBlock,
+  onSelectionActivity,
   getAvailabilityForDay,
   getBlockedSlotsForDay,
 }: DayColumnProps) {
@@ -284,11 +308,22 @@ function DayColumn({
   // Check if the day is closed (no availability or isOpen is false)
   const isClosed = !availability || !availability.isOpen;
 
+  // ─── Drag-to-select ─────────────────────────────────────────────
+  // Press at e.g. 8h, drag to 16h, release → popover with two
+  // choices (Bloquer / Activité) with the selected range pre-filled.
+  const drag = useTimeRangeDrag({
+    totalHeight,
+    startHour: START_HOUR,
+    slotHeight: SLOT_HEIGHT,
+    onClick: onSlotClick,
+  });
+
   return (
     <div
-      className="flex-1 min-w-[120px] relative cursor-pointer rounded-xl overflow-hidden shadow-sm ring-1 ring-gray-200/80 dark:ring-gray-700/50"
+      ref={drag.colRef}
+      className="flex-1 min-w-[120px] relative cursor-pointer rounded-xl overflow-hidden shadow-sm ring-1 ring-gray-200/80 dark:ring-gray-700/50 select-none"
       style={{ height: `${totalHeight}px` }}
-      onClick={onSlotClick}
+      {...drag.bind}
     >
       {/* Base background - subtle dot pattern for closed, white for open */}
       <div
@@ -395,6 +430,29 @@ function DayColumn({
           height = pos.height;
         }
 
+        // Activities (category set) render as a foreground card with
+        // the category color — see ActivityZone. Plain blocked
+        // periods keep the dotted hatched look.
+        const isActivity = !!blocked.category && !!blocked.title;
+        if (isActivity) {
+          const color =
+            ACTIVITY_CATEGORY_META[blocked.category!]?.color ?? '#6b7280';
+          return (
+            <ActivityZone
+              key={blocked.id}
+              top={top}
+              height={height}
+              color={color}
+              title={blocked.title!}
+              startTime={blocked.startTime ?? '00:00'}
+              endTime={blocked.endTime ?? '23:59'}
+              address={blocked.address}
+              notes={blocked.reason}
+              onClick={() => onActivityClick?.(blocked.id)}
+            />
+          );
+        }
+
         return (
           <BlockedSlotZone
             key={blocked.id}
@@ -463,6 +521,32 @@ function DayColumn({
         slotHeight={SLOT_HEIGHT}
         isTodayVisible={isToday(date)}
       />
+
+      {/* Drag selection rectangle */}
+      {drag.dragRect && drag.dragRect.height > 4 && (
+        <div
+          className="absolute left-1 right-1 pointer-events-none rounded-md border-2 border-primary-500 bg-primary-500/15"
+          style={{ top: `${drag.dragRect.top}px`, height: `${drag.dragRect.height}px` }}
+        />
+      )}
+
+      {/* Selection popover with Activité / Bloquer */}
+      {drag.popover && (
+        <SelectionPopover
+          y={drag.popover.y}
+          totalHeight={totalHeight}
+          startTime={drag.popover.startTime}
+          endTime={drag.popover.endTime}
+          onActivity={() => {
+            onSelectionActivity?.(date, drag.popover!.startTime, drag.popover!.endTime, memberId ?? undefined);
+            drag.setPopover(null);
+          }}
+          onBlock={() => {
+            onSelectionBlock?.(date, drag.popover!.startTime, drag.popover!.endTime, memberId ?? undefined);
+            drag.setPopover(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, schedulingService, memberService, locationService } from '@booking-app/firebase';
 import type { Booking, Member, Location, Availability, BlockedSlot } from '@booking-app/shared';
@@ -9,6 +10,8 @@ import { DayView } from './components/DayView';
 import { WeekView } from './components/WeekView';
 import { BookingDetailModal } from '@/components/booking';
 import { CreateBookingModal } from './components/CreateBookingModal';
+import { ActivityModal } from './components/ActivityModal';
+import { BlockPeriodModal } from './components/BlockPeriodModal';
 import { Loader2 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -16,6 +19,7 @@ type ViewMode = 'day' | 'week';
 
 export default function CalendarPage() {
   const { user, provider } = useAuth();
+  const router = useRouter();
 
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -45,6 +49,20 @@ export default function CalendarPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createModalDate, setCreateModalDate] = useState<Date | null>(null);
+  // Activity modal — opens for "Nouvelle activité" from the AddMenu
+  // and for editing an existing activity (clicked on the calendar).
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [activityModalDate, setActivityModalDate] = useState<Date | null>(null);
+  const [activityModalEditId, setActivityModalEditId] = useState<string | undefined>(undefined);
+  const [activityModalStartTime, setActivityModalStartTime] = useState<string | undefined>(undefined);
+  const [activityModalEndTime, setActivityModalEndTime] = useState<string | undefined>(undefined);
+
+  // Block-period modal — lightweight inline blocker so the pro doesn't
+  // have to leave /pro/calendrier to flag a vacation or absence.
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [blockModalDate, setBlockModalDate] = useState<Date | null>(null);
+  const [blockModalStartTime, setBlockModalStartTime] = useState<string | undefined>(undefined);
+  const [blockModalEndTime, setBlockModalEndTime] = useState<string | undefined>(undefined);
 
   const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
 
@@ -215,6 +233,37 @@ export default function CalendarPage() {
     setIsCreateModalOpen(true);
   };
 
+  const handleCreateActivity = (date?: Date, startTime?: string, endTime?: string) => {
+    setActivityModalDate(date || selectedDate);
+    setActivityModalEditId(undefined);
+    setActivityModalStartTime(startTime);
+    setActivityModalEndTime(endTime);
+    setIsActivityModalOpen(true);
+  };
+
+  const handleEditActivity = (id: string) => {
+    setActivityModalEditId(id);
+    setActivityModalDate(null);
+    setActivityModalStartTime(undefined);
+    setActivityModalEndTime(undefined);
+    setIsActivityModalOpen(true);
+  };
+
+  // Reload blocked slots after a save / delete so the calendar
+  // reflects the change without a full page refresh.
+  const reloadBlockedSlots = async () => {
+    if (!provider) return;
+    const data = await schedulingService.getBlockedSlots(provider.id);
+    setBlockedSlots(data);
+  };
+
+  const handleBlockSlot = (date?: Date, startTime?: string, endTime?: string) => {
+    setBlockModalDate(date || selectedDate);
+    setBlockModalStartTime(startTime);
+    setBlockModalEndTime(endTime);
+    setIsBlockModalOpen(true);
+  };
+
   const handleSlotClick = (date: Date, memberId?: string) => {
     if (memberId && memberId !== 'all') {
       setSelectedMemberId(memberId);
@@ -300,7 +349,11 @@ export default function CalendarPage() {
       dayEnd.setHours(23, 59, 59, 999);
 
       return blockedSlots.filter((bs) => {
-        const matchesMember = !bs.memberId || bs.memberId === memberId;
+        // memberId === null means "Tous les membres" — show every
+        // blocked slot regardless of its memberId. Otherwise we lose
+        // activities (which always carry a memberId) the moment the
+        // pro is in the all-members view.
+        const matchesMember = memberId === null || !bs.memberId || bs.memberId === memberId;
         const matchesLocation = !bs.locationId || bs.locationId === locationId || locationId === 'all';
         const matchesDate = bs.startDate <= dayEnd && bs.endDate >= dayStart;
         return matchesMember && matchesLocation && matchesDate;
@@ -346,6 +399,8 @@ export default function CalendarPage() {
         onMemberChange={setSelectedMemberId}
         onLocationChange={setSelectedLocationId}
         onCreateBooking={() => handleCreateBooking()}
+        onCreateActivity={() => handleCreateActivity()}
+        onBlockSlot={handleBlockSlot}
         isTeamPlan={isTeamPlan}
       />
 
@@ -367,6 +422,9 @@ export default function CalendarPage() {
             isTeamPlan={isTeamPlan}
             onBookingClick={handleBookingClick}
             onSlotClick={handleSlotClick}
+            onActivityClick={handleEditActivity}
+            onSelectionBlock={(d, st, et) => handleBlockSlot(d, st, et)}
+            onSelectionActivity={(d, st, et) => handleCreateActivity(d, st, et)}
             getAvailabilityForDay={getAvailabilityForDay}
             getBlockedSlotsForDay={getBlockedSlotsForDay}
           />
@@ -385,6 +443,9 @@ export default function CalendarPage() {
               setViewMode('day');
             }}
             onMemberSelect={setSelectedMemberId}
+            onActivityClick={handleEditActivity}
+            onSelectionBlock={(d, st, et) => handleBlockSlot(d, st, et)}
+            onSelectionActivity={(d, st, et) => handleCreateActivity(d, st, et)}
             getAvailabilityForDay={getAvailabilityForDay}
             getBlockedSlotsForDay={getBlockedSlotsForDay}
           />
@@ -418,6 +479,51 @@ export default function CalendarPage() {
         isTeamPlan={isTeamPlan}
         onCreated={handleBookingCreated}
       />
+
+      {/* Activity modal — create or edit a personal activity. */}
+      {provider && (
+        <ActivityModal
+          isOpen={isActivityModalOpen}
+          onClose={() => {
+            setIsActivityModalOpen(false);
+            setActivityModalDate(null);
+            setActivityModalEditId(undefined);
+            setActivityModalStartTime(undefined);
+            setActivityModalEndTime(undefined);
+          }}
+          providerId={provider.id}
+          editId={activityModalEditId}
+          initialDate={activityModalDate ?? undefined}
+          initialStartTime={activityModalStartTime}
+          initialEndTime={activityModalEndTime}
+          initialMemberId={
+            selectedMemberId !== 'all' ? selectedMemberId : undefined
+          }
+          onSaved={reloadBlockedSlots}
+        />
+      )}
+
+      {/* Block-period modal — inline replacement for the legacy
+          redirect to /pro/activite. */}
+      {provider && (
+        <BlockPeriodModal
+          isOpen={isBlockModalOpen}
+          onClose={() => {
+            setIsBlockModalOpen(false);
+            setBlockModalDate(null);
+            setBlockModalStartTime(undefined);
+            setBlockModalEndTime(undefined);
+          }}
+          providerId={provider.id}
+          initialDate={blockModalDate ?? undefined}
+          initialStartTime={blockModalStartTime}
+          initialEndTime={blockModalEndTime}
+          initialMemberId={
+            selectedMemberId !== 'all' ? selectedMemberId : undefined
+          }
+          onSaved={reloadBlockedSlots}
+        />
+      )}
     </div>
   );
 }

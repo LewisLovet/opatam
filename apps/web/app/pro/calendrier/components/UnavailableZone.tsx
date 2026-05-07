@@ -121,7 +121,11 @@ export function PastTimeOverlay({
 }
 
 /**
- * Blocked slot with distinct red hatched pattern.
+ * Blocked slot zone with distinct red hatched pattern. When the
+ * underlying blockedSlot is an "activity" (has `category` set), the
+ * companion <ActivityZone> is used instead to render a colorful
+ * foreground card. Plain blocked periods (vacation, training…) keep
+ * the dotted pattern below.
  */
 export function BlockedSlotZone({
   top,
@@ -154,5 +158,73 @@ export function BlockedSlotZone({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Personal activity card — solid category color, white text. Sits on
+ * the same calendar layer as bookings (foreground) instead of in the
+ * background like a blocked period. Address + notes are surfaced
+ * inline when there's vertical space.
+ */
+export function ActivityZone({
+  top,
+  height,
+  color,
+  title,
+  startTime,
+  endTime,
+  address,
+  notes,
+  onClick,
+}: {
+  top: number;
+  height: number;
+  color: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+  address?: string | null;
+  notes?: string | null;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      // Stop propagation so the click doesn't bubble up to the day
+      // column's slot-click handler (which would open the booking
+      // creation modal on top of the activity edit modal).
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+      className="absolute left-0.5 right-0.5 rounded-md text-left px-2 py-1 overflow-hidden hover:brightness-110 transition-[filter] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-1"
+      style={{
+        top: `${top}px`,
+        height: `${Math.max(height, 18)}px`,
+        backgroundColor: color,
+      }}
+      title={`${title}${notes ? ` — ${notes}` : ''}`}
+    >
+      <div className="text-[11px] font-bold text-white truncate leading-tight">
+        {title}
+      </div>
+      {height >= 28 && (
+        <div className="text-[10px] text-white/80 truncate leading-tight mt-0.5">
+          {startTime}–{endTime}
+        </div>
+      )}
+      {height >= 48 && address && (
+        <div className="text-[10px] text-white/85 truncate leading-tight mt-0.5">
+          📍 {address}
+        </div>
+      )}
+      {height >= 70 && notes && (
+        <div className="text-[10px] text-white/80 italic leading-tight mt-1 line-clamp-2">
+          {notes}
+        </div>
+      )}
+    </button>
   );
 }

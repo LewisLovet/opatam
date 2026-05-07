@@ -266,10 +266,16 @@ export function CreateBookingModal({
         return;
       }
 
-      // NOUVEAU MODÈLE: Toujours itérer sur les membres du lieu (filtrés par service si applicable)
-      const membersToCheck = locationMembers.filter(
-        (m) => !service.memberIds || service.memberIds.includes(m.id)
-      );
+      // NOUVEAU MODÈLE: Toujours itérer sur les membres du lieu
+      // (filtrés par service si applicable). Quand le pro a déjà
+      // pré-sélectionné un membre (filtre du header → initialMemberId),
+      // on restreint le picker à ce membre — sinon une activité qui
+      // bloque ce membre serait masquée par la dispo d'un autre membre,
+      // et le pro verrait un slot "libre" qui en réalité ne l'est pas
+      // pour le membre qu'il vient de choisir.
+      const membersToCheck = locationMembers
+        .filter((m) => !service.memberIds || service.memberIds.includes(m.id))
+        .filter((m) => !formData.memberId || m.id === formData.memberId);
 
       if (membersToCheck.length === 0) {
         console.log('[CreateBooking] No members eligible for this service at this location');
@@ -329,7 +335,7 @@ export function CreateBookingModal({
     } finally {
       setLoadingSlots(false);
     }
-  }, [provider, formData.serviceId, formData.date, formData.locationId, services, locationMembers]);
+  }, [provider, formData.serviceId, formData.date, formData.locationId, formData.memberId, services, locationMembers]);
 
   // Load slots when service or date changes
   useEffect(() => {

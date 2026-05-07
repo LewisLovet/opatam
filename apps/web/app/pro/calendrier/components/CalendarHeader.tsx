@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui';
-import { ChevronLeft, ChevronRight, Calendar, Plus, User, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Plus, User, MapPin, Zap, Ban, ChevronDown } from 'lucide-react';
 import type { Member, Location } from '@booking-app/shared';
 import { FilterChip } from './FilterChip';
 
@@ -25,6 +25,8 @@ interface CalendarHeaderProps {
   onMemberChange: (memberId: string) => void;
   onLocationChange: (locationId: string) => void;
   onCreateBooking: () => void;
+  onCreateActivity?: () => void;
+  onBlockSlot?: () => void;
   isTeamPlan: boolean;
 }
 
@@ -44,6 +46,8 @@ export function CalendarHeader({
   onMemberChange,
   onLocationChange,
   onCreateBooking,
+  onCreateActivity,
+  onBlockSlot,
   isTeamPlan,
 }: CalendarHeaderProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -290,15 +294,156 @@ export function CalendarHeader({
           />
         )}
 
-        {/* Create booking button */}
-        <div className="ml-auto">
-          <Button onClick={onCreateBooking} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" />
-            <span className="hidden sm:inline">Nouveau RDV</span>
-            <span className="sm:hidden">RDV</span>
-          </Button>
+        {/* Add menu — 3 choices: réservation, activité, période */}
+        <div className="ml-auto relative">
+          <AddMenu
+            onCreateBooking={onCreateBooking}
+            onCreateActivity={onCreateActivity}
+            onBlockSlot={onBlockSlot}
+          />
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── AddMenu ───────────────────────────────────────────────────────────
+//
+// Dropdown trigger that mirrors the mobile bottom sheet: Réservation
+// client / Activité personnelle / Bloquer une période. Closes on
+// outside click + Escape key. Each item routes to its own callback so
+// the parent decides whether to open a modal, navigate, etc.
+
+function AddMenu({
+  onCreateBooking,
+  onCreateActivity,
+  onBlockSlot,
+}: {
+  onCreateBooking: () => void;
+  onCreateActivity?: () => void;
+  onBlockSlot?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  // When the optional callbacks aren't wired, fall back to the
+  // single-button behaviour so we don't break callers that haven't
+  // adopted activities yet.
+  if (!onCreateActivity && !onBlockSlot) {
+    return (
+      <Button onClick={onCreateBooking} size="sm">
+        <Plus className="w-4 h-4 mr-1.5" />
+        <span className="hidden sm:inline">Nouveau RDV</span>
+        <span className="sm:hidden">RDV</span>
+      </Button>
+    );
+  }
+
+  return (
+    <div ref={ref}>
+      <Button onClick={() => setOpen((v) => !v)} size="sm">
+        <Plus className="w-4 h-4 mr-1.5" />
+        <span className="hidden sm:inline">Nouveau</span>
+        <span className="sm:hidden">+</span>
+        <ChevronDown className="w-3.5 h-3.5 ml-1.5 -mr-0.5" />
+      </Button>
+      {open && (
+        <div
+          className="
+            absolute right-0 mt-2 w-64 z-30
+            bg-white dark:bg-gray-900 rounded-xl shadow-lg
+            border border-gray-200 dark:border-gray-700
+            py-1.5 overflow-hidden
+          "
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onCreateBooking();
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <span className="flex-shrink-0 w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+              <Calendar className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-medium text-gray-900 dark:text-white">
+                Réservation client
+              </span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                Nouveau RDV
+              </span>
+            </span>
+          </button>
+
+          {onCreateActivity && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onCreateActivity();
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <span
+                className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: '#f9731620' }}
+              >
+                <Zap className="w-4 h-4" style={{ color: '#f97316' }} />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block font-medium text-gray-900 dark:text-white">
+                  Activité personnelle
+                </span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  Sport, RDV perso, admin…
+                </span>
+              </span>
+            </button>
+          )}
+
+          {onBlockSlot && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onBlockSlot();
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <span className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <Ban className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block font-medium text-gray-900 dark:text-white">
+                  Bloquer une période
+                </span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  Vacances, formation, absence
+                </span>
+              </span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

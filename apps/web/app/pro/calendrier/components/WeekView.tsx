@@ -8,7 +8,10 @@ import { BookingBlock } from './BookingBlock';
 import { OverlapPopover } from './OverlapPopover';
 import { SelectMemberPrompt } from './SelectMemberPrompt';
 import { DayHeaderCompact } from './DayHeaderWithGauge';
-import { PastTimeOverlay, BlockedSlotZone } from './UnavailableZone';
+import { PastTimeOverlay, BlockedSlotZone, ActivityZone } from './UnavailableZone';
+import { ACTIVITY_CATEGORY_META } from '@booking-app/shared';
+import { SelectionPopover } from './SelectionPopover';
+import { useTimeRangeDrag } from '../utils/useTimeRangeDrag';
 import { NowIndicator } from './NowIndicator';
 import { computeOverlapLayout, type PositionedBooking } from '../utils/overlapLayout';
 
@@ -101,6 +104,77 @@ function AvailabilitySlotWithHover({
 
 type WithId<T> = { id: string } & T;
 
+/**
+ * WeekDayCell — single day "column" in the WeekView grid. Wraps the
+ * inline day rendering so each cell can own its own
+ * useTimeRangeDrag instance (hooks can't be called inside .map).
+ *
+ * Children are the existing inline content (background, availability
+ * slots, blocked zones, bookings, now indicator) — we just wrap them
+ * with the drag handlers + selection popover.
+ */
+function WeekDayCell({
+  day,
+  memberIdForSelection,
+  totalHeight,
+  onSlotClick,
+  onSelectionBlock,
+  onSelectionActivity,
+  children,
+}: {
+  day: Date;
+  memberIdForSelection?: string;
+  totalHeight: number;
+  onSlotClick: (e: React.MouseEvent) => void;
+  onSelectionBlock?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
+  onSelectionActivity?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
+  children: React.ReactNode;
+}) {
+  const drag = useTimeRangeDrag({
+    totalHeight,
+    startHour: START_HOUR,
+    slotHeight: SLOT_HEIGHT,
+    onClick: onSlotClick,
+  });
+
+  return (
+    <div
+      ref={drag.colRef}
+      className="flex-1 min-w-[80px] relative rounded-xl overflow-hidden shadow-sm cursor-pointer ring-1 ring-gray-200/80 dark:ring-gray-700/50 select-none"
+      style={{ height: `${totalHeight}px` }}
+      {...drag.bind}
+    >
+      {children}
+
+      {/* Drag selection rectangle */}
+      {drag.dragRect && drag.dragRect.height > 4 && (
+        <div
+          className="absolute left-1 right-1 pointer-events-none rounded-md border-2 border-primary-500 bg-primary-500/15"
+          style={{ top: `${drag.dragRect.top}px`, height: `${drag.dragRect.height}px` }}
+        />
+      )}
+
+      {/* Two-choice popover anchored to the bottom of the selection */}
+      {drag.popover && (
+        <SelectionPopover
+          y={drag.popover.y}
+          totalHeight={totalHeight}
+          startTime={drag.popover.startTime}
+          endTime={drag.popover.endTime}
+          onActivity={() => {
+            onSelectionActivity?.(day, drag.popover!.startTime, drag.popover!.endTime, memberIdForSelection);
+            drag.setPopover(null);
+          }}
+          onBlock={() => {
+            onSelectionBlock?.(day, drag.popover!.startTime, drag.popover!.endTime, memberIdForSelection);
+            drag.setPopover(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 interface WeekViewProps {
   startDate: Date;
   bookings: WithId<Booking>[];
@@ -112,6 +186,11 @@ interface WeekViewProps {
   onSlotClick: (date: Date, memberId?: string) => void;
   onDayClick: (date: Date) => void;
   onMemberSelect?: (memberId: string) => void;
+  /** Optional — fired when the pro clicks an activity card. */
+  onActivityClick?: (id: string) => void;
+  /** Drag-to-select callbacks — see DayView for the same pattern. */
+  onSelectionBlock?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
+  onSelectionActivity?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
   getAvailabilityForDay: (date: Date, memberId: string | null, locationId: string) => WithId<Availability> | undefined;
   getBlockedSlotsForDay: (date: Date, memberId: string | null, locationId: string) => WithId<BlockedSlot>[];
 }
@@ -131,6 +210,9 @@ export function WeekView({
   onBookingClick,
   onSlotClick,
   onDayClick,
+  onActivityClick,
+  onSelectionBlock,
+  onSelectionActivity,
   onMemberSelect,
   getAvailabilityForDay,
   getBlockedSlotsForDay,
@@ -331,11 +413,16 @@ export function WeekView({
             };
 
             return (
-              <div
+              <WeekDayCell
                 key={idx}
-                className="flex-1 min-w-[80px] relative rounded-xl overflow-hidden shadow-sm cursor-pointer ring-1 ring-gray-200/80 dark:ring-gray-700/50"
-                style={{ height: `${totalHeight}px` }}
-                onClick={(e) => handleSlotClick(e, day)}
+                day={day}
+                memberIdForSelection={
+                  selectedMemberId !== 'all' ? selectedMemberId : undefined
+                }
+                totalHeight={totalHeight}
+                onSlotClick={(e) => handleSlotClick(e, day)}
+                onSelectionBlock={onSelectionBlock}
+                onSelectionActivity={onSelectionActivity}
               >
                 {/* Base background - subtle for closed, white for open */}
                 <div
@@ -401,6 +488,25 @@ export function WeekView({
                     height = pos.height;
                   }
 
+                  const isActivity = !!blocked.category && !!blocked.title;
+                  if (isActivity) {
+                    const color =
+                      ACTIVITY_CATEGORY_META[blocked.category!]?.color ?? '#6b7280';
+                    return (
+                      <ActivityZone
+                        key={blocked.id}
+                        top={top}
+                        height={height}
+                        color={color}
+                        title={blocked.title!}
+                        startTime={blocked.startTime ?? '00:00'}
+                        endTime={blocked.endTime ?? '23:59'}
+                        address={blocked.address}
+                        notes={blocked.reason}
+                        onClick={() => onActivityClick?.(blocked.id)}
+                      />
+                    );
+                  }
                   return (
                     <BlockedSlotZone
                       key={blocked.id}
@@ -479,7 +585,7 @@ export function WeekView({
                   slotHeight={SLOT_HEIGHT}
                   isTodayVisible={isToday(day)}
                 />
-              </div>
+              </WeekDayCell>
             );
           })}
         </div>

@@ -136,36 +136,44 @@ export function BookingBlock({
   // For past/cancelled/noshow bookings with memberColor, use faded member color instead of grey
   const isPast = visualStatus === 'past' || visualStatus === 'cancelled' || visualStatus === 'noshow';
   const isPendingPayment = visualStatus === 'pending_payment';
-  const hasMemberColor = !!booking.memberColor;
 
-  const getMemberColorStyle = () => {
-    if (!hasMemberColor) return {};
-    // Pending_payment: keep the diagonal-stripe background visible — only
-    // tint the left border with the member color.
+  // Color hierarchy for the cell tint+border:
+  //   1. service color  → "what" the booking is (winner)
+  //   2. member color   → "who" performs it (fallback)
+  // The member color is still surfaced separately via the corner dot
+  // when service color won the tint, so multi-member providers can
+  // still tell who's who at a glance.
+  const displayColor = booking.serviceColor ?? booking.memberColor ?? null;
+  const hasDisplayColor = !!displayColor;
+  const showMemberDot = !!booking.memberColor && booking.memberColor !== displayColor;
+
+  const getDisplayColorStyle = () => {
+    if (!hasDisplayColor) return {};
     if (isPendingPayment) {
+      // pending_payment keeps its striped background visible — only tint
+      // the left border so the "held but not paid" cue stays unique.
       return {
         borderLeftWidth: '4px',
-        borderLeftColor: booking.memberColor!,
+        borderLeftColor: displayColor!,
       };
     }
     if (isPast) {
-      // Faded member color for past bookings — still identifiable but clearly past
       return {
         borderLeftWidth: '4px',
-        borderLeftColor: `${booking.memberColor}80`, // 50% opacity
-        backgroundColor: `${booking.memberColor}0D`, // ~5% opacity
+        borderLeftColor: `${displayColor}80`, // 50% opacity
+        backgroundColor: `${displayColor}0D`, // ~5% opacity
       };
     }
     return {
       borderLeftWidth: '4px',
-      borderLeftColor: booking.memberColor!,
-      backgroundColor: `${booking.memberColor}18`, // ~9% opacity
+      borderLeftColor: displayColor!,
+      backgroundColor: `${displayColor}18`, // ~9% opacity
     };
   };
 
-  // When memberColor is present on past bookings, skip the grey bg class
-  // so the member color tint shows through
-  const bgClass = (isPast && hasMemberColor) ? '' : styles.bg;
+  // When the display color tints past bookings, skip the grey bg class
+  // so the tint shows through.
+  const bgClass = (isPast && hasDisplayColor) ? '' : styles.bg;
 
   const blockContent = (
     <button
@@ -188,10 +196,19 @@ export function BookingBlock({
               left: '6px',
               right: '6px',
             }),
-        ...getMemberColorStyle(),
+        ...getDisplayColorStyle(),
       }}
       title={`${startTime} - ${endTime} | ${booking.clientInfo.name} | ${booking.serviceName}`}
     >
+      {/* Member dot — only when service color wins the tint AND there's
+          a separate member color, so multi-member providers can still
+          read who's who at a glance. */}
+      {showMemberDot && (
+        <span
+          className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ring-1 ring-white/60"
+          style={{ backgroundColor: booking.memberColor! }}
+        />
+      )}
       <div className={`h-full p-1.5 sm:p-2 flex flex-col ${styles.text}`}>
         {/* Time range - always visible */}
         <div className="flex items-center gap-1 text-xs font-medium">
