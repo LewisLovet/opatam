@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, PlayCircle } from 'lucide-react';
 import { ARTICLE_CATEGORY_LABELS, type ArticleCategory } from '@booking-app/shared';
-import { youtubeThumbnailUrl } from '@/lib/youtube';
+import { YouTubeThumbnail } from './YouTubeThumbnail';
 
 export interface ArticleCardData {
   slug: string;
@@ -19,17 +19,18 @@ export interface ArticleCardData {
 }
 
 /**
- * Pick the best image to show on a list card. Priority:
+ * Pick the static-cover URL for the card, in priority order:
  *  1. Explicit cover image set by the author
  *  2. Custom video poster (videoCoverURL) if a video is set
- *  3. YouTube auto-thumbnail derived from the video URL — `hqdefault` is
- *     guaranteed to exist for any video and 480×360 is enough for cards
- *  4. Fall through to the typographic fallback (caller renders it)
+ *
+ * If neither is set and the article has a YouTube video, the caller
+ * renders <YouTubeThumbnail> instead — that component handles the
+ * maxres → hq fallback so cards stay crisp on large layouts.
  */
-function resolveCardImage(article: ArticleCardData): string | null {
+function resolveStaticCover(article: ArticleCardData): string | null {
   if (article.coverImageURL) return article.coverImageURL;
   if (article.videoCoverURL) return article.videoCoverURL;
-  return youtubeThumbnailUrl(article.videoUrl, 'hq');
+  return null;
 }
 
 interface Props {
@@ -48,8 +49,11 @@ function formatDate(iso: string | null): string {
 }
 
 export function ArticleCard({ article, featured = false }: Props) {
-  const imageURL = resolveCardImage(article);
+  const staticCover = resolveStaticCover(article);
   const hasVideo = !!article.videoUrl;
+  // Falls back to a YouTube auto-thumbnail (HD with hq fallback) when
+  // the author hasn't set a custom cover but did link a video.
+  const showYouTubeFallback = !staticCover && hasVideo;
 
   return (
     <Link
@@ -64,13 +68,18 @@ export function ArticleCard({ article, featured = false }: Props) {
           featured ? 'aspect-[4/3] sm:aspect-auto sm:h-full' : 'aspect-[16/10]'
         }`}
       >
-        {imageURL ? (
+        {staticCover ? (
           <Image
-            src={imageURL}
+            src={staticCover}
             alt=""
             fill
             sizes={featured ? '(max-width: 640px) 100vw, 50vw' : '(max-width: 640px) 100vw, 33vw'}
             className="object-cover"
+          />
+        ) : showYouTubeFallback ? (
+          <YouTubeThumbnail
+            videoUrl={article.videoUrl}
+            sizes={featured ? '(max-width: 640px) 100vw, 50vw' : '(max-width: 640px) 100vw, 33vw'}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-primary-400 dark:text-primary-600 text-6xl font-bold opacity-50">
