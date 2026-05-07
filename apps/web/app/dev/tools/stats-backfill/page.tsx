@@ -599,8 +599,9 @@ function RollingTopClients({
   );
 }
 
-function Heatmap90d({ data }: { data: number[][] }) {
-  const max = Math.max(...data.flat(), 1);
+function Heatmap90d({ data }: { data: number[] }) {
+  // data is the flat 168-element array. Read as data[dow * 24 + hour].
+  const max = Math.max(...data, 1);
   const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
   return (
     <section>
@@ -618,10 +619,11 @@ function Heatmap90d({ data }: { data: number[][] }) {
             </tr>
           </thead>
           <tbody>
-            {data.map((row, dow) => (
+            {Array.from({ length: 7 }, (_, dow) => (
               <tr key={dow}>
                 <td className="text-slate-500 pr-2 text-right">{days[dow]}</td>
-                {row.map((count, h) => {
+                {Array.from({ length: 24 }, (_, h) => {
+                  const count = data[dow * 24 + h] ?? 0;
                   const intensity = count / max;
                   return (
                     <td

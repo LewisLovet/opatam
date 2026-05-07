@@ -253,8 +253,13 @@ export interface ProviderStatsRolling {
   topClients90d: { clientHash: string; bookingsCount: number; revenue: number }[];
   topClientsAllTime: { clientHash: string; bookingsCount: number; revenue: number }[];
 
-  /** Day-of-week × hour-of-day heatmap over the last 90 days. */
-  heatmap90d: number[][];           // [7][24]
+  /**
+   * Day-of-week × hour-of-day heatmap over the last 90 days.
+   * Stored flat (length 168) because Firestore doesn't allow
+   * nested arrays. Read as `heatmap90d[dow * 24 + hour]` —
+   * dow is 0=Sunday … 6=Saturday.
+   */
+  heatmap90d: number[];
 
   updatedAt: Date;
 }

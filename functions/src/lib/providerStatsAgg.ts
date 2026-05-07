@@ -122,7 +122,8 @@ export interface ProviderStatsRolling {
   topClients30d: { clientHash: string; bookingsCount: number; revenue: number }[];
   topClients90d: { clientHash: string; bookingsCount: number; revenue: number }[];
   topClientsAllTime: { clientHash: string; bookingsCount: number; revenue: number }[];
-  heatmap90d: number[][];
+  /** Flat 168-element array (dow*24 + hour). Firestore rejects nested arrays. */
+  heatmap90d: number[];
   updatedAt: Date;
 }
 
@@ -265,8 +266,8 @@ function emptyMonthly(providerId: string, month: string): ProviderStatsMonthly {
   };
 }
 
-function emptyHeatmap(): number[][] {
-  return Array.from({ length: 7 }, () => new Array(24).fill(0));
+function emptyHeatmap(): number[] {
+  return new Array(7 * 24).fill(0);
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -409,7 +410,7 @@ export function aggregateRolling(
   const heatmap = emptyHeatmap();
   for (const b of bookings) {
     if (b.datetime < cutoff90) continue;
-    heatmap[dayOfWeekInTz(b.datetime, tz)][hourInTz(b.datetime, tz)] += 1;
+    heatmap[dayOfWeekInTz(b.datetime, tz) * 24 + hourInTz(b.datetime, tz)] += 1;
   }
 
   return {

@@ -158,8 +158,13 @@ function emptyMonthly(providerId: string, month: string): ProviderStatsMonthly {
   };
 }
 
-function emptyHeatmap(): number[][] {
-  return Array.from({ length: 7 }, () => new Array(24).fill(0) as number[]);
+/**
+ * Flat 7*24 = 168-element array for the day-of-week × hour heatmap.
+ * Indexed by `dow * 24 + hour`. Stored flat because Firestore
+ * rejects nested arrays.
+ */
+function emptyHeatmap(): number[] {
+  return new Array(7 * 24).fill(0) as number[];
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -441,12 +446,14 @@ export function aggregateRolling(
   const topClientsAllTime = topClientsFromBookings(bookings, null);
 
   // ── Heatmap day-of-week × hour-of-day, last 90 days ─────────────
+  // Flat 168-element array (dow * 24 + hour) — Firestore rejects
+  // nested arrays so we cannot use number[][].
   const heatmap90d = emptyHeatmap();
   for (const booking of bookings) {
     if (booking.datetime < cutoff90d) continue;
     const dow = dayOfWeekInTz(booking.datetime, timezone);
     const hour = hourInTz(booking.datetime, timezone);
-    heatmap90d[dow][hour] += 1;
+    heatmap90d[dow * 24 + hour] += 1;
   }
 
   return {
