@@ -97,6 +97,47 @@ async function pickAndUploadImage(
   return downloadURL;
 }
 
+/**
+ * Multi-image picker for the portfolio. `allowsEditing` and
+ * `allowsMultipleSelection` are mutually exclusive in expo-image-picker
+ * — picking multiple forfeits per-image cropping, which is fine for the
+ * portfolio. Uploads sequentially to avoid hammering Storage.
+ */
+async function pickAndUploadMultiple(
+  storagePathPrefix: string,
+  selectionLimit: number,
+): Promise<string[]> {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    Alert.alert('Permission requise', 'Autorisez l\'accès à vos photos.');
+    return [];
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsMultipleSelection: true,
+    selectionLimit,
+    quality: 0.8,
+  });
+
+  if (result.canceled || result.assets.length === 0) return [];
+
+  const urls: string[] = [];
+  for (let i = 0; i < result.assets.length; i++) {
+    const asset = result.assets[i];
+    try {
+      const response = await fetch(asset.uri);
+      const blob = await response.blob();
+      const path = `${storagePathPrefix}/${Date.now()}_${i}.jpg`;
+      const url = await uploadFile(path, blob, { contentType: 'image/jpeg' });
+      urls.push(url);
+    } catch (err) {
+      console.warn(`Failed to upload asset ${i}:`, err);
+    }
+  }
+  return urls;
+}
+
 // ---------------------------------------------------------------------------
 // Main Screen
 // ---------------------------------------------------------------------------
@@ -245,27 +286,51 @@ export default function ProfileScreen() {
 
   const handleAddPortfolioPhoto = async () => {
     if (!providerId) return;
-    if (portfolioPhotos.length >= maxPhotos) {
+    const remaining = maxPhotos - portfolioPhotos.length;
+    if (remaining <= 0) {
       showToast({ variant: 'error', message: `Maximum ${maxPhotos} photos atteint` });
       return;
     }
 
     setUploadingPortfolio(true);
     try {
-      const timestamp = Date.now();
-      const path = `${storagePaths.providerPortfolio(providerId)}/${timestamp}_photo.jpg`;
-      const url = await pickAndUploadImage(path, [4, 3]);
-      if (url) {
+      const newUrls = await pickAndUploadMultiple(
+        storagePaths.providerPortfolio(providerId),
+        remaining,
+      );
+      if (newUrls.length > 0) {
         await providerService.updateProvider(providerId, {
-          portfolioPhotos: [...portfolioPhotos, url],
+          portfolioPhotos: [...portfolioPhotos, ...newUrls],
         });
         await refreshProvider();
-        showToast({ variant: 'success', message: 'Photo ajoutée au portfolio' });
+        showToast({
+          variant: 'success',
+          message:
+            newUrls.length === 1
+              ? 'Photo ajoutée au portfolio'
+              : `${newUrls.length} photos ajoutées au portfolio`,
+        });
       }
     } catch (err: any) {
       showToast({ variant: 'error', message: err.message || 'Erreur lors de l\'upload' });
     } finally {
       setUploadingPortfolio(false);
+    }
+  };
+
+  // Reorder: swap a photo with its neighbor at `index + delta`. delta is
+  // -1 (move up/left in grid) or +1 (move down/right). No-op at edges.
+  const handleMovePortfolioPhoto = async (index: number, delta: -1 | 1) => {
+    if (!providerId) return;
+    const target = index + delta;
+    if (target < 0 || target >= portfolioPhotos.length) return;
+    const next = [...portfolioPhotos];
+    [next[index], next[target]] = [next[target], next[index]];
+    try {
+      await providerService.updateProvider(providerId, { portfolioPhotos: next });
+      await refreshProvider();
+    } catch (err: any) {
+      showToast({ variant: 'error', message: err.message || 'Erreur lors du réordonnancement' });
     }
   };
 
@@ -969,14 +1034,41 @@ export default function ProfileScreen() {
               </Text>
 
               <View style={styles.portfolioGrid}>
-                {portfolioPhotos.map((photoUrl) => {
+                {portfolioPhotos.map((photoUrl, idx) => {
                   const isDeleting = deletingPhoto === photoUrl;
+                  const canMoveUp = idx > 0;
+                  const canMoveDown = idx < portfolioPhotos.length - 1;
                   return (
                     <View key={photoUrl} style={[styles.portfolioItem, { borderRadius: radius.md, overflow: 'hidden' }]}>
                       <Image
                         source={{ uri: photoUrl }}
                         style={styles.portfolioImage}
                       />
+                      {/* Reorder arrows — top-left corner */}
+                      <View style={styles.portfolioReorder}>
+                        <Pressable
+                          onPress={() => handleMovePortfolioPhoto(idx, -1)}
+                          disabled={!canMoveUp}
+                          style={[
+                            styles.portfolioArrowBtn,
+                            !canMoveUp && { opacity: 0.3 },
+                          ]}
+                          hitSlop={6}
+                        >
+                          <Ionicons name="chevron-back" size={14} color="#FFFFFF" />
+                        </Pressable>
+                        <Pressable
+                          onPress={() => handleMovePortfolioPhoto(idx, 1)}
+                          disabled={!canMoveDown}
+                          style={[
+                            styles.portfolioArrowBtn,
+                            !canMoveDown && { opacity: 0.3 },
+                          ]}
+                          hitSlop={6}
+                        >
+                          <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+                        </Pressable>
+                      </View>
                       <Pressable
                         onPress={() => handleDeletePortfolioPhoto(photoUrl)}
                         disabled={isDeleting}
@@ -1378,6 +1470,21 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  portfolioReorder: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  portfolioArrowBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',

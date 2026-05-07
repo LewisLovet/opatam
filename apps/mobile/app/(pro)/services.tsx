@@ -29,7 +29,7 @@ import {
   type WithId,
 } from '@booking-app/firebase';
 import type { Service, ServiceCategory, Location, Member } from '@booking-app/shared/types';
-import { resolveDeposit } from '@booking-app/shared';
+import { resolveDeposit, SERVICE_COLORS } from '@booking-app/shared';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
@@ -55,6 +55,9 @@ interface ServiceFormData {
   locationIds: string[];
   memberIds: string[] | null;
   categoryId: string | null;
+  /** Hex color tinting bookings of this service on the calendar. null
+   *  falls back to the member's color. */
+  color: string | null;
   // Deposit configuration. The 3 modes mirror the web ServiceModal:
   // inherit (null on save), custom (type fixed/percent + value + hours)
   // or none (sentinel { type: 'none' }).
@@ -78,6 +81,7 @@ const DEFAULT_FORM: ServiceFormData = {
   locationIds: [],
   memberIds: null,
   categoryId: null,
+  color: null,
   depositMode: 'inherit',
   depositType: 'percent',
   depositValue: '30',
@@ -202,6 +206,11 @@ export default function ServicesScreen() {
 
   // Inline picker expanded state (inside the form modal)
   const [expandedPicker, setExpandedPicker] = useState<'category' | null>(null);
+
+  // Portfolio picker — collapsed by default, shown when the user wants to
+  // pick an existing portfolio photo instead of uploading a new one.
+  const [showPortfolio, setShowPortfolio] = useState(false);
+  const portfolioPhotos = provider?.portfolioPhotos ?? [];
 
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -351,6 +360,7 @@ export default function ServicesScreen() {
       locationIds: locations.map((l) => l.id),
     });
     setExpandedPicker(null);
+    setShowPortfolio(false);
     setShowModal(true);
   };
 
@@ -390,12 +400,14 @@ export default function ServicesScreen() {
       locationIds: service.locationIds || [],
       memberIds: service.memberIds,
       categoryId: service.categoryId || null,
+      color: service.color ?? null,
       depositMode,
       depositType,
       depositValue,
       depositRefundHours,
     });
     setExpandedPicker(null);
+    setShowPortfolio(false);
     setShowModal(true);
   };
 
@@ -478,6 +490,7 @@ export default function ServicesScreen() {
         locationIds: form.locationIds,
         memberIds: form.memberIds,
         categoryId: form.categoryId,
+        color: form.color,
         deposit: depositPayload,
       };
 
@@ -806,46 +819,23 @@ export default function ServicesScreen() {
                     Photo <Text variant="caption" color="textMuted">(optionnel)</Text>
                   </Text>
 
-                  {form.photoURL ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
-                      <View style={{ position: 'relative' }}>
-                        <Image
-                          source={{ uri: form.photoURL }}
-                          style={{ width: 80, height: 80, borderRadius: radius.md }}
-                          resizeMode="cover"
-                        />
-                        <Pressable
-                          onPress={() => setForm((p) => ({ ...p, photoURL: null }))}
-                          style={{ position: 'absolute', top: -6, right: -6 }}
-                        >
-                          <Ionicons name="close-circle" size={22} color={colors.error || '#ef4444'} />
-                        </Pressable>
-                      </View>
+                  {form.photoURL && (
+                    <View style={{ position: 'relative', alignSelf: 'flex-start', marginBottom: spacing.sm }}>
+                      <Image
+                        source={{ uri: form.photoURL }}
+                        style={{ width: 80, height: 80, borderRadius: radius.md }}
+                        resizeMode="cover"
+                      />
                       <Pressable
-                        onPress={async () => {
-                          const result = await ImagePicker.launchImageLibraryAsync({
-                            mediaTypes: ['images'],
-                            allowsEditing: true,
-                            aspect: [1, 1],
-                            quality: 0.8,
-                          });
-                          if (!result.canceled && result.assets[0] && providerId) {
-                            const uri = result.assets[0].uri;
-                            const response = await fetch(uri);
-                            const blob = await response.blob();
-                            const path = `${storagePaths.providerPortfolio(providerId)}/crop-${Date.now()}.jpg`;
-                            const url = await uploadFile(path, blob, { contentType: 'image/jpeg' });
-                            setForm((p) => ({ ...p, photoURL: url }));
-                          }
-                        }}
-                        style={{ paddingVertical: spacing.xs }}
+                        onPress={() => setForm((p) => ({ ...p, photoURL: null }))}
+                        style={{ position: 'absolute', top: -6, right: -6 }}
                       >
-                        <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>
-                          Changer
-                        </Text>
+                        <Ionicons name="close-circle" size={22} color={colors.error || '#ef4444'} />
                       </Pressable>
                     </View>
-                  ) : (
+                  )}
+
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
                     <Pressable
                       onPress={async () => {
                         const result = await ImagePicker.launchImageLibraryAsync({
@@ -861,25 +851,117 @@ export default function ServicesScreen() {
                           const path = `${storagePaths.providerPortfolio(providerId)}/crop-${Date.now()}.jpg`;
                           const url = await uploadFile(path, blob, { contentType: 'image/jpeg' });
                           setForm((p) => ({ ...p, photoURL: url }));
+                          setShowPortfolio(false);
                         }
                       }}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        gap: spacing.sm,
-                        paddingVertical: spacing.md,
+                        gap: spacing.xs,
+                        paddingVertical: spacing.sm,
                         paddingHorizontal: spacing.md,
                         borderRadius: radius.lg,
                         borderWidth: 1,
-                        borderStyle: 'dashed',
                         borderColor: colors.border,
+                        backgroundColor: colors.surfaceSecondary,
                       }}
                     >
-                      <Ionicons name="image-outline" size={20} color={colors.textMuted} />
-                      <Text variant="bodySmall" color="textMuted" style={{ fontWeight: '500' }}>
-                        Ajouter une photo
+                      <Ionicons name="camera-outline" size={16} color={colors.textMuted} />
+                      <Text variant="caption" color="textMuted" style={{ fontWeight: '500' }}>
+                        {form.photoURL ? "Changer (appareil)" : "Depuis l'appareil"}
                       </Text>
                     </Pressable>
+
+                    {portfolioPhotos.length > 0 && (
+                      <Pressable
+                        onPress={() => setShowPortfolio((v) => !v)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: spacing.xs,
+                          paddingVertical: spacing.sm,
+                          paddingHorizontal: spacing.md,
+                          borderRadius: radius.lg,
+                          borderWidth: 1,
+                          borderColor: showPortfolio ? colors.primary : colors.border,
+                          backgroundColor: showPortfolio
+                            ? (colors.primaryLight || '#e4effa')
+                            : colors.surfaceSecondary,
+                        }}
+                      >
+                        <Ionicons
+                          name="folder-open-outline"
+                          size={16}
+                          color={showPortfolio ? colors.primary : colors.textMuted}
+                        />
+                        <Text
+                          variant="caption"
+                          color={showPortfolio ? 'primary' : 'textMuted'}
+                          style={{ fontWeight: '500' }}
+                        >
+                          {form.photoURL ? 'Changer (portfolio)' : 'Depuis le portfolio'}
+                        </Text>
+                        <Text variant="caption" color="textMuted">
+                          ({portfolioPhotos.length})
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+
+                  {/* Portfolio gallery — only when explicitly opened */}
+                  {showPortfolio && portfolioPhotos.length > 0 && (
+                    <View
+                      style={{
+                        marginTop: spacing.sm,
+                        padding: spacing.sm,
+                        borderRadius: radius.md,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        backgroundColor: colors.surfaceSecondary,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                        {portfolioPhotos.map((url) => {
+                          const isSelected = form.photoURL === url;
+                          return (
+                            <Pressable
+                              key={url}
+                              onPress={() => {
+                                setForm((p) => ({ ...p, photoURL: url }));
+                                setShowPortfolio(false);
+                              }}
+                              style={{
+                                width: '23%',
+                                aspectRatio: 1,
+                                borderRadius: radius.md,
+                                overflow: 'hidden',
+                                borderWidth: 2,
+                                borderColor: isSelected ? colors.primary : 'transparent',
+                              }}
+                            >
+                              <Image
+                                source={{ uri: url }}
+                                style={{ width: '100%', height: '100%' }}
+                                resizeMode="cover"
+                              />
+                              {isSelected && (
+                                <View
+                                  style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    backgroundColor: 'rgba(59,130,246,0.25)',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                                </View>
+                              )}
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
                   )}
                 </View>
 
@@ -923,6 +1005,54 @@ export default function ServicesScreen() {
                     )}
                   </View>
                 )}
+
+                {/* Color picker — tints the booking on the calendar.
+                    null = fall back to the member's color (existing behavior). */}
+                <View>
+                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+                    Couleur sur le calendrier <Text variant="caption" color="textMuted">(optionnel)</Text>
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    <Pressable
+                      onPress={() => setForm((p) => ({ ...p, color: null }))}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        borderWidth: 1.5,
+                        borderStyle: 'dashed',
+                        borderColor: form.color === null ? colors.text : colors.border,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text variant="caption" color="textMuted" style={{ fontSize: 12 }}>∅</Text>
+                    </Pressable>
+                    {SERVICE_COLORS.map((c) => {
+                      const isSelected = form.color === c;
+                      return (
+                        <Pressable
+                          key={c}
+                          onPress={() => setForm((p) => ({ ...p, color: c }))}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 16,
+                            backgroundColor: c,
+                            borderWidth: isSelected ? 2 : 0,
+                            borderColor: colors.text,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {isSelected && (
+                            <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
 
                 {/* Duration — hours + minutes inputs */}
                 <View>

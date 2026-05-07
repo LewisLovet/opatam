@@ -12,6 +12,7 @@ import {
   Linking,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -92,8 +93,10 @@ export default function ConfirmBookingScreen() {
       return;
     }
 
-    // Check if user is authenticated
-    if (!isAuthenticated || !userData) {
+    // Check if user is authenticated. Require user.uid explicitly:
+    // useClientBookings queries by clientId == user.uid, so a booking
+    // saved with a null clientId would never appear in "Mes rendez-vous".
+    if (!isAuthenticated || !userData || !user?.uid) {
       showToast({
         variant: 'warning',
         message: 'Veuillez vous connecter pour réserver',
@@ -101,6 +104,7 @@ export default function ConfirmBookingScreen() {
       router.push('/(auth)/login');
       return;
     }
+    const clientUid = user.uid;
 
     // Validate phone
     if (!phone.trim() || !isPhoneValid) {
@@ -129,7 +133,7 @@ export default function ConfirmBookingScreen() {
           locationId: locationId!,
           memberId: memberId || undefined,
           datetime: selectedSlot.datetime,
-          clientId: user?.uid,
+          clientId: clientUid,
           clientInfo: {
             name: userData.displayName || 'Client',
             email: userData.email,
@@ -171,21 +175,85 @@ export default function ConfirmBookingScreen() {
         });
         if (init.error) throw new Error(init.error.message);
 
-        const { error: payError } = await presentPaymentSheet();
-        if (payError) {
-          // User cancelled or payment failed. The booking sits in
-          // pending_payment until the cron purges it.
-          if (payError.code === 'Canceled') {
-            showToast({
-              variant: 'info',
-              message: "Paiement annulé. Votre créneau sera libéré sous 30 min.",
-            });
-          } else {
+        // Loop while the user keeps retrying the PaymentSheet. We re-use
+        // the same PaymentIntent — Stripe accepts multiple presentation
+        // attempts on a single intent until it succeeds or is cancelled.
+        // On final cancel, we abandon the booking server-side so the
+        // slot is freed immediately (no 30 min cron wait).
+        while (true) {
+          const { error: payError } = await presentPaymentSheet();
+          if (!payError) break; // success → fall through to confirmation
+
+          if (payError.code !== 'Canceled') {
+            // Hard payment error (card declined, network, etc.). Surface
+            // it and stay on the screen so the user can act. The booking
+            // stays as pending_payment; cron will purge if needed.
             showToast({
               variant: 'error',
               message: payError.message || 'Échec du paiement',
             });
+            return;
           }
+
+          // User dismissed the sheet. Ask whether they want to retry or
+          // abandon — without this the slot stays locked for 30 min.
+          const choice = await new Promise<'retry' | 'abandon'>((resolve) => {
+            Alert.alert(
+              'Paiement annulé',
+              "Voulez-vous réessayer le paiement, ou abandonner la réservation et libérer le créneau ?",
+              [
+                {
+                  text: 'Abandonner',
+                  style: 'destructive',
+                  onPress: () => resolve('abandon'),
+                },
+                {
+                  text: 'Réessayer',
+                  style: 'default',
+                  onPress: () => resolve('retry'),
+                },
+              ],
+              { cancelable: false },
+            );
+          });
+
+          if (choice === 'retry') continue; // re-present the sheet
+
+          // Abandon → free the slot now. We need to actually verify the
+          // server confirmed the deletion before telling the user the
+          // slot is free, otherwise they hit "créneau indisponible" on
+          // retry while the booking still exists.
+          let abandoned = false;
+          try {
+            const abRes = await fetch(`${API_URL}/api/bookings/abandon`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                bookingId: data.bookingId,
+                clientId: clientUid,
+              }),
+            });
+            const abData = await abRes.json().catch(() => ({}));
+            if (abRes.ok && abData.abandoned) {
+              abandoned = true;
+            } else {
+              console.warn('Abandon failed:', abRes.status, abData);
+            }
+          } catch (err) {
+            console.warn('Abandon call failed:', err);
+          }
+
+          // Wipe the booking flow state and bounce to the start so the
+          // slot picker re-fetches fresh availability — no stale local
+          // cache showing the slot as still selected/taken.
+          resetBooking();
+          showToast({
+            variant: abandoned ? 'info' : 'error',
+            message: abandoned
+              ? 'Réservation annulée. Le créneau est de nouveau disponible.'
+              : "Le créneau sera libéré sous 30 min. Merci de réessayer plus tard.",
+          });
+          router.replace(`/(client)/booking/${providerId}`);
           return;
         }
 

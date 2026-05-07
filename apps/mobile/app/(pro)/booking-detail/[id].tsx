@@ -667,6 +667,9 @@ export default function ProBookingDetailScreen() {
   const isPast = bookingDate < new Date();
 
   // Build detail rows
+  // Detail rows — service / member are now surfaced in the dedicated
+  // "Service" card above, so they no longer appear here. This list is
+  // strictly logistics: when, where, how much.
   const detailRows: {
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
@@ -674,7 +677,6 @@ export default function ProBookingDetailScreen() {
     valueColor?: string;
     valueWeight?: '400' | '500' | '600' | '700';
   }[] = [
-    { icon: 'pricetag-outline', label: 'Prestation', value: booking.serviceName },
     { icon: 'calendar-outline', label: 'Date', value: formatDateFr(booking.datetime) },
     {
       icon: 'time-outline',
@@ -682,13 +684,6 @@ export default function ProBookingDetailScreen() {
       value: `${formatTime(booking.datetime)} - ${formatEndTime(booking.datetime, booking.duration)}`,
     },
     { icon: 'hourglass-outline', label: 'Durée', value: `${booking.duration} min` },
-    {
-      icon: 'pricetag-outline',
-      label: 'Prix',
-      value: formatPrice(booking.price),
-      valueColor: colors.primary,
-      valueWeight: '700' as const,
-    },
   ];
 
   if (booking.locationName) {
@@ -699,7 +694,13 @@ export default function ProBookingDetailScreen() {
     });
   }
 
-  // memberName is now shown as a chip next to the status badge at the top
+  detailRows.push({
+    icon: 'cash-outline',
+    label: 'Prix',
+    value: formatPrice(booking.price),
+    valueColor: colors.primary,
+    valueWeight: '700' as const,
+  });
 
   if ((booking as any).notes) {
     detailRows.push({
@@ -742,48 +743,21 @@ export default function ProBookingDetailScreen() {
           </Text>
         </View>
 
-        {/* Status badge + member chip */}
-        <View style={[styles.statusContainer, { marginVertical: spacing.md }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm }}>
-            <BookingStatusBadge status={booking.status} size="md" />
-            {booking.memberName && (
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: booking.memberColor ? `${booking.memberColor}20` : colors.surfaceSecondary,
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.xs,
-                borderRadius: radius.full,
-                gap: spacing.xs,
-              }}>
-                {booking.memberColor && (
-                  <View style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: booking.memberColor,
-                  }} />
-                )}
-                <Text variant="caption" style={{ fontWeight: '600', color: booking.memberColor || colors.text }}>
-                  {booking.memberName}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Client info card - premium feel */}
+        {/* ── 1. Client card (TOP — most important info) ─────────── */}
         <Card
           padding="lg"
           shadow="sm"
-          style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
+          style={{ marginHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: spacing.md }}
         >
-          {/* Centered avatar */}
           <View style={styles.clientCardContent}>
             <Avatar size="xl" name={booking.clientInfo.name} />
             <Text
-              variant="h2"
-              style={{ marginTop: spacing.sm, textAlign: 'center' }}
+              variant="h1"
+              style={{
+                marginTop: spacing.md,
+                textAlign: 'center',
+                fontWeight: '700',
+              }}
             >
               {booking.clientInfo.name}
             </Text>
@@ -816,7 +790,74 @@ export default function ProBookingDetailScreen() {
           </View>
         </Card>
 
-        {/* Booking details card - clean info rows */}
+        {/* ── 2. Service + Member + Status card ───────────────────
+              Pulled out of the generic detail list because the pro
+              wants to read service & assigned member at a glance. */}
+        <Card
+          padding="lg"
+          shadow="sm"
+          style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
+        >
+          <Text
+            variant="caption"
+            color="textSecondary"
+            style={{
+              textTransform: 'uppercase',
+              fontWeight: '600',
+              letterSpacing: 0.5,
+              marginBottom: spacing.xs,
+            }}
+          >
+            Prestation
+          </Text>
+          <Text variant="h2" style={{ fontWeight: '700' }}>
+            {booking.serviceName}
+          </Text>
+
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: spacing.sm,
+              marginTop: spacing.sm,
+            }}
+          >
+            {booking.memberName && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: booking.memberColor
+                    ? `${booking.memberColor}20`
+                    : colors.surfaceSecondary,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.xs,
+                  borderRadius: radius.full,
+                  gap: spacing.xs,
+                }}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={14}
+                  color={booking.memberColor || colors.textSecondary}
+                />
+                <Text
+                  variant="caption"
+                  style={{
+                    fontWeight: '600',
+                    color: booking.memberColor || colors.text,
+                  }}
+                >
+                  {booking.memberName}
+                </Text>
+              </View>
+            )}
+            <BookingStatusBadge status={booking.status} size="md" />
+          </View>
+        </Card>
+
+        {/* ── 3. Logistics — date / time / location / price ─────── */}
         <Card
           padding="lg"
           shadow="sm"

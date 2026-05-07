@@ -25,6 +25,7 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -287,6 +288,26 @@ export default function PaymentsScreen() {
                 <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.sm }}>
                   Activez Stripe Connect d'abord.
                 </Text>
+              ) : Platform.OS === 'ios' ? (
+                // App Store policy 3.1.1 — digital subscription. We don't
+                // bundle Apple IAP for this add-on (it's niche and ties
+                // into a Stripe subscription managed server-side), so we
+                // redirect to the web portal where the existing Stripe
+                // flow handles activation.
+                <>
+                  <Button
+                    title="Activer sur opatam.com"
+                    onPress={openWeb}
+                    style={{ marginTop: spacing.md }}
+                  />
+                  <Text
+                    variant="caption"
+                    color="textSecondary"
+                    style={{ marginTop: spacing.sm, textAlign: 'center' }}
+                  >
+                    Activation gérée depuis votre espace web.
+                  </Text>
+                </>
               ) : (
                 <Button
                   title="Souscrire à Sérénité — 5 €/mois"
