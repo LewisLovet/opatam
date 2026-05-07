@@ -17,6 +17,7 @@ import {
   Platform,
   UIManager,
   Modal,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -24,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { memberService, schedulingService } from '@booking-app/firebase';
 import type { Member, BlockedSlot } from '@booking-app/shared';
+import { ACTIVITY_CATEGORY_META } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
@@ -155,12 +157,22 @@ function getMonday(date: Date): Date {
 }
 
 /**
- * Get the 7 days (Mon-Sun) of a week starting from Monday.
+ * Get the 7 days (Mon-Sun) of the week containing `monday`. The full
+ * week is always loaded so that the visible window can pan
+ * horizontally without triggering refetches.
+ *
+ * The visible width is 3.5 columns rather than a round number — the
+ * half-column "peek" of the next day on the right edge is the
+ * affordance that tells the pro the grid scrolls. Without it the
+ * 4-column layout looks complete and pros miss days 5-7.
  */
+const WEEK_VIEW_VISIBLE_DAYS = 3.5;
+
 function getWeekDays(monday: Date): Date[] {
   const days: Date[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
+    d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() + i);
     days.push(d);
   }
@@ -336,6 +348,9 @@ interface WeekBooking {
   memberId: string | null;
   memberName: string | null;
   memberColor: string | null;
+  /** Resolved color for the cell tint+border. Service color first, then
+   *  member color, then null (status-driven fallback in the renderer). */
+  displayColor: string | null;
 }
 
 interface WeekBlockedSlotMember {
@@ -355,6 +370,12 @@ interface WeekBlockedSlot {
   memberColor: string | null;
   members: WeekBlockedSlotMember[];
   isAllMembers: boolean;
+  /** Activity flavour — when set, the week-view renderer treats this
+   *  as a foreground card with the category color and `title` instead
+   *  of the dim grey "blocked period" background slab. */
+  category?: import('@booking-app/shared').ActivityCategory | null;
+  categoryColor?: string | null;
+  title?: string | null;
 }
 
 interface WeekViewProps {
@@ -370,6 +391,9 @@ interface WeekViewProps {
   endHour?: number;
   refreshing?: boolean;
   onRefresh?: () => void;
+  /** Triggered when the user swipes horizontally across the grid —
+   *  -1 = window goes back in time, +1 = window goes forward. */
+  onNavigate?: (direction: -1 | 1) => void;
 }
 
 function WeekView({
@@ -385,13 +409,19 @@ function WeekView({
   endHour = DEFAULT_WEEK_END_HOUR,
   refreshing = false,
   onRefresh,
+  onNavigate,
 }: WeekViewProps) {
   const { colors, spacing, radius } = useTheme();
 
   const weekTotalHours = endHour - startHour;
   const timeColumnWidth = 44;
   const availableWidth = SCREEN_WIDTH - spacing.lg * 2 - timeColumnWidth;
-  const columnWidth = availableWidth / 7;
+  // Each column takes 1/4 of the visible width — so the 7 columns span
+  // 1.75× the viewport and the user has to scroll horizontally to see
+  // the rest. This gives breathing room for booking content while
+  // keeping the full week loaded (no refetch on swipe).
+  const columnWidth = availableWidth / WEEK_VIEW_VISIBLE_DAYS;
+  const gridWidth = columnWidth * weekDays.length;
   const totalHeight = weekTotalHours * WEEK_HOUR_HEIGHT;
 
   // Group bookings by day index (0 = Monday)
@@ -490,21 +520,54 @@ function WeekView({
     return result;
   }, [startHour, endHour]);
 
+  // Refs for syncing the horizontal scroll between the header row
+  // and the body grid. Only the body is touch-scrollable; the header
+  // mirrors its offset so day-of-week labels stay aligned with the
+  // hour grid below as the user pans through the 7-day window.
+  const headerScrollRef = React.useRef<ScrollView>(null);
+  const bodyHorizontalScrollRef = React.useRef<ScrollView>(null);
+  const handleBodyHorizontalScroll = useCallback(
+    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      headerScrollRef.current?.scrollTo({
+        x: e.nativeEvent.contentOffset.x,
+        animated: false,
+      });
+    },
+    [],
+  );
+  // Center the initial offset around today (or selectedDate when not
+  // today): we put the targeted day at index 1 of the visible 4 (so
+  // there's always one day of context before it).
+  const initialHorizontalOffset = useMemo(() => {
+    const targetIdx = weekDays.findIndex((d) => isSameDay(d, selectedDate));
+    if (targetIdx < 0) return 0;
+    const desired = targetIdx - 1; // place selectedDate at visible col 1
+    const maxLeft = Math.max(0, weekDays.length - WEEK_VIEW_VISIBLE_DAYS);
+    const clamped = Math.max(0, Math.min(desired, maxLeft));
+    return clamped * columnWidth;
+  }, [weekDays, selectedDate, columnWidth]);
+
   return (
     <View style={{ flex: 1 }}>
-      {/* Column headers */}
+      {/* Column headers — horizontally scrollable, mirrors body scroll */}
       <View
-        style={[
-          styles.weekHeaderRow,
-          {
-            paddingLeft: spacing.lg + timeColumnWidth,
-            paddingRight: spacing.lg,
-            paddingVertical: spacing.sm,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.divider,
-          },
-        ]}
+        style={{
+          flexDirection: 'row',
+          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.sm,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.divider,
+        }}
       >
+        <View style={{ width: timeColumnWidth }} />
+        <ScrollView
+          ref={headerScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={false}
+          contentContainerStyle={{ width: gridWidth }}
+        >
+          <View style={[styles.weekHeaderRow, { width: gridWidth }]}>
         {weekDays.map((day, idx) => {
           const isSelected = isSameDay(day, selectedDate);
           const isTodayDate = isToday(day);
@@ -562,6 +625,8 @@ function WeekView({
             </Pressable>
           );
         })}
+          </View>
+        </ScrollView>
       </View>
 
       {/* Scrollable grid */}
@@ -610,8 +675,19 @@ function WeekView({
             ))}
           </View>
 
-          {/* Day columns */}
-          <View style={{ flex: 1, flexDirection: 'row', position: 'relative' }}>
+          {/* Day columns — horizontally scrollable so the 7 columns
+              span 1.75× the viewport (4 visible) and the user pans
+              through. Header above mirrors this scroll position. */}
+          <ScrollView
+            ref={bodyHorizontalScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={handleBodyHorizontalScroll}
+            contentOffset={{ x: initialHorizontalOffset, y: 0 }}
+            style={{ flex: 1 }}
+          >
+          <View style={{ width: gridWidth, flexDirection: 'row', position: 'relative' }}>
             {/* Hour grid lines */}
             {hours.map((_, idx) => (
               <View
@@ -650,7 +726,7 @@ function WeekView({
                     },
                   ]}
                 >
-                  {/* Blocked slots */}
+                  {/* Blocked slots / activities */}
                   {dayBlocked.map((bs) => {
                     let bsStartMin: number;
                     let bsEndMin: number;
@@ -668,6 +744,64 @@ function WeekView({
                     if (clampEnd <= clampStart) return null;
                     const bsTop = (clampStart / (weekTotalHours * 60)) * totalHeight;
                     const bsHeight = ((clampEnd - clampStart) / (weekTotalHours * 60)) * totalHeight;
+
+                    const isActivity = !!bs.category && !!bs.title;
+                    if (isActivity) {
+                      // Activity = foreground card with FULL category
+                      // color + white text. Solid fill (no transparency)
+                      // so the activity reads as a real event rather
+                      // than a faded blocking zone.
+                      const accent = bs.categoryColor || colors.textMuted;
+                      return (
+                        <View
+                          key={`activity-${bs.id}-${dayIdx}`}
+                          style={[
+                            styles.weekBlockedBar,
+                            {
+                              top: bsTop,
+                              height: Math.max(bsHeight, 8),
+                              backgroundColor: accent,
+                              borderRadius: radius.sm,
+                              marginHorizontal: 1,
+                              paddingHorizontal: 3,
+                              paddingVertical: 1,
+                            },
+                          ]}
+                        >
+                          {bsHeight > 12 && (
+                            <Text
+                              variant="caption"
+                              numberOfLines={1}
+                              style={{
+                                fontSize: 8,
+                                lineHeight: 10,
+                                fontWeight: '700',
+                                color: '#FFFFFF',
+                              }}
+                            >
+                              {bs.title}
+                            </Text>
+                          )}
+                          {bsHeight > 24 && bs.reason && (
+                            <Text
+                              variant="caption"
+                              numberOfLines={1}
+                              style={{
+                                fontSize: 7,
+                                lineHeight: 9,
+                                color: 'rgba(255,255,255,0.85)',
+                              }}
+                            >
+                              {bs.reason}
+                            </Text>
+                          )}
+                        </View>
+                      );
+                    }
+
+                    // Plain blocked period (vacation, training…) keeps
+                    // the original "background" look — dashed border,
+                    // grey or member-color tint, "Bloqué" label.
                     const primaryColor = bs.members.length === 1 ? bs.members[0].color : null;
                     const bsBarColor = primaryColor || colors.textMuted;
                     const bsBgColor = primaryColor ? primaryColor + '15' : colors.surfaceSecondary;
@@ -771,19 +905,49 @@ function WeekView({
                             left: colLeft,
                             right: undefined,
                             width: colWidth,
-                            backgroundColor: booking.memberColor
-                              ? getLightTint(booking.memberColor)
+                            backgroundColor: booking.displayColor
+                              ? getLightTint(booking.displayColor)
                               : getStatusBgColor(booking.status),
                             borderLeftWidth: 2,
-                            borderLeftColor: booking.memberColor || getStatusBarColor(
+                            borderLeftColor: booking.displayColor || getStatusBarColor(
                               booking.status,
                             ),
                             borderRadius: radius.sm,
-                            paddingHorizontal: 1,
+                            paddingHorizontal: 2,
                             paddingVertical: 1,
+                            // Adaptive layout: short cells (typical for
+                            // 30-min slots) lay time + client name on the
+                            // SAME LINE so the user actually sees the
+                            // client; taller cells stack vertically.
+                            flexDirection: height < 30 ? 'row' : 'column',
+                            alignItems: height < 30 ? 'center' : 'stretch',
+                            gap: height < 30 ? 4 : 0,
+                            // NB: never set `position` here — `styles.weekBookingBar`
+                            // already declares `position: 'absolute'`, and an inline
+                            // override (e.g. 'relative') makes the bar fall back to
+                            // normal flow, so back-to-back 30-min bookings end up
+                            // stacked on top of each other instead of side-by-side
+                            // on the timeline. The absolute parent is itself the
+                            // positioning context for the member-dot child below.
                           },
                         ]}
                       >
+                        {/* Member dot — only when multi-member AND a
+                            distinct member color exists. Top-right corner
+                            so it never collides with the text. */}
+                        {showMemberAvatars && booking.memberColor && (
+                          <View
+                            style={{
+                              position: 'absolute',
+                              top: 2,
+                              right: 2,
+                              width: 6,
+                              height: 6,
+                              borderRadius: 3,
+                              backgroundColor: booking.memberColor,
+                            }}
+                          />
+                        )}
                         {/* Time — always shown if block is tall enough */}
                         {height > 12 && (
                           <Text
@@ -799,8 +963,11 @@ function WeekView({
                             {timeStr}
                           </Text>
                         )}
-                        {/* Client name */}
-                        {height > 22 && (
+                        {/* Client name — always shown when block is tall
+                            enough to fit a single line of text. In the
+                            short-cell horizontal layout this sits next to
+                            the time on the same line. */}
+                        {height > 12 && (
                           <Text
                             variant="caption"
                             numberOfLines={1}
@@ -808,14 +975,16 @@ function WeekView({
                               fontSize: 9,
                               fontWeight: '600',
                               lineHeight: 11,
+                              flexShrink: 1,
+                              flex: height < 30 ? 1 : undefined,
                             }}
                             color="text"
                           >
                             {booking.clientName.split(' ')[0]}
                           </Text>
                         )}
-                        {/* Service name */}
-                        {height > 34 && (
+                        {/* Service name — only on tall cells */}
+                        {height >= 34 && (
                           <Text
                             variant="caption"
                             numberOfLines={1}
@@ -887,6 +1056,7 @@ function WeekView({
               </View>
             )}
           </View>
+          </ScrollView>
         </View>
       </ScrollView>
     </View>
@@ -902,7 +1072,18 @@ export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { providerId, provider } = useProvider();
-  const { memberId: memberIdParam } = useLocalSearchParams<{ memberId?: string }>();
+  const { memberId: memberIdParam, action: actionParam } =
+    useLocalSearchParams<{ memberId?: string; action?: string }>();
+
+  // Honor `?action=add` (set by the centre + tab button) — open the
+  // unified add sheet on focus, then clear the param so subsequent
+  // navigations to this tab don't re-trigger it.
+  useEffect(() => {
+    if (actionParam === 'add') {
+      setShowAddSheet(true);
+      router.setParams({ action: undefined } as any);
+    }
+  }, [actionParam, router]);
 
   // ---- State ----
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -915,12 +1096,15 @@ export default function CalendarScreen() {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(memberIdParam ?? null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [disambiguationBookings, setDisambiguationBookings] = useState<WeekBooking[] | null>(null);
+  // Bottom sheet for the unified "+ ajouter" action — three flavours:
+  // client booking, personal activity, blocked period.
+  const [showAddSheet, setShowAddSheet] = useState(false);
 
   // ---- Date range for the selected day ----
   const dayStart = useMemo(() => startOfDay(selectedDate), [selectedDate]);
   const dayEnd = useMemo(() => endOfDay(selectedDate), [selectedDate]);
 
-  // ---- Week data ----
+  // ---- Week data ─ load full 7 days; visible window is 4 (see WeekView)
   const weekMonday = useMemo(() => getMonday(selectedDate), [selectedDate]);
   const weekDays = useMemo(() => getWeekDays(weekMonday), [weekMonday]);
   const weekStart = useMemo(() => startOfDay(weekDays[0]), [weekDays]);
@@ -997,6 +1181,20 @@ export default function CalendarScreen() {
     return map;
   }, [services]);
 
+  // Live service color lookup — needed because `booking.serviceColor`
+  // is denormalised at creation time, so any booking created BEFORE
+  // the pro configured colors (or before we shipped the feature) has
+  // a null serviceColor. Resolving from the live service catalog at
+  // render time means existing bookings pick up colors as soon as
+  // the pro sets them.
+  const serviceColorMap = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    services.forEach((s) => {
+      map[s.id] = s.color ?? null;
+    });
+    return map;
+  }, [services]);
+
   const filteredBookings = useMemo(() => {
     if (!selectedCategoryId) return bookings;
     return bookings.filter((b) => serviceCategoryMap[b.serviceId] === selectedCategoryId);
@@ -1019,7 +1217,12 @@ export default function CalendarScreen() {
       const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
       const startTime = bs.allDay ? '00:00' : (bs.startTime || formatTime(bsStart));
       const endTime = bs.allDay ? '23:59' : (bs.endTime || formatTime(bsEnd));
-      const key = `${startTime}-${endTime}-${bs.allDay}-${bs.reason || ''}`;
+      // Activity flavour: include category + title in the grouping key
+      // so two activities with the same time but different titles
+      // don't end up merged. Regular blocked periods (no category)
+      // continue to group across members like before.
+      const activityKey = bs.category ? `${bs.category}|${bs.title || ''}` : '';
+      const key = `${startTime}-${endTime}-${bs.allDay}-${bs.reason || ''}-${activityKey}`;
       if (!groups[key]) {
         groups[key] = { ids: [], bs, members: [] };
       }
@@ -1035,6 +1238,9 @@ export default function CalendarScreen() {
       const bsStart = g.bs.startDate instanceof Date ? g.bs.startDate : (g.bs.startDate as any).toDate();
       const bsEnd = g.bs.endDate instanceof Date ? g.bs.endDate : (g.bs.endDate as any).toDate();
       const isAllMembers = activeMembers.length > 1 && g.members.length >= activeMembers.length;
+      const categoryColor = g.bs.category
+        ? ACTIVITY_CATEGORY_META[g.bs.category]?.color ?? null
+        : null;
       return {
         id: g.ids.join('-'),
         startTime: g.bs.allDay ? '00:00' : (g.bs.startTime || formatTime(bsStart)),
@@ -1045,6 +1251,10 @@ export default function CalendarScreen() {
         members: g.members,
         isAllMembers,
         allDay: g.bs.allDay,
+        category: g.bs.category ?? null,
+        categoryColor,
+        title: g.bs.title ?? null,
+        address: g.bs.address ?? null,
       };
     });
   }, [blockedSlots, viewMode, selectedMemberId, dayStart, dayEnd, memberNameMap, memberColorMap, members]);
@@ -1056,6 +1266,11 @@ export default function CalendarScreen() {
       const dt =
         b.datetime instanceof Date ? b.datetime : (b.datetime as any).toDate();
       const endDt = addMinutes(dt, b.duration);
+      const memberColor =
+        (b.memberId && memberColorMap[b.memberId]) || b.memberColor || null;
+      // Live catalog lookup — see weekBookings comment.
+      const serviceColor =
+        serviceColorMap[b.serviceId] ?? b.serviceColor ?? null;
       return {
         id: b.id,
         startTime: formatTime(dt),
@@ -1064,10 +1279,12 @@ export default function CalendarScreen() {
         serviceName: b.serviceName,
         status: b.status,
         memberName: (b.memberId && memberNameMap[b.memberId]) || undefined,
-        memberColor: (b.memberId && memberColorMap[b.memberId]) || b.memberColor || null,
+        memberColor,
+        // Service color tints the row; member color survives as the dot.
+        displayColor: serviceColor || memberColor,
       };
     });
-  }, [filteredBookings, viewMode, memberNameMap, memberColorMap]);
+  }, [filteredBookings, viewMode, memberNameMap, memberColorMap, serviceColorMap]);
 
   // ---- Transform bookings for Week View ----
   const weekBookings: WeekBooking[] = useMemo(() => {
@@ -1075,6 +1292,13 @@ export default function CalendarScreen() {
     return filteredBookings.map((b) => {
       const dt =
         b.datetime instanceof Date ? b.datetime : (b.datetime as any).toDate();
+      const memberColor =
+        (b.memberId && memberColorMap[b.memberId]) || b.memberColor || null;
+      // Resolve service color: prefer live catalog (so colors update
+      // retroactively for old bookings), fall back to the value
+      // denormalised on the booking doc.
+      const serviceColor =
+        serviceColorMap[b.serviceId] ?? b.serviceColor ?? null;
       return {
         id: b.id,
         datetime: dt,
@@ -1084,22 +1308,29 @@ export default function CalendarScreen() {
         status: b.status,
         memberId: b.memberId ?? null,
         memberName: b.memberName ?? null,
-        memberColor: (b.memberId && memberColorMap[b.memberId]) || b.memberColor || null,
+        memberColor,
+        // Service color wins over member color when set — see the
+        // calendar-color hierarchy plan: "service color = WHAT, member
+        // color = WHO". Member color is still surfaced via the dot.
+        displayColor: serviceColor || memberColor,
       };
     });
-  }, [filteredBookings, viewMode, memberColorMap]);
+  }, [filteredBookings, viewMode, memberColorMap, serviceColorMap]);
 
   // ---- Blocked slots for week view (grouped by same time + reason) ----
   const weekBlockedSlots = useMemo(() => {
     if (viewMode !== 'week') return [];
     const filtered = blockedSlots.filter((bs) => !selectedMemberId || bs.memberId === selectedMemberId);
 
-    // Group by same start/end timestamps + allDay + reason
+    // Group by same start/end timestamps + allDay + reason. Activities
+    // are NOT grouped across members (their title makes the key unique
+    // per row), which keeps each personal activity addressable.
     const groups: Record<string, { slots: typeof filtered; members: WeekBlockedSlotMember[] }> = {};
     for (const bs of filtered) {
       const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
       const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
-      const key = `${bsStart.getTime()}-${bsEnd.getTime()}-${bs.allDay}-${bs.reason || ''}`;
+      const activityKey = bs.category ? `${bs.category}|${bs.title || ''}` : '';
+      const key = `${bsStart.getTime()}-${bsEnd.getTime()}-${bs.allDay}-${bs.reason || ''}-${activityKey}`;
       if (!groups[key]) {
         groups[key] = { slots: [], members: [] };
       }
@@ -1116,6 +1347,9 @@ export default function CalendarScreen() {
       const bsStart = bs.startDate instanceof Date ? bs.startDate : (bs.startDate as any).toDate();
       const bsEnd = bs.endDate instanceof Date ? bs.endDate : (bs.endDate as any).toDate();
       const isAllMembers = activeMembers.length > 1 && g.members.length >= activeMembers.length;
+      const categoryColor = bs.category
+        ? ACTIVITY_CATEGORY_META[bs.category]?.color ?? null
+        : null;
       return {
         id: g.slots.map((s) => s.id).join('-'),
         startDate: bsStart,
@@ -1128,6 +1362,9 @@ export default function CalendarScreen() {
         memberColor: g.members[0]?.color || null,
         members: g.members,
         isAllMembers,
+        category: bs.category ?? null,
+        categoryColor,
+        title: bs.title ?? null,
       };
     });
   }, [blockedSlots, viewMode, selectedMemberId, memberNameMap, memberColorMap, members]);
@@ -1170,13 +1407,72 @@ export default function CalendarScreen() {
     [router],
   );
 
+  // Tapping a blocked slot / activity → present an action sheet.
+  // Activities get Modifier + Supprimer, plain blocked periods (no
+  // category) only Supprimer because there's no "edit period" screen
+  // yet. Modifier opens create-activity in edit mode via the `id`
+  // query param.
+  const handleBlockedSlotPress = useCallback(
+    (id: string) => {
+      const slot = blockedSlots.find((s) => s.id === id);
+      const isActivity = !!slot?.category;
+      const label = isActivity
+        ? slot?.title || 'Activité'
+        : slot?.reason || 'Période bloquée';
+
+      const deleteAction = {
+        text: 'Supprimer',
+        style: 'destructive' as const,
+        onPress: async () => {
+          if (!providerId) return;
+          try {
+            await schedulingService.unblockPeriod(providerId, id);
+          } catch (err) {
+            Alert.alert(
+              'Erreur',
+              err instanceof Error ? err.message : 'Impossible de supprimer',
+            );
+          }
+        },
+      };
+
+      if (isActivity) {
+        Alert.alert(label, 'Que voulez-vous faire ?', [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Modifier',
+            onPress: () => {
+              router.push(`/(pro)/create-activity?id=${id}` as any);
+            },
+          },
+          deleteAction,
+        ]);
+      } else {
+        Alert.alert(label, 'Voulez-vous supprimer cette période ?', [
+          { text: 'Annuler', style: 'cancel' },
+          deleteAction,
+        ]);
+      }
+    },
+    [blockedSlots, providerId, router],
+  );
+
   const handleCreateBooking = useCallback(() => {
+    setShowAddSheet(false);
     const dateStr = selectedDate.toISOString();
     const memberParam = selectedMemberId ? `&memberId=${selectedMemberId}` : '';
     router.push(`/(pro)/create-booking?date=${dateStr}${memberParam}` as any);
   }, [router, selectedDate, selectedMemberId]);
 
+  const handleCreateActivity = useCallback(() => {
+    setShowAddSheet(false);
+    const dateStr = selectedDate.toISOString();
+    const memberParam = selectedMemberId ? `&memberId=${selectedMemberId}` : '';
+    router.push(`/(pro)/create-activity?date=${dateStr}${memberParam}` as any);
+  }, [router, selectedDate, selectedMemberId]);
+
   const handleBlockSlot = useCallback(() => {
+    setShowAddSheet(false);
     const dateStr = selectedDate.toISOString();
     router.push(`/(pro)/block-slot?date=${dateStr}` as any);
   }, [router, selectedDate]);
@@ -1269,7 +1565,7 @@ export default function CalendarScreen() {
   // ---- Header date display ----
   const headerDateText = useMemo(() => {
     if (viewMode === 'week') {
-      const endDate = weekDays[6];
+      const endDate = weekDays[weekDays.length - 1];
       const startDay = weekDays[0].getDate();
       const endDay = endDate.getDate();
       const startMonth = FULL_MONTH_NAMES[weekDays[0].getMonth()];
@@ -1500,6 +1796,7 @@ export default function CalendarScreen() {
                 bookings={dayBookings}
                 blockedSlots={dayBlockedSlots}
                 onBookingPress={handleBookingPress}
+                onBlockedSlotPress={handleBlockedSlotPress}
                 workingHours={{
                   start: `${effectiveStartHour.toString().padStart(2, '0')}:00`,
                   end: effectiveEndHour === 24 ? '00:00' : `${effectiveEndHour.toString().padStart(2, '0')}:00`,
@@ -1539,29 +1836,10 @@ export default function CalendarScreen() {
         />
       )}
 
-      {/* ===== FABs ===== */}
+      {/* ===== Unified "+ Ajouter" FAB ===== */}
       <View style={styles.fabContainer}>
-        {/* Secondary FAB — Block slot */}
         <Pressable
-          onPress={handleBlockSlot}
-          style={({ pressed }) => [
-            styles.fabSecondary,
-            {
-              backgroundColor: colors.surface,
-              borderRadius: radius.full,
-              borderWidth: 1,
-              borderColor: colors.border,
-              ...themeShadows.md,
-              transform: [{ scale: pressed ? 0.92 : 1 }],
-            },
-          ]}
-        >
-          <Ionicons name="ban-outline" size={20} color={colors.textSecondary} />
-        </Pressable>
-
-        {/* Primary FAB — New booking */}
-        <Pressable
-          onPress={handleCreateBooking}
+          onPress={() => setShowAddSheet(true)}
           style={({ pressed }) => [
             styles.fab,
             {
@@ -1575,6 +1853,175 @@ export default function CalendarScreen() {
           <Ionicons name="add" size={28} color={colors.textInverse} />
         </Pressable>
       </View>
+
+      {/* ===== Add-anything bottom sheet =====
+          Three flavours kept on equal footing — the pro picks the one
+          that matches what they want to add. Block-slot and Activity
+          intentionally live side-by-side: blocks are best for
+          long absences, activities for ponctual planner items. */}
+      <Modal
+        visible={showAddSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddSheet(false)}
+      >
+        <Pressable
+          style={styles.datePickerOverlay}
+          onPress={() => setShowAddSheet(false)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={[
+              {
+                backgroundColor: colors.surface,
+                borderTopLeftRadius: radius.xl,
+                borderTopRightRadius: radius.xl,
+                paddingHorizontal: spacing.lg,
+                paddingTop: spacing.md,
+                paddingBottom: spacing['2xl'],
+              },
+            ]}
+          >
+            {/* Drag handle */}
+            <View
+              style={{
+                alignSelf: 'center',
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: colors.border,
+                marginBottom: spacing.md,
+              }}
+            />
+            <Text
+              variant="h3"
+              style={{
+                marginBottom: spacing.lg,
+                color: colors.text,
+                fontWeight: '700',
+              }}
+            >
+              Ajouter
+            </Text>
+
+            {/* Choice 1 — Réservation client */}
+            <Pressable
+              onPress={handleCreateBooking}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.lg,
+                  backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+                  marginBottom: spacing.xs,
+                  gap: spacing.md,
+                },
+              ]}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: colors.primaryLight || (colors.primary + '20'),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="calendar-outline" size={22} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="body" style={{ fontWeight: '600', color: colors.text }}>
+                  Réservation client
+                </Text>
+                <Text variant="caption" color="textSecondary">
+                  Nouveau RDV pour un client
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </Pressable>
+
+            {/* Choice 2 — Activité perso */}
+            <Pressable
+              onPress={handleCreateActivity}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.lg,
+                  backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+                  marginBottom: spacing.xs,
+                  gap: spacing.md,
+                },
+              ]}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: '#f9731620',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="flash-outline" size={22} color="#f97316" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="body" style={{ fontWeight: '600', color: colors.text }}>
+                  Activité personnelle
+                </Text>
+                <Text variant="caption" color="textSecondary">
+                  Sport, RDV perso, admin…
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </Pressable>
+
+            {/* Choice 3 — Bloquer une période */}
+            <Pressable
+              onPress={handleBlockSlot}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.lg,
+                  backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+                  gap: spacing.md,
+                },
+              ]}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: colors.surfaceSecondary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="ban-outline" size={22} color={colors.textSecondary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="body" style={{ fontWeight: '600', color: colors.text }}>
+                  Bloquer une période
+                </Text>
+                <Text variant="caption" color="textSecondary">
+                  Vacances, formation, absence
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* ===== Disambiguation Bottom Sheet ===== */}
       <Modal

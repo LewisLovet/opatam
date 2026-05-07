@@ -99,7 +99,11 @@ export default function ProTabsLayout() {
         listeners={{
           tabPress: (e: any) => {
             e.preventDefault();
-            router.push('/(pro)/create-booking');
+            // Route to the agenda tab and open the unified add sheet —
+            // same 3 choices as the in-calendar FAB (Réservation /
+            // Activité / Bloquer une période). Avoids forcing the pro
+            // into the booking flow when they wanted an activity.
+            router.push('/(pro)/(tabs)/calendar?action=add' as any);
           },
         }}
       />
