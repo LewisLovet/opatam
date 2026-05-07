@@ -95,76 +95,103 @@ export default function StatistiquesPage() {
     (async () => {
       setState((s) => ({ ...s, loading: true, error: null }));
 
-      try {
-        const bounds = periodBounds(state.period);
+      const bounds = periodBounds(state.period);
 
-        const [
-          dailies,
-          dailiesPrev,
-          monthlies,
-          monthliesPrev,
-          rolling,
-          pageViewsCurrent,
-          pageViewsPrevious,
-        ] = await Promise.all([
-          bounds.granularity === 'daily'
-            ? providerStatsRepository.getDailiesInRange(providerId, bounds.start, bounds.end)
-            : Promise.resolve([] as ProviderStatsDaily[]),
-          bounds.granularity === 'daily'
-            ? providerStatsRepository.getDailiesInRange(providerId, bounds.prevStart, bounds.prevEnd)
-            : Promise.resolve([] as ProviderStatsDaily[]),
-          bounds.granularity === 'monthly' && bounds.startMonth && bounds.endMonth
-            ? providerStatsRepository.getMonthliesInRange(providerId, bounds.startMonth, bounds.endMonth)
-            : Promise.resolve([] as ProviderStatsMonthly[]),
-          bounds.granularity === 'monthly' && bounds.prevStartMonth && bounds.prevEndMonth
-            ? providerStatsRepository.getMonthliesInRange(providerId, bounds.prevStartMonth, bounds.prevEndMonth)
-            : Promise.resolve([] as ProviderStatsMonthly[]),
-          providerStatsRepository.getRolling(providerId),
-          sumPageViewsInRange(providerId, bounds.start, bounds.end),
-          sumPageViewsInRange(providerId, bounds.prevStart, bounds.prevEnd),
-        ]);
-
-        // Resolve top-client names — the rolling doc only carries
-        // hashes for privacy. We pull the matching providerClients
-        // docs (max 30 reads — top10 × 3 windows worst case).
-        let topClientNames = new Map<string, string>();
-        if (rolling) {
-          const allTopHashes = new Set<string>();
-          for (const c of rolling.topClients30d ?? []) allTopHashes.add(c.clientHash);
-          for (const c of rolling.topClients90d ?? []) allTopHashes.add(c.clientHash);
-          for (const c of rolling.topClientsAllTime ?? []) allTopHashes.add(c.clientHash);
-          const resolved = await providerClientRepository.getByKeys(
-            providerId,
-            [...allTopHashes],
-          );
-          topClientNames = new Map(
-            [...resolved.values()].map((c) => [c.clientKey, c.name]),
-          );
+      // Per-query resilient fetch. If one query fails (e.g. an
+      // index still building, a missing rule), we log it and fall
+      // back to a sane default so the rest of the page still
+      // renders. Avoids the all-or-nothing Promise.all behaviour
+      // that made a single failure blank the entire dashboard.
+      const safe = async <T,>(
+        name: string,
+        run: () => Promise<T>,
+        fallback: T,
+      ): Promise<T> => {
+        try {
+          return await run();
+        } catch (err) {
+          if (!cancelled) {
+            console.error(`[statistiques] query "${name}" failed:`, err);
+          }
+          return fallback;
         }
+      };
 
-        if (cancelled) return;
+      const [
+        dailies,
+        dailiesPrev,
+        monthlies,
+        monthliesPrev,
+        rolling,
+        pageViewsCurrent,
+        pageViewsPrevious,
+      ] = await Promise.all([
+        bounds.granularity === 'daily'
+          ? safe(
+              'dailies (current)',
+              () => providerStatsRepository.getDailiesInRange(providerId, bounds.start, bounds.end),
+              [] as ProviderStatsDaily[],
+            )
+          : Promise.resolve([] as ProviderStatsDaily[]),
+        bounds.granularity === 'daily'
+          ? safe(
+              'dailies (previous)',
+              () => providerStatsRepository.getDailiesInRange(providerId, bounds.prevStart, bounds.prevEnd),
+              [] as ProviderStatsDaily[],
+            )
+          : Promise.resolve([] as ProviderStatsDaily[]),
+        bounds.granularity === 'monthly' && bounds.startMonth && bounds.endMonth
+          ? safe(
+              'monthlies (current)',
+              () => providerStatsRepository.getMonthliesInRange(providerId, bounds.startMonth!, bounds.endMonth!),
+              [] as ProviderStatsMonthly[],
+            )
+          : Promise.resolve([] as ProviderStatsMonthly[]),
+        bounds.granularity === 'monthly' && bounds.prevStartMonth && bounds.prevEndMonth
+          ? safe(
+              'monthlies (previous)',
+              () => providerStatsRepository.getMonthliesInRange(providerId, bounds.prevStartMonth!, bounds.prevEndMonth!),
+              [] as ProviderStatsMonthly[],
+            )
+          : Promise.resolve([] as ProviderStatsMonthly[]),
+        safe('rolling', () => providerStatsRepository.getRolling(providerId), null),
+        safe('pageViews (current)', () => sumPageViewsInRange(providerId, bounds.start, bounds.end), 0),
+        safe('pageViews (previous)', () => sumPageViewsInRange(providerId, bounds.prevStart, bounds.prevEnd), 0),
+      ]);
 
-        setState((s) => ({
-          ...s,
-          loading: false,
-          dailies,
-          dailiesPrev,
-          monthlies,
-          monthliesPrev,
-          rolling,
-          pageViewsCurrent,
-          pageViewsPrevious,
-          topClientNames,
-        }));
-      } catch (err) {
-        if (cancelled) return;
-        console.error('[statistiques] load failed', err);
-        setState((s) => ({
-          ...s,
-          loading: false,
-          error: err instanceof Error ? err.message : 'Erreur de chargement',
-        }));
+      // Resolve top-client names — the rolling doc only carries
+      // hashes for privacy. Wrapped in `safe` too so a permission
+      // hiccup on providerClients doesn't blank the page.
+      let topClientNames = new Map<string, string>();
+      if (rolling) {
+        const allTopHashes = new Set<string>();
+        for (const c of rolling.topClients30d ?? []) allTopHashes.add(c.clientHash);
+        for (const c of rolling.topClients90d ?? []) allTopHashes.add(c.clientHash);
+        for (const c of rolling.topClientsAllTime ?? []) allTopHashes.add(c.clientHash);
+        const resolved = await safe(
+          'top client names',
+          () => providerClientRepository.getByKeys(providerId, [...allTopHashes]),
+          new Map(),
+        );
+        topClientNames = new Map(
+          [...resolved.values()].map((c) => [c.clientKey, c.name]),
+        );
       }
+
+      if (cancelled) return;
+
+      setState((s) => ({
+        ...s,
+        loading: false,
+        dailies,
+        dailiesPrev,
+        monthlies,
+        monthliesPrev,
+        rolling,
+        pageViewsCurrent,
+        pageViewsPrevious,
+        topClientNames,
+      }));
     })();
 
     return () => {
