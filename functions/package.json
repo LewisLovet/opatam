@@ -11,7 +11,9 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "test:stats": "firebase emulators:exec --only firestore --project test-stats \"vitest run\"",
+    "test:stats:watch": "firebase emulators:exec --only firestore --project test-stats \"vitest\""
   },
   "engines": {
     "node": "20"
@@ -23,6 +25,7 @@
     "resend": "^4.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2"
   }
 }

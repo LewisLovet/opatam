@@ -66,25 +66,19 @@ interface BackfillResponse {
   lastDate: string | null;
 }
 
-export const runProviderStatsBackfill = onCall<BackfillRequest, Promise<BackfillResponse>>(
-  {
-    region: 'europe-west1',
-    timeoutSeconds: 540, // up to 9 minutes for very large providers
-    memory: '512MiB',
-  },
-  async (req) => {
-    if (!req.auth?.uid) {
-      throw new HttpsError('unauthenticated', 'Authentication required');
-    }
-    const providerId = req.data.providerId;
-    if (!providerId || typeof providerId !== 'string') {
-      throw new HttpsError('invalid-argument', 'providerId required');
-    }
-    const performWrites = req.data.performWrites !== false;
-
-    const db = admin.firestore();
-
-    // ── Load provider context ─────────────────────────────────
+/**
+ * Core backfill — pure-ish function (only side effect is Firestore
+ * I/O on the passed `db`). Extracted from the callable so the
+ * integration test in functions/test/ can call it directly with
+ * a Firestore Admin instance pointed at the emulator, without
+ * paying for callable HTTPS round-trips.
+ */
+export async function backfillProviderStats(
+  db: admin.firestore.Firestore,
+  providerId: string,
+  performWrites: boolean = true,
+): Promise<BackfillResponse> {
+  // ── Load provider context ─────────────────────────────────
     const [providerSnap, membersSnap, bookingsSnap] = await Promise.all([
       db.doc(`providers/${providerId}`).get(),
       db.collection(`providers/${providerId}/members`).get(),
@@ -246,6 +240,31 @@ export const runProviderStatsBackfill = onCall<BackfillRequest, Promise<Backfill
       firstDate,
       lastDate,
     };
+}
+
+/**
+ * Thin HTTPS wrapper that auth-gates the core function. The actual
+ * work lives in `backfillProviderStats` so it can be unit-tested
+ * against the Firestore emulator without paying for the callable
+ * round-trip.
+ */
+export const runProviderStatsBackfill = onCall<BackfillRequest, Promise<BackfillResponse>>(
+  {
+    region: 'europe-west1',
+    timeoutSeconds: 540,
+    memory: '512MiB',
+  },
+  async (req) => {
+    if (!req.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Authentication required');
+    }
+    const providerId = req.data.providerId;
+    if (!providerId || typeof providerId !== 'string') {
+      throw new HttpsError('invalid-argument', 'providerId required');
+    }
+    const performWrites = req.data.performWrites !== false;
+
+    return backfillProviderStats(admin.firestore(), providerId, performWrites);
   },
 );
 
