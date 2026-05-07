@@ -63,6 +63,7 @@ export default function CalendarPage() {
   const [blockModalDate, setBlockModalDate] = useState<Date | null>(null);
   const [blockModalStartTime, setBlockModalStartTime] = useState<string | undefined>(undefined);
   const [blockModalEndTime, setBlockModalEndTime] = useState<string | undefined>(undefined);
+  const [blockModalEditId, setBlockModalEditId] = useState<string | undefined>(undefined);
 
   const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
 
@@ -258,10 +259,47 @@ export default function CalendarPage() {
   };
 
   const handleBlockSlot = (date?: Date, startTime?: string, endTime?: string) => {
+    setBlockModalEditId(undefined);
     setBlockModalDate(date || selectedDate);
     setBlockModalStartTime(startTime);
     setBlockModalEndTime(endTime);
     setIsBlockModalOpen(true);
+  };
+
+  const handleEditBlockedPeriod = (id: string) => {
+    // Activities have their own edit modal — only plain blocked
+    // periods (no category) reach this handler.
+    setBlockModalEditId(id);
+    setBlockModalDate(null);
+    setBlockModalStartTime(undefined);
+    setBlockModalEndTime(undefined);
+    setIsBlockModalOpen(true);
+  };
+
+  // Click on the blocked-zone overlay decides whether to open the
+  // activity edit modal or the plain block-period one based on
+  // whether the slot is categorised.
+  const handleBlockedSlotPress = (id: string) => {
+    const slot = blockedSlots.find((bs) => bs.id === id);
+    if (slot?.category && slot.title) {
+      handleEditActivity(id);
+    } else {
+      handleEditBlockedPeriod(id);
+    }
+  };
+
+  // Click on an empty slot → open the booking modal pre-filled with
+  // the click time. Mirrors the legacy handleSlotClick path but
+  // takes the snapped HH:MM string from the popover instead of a
+  // raw MouseEvent.
+  const handleSelectionBooking = (date: Date, startTime: string, memberId?: string) => {
+    if (memberId && memberId !== 'all') {
+      setSelectedMemberId(memberId);
+    }
+    const [h, m] = startTime.split(':').map(Number);
+    const target = new Date(date);
+    target.setHours(h, m, 0, 0);
+    handleCreateBooking(target);
   };
 
   const handleSlotClick = (date: Date, memberId?: string) => {
@@ -425,6 +463,8 @@ export default function CalendarPage() {
             onActivityClick={handleEditActivity}
             onSelectionBlock={(d, st, et) => handleBlockSlot(d, st, et)}
             onSelectionActivity={(d, st, et) => handleCreateActivity(d, st, et)}
+            onSelectionBooking={handleSelectionBooking}
+            onBlockedPeriodClick={handleBlockedSlotPress}
             getAvailabilityForDay={getAvailabilityForDay}
             getBlockedSlotsForDay={getBlockedSlotsForDay}
           />
@@ -446,6 +486,8 @@ export default function CalendarPage() {
             onActivityClick={handleEditActivity}
             onSelectionBlock={(d, st, et) => handleBlockSlot(d, st, et)}
             onSelectionActivity={(d, st, et) => handleCreateActivity(d, st, et)}
+            onSelectionBooking={handleSelectionBooking}
+            onBlockedPeriodClick={handleBlockedSlotPress}
             getAvailabilityForDay={getAvailabilityForDay}
             getBlockedSlotsForDay={getBlockedSlotsForDay}
           />
@@ -503,8 +545,8 @@ export default function CalendarPage() {
         />
       )}
 
-      {/* Block-period modal — inline replacement for the legacy
-          redirect to /pro/activite. */}
+      {/* Block-period modal — inline create OR edit/delete an
+          existing plain blocked period (no category). */}
       {provider && (
         <BlockPeriodModal
           isOpen={isBlockModalOpen}
@@ -513,8 +555,10 @@ export default function CalendarPage() {
             setBlockModalDate(null);
             setBlockModalStartTime(undefined);
             setBlockModalEndTime(undefined);
+            setBlockModalEditId(undefined);
           }}
           providerId={provider.id}
+          editId={blockModalEditId}
           initialDate={blockModalDate ?? undefined}
           initialStartTime={blockModalStartTime}
           initialEndTime={blockModalEndTime}

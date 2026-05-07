@@ -27,14 +27,22 @@ interface UseTimeRangeDragOptions {
   slotHeight: number;
   /** Snap step in minutes — both DayView and WeekView use 15. */
   snapMinutes?: number;
-  /** Fallback for taps that fail the drag threshold. */
-  onClick?: (e: ReactMouseEvent) => void;
+  /** Default activity duration in minutes used when the popover is
+   *  opened from a click (no range was drag-selected). */
+  clickDefaultDurationMinutes?: number;
 }
 
 interface SelectionPopover {
   y: number;
   startTime: string;
   endTime: string;
+  /** How this popover was triggered — drives which actions the
+   *  renderer surfaces:
+   *    - 'click' → Réservation + Activité (single point, default
+   *      duration applied for the activity case)
+   *    - 'drag'  → Activité + Bloquer (range explicitly selected)
+   */
+  mode: 'click' | 'drag';
 }
 
 interface UseTimeRangeDragResult {
@@ -66,7 +74,7 @@ export function useTimeRangeDrag({
   startHour,
   slotHeight,
   snapMinutes = 15,
-  onClick,
+  clickDefaultDurationMinutes = 60,
 }: UseTimeRangeDragOptions): UseTimeRangeDragResult {
   const colRef = useRef<HTMLDivElement>(null);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
@@ -111,7 +119,21 @@ export function useTimeRangeDrag({
     setDragCurrentY(null);
 
     if (distance < CLICK_THRESHOLD_PX) {
-      onClick?.(e);
+      // Pure click — no range explicitly drawn. Pre-fill a sensible
+      // default duration so the activity / booking modals open with
+      // start..start+1h. The pro can still tweak from there.
+      const startTimeStr = yToTime(startY);
+      const [sh, sm] = startTimeStr.split(':').map(Number);
+      const totalEndMin = sh * 60 + sm + clickDefaultDurationMinutes;
+      const eh = Math.floor(totalEndMin / 60);
+      const em = totalEndMin % 60;
+      const endTimeStr = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+      setPopover({
+        y: startY + 6,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+        mode: 'click',
+      });
       return;
     }
 
@@ -121,6 +143,7 @@ export function useTimeRangeDrag({
       y: bottom + 6,
       startTime: yToTime(top),
       endTime: yToTime(bottom),
+      mode: 'drag',
     });
   };
 

@@ -25,7 +25,11 @@ import {
   Textarea,
   useToast,
 } from '@/components/ui';
-import { schedulingService, memberService } from '@booking-app/firebase';
+import {
+  schedulingService,
+  memberService,
+  blockedSlotRepository,
+} from '@booking-app/firebase';
 import type { Member } from '@booking-app/shared';
 import { Loader2, Ban } from 'lucide-react';
 
@@ -52,6 +56,8 @@ interface BlockPeriodModalProps {
   isOpen: boolean;
   onClose: () => void;
   providerId: string;
+  /** ID of an existing blockedSlot when editing, undefined when creating. */
+  editId?: string;
   initialDate?: Date;
   initialEndDate?: Date;
   /** Pre-fill with a contiguous time range (e.g. drag-selected
@@ -67,6 +73,7 @@ export function BlockPeriodModal({
   isOpen,
   onClose,
   providerId,
+  editId,
   initialDate,
   initialEndDate,
   initialStartTime,
@@ -74,6 +81,7 @@ export function BlockPeriodModal({
   initialMemberId,
   onSaved,
 }: BlockPeriodModalProps) {
+  const isEditing = !!editId;
   const toast = useToast();
 
   const [members, setMembers] = useState<WithId<Member>[]>([]);
@@ -91,8 +99,11 @@ export function BlockPeriodModal({
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // Reset whenever the modal opens
+  // Reset whenever the modal opens. In edit mode we hydrate from the
+  // existing blockedSlot doc; otherwise we fall back to the create
+  // defaults derived from the props.
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
@@ -103,8 +114,37 @@ export function BlockPeriodModal({
         const activeMembers = result.filter((m) => m.isActive);
         if (cancelled) return;
         setMembers(activeMembers);
-        // Pre-select either the requested member or, by default, all
-        // — pros usually want a vacation to apply across the team.
+
+        if (editId) {
+          // Edit mode — pull the existing doc and pre-fill the form.
+          const existing = await blockedSlotRepository.getById(providerId, editId);
+          if (cancelled) return;
+          if (!existing) {
+            toast.error('Période introuvable');
+            onClose();
+            return;
+          }
+          const startDt =
+            existing.startDate instanceof Date
+              ? existing.startDate
+              : (existing.startDate as any).toDate();
+          const endDt =
+            existing.endDate instanceof Date
+              ? existing.endDate
+              : (existing.endDate as any).toDate();
+          setSelectedMemberIds([existing.memberId]);
+          setStartDate(formatDateInput(startDt));
+          setEndDate(formatDateInput(endDt));
+          setAllDay(existing.allDay);
+          setStartTime(existing.startTime ?? '09:00');
+          setEndTime(existing.endTime ?? '18:00');
+          setReason(existing.reason ?? '');
+          return;
+        }
+
+        // Create mode — pre-select either the requested member or,
+        // by default, all (pros usually want a vacation to apply
+        // across the team).
         if (initialMemberId) {
           setSelectedMemberIds([initialMemberId]);
         } else {
@@ -118,14 +158,14 @@ export function BlockPeriodModal({
         setReason('');
       } catch (err) {
         console.error('[BlockPeriodModal] load failed:', err);
-        toast.error('Impossible de charger les membres');
+        toast.error('Impossible de charger les données');
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, providerId]);
+  }, [isOpen, providerId, editId]);
 
   const allSelected =
     members.length > 0 && selectedMemberIds.length === members.length;
@@ -158,27 +198,49 @@ export function BlockPeriodModal({
 
     setSaving(true);
     try {
-      const targets = members.filter((m) => selectedMemberIds.includes(m.id));
-      await Promise.all(
-        targets.map((member) =>
-          schedulingService.blockPeriod(providerId, {
-            memberId: member.id,
-            locationId: member.locationId,
-            startDate: startDt,
-            endDate: endDt,
-            allDay,
-            isRecurring: false,
-            startTime: allDay ? null : startTime,
-            endTime: allDay ? null : endTime,
-            reason: reason.trim() || null,
-          }),
-        ),
-      );
-      toast.success(
-        targets.length > 1
-          ? `Période bloquée pour ${targets.length} membres`
-          : 'Période bloquée',
-      );
+      if (editId) {
+        // Edit path — PATCH the existing doc. We only ever target a
+        // single member in edit mode (the doc's owner), so fan-out
+        // logic is bypassed.
+        const member = members.find((m) => m.id === selectedMemberIds[0]);
+        if (!member) {
+          toast.error('Membre introuvable');
+          return;
+        }
+        await blockedSlotRepository.update(providerId, editId, {
+          memberId: member.id,
+          locationId: member.locationId,
+          startDate: startDt,
+          endDate: endDt,
+          allDay,
+          startTime: allDay ? null : startTime,
+          endTime: allDay ? null : endTime,
+          reason: reason.trim() || null,
+        });
+        toast.success('Période modifiée');
+      } else {
+        const targets = members.filter((m) => selectedMemberIds.includes(m.id));
+        await Promise.all(
+          targets.map((member) =>
+            schedulingService.blockPeriod(providerId, {
+              memberId: member.id,
+              locationId: member.locationId,
+              startDate: startDt,
+              endDate: endDt,
+              allDay,
+              isRecurring: false,
+              startTime: allDay ? null : startTime,
+              endTime: allDay ? null : endTime,
+              reason: reason.trim() || null,
+            }),
+          ),
+        );
+        toast.success(
+          targets.length > 1
+            ? `Période bloquée pour ${targets.length} membres`
+            : 'Période bloquée',
+        );
+      }
       onSaved?.();
       onClose();
     } catch (err) {
@@ -191,9 +253,29 @@ export function BlockPeriodModal({
     }
   };
 
+  const handleDelete = async () => {
+    if (!editId) return;
+    if (!confirm('Supprimer cette période ?')) return;
+    setDeleting(true);
+    try {
+      await schedulingService.unblockPeriod(providerId, editId);
+      toast.success('Période supprimée');
+      onSaved?.();
+      onClose();
+    } catch (err) {
+      console.error('[BlockPeriodModal] delete failed:', err);
+      toast.error('Impossible de supprimer');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-md">
-      <ModalHeader title="Bloquer une période" onClose={onClose} />
+      <ModalHeader
+        title={isEditing ? 'Modifier la période' : 'Bloquer une période'}
+        onClose={onClose}
+      />
       <ModalBody className="space-y-5">
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -307,18 +389,32 @@ export function BlockPeriodModal({
         )}
       </ModalBody>
       <ModalFooter>
-        <div className="flex items-center justify-end gap-2 w-full">
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Annuler
-          </Button>
-          <Button onClick={handleSave} disabled={saving || loading}>
-            {saving ? (
-              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-            ) : (
-              <Ban className="w-4 h-4 mr-1.5" />
-            )}
-            Bloquer
-          </Button>
+        <div className="flex items-center justify-between gap-2 w-full">
+          {isEditing ? (
+            <Button
+              variant="ghost"
+              onClick={handleDelete}
+              disabled={deleting || saving}
+              className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Supprimer'}
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={onClose} disabled={saving || deleting}>
+              Annuler
+            </Button>
+            <Button onClick={handleSave} disabled={saving || deleting || loading}>
+              {saving ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Ban className="w-4 h-4 mr-1.5" />
+              )}
+              {isEditing ? 'Enregistrer' : 'Bloquer'}
+            </Button>
+          </div>
         </div>
       </ModalFooter>
     </Modal>

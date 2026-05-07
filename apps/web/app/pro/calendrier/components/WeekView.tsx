@@ -117,24 +117,23 @@ function WeekDayCell({
   day,
   memberIdForSelection,
   totalHeight,
-  onSlotClick,
   onSelectionBlock,
   onSelectionActivity,
+  onSelectionBooking,
   children,
 }: {
   day: Date;
   memberIdForSelection?: string;
   totalHeight: number;
-  onSlotClick: (e: React.MouseEvent) => void;
   onSelectionBlock?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
   onSelectionActivity?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
+  onSelectionBooking?: (date: Date, startTime: string, memberId?: string) => void;
   children: React.ReactNode;
 }) {
   const drag = useTimeRangeDrag({
     totalHeight,
     startHour: START_HOUR,
     slotHeight: SLOT_HEIGHT,
-    onClick: onSlotClick,
   });
 
   return (
@@ -171,7 +170,7 @@ function WeekDayCell({
         />
       )}
 
-      {/* Two-choice popover anchored to the bottom of the selection */}
+      {/* Click → Réservation + Activité ; Drag → Activité + Bloquer */}
       {drag.popover && (
         <SelectionPopover
           y={drag.popover.y}
@@ -182,10 +181,22 @@ function WeekDayCell({
             onSelectionActivity?.(day, drag.popover!.startTime, drag.popover!.endTime, memberIdForSelection);
             drag.setPopover(null);
           }}
-          onBlock={() => {
-            onSelectionBlock?.(day, drag.popover!.startTime, drag.popover!.endTime, memberIdForSelection);
-            drag.setPopover(null);
-          }}
+          onBlock={
+            drag.popover.mode === 'drag' && onSelectionBlock
+              ? () => {
+                  onSelectionBlock(day, drag.popover!.startTime, drag.popover!.endTime, memberIdForSelection);
+                  drag.setPopover(null);
+                }
+              : undefined
+          }
+          onBooking={
+            drag.popover.mode === 'click' && onSelectionBooking
+              ? () => {
+                  onSelectionBooking(day, drag.popover!.startTime, memberIdForSelection);
+                  drag.setPopover(null);
+                }
+              : undefined
+          }
         />
       )}
     </div>
@@ -208,6 +219,8 @@ interface WeekViewProps {
   /** Drag-to-select callbacks — see DayView for the same pattern. */
   onSelectionBlock?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
   onSelectionActivity?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
+  onSelectionBooking?: (date: Date, startTime: string, memberId?: string) => void;
+  onBlockedPeriodClick?: (id: string) => void;
   getAvailabilityForDay: (date: Date, memberId: string | null, locationId: string) => WithId<Availability> | undefined;
   getBlockedSlotsForDay: (date: Date, memberId: string | null, locationId: string) => WithId<BlockedSlot>[];
 }
@@ -230,6 +243,8 @@ export function WeekView({
   onActivityClick,
   onSelectionBlock,
   onSelectionActivity,
+  onSelectionBooking,
+  onBlockedPeriodClick,
   onMemberSelect,
   getAvailabilityForDay,
   getBlockedSlotsForDay,
@@ -437,9 +452,9 @@ export function WeekView({
                   selectedMemberId !== 'all' ? selectedMemberId : undefined
                 }
                 totalHeight={totalHeight}
-                onSlotClick={(e) => handleSlotClick(e, day)}
                 onSelectionBlock={onSelectionBlock}
                 onSelectionActivity={onSelectionActivity}
+                onSelectionBooking={onSelectionBooking}
               >
                 {/* Base background - subtle for closed, white for open */}
                 <div
@@ -531,6 +546,7 @@ export function WeekView({
                       height={height}
                       reason={blocked.reason ?? undefined}
                       isAllDay={blocked.allDay}
+                      onClick={() => onBlockedPeriodClick?.(blocked.id)}
                     />
                   );
                 })}

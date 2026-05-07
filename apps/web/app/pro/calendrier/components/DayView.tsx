@@ -111,12 +111,18 @@ interface DayViewProps {
   /** Optional — fired when the pro clicks an activity card (a
    *  blocked-slot with `category` set). Use it to open the edit modal. */
   onActivityClick?: (id: string) => void;
-  /** Optional — fired when the pro drag-selects a time range and
-   *  picks "Bloquer" in the resulting popover. */
+  /** Drag → "Bloquer". */
   onSelectionBlock?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
-  /** Optional — fired when the pro drag-selects a time range and
-   *  picks "Activité" in the resulting popover. */
+  /** Click or drag → "Activité" — startTime/endTime carry the range
+   *  (drag) or a default 1h window starting at the click point. */
   onSelectionActivity?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
+  /** Click → "Réservation" — fires only on a single-click popover
+   *  choice with the click time as start. The booking modal computes
+   *  the end from the selected service duration. */
+  onSelectionBooking?: (date: Date, startTime: string, memberId?: string) => void;
+  /** Click on a non-activity blocked period → opens the edit/delete
+   *  modal. Activities have their own onActivityClick. */
+  onBlockedPeriodClick?: (id: string) => void;
   getAvailabilityForDay: (date: Date, memberId: string | null, locationId: string) => WithId<Availability> | undefined;
   getBlockedSlotsForDay: (date: Date, memberId: string | null, locationId: string) => WithId<BlockedSlot>[];
 }
@@ -137,6 +143,8 @@ export function DayView({
   onActivityClick,
   onSelectionBlock,
   onSelectionActivity,
+  onSelectionBooking,
+  onBlockedPeriodClick,
   getAvailabilityForDay,
   getBlockedSlotsForDay,
 }: DayViewProps) {
@@ -257,6 +265,8 @@ export function DayView({
                 onActivityClick={onActivityClick}
                 onSelectionBlock={onSelectionBlock}
                 onSelectionActivity={onSelectionActivity}
+                onSelectionBooking={onSelectionBooking}
+                onBlockedPeriodClick={onBlockedPeriodClick}
                 getAvailabilityForDay={getAvailabilityForDay}
                 getBlockedSlotsForDay={getBlockedSlotsForDay}
               />
@@ -279,6 +289,8 @@ interface DayColumnProps {
   onActivityClick?: (id: string) => void;
   onSelectionBlock?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
   onSelectionActivity?: (date: Date, startTime: string, endTime: string, memberId?: string) => void;
+  onSelectionBooking?: (date: Date, startTime: string, memberId?: string) => void;
+  onBlockedPeriodClick?: (id: string) => void;
   getAvailabilityForDay: (date: Date, memberId: string | null, locationId: string) => WithId<Availability> | undefined;
   getBlockedSlotsForDay: (date: Date, memberId: string | null, locationId: string) => WithId<BlockedSlot>[];
 }
@@ -294,6 +306,8 @@ function DayColumn({
   onActivityClick,
   onSelectionBlock,
   onSelectionActivity,
+  onSelectionBooking,
+  onBlockedPeriodClick,
   getAvailabilityForDay,
   getBlockedSlotsForDay,
 }: DayColumnProps) {
@@ -308,14 +322,13 @@ function DayColumn({
   // Check if the day is closed (no availability or isOpen is false)
   const isClosed = !availability || !availability.isOpen;
 
-  // ─── Drag-to-select ─────────────────────────────────────────────
-  // Press at e.g. 8h, drag to 16h, release → popover with two
-  // choices (Bloquer / Activité) with the selected range pre-filled.
+  // ─── Click + drag-to-select ────────────────────────────────────
+  // Click → popover with Réservation / Activité (point in time).
+  // Drag  → popover with Activité / Bloquer (range explicitly drawn).
   const drag = useTimeRangeDrag({
     totalHeight,
     startHour: START_HOUR,
     slotHeight: SLOT_HEIGHT,
-    onClick: onSlotClick,
   });
 
   return (
@@ -460,6 +473,7 @@ function DayColumn({
             height={height}
             reason={blocked.reason ?? undefined}
             isAllDay={blocked.allDay}
+            onClick={() => onBlockedPeriodClick?.(blocked.id)}
           />
         );
       })}
@@ -547,7 +561,8 @@ function DayColumn({
         />
       )}
 
-      {/* Selection popover with Activité / Bloquer */}
+      {/* Selection popover — Réservation+Activité on click, or
+          Activité+Bloquer on drag. */}
       {drag.popover && (
         <SelectionPopover
           y={drag.popover.y}
@@ -558,10 +573,22 @@ function DayColumn({
             onSelectionActivity?.(date, drag.popover!.startTime, drag.popover!.endTime, memberId ?? undefined);
             drag.setPopover(null);
           }}
-          onBlock={() => {
-            onSelectionBlock?.(date, drag.popover!.startTime, drag.popover!.endTime, memberId ?? undefined);
-            drag.setPopover(null);
-          }}
+          onBlock={
+            drag.popover.mode === 'drag' && onSelectionBlock
+              ? () => {
+                  onSelectionBlock(date, drag.popover!.startTime, drag.popover!.endTime, memberId ?? undefined);
+                  drag.setPopover(null);
+                }
+              : undefined
+          }
+          onBooking={
+            drag.popover.mode === 'click' && onSelectionBooking
+              ? () => {
+                  onSelectionBooking(date, drag.popover!.startTime, memberId ?? undefined);
+                  drag.setPopover(null);
+                }
+              : undefined
+          }
         />
       )}
     </div>

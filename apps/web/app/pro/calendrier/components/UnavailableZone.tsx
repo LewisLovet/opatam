@@ -126,21 +126,37 @@ export function PastTimeOverlay({
  * companion <ActivityZone> is used instead to render a colorful
  * foreground card. Plain blocked periods (vacation, training…) keep
  * the dotted pattern below.
+ *
+ * Becomes a clickable button when `onClick` is provided so the pro
+ * can open the edit/delete modal — without it the click bubbles up
+ * to the column's drag handler and would (incorrectly) open the
+ * booking creation popover on top of the blocked zone.
  */
 export function BlockedSlotZone({
   top,
   height,
   reason,
   isAllDay,
+  onClick,
 }: {
   top: number;
   height: number;
   reason?: string;
   isAllDay?: boolean;
+  onClick?: () => void;
 }) {
+  const stopAndOpen = (e: React.MouseEvent | React.PointerEvent) => {
+    e.stopPropagation();
+    onClick?.();
+  };
+
   return (
-    <div
-      className="absolute left-0 right-0 bg-error-50/80 dark:bg-error-900/30"
+    <button
+      type="button"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => onClick && stopAndOpen(e)}
+      disabled={!onClick}
+      className={`absolute left-0 right-0 bg-error-50/80 dark:bg-error-900/30 ${onClick ? 'cursor-pointer hover:brightness-95 transition-[filter]' : 'cursor-default'} text-left`}
       style={{
         top: `${top}px`,
         height: `${height}px`,
@@ -157,7 +173,7 @@ export function BlockedSlotZone({
           </span>
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
