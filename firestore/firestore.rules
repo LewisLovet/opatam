@@ -234,5 +234,31 @@ service cloud.firestore {
       allow write: if false; // Admin SDK only
     }
 
+    // === PROVIDER CLIENTS (CRM-lite, written by trigger / cron) ===
+    //
+    // One doc per (provider, distinct client). Stored at
+    //   providerClients/{providerId}_{clientKey}
+    // where clientKey is `email:foo@bar.com` or `id:userid`.
+    //
+    // Carries email/phone/name + per-client revenue + tags. Never
+    // public — each provider can only see their own client base.
+    // Provider may update `notes` and `preferences` from /pro/clients;
+    // identity + counters + tags are managed by the trigger / cron
+    // (Admin SDK) and protected against direct client writes.
+
+    match /providerClients/{docId} {
+      // List queries must filter by providerId to satisfy the rule
+      // on every returned doc.
+      allow read: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+      // Provider may patch their own notes / preferences only —
+      // every other field is owned by the aggregation pipeline.
+      allow update: if
+        isAuthenticated() &&
+        resource.data.providerId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['notes', 'preferences', 'updatedAt']);
+      allow create, delete: if false; // Admin SDK only
+    }
+
   }
 }

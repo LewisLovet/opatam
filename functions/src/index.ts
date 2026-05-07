@@ -17,10 +17,12 @@ admin.initializeApp();
 
 // Callable
 export { requestPasswordReset } from './callable/requestPasswordReset';
+export { runProviderStatsBackfill } from './callable/runProviderStatsBackfill';
 
 // Triggers
 export { onBookingWrite } from './triggers/onBookingWrite';
 export { onUserWrite, onProviderWrite, onBookingWriteStats, onReviewWrite } from './triggers/onStatsUpdate';
+export { onBookingWriteProviderStats } from './triggers/onBookingWriteProviderStats';
 export { onReviewCreate } from './triggers/onReviewCreate';
 export { onReviewRatingUpdate } from './triggers/onReviewRatingUpdate';
 export { onAffiliateLogAggregate } from './triggers/onAffiliateLogAggregate';
@@ -35,6 +37,7 @@ export { checkExpiredTrials } from './scheduled/checkExpiredTrials';
 export { sendSubscriptionReminders } from './scheduled/sendSubscriptionReminders';
 export { sendAffiliateOnboardingReminders } from './scheduled/sendAffiliateOnboardingReminders';
 export { purgePendingPaymentBookings } from './scheduled/purgePendingPaymentBookings';
+export { recomputeProviderStats } from './scheduled/recomputeProviderStats';
 
 // ─── Notification test functions (prod-safe, admin-only) ───────────────────
 // These are deployed to production but require an authenticated admin user.
