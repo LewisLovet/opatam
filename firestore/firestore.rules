@@ -195,6 +195,21 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // === PAGE VIEWS DAILY (read-only by provider, written by Cloud Function) ===
+    //
+    // Daily counts of vitrine views, populated by the
+    // aggregatePageViews scheduled function. Each provider can
+    // read their own daily docs (used by /pro/statistiques to
+    // build the "Vues vitrine" KPI delta over arbitrary periods).
+    // The denormalised counters on Provider.stats.pageViews are
+    // still public — those are intentional for SEO. Here we
+    // restrict per-day reads to the owner.
+
+    match /pageViewsDaily/{docId} {
+      allow read: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+      allow write: if false; // Cloud Functions only
+    }
+
     // === PROVIDER STATS (3-tier aggregation) ===
     //
     // Three collections feed /pro/statistiques:
