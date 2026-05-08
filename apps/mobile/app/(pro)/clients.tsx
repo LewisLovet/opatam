@@ -365,7 +365,19 @@ function ClientRow({
   spacing: any;
 }) {
   const fullName = client.name || 'Client sans nom';
-  const lastVisit = formatRelativeDate(client.lastBookingAt);
+  const lastVisitLabel = formatLastVisitLabel(client.lastBookingAt);
+
+  // Inline KPI string — much more readable than the previous
+  // 3-column layout with "RDV / CA / VU" labels (the bare "VU"
+  // was confusing). Order: activity → revenue → recency.
+  const rdvPart =
+    client.bookingsCount > 0
+      ? `${client.bookingsCount} RDV`
+      : 'Aucun RDV';
+  const caPart = formatRevenue(client.totalRevenue);
+  const summary = lastVisitLabel
+    ? `${rdvPart}  ·  ${caPart}  ·  ${lastVisitLabel}`
+    : `${rdvPart}  ·  ${caPart}`;
 
   return (
     <Pressable onPress={onPress}>
@@ -401,30 +413,19 @@ function ClientRow({
                   />
                 )}
               </View>
-              <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: 4 }}>
-                <KPI label="RDV" value={client.bookingsCount.toString()} colors={colors} />
-                <KPI label="CA" value={formatRevenue(client.totalRevenue)} colors={colors} />
-                <KPI label="Vu" value={lastVisit} colors={colors} />
-              </View>
+              <Text
+                variant="bodySmall"
+                style={{ color: colors.textSecondary, marginTop: 4 }}
+                numberOfLines={1}
+              >
+                {summary}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </View>
         </Card>
       )}
     </Pressable>
-  );
-}
-
-function KPI({ label, value, colors }: { label: string; value: string; colors: any }) {
-  return (
-    <View>
-      <Text variant="bodySmall" style={{ fontWeight: '600' }}>
-        {value}
-      </Text>
-      <Text variant="caption" style={{ color: colors.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-        {label}
-      </Text>
-    </View>
   );
 }
 
@@ -571,15 +572,31 @@ function applyFilters(
   return out;
 }
 
-function formatRelativeDate(d: Date): string {
-  if (!d || d.getTime() === 0) return '—';
-  const days = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
-  if (days < 0) return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-  if (days === 0) return "auj.";
-  if (days === 1) return 'hier';
-  if (days < 7) return `${days} j`;
-  if (days < 30) return `${Math.floor(days / 7)} sem`;
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+/**
+ * Friendly "last visit" string for the row summary.
+ *  - returns null when we have no data (lets the caller drop the
+ *    third column entirely instead of showing a misleading "—").
+ *  - prefixes with "vu " so the date reads as a sentence inside
+ *    the inline summary ("14 RDV · 120 € · vu hier").
+ */
+function formatLastVisitLabel(d: Date): string | null {
+  if (!d || d.getTime() === 0) return null;
+  const now = Date.now();
+  const diffMs = now - d.getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  // Future date — booking ahead. Render the short date with no
+  // "vu" prefix so it doesn't read as past.
+  if (days < 0) {
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  }
+  if (days === 0) return "vu aujourd'hui";
+  if (days === 1) return 'vu hier';
+  if (days < 7) return `vu il y a ${days} j`;
+  if (days < 30) return `vu il y a ${Math.floor(days / 7)} sem`;
+  // Older — switch to the absolute date, which is more useful past
+  // a month than another count of weeks.
+  return `vu le ${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
 }
 
 const styles = StyleSheet.create({

@@ -2,7 +2,23 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Eye, Star, Globe, GlobeLock, QrCode } from 'lucide-react';
+import {
+  Calendar,
+  Clock,
+  Eye,
+  Star,
+  Globe,
+  GlobeLock,
+  QrCode,
+  Sparkles,
+  X as XIcon,
+} from 'lucide-react';
+import {
+  FEATURE_DISPLAY_LABELS,
+  NEW_FEATURE_KEYS,
+  useNewFeatures,
+  type NewFeatureKey,
+} from '@/hooks/useNewFeatures';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -52,6 +68,12 @@ export default function DashboardPage() {
 
   // Loading state
   const [loading, setLoading] = useState(true);
+
+  // Discovery banner state — surfaces a prominent card while at
+  // least one recently-shipped feature hasn't been opened yet.
+  const { isNew, hasAnyUnseen, markAllSeen } = useNewFeatures();
+  const discoveryUnseen = NEW_FEATURE_KEYS.filter((k) => isNew(k));
+  const showDiscoveryBanner = hasAnyUnseen(NEW_FEATURE_KEYS);
 
   // Modal states
   const [selectedBooking, setSelectedBooking] = useState<WithId<Booking> | null>(null);
@@ -387,6 +409,35 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Discovery banner — appears while at least one recently-
+          shipped feature hasn't been opened yet. Tap or dismiss
+          marks every key as seen. */}
+      {showDiscoveryBanner && discoveryUnseen.length > 0 && (
+        <div className="rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 p-4 text-white shadow-lg shadow-primary-600/20 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">Nouvelles fonctionnalités !</p>
+            <p className="text-xs text-white/85 mt-0.5">
+              Découvrez{' '}
+              {joinFr(
+                discoveryUnseen.map((k) => FEATURE_DISPLAY_LABELS[k]),
+              )}{' '}
+              dans le menu de gauche.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => markAllSeen(NEW_FEATURE_KEYS)}
+            className="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 flex-shrink-0"
+            aria-label="Masquer la bannière"
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -489,4 +540,13 @@ export default function DashboardPage() {
       )}
     </div>
   );
+}
+
+/** "A, B et C" — French enumeration with proper "et" before the
+ *  last item. Used by the discovery banner. */
+function joinFr(items: string[]): string {
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} et ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}`;
 }

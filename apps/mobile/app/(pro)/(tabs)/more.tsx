@@ -23,7 +23,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { reauthenticateUser, updateUserPassword } from '@booking-app/firebase';
 import { Card, Input, Text, useToast } from '../../../components';
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
-import { useBlockedSlots, useNewFeatures } from '../../../hooks';
+import {
+  useBlockedSlots,
+  useNewFeatures,
+  useProviderClientsCount,
+} from '../../../hooks';
 import { useTheme } from '../../../theme';
 
 /** Map internal plan IDs to user-facing labels */
@@ -336,20 +340,31 @@ function MenuItem({
         {isNew && (
           <View
             style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
               backgroundColor: colors.primary,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 4,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 999,
+              // Subtle glow so it pops against light row backgrounds —
+              // the previous tiny pill was easy to miss.
+              shadowColor: colors.primary,
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.35,
+              shadowRadius: 4,
+              elevation: 3,
             }}
           >
+            <Ionicons name="sparkles" size={11} color="#FFF" />
             <Text
               variant="caption"
               style={{
                 color: '#FFF',
-                fontWeight: '700',
-                fontSize: 9,
+                fontWeight: '800',
+                fontSize: 10,
                 textTransform: 'uppercase',
-                letterSpacing: 0.5,
+                letterSpacing: 0.6,
               }}
             >
               Nouveau
@@ -381,6 +396,10 @@ export default function MoreScreen() {
   const { signOut, deleteAccount, userData } = useAuth();
   const { provider, providerId } = useProvider();
   const { blockedSlots } = useBlockedSlots(providerId ?? null);
+  // Count of distinct clients who've ever booked here — drives the
+  // small badge next to the "Clients" menu item, same convention as
+  // "Avis clients" and "Créneaux bloqués".
+  const clientsCount = useProviderClientsCount(providerId ?? undefined);
   const sub = useSubscriptionStatus();
   // "Nouveau" badge state on menu items shipped recently — flips
   // to off as soon as the user taps the row, persisted on-device.
@@ -653,6 +672,7 @@ export default function MoreScreen() {
             <MenuItem
               icon="people-outline"
               label="Clients"
+              badge={clientsCount && clientsCount > 0 ? clientsCount : null}
               isNew={isNew('clients-2026-05')}
               onPress={() => {
                 markSeen('clients-2026-05');

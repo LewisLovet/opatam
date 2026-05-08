@@ -20,10 +20,13 @@ import {
   Clock,
   ArrowRight,
   Users,
+  Sparkles,
+  X as XIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDaysRemaining } from '@/lib/date-utils';
 import { useTheme } from '@/hooks/useTheme';
+import { useNewFeatures, type NewFeatureKey } from '@/hooks/useNewFeatures';
 import { Logo, LogoWhite } from '@/components/ui';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 
@@ -31,6 +34,10 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  /** Optional NewFeatureKey — when set, an isNew pill appears
+   *  next to the label until the user clicks the link (or
+   *  dismisses the discovery banner). */
+  newFeatureKey?: NewFeatureKey;
 }
 
 interface NavGroup {
@@ -44,8 +51,18 @@ const navGroups: NavGroup[] = [
       { label: 'Tableau de bord', href: '/pro', icon: <Home className="w-5 h-5" /> },
       { label: 'Calendrier', href: '/pro/calendrier', icon: <Calendar className="w-5 h-5" /> },
       { label: 'Réservations', href: '/pro/reservations', icon: <List className="w-5 h-5" /> },
-      { label: 'Clients', href: '/pro/clients', icon: <Users className="w-5 h-5" /> },
-      { label: 'Statistiques', href: '/pro/statistiques', icon: <BarChart3 className="w-5 h-5" /> },
+      {
+        label: 'Clients',
+        href: '/pro/clients',
+        icon: <Users className="w-5 h-5" />,
+        newFeatureKey: 'clients-2026-05',
+      },
+      {
+        label: 'Statistiques',
+        href: '/pro/statistiques',
+        icon: <BarChart3 className="w-5 h-5" />,
+        newFeatureKey: 'stats-2026-05',
+      },
     ],
   },
   // Groupe 2: Configuration et feedback
@@ -132,6 +149,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   const router = useRouter();
   const { user, provider, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { isNew, markSeen } = useNewFeatures();
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -179,26 +197,48 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         <div className="space-y-6">
           {navGroups.map((group, groupIndex) => (
             <ul key={groupIndex} className="space-y-1">
-              {group.items.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={`
-                      flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                      ${collapsed ? 'justify-center' : ''}
-                      ${
-                        isActive(item.href)
-                          ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30'
-                          : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                      }
-                    `}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    {item.icon}
-                    {!collapsed && <span className="flex-1">{item.label}</span>}
-                  </Link>
-                </li>
-              ))}
+              {group.items.map((item) => {
+                const showNew =
+                  item.newFeatureKey && isNew(item.newFeatureKey);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={() => {
+                        if (item.newFeatureKey) markSeen(item.newFeatureKey);
+                      }}
+                      className={`
+                        relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                        ${collapsed ? 'justify-center' : ''}
+                        ${
+                          isActive(item.href)
+                            ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                        }
+                      `}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      {item.icon}
+                      {!collapsed && <span className="flex-1">{item.label}</span>}
+                      {/* "Nouveau" pill — visible inline when expanded,
+                          replaced by a small accent dot when collapsed
+                          so it still draws the eye on a narrow rail. */}
+                      {showNew && !collapsed && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-500 text-white shadow-sm">
+                          <Sparkles className="w-3 h-3" />
+                          Nouveau
+                        </span>
+                      )}
+                      {showNew && collapsed && (
+                        <span
+                          className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary-500 ring-2 ring-gray-950"
+                          aria-label="Nouveau"
+                        />
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           ))}
         </div>
@@ -282,6 +322,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
   const router = useRouter();
   const { user, provider, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { isNew, markSeen } = useNewFeatures();
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -334,25 +375,38 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
           <div className="space-y-6">
             {navGroups.map((group, groupIndex) => (
               <ul key={groupIndex} className="space-y-1">
-                {group.items.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`
-                        flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                        ${
-                          isActive(item.href)
-                            ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30'
-                            : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                        }
-                      `}
-                      onClick={onClose}
-                    >
-                      {item.icon}
-                      <span className="flex-1">{item.label}</span>
-                    </Link>
-                  </li>
-                ))}
+                {group.items.map((item) => {
+                  const showNew =
+                    item.newFeatureKey && isNew(item.newFeatureKey);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className={`
+                          flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                          ${
+                            isActive(item.href)
+                              ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30'
+                              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                          }
+                        `}
+                        onClick={() => {
+                          if (item.newFeatureKey) markSeen(item.newFeatureKey);
+                          onClose();
+                        }}
+                      >
+                        {item.icon}
+                        <span className="flex-1">{item.label}</span>
+                        {showNew && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-500 text-white shadow-sm">
+                            <Sparkles className="w-3 h-3" />
+                            Nouveau
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             ))}
           </div>

@@ -84,3 +84,4 @@ export {
 } from './useNewFeatures';
 
 export { useProviderClients } from './useProviderClients';
+export { useProviderClientsCount } from './useProviderClientsCount';

@@ -70,6 +70,11 @@ class NativeModuleBoundary extends React.Component<
 }
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
 import { useProviderDashboard, useProviderStats, useReviews } from '../../../hooks';
+import {
+  MORE_TAB_FEATURE_KEYS,
+  useNewFeatures,
+  type NewFeatureKey,
+} from '../../../hooks/useNewFeatures';
 import { useTheme } from '../../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -522,6 +527,27 @@ function StatCardMonth({
 }
 
 // ---------------------------------------------------------------------------
+// New-feature display labels
+// ---------------------------------------------------------------------------
+// User-facing names for each NewFeatureKey. Used by the discovery
+// banner ("Découvrez Clients, Statistiques et Paiements"). Add the
+// matching label here whenever a new key is shipped.
+const FEATURE_DISPLAY_LABELS: Record<NewFeatureKey, string> = {
+  'clients-2026-05': 'Clients',
+  'stats-2026-05': 'Statistiques',
+  'payments-2026-05': 'Paiements',
+};
+
+/** "A, B et C" — French enumeration with proper "et" before the
+ *  last item. Falls back to "A" / "A et B" for shorter lists. */
+function joinFr(items: string[]): string {
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} et ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}`;
+}
+
+// ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 
@@ -538,6 +564,19 @@ export default function ProDashboardScreen() {
   // last 7 / last 14..7 etc.).
   const { stats } = useProviderStats(providerId);
   const { reviews } = useReviews(providerId ?? undefined);
+
+  // Discovery banner — surfaces a prominent "Nouveautés" card on
+  // the home tab while at least one feature behind /Plus hasn't
+  // been opened yet. Tap navigates to the More tab; the dismiss
+  // button marks every key seen so the banner disappears.
+  const { isNew, hasAnyUnseen, markSeen } = useNewFeatures();
+  const showDiscoveryBanner = hasAnyUnseen(MORE_TAB_FEATURE_KEYS);
+  const unseenLabels = MORE_TAB_FEATURE_KEYS
+    .filter((k) => isNew(k))
+    .map((k) => FEATURE_DISPLAY_LABELS[k] ?? k);
+  const dismissDiscoveryBanner = () => {
+    MORE_TAB_FEATURE_KEYS.forEach((k) => markSeen(k));
+  };
 
   // Derive 7-day vs previous-7-day metrics from the 30-day trend
   // window so the Week card has its own delta + sparkline without
@@ -907,6 +946,79 @@ export default function ProDashboardScreen() {
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
             <TrialReminderBanner daysRemaining={sub.daysRemaining} />
           </View>
+        )}
+
+        {/* ── Discovery banner — appears while any new feature
+              behind the Plus tab is still unseen. Tap navigates
+              to that tab; the X dismisses by marking every key
+              as seen so the banner disappears. ── */}
+        {showDiscoveryBanner && unseenLabels.length > 0 && (
+          <Pressable
+            onPress={() => router.push('/(pro)/(tabs)/more')}
+            style={({ pressed }) => [
+              {
+                marginHorizontal: spacing.lg,
+                marginTop: spacing.md,
+                opacity: pressed ? 0.92 : 1,
+                borderRadius: radius.lg,
+                overflow: 'hidden',
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={['#1E40AF', '#3B82F6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: spacing.lg,
+                paddingVertical: spacing.md,
+                gap: spacing.md,
+              }}
+            >
+              <View
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 19,
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  variant="body"
+                  style={{ color: '#FFFFFF', fontWeight: '700' }}
+                >
+                  Nouvelles fonctionnalités !
+                </Text>
+                <Text
+                  variant="caption"
+                  style={{ color: 'rgba(255,255,255,0.85)', marginTop: 2 }}
+                  numberOfLines={1}
+                >
+                  Découvrez {joinFr(unseenLabels)} dans l'onglet Plus.
+                </Text>
+              </View>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  dismissDiscoveryBanner();
+                }}
+                hitSlop={10}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.6 : 1,
+                  padding: 4,
+                })}
+              >
+                <Ionicons name="close" size={20} color="rgba(255,255,255,0.85)" />
+              </Pressable>
+            </LinearGradient>
+          </Pressable>
         )}
 
         {/* ── Share suggestion banner (< 10 views today, swipe to dismiss) ── */}
