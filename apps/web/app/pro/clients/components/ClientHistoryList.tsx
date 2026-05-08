@@ -3,15 +3,11 @@
 /**
  * Booking history list inside the client drawer.
  *
- * Loads on first open of the drawer (lazy) — keyed by `providerId`
- * + the resolved client identifier (`clientId` for registered users
- * or `clientInfo.email` for anonymous bookers). Both entry points
- * are scoped to this provider so we don't leak any other salon's
- * data even though the bookings collection is publicly readable
- * for slot calculation.
+ * Pure renderer — the parent drawer owns the fetch + caches the
+ * result so it can also derive fréquence + top services from the
+ * same data without a duplicate query.
  */
 
-import { useEffect, useState } from 'react';
 import {
   Calendar,
   CheckCircle2,
@@ -19,16 +15,15 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react';
-import { bookingRepository } from '@booking-app/firebase';
 import { formatPrice } from '@booking-app/shared';
 import type { Booking, BookingStatus } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
 interface Props {
-  providerId: string;
-  clientId: string | null;
-  email: string | null;
+  bookings: WithId<Booking>[];
+  loading: boolean;
+  error: string | null;
   /** Called when the user clicks a history row. Lets the parent open
    *  the existing BookingDetailModal — the drawer itself doesn't
    *  need to know about that wiring. */
@@ -60,47 +55,11 @@ const STATUS_ICONS: Record<BookingStatus, React.ComponentType<{ className?: stri
 };
 
 export function ClientHistoryList({
-  providerId,
-  clientId,
-  email,
+  bookings,
+  loading,
+  error,
   onBookingClick,
 }: Props) {
-  const [bookings, setBookings] = useState<WithId<Booking>[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    (async () => {
-      try {
-        // Pull whichever index is available — clientId for registered
-        // users (more stable, survives email changes), email for
-        // anonymous bookers. Then scope to this provider since the
-        // repo methods don't filter by providerId.
-        let raw: WithId<Booking>[] = [];
-        if (clientId) {
-          raw = await bookingRepository.getByClient(clientId);
-        } else if (email) {
-          raw = await bookingRepository.getByClientEmail(email);
-        }
-        const scoped = raw.filter((b) => b.providerId === providerId);
-        if (!cancelled) setBookings(scoped);
-      } catch (err) {
-        console.error('[ClientHistoryList] load error:', err);
-        if (!cancelled) setError("Impossible de charger l'historique");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [providerId, clientId, email]);
-
   if (loading) {
     return (
       <p className="text-sm text-gray-400 dark:text-gray-500">

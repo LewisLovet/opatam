@@ -30,14 +30,16 @@ import {
   Save,
   Plus,
   Trash2,
-  Mail as MailIcon,
   CalendarPlus,
-  ShieldCheck,
   ShieldAlert,
+  Sparkles,
 } from 'lucide-react';
 import { Avatar, Badge, Button, useToast } from '@/components/ui';
 import type { BadgeVariant } from '@/components/ui';
-import { providerClientRepository } from '@booking-app/firebase';
+import {
+  bookingRepository,
+  providerClientRepository,
+} from '@booking-app/firebase';
 import {
   type ProviderClient,
   type ProviderClientTag,
@@ -101,6 +103,46 @@ export function ClientDrawer({
     prefs: '[]',
   });
 
+  // Booking history — fetched here so we can derive both the list
+  // AND the "services préférés" / "fréquence" cards from a single
+  // query. Re-fetched whenever the drawer opens for a new client.
+  const [bookings, setBookings] = useState<WithId<Booking>[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!client) return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    setHistoryError(null);
+
+    (async () => {
+      try {
+        // Pull whichever index is available — clientId for registered
+        // users (more stable, survives email changes), email for
+        // anonymous bookers. Then scope to this provider since the
+        // repo methods don't filter by providerId.
+        let raw: WithId<Booking>[] = [];
+        if (client.clientId) {
+          raw = await bookingRepository.getByClient(client.clientId);
+        } else if (client.email) {
+          raw = await bookingRepository.getByClientEmail(client.email);
+        }
+        const scoped = raw.filter((b) => b.providerId === providerId);
+        if (!cancelled) setBookings(scoped);
+      } catch (err) {
+        console.error('[ClientDrawer] history error:', err);
+        if (!cancelled) setHistoryError("Impossible de charger l'historique");
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [client?.id, providerId]);
+
   // Re-sync local state when the drawer opens for a new client.
   useEffect(() => {
     if (!client) return;
@@ -142,6 +184,23 @@ export function ClientDrawer({
       JSON.stringify(prefs) !== baselineRef.current.prefs
     );
   }, [notes, prefs]);
+
+  // ── Visit frequency — average gap between confirmed visits.
+  //    Derived from the denormalised counters + dates so it's
+  //    available even before the booking history finishes loading
+  //    (faster first-paint).
+  const frequencyLabel = useMemo(
+    () => (client ? computeFrequency(client) : null),
+    [client?.confirmedCount, client?.firstBookingAt, client?.lastBookingAt],
+  );
+
+  // ── Top services — derived from the booking history. Cancelled
+  //    bookings are dropped so a serial-canceller doesn't pollute the
+  //    "préférés" picture.
+  const topServices = useMemo(
+    () => computeTopServices(bookings),
+    [bookings],
+  );
 
   if (!isOpen || !client) return null;
 
@@ -275,7 +334,7 @@ export function ClientDrawer({
                 }
               />
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
               <Kpi
                 label="Première visite"
                 value={formatLongDate(client.firstBookingAt)}
@@ -284,7 +343,47 @@ export function ClientDrawer({
                 label="Dernière visite"
                 value={formatLongDate(client.lastBookingAt)}
               />
+              <Kpi label="Fréquence" value={frequencyLabel ?? '—'} />
             </div>
+          </section>
+
+          {/* Services préférés — top 3 booked services for this client.
+              Hidden until the history finishes loading so we don't
+              flash an empty state on first open. */}
+          <section>
+            <h3 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold mb-3">
+              Services préférés
+            </h3>
+            {historyLoading ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500">
+                Calcul en cours…
+              </p>
+            ) : topServices.length === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500">
+                Pas encore assez de données pour identifier des préférences.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {topServices.map((s, i) => (
+                  <li
+                    key={s.name}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                  >
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
+                      {i === 0 ? <Sparkles className="w-3.5 h-3.5" /> : (
+                        <span className="text-[11px] font-mono">{i + 1}</span>
+                      )}
+                    </span>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">
+                      {s.name}
+                    </p>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums flex-shrink-0">
+                      {s.count} fois
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           {/* Notes */}
@@ -372,34 +471,20 @@ export function ClientDrawer({
             )}
           </section>
 
-          {/* Marketing opt-in (read-only RGPD indicator) */}
-          <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-3 py-2.5 flex items-center gap-3">
-            {client.marketingOptIn ? (
-              <ShieldCheck className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-            ) : (
-              <ShieldAlert className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-            )}
+          {/* Marketing — placeholder while the campaign features are
+              still in development. We track the consent state under
+              the hood (RGPD opt-in is captured at booking time and
+              stored on the client doc) so the day we ship newsletters
+              / promo SMS this section will surface that status; for
+              now it's intentionally non-actionable. */}
+          <section className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 px-3 py-2.5 flex items-center gap-3">
+            <ShieldAlert className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-white">
-                Marketing :{' '}
-                {client.marketingOptIn ? (
-                  <span className="text-emerald-600 dark:text-emerald-400">
-                    autorisé
-                  </span>
-                ) : (
-                  <span className="text-gray-500 dark:text-gray-400">
-                    non autorisé
-                  </span>
-                )}
+                Fonctionnalités marketing
               </p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                {client.marketingOptIn
-                  ? `Le client a coché la case lors de sa réservation${
-                      client.marketingOptInAt
-                        ? ` le ${formatLongDate(client.marketingOptInAt)}`
-                        : ''
-                    }.`
-                  : 'Vous ne pouvez pas envoyer de communications promotionnelles à ce client.'}
+                En cours de développement — bientôt disponibles.
               </p>
             </div>
           </section>
@@ -410,9 +495,9 @@ export function ClientDrawer({
               Historique des réservations
             </h3>
             <ClientHistoryList
-              providerId={providerId}
-              clientId={client.clientId}
-              email={client.email}
+              bookings={bookings}
+              loading={historyLoading}
+              error={historyError}
               onBookingClick={onBookingClick}
             />
           </section>
@@ -424,20 +509,10 @@ export function ClientDrawer({
             type="button"
             variant="primary"
             onClick={handleCreateBooking}
-            className="flex-1 sm:flex-initial"
           >
             <CalendarPlus className="w-4 h-4 mr-1.5" />
             Nouveau RDV
           </Button>
-          {client.email && (
-            <a
-              href={`mailto:${client.email}`}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-            >
-              <MailIcon className="w-4 h-4" />
-              Email
-            </a>
-          )}
           <div className="flex-1" />
           <Button
             type="button"
@@ -475,4 +550,63 @@ function formatLongDate(d: Date | null): string {
     month: 'short',
     year: 'numeric',
   });
+}
+
+/**
+ * Average gap between two confirmed visits, expressed in human terms.
+ * Returns null when we don't have enough data to compute (need at
+ * least 2 confirmed bookings — one alone gives no interval).
+ *
+ * Granularity:
+ *   < 7 days     → "tous les N j"
+ *   < 60 days    → "toutes les N sem"
+ *   < 720 days   → "tous les N mois"
+ *   otherwise    → "tous les N ans"
+ */
+function computeFrequency(client: ProviderClient): string | null {
+  if (
+    client.confirmedCount < 2 ||
+    !client.firstBookingAt ||
+    !client.lastBookingAt
+  ) {
+    return null;
+  }
+  const spanMs = client.lastBookingAt.getTime() - client.firstBookingAt.getTime();
+  if (spanMs <= 0) return null;
+  const avgDays = Math.round(
+    spanMs / (1000 * 60 * 60 * 24) / (client.confirmedCount - 1),
+  );
+  if (avgDays < 7) return `Tous les ${avgDays} j`;
+  if (avgDays < 60) {
+    const weeks = Math.round(avgDays / 7);
+    return `Toutes les ${weeks} sem`;
+  }
+  if (avgDays < 720) {
+    const months = Math.round(avgDays / 30);
+    return `Tous les ${months} mois`;
+  }
+  const years = Math.round(avgDays / 365);
+  return `Tous les ${years} ans`;
+}
+
+/**
+ * Top 3 booked services for a client. Cancelled bookings are
+ * filtered out so a serial canceller doesn't pollute the picture;
+ * pending and confirmed both count since intent to come back is
+ * itself a signal of preference.
+ */
+function computeTopServices(
+  bookings: WithId<Booking>[],
+): Array<{ name: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const b of bookings) {
+    if (b.status === 'cancelled') continue;
+    const name = (b.serviceName || '').trim();
+    if (!name) continue;
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
 }
