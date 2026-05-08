@@ -540,6 +540,7 @@ const FEATURE_DISPLAY_LABELS: Record<NewFeatureKey, string> = {
   // Plus — the home banner never references it, but the map still
   // needs every key for type-completeness.
   'story-share-2026-05': 'Stories',
+  'auto-review-2026-05': 'Avis auto',
 };
 
 /** "A, B et C" — French enumeration with proper "et" before the

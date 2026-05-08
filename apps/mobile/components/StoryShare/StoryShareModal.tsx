@@ -40,6 +40,7 @@ import type { Service } from '@booking-app/shared';
 import { APP_CONFIG } from '@booking-app/shared';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
+import { useNewFeatures } from '../../hooks/useNewFeatures';
 import { useProvider } from '../../contexts';
 import { useUpcomingAvailabilities } from '../../hooks/useUpcomingAvailabilities';
 import { StoryCard } from './StoryCard';
@@ -164,6 +165,11 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const insets = useSafeAreaInsets();
   const { provider } = useProvider();
   const viewRef = useRef<View>(null);
+  // "Nouveau" pill on the Dispos toggle — visible until the pro
+  // taps it once. Mirrors the FAB indicator and is the canonical
+  // "this feature has been seen" event.
+  const { isNew, markSeen } = useNewFeatures();
+  const showDisposNew = isNew('story-share-2026-05');
   const [sharing, setSharing] = useState<string | null>(null);
   const [services, setServices] = useState<WithId<Service>[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
@@ -459,10 +465,21 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             <View style={styles.modeRow}>
               {DISPLAY_MODES.map((mode) => {
                 const isActive = displayMode === mode.key;
+                // Dispos is the recently-shipped sub-mode — flag it
+                // until the pro taps it at least once. The pill
+                // mirrors the FAB indicator (same key) so they stay
+                // in sync: pick Dispos here → both go away.
+                const showNewPill =
+                  mode.key === 'availabilities' && showDisposNew;
                 return (
                   <Pressable
                     key={mode.key}
-                    onPress={() => setDisplayMode(mode.key)}
+                    onPress={() => {
+                      setDisplayMode(mode.key);
+                      if (mode.key === 'availabilities' && showDisposNew) {
+                        markSeen('story-share-2026-05');
+                      }
+                    }}
                     style={[
                       styles.modeButton,
                       {
@@ -485,6 +502,29 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                     >
                       {mode.label}
                     </Text>
+                    {showNewPill && (
+                      <View
+                        style={{
+                          marginLeft: 4,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 999,
+                          backgroundColor: '#E1306C',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: '#FFFFFF',
+                            fontSize: 9,
+                            fontWeight: '800',
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.4,
+                          }}
+                        >
+                          Nouveau
+                        </Text>
+                      </View>
+                    )}
                   </Pressable>
                 );
               })}

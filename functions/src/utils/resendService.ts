@@ -1676,3 +1676,127 @@ L'équipe ${appConfig.name}`;
   }
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Review request email
+// ──────────────────────────────────────────────────────────────────────
+
+export interface ReviewRequestEmailData {
+  bookingId: string;
+  clientEmail: string;
+  clientName: string;
+  serviceName: string;
+  datetime: Date;
+  providerName: string;
+}
+
+/**
+ * Sent automatically by `sendReviewRequests` to every confirmed
+ * past booking that hasn't received a request yet (and whose
+ * provider hasn't disabled auto reminders). Mirrors the manual
+ * "Demander un avis" email at apps/web/app/api/bookings/
+ * review-request-email so the look stays consistent regardless
+ * of how the request was triggered.
+ */
+export async function sendReviewRequestEmail(
+  data: ReviewRequestEmailData,
+): Promise<EmailResult> {
+  console.log('[EMAIL] Sending review request to:', data.clientEmail);
+
+  if (!isValidEmail(data.clientEmail)) {
+    console.log('[EMAIL] Invalid email format');
+    return { success: false, error: 'Invalid email format' };
+  }
+
+  try {
+    const reviewUrl = `${appConfig.url}/avis/${data.bookingId}`;
+    const formattedDate = formatDateFr(data.datetime);
+    const formattedTime = formatTimeFr(data.datetime);
+
+    const subject = `Donnez votre avis sur votre rendez-vous - ${data.serviceName}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background-color: #fafafa;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #fafafa;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+        <table role="presentation" style="width: 100%; max-width: 560px; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <tr>
+            <td style="padding: 32px 32px 8px;">
+              <p style="margin: 0; font-size: 13px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.6px;">Votre avis compte</p>
+              <h1 style="margin: 8px 0 0; font-size: 22px; font-weight: 700; color: #18181b;">Comment s'est passé votre rendez-vous ?</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 16px 32px 24px;">
+              <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
+              <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Nous espérons que votre rendez-vous s'est bien passé. Votre avis aide d'autres clients à choisir et nous aide à améliorer nos services.</p>
+              <div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                <p style="margin: 0 0 12px; font-size: 13px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">Votre rendez-vous</p>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${formattedDate}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedTime}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Chez</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.providerName}</td></tr>
+                </table>
+              </div>
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center">
+                    <a href="${reviewUrl}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Donner mon avis</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 24px 0 0; font-size: 13px; color: #a1a1aa; text-align: center;">Votre avis sera visible sur la page de ${data.providerName}.</p>
+            </td>
+          </tr>
+        </table>
+        <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa;">Email envoyé par <a href="${appConfig.url}" style="color: #6366f1; text-decoration: none;">${appConfig.name}</a></p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const text = [
+      `Bonjour ${data.clientName},`,
+      '',
+      "Nous espérons que votre rendez-vous s'est bien passé. Votre avis aide d'autres clients à choisir et nous aide à améliorer nos services.",
+      '',
+      'Votre rendez-vous :',
+      `- Prestation : ${data.serviceName}`,
+      `- Date : ${formattedDate}`,
+      `- Heure : ${formattedTime}`,
+      `- Chez : ${data.providerName}`,
+      '',
+      'Donnez votre avis ici :',
+      reviewUrl,
+      '',
+      `Votre avis sera visible sur la page de ${data.providerName}.`,
+    ].join('\n');
+
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.clientEmail,
+      subject,
+      html,
+      text,
+    });
+
+    if (error) {
+      console.error('[EMAIL] Resend review-request error:', error);
+      return { success: false, error: String(error) };
+    }
+
+    console.log('[EMAIL] Review request sent successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAIL] Exception:', error);
+    return { success: false, error: String(error) };
+  }
+}

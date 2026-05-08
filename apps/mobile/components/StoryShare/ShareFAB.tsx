@@ -90,12 +90,13 @@ export function ShareFAB({ shopUrl, businessName, onCreateStory }: ShareFABProps
     const opening = !isOpen;
     setIsOpen(opening);
 
-    // First open clears the "Nouveau" indicator — once they've seen
-    // the menu, no need to keep flagging it. Idempotent so we can
-    // call it on every toggle without extra branching.
-    if (opening && showStoryNew) {
-      markSeen('story-share-2026-05');
-    }
+    // Note: we deliberately do NOT mark the story-share key seen
+    // here. The pro might just be opening the menu to copy the
+    // link or use the native share sheet — they haven't actually
+    // engaged with the story feature. We mark seen only when they
+    // pick the "Dispos" mode inside StoryShareModal (the truly
+    // new flow), which happens via markSeen('story-share-2026-05')
+    // there.
 
     Animated.spring(rotateAnim, {
       toValue: opening ? 1 : 0,
