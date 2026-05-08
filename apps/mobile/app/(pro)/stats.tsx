@@ -21,7 +21,12 @@ import { useProvider } from '../../contexts';
 import { useProviderDashboard, useProviderStats } from '../../hooks';
 import { useTheme } from '../../theme';
 import { analyticsService } from '@booking-app/firebase';
-import type { PageViewStats } from '@booking-app/shared';
+import {
+  deltaPercent,
+  PERIOD_LABELS,
+  type PageViewStats,
+  type Period,
+} from '@booking-app/shared';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -80,6 +85,104 @@ function StatRow({
   );
 }
 
+/** Horizontal pills to switch the active period. */
+function PeriodPills({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
+  const { colors, radius } = useTheme();
+  const order: Period[] = ['7d', '30d', '90d', '12m'];
+  return (
+    <View style={[s.periodPills, { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.full }]}>
+      {order.map((p) => {
+        const active = value === p;
+        return (
+          <Pressable
+            key={p}
+            onPress={() => onChange(p)}
+            style={[
+              s.periodPill,
+              {
+                backgroundColor: active ? '#FFF' : 'transparent',
+                borderRadius: radius.full,
+              },
+            ]}
+            hitSlop={4}
+          >
+            <Text
+              variant="caption"
+              style={{
+                color: active ? colors.primaryDark : 'rgba(255,255,255,0.85)',
+                fontWeight: active ? '700' : '500',
+                fontSize: 12,
+              }}
+            >
+              {PERIOD_LABELS[p]}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Compact KPI card with delta arrow. */
+function KpiCard({
+  icon,
+  iconColor,
+  label,
+  value,
+  current,
+  previous,
+  formatValue,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
+  label: string;
+  value: string;
+  current: number;
+  previous: number;
+  formatValue?: (v: number) => string;
+}) {
+  const { colors, spacing, radius } = useTheme();
+  const delta = deltaPercent(current, previous);
+  const positive = delta !== null && delta > 0;
+  const negative = delta !== null && delta < 0;
+  return (
+    <View style={[s.kpiCard, { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+        <View style={[s.kpiIcon, { backgroundColor: iconColor + '18', borderRadius: radius.full }]}>
+          <Ionicons name={icon} size={14} color={iconColor} />
+        </View>
+        <Text variant="caption" color="textMuted" style={{ fontSize: 11 }}>{label}</Text>
+      </View>
+      <Text variant="h3" style={{ fontWeight: '800', marginBottom: 2 }}>{value}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+        {delta === null ? (
+          <Text variant="caption" color="textMuted" style={{ fontSize: 11 }}>—</Text>
+        ) : (
+          <>
+            <Ionicons
+              name={positive ? 'arrow-up' : negative ? 'arrow-down' : 'remove'}
+              size={11}
+              color={positive ? colors.success : negative ? colors.error : colors.textMuted}
+            />
+            <Text
+              variant="caption"
+              style={{
+                color: positive ? colors.success : negative ? colors.error : colors.textMuted,
+                fontWeight: '600',
+                fontSize: 11,
+              }}
+            >
+              {delta > 0 ? '+' : ''}{delta}%
+            </Text>
+          </>
+        )}
+      </View>
+      {/* Suppress unused-arg warning when formatValue not used */}
+      {formatValue ? null : null}
+    </View>
+  );
+}
+
 /** Weekly mini bar chart (reused concept from dashboard) */
 function WeekChart({ perDay }: { perDay: number[] }) {
   const { colors, spacing, radius } = useTheme();
@@ -129,10 +232,13 @@ export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { providerId, provider } = useProvider();
-  const { stats, isLoading, refresh } = useProviderStats(providerId);
+
+  const [period, setPeriod] = useState<Period>('30d');
+  const { stats, isLoading, refresh } = useProviderStats(providerId, period);
   const { data: dashData } = useProviderDashboard(providerId, provider?.rating?.average);
 
-  const total = stats?.total ?? 0;
+  const total = stats?.bookingsCount ?? 0;
+  const revenueDelta = stats ? deltaPercent(stats.revenue, stats.revenuePrevious) : null;
 
   // Real-time page views
   const [pageViews, setPageViews] = useState<PageViewStats | null>(null);
@@ -161,21 +267,45 @@ export default function StatsScreen() {
 
         {/* Revenue highlight */}
         <View style={[s.heroRevenue, { paddingHorizontal: spacing.lg, marginTop: spacing.lg }]}>
-          <Text variant="caption" style={{ color: 'rgba(255,255,255,0.6)', textTransform: 'capitalize' }}>
-            Revenus — {getCurrentMonthLabel()}
+          <Text variant="caption" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            Revenus — {PERIOD_LABELS[period].toLowerCase()}
           </Text>
           {isLoading ? (
             <View style={{ height: 44, justifyContent: 'center' }}><Loader size="sm" /></View>
           ) : (
             <>
-              <Text variant="h1" style={{ color: '#FFF', fontSize: 36, fontWeight: '800', marginTop: 4 }}>
-                {formatPrice(stats?.monthlyRevenue ?? 0)}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginTop: 4 }}>
+                <Text variant="h1" style={{ color: '#FFF', fontSize: 36, fontWeight: '800' }}>
+                  {formatPrice(stats?.revenue ?? 0)}
+                </Text>
+                {revenueDelta !== null && (
+                  <View style={[
+                    s.heroDelta,
+                    {
+                      backgroundColor:
+                        revenueDelta > 0
+                          ? 'rgba(34, 197, 94, 0.25)'
+                          : revenueDelta < 0
+                            ? 'rgba(239, 68, 68, 0.25)'
+                            : 'rgba(255,255,255,0.15)',
+                    },
+                  ]}>
+                    <Ionicons
+                      name={revenueDelta > 0 ? 'arrow-up' : revenueDelta < 0 ? 'arrow-down' : 'remove'}
+                      size={11}
+                      color="#FFF"
+                    />
+                    <Text variant="caption" style={{ color: '#FFF', fontWeight: '700', fontSize: 11 }}>
+                      {revenueDelta > 0 ? '+' : ''}{revenueDelta}%
+                    </Text>
+                  </View>
+                )}
+              </View>
               <View style={[s.heroChips, { marginTop: spacing.sm }]}>
                 <View style={s.heroChip}>
                   <Ionicons name="calendar-outline" size={13} color="rgba(255,255,255,0.9)" />
                   <Text variant="caption" style={s.heroChipText}>
-                    {stats?.monthlyBookingsCount ?? 0} RDV ce mois
+                    {stats?.bookingsCount ?? 0} RDV
                   </Text>
                 </View>
                 <View style={s.heroChip}>
@@ -184,6 +314,10 @@ export default function StatsScreen() {
                     {stats?.completionRate ?? 0}% réussite
                   </Text>
                 </View>
+              </View>
+              {/* Period selector */}
+              <View style={{ marginTop: spacing.lg }}>
+                <PeriodPills value={period} onChange={setPeriod} />
               </View>
             </>
           )}
@@ -199,6 +333,34 @@ export default function StatsScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={colors.primary} />}
         >
+          {/* ── KPI grid: 3 cards with deltas ── */}
+          <View style={[s.kpiGrid, { marginBottom: spacing.xl, gap: spacing.sm }]}>
+            <KpiCard
+              icon="calendar-outline"
+              iconColor={colors.primary}
+              label="Réservations"
+              value={(stats?.bookingsCount ?? 0).toString()}
+              current={stats?.bookingsCount ?? 0}
+              previous={stats?.bookingsCountPrevious ?? 0}
+            />
+            <KpiCard
+              icon="people-outline"
+              iconColor="#10B981"
+              label="Clients"
+              value={(stats?.uniqueClients ?? 0).toString()}
+              current={stats?.uniqueClients ?? 0}
+              previous={stats?.uniqueClientsPrevious ?? 0}
+            />
+            <KpiCard
+              icon="eye-outline"
+              iconColor="#8B5CF6"
+              label="Vues"
+              value={(stats?.pageViews ?? 0).toLocaleString('fr-FR')}
+              current={stats?.pageViews ?? 0}
+              previous={stats?.pageViewsPrevious ?? 0}
+            />
+          </View>
+
           {/* ── Booking Breakdown ── */}
           <Text variant="h3" style={{ marginBottom: spacing.md }}>Répartition des RDV</Text>
           <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
@@ -206,24 +368,24 @@ export default function StatsScreen() {
               icon="checkmark-circle-outline"
               iconColor={colors.success}
               label="Confirmés"
-              value={stats?.confirmed ?? 0}
-              barRatio={total > 0 ? (stats?.confirmed ?? 0) / total : 0}
+              value={stats?.confirmedCount ?? 0}
+              barRatio={total > 0 ? (stats?.confirmedCount ?? 0) / total : 0}
               barColor={colors.success}
             />
             <StatRow
               icon="close-circle-outline"
               iconColor={colors.error}
               label="Annulés"
-              value={stats?.cancelled ?? 0}
-              barRatio={total > 0 ? (stats?.cancelled ?? 0) / total : 0}
+              value={stats?.cancelledCount ?? 0}
+              barRatio={total > 0 ? (stats?.cancelledCount ?? 0) / total : 0}
               barColor={colors.error}
             />
             <StatRow
               icon="alert-circle-outline"
               iconColor={colors.textMuted}
               label="Absents"
-              value={stats?.noshow ?? 0}
-              barRatio={total > 0 ? (stats?.noshow ?? 0) / total : 0}
+              value={stats?.noshowCount ?? 0}
+              barRatio={total > 0 ? (stats?.noshowCount ?? 0) / total : 0}
               barColor={colors.textMuted}
             />
             {/* Total footer */}
@@ -391,6 +553,42 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     fontWeight: '600',
     fontSize: 12,
+  },
+  heroDelta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 100,
+  },
+
+  // Period pills
+  periodPills: {
+    flexDirection: 'row',
+    padding: 3,
+    alignSelf: 'flex-start',
+  },
+  periodPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginHorizontal: 1,
+  },
+
+  // KPI grid
+  kpiGrid: {
+    flexDirection: 'row',
+  },
+  kpiCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  kpiIcon: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Stat row
