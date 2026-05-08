@@ -18,6 +18,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Loader, Text } from '../../components';
 import { TrendChart } from '../../components/stats/TrendChart';
+import { TopServicesPanel } from '../../components/stats/TopServicesPanel';
+import { TopClientsPanel } from '../../components/stats/TopClientsPanel';
+import { QualityIndicators } from '../../components/stats/QualityIndicators';
+import { HeatmapPanel } from '../../components/stats/HeatmapPanel';
 import { useProvider } from '../../contexts';
 import { useProviderDashboard, useProviderStats } from '../../hooks';
 import { useTheme } from '../../theme';
@@ -395,6 +399,14 @@ export default function StatsScreen() {
             </>
           )}
 
+          {/* ── Top services + top clients ── */}
+          {stats && (stats.topServices.length > 0 || stats.topClients.length > 0) && (
+            <>
+              <TopServicesPanel data={stats.topServices} />
+              <TopClientsPanel data={stats.topClients} />
+            </>
+          )}
+
           {/* ── Booking Breakdown ── */}
           <Text variant="h3" style={{ marginBottom: spacing.md }}>Répartition des RDV</Text>
           <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
@@ -475,63 +487,19 @@ export default function StatsScreen() {
             </>
           )}
 
-          {/* ── Completion Rate ── */}
-          <Text variant="h3" style={{ marginBottom: spacing.md }}>Performance</Text>
-          <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              {/* Rate ring placeholder — large number with colored bg */}
-              <View style={[s.rateBadge, {
-                backgroundColor: ((stats?.completionRate ?? 0) >= 80 ? colors.success : (stats?.completionRate ?? 0) >= 50 ? colors.warning : colors.error) + '18',
-                borderRadius: radius.full,
-              }]}>
-                <Text variant="h1" style={{
-                  fontWeight: '800',
-                  color: (stats?.completionRate ?? 0) >= 80 ? colors.success : (stats?.completionRate ?? 0) >= 50 ? colors.warning : colors.error,
-                }}>
-                  {stats?.completionRate ?? 0}%
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text variant="body" style={{ fontWeight: '600' }}>Taux de réussite</Text>
-                <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
-                  RDV honorés sur l'ensemble des réservations
-                </Text>
-              </View>
-            </View>
-          </Card>
+          {/* ── Quality indicators (annulation / no-show / note) ── */}
+          {stats && (
+            <QualityIndicators
+              cancellationRate={stats.cancellationRate}
+              noshowRate={stats.noshowRate}
+              averageRating={provider?.rating?.average ?? null}
+              ratingCount={provider?.rating?.count ?? 0}
+            />
+          )}
 
-          {/* ── Rating ── */}
-          {provider?.rating && provider.rating.count > 0 && (
-            <>
-              <Text variant="h3" style={{ marginBottom: spacing.md }}>Avis clients</Text>
-              <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-                  <View style={[s.ratingBadge, { backgroundColor: '#FBBF24' + '18', borderRadius: radius.full }]}>
-                    <Ionicons name="star" size={28} color="#FBBF24" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm }}>
-                      <Text variant="h1" style={{ fontWeight: '800' }}>{provider.rating.average.toFixed(1)}</Text>
-                      <Text variant="bodySmall" color="textMuted">/ 5</Text>
-                    </View>
-                    <Text variant="caption" color="textMuted">
-                      {provider.rating.count} avis client{provider.rating.count > 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                  {/* Star breakdown visual */}
-                  <View style={{ flexDirection: 'row', gap: 2 }}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Ionicons
-                        key={star}
-                        name={star <= Math.round(provider.rating!.average) ? 'star' : 'star-outline'}
-                        size={16}
-                        color="#FBBF24"
-                      />
-                    ))}
-                  </View>
-                </View>
-              </Card>
-            </>
+          {/* ── Heatmap day×hour, period-independent (always 90d) ── */}
+          {stats?.heatmap90d && stats.heatmap90d.length === 168 && (
+            <HeatmapPanel heatmap={stats.heatmap90d} />
           )}
         </ScrollView>
       )}
@@ -688,19 +656,4 @@ const s = StyleSheet.create({
     paddingHorizontal: 8,
   },
 
-  // Rate badge
-  rateBadge: {
-    width: 80,
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Rating badge
-  ratingBadge: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });

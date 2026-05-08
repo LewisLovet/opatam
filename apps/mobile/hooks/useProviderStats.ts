@@ -24,10 +24,15 @@ import {
   query,
   where,
 } from 'firebase/firestore';
-import { app, providerStatsRepository } from '@booking-app/firebase';
+import {
+  app,
+  providerClientRepository,
+  providerStatsRepository,
+} from '@booking-app/firebase';
 import {
   buildContinuousTrend,
   periodBounds,
+  topServicesFromDailies,
   totalsFromDailies,
   totalsFromMonthlies,
   trendFromDailies,
@@ -35,6 +40,8 @@ import {
   type Period,
   type ProviderStatsDaily,
   type ProviderStatsMonthly,
+  type ProviderStatsRolling,
+  type ProviderStatsServiceBreakdown,
   type TrendPoint,
 } from '@booking-app/shared';
 
@@ -68,6 +75,22 @@ export interface ProviderStats {
   trend: TrendPoint[];
   /** Bar for 7-day view, smoothed line for 30/90/12m. */
   chartType: 'bar' | 'line';
+
+  // ── Top-K + heatmap ──
+  topServices: ProviderStatsServiceBreakdown[];
+  /** Top clients with names resolved from providerClients (when available). */
+  topClients: {
+    clientHash: string;
+    bookingsCount: number;
+    revenue: number;
+    name?: string;
+  }[];
+  /** Period-independent heatmap (always 90d). null when no rolling doc yet. */
+  heatmap90d: number[] | null;
+
+  // ── Quality indicators (derived) ──
+  cancellationRate: number; // 0..1
+  noshowRate: number;       // 0..1
 }
 
 export interface UseProviderStatsResult {
@@ -94,6 +117,11 @@ const EMPTY_STATS = (period: Period): ProviderStats => ({
   pageViewsPrevious: 0,
   trend: [],
   chartType: period === '7d' ? 'bar' : 'line',
+  topServices: [],
+  topClients: [],
+  heatmap90d: null,
+  cancellationRate: 0,
+  noshowRate: 0,
 });
 
 export function useProviderStats(
@@ -127,6 +155,7 @@ export function useProviderStats(
         monthliesPrev,
         pvCurrent,
         pvPrevious,
+        rolling,
       ] = await Promise.all([
         bounds.granularity === 'daily'
           ? safe(() => providerStatsRepository.getDailiesInRange(providerId, bounds.start, bounds.end), [] as ProviderStatsDaily[])
@@ -153,6 +182,10 @@ export function useProviderStats(
               ? readPageViewsDaily(providerId, bounds.prevStart, bounds.prevEnd)
               : readPageViewsMonthly(providerId, bounds.prevStartMonth!, bounds.prevEndMonth!),
           { byKey: new Map<string, number>(), total: 0 },
+        ),
+        safe<ProviderStatsRolling | null>(
+          () => providerStatsRepository.getRolling(providerId),
+          null,
         ),
       ]);
 
@@ -182,6 +215,59 @@ export function useProviderStats(
         pvCurrent.byKey,
       );
 
+      // Top services — for 7d we compute from dailies; otherwise
+      // pull the matching window from the rolling snapshot.
+      let topServices: ProviderStatsServiceBreakdown[] = [];
+      if (period === '7d') {
+        topServices = topServicesFromDailies(dailies);
+      } else if (rolling) {
+        topServices =
+          period === '30d'
+            ? rolling.topServices30d
+            : period === '90d'
+              ? rolling.topServices90d
+              : rolling.topServicesAllTime;
+      }
+
+      // Top clients — rolling carries hashes for privacy. Resolve
+      // names by pulling the matching providerClients docs (max
+      // ~30 reads, 10 per window cumulative). Fail-soft: missing
+      // doc → tooltip uses the masked hash.
+      const topClientsRaw = rolling
+        ? period === '7d' || period === '30d'
+          ? rolling.topClients30d
+          : period === '90d'
+            ? rolling.topClients90d
+            : rolling.topClientsAllTime
+        : [];
+      const clientHashes = topClientsRaw.map((c) => c.clientHash);
+      const nameByHash = clientHashes.length > 0
+        ? await safe(
+            async () => {
+              const map = await providerClientRepository.getByKeys(
+                providerId,
+                clientHashes,
+              );
+              const out = new Map<string, string>();
+              for (const c of map.values()) out.set(c.clientKey, c.name);
+              return out;
+            },
+            new Map<string, string>(),
+          )
+        : new Map<string, string>();
+      const topClients = topClientsRaw.map((c) => ({
+        ...c,
+        name: nameByHash.get(c.clientHash),
+      }));
+
+      // Quality indicators derived from totals.
+      const cancellationRate = totals.bookingsCount === 0
+        ? 0
+        : totals.cancelledCount / totals.bookingsCount;
+      const noshowRate = totals.bookingsCount === 0
+        ? 0
+        : totals.noshowCount / totals.bookingsCount;
+
       setStats({
         period,
         revenue: totals.revenue,
@@ -199,6 +285,11 @@ export function useProviderStats(
         pageViewsPrevious: pvPrevious.total,
         trend,
         chartType: period === '7d' ? 'bar' : 'line',
+        topServices,
+        topClients,
+        heatmap90d: rolling?.heatmap90d ?? null,
+        cancellationRate,
+        noshowRate,
       });
     } catch (err) {
       console.error('[useProviderStats] error:', err);
