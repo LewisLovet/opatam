@@ -21,11 +21,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { providerClientRepository } from '@booking-app/firebase';
-import type { ProviderClient } from '@booking-app/shared';
+import type { Booking, ProviderClient } from '@booking-app/shared';
 import { Loader, useToast } from '@/components/ui';
+import { BookingDetailModal } from '@/components/booking';
 import { Users, UserPlus } from 'lucide-react';
 import { ClientFilters, type FiltersState } from './components/ClientFilters';
 import { ClientRow } from './components/ClientRow';
+import { ClientDrawer } from './components/ClientDrawer';
 
 type WithId<T> = { id: string } & T;
 
@@ -42,6 +44,11 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<WithId<ProviderClient>[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
+
+  // Drawer (fiche client)
+  const [openClientId, setOpenClientId] = useState<string | null>(null);
+  // Booking detail modal opened from inside the drawer's history list.
+  const [selectedBooking, setSelectedBooking] = useState<WithId<Booking> | null>(null);
 
   // ── Fetch on mount / provider change ─────────────────────────────
   useEffect(() => {
@@ -65,6 +72,13 @@ export default function ClientsPage() {
       cancelled = true;
     };
   }, [provider?.id, toast]);
+
+  // The drawer wants the live row from `clients`, not a cached copy,
+  // so a save inside the drawer is reflected immediately in the list.
+  const openClient = useMemo(
+    () => clients.find((c) => c.id === openClientId) ?? null,
+    [clients, openClientId],
+  );
 
   // ── Filter + search + sort, derived from the in-memory base ──────
   const filteredClients = useMemo(() => {
@@ -112,16 +126,52 @@ export default function ClientsPage() {
                 <li key={c.id}>
                   <ClientRow
                     client={c}
-                    onClick={() => {
-                      // Étape 3 — drawer fiche client à venir.
-                      toast.info('Fiche client en cours d’implémentation');
-                    }}
+                    onClick={() => setOpenClientId(c.id)}
                   />
                 </li>
               ))}
             </ul>
           )}
         </>
+      )}
+
+      {/* Fiche client drawer + booking detail modal triggered from
+          inside the drawer's history list. The drawer stays mounted
+          so the close transition isn't abrupt. */}
+      {provider?.id && (
+        <ClientDrawer
+          isOpen={!!openClient}
+          client={openClient}
+          providerId={provider.id}
+          onClose={() => setOpenClientId(null)}
+          onPatched={(patch) => {
+            // Apply the patch to the in-memory list so the row updates
+            // without a refetch (notes / preferences are the only fields
+            // the rule allows the provider to change).
+            setClients((arr) =>
+              arr.map((c) =>
+                c.id === openClientId ? { ...c, ...patch } : c,
+              ),
+            );
+          }}
+          onBookingClick={(booking) => setSelectedBooking(booking)}
+        />
+      )}
+
+      {selectedBooking && (
+        <BookingDetailModal
+          isOpen={!!selectedBooking}
+          onClose={() => setSelectedBooking(null)}
+          booking={selectedBooking}
+          onUpdate={() => {
+            // The drawer's history list re-mounts via its own effect
+            // when the user switches client; for a same-client refresh
+            // we'd need to lift the history up. Acceptable for now —
+            // edits are rare from this surface.
+            setSelectedBooking(null);
+          }}
+          providerSlug={provider?.slug}
+        />
       )}
     </div>
   );

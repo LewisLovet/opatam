@@ -50,6 +50,14 @@ export default function CalendarPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createModalDate, setCreateModalDate] = useState<Date | null>(null);
+  /** Identity pre-fill for the create-booking flow. Populated when
+   *  the user clicks "Nouveau RDV" from /pro/clients (carries
+   *  name/email/phone via search params). */
+  const [createModalClient, setCreateModalClient] = useState<{
+    name?: string;
+    email?: string;
+    phone?: string;
+  } | null>(null);
   // Activity modal — opens for "Nouvelle activité" from the AddMenu
   // and for editing an existing activity (clicked on the calendar).
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
@@ -270,9 +278,23 @@ export default function CalendarPage() {
   // Honor `?action=block` (set by /pro QuickActions) — open the
   // block-period modal once on mount, then strip the param so a
   // refresh doesn't re-open it.
+  // Also honor `?action=createBooking&clientName=...&clientEmail=...&clientPhone=...`
+  // (set by /pro/clients "Nouveau RDV" CTA) — opens the create
+  // modal pre-filled with the client identity.
   useEffect(() => {
-    if (searchParams.get('action') === 'block') {
+    const action = searchParams.get('action');
+    if (action === 'block') {
       handleBlockSlot();
+      router.replace('/pro/calendrier');
+    } else if (action === 'createBooking') {
+      const name = searchParams.get('clientName') ?? undefined;
+      const email = searchParams.get('clientEmail') ?? undefined;
+      const phone = searchParams.get('clientPhone') ?? undefined;
+      // Only pre-fill if at least one identity field is present;
+      // otherwise it's effectively a plain "new booking" trigger.
+      setCreateModalClient(name || email || phone ? { name, email, phone } : null);
+      setCreateModalDate(selectedDate);
+      setIsCreateModalOpen(true);
       router.replace('/pro/calendrier');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -524,10 +546,12 @@ export default function CalendarPage() {
         onClose={() => {
           setIsCreateModalOpen(false);
           setCreateModalDate(null);
+          setCreateModalClient(null);
         }}
         initialDate={createModalDate}
         initialMemberId={selectedMemberId !== 'all' ? selectedMemberId : undefined}
         initialLocationId={selectedLocationId !== 'all' ? selectedLocationId : undefined}
+        initialClient={createModalClient}
         members={members}
         locations={locations}
         isTeamPlan={isTeamPlan}

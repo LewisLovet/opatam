@@ -108,6 +108,14 @@ interface CreateBookingModalProps {
   initialDate?: Date | null;
   initialMemberId?: string;
   initialLocationId?: string;
+  /** Pre-fill the client identity step from the existing client base
+   *  (e.g. user clicked "Nouveau RDV" from /pro/clients). Empty
+   *  strings are treated as missing. */
+  initialClient?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  } | null;
   members: WithId<Member>[];
   locations: WithId<Location>[];
   isTeamPlan: boolean;
@@ -141,6 +149,7 @@ export function CreateBookingModal({
   initialDate,
   initialMemberId,
   initialLocationId,
+  initialClient,
   members,
   locations,
   isTeamPlan,
@@ -197,9 +206,9 @@ export function CreateBookingModal({
         date: initialDate ? formatDateForInput(initialDate) : formatDateForInput(new Date()),
         time: initialDate ? formatTimeForSelect(initialDate) : '',
         memberId: initialMemberId || '',
-        clientName: '',
-        clientEmail: '',
-        clientPhone: '',
+        clientName: initialClient?.name?.trim() ?? '',
+        clientEmail: initialClient?.email?.trim() ?? '',
+        clientPhone: initialClient?.phone?.trim() ?? '',
         notes: '',
       });
       setErrors({});
