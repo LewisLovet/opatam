@@ -115,7 +115,7 @@ export function TrialExpiredBanner() {
           </div>
 
           <Link
-            href="/pro/parametres?tab=abonnement"
+            href="/pro/abonnement"
             className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 py-3.5 text-center font-semibold text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-200"
           >
             Voir les plans

@@ -108,8 +108,8 @@ export async function POST(request: NextRequest) {
     const origin = request.headers.get('origin') ?? 'https://opatam.com';
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: `${origin}/pro/parametres?tab=paiements&connect=refresh`,
-      return_url: `${origin}/pro/parametres?tab=paiements&connect=return`,
+      refresh_url: `${origin}/pro/paiements?connect=refresh`,
+      return_url: `${origin}/pro/paiements?connect=return`,
       type: 'account_onboarding',
     });
 

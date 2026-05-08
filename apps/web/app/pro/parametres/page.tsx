@@ -5,26 +5,25 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Calendar,
   User,
-  CreditCard,
   QrCode,
   Settings,
   Bell,
   Code,
-  Wallet,
 } from 'lucide-react';
 import {
   ReservationSettingsForm,
   NotificationsForm,
   AccountForm,
-  SubscriptionSection,
   ShareSection,
   WidgetSection,
-  PaymentsSection,
-  SubscriptionSuccessModal,
 } from './components';
-import { useAuth } from '@/contexts/AuthContext';
-import { canUseDepositsClient } from '@/lib/feature-flags';
-import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
+
+// Note: Abonnement and Paiements were extracted into their own
+// dedicated pages (/pro/abonnement, /pro/paiements). Legacy
+// `?tab=abonnement` and `?tab=paiements` URLs (still present in
+// emails, Stripe portal returns, etc.) are redirected from this
+// page's effect below — we don't need to import those sections
+// here anymore.
 
 const tabs = [
   {
@@ -46,18 +45,6 @@ const tabs = [
     icon: User,
   },
   {
-    id: 'abonnement',
-    label: 'Abonnement',
-    description: 'Plan, facturation, portail',
-    icon: CreditCard,
-  },
-  {
-    id: 'paiements',
-    label: 'Paiements',
-    description: 'Acomptes Stripe, IBAN',
-    icon: Wallet,
-  },
-  {
     id: 'partage',
     label: 'Partage',
     description: 'QR code, liens, partage',
@@ -74,37 +61,35 @@ const tabs = [
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, provider } = useAuth();
-
-  // FIXME(deposits-launch): once FEATURE_FLAGS.depositsPublic flips to
-  // true, this filter becomes a no-op and can be removed. See
-  // lib/feature-flags.ts for the full launch checklist.
-  const visibleTabs = tabs.filter((t) =>
-    t.id === 'paiements' ? canUseDepositsClient(user) : true
-  );
 
   const tabFromUrl = searchParams.get('tab');
-  const validTab = visibleTabs.find((t) => t.id === tabFromUrl);
+
+  // Legacy redirect: `?tab=abonnement` / `?tab=paiements` were the
+  // old URLs that lived as tabs inside this page. Both are now
+  // dedicated routes — preserve every existing inbound link
+  // (emails, Stripe portal returns, deep links) by redirecting
+  // here. Preserves `?success=true` and the connect=return /
+  // refresh params Stripe Connect appends to the return URL.
+  useEffect(() => {
+    if (tabFromUrl !== 'abonnement' && tabFromUrl !== 'paiements') return;
+    const params = new URLSearchParams();
+    for (const [k, v] of searchParams.entries()) {
+      if (k !== 'tab') params.set(k, v);
+    }
+    const target =
+      tabFromUrl === 'abonnement' ? '/pro/abonnement' : '/pro/paiements';
+    const qs = params.toString();
+    router.replace(qs ? `${target}?${qs}` : target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabFromUrl]);
+
+  const validTab = tabs.find((t) => t.id === tabFromUrl);
   const [activeTab, setActiveTab] = useState(validTab?.id || 'reservation');
-
-  // Detect return from Stripe checkout success
-  const isCheckoutSuccess = searchParams.get('success') === 'true';
-  const [showSuccessModal, setShowSuccessModal] = useState(isCheckoutSuccess);
-
-  // Determine plan name and features for success modal
-  const providerPlan = provider?.plan as keyof typeof SUBSCRIPTION_PLANS | undefined;
-  const planConfig = providerPlan && providerPlan in SUBSCRIPTION_PLANS
-    ? SUBSCRIPTION_PLANS[providerPlan as 'solo' | 'team' | 'test']
-    : SUBSCRIPTION_PLANS.solo;
 
   // Sync URL → state
   useEffect(() => {
-    if (tabFromUrl && visibleTabs.some((t) => t.id === tabFromUrl)) {
+    if (tabFromUrl && tabs.some((t) => t.id === tabFromUrl)) {
       setActiveTab(tabFromUrl);
-    } else if (tabFromUrl === 'paiements' && !canUseDepositsClient(user)) {
-      // FIXME(deposits-launch): direct URL access fallback — remove with the gate
-      setActiveTab('reservation');
-      router.replace('/pro/parametres?tab=reservation', { scroll: false });
     }
   }, [tabFromUrl]);
 
@@ -113,7 +98,7 @@ export default function SettingsPage() {
     router.replace(`/pro/parametres?tab=${tabId}`, { scroll: false });
   };
 
-  const currentTab = visibleTabs.find((t) => t.id === activeTab) ?? visibleTabs[0];
+  const currentTab = tabs.find((t) => t.id === activeTab) ?? tabs[0];
 
   return (
     <div>
@@ -136,7 +121,7 @@ export default function SettingsPage() {
           {/* Sidebar navigation */}
           <nav className="lg:w-60 flex-shrink-0 bg-gray-50 dark:bg-gray-800/50 lg:border-r border-b lg:border-b-0 border-gray-200 dark:border-gray-700">
             <ul className="flex lg:flex-col gap-0 overflow-x-auto lg:overflow-x-visible p-2 lg:p-3">
-              {visibleTabs.map((tab) => {
+              {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
@@ -204,21 +189,11 @@ export default function SettingsPage() {
             {activeTab === 'reservation' && <ReservationSettingsForm />}
             {activeTab === 'notifications' && <NotificationsForm />}
             {activeTab === 'compte' && <AccountForm />}
-            {activeTab === 'abonnement' && <SubscriptionSection />}
-            {activeTab === 'paiements' && <PaymentsSection />}
             {activeTab === 'partage' && <ShareSection />}
             {activeTab === 'widget' && <WidgetSection />}
           </div>
         </div>
       </div>
-
-      {/* Success modal after Stripe checkout */}
-      <SubscriptionSuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        planName={planConfig.name}
-        planFeatures={[...planConfig.features]}
-      />
     </div>
   );
 }

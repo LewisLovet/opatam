@@ -157,8 +157,15 @@ export function PaymentsSection() {
 
   // Pre-flight conditions for activating the add-on
   const hasPaidSubscription = !!provider?.subscription?.stripeSubscriptionId;
+  // Pros are allowed to subscribe to Sérénité before finishing
+  // Stripe Connect KYC. We just warn them that no deposit will
+  // actually be charged until the Connect account is verified —
+  // this lets them queue everything up while the KYC is in review.
   const connectActive = status?.status === 'active';
-  const canToggleAddon = hasPaidSubscription && connectActive;
+  // Only the active main subscription is a hard prereq for adding
+  // the Sérénité item — Connect status is shown as a warning, not
+  // a block.
+  const canToggleAddon = hasPaidSubscription;
   const addonActive = !!provider?.depositsAddonActive;
 
   // ── Default deposit (acomptes par défaut) — applied to every service ──
@@ -413,7 +420,7 @@ export function PaymentsSection() {
             </p>
             {!hasPaidSubscription && (
               <Link
-                href="/pro/parametres?tab=abonnement"
+                href="/pro/abonnement"
                 className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mb-3 hover:underline"
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
@@ -421,10 +428,14 @@ export function PaymentsSection() {
               </Link>
             )}
             {hasPaidSubscription && !connectActive && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 inline-flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                Activez Stripe Connect ci-dessus d'abord
-              </p>
+              <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  Vous pouvez souscrire dès maintenant — les acomptes ne
+                  seront effectivement encaissés qu&apos;une fois votre compte
+                  Stripe vérifié.
+                </p>
+              </div>
             )}
             <button
               type="button"
@@ -462,6 +473,24 @@ export function PaymentsSection() {
                 </p>
               </div>
             </div>
+
+            {/* Subscribed but Connect not active yet — most likely
+                because the pro just signed up and Stripe is still
+                reviewing the KYC. Surface this clearly so they
+                don't think they can charge deposits already. */}
+            {!connectActive && (
+              <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2.5 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800 dark:text-amber-300">
+                  <p className="font-semibold">Compte Stripe non vérifié</p>
+                  <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                    Aucun acompte ne sera encaissé tant que Stripe n&apos;a pas
+                    fini de vérifier votre compte. Terminez l&apos;onboarding
+                    ci-dessus pour activer l&apos;encaissement.
+                  </p>
+                </div>
+              </div>
+            )}
             <button
               type="button"
               disabled={addonWorking}

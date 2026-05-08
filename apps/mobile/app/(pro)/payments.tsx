@@ -451,6 +451,36 @@ export default function PaymentsScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* Subscribed but Connect not yet active — most often
+                while Stripe is still reviewing the KYC. Make it
+                very clear no deposit is actually being charged
+                yet, so the pro doesn't think they're losing money
+                on no-shows that should have been covered. */}
+            {!connectActive && (
+              <View
+                style={[
+                  s.docsCallout,
+                  {
+                    backgroundColor: '#FEF3C7',
+                    borderColor: '#FDE68A',
+                    marginTop: spacing.md,
+                  },
+                ]}
+              >
+                <Text
+                  variant="caption"
+                  style={{ color: '#92400E', fontWeight: '700', marginBottom: 2 }}
+                >
+                  Compte Stripe non vérifié
+                </Text>
+                <Text variant="caption" style={{ color: '#92400E', lineHeight: 17 }}>
+                  Aucun acompte ne sera encaissé tant que Stripe n'a pas fini
+                  de vérifier votre compte. Terminez l'onboarding ci-dessus.
+                </Text>
+              </View>
+            )}
+
             <Pressable
               onPress={() => toggleAddon(false)}
               disabled={addonWorking}

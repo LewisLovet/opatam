@@ -130,7 +130,7 @@ export default function DashboardPage() {
             id: 'trial',
             message: `Période d'essai : ${daysRemaining} jours restants`,
             action: 'Voir les offres',
-            href: '/pro/parametres?tab=abonnement',
+            href: '/pro/abonnement',
             priority: daysRemaining <= 3 ? 'high' : 'medium',
           });
         }

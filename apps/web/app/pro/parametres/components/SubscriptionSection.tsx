@@ -365,8 +365,8 @@ function ChoosePlanSection({
           priceId,
           providerId,
           plan: selectedPrice?.plan ?? undefined,
-          successUrl: '/pro/parametres?tab=abonnement',
-          cancelUrl: '/pro/parametres?tab=abonnement',
+          successUrl: '/pro/abonnement',
+          cancelUrl: '/pro/abonnement',
         }),
       });
 

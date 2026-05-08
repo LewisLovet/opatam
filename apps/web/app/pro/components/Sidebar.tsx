@@ -22,6 +22,8 @@ import {
   Users,
   Sparkles,
   X as XIcon,
+  CreditCard,
+  Wallet,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDaysRemaining } from '@/lib/date-utils';
@@ -71,6 +73,23 @@ const navGroups: NavGroup[] = [
       { label: 'Mon activité', href: '/pro/activite', icon: <Briefcase className="w-5 h-5" /> },
       { label: 'Profil public', href: '/pro/profil', icon: <UserCircle className="w-5 h-5" /> },
       { label: 'Avis', href: '/pro/avis', icon: <Star className="w-5 h-5" /> },
+    ],
+  },
+  // Groupe 3: Facturation — extracted from Paramètres so the
+  // pro doesn't have to dig through tabs to reach their billing.
+  {
+    items: [
+      {
+        label: 'Abonnement',
+        href: '/pro/abonnement',
+        icon: <CreditCard className="w-5 h-5" />,
+      },
+      {
+        label: 'Paiements',
+        href: '/pro/paiements',
+        icon: <Wallet className="w-5 h-5" />,
+        newFeatureKey: 'payments-2026-05',
+      },
       { label: 'Paramètres', href: '/pro/parametres', icon: <Settings className="w-5 h-5" /> },
     ],
   },
@@ -93,7 +112,7 @@ function TrialBanner({ collapsed, provider }: { collapsed?: boolean; provider: a
   if (collapsed) {
     return (
       <Link
-        href="/pro/parametres?tab=abonnement"
+        href="/pro/abonnement"
         className={`flex items-center justify-center p-2 mx-1 rounded-xl ${isExpired || isUrgent ? 'bg-red-500/10' : isWarning ? 'bg-amber-500/10' : 'bg-emerald-500/10'}`}
         title={isExpired ? 'Essai expire' : `${daysLeft}j restants`}
       >
@@ -106,7 +125,7 @@ function TrialBanner({ collapsed, provider }: { collapsed?: boolean; provider: a
 
   return (
     <Link
-      href="/pro/parametres?tab=abonnement"
+      href="/pro/abonnement"
       className={`block p-3 mx-1 rounded-xl transition-colors ${isExpired || isUrgent ? 'bg-red-500/10 hover:bg-red-500/15' : isWarning ? 'bg-amber-500/10 hover:bg-amber-500/15' : 'bg-emerald-500/10 hover:bg-emerald-500/15'}`}
     >
       <div className="flex items-center justify-between mb-2">
