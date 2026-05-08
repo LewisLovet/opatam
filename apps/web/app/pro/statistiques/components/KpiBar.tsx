@@ -1,8 +1,7 @@
 'use client';
 
 import { ArrowDownRight, ArrowUpRight, Eye, Euro, Users, Calendar } from 'lucide-react';
-import { formatPrice } from '@booking-app/shared';
-import { deltaPercent, PERIOD_LABELS, type Period } from '../lib/period';
+import { deltaPercent, formatPrice, PERIOD_LABELS, type Period } from '@booking-app/shared';
 
 interface Props {
   period: Period;

@@ -4,6 +4,12 @@ export * from './providerStats';
 // Per-provider client base aggregation (CRM-lite). Same pattern,
 // fed by the same booking write trigger. See ./providerClients.ts.
 export * from './providerClients';
+// Stats period utilities (used by /pro/statistiques on web and the
+// equivalent screen on mobile — pure TS, no platform deps).
+export * from './statsPeriod';
+// Client-side roll-up helpers — sum daily/monthly docs into KPIs +
+// build continuous trend series for charts.
+export * from './statsAggregate';
 
 /**
  * Format price from cents to display string

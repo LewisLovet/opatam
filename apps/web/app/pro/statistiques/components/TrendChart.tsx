@@ -12,7 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useTheme } from '@/hooks/useTheme';
-import type { TrendPoint } from '../lib/aggregate';
+import type { TrendPoint } from '@booking-app/shared';
 
 export type ChartType = 'bar' | 'line';
 

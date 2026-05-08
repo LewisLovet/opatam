@@ -38,7 +38,17 @@ import type {
 } from '@booking-app/shared';
 import { Loader } from '@/components/ui';
 import { Sparkles } from 'lucide-react';
-import { formatPrice } from '@booking-app/shared';
+import {
+  buildContinuousTrend,
+  formatPrice,
+  periodBounds,
+  topServicesFromDailies,
+  totalsFromDailies,
+  totalsFromMonthlies,
+  trendFromDailies,
+  trendFromMonthlies,
+  type Period,
+} from '@booking-app/shared';
 import { PeriodPills } from './components/PeriodPills';
 import { KpiBar } from './components/KpiBar';
 import { TrendChart, type ChartType } from './components/TrendChart';
@@ -46,15 +56,6 @@ import { TopServicesPanel } from './components/TopServicesPanel';
 import { TopClientsPanel } from './components/TopClientsPanel';
 import { HeatmapPanel } from './components/HeatmapPanel';
 import { QualityIndicators } from './components/QualityIndicators';
-import { periodBounds, type Period } from './lib/period';
-import {
-  buildContinuousTrend,
-  topServicesFromDailies,
-  totalsFromDailies,
-  totalsFromMonthlies,
-  trendFromDailies,
-  trendFromMonthlies,
-} from './lib/aggregate';
 
 interface State {
   loading: boolean;

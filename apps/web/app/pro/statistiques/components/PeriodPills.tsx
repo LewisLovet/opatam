@@ -1,6 +1,6 @@
 'use client';
 
-import { PERIOD_LABELS, type Period } from '../lib/period';
+import { PERIOD_LABELS, type Period } from '@booking-app/shared';
 
 interface Props {
   value: Period;
