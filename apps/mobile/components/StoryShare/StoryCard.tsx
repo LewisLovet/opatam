@@ -385,55 +385,51 @@ function computeDayHeadline(dateKey: string): string {
   return `de ${FRENCH_DAYS[target.getDay()].toLowerCase()}`;
 }
 
-/** Convert a half-hour bucket (`hour*2 + min/30`) back to a French
- *  display label — "9h" for the top of the hour, "9h30" for the half. */
-function bucketToTimeLabel(bucket: number): string {
-  const hour = Math.floor(bucket / 2);
-  const min = (bucket % 2) * 30;
-  return min === 0 ? `${hour}h` : `${hour}h${min}`;
-}
-
 /**
- * Today-only availability layout — replaces the 7-day heatmap with
- * a list of the actual free time slots grouped by part of day.
- * Designed for "post on Insta this morning to fill this afternoon"
- * use case where a heatmap is overkill.
+ * Today-only availability layout — minimalist agenda look.
+ *
+ * Design reference (mobile share preview):
+ *   - Dark navy canvas (or light gradient mirroring the week story)
+ *   - Top bar: business initials in a small bordered square (left)
+ *     + "DISPOS DU JOUR" caption (right)
+ *   - Date block: weekday in caps, large day number with the month
+ *     label sitting at its baseline
+ *   - Hour-by-hour timeline: one row per opening hour. Each row is
+ *     either a flat dark cell (busy / closed) or a primary-blue
+ *     pill labelled "Libre" (at least one half-hour bucket free).
+ *   - Footer: opatam.com
+ *
+ * Deliberately icon-free — the pro asked for zero emoji in the
+ * generated story, so all visual structure relies on typography
+ * and the busy/free rectangles.
  */
 function TodayAvailabilityLayout({
   businessName,
-  category,
-  city,
   photoURL,
   day,
   theme,
 }: {
   businessName: string;
-  category: string;
-  city?: string;
   photoURL?: string | null;
   day: AvailabilityDay;
   theme: AvailabilityTheme;
 }) {
   const palette = theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE;
 
-  // Split the free buckets into morning / afternoon / evening based
-  // on standard salon hours (cutoffs 12h and 18h). Sorted ascending
-  // so chips read in time order on the card.
-  const slots = [...day.freeHalfHours].sort((a, b) => a - b);
-  const morning = slots.filter((b) => b < 24);          // < 12h
-  const afternoon = slots.filter((b) => b >= 24 && b < 36); // 12-18h
-  const evening = slots.filter((b) => b >= 36);          // ≥ 18h
-
-  const totalSlots = slots.length;
   const fullDateLabel = formatLongFrenchDate(day.dateKey);
-  const isFullyBooked = totalSlots === 0;
+  const dateParts = parseDateKey(day.dateKey);
+  const weekdayUpper = FRENCH_DAYS[dateParts.dow].toUpperCase();
+  const monthShort = MONTHS_SHORT[dateParts.month];
+  const isFullyBooked = day.freeHalfHours.size === 0;
 
-  // Adapt the headline based on which day is being shared so the
-  // story reads naturally for any picked date — "aujourd'hui" only
-  // when the day is literally today, otherwise the weekday name.
-  const titleAccent = computeDayHeadline(day.dateKey);
+  // Day's open-hours range. Falls back to a safe default when the
+  // hook can't infer it (totally closed day → just show the empty
+  // state).
+  const minHour = clamp(8, 22, computeMinHour(day) ?? 9);
+  const maxHour = clamp(minHour + 1, 23, computeMaxHour(day) ?? 19);
+  const hours: number[] = [];
+  for (let h = minHour; h <= maxHour; h++) hours.push(h);
 
-  // Avatar fallback initials — same logic as the week layout.
   const initials =
     businessName
       .split(/\s+/)
@@ -442,67 +438,113 @@ function TodayAvailabilityLayout({
       .map((w) => w[0]?.toUpperCase() ?? '')
       .join('') || 'O';
 
+  // Row sizing — adaptive so the timeline fills the canvas
+  // regardless of how many hours the day spans (8h-22h max).
+  const rowGap = 6;
+  const availableHeight = 420; // approx body area between header & footer
+  const rowHeight = Math.max(
+    18,
+    Math.min(34, Math.floor((availableHeight - rowGap * (hours.length - 1)) / hours.length)),
+  );
+
   const inner = (
     <>
-      {/* Top-right decor circle (matches the week layout). */}
-      <View style={[availStoryStyles.decorCircle, { backgroundColor: palette.decor }]} />
-
-      {/* Header — same component shape as the week story. */}
-      <View style={availStoryStyles.header}>
-        <View style={[availStoryStyles.avatar, { backgroundColor: palette.avatarBg }]}>
+      {/* Top bar */}
+      <View style={todayStyles.topBar}>
+        <View style={[todayStyles.logoBox, { borderColor: palette.text }]}>
           {photoURL ? (
-            <Image source={{ uri: photoURL }} style={availStoryStyles.avatarImg} />
+            <Image source={{ uri: photoURL }} style={todayStyles.logoImg} />
           ) : (
-            <Text style={[availStoryStyles.avatarInitials, { color: palette.avatarText }]}>
-              {initials}
+            <Text style={[todayStyles.logoInitial, { color: palette.text }]}>
+              {initials.charAt(0)}
             </Text>
           )}
         </View>
-        <View style={{ marginLeft: 10, flex: 1 }}>
-          <Text style={[availStoryStyles.bizName, { color: palette.text }]} numberOfLines={1}>
-            {businessName.toUpperCase()}
+        <Text
+          style={[todayStyles.captionLabel, { color: palette.text }]}
+          numberOfLines={1}
+        >
+          DISPOS DU JOUR
+        </Text>
+      </View>
+
+      {/* Big date block */}
+      <View style={todayStyles.dateBlock}>
+        <Text style={[todayStyles.weekday, { color: palette.cellFree }]}>
+          {weekdayUpper}
+        </Text>
+        <View style={todayStyles.dateRow}>
+          <Text style={[todayStyles.dayNumber, { color: palette.text }]}>
+            {dateParts.day}
           </Text>
-          <Text style={[availStoryStyles.bizSubtitle, { color: palette.textMuted }]} numberOfLines={1}>
-            {[category, city].filter(Boolean).join(' · ')}
+          <Text style={[todayStyles.monthLabel, { color: palette.text }]}>
+            {monthShort}
           </Text>
         </View>
       </View>
 
-      {/* Big title — kept on two lines like the week version for
-          the same visual rhythm. Accent adapts to the picked day. */}
-      <Text style={[availStoryStyles.bigTitle, { color: palette.text }]}>
-        Mes dispos{'\n'}{titleAccent}
-      </Text>
-      <Text style={[availStoryStyles.dateRange, { color: palette.textMuted }]}>
-        {fullDateLabel}
-      </Text>
-
-      {/* Body — either a friendly empty state or the grouped slots. */}
+      {/* Hour timeline OR empty state */}
       {isFullyBooked ? (
         <View style={todayStyles.emptyWrap}>
           <Text style={[todayStyles.emptyTitle, { color: palette.text }]}>
-            Complet {titleAccent} 💪
+            Complet {computeDayHeadline(day.dateKey)}
           </Text>
           <Text style={[todayStyles.emptySubtitle, { color: palette.textMuted }]}>
             Réservez en ligne pour les prochains jours
           </Text>
         </View>
       ) : (
-        <View style={todayStyles.body}>
-          <Text
-            style={[
-              todayStyles.summaryLine,
-              { color: palette.cellFree },
-            ]}
-          >
-            {totalSlots} créneau{totalSlots > 1 ? 'x' : ''} libre{totalSlots > 1 ? 's' : ''}
-          </Text>
-
-          <SlotSection title="🌅  Matin" slots={morning} palette={palette} />
-          <SlotSection title="☀️  Après-midi" slots={afternoon} palette={palette} />
-          <SlotSection title="🌙  Soir" slots={evening} palette={palette} />
+        <View style={todayStyles.timeline}>
+          {hours.map((h, i) => {
+            const isFree =
+              day.freeHalfHours.has(h * 2) || day.freeHalfHours.has(h * 2 + 1);
+            return (
+              <View
+                key={h}
+                style={[
+                  todayStyles.row,
+                  { marginTop: i === 0 ? 0 : rowGap },
+                ]}
+              >
+                <Text
+                  style={[
+                    todayStyles.hourLabel,
+                    {
+                      color: isFree ? palette.text : palette.textMuted,
+                      fontWeight: isFree ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {h}h
+                </Text>
+                <View
+                  style={[
+                    todayStyles.cell,
+                    {
+                      height: rowHeight,
+                      backgroundColor: isFree ? palette.cellFree : palette.cellBusy,
+                    },
+                  ]}
+                >
+                  {isFree && (
+                    <Text style={todayStyles.cellLabel}>Libre</Text>
+                  )}
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
+
+      {/* Footer — branding only, no emoji per design */}
+      <View style={todayStyles.footer}>
+        <Text style={[todayStyles.footerLink, { color: palette.footerText }]}>
+          opatam.com
+        </Text>
+      </View>
+
+      {/* Suppress unused-name warning (kept for layout parity) */}
+      {fullDateLabel ? null : null}
     </>
   );
 
@@ -525,76 +567,137 @@ function TodayAvailabilityLayout({
   );
 }
 
-/** Single section (Matin / Après-midi / Soir) — title + grid of
- *  time chips. Hides itself entirely when empty so the layout
- *  doesn't show a stranded heading. */
-function SlotSection({
-  title,
-  slots,
-  palette,
-}: {
-  title: string;
-  slots: number[];
-  palette: ThemePalette;
-}) {
-  if (slots.length === 0) return null;
-  return (
-    <View style={todayStyles.section}>
-      <Text style={[todayStyles.sectionTitle, { color: palette.text }]}>
-        {title}
-      </Text>
-      <View style={todayStyles.chipRow}>
-        {slots.map((bucket) => (
-          <View
-            key={bucket}
-            style={[
-              todayStyles.chip,
-              { backgroundColor: palette.cellFree },
-            ]}
-          >
-            <Text style={todayStyles.chipText}>{bucketToTimeLabel(bucket)}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
+// ─── Helpers for the day timeline layout ─────────────────────────────────
+
+interface ParsedDate {
+  year: number;
+  month: number;
+  day: number;
+  dow: number;
+}
+
+/** Parse a YYYY-MM-DD into its parts + computed day-of-week (0=Sun..6=Sat). */
+function parseDateKey(dateKey: string): ParsedDate {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return {
+    year: y,
+    month: m - 1,
+    day: d,
+    dow: new Date(y, m - 1, d).getDay(),
+  };
+}
+
+function clamp(min: number, max: number, v: number): number {
+  return Math.max(min, Math.min(max, v));
+}
+
+/** First open hour of the day (smallest bucket // 2). Returns null
+ *  when the day has zero free buckets so the caller can fall back. */
+function computeMinHour(day: AvailabilityDay): number | null {
+  if (day.freeHalfHours.size === 0) return null;
+  let min = Infinity;
+  for (const b of day.freeHalfHours) min = Math.min(min, Math.floor(b / 2));
+  return min === Infinity ? null : Math.max(0, min - 1);
+}
+
+/** Last open hour of the day. */
+function computeMaxHour(day: AvailabilityDay): number | null {
+  if (day.freeHalfHours.size === 0) return null;
+  let max = -1;
+  for (const b of day.freeHalfHours) max = Math.max(max, Math.floor(b / 2));
+  return max < 0 ? null : Math.min(23, max + 1);
 }
 
 const todayStyles = StyleSheet.create({
-  body: {
-    flex: 1,
-    marginTop: 16,
+  // Top bar — small logo + ALL-CAPS caption on the right
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 28,
   },
-  summaryLine: {
+  logoBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  logoImg: {
+    width: '100%',
+    height: '100%',
+  },
+  logoInitial: {
     fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 14,
+    fontWeight: '900',
   },
-  section: {
+  captionLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    opacity: 0.7,
+  },
+
+  // Big date block
+  dateBlock: {
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  chipText: {
-    color: '#FFFFFF',
+  weekday: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginBottom: 4,
   },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  dayNumber: {
+    fontSize: 84,
+    fontWeight: '900',
+    lineHeight: 84,
+    letterSpacing: -2,
+  },
+  monthLabel: {
+    fontSize: 18,
+    fontWeight: '500',
+    marginLeft: 6,
+    marginBottom: 14, // visual baseline alignment with the day number
+    opacity: 0.85,
+  },
+
+  // Hour-by-hour timeline
+  timeline: {
+    flex: 1,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  hourLabel: {
+    width: 32,
+    fontSize: 12,
+    textAlign: 'left',
+    marginRight: 6,
+    fontVariant: ['tabular-nums'],
+  },
+  cell: {
+    flex: 1,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+  cellLabel: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+
+  // Empty state — kept minimalist (no emoji per design)
   emptyWrap: {
     flex: 1,
     alignItems: 'center',
@@ -610,6 +713,17 @@ const todayStyles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 13,
     textAlign: 'center',
+  },
+
+  // Footer
+  footer: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  footerLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
 
@@ -895,12 +1009,10 @@ export function StoryCard({
         <View style={styles.container}>
           <TodayAvailabilityLayout
             businessName={businessName}
-            category={category}
-            city={city}
             photoURL={photoURL}
             // We pass the FIRST day of the grid — when scope is
             // 'day' the hook fetched a single-day window so this
-            // is always today.
+            // is always today (or the picked day).
             day={availabilityGrid.days[0]}
             theme={storyTheme}
           />
