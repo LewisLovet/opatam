@@ -536,6 +536,10 @@ const FEATURE_DISPLAY_LABELS: Record<NewFeatureKey, string> = {
   'clients-2026-05': 'Clients',
   'stats-2026-05': 'Statistiques',
   'payments-2026-05': 'Paiements',
+  // Story share lives on the home tab itself (FAB), not behind
+  // Plus — the home banner never references it, but the map still
+  // needs every key for type-completeness.
+  'story-share-2026-05': 'Stories',
 };
 
 /** "A, B et C" — French enumeration with proper "et" before the

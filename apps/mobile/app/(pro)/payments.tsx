@@ -43,13 +43,15 @@ const BASE_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://opatam.com';
  *  will pick one of these, the custom input remains for the rest. */
 const PERCENT_PRESETS = [10, 20, 30, 50, 100];
 
-/** Refund-window presets in hours. Day-based labels because pros
- *  think in days, not hours, even when the rule is "24h before". */
+/** Refund-window presets in hours.
+ *  `0` is a special "off" value — interpreted server-side as "no
+ *  automatic refund, the deposit is always kept on cancellation".
+ *  Hence the explicit "Jamais" label rather than "0h". */
 const HOURS_PRESETS: { value: number; label: string }[] = [
-  { value: 0, label: 'Aucun' },
-  { value: 24, label: '24h' },
-  { value: 48, label: '48h' },
-  { value: 72, label: '72h' },
+  { value: 0, label: 'Jamais' },
+  { value: 24, label: '24h avant' },
+  { value: 48, label: '48h avant' },
+  { value: 72, label: '72h avant' },
 ];
 
 export default function PaymentsScreen() {
@@ -576,7 +578,7 @@ export default function PaymentsScreen() {
                     fontWeight: '600',
                   }}
                 >
-                  Remboursement automatique avant le RDV
+                  Acompte remboursé si annulation
                 </Text>
                 <View style={s.chipRow}>
                   {HOURS_PRESETS.map((h) => {
@@ -628,11 +630,17 @@ export default function PaymentsScreen() {
                       placeholderTextColor={colors.textMuted}
                       maxLength={3}
                     />
-                    <Text style={[s.customInputSuffix, { color: colors.textMuted }]}>h</Text>
+                    <Text style={[s.customInputSuffix, { color: colors.textMuted }]}>h avant</Text>
                   </View>
                 </View>
-                <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
-                  « Aucun » = pas de remboursement automatique côté client.
+                <Text
+                  variant="caption"
+                  color="textSecondary"
+                  style={{ marginTop: spacing.sm, lineHeight: 17 }}
+                >
+                  {Number(hours) === 0
+                    ? "L'acompte est conservé en cas d'annulation, peu importe le délai."
+                    : `Si votre client annule au moins ${formatHours(Number(hours))} avant son RDV, son acompte lui est automatiquement remboursé. Au-delà du délai, vous conservez l'acompte.`}
                 </Text>
               </View>
             </View>
@@ -661,6 +669,23 @@ export default function PaymentsScreen() {
       </ScrollView>
     </View>
   );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Hours → human-friendly French duration. Pros think in days past
+ * 24 hours, so we switch to "1 jour" / "2 jours" / "3 jours" etc.
+ * for any clean multiple. Falls back to "Xh" for awkward values
+ * (e.g. 36, 60).
+ */
+function formatHours(h: number): string {
+  if (!Number.isFinite(h) || h <= 0) return '0h';
+  if (h % 24 === 0) {
+    const days = h / 24;
+    return days === 1 ? '1 jour' : `${days} jours`;
+  }
+  return `${h}h`;
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────
