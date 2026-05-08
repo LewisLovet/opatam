@@ -290,6 +290,36 @@ export default function PaymentsScreen() {
               ? 'Vous pouvez accepter des acomptes. Les fonds sont versés directement sur votre IBAN.'
               : 'Activez Stripe pour pouvoir encaisser des acomptes au moment de la réservation.'}
           </Text>
+
+          {/* Required-docs callout — surfaces the SIRET requirement
+              up-front so the pro doesn't get stuck mid-onboarding
+              on Stripe's hosted form without the right paperwork.
+              Only shown while Connect is not yet active. */}
+          {!connectActive && (
+            <View
+              style={[
+                s.docsCallout,
+                {
+                  backgroundColor: '#FEF3C7',
+                  borderColor: '#FDE68A',
+                  marginTop: spacing.md,
+                },
+              ]}
+            >
+              <Text
+                variant="caption"
+                style={{ color: '#92400E', fontWeight: '700', marginBottom: 4 }}
+              >
+                À avoir sous la main
+              </Text>
+              <Text variant="caption" style={{ color: '#92400E', lineHeight: 18 }}>
+                Une pièce d'identité, votre IBAN, et un{' '}
+                <Text style={{ color: '#92400E', fontWeight: '700' }}>SIRET</Text>{' '}
+                valide (votre numéro d'entreprise).
+              </Text>
+            </View>
+          )}
+
           <Pressable
             onPress={openWeb}
             style={({ pressed }) => [
@@ -903,6 +933,14 @@ const s = StyleSheet.create({
     gap: 6,
     alignSelf: 'flex-start',
     paddingVertical: 6,
+  },
+  // Amber callout listing the documents required for Stripe Connect
+  // KYC. Visible while the pro hasn't activated Connect yet.
+  docsCallout: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
   },
 
   // Sérénité — non-subscribed product card
