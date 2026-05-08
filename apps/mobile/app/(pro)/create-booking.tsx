@@ -313,7 +313,22 @@ export default function CreateBookingScreen() {
   const { providerId } = useProvider();
   const { user } = useAuth();
   const sub = useSubscriptionStatus();
-  const { date: dateParam, memberId: memberIdParam } = useLocalSearchParams<{ date?: string; memberId?: string }>();
+  // Pre-fill identity step when launched from /pro/client-detail
+  // — `clientName/Email/Phone` arrive URL-encoded by expo-router
+  // and are decoded automatically here.
+  const {
+    date: dateParam,
+    memberId: memberIdParam,
+    clientName: clientNameParam,
+    clientEmail: clientEmailParam,
+    clientPhone: clientPhoneParam,
+  } = useLocalSearchParams<{
+    date?: string;
+    memberId?: string;
+    clientName?: string;
+    clientEmail?: string;
+    clientPhone?: string;
+  }>();
 
   // Subscription guard — show modal if trial expired
   const [showSubModal, setShowSubModal] = useState(false);
@@ -404,9 +419,12 @@ export default function CreateBookingScreen() {
   });
 
   // -- Step 3 -----------------------------------------------------------------
-  const [clientName, setClientName] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
+  // Pre-filled from URL params when launched from a client fiche
+  // (see /pro/client-detail/[key]). Plain string defaults — empty
+  // params resolve to '' so the controlled inputs stay valid.
+  const [clientName, setClientName] = useState(clientNameParam ?? '');
+  const [clientEmail, setClientEmail] = useState(clientEmailParam ?? '');
+  const [clientPhone, setClientPhone] = useState(clientPhoneParam ?? '');
   const [notes, setNotes] = useState('');
 
   // -- Step 4 -----------------------------------------------------------------

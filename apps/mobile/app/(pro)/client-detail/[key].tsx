@@ -1,0 +1,801 @@
+/**
+ * /pro/client-detail/[key] — fiche client (mobile).
+ *
+ * Mirrors the web ClientDrawer but as a full-screen route — touch
+ * UI prefers a top-level screen with native back over a slide-in
+ * panel that competes with the OS's swipe-back gesture.
+ *
+ * Sections (top to bottom):
+ *   - Identity card (avatar lg + name + tags + email + phone)
+ *   - KPIs grid + dates + fréquence
+ *   - Services préférés (top 3, derived from history)
+ *   - Notes privées (TextInput multiline, save with the footer
+ *     "Enregistrer" CTA)
+ *   - Préférences key/value (add / edit / remove rows inline)
+ *   - Marketing placeholder ("en cours de développement")
+ *   - Historique des RDV (each row taps into booking-detail)
+ *
+ * Sticky footer:
+ *   - "Nouveau RDV" → opens create-booking pre-filled with
+ *     name/email/phone via expo-router params
+ *   - "Enregistrer" → patches notes + preferences via the
+ *     repository; shown disabled when nothing changed.
+ */
+
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../theme';
+import { Text, Card, Avatar, Badge, Button, useToast } from '../../../components';
+import { useProvider } from '../../../contexts';
+import {
+  bookingRepository,
+  providerClientRepository,
+  type WithId,
+} from '@booking-app/firebase';
+import type {
+  Booking,
+  BookingStatus,
+  ProviderClient,
+} from '@booking-app/shared';
+import {
+  TAG_META_BY_VALUE,
+  formatRevenue,
+} from '../../../components/business/Clients/tagMeta';
+
+const STATUS_LABEL: Record<BookingStatus, string> = {
+  pending: 'En attente',
+  pending_payment: 'Paiement',
+  confirmed: 'Confirmé',
+  cancelled: 'Annulé',
+  noshow: 'Absent',
+};
+
+const STATUS_COLOR: Record<BookingStatus, string> = {
+  pending: '#F59E0B',
+  pending_payment: '#F59E0B',
+  confirmed: '#10B981',
+  cancelled: '#9CA3AF',
+  noshow: '#EF4444',
+};
+
+export default function ClientDetailScreen() {
+  const { colors, spacing } = useTheme();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { showToast } = useToast();
+  const { provider } = useProvider();
+
+  // Expo router URL-decodes the param so values like `email:foo@bar.com`
+  // arrive intact.
+  const { key: rawKey } = useLocalSearchParams<{ key: string }>();
+  const clientKey = typeof rawKey === 'string' ? rawKey : '';
+
+  // Source of truth — the doc itself. Loaded once on mount via the
+  // repo's bulk-by-keys path so we get a consistent shape with the
+  // list page.
+  const [client, setClient] = useState<WithId<ProviderClient> | null>(null);
+  const [docLoading, setDocLoading] = useState(true);
+
+  // Bookings — fed by getByClient/getByClientEmail then scoped to
+  // this provider. Used for the history list AND derived stats
+  // (services préférés).
+  const [bookings, setBookings] = useState<WithId<Booking>[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  // Editable state.
+  const [notes, setNotes] = useState('');
+  const [prefs, setPrefs] = useState<Array<{ key: string; value: string }>>([]);
+  const [saving, setSaving] = useState(false);
+  const baselineRef = useRef<{ notes: string; prefs: string }>({
+    notes: '',
+    prefs: '[]',
+  });
+
+  // ── Load doc + history when the route mounts ───────────────────
+  useEffect(() => {
+    if (!provider?.id || !clientKey) return;
+    let cancelled = false;
+
+    (async () => {
+      setDocLoading(true);
+      try {
+        const map = await providerClientRepository.getByKeys(provider.id, [
+          clientKey,
+        ]);
+        const doc = map.get(clientKey) ?? null;
+        if (cancelled) return;
+        setClient(doc);
+        const initialNotes = doc?.notes ?? '';
+        const initialPrefs = doc?.preferences
+          ? Object.entries(doc.preferences).map(([k, v]) => ({ key: k, value: v }))
+          : [];
+        setNotes(initialNotes);
+        setPrefs(initialPrefs);
+        baselineRef.current = {
+          notes: initialNotes,
+          prefs: JSON.stringify(initialPrefs),
+        };
+      } catch (err) {
+        console.error('[ClientDetail] load doc:', err);
+        if (!cancelled) showToast({ message: 'Impossible de charger la fiche', variant: 'error' });
+      } finally {
+        if (!cancelled) setDocLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [provider?.id, clientKey]);
+
+  // Booking history — second effect so the doc shows up first and
+  // the history loads in parallel without blocking the avatar/KPIs.
+  useEffect(() => {
+    if (!provider?.id || !client) return;
+    let cancelled = false;
+
+    (async () => {
+      setHistoryLoading(true);
+      try {
+        let raw: WithId<Booking>[] = [];
+        if (client.clientId) {
+          raw = await bookingRepository.getByClient(client.clientId);
+        } else if (client.email) {
+          raw = await bookingRepository.getByClientEmail(client.email);
+        }
+        const scoped = raw.filter((b) => b.providerId === provider.id);
+        if (!cancelled) setBookings(scoped);
+      } catch (err) {
+        console.error('[ClientDetail] load history:', err);
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [provider?.id, client?.id]);
+
+  const isDirty = useMemo(() => {
+    return (
+      notes !== baselineRef.current.notes ||
+      JSON.stringify(prefs) !== baselineRef.current.prefs
+    );
+  }, [notes, prefs]);
+
+  const frequencyLabel = useMemo(
+    () => (client ? computeFrequency(client) : null),
+    [client?.confirmedCount, client?.firstBookingAt, client?.lastBookingAt],
+  );
+
+  const topServices = useMemo(
+    () => computeTopServices(bookings),
+    [bookings],
+  );
+
+  // ── Save ────────────────────────────────────────────────────────
+  const handleSave = async () => {
+    if (!isDirty || !client || !provider?.id) return;
+    setSaving(true);
+    try {
+      const prefMap = prefs.reduce<Record<string, string>>((acc, p) => {
+        const k = p.key.trim();
+        if (k) acc[k] = p.value;
+        return acc;
+      }, {});
+      const trimmedNotes = notes.trim();
+      const patch = {
+        notes: trimmedNotes ? trimmedNotes : null,
+        preferences: Object.keys(prefMap).length > 0 ? prefMap : null,
+      };
+      await providerClientRepository.updateNotes(
+        provider.id,
+        client.clientKey,
+        patch,
+      );
+      setClient((c) => (c ? { ...c, ...patch } : c));
+      baselineRef.current = {
+        notes,
+        prefs: JSON.stringify(prefs),
+      };
+      showToast({ message: 'Modifications enregistrées', variant: 'success' });
+    } catch (err) {
+      console.error('[ClientDetail] save:', err);
+      showToast({ message: "Échec de l'enregistrement", variant: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── New booking pre-filled ──────────────────────────────────────
+  const handleCreateBooking = () => {
+    if (!client) return;
+    router.push({
+      pathname: '/(pro)/create-booking',
+      params: {
+        clientName: client.name ?? '',
+        clientEmail: client.email ?? '',
+        clientPhone: client.phone ?? '',
+      },
+    } as any);
+  };
+
+  // ── Render ─────────────────────────────────────────────────────
+  if (docLoading) {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!client) {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background, paddingHorizontal: spacing.xl }]}>
+        <Text variant="body" color="textSecondary" style={{ textAlign: 'center', marginBottom: spacing.md }}>
+          Cette fiche client est introuvable.
+        </Text>
+        <Button variant="ghost" onPress={() => router.back()} title="Retour" />
+      </View>
+    );
+  }
+
+  const fullName = client.name || 'Client sans nom';
+  const confirmRate =
+    client.bookingsCount > 0
+      ? Math.round((client.confirmedCount / client.bookingsCount) * 100)
+      : null;
+  const noshowRate =
+    client.bookingsCount > 0
+      ? Math.round((client.noshowCount / client.bookingsCount) * 100)
+      : null;
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
+    >
+      {/* Header */}
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + spacing.sm,
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.md,
+            borderBottomColor: colors.border,
+            backgroundColor: colors.surface,
+          },
+        ]}
+      >
+        <View style={styles.headerRow}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+            hitSlop={10}
+          >
+            <Ionicons name="chevron-back" size={26} color={colors.text} />
+          </Pressable>
+          <Text variant="h3" style={{ fontWeight: '600' }} numberOfLines={1}>
+            {fullName}
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.xl + 80,
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Identity */}
+        <Card padding="md" style={{ marginBottom: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <Avatar imageUrl={client.photoURL} name={fullName} size="lg" />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text variant="h3" style={{ fontWeight: '700' }} numberOfLines={1}>
+                {fullName}
+              </Text>
+              {client.tags.length > 0 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {client.tags.map((tag) => {
+                    const meta = TAG_META_BY_VALUE[tag];
+                    return (
+                      <Badge
+                        key={tag}
+                        label={meta.shortLabel}
+                        variant={meta.variant}
+                        size="sm"
+                      />
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {(client.email || client.phone) && (
+            <View style={{ marginTop: spacing.md, gap: 6 }}>
+              {client.email && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="mail-outline" size={16} color={colors.textMuted} />
+                  <Text variant="bodySmall" style={{ color: colors.text, flex: 1 }} numberOfLines={1}>
+                    {client.email}
+                  </Text>
+                </View>
+              )}
+              {client.phone && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="call-outline" size={16} color={colors.textMuted} />
+                  <Text variant="bodySmall" style={{ color: colors.text }}>
+                    {client.phone}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </Card>
+
+        {/* KPIs */}
+        <SectionTitle text="Vue d'ensemble" colors={colors} spacing={spacing} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md }}>
+          <KpiCard label="Réservations" value={client.bookingsCount.toString()} colors={colors} />
+          <KpiCard label="CA cumulé" value={formatRevenue(client.totalRevenue)} colors={colors} />
+          <KpiCard
+            label="Confirmation"
+            value={confirmRate != null ? `${confirmRate}%` : '—'}
+            colors={colors}
+          />
+          <KpiCard
+            label="No-show"
+            value={noshowRate != null ? `${noshowRate}%` : '—'}
+            colors={colors}
+          />
+          <KpiCard label="Première visite" value={formatLongDate(client.firstBookingAt)} colors={colors} />
+          <KpiCard label="Dernière visite" value={formatLongDate(client.lastBookingAt)} colors={colors} />
+          <KpiCard label="Fréquence" value={frequencyLabel ?? '—'} colors={colors} />
+        </View>
+
+        {/* Services préférés */}
+        <SectionTitle text="Services préférés" colors={colors} spacing={spacing} />
+        {historyLoading ? (
+          <Text variant="bodySmall" color="textSecondary">
+            Calcul en cours…
+          </Text>
+        ) : topServices.length === 0 ? (
+          <Text variant="bodySmall" color="textSecondary">
+            Pas encore assez de données pour identifier des préférences.
+          </Text>
+        ) : (
+          <View style={{ gap: 8, marginBottom: spacing.md }}>
+            {topServices.map((s, i) => (
+              <Card key={s.name} padding="md">
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                  <View
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      backgroundColor: colors.primaryLight || '#e4effa',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {i === 0 ? (
+                      <Ionicons name="sparkles" size={14} color={colors.primary} />
+                    ) : (
+                      <Text variant="caption" style={{ color: colors.primary, fontWeight: '700' }}>
+                        {i + 1}
+                      </Text>
+                    )}
+                  </View>
+                  <Text variant="body" style={{ flex: 1, fontWeight: '500' }} numberOfLines={1}>
+                    {s.name}
+                  </Text>
+                  <Text variant="bodySmall" color="textSecondary">
+                    {s.count} fois
+                  </Text>
+                </View>
+              </Card>
+            ))}
+          </View>
+        )}
+
+        {/* Notes */}
+        <SectionTitle text="Notes privées" colors={colors} spacing={spacing} />
+        <Card padding="md" style={{ marginBottom: spacing.md }}>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Allergies, préférences de coupe, anniversaire…"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            style={{
+              color: colors.text,
+              fontSize: 14,
+              minHeight: 80,
+              textAlignVertical: 'top',
+              paddingVertical: 0,
+            }}
+          />
+          <Text variant="caption" color="textSecondary" style={{ marginTop: 6 }}>
+            Privé — visible seulement par votre équipe.
+          </Text>
+        </Card>
+
+        {/* Preferences */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: spacing.xs,
+          }}
+        >
+          <Text
+            variant="label"
+            color="textSecondary"
+            style={{
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            Préférences
+          </Text>
+          <Pressable
+            onPress={() => setPrefs((p) => [...p, { key: '', value: '' }])}
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.6 : 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+            })}
+            hitSlop={6}
+          >
+            <Ionicons name="add" size={16} color={colors.primary} />
+            <Text variant="bodySmall" style={{ color: colors.primary, fontWeight: '600' }}>
+              Ajouter
+            </Text>
+          </Pressable>
+        </View>
+        {prefs.length === 0 ? (
+          <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: spacing.md }}>
+            Aucune préférence enregistrée.
+          </Text>
+        ) : (
+          <View style={{ gap: 6, marginBottom: spacing.md }}>
+            {prefs.map((p, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TextInput
+                  value={p.key}
+                  onChangeText={(v) =>
+                    setPrefs((arr) => {
+                      const next = [...arr];
+                      next[i] = { ...next[i], key: v };
+                      return next;
+                    })
+                  }
+                  placeholder="Clé"
+                  placeholderTextColor={colors.textMuted}
+                  style={[
+                    styles.prefInput,
+                    { borderColor: colors.border, color: colors.text, flex: 1 },
+                  ]}
+                />
+                <TextInput
+                  value={p.value}
+                  onChangeText={(v) =>
+                    setPrefs((arr) => {
+                      const next = [...arr];
+                      next[i] = { ...next[i], value: v };
+                      return next;
+                    })
+                  }
+                  placeholder="Valeur"
+                  placeholderTextColor={colors.textMuted}
+                  style={[
+                    styles.prefInput,
+                    { borderColor: colors.border, color: colors.text, flex: 2 },
+                  ]}
+                />
+                <Pressable
+                  onPress={() =>
+                    setPrefs((arr) => arr.filter((_, idx) => idx !== i))
+                  }
+                  hitSlop={8}
+                  style={({ pressed }) => ({
+                    padding: 6,
+                    opacity: pressed ? 0.5 : 1,
+                  })}
+                >
+                  <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Marketing placeholder */}
+        <Card
+          padding="md"
+          style={{
+            marginBottom: spacing.md,
+            borderStyle: 'dashed',
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Ionicons name="megaphone-outline" size={20} color={colors.textMuted} />
+            <View style={{ flex: 1 }}>
+              <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+                Fonctionnalités marketing
+              </Text>
+              <Text variant="caption" color="textSecondary">
+                En cours de développement — bientôt disponibles.
+              </Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* History */}
+        <SectionTitle text="Historique des réservations" colors={colors} spacing={spacing} />
+        {historyLoading ? (
+          <Text variant="bodySmall" color="textSecondary">
+            Chargement…
+          </Text>
+        ) : bookings.length === 0 ? (
+          <Text variant="bodySmall" color="textSecondary">
+            Aucune réservation dans l'historique.
+          </Text>
+        ) : (
+          <View style={{ gap: 8 }}>
+            {bookings.map((b) => (
+              <Pressable
+                key={b.id}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(pro)/booking-detail/[id]',
+                    params: { id: b.id },
+                  } as any)
+                }
+              >
+                {({ pressed }) => (
+                  <Card padding="md" style={{ opacity: pressed ? 0.85 : 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
+                      <Ionicons name="calendar-outline" size={16} color={colors.textMuted} style={{ marginTop: 2 }} />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <Text variant="bodySmall" style={{ fontWeight: '600' }} numberOfLines={1}>
+                            {b.serviceName}
+                          </Text>
+                          <Text
+                            variant="caption"
+                            style={{ color: STATUS_COLOR[b.status] }}
+                          >
+                            · {STATUS_LABEL[b.status]}
+                          </Text>
+                        </View>
+                        <Text variant="caption" color="textSecondary">
+                          {formatBookingDate(b.datetime)}
+                          {b.memberName ? ` · ${b.memberName}` : ''}
+                        </Text>
+                      </View>
+                      <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+                        {b.price > 0 ? formatRevenue(b.price) : '—'}
+                      </Text>
+                    </View>
+                  </Card>
+                )}
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Sticky footer */}
+      <View
+        style={{
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.sm,
+          paddingBottom: insets.bottom + spacing.sm,
+          backgroundColor: colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          flexDirection: 'row',
+          gap: spacing.sm,
+        }}
+      >
+        <Button
+          variant="primary"
+          onPress={handleCreateBooking}
+          title="Nouveau RDV"
+          style={{ flex: 1 }}
+        />
+        <Button
+          variant={isDirty ? 'primary' : 'ghost'}
+          onPress={handleSave}
+          disabled={!isDirty || saving}
+          title={saving ? '…' : 'Enregistrer'}
+          style={{ flex: 1 }}
+        />
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+// ─── Sub-components ──────────────────────────────────────────────
+
+function SectionTitle({
+  text,
+  colors,
+  spacing,
+}: {
+  text: string;
+  colors: any;
+  spacing: any;
+}) {
+  return (
+    <Text
+      variant="label"
+      color="textSecondary"
+      style={{
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: spacing.xs,
+      }}
+    >
+      {text}
+    </Text>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  colors,
+}: {
+  label: string;
+  value: string;
+  colors: any;
+}) {
+  return (
+    <View
+      style={{
+        flexBasis: '48%',
+        flexGrow: 1,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 10,
+        backgroundColor: colors.surface,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+      }}
+    >
+      <Text
+        variant="caption"
+        color="textSecondary"
+        style={{
+          textTransform: 'uppercase',
+          letterSpacing: 0.4,
+          fontSize: 10,
+        }}
+      >
+        {label}
+      </Text>
+      <Text variant="body" style={{ fontWeight: '700', marginTop: 2 }}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────
+
+function formatLongDate(d: Date | null): string {
+  if (!d || d.getTime() === 0) return '—';
+  return d.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: '2-digit',
+  });
+}
+
+function formatBookingDate(d: Date): string {
+  return (
+    d.toLocaleDateString('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    }) +
+    ' · ' +
+    d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  );
+}
+
+/**
+ * Average gap between two confirmed visits, in human terms.
+ * Returns null when we don't have enough data — same logic as the
+ * web ClientDrawer so the two surfaces agree.
+ */
+function computeFrequency(client: ProviderClient): string | null {
+  if (
+    client.confirmedCount < 2 ||
+    !client.firstBookingAt ||
+    !client.lastBookingAt
+  ) {
+    return null;
+  }
+  const spanMs =
+    client.lastBookingAt.getTime() - client.firstBookingAt.getTime();
+  if (spanMs <= 0) return null;
+  const avgDays = Math.round(
+    spanMs / (1000 * 60 * 60 * 24) / (client.confirmedCount - 1),
+  );
+  if (avgDays < 7) return `Tous les ${avgDays} j`;
+  if (avgDays < 60) return `Toutes les ${Math.round(avgDays / 7)} sem`;
+  if (avgDays < 720) return `Tous les ${Math.round(avgDays / 30)} mois`;
+  return `Tous les ${Math.round(avgDays / 365)} ans`;
+}
+
+function computeTopServices(
+  bookings: WithId<Booking>[],
+): Array<{ name: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const b of bookings) {
+    if (b.status === 'cancelled') continue;
+    const name = (b.serviceName || '').trim();
+    if (!name) continue;
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+}
+
+const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  header: {
+    borderBottomWidth: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  prefInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+  },
+});
