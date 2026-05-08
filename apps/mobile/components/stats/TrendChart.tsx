@@ -98,13 +98,27 @@ export function TrendChart({
   const innerW = Math.max(0, width - PADDING_LEFT - PADDING_RIGHT);
   const innerH = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
 
+  // Positioning differs between bar and line modes:
+  //  - LINE: points sit AT the edges (first at PADDING_LEFT, last at
+  //    PADDING_LEFT + innerW) so the curve spans the full width.
+  //  - BAR: bars sit in EQUAL SLOTS across innerW; each bar is centered
+  //    at slot/2 increments. With 7 bars the first center is offset by
+  //    slot/2 from the left so the bar isn't half-cut by the chart's
+  //    left edge, and the last is offset by slot/2 from the right so
+  //    it doesn't overflow either. This is the fix for the "7-day
+  //    chart looks bunched up against the left" issue.
   const xForIndex = React.useCallback(
     (i: number) => {
-      if (data.length <= 1) return PADDING_LEFT + innerW / 2;
+      if (data.length === 0) return PADDING_LEFT;
+      if (chartType === 'bar') {
+        const slot = innerW / data.length;
+        return PADDING_LEFT + (i + 0.5) * slot;
+      }
+      if (data.length === 1) return PADDING_LEFT + innerW / 2;
       const step = innerW / (data.length - 1);
       return PADDING_LEFT + step * i;
     },
-    [data.length, innerW],
+    [data.length, innerW, chartType],
   );
   const yForValue = React.useCallback(
     (v: number) => PADDING_TOP + innerH - (v / max) * innerH,
@@ -112,16 +126,24 @@ export function TrendChart({
   );
 
   // ── Touch handling — tap / pan to expose tooltips ──────────────
+  // Uses the same positioning model as `xForIndex` so the tooltip
+  // snaps to whatever the user is actually touching (slot-based in
+  // bar mode, point-based in line mode).
   const indexFromTouch = React.useCallback(
     (locationX: number): number => {
-      // Clamp into the plot area, then map to nearest bucket index.
       const xInPlot = Math.max(0, Math.min(innerW, locationX - PADDING_LEFT));
-      if (data.length <= 1) return 0;
+      if (data.length === 0) return 0;
+      if (chartType === 'bar') {
+        const slot = innerW / data.length;
+        const raw = Math.floor(xInPlot / slot);
+        return Math.max(0, Math.min(data.length - 1, raw));
+      }
+      if (data.length === 1) return 0;
       const step = innerW / (data.length - 1);
       const raw = Math.round(xInPlot / step);
       return Math.max(0, Math.min(data.length - 1, raw));
     },
-    [data.length, innerW],
+    [data.length, innerW, chartType],
   );
 
   const panResponder = React.useMemo(

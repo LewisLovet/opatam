@@ -7,7 +7,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -23,34 +23,17 @@ import { TopClientsPanel } from '../../components/stats/TopClientsPanel';
 import { QualityIndicators } from '../../components/stats/QualityIndicators';
 import { HeatmapPanel } from '../../components/stats/HeatmapPanel';
 import { useProvider } from '../../contexts';
-import { useProviderDashboard, useProviderStats } from '../../hooks';
+import { useProviderStats } from '../../hooks';
 import { useTheme } from '../../theme';
-import { analyticsService } from '@booking-app/firebase';
-import {
-  deltaPercent,
-  PERIOD_LABELS,
-  type PageViewStats,
-  type Period,
-} from '@booking-app/shared';
+import { deltaPercent, PERIOD_LABELS, type Period } from '@booking-app/shared';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const FRENCH_MONTHS = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-
 function formatPrice(centimes: number): string {
   const euros = centimes / 100;
   return euros % 1 === 0 ? `${euros} €` : `${euros.toFixed(2)} €`;
-}
-
-function getCurrentMonthLabel(): string {
-  const now = new Date();
-  return `${FRENCH_MONTHS[now.getMonth()]} ${now.getFullYear()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,46 +171,6 @@ function KpiCard({
   );
 }
 
-/** Weekly mini bar chart (reused concept from dashboard) */
-function WeekChart({ perDay }: { perDay: number[] }) {
-  const { colors, spacing, radius } = useTheme();
-  const maxPerDay = Math.max(...perDay, 1);
-  const todayIdx = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; })();
-
-  return (
-    <View style={s.weekChart}>
-      {perDay.map((count, i) => (
-        <View key={i} style={s.weekChartCol}>
-          <View style={[s.weekChartBarBg, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.sm }]}>
-            <View
-              style={[
-                s.weekChartBarFill,
-                {
-                  height: `${(count / maxPerDay) * 100}%`,
-                  backgroundColor: i === todayIdx ? colors.primary : colors.border,
-                  borderRadius: radius.sm,
-                },
-              ]}
-            />
-          </View>
-          <Text
-            variant="caption"
-            style={{
-              fontSize: 11,
-              color: i === todayIdx ? colors.primary : colors.textMuted,
-              fontWeight: i === todayIdx ? '700' : '400',
-              marginTop: 4,
-            }}
-          >
-            {DAY_LABELS[i]}
-          </Text>
-          <Text variant="caption" style={{ fontSize: 10, color: colors.textMuted }}>{count}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -240,20 +183,9 @@ export default function StatsScreen() {
 
   const [period, setPeriod] = useState<Period>('30d');
   const { stats, isLoading, refresh } = useProviderStats(providerId, period);
-  const { data: dashData } = useProviderDashboard(providerId, provider?.rating?.average);
 
   const total = stats?.bookingsCount ?? 0;
   const revenueDelta = stats ? deltaPercent(stats.revenue, stats.revenuePrevious) : null;
-
-  // Real-time page views
-  const [pageViews, setPageViews] = useState<PageViewStats | null>(null);
-  useEffect(() => {
-    if (!providerId) return;
-    const unsub = analyticsService.subscribeToPageViews(providerId, setPageViews);
-    return unsub;
-  }, [providerId]);
-
-  const liveViews = pageViews ? analyticsService.computeLiveStats(pageViews) : null;
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
@@ -441,52 +373,6 @@ export default function StatsScreen() {
             </View>
           </Card>
 
-          {/* ── This Week ── */}
-          <Text variant="h3" style={{ marginBottom: spacing.md }}>Cette semaine</Text>
-          <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: spacing.md }}>
-              <Text variant="h2" style={{ fontWeight: '800' }}>{dashData.weekBookingsCount}</Text>
-              <Text variant="caption" color="textMuted">RDV cette semaine</Text>
-            </View>
-            <WeekChart perDay={dashData.weekBookingsPerDay} />
-          </Card>
-
-          {/* ── Page Views ── */}
-          {liveViews && (
-            <>
-              <Text variant="h3" style={{ marginBottom: spacing.md }}>Visibilité</Text>
-              <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
-                {/* Big today number + subtitle */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg }}>
-                  <View style={[s.viewsBadge, { backgroundColor: colors.primaryLight, borderRadius: radius.full }]}>
-                    <Ionicons name="eye-outline" size={26} color={colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
-                      <Text variant="h1" style={{ fontWeight: '800' }}>{liveViews.today}</Text>
-                      <Text variant="bodySmall" color="textMuted">vue{liveViews.today !== 1 ? 's' : ''} aujourd'hui</Text>
-                    </View>
-                  </View>
-                </View>
-                {/* Stat pills row */}
-                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                  <View style={[s.viewsPill, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, flex: 1 }]}>
-                    <Text variant="h3" style={{ fontWeight: '800' }}>{liveViews.last7Days}</Text>
-                    <Text variant="caption" color="textMuted">7 derniers jours</Text>
-                  </View>
-                  <View style={[s.viewsPill, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, flex: 1 }]}>
-                    <Text variant="h3" style={{ fontWeight: '800' }}>{liveViews.last30Days}</Text>
-                    <Text variant="caption" color="textMuted">30 derniers jours</Text>
-                  </View>
-                  <View style={[s.viewsPill, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, flex: 1 }]}>
-                    <Text variant="h3" style={{ fontWeight: '800' }}>{liveViews.total}</Text>
-                    <Text variant="caption" color="textMuted">Total</Text>
-                  </View>
-                </View>
-              </Card>
-            </>
-          )}
-
           {/* ── Quality indicators (annulation / no-show / note) ── */}
           {stats && (
             <QualityIndicators
@@ -619,41 +505,6 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-  },
-
-  // Week chart
-  weekChart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 80,
-    gap: 8,
-  },
-  weekChartCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  weekChartBarBg: {
-    width: '100%',
-    height: 56,
-    justifyContent: 'flex-end',
-  },
-  weekChartBarFill: {
-    width: '100%',
-    minHeight: 3,
-  },
-
-  // Views
-  viewsBadge: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewsPill: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
   },
 
 });
