@@ -26,12 +26,16 @@ import {
 } from 'firebase/firestore';
 import { app, providerStatsRepository } from '@booking-app/firebase';
 import {
+  buildContinuousTrend,
   periodBounds,
   totalsFromDailies,
   totalsFromMonthlies,
+  trendFromDailies,
+  trendFromMonthlies,
   type Period,
   type ProviderStatsDaily,
   type ProviderStatsMonthly,
+  type TrendPoint,
 } from '@booking-app/shared';
 
 export type { Period };
@@ -58,6 +62,12 @@ export interface ProviderStats {
   bookingsCountPrevious: number;
   uniqueClientsPrevious: number;
   pageViewsPrevious: number;
+
+  // ── Continuous trend over the period (for charts) ──
+  /** One entry per bucket (day for ≤90j, month for 12m), gap-free. */
+  trend: TrendPoint[];
+  /** Bar for 7-day view, smoothed line for 30/90/12m. */
+  chartType: 'bar' | 'line';
 }
 
 export interface UseProviderStatsResult {
@@ -82,6 +92,8 @@ const EMPTY_STATS = (period: Period): ProviderStats => ({
   bookingsCountPrevious: 0,
   uniqueClientsPrevious: 0,
   pageViewsPrevious: 0,
+  trend: [],
+  chartType: period === '7d' ? 'bar' : 'line',
 });
 
 export function useProviderStats(
@@ -131,16 +143,16 @@ export function useProviderStats(
         safe(
           () =>
             bounds.granularity === 'daily'
-              ? sumPageViewsDaily(providerId, bounds.start, bounds.end)
-              : sumPageViewsMonthly(providerId, bounds.startMonth!, bounds.endMonth!),
-          0,
+              ? readPageViewsDaily(providerId, bounds.start, bounds.end)
+              : readPageViewsMonthly(providerId, bounds.startMonth!, bounds.endMonth!),
+          { byKey: new Map<string, number>(), total: 0 },
         ),
         safe(
           () =>
             bounds.granularity === 'daily'
-              ? sumPageViewsDaily(providerId, bounds.prevStart, bounds.prevEnd)
-              : sumPageViewsMonthly(providerId, bounds.prevStartMonth!, bounds.prevEndMonth!),
-          0,
+              ? readPageViewsDaily(providerId, bounds.prevStart, bounds.prevEnd)
+              : readPageViewsMonthly(providerId, bounds.prevStartMonth!, bounds.prevEndMonth!),
+          { byKey: new Map<string, number>(), total: 0 },
         ),
       ]);
 
@@ -156,12 +168,26 @@ export function useProviderStats(
         ? 0
         : Math.round(((totals.bookingsCount - totals.cancelledCount - totals.noshowCount) / totals.bookingsCount) * 100);
 
+      // Build the gap-free trend by merging bookings + pageViews
+      // by date/month key. Days with no data render as a 0-bar /
+      // 0-point so the timeline stays continuous.
+      const bookingTrend = isMonthly
+        ? trendFromMonthlies(monthlies)
+        : trendFromDailies(dailies);
+      const trend = buildContinuousTrend(
+        bounds.start,
+        bounds.end,
+        bounds.granularity,
+        bookingTrend,
+        pvCurrent.byKey,
+      );
+
       setStats({
         period,
         revenue: totals.revenue,
         bookingsCount: totals.bookingsCount,
         uniqueClients: totals.uniqueClients,
-        pageViews: pvCurrent,
+        pageViews: pvCurrent.total,
         pendingCount: 0, // pending isn't in PeriodTotals — keep 0 for now, surface later if needed
         confirmedCount: totals.confirmedCount,
         cancelledCount: totals.cancelledCount,
@@ -170,7 +196,9 @@ export function useProviderStats(
         revenuePrevious: totalsPrev.revenue,
         bookingsCountPrevious: totalsPrev.bookingsCount,
         uniqueClientsPrevious: totalsPrev.uniqueClients,
-        pageViewsPrevious: pvPrevious,
+        pageViewsPrevious: pvPrevious.total,
+        trend,
+        chartType: period === '7d' ? 'bar' : 'line',
       });
     } catch (err) {
       console.error('[useProviderStats] error:', err);
@@ -201,11 +229,15 @@ async function safe<T>(run: () => Promise<T>, fallback: T): Promise<T> {
   }
 }
 
-async function sumPageViewsDaily(
+/**
+ * Read page views with the per-bucket breakdown (for chart) AND
+ * the total sum (for the KPI card delta) — one query, two outputs.
+ */
+async function readPageViewsDaily(
   providerId: string,
   startDate: string,
   endDate: string,
-): Promise<number> {
+): Promise<{ byKey: Map<string, number>; total: number }> {
   const db = getFirestore(app);
   const q = query(
     collection(db, 'pageViewsDaily'),
@@ -215,16 +247,23 @@ async function sumPageViewsDaily(
     orderBy('date', 'asc'),
   );
   const snap = await getDocs(q);
+  const byKey = new Map<string, number>();
   let total = 0;
-  for (const d of snap.docs) total += (d.data().count as number) ?? 0;
-  return total;
+  for (const d of snap.docs) {
+    const data = d.data();
+    const date = data.date as string;
+    const count = (data.count as number) ?? 0;
+    if (date) byKey.set(date, count);
+    total += count;
+  }
+  return { byKey, total };
 }
 
-async function sumPageViewsMonthly(
+async function readPageViewsMonthly(
   providerId: string,
   startMonth: string,
   endMonth: string,
-): Promise<number> {
+): Promise<{ byKey: Map<string, number>; total: number }> {
   const db = getFirestore(app);
   const q = query(
     collection(db, 'pageViewsMonthly'),
@@ -234,7 +273,14 @@ async function sumPageViewsMonthly(
     orderBy('month', 'asc'),
   );
   const snap = await getDocs(q);
+  const byKey = new Map<string, number>();
   let total = 0;
-  for (const d of snap.docs) total += (d.data().count as number) ?? 0;
-  return total;
+  for (const d of snap.docs) {
+    const data = d.data();
+    const month = data.month as string;
+    const count = (data.count as number) ?? 0;
+    if (month) byKey.set(month, count);
+    total += count;
+  }
+  return { byKey, total };
 }

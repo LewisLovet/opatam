@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Loader, Text } from '../../components';
+import { TrendChart } from '../../components/stats/TrendChart';
 import { useProvider } from '../../contexts';
 import { useProviderDashboard, useProviderStats } from '../../hooks';
 import { useTheme } from '../../theme';
@@ -360,6 +361,32 @@ export default function StatsScreen() {
               previous={stats?.pageViewsPrevious ?? 0}
             />
           </View>
+
+          {/* ── Trend charts (revenue + page views) ── */}
+          {stats && stats.trend.length > 0 && (
+            <>
+              <TrendChart
+                data={stats.trend}
+                title="Évolution du chiffre d'affaires"
+                valueKey="revenue"
+                chartType={stats.chartType}
+                formatYAxis={(v) =>
+                  v >= 100_000
+                    ? `${Math.round(v / 100_000)}k€`
+                    : `${(v / 100).toFixed(0)}€`
+                }
+              />
+              <TrendChart
+                data={stats.trend}
+                title="Vues de la vitrine"
+                valueKey="pageViews"
+                chartType={stats.chartType}
+                formatYAxis={(v) =>
+                  v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${v}`
+                }
+              />
+            </>
+          )}
 
           {/* ── Booking Breakdown ── */}
           <Text variant="h3" style={{ marginBottom: spacing.md }}>Répartition des RDV</Text>
