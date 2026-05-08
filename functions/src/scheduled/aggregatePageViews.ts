@@ -5,6 +5,11 @@
  * 1. Save yesterday's `stats.pageViews.today` into a daily document
  * 2. Recalculate `last7Days` and `last30Days` from daily documents
  * 3. Add `today` to `total` and reset `today` to 0
+ * 4. Roll yesterday's count into pageViewsMonthly so we keep an
+ *    indefinite-retention monthly history (the daily collection
+ *    is pruned at 90 days — see step 5). The /pro/statistiques
+ *    12-month chart reads from pageViewsMonthly.
+ * 5. Cleanup daily docs older than 90 days
  */
 
 import { onSchedule } from 'firebase-functions/v2/scheduler';
@@ -90,6 +95,19 @@ export const aggregatePageViews = onSchedule(
               count: FieldValue.increment(todayViews),
             }, { merge: true });
             serverTracker.trackWrite('pageViewsDaily', 1);
+
+            // 1b. Roll into the monthly counter (indefinite retention).
+            //     Increment-based so the monthly doc stays correct
+            //     even if this cron runs twice on the same day.
+            const monthStr = yesterdayStr.slice(0, 7); // YYYY-MM
+            const monthlyDocId = `${providerId}_${monthStr}`;
+            await db.collection('pageViewsMonthly').doc(monthlyDocId).set({
+              providerId,
+              month: monthStr,
+              count: FieldValue.increment(todayViews),
+              updatedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            serverTracker.trackWrite('pageViewsMonthly', 1);
           }
 
           // 2. Query daily docs for last 30 days to recalculate

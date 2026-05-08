@@ -537,6 +537,14 @@
       ]
     },
     {
+      "collectionGroup": "pageViewsMonthly",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "providerId", "order": "ASCENDING" },
+        { "fieldPath": "month", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "providerStatsMonthly",
       "queryScope": "COLLECTION",
       "fields": [

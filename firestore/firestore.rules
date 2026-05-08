@@ -210,6 +210,15 @@ service cloud.firestore {
       allow write: if false; // Cloud Functions only
     }
 
+    // Monthly roll-up of page views — kept indefinitely so the
+    // 12-month chart on /pro/statistiques can read pageViewsDaily
+    // for ≤90j and switch to pageViewsMonthly for older data.
+    // Same access pattern as pageViewsDaily.
+    match /pageViewsMonthly/{docId} {
+      allow read: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+      allow write: if false; // Cloud Functions only
+    }
+
     // === PROVIDER STATS (3-tier aggregation) ===
     //
     // Three collections feed /pro/statistiques:

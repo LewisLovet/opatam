@@ -205,6 +205,16 @@ export async function backfillProviderStats(
       };
     }
 
+    // ── Roll up pageViewsDaily → pageViewsMonthly ─────────────
+    //
+    // The daily page-view collection is purged at 90 days by the
+    // aggregatePageViews cron, so the monthly roll-up is the only
+    // thing that persists long enough for the 12-month chart on
+    // /pro/statistiques. The cron maintains it incrementally going
+    // forward; the backfill recomputes it from scratch over all
+    // surviving daily docs.
+    const pvMonthlyOps = await buildPageViewsMonthlyOps(db, providerId);
+
     // ── Batch write — 500 ops per batch ───────────────────────
     await commitBatched(db, [
       ...dailyArr.map((d) => ({
@@ -223,6 +233,7 @@ export async function backfillProviderStats(
         ref: db.collection('providerClients').doc(clientDocId(providerId, c.clientKey)),
         data: c,
       })),
+      ...pvMonthlyOps,
     ]);
 
     return {
@@ -285,4 +296,47 @@ async function commitBatched(
     }
     await batch.commit();
   }
+}
+
+/**
+ * Walk every surviving pageViewsDaily doc for this provider and
+ * rebuild pageViewsMonthly from scratch. The daily collection is
+ * purged at 90 days so this only "sees" the last 90d of data —
+ * older months that already exist in pageViewsMonthly are LEFT
+ * UNTOUCHED here (they were correctly written months ago by the
+ * cron). To preserve them we use `set({ merge: false })` only for
+ * months we recompute, and we DON'T delete others — we'll keep
+ * them as-is.
+ *
+ * Returns a list of write ops the caller appends to its batch.
+ */
+async function buildPageViewsMonthlyOps(
+  db: admin.firestore.Firestore,
+  providerId: string,
+): Promise<{ ref: admin.firestore.DocumentReference; data: unknown }[]> {
+  const dailySnap = await db
+    .collection('pageViewsDaily')
+    .where('providerId', '==', providerId)
+    .get();
+
+  // Sum per month from the surviving daily docs.
+  const byMonth = new Map<string, number>();
+  for (const d of dailySnap.docs) {
+    const data = d.data();
+    const date = data.date as string;
+    const count = (data.count as number) ?? 0;
+    if (!date) continue;
+    const month = date.slice(0, 7);
+    byMonth.set(month, (byMonth.get(month) ?? 0) + count);
+  }
+
+  return [...byMonth.entries()].map(([month, count]) => ({
+    ref: db.collection('pageViewsMonthly').doc(`${providerId}_${month}`),
+    data: {
+      providerId,
+      month,
+      count,
+      updatedAt: new Date(),
+    },
+  }));
 }

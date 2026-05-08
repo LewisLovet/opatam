@@ -37,15 +37,18 @@ import type {
   ProviderStatsServiceBreakdown,
 } from '@booking-app/shared';
 import { Loader } from '@/components/ui';
+import { Sparkles } from 'lucide-react';
+import { formatPrice } from '@booking-app/shared';
 import { PeriodPills } from './components/PeriodPills';
 import { KpiBar } from './components/KpiBar';
-import { RevenueTrendChart } from './components/RevenueTrendChart';
+import { TrendChart, type ChartType } from './components/TrendChart';
 import { TopServicesPanel } from './components/TopServicesPanel';
 import { TopClientsPanel } from './components/TopClientsPanel';
 import { HeatmapPanel } from './components/HeatmapPanel';
 import { QualityIndicators } from './components/QualityIndicators';
 import { periodBounds, type Period } from './lib/period';
 import {
+  buildContinuousTrend,
   topServicesFromDailies,
   totalsFromDailies,
   totalsFromMonthlies,
@@ -60,6 +63,10 @@ interface State {
   // Current period
   dailies: ProviderStatsDaily[];
   monthlies: ProviderStatsMonthly[];
+  /** Per-bucket page-view counts for the current period — keyed
+   *  by date (YYYY-MM-DD) for daily granularity or month (YYYY-MM)
+   *  for the 12m view. Indexed for O(1) merge into the trend chart. */
+  pageViewsByKey: Map<string, number>;
   pageViewsCurrent: number;
   // Previous period (for deltas)
   dailiesPrev: ProviderStatsDaily[];
@@ -78,6 +85,7 @@ export default function StatistiquesPage() {
     period: '30d',
     dailies: [],
     monthlies: [],
+    pageViewsByKey: new Map(),
     pageViewsCurrent: 0,
     dailiesPrev: [],
     monthliesPrev: [],
@@ -155,8 +163,25 @@ export default function StatistiquesPage() {
             )
           : Promise.resolve([] as ProviderStatsMonthly[]),
         safe('rolling', () => providerStatsRepository.getRolling(providerId), null),
-        safe('pageViews (current)', () => sumPageViewsInRange(providerId, bounds.start, bounds.end), 0),
-        safe('pageViews (previous)', () => sumPageViewsInRange(providerId, bounds.prevStart, bounds.prevEnd), 0),
+        // For 7d/30d/90d we read pageViewsDaily directly (kept for
+        // 90d). For 12m we read pageViewsMonthly (kept indefinitely).
+        // Either way, we get back a per-bucket map + the total sum.
+        safe(
+          'pageViews (current)',
+          () =>
+            bounds.granularity === 'daily'
+              ? readPageViewsDaily(providerId, bounds.start, bounds.end)
+              : readPageViewsMonthly(providerId, bounds.startMonth!, bounds.endMonth!),
+          { byKey: new Map<string, number>(), total: 0 },
+        ),
+        safe(
+          'pageViews (previous)',
+          () =>
+            bounds.granularity === 'daily'
+              ? readPageViewsDaily(providerId, bounds.prevStart, bounds.prevEnd)
+              : readPageViewsMonthly(providerId, bounds.prevStartMonth!, bounds.prevEndMonth!),
+          { byKey: new Map<string, number>(), total: 0 },
+        ),
       ]);
 
       // Resolve top-client names — the rolling doc only carries
@@ -188,8 +213,9 @@ export default function StatistiquesPage() {
         monthlies,
         monthliesPrev,
         rolling,
-        pageViewsCurrent,
-        pageViewsPrevious,
+        pageViewsByKey: pageViewsCurrent.byKey,
+        pageViewsCurrent: pageViewsCurrent.total,
+        pageViewsPrevious: pageViewsPrevious.total,
         topClientNames,
       }));
     })();
@@ -201,7 +227,8 @@ export default function StatistiquesPage() {
 
   // ── Derived metrics ────────────────────────────────────────────
   const view = useMemo(() => {
-    const isMonthly = state.monthlies.length > 0 || state.period === '12m';
+    const bounds = periodBounds(state.period);
+    const isMonthly = bounds.granularity === 'monthly';
     const totals = isMonthly
       ? totalsFromMonthlies(state.monthlies)
       : totalsFromDailies(state.dailies);
@@ -209,9 +236,24 @@ export default function StatistiquesPage() {
       ? totalsFromMonthlies(state.monthliesPrev)
       : totalsFromDailies(state.dailiesPrev);
 
-    const trend = isMonthly
+    // Build a continuous trend (no gaps) merging bookings + page
+    // views by date/month key. Days/months with no data render as
+    // 0 — gives a clean horizontal axis instead of collapsed gaps.
+    const bookingTrend = isMonthly
       ? trendFromMonthlies(state.monthlies)
       : trendFromDailies(state.dailies);
+    const trend = buildContinuousTrend(
+      bounds.start,
+      bounds.end,
+      bounds.granularity,
+      bookingTrend,
+      state.pageViewsByKey,
+    );
+
+    // 7d → bar (each day reads as a discrete unit). 30d/90d/12m →
+    // smoothed area (the trend matters more than per-day heights,
+    // and the chart stays readable with 30+ points).
+    const chartType: ChartType = state.period === '7d' ? 'bar' : 'line';
 
     // Top services — for 7d we compute from dailies (only 7 docs)
     // because the rolling snapshot only carries 30d/90d/all-time.
@@ -246,16 +288,26 @@ export default function StatistiquesPage() {
       ? 0
       : totals.noshowCount / totals.bookingsCount;
 
+    // True empty state — provider has literally no signal at all
+    // on the platform yet. We show one friendly placeholder
+    // instead of zero panels stacked on top of each other.
+    const isCompletelyEmpty =
+      totals.bookingsCount === 0 &&
+      state.pageViewsCurrent === 0 &&
+      (provider?.stats?.pageViews?.total ?? 0) === 0;
+
     return {
       totals,
       totalsPrev,
       trend,
+      chartType,
       topServices,
       topClients,
       cancellationRate,
       noshowRate,
+      isCompletelyEmpty,
     };
-  }, [state]);
+  }, [state, provider]);
 
   // ── Render ─────────────────────────────────────────────────────
   if (!user?.id) return null;
@@ -286,6 +338,8 @@ export default function StatistiquesPage() {
         <div className="rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 p-6 text-red-800 dark:text-red-300 text-sm">
           {state.error}
         </div>
+      ) : view.isCompletelyEmpty ? (
+        <EmptyState />
       ) : (
         <>
           {/* KPIs */}
@@ -309,8 +363,29 @@ export default function StatistiquesPage() {
             }}
           />
 
-          {/* Trend chart */}
-          <RevenueTrendChart data={view.trend} />
+          {/* Revenue trend — bar for 7d, smoothed area for 30d+ */}
+          <TrendChart
+            data={view.trend}
+            title="Évolution du chiffre d'affaires"
+            valueKey="revenue"
+            chartType={view.chartType}
+            yAxisFormatter={(v) =>
+              v >= 100_000 ? `${Math.round(v / 100_000)} k€` : `${(v / 100).toFixed(0)} €`
+            }
+            tooltipFormatter={(v) => [formatPrice(v), 'CA']}
+          />
+
+          {/* Page-views trend — same bar/line logic */}
+          <TrendChart
+            data={view.trend}
+            title="Évolution des vues de la vitrine"
+            valueKey="pageViews"
+            chartType={view.chartType}
+            yAxisFormatter={(v) =>
+              v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${v}`
+            }
+            tooltipFormatter={(v) => [v.toLocaleString('fr-FR'), 'Vues']}
+          />
 
           {/* Top services + top clients side-by-side on lg+ */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -337,14 +412,42 @@ export default function StatistiquesPage() {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Inline helper: sum pageViewsDaily over a YYYY-MM-DD range
+// Empty state for brand-new providers
 // ────────────────────────────────────────────────────────────────
 
-async function sumPageViewsInRange(
+function EmptyState() {
+  return (
+    <div className="rounded-xl bg-gradient-to-br from-primary-50 to-primary-100/40 dark:from-primary-900/20 dark:to-primary-900/5 border border-primary-200/60 dark:border-primary-800/40 p-8 sm:p-10 text-center">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-600 text-white mb-4 shadow-lg shadow-primary-600/20">
+        <Sparkles className="w-7 h-7" />
+      </div>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+        Vos statistiques arriveront ici
+      </h2>
+      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+        Dès que vous recevrez vos premières réservations et que votre vitrine sera consultée,
+        cette page se remplira automatiquement&nbsp;: chiffre d'affaires, clients,
+        services les plus demandés et heatmap d'activité.
+      </p>
+      <p className="mt-4 text-xs text-gray-500 dark:text-gray-500">
+        Aucune action requise — l'agrégation tourne en temps réel sur chaque nouvelle réservation.
+      </p>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────
+// Inline helpers: read pageViewsDaily / pageViewsMonthly with the
+// per-bucket breakdown. We return both `byKey` (for the trend
+// chart's bucket-level rendering) and `total` (for the KPI sum)
+// in one query.
+// ────────────────────────────────────────────────────────────────
+
+async function readPageViewsDaily(
   providerId: string,
   startDate: string,
   endDate: string,
-): Promise<number> {
+): Promise<{ byKey: Map<string, number>; total: number }> {
   const db = getFirestore(app);
   const q = query(
     collection(db, 'pageViewsDaily'),
@@ -354,9 +457,40 @@ async function sumPageViewsInRange(
     orderBy('date', 'asc'),
   );
   const snap = await getDocs(q);
+  const byKey = new Map<string, number>();
   let total = 0;
   for (const d of snap.docs) {
-    total += (d.data().count as number) ?? 0;
+    const data = d.data();
+    const date = data.date as string;
+    const count = (data.count as number) ?? 0;
+    if (date) byKey.set(date, count);
+    total += count;
   }
-  return total;
+  return { byKey, total };
+}
+
+async function readPageViewsMonthly(
+  providerId: string,
+  startMonth: string,
+  endMonth: string,
+): Promise<{ byKey: Map<string, number>; total: number }> {
+  const db = getFirestore(app);
+  const q = query(
+    collection(db, 'pageViewsMonthly'),
+    where('providerId', '==', providerId),
+    where('month', '>=', startMonth),
+    where('month', '<=', endMonth),
+    orderBy('month', 'asc'),
+  );
+  const snap = await getDocs(q);
+  const byKey = new Map<string, number>();
+  let total = 0;
+  for (const d of snap.docs) {
+    const data = d.data();
+    const month = data.month as string;
+    const count = (data.count as number) ?? 0;
+    if (month) byKey.set(month, count);
+    total += count;
+  }
+  return { byKey, total };
 }

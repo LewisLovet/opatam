@@ -42,6 +42,10 @@ interface PurgeCounts {
   monthly: number;
   rolling: number;
   clients: number;
+  /** pageViewsMonthly docs deleted (pageViewsDaily is NOT touched —
+   *  it's the upstream source maintained by aggregatePageViews and
+   *  serves both /pro/statistiques and the public profile). */
+  pageViewsMonthly: number;
 }
 
 interface Response {
@@ -63,7 +67,7 @@ export const purgeProviderStats = onCall<Request, Promise<Response>>(
     }
 
     const db = admin.firestore();
-    const totals: PurgeCounts = { daily: 0, monthly: 0, rolling: 0, clients: 0 };
+    const totals: PurgeCounts = { daily: 0, monthly: 0, rolling: 0, clients: 0, pageViewsMonthly: 0 };
 
     // Single-provider scope
     if (!req.data.allProviders) {
@@ -112,13 +116,14 @@ async function purgeOne(
   db: admin.firestore.Firestore,
   providerId: string,
 ): Promise<PurgeCounts> {
-  const counts: PurgeCounts = { daily: 0, monthly: 0, rolling: 0, clients: 0 };
+  const counts: PurgeCounts = { daily: 0, monthly: 0, rolling: 0, clients: 0, pageViewsMonthly: 0 };
 
   // Fetch + delete in chunks (Firestore caps batches at 500 ops).
   const collections = [
     { name: 'providerStatsDaily', counter: 'daily' as const },
     { name: 'providerStatsMonthly', counter: 'monthly' as const },
     { name: 'providerClients', counter: 'clients' as const },
+    { name: 'pageViewsMonthly', counter: 'pageViewsMonthly' as const },
   ];
 
   for (const coll of collections) {

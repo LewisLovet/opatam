@@ -110,6 +110,13 @@ export interface TrendPoint {
   label: string;
   revenue: number;
   bookingsCount: number;
+  /**
+   * Page views for this bucket. Filled by the page after merging
+   * pageViewsDaily / pageViewsMonthly into the bookings trend by
+   * matching `key` strings. Defaults to 0 when no view doc exists
+   * for that bucket.
+   */
+  pageViews: number;
 }
 
 const MONTH_LABELS_FR = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
@@ -120,6 +127,7 @@ export function trendFromDailies(dailies: ProviderStatsDaily[]): TrendPoint[] {
     label: shortDateLabelFr(d.date),
     revenue: d.revenue,
     bookingsCount: d.bookingsCount,
+    pageViews: 0,
   }));
 }
 
@@ -129,7 +137,74 @@ export function trendFromMonthlies(monthlies: ProviderStatsMonthly[]): TrendPoin
     label: shortMonthLabelFr(m.month),
     revenue: m.revenue,
     bookingsCount: m.bookingsCount,
+    pageViews: 0,
   }));
+}
+
+/**
+ * Build a date-keyed series covering EVERY bucket between two
+ * dates, even when the source has gaps. Used so the chart shows a
+ * continuous timeline (a day with 0 bookings still appears as a
+ * 0-bar / 0-point) rather than collapsing missing days.
+ *
+ * `granularity` selects the bucket size. `bookingTrend` is the
+ * existing dailies/monthlies trend; `pageViewsByKey` is a map
+ * built from pageViewsDaily / pageViewsMonthly. Output: one
+ * TrendPoint per bucket, sorted ascending.
+ */
+export function buildContinuousTrend(
+  startKey: string,
+  endKey: string,
+  granularity: 'daily' | 'monthly',
+  bookingTrend: TrendPoint[],
+  pageViewsByKey: Map<string, number>,
+): TrendPoint[] {
+  const bookingByKey = new Map(bookingTrend.map((p) => [p.key, p]));
+  const keys =
+    granularity === 'daily'
+      ? generateDateKeys(startKey, endKey)
+      : generateMonthKeys(startKey.slice(0, 7), endKey.slice(0, 7));
+  return keys.map((key) => {
+    const b = bookingByKey.get(key);
+    return {
+      key,
+      label:
+        granularity === 'daily'
+          ? shortDateLabelFr(key)
+          : shortMonthLabelFr(key),
+      revenue: b?.revenue ?? 0,
+      bookingsCount: b?.bookingsCount ?? 0,
+      pageViews: pageViewsByKey.get(key) ?? 0,
+    };
+  });
+}
+
+function generateDateKeys(startYmd: string, endYmd: string): string[] {
+  const keys: string[] = [];
+  const cur = new Date(`${startYmd}T00:00:00Z`);
+  const end = new Date(`${endYmd}T00:00:00Z`);
+  while (cur <= end) {
+    keys.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return keys;
+}
+
+function generateMonthKeys(startYm: string, endYm: string): string[] {
+  const keys: string[] = [];
+  const [sy, sm] = startYm.split('-').map(Number);
+  const [ey, em] = endYm.split('-').map(Number);
+  let y = sy;
+  let m = sm;
+  while (y < ey || (y === ey && m <= em)) {
+    keys.push(`${y}-${String(m).padStart(2, '0')}`);
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return keys;
 }
 
 function shortDateLabelFr(yyyymmdd: string): string {

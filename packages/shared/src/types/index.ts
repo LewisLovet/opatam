@@ -113,6 +113,26 @@ export interface PageViewDaily {
   count: number;         // Total views for that day
 }
 
+/**
+ * Monthly page view document (pageViewsMonthly collection).
+ *
+ * Why a separate collection: pageViewsDaily has a 90-day retention
+ * (the nightly aggregatePageViews cron deletes older docs), so it
+ * cannot serve a 12-month evolution chart on its own. The monthly
+ * collection is rolled up from dailies BEFORE they're purged and
+ * is kept indefinitely. Same shape as PageViewDaily but the key
+ * is YYYY-MM rather than YYYY-MM-DD.
+ *
+ * Doc id format: `{providerId}_{YYYY-MM}` — composite, queryable
+ * via the `(providerId, month)` index.
+ */
+export interface PageViewMonthly {
+  providerId: string;
+  month: string;         // YYYY-MM format
+  count: number;         // Total views for that month
+  updatedAt: Date;
+}
+
 // ─── Provider business stats (3-tier aggregation) ───────────────────
 // See `lib/providerStats.ts` for the aggregation logic shared by the
 // backfill script, the bookings write-trigger, and the nightly cron.
