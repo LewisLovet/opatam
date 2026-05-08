@@ -3,9 +3,11 @@
  *
  * Runs every 6 hours and emails clients an "How was it?" review
  * request for each confirmed booking that:
- *   - has finished within the last 7 days (we send between 1h
- *     and 7d after the appointment end-time, the wide window
- *     gives the cron a comfortable retry margin)
+ *   - has finished within the last 2 days (we send between 1h
+ *     and 48h after the appointment start, the tight window
+ *     keeps the email relevant AND limits the "burst" of
+ *     legacy bookings caught by the very first cron run after
+ *     deployment)
  *   - hasn't already received the request (reviewRequestSentAt
  *     is null)
  *   - belongs to a provider whose `settings.autoReviewReminder`
@@ -29,7 +31,7 @@ interface SendResult {
   reason: string;
 }
 
-const LOOKBACK_DAYS = 7;
+const LOOKBACK_DAYS = 2;
 /** Skip bookings ending within the last hour — gives the pro a
  *  buffer to mark a no-show before the email goes out. */
 const MIN_DELAY_MINUTES = 60;
