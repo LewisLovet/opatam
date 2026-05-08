@@ -392,7 +392,7 @@ function computeDayHeadline(dateKey: string): string {
  *   - Dark navy canvas (or light gradient mirroring the week story)
  *   - Top bar: business initials in a small bordered square (left)
  *     + "DISPOS DU JOUR" caption (right)
- *   - Date block: lowercase headline ("jeudi 7 mai") with a small
+ *   - Date block: capitalised headline ("Jeudi 7 mai") with a small
  *     free-window summary underneath ("3h libres entre 12h et 20h")
  *   - Hour-by-hour timeline: one row per opening hour. Each row is
  *     either a flat dark cell (busy / closed) or a primary-blue
@@ -417,11 +417,11 @@ function TodayAvailabilityLayout({
   const palette = theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE;
 
   const dateParts = parseDateKey(day.dateKey);
-  // Lowercase weekday + day + long-form month — matches the
-  // reference design ("jeudi 7 mai"). Rendered as a single
-  // headline so the title block stays compact.
-  const longLowerDateLabel =
-    `${FRENCH_DAYS[dateParts.dow].toLowerCase()} ${dateParts.day} ${FRENCH_MONTHS_LONG[dateParts.month]}`;
+  // Capitalised weekday + day number + lowercase long-form month —
+  // matches the reference design ("Jeudi 7 mai"). Rendered as a
+  // single headline so the title block stays compact.
+  const longDateLabel =
+    `${FRENCH_DAYS[dateParts.dow]} ${dateParts.day} ${FRENCH_MONTHS_LONG[dateParts.month]}`;
   const summary = summarizeFreeWindow(day);
   const isFullyBooked = day.freeHalfHours.size === 0;
 
@@ -461,7 +461,7 @@ function TodayAvailabilityLayout({
     STORY_HEIGHT
     - 32 /* paddingTop */
     - 92 /* paddingBottom (IG safe-zone) */
-    - 28 /* topBar height */
+    - 36 /* topBar height (round avatar) */
     - 24 /* topBar marginBottom */
     - 36 /* title lineHeight */
     - 6  /* gap title→subtitle */
@@ -480,14 +480,17 @@ function TodayAvailabilityLayout({
 
   const inner = (
     <>
-      {/* Top bar */}
+      {/* Top bar — round avatar on the left (same look as the week
+          story header) + "DISPOS DU JOUR" caption on the right. */}
       <View style={todayStyles.topBar}>
-        <View style={[todayStyles.logoBox, { borderColor: palette.text }]}>
+        <View style={[availStoryStyles.avatar, { backgroundColor: palette.avatarBg }]}>
           {photoURL ? (
-            <Image source={{ uri: photoURL }} style={todayStyles.logoImg} />
+            <Image source={{ uri: photoURL }} style={availStoryStyles.avatarImg} />
           ) : (
-            <Text style={[todayStyles.logoInitial, { color: palette.text }]}>
-              {initials.charAt(0)}
+            <Text
+              style={[availStoryStyles.avatarInitials, { color: palette.avatarText }]}
+            >
+              {initials}
             </Text>
           )}
         </View>
@@ -499,8 +502,8 @@ function TodayAvailabilityLayout({
         </Text>
       </View>
 
-      {/* Compact date block: lowercase headline + free-window summary.
-          Designed to read as a single sentence ("jeudi 7 mai" /
+      {/* Compact date block: capitalised headline + free-window summary.
+          Designed to read as a single sentence ("Jeudi 7 mai" /
           "3h libres entre 12h et 20h") so the timeline below has
           maximum vertical room. */}
       <View style={todayStyles.dateBlock}>
@@ -508,7 +511,7 @@ function TodayAvailabilityLayout({
           style={[todayStyles.title, { color: palette.text }]}
           numberOfLines={1}
         >
-          {longLowerDateLabel}
+          {longDateLabel}
         </Text>
         {summary && (
           <Text
@@ -764,29 +767,13 @@ function summarizeFreeWindow(
 }
 
 const todayStyles = StyleSheet.create({
-  // Top bar — small logo + ALL-CAPS caption on the right
+  // Top bar — round avatar (reused from availStoryStyles) on the
+  // left + ALL-CAPS caption on the right.
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 28,
-  },
-  logoBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  logoImg: {
-    width: '100%',
-    height: '100%',
-  },
-  logoInitial: {
-    fontSize: 13,
-    fontWeight: '900',
+    marginBottom: 24,
   },
   captionLabel: {
     fontSize: 10,
@@ -796,10 +783,10 @@ const todayStyles = StyleSheet.create({
     opacity: 0.7,
   },
 
-  // Compact date block — single-line lowercase headline ("jeudi 7 mai")
-  // followed by a free-window summary ("3h libres entre 12h et 20h").
-  // Heights here are reflected verbatim in TIMELINE_AVAILABLE_HEIGHT,
-  // keep both in sync.
+  // Compact date block — single-line headline ("Jeudi 7 mai") with
+  // capitalised weekday + lowercase month, followed by a free-window
+  // summary ("3h libres entre 12h et 20h"). Heights here are reflected
+  // verbatim in TIMELINE_AVAILABLE_HEIGHT, keep both in sync.
   dateBlock: {
     marginBottom: 20,
   },

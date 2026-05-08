@@ -82,8 +82,21 @@ const EMPTY_GRID: UpcomingScheduleGrid = {
   isEmpty: true,
 };
 
+/**
+ * Format a Date as YYYY-MM-DD using *local* components.
+ *
+ * Important: NOT `.toISOString().split('T')[0]` — that returns the
+ * UTC date, which is the day BEFORE the local date for any user
+ * east of UTC after about 22:00 / 23:00 local time, AND for users
+ * in DST-shifted Europe whenever local midnight lands at 22:00 UTC
+ * the previous day. The day-scope story passed yesterday's dateKey
+ * to the title in those cases.
+ */
 function dateKey(d: Date): string {
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export function useUpcomingAvailabilities(
