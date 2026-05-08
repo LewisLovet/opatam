@@ -3,9 +3,10 @@
  * Bottom tab navigation for provider/professional screens
  */
 
+import { useEffect, useRef } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
@@ -25,6 +26,31 @@ export default function ProTabsLayout() {
   // entry behind that tab hasn't been opened yet.
   const { hasAnyUnseen } = useNewFeatures();
   const moreHasNew = hasAnyUnseen(MORE_TAB_FEATURE_KEYS);
+
+  // Pulse the dot continuously while there's something new — the
+  // previous static 9px dot was easy to miss. Same pattern as the
+  // ShareFAB indicator: outer ring expands + fades, inner solid
+  // dot stays put.
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!moreHasNew) return;
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [moreHasNew, pulseAnim]);
 
   // See comment in (client)/(tabs)/_layout.tsx — same pattern, so the
   // tab buttons stay above Android's gesture bar / iPhone home indicator.
@@ -134,15 +160,37 @@ export default function ProTabsLayout() {
             <View>
               <Ionicons name="ellipsis-horizontal" size={size} color={color} />
               {moreHasNew && (
-                <View
-                  style={[
-                    styles.moreDot,
-                    {
-                      backgroundColor: colors.primary,
-                      borderColor: colors.surface,
-                    },
-                  ]}
-                />
+                <View pointerEvents="none" style={styles.moreIndicatorWrap}>
+                  <Animated.View
+                    style={[
+                      styles.morePulseRing,
+                      {
+                        backgroundColor: '#E1306C',
+                        opacity: pulseAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.6, 0],
+                        }),
+                        transform: [
+                          {
+                            scale: pulseAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.9, 2.2],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.moreDot,
+                      {
+                        backgroundColor: '#E1306C',
+                        borderColor: colors.surface,
+                      },
+                    ]}
+                  />
+                </View>
               )}
             </View>
           ),
@@ -168,16 +216,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Small discovery dot overlaying the "Plus" icon when there's an
-  // unseen feature in the More menu. Border in surface color so it
-  // pops on both light + dark themes.
-  moreDot: {
+  // Discovery indicator overlaying the "Plus" icon when there's an
+  // unseen feature in the More menu. Bigger + animated pulse so
+  // it's actually noticeable in the bottom tab bar.
+  moreIndicatorWrap: {
     position: 'absolute',
-    top: -2,
-    right: -4,
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    borderWidth: 1.5,
+    top: -5,
+    right: -7,
+    width: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  morePulseRing: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  moreDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
   },
 });

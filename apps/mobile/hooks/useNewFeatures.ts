@@ -31,9 +31,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Keys are arbitrary strings — they're never shown to the user.
  */
 export const NEW_FEATURE_KEYS = [
-  'stats-2026-05',     // [retire-après: 2026-07-01]
-  'payments-2026-05',  // [retire-après: 2026-07-01]
-  'clients-2026-05',   // [retire-après: 2026-07-08]
+  'stats-2026-05',         // [retire-après: 2026-07-01]
+  'payments-2026-05',      // [retire-après: 2026-07-01]
+  'clients-2026-05',       // [retire-après: 2026-07-08]
+  'story-share-2026-05',   // [retire-après: 2026-07-15]
 ] as const;
 
 export type NewFeatureKey = (typeof NEW_FEATURE_KEYS)[number];

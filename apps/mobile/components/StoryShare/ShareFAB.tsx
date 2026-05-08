@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
+import { useNewFeatures } from '../../hooks/useNewFeatures';
 
 interface ShareFABProps {
   shopUrl: string;
@@ -31,6 +32,12 @@ interface ShareFABProps {
 export function ShareFAB({ shopUrl, businessName, onCreateStory }: ShareFABProps) {
   const { colors, radius, shadows } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  // Story-share is the headline action of the FAB — surface a small
+  // dot + a soft pulse on the closed FAB until the pro has opened
+  // the menu at least once. Persisted via useNewFeatures so it's
+  // device-local and disappears for good after the first interaction.
+  const { isNew, markSeen } = useNewFeatures();
+  const showStoryNew = isNew('story-share-2026-05');
 
   // Animations
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -41,6 +48,9 @@ export function ShareFAB({ shopUrl, businessName, onCreateStory }: ShareFABProps
     new Animated.Value(0),
   ]).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
+  // Dedicated pulse for the "Nouveau" dot on the closed FAB.
+  // Independent from the existing mount-pulse on the FAB itself.
+  const newDotPulse = useRef(new Animated.Value(0)).current;
 
   // Pulse on mount
   useEffect(() => {
@@ -54,9 +64,38 @@ export function ShareFAB({ shopUrl, businessName, onCreateStory }: ShareFABProps
     return () => clearTimeout(timeout);
   }, [scaleAnim]);
 
+  // Continuous pulse on the "Nouveau" dot — ring expands + fades
+  // out, repeats. Stops cleanly when the user has seen the menu.
+  useEffect(() => {
+    if (!showStoryNew) return;
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(newDotPulse, {
+          toValue: 1,
+          duration: 1400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(newDotPulse, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [showStoryNew, newDotPulse]);
+
   const toggleMenu = useCallback(() => {
     const opening = !isOpen;
     setIsOpen(opening);
+
+    // First open clears the "Nouveau" indicator — once they've seen
+    // the menu, no need to keep flagging it. Idempotent so we can
+    // call it on every toggle without extra branching.
+    if (opening && showStoryNew) {
+      markSeen('story-share-2026-05');
+    }
 
     Animated.spring(rotateAnim, {
       toValue: opening ? 1 : 0,
@@ -232,6 +271,45 @@ export function ShareFAB({ shopUrl, businessName, onCreateStory }: ShareFABProps
               </Animated.View>
             </LinearGradient>
           </Pressable>
+
+          {/* "Nouveau" indicator — animated pulse ring + solid dot
+              on the top-right of the closed FAB. Hidden as soon as
+              the pro opens the menu once. */}
+          {showStoryNew && !isOpen && (
+            <View pointerEvents="none" style={styles.newIndicatorWrap}>
+              <Animated.View
+                style={[
+                  styles.newPulseRing,
+                  {
+                    backgroundColor: '#E1306C',
+                    opacity: newDotPulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.55, 0],
+                    }),
+                    transform: [
+                      {
+                        scale: newDotPulse.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.9, 2.2],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              <View
+                style={[
+                  styles.newDot,
+                  {
+                    backgroundColor: '#E1306C',
+                    borderColor: colors.surface,
+                  },
+                ]}
+              >
+                <Ionicons name="sparkles" size={9} color="#fff" />
+              </View>
+            </View>
+          )}
         </Animated.View>
       </View>
     </>
@@ -304,5 +382,29 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 29,
     borderTopRightRadius: 29,
     backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  // "Nouveau" indicator — overlays the closed FAB
+  newIndicatorWrap: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newPulseRing: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+  newDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
