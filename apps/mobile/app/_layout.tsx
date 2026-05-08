@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { ThemeProvider } from '../theme';
 import { ToastProvider, NotificationInitializer } from '../components';
+import { DevFAB } from '../components/DevFAB';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
 import { useAppReady, useDeepLinks } from '../hooks';
 
@@ -67,8 +68,11 @@ export default function RootLayout() {
                     }}
                   />
                 </Stack>
-                {/* DevFAB désactivé pour l'instant */}
-                {/* <DevFAB /> */}
+                {/* DevFAB — visible uniquement en __DEV__ (gated
+                    inside the component). Donne accès au design
+                    system, à la config thème et aux resets de
+                    storage @opatam/*. Aucun rendu en build prod. */}
+                <DevFAB />
               </ToastProvider>
             </ProvidersCacheProvider>
           </AuthProvider>

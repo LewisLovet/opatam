@@ -13,6 +13,7 @@ import {
   MessageSquare,
   ArrowRightLeft,
   Calculator,
+  Database,
 } from 'lucide-react';
 
 const tools = [
@@ -78,6 +79,13 @@ const tools = [
     icon: <Calculator className="w-6 h-6" />,
     color: 'bg-fuchsia-600',
     href: '/dev/tools/stats-backfill',
+  },
+  {
+    title: 'Stockage local',
+    description: 'Inspecter et purger les clés @opatam/* (pastilles « Nouveau », découverte). Scope sécurisé : ne touche pas le thème ni l\'inscription en cours.',
+    icon: <Database className="w-6 h-6" />,
+    color: 'bg-purple-500',
+    href: '/dev/tools/storage',
   },
 ];
 

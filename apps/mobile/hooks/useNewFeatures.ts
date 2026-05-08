@@ -21,14 +21,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Add a key here when shipping a feature you want a blue dot on.
- * Remove it ~3-4 weeks after release once most users have seen it.
+ *
+ * Convention: each entry has a `[retire-après: YYYY-MM-DD]` comment
+ * giving a soft expiry date — usually ~3-4 weeks after release. Run
+ * `git grep "retire-après"` to find keys due for cleanup. When a key
+ * is removed here it stays harmless on old clients (the hook just
+ * ignores stale entries in AsyncStorage), so removing is safe.
  *
  * Keys are arbitrary strings — they're never shown to the user.
  */
 export const NEW_FEATURE_KEYS = [
-  'stats-2026-05',
-  'payments-2026-05',
-  'clients-2026-05',
+  'stats-2026-05',     // [retire-après: 2026-07-01]
+  'payments-2026-05',  // [retire-après: 2026-07-01]
+  'clients-2026-05',   // [retire-après: 2026-07-08]
 ] as const;
 
 export type NewFeatureKey = (typeof NEW_FEATURE_KEYS)[number];

@@ -15,10 +15,19 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+/**
+ * Add a key here when shipping a feature you want a "Nouveau" pill on.
+ *
+ * Convention: each entry has a `[retire-après: YYYY-MM-DD]` comment
+ * giving a soft expiry date — usually ~3-4 weeks after release. Run
+ * `git grep "retire-après"` to find keys due for cleanup. Once a
+ * key is removed from this array, the hook ignores any leftover
+ * entries in localStorage so removal is always safe.
+ */
 export const NEW_FEATURE_KEYS = [
-  'stats-2026-05',
-  'payments-2026-05',
-  'clients-2026-05',
+  'stats-2026-05',     // [retire-après: 2026-07-01]
+  'payments-2026-05',  // [retire-après: 2026-07-01]
+  'clients-2026-05',   // [retire-après: 2026-07-08]
 ] as const;
 
 export type NewFeatureKey = (typeof NEW_FEATURE_KEYS)[number];

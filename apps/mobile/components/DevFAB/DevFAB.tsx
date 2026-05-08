@@ -18,7 +18,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
 import { ThemeConfigurator } from './ThemeConfigurator';
-import { resetOnboarding } from '../../utils';
+import {
+  resetAllOpatamStorage,
+  resetNewFeaturesSeen,
+  resetOnboarding,
+} from '../../utils';
 
 interface MenuItem {
   icon: keyof typeof Ionicons.glyphMap;
@@ -75,6 +79,30 @@ export function DevFAB() {
       label: 'Reset Onboarding',
       action: async () => {
         await resetOnboarding();
+        setIsMenuOpen(false);
+        router.replace('/');
+      },
+    },
+    {
+      // Brings back every "Nouveau" pill + the home discovery
+      // banner so the dev can re-test those flows after they've
+      // been dismissed. Doesn't log out, doesn't touch the theme.
+      icon: 'sparkles-outline',
+      label: 'Reset Découverte',
+      action: async () => {
+        await resetNewFeaturesSeen();
+        setIsMenuOpen(false);
+        router.replace('/');
+      },
+    },
+    {
+      // Wipes EVERY @opatam/* AsyncStorage key — simulates a
+      // fresh install. Scoped so it doesn't touch react-nav state
+      // or third-party libs that might also use AsyncStorage.
+      icon: 'trash-outline',
+      label: 'Purger @opatam/*',
+      action: async () => {
+        await resetAllOpatamStorage();
         setIsMenuOpen(false);
         router.replace('/');
       },
