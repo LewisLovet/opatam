@@ -9,8 +9,11 @@
  * round-trip-free filter is fine and feels instantaneous.
  */
 
-import { Search, X } from 'lucide-react';
+import { useState } from 'react';
+import { Search, X, HelpCircle } from 'lucide-react';
 import type { ProviderClientTag } from '@booking-app/shared';
+import { Badge } from '@/components/ui';
+import { TAG_META } from './tagMeta';
 
 export type SortKey =
   | 'lastBooking-desc'
@@ -24,23 +27,6 @@ export interface FiltersState {
   tags: ProviderClientTag[];
   sort: SortKey;
 }
-
-interface TagOption {
-  value: ProviderClientTag;
-  label: string;
-  hint: string;
-}
-
-/** Order matters — chips render in the order shown. New / VIP /
- *  Habitué first since those are the most actionable for the pro. */
-export const TAG_OPTIONS: TagOption[] = [
-  { value: 'new', label: 'Nouveau', hint: 'Première visite < 30 j' },
-  { value: 'regular', label: 'Habitué', hint: '≥3 RDV récents' },
-  { value: 'vip', label: 'VIP', hint: '≥10 RDV ou ≥500 € cumulés' },
-  { value: 'at_risk', label: 'À risque', hint: 'Pas vu depuis 60-180 j' },
-  { value: 'lost', label: 'Perdu', hint: 'Pas vu depuis +180 j' },
-  { value: 'noshow_prone', label: 'Absent fréquent', hint: '>20% no-show' },
-];
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'lastBooking-desc', label: 'Dernière visite ↓' },
@@ -63,6 +49,8 @@ export function ClientFilters({
   filteredCount,
   onChange,
 }: Props) {
+  const [legendOpen, setLegendOpen] = useState(false);
+
   const hasActiveFilters =
     filters.search.length > 0 || filters.tags.length > 0;
 
@@ -119,7 +107,7 @@ export function ClientFilters({
 
       {/* Tag chips */}
       <div className="flex flex-wrap items-center gap-2">
-        {TAG_OPTIONS.map((tag) => {
+        {TAG_META.map((tag) => {
           const active = filters.tags.includes(tag.value);
           return (
             <button
@@ -139,6 +127,16 @@ export function ClientFilters({
           );
         })}
 
+        <button
+          type="button"
+          onClick={() => setLegendOpen((v) => !v)}
+          className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          aria-expanded={legendOpen}
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+          {legendOpen ? 'Masquer la légende' : 'Comprendre les tags'}
+        </button>
+
         {hasActiveFilters && (
           <button
             type="button"
@@ -150,6 +148,34 @@ export function ClientFilters({
           </button>
         )}
       </div>
+
+      {/* Legend — full rules per tag, exactly mirrors the
+          CLIENT_TAG_THRESHOLDS constants on the backend. Toggled by
+          the "Comprendre les tags" button so it stays out of the way
+          for pros who already know the conventions. */}
+      {legendOpen && (
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 space-y-2">
+          <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">
+            Comment sont attribués les tags
+          </p>
+          <ul className="space-y-1.5">
+            {TAG_META.map((tag) => (
+              <li key={tag.value} className="flex items-start gap-2">
+                <Badge variant={tag.variant} size="sm" className="flex-shrink-0 mt-0.5">
+                  {tag.label}
+                </Badge>
+                <span className="text-xs text-gray-600 dark:text-gray-300">
+                  {tag.rule}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 pt-1">
+            Les tags sont rafraîchis à chaque réservation et chaque nuit
+            à 3h. Plusieurs tags peuvent s'appliquer en même temps.
+          </p>
+        </div>
+      )}
 
       {/* Result count */}
       <p className="text-xs text-gray-500 dark:text-gray-400">

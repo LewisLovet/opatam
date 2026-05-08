@@ -35,18 +35,17 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Avatar, Badge, Button, useToast } from '@/components/ui';
-import type { BadgeVariant } from '@/components/ui';
 import {
   bookingRepository,
   providerClientRepository,
 } from '@booking-app/firebase';
 import {
   type ProviderClient,
-  type ProviderClientTag,
   type Booking,
 } from '@booking-app/shared';
 import { ClientHistoryList } from './ClientHistoryList';
 import { formatRevenue } from './format';
+import { TAG_META_BY_VALUE } from './tagMeta';
 
 type WithId<T> = { id: string } & T;
 
@@ -61,24 +60,6 @@ interface Props {
   /** Open an existing booking from the history list. */
   onBookingClick?: (booking: WithId<Booking>) => void;
 }
-
-const TAG_LABELS: Record<ProviderClientTag, string> = {
-  new: 'Nouveau',
-  regular: 'Habitué',
-  vip: 'VIP',
-  at_risk: 'À risque',
-  lost: 'Perdu',
-  noshow_prone: 'Absent fréquent',
-};
-
-const TAG_VARIANTS: Record<ProviderClientTag, BadgeVariant> = {
-  new: 'info',
-  regular: 'success',
-  vip: 'success',
-  at_risk: 'warning',
-  lost: 'error',
-  noshow_prone: 'warning',
-};
 
 export function ClientDrawer({
   isOpen,
@@ -293,11 +274,19 @@ export function ClientDrawer({
             </div>
             {client.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {client.tags.map((tag) => (
-                  <Badge key={tag} variant={TAG_VARIANTS[tag]} size="sm">
-                    {TAG_LABELS[tag]}
-                  </Badge>
-                ))}
+                {client.tags.map((tag) => {
+                  const meta = TAG_META_BY_VALUE[tag];
+                  return (
+                    <Badge
+                      key={tag}
+                      variant={meta.variant}
+                      size="sm"
+                      title={meta.hint}
+                    >
+                      {meta.label}
+                    </Badge>
+                  );
+                })}
               </div>
             )}
           </div>

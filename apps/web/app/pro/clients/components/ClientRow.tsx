@@ -14,10 +14,10 @@
  */
 
 import { Avatar, Badge } from '@/components/ui';
-import type { BadgeVariant } from '@/components/ui';
-import type { ProviderClient, ProviderClientTag } from '@booking-app/shared';
+import type { ProviderClient } from '@booking-app/shared';
 import { Mail, Phone, ChevronRight } from 'lucide-react';
 import { formatRevenue } from './format';
+import { TAG_META_BY_VALUE } from './tagMeta';
 
 type WithId<T> = { id: string } & T;
 
@@ -25,26 +25,6 @@ interface Props {
   client: WithId<ProviderClient>;
   onClick: () => void;
 }
-
-/** Short, French label per tag — matches what we show in the filter chips. */
-const TAG_LABELS: Record<ProviderClientTag, string> = {
-  new: 'Nouveau',
-  regular: 'Habitué',
-  vip: 'VIP',
-  at_risk: 'À risque',
-  lost: 'Perdu',
-  noshow_prone: 'Absent freq.',
-};
-
-/** Map each tag to a Badge variant so the colour conveys urgency. */
-const TAG_VARIANTS: Record<ProviderClientTag, BadgeVariant> = {
-  new: 'info',
-  regular: 'success',
-  vip: 'success',
-  at_risk: 'warning',
-  lost: 'error',
-  noshow_prone: 'warning',
-};
 
 export function ClientRow({ client, onClick }: Props) {
   const fullName = client.name || 'Client sans nom';
@@ -68,18 +48,30 @@ export function ClientRow({ client, onClick }: Props) {
           <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
             {fullName}
           </p>
-          {client.tags.slice(0, 2).map((tag) => (
+          {client.tags.slice(0, 2).map((tag) => {
+            const meta = TAG_META_BY_VALUE[tag];
+            return (
+              <Badge
+                key={tag}
+                variant={meta.variant}
+                size="sm"
+                className="flex-shrink-0"
+                title={meta.hint}
+              >
+                {meta.label}
+              </Badge>
+            );
+          })}
+          {client.tags.length > 2 && (
             <Badge
-              key={tag}
-              variant={TAG_VARIANTS[tag]}
+              variant="default"
               size="sm"
               className="flex-shrink-0"
+              title={client.tags
+                .slice(2)
+                .map((t) => TAG_META_BY_VALUE[t]?.label ?? t)
+                .join(' · ')}
             >
-              {TAG_LABELS[tag]}
-            </Badge>
-          ))}
-          {client.tags.length > 2 && (
-            <Badge variant="default" size="sm" className="flex-shrink-0">
               +{client.tags.length - 2}
             </Badge>
           )}
