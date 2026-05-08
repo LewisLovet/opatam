@@ -19,6 +19,7 @@ import {
   UserCircle,
   Clock,
   ArrowRight,
+  Users,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDaysRemaining } from '@/lib/date-utils';
@@ -43,6 +44,7 @@ const navGroups: NavGroup[] = [
       { label: 'Tableau de bord', href: '/pro', icon: <Home className="w-5 h-5" /> },
       { label: 'Calendrier', href: '/pro/calendrier', icon: <Calendar className="w-5 h-5" /> },
       { label: 'Réservations', href: '/pro/reservations', icon: <List className="w-5 h-5" /> },
+      { label: 'Clients', href: '/pro/clients', icon: <Users className="w-5 h-5" /> },
       { label: 'Statistiques', href: '/pro/statistiques', icon: <BarChart3 className="w-5 h-5" /> },
     ],
   },
