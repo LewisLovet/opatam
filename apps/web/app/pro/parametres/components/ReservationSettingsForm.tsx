@@ -2,9 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Select, Button, Textarea } from '@/components/ui';
+import { Select, Button, Textarea, Switch } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
-import { Loader2, Clock, Calendar, Info, Timer, MessageSquareWarning } from 'lucide-react';
+import {
+  Loader2,
+  Clock,
+  Calendar,
+  Info,
+  Timer,
+  MessageSquareWarning,
+  Star,
+  Sparkles,
+} from 'lucide-react';
+import { useNewFeatures } from '@/hooks/useNewFeatures';
 
 interface ReservationSettingsFormProps {
   onSuccess?: () => void;
@@ -45,6 +55,8 @@ const MAX_BOOKING_ADVANCE_OPTIONS = [
 
 export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormProps) {
   const { provider, refreshProvider } = useAuth();
+  const { isNew, markSeen } = useNewFeatures();
+  const showAutoReviewNew = isNew('auto-review-2026-05');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -54,6 +66,10 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
     maxBookingAdvance: 60,
     slotInterval: 15,
     bookingNotice: '',
+    // Default true (opt-out behaviour) — matches the schema and
+    // the mobile booking-settings screen. Provider can flip the
+    // toggle to disable the cron sending.
+    autoReviewReminder: true,
   });
 
   // Initialize form with provider data
@@ -64,6 +80,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
         maxBookingAdvance: provider.settings.maxBookingAdvance ?? 60,
         slotInterval: provider.settings.slotInterval ?? 15,
         bookingNotice: provider.settings.bookingNotice ?? '',
+        autoReviewReminder: provider.settings.autoReviewReminder ?? true,
       });
     }
   }, [provider]);
@@ -91,6 +108,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           maxBookingAdvance: formData.maxBookingAdvance,
           slotInterval: formData.slotInterval,
           bookingNotice: formData.bookingNotice.trim() || null,
+          autoReviewReminder: formData.autoReviewReminder,
           // Always allow cancellation (no deadline restriction)
           allowClientCancellation: true,
           cancellationDeadline: 0,
@@ -184,6 +202,42 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
         <p className="text-xs text-gray-400 text-right">
           {formData.bookingNotice.length}/1000
         </p>
+      </div>
+
+      {/* Auto review reminder toggle */}
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <Star className="w-4 h-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Relance automatique des avis
+                </label>
+                {showAutoReviewNew && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-500 text-white shadow-sm">
+                    <Sparkles className="w-3 h-3" />
+                    Nouveau
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Email envoyé 1h après le RDV pour demander un avis.
+                Ne fonctionne que pour les RDV confirmés.
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={formData.autoReviewReminder}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setFormData((p) => ({ ...p, autoReviewReminder: next }));
+              setError(null);
+              setSuccess(false);
+              if (showAutoReviewNew) markSeen('auto-review-2026-05');
+            }}
+          />
+        </div>
       </div>
 
       {/* Info Box */}
