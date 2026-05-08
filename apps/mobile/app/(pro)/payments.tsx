@@ -388,7 +388,8 @@ export default function PaymentsScreen() {
                 <View style={[s.serenityHint, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
                   <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.85)" />
                   <Text style={[s.hintText, { color: 'rgba(255,255,255,0.85)' }]}>
-                    Activez Stripe Connect d'abord.
+                    Activez d'abord Stripe Connect ci-dessus. Sans compte
+                    vérifié, les acomptes ne pourraient pas être encaissés.
                   </Text>
                 </View>
               ) : Platform.OS === 'ios' ? (

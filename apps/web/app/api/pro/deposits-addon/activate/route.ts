@@ -17,9 +17,11 @@ import { FieldValue } from 'firebase-admin/firestore';
  * Pre-flight checks:
  *  - Pro must be authenticated (Bearer Firebase ID token)
  *  - Pro must have an active Stripe subscription (i.e. not pure trial)
- *  - Pro should have completed Stripe Connect onboarding (required to
- *    actually use the feature, but we don't strictly enforce it here —
- *    they can pay for the add-on first and finish Connect after)
+ *  - Pro must have an ACTIVE Stripe Connect account. Hard-enforced
+ *    here as defense-in-depth: subscribing without an active Connect
+ *    account leads to failed deposit charges, which silently blocks
+ *    every new booking. Better to refuse upfront than to take 5€ for
+ *    a feature that can't actually run.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -56,6 +58,20 @@ export async function POST(request: NextRequest) {
         {
           error:
             "Aucun abonnement actif. Souscrivez d'abord à un plan payant avant d'ajouter l'add-on Acomptes.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Hard gate: Connect must be fully active. A pending or
+    // restricted account means deposit charges will fail, which
+    // would break the booking flow client-side. Refuse upfront —
+    // matches the UI's gate.
+    if (provider.stripeConnectStatus !== 'active') {
+      return NextResponse.json(
+        {
+          error:
+            "Activez d'abord Stripe Connect. Sans compte vérifié, les acomptes ne pourraient pas être encaissés.",
         },
         { status: 400 }
       );

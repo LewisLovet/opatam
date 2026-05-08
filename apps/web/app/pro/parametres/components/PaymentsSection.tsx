@@ -157,15 +157,14 @@ export function PaymentsSection() {
 
   // Pre-flight conditions for activating the add-on
   const hasPaidSubscription = !!provider?.subscription?.stripeSubscriptionId;
-  // Pros are allowed to subscribe to Sérénité before finishing
-  // Stripe Connect KYC. We just warn them that no deposit will
-  // actually be charged until the Connect account is verified —
-  // this lets them queue everything up while the KYC is in review.
   const connectActive = status?.status === 'active';
-  // Only the active main subscription is a hard prereq for adding
-  // the Sérénité item — Connect status is shown as a warning, not
-  // a block.
-  const canToggleAddon = hasPaidSubscription;
+  // Hard gate: Connect must be fully active to subscribe to
+  // Sérénité. A pending/restricted Connect account would cause
+  // deposit charges to fail and block bookings client-side, so
+  // refusing upfront is more user-friendly than letting them pay
+  // 5€/mo for a feature that won't run. Matches the server-side
+  // check in /api/pro/deposits-addon/activate.
+  const canToggleAddon = hasPaidSubscription && connectActive;
   const addonActive = !!provider?.depositsAddonActive;
 
   // ── Default deposit (acomptes par défaut) — applied to every service ──
@@ -431,9 +430,9 @@ export function PaymentsSection() {
               <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 flex items-start gap-2">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-800 dark:text-amber-300">
-                  Vous pouvez souscrire dès maintenant — les acomptes ne
-                  seront effectivement encaissés qu&apos;une fois votre compte
-                  Stripe vérifié.
+                  Activez d&apos;abord Stripe Connect ci-dessus. Sans compte
+                  vérifié, les acomptes ne pourraient pas être encaissés et
+                  bloqueraient les nouvelles réservations.
                 </p>
               </div>
             )}
