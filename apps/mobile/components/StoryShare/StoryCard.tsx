@@ -425,8 +425,8 @@ function TodayAvailabilityLayout({
   // Day's open-hours range. Falls back to a safe default when the
   // hook can't infer it (totally closed day → just show the empty
   // state).
-  const minHour = clamp(8, 22, computeMinHour(day) ?? 9);
-  const maxHour = clamp(minHour + 1, 23, computeMaxHour(day) ?? 19);
+  const minHour = clamp(0, 23, computeMinHour(day) ?? 9);
+  const maxHour = clamp(minHour, 23, computeMaxHour(day) ?? 19);
   const hours: number[] = [];
   for (let h = minHour; h <= maxHour; h++) hours.push(h);
 
@@ -438,13 +438,38 @@ function TodayAvailabilityLayout({
       .map((w) => w[0]?.toUpperCase() ?? '')
       .join('') || 'O';
 
-  // Row sizing — adaptive so the timeline fills the canvas
-  // regardless of how many hours the day spans (8h-22h max).
-  const rowGap = 6;
-  const availableHeight = 420; // approx body area between header & footer
-  const rowHeight = Math.max(
-    18,
-    Math.min(34, Math.floor((availableHeight - rowGap * (hours.length - 1)) / hours.length)),
+  // Above this row count we split the timeline into two columns so
+  // the rows stay legible (a salon open midnight-to-22h would
+  // squeeze 23 rows into the canvas otherwise — far too cramped).
+  const TWO_COLUMN_THRESHOLD = 14;
+  const twoColumns = hours.length > TWO_COLUMN_THRESHOLD;
+  const rowsPerColumn = twoColumns ? Math.ceil(hours.length / 2) : hours.length;
+
+  // Available height for the timeline = canvas - padding - topBar
+  // - dateBlock - footer. Computed precisely (not an estimate) so
+  // the rows honour the canvas dimensions on long ranges. Numbers
+  // mirror the styles below — keep in sync if those change.
+  // The canvas has a generous 92px bottom-safe-zone for IG reply /
+  // sticker overlays, hence the big paddingBottom term.
+  const TIMELINE_AVAILABLE_HEIGHT =
+    STORY_HEIGHT
+    - 32 /* paddingTop */
+    - 92 /* paddingBottom (IG safe-zone) */
+    - 28 /* topBar height */
+    - 28 /* topBar marginBottom */
+    - 84 /* dayNumber lineHeight */
+    - 4  /* weekday marginBottom */
+    - 13 /* weekday height */
+    - 16 /* dateBlock marginBottom */
+    - 13 /* footer height */
+    - 12; /* footer marginTop */
+  const rowGap = twoColumns ? 4 : 6;
+  const rowHeight = clamp(
+    14,
+    twoColumns ? 28 : 34,
+    Math.floor(
+      (TIMELINE_AVAILABLE_HEIGHT - rowGap * (rowsPerColumn - 1)) / rowsPerColumn,
+    ),
   );
 
   const inner = (
@@ -495,44 +520,47 @@ function TodayAvailabilityLayout({
         </View>
       ) : (
         <View style={todayStyles.timeline}>
-          {hours.map((h, i) => {
-            const isFree =
-              day.freeHalfHours.has(h * 2) || day.freeHalfHours.has(h * 2 + 1);
-            return (
-              <View
-                key={h}
-                style={[
-                  todayStyles.row,
-                  { marginTop: i === 0 ? 0 : rowGap },
-                ]}
-              >
-                <Text
-                  style={[
-                    todayStyles.hourLabel,
-                    {
-                      color: isFree ? palette.text : palette.textMuted,
-                      fontWeight: isFree ? '700' : '500',
-                    },
-                  ]}
-                >
-                  {h}h
-                </Text>
-                <View
-                  style={[
-                    todayStyles.cell,
-                    {
-                      height: rowHeight,
-                      backgroundColor: isFree ? palette.cellFree : palette.cellBusy,
-                    },
-                  ]}
-                >
-                  {isFree && (
-                    <Text style={todayStyles.cellLabel}>Libre</Text>
-                  )}
+          {twoColumns ? (
+            <View style={todayStyles.columns}>
+              {[
+                hours.slice(0, rowsPerColumn),
+                hours.slice(rowsPerColumn),
+              ].map((colHours, ci) => (
+                <View key={ci} style={todayStyles.column}>
+                  {colHours.map((h, i) => (
+                    <HourRow
+                      key={h}
+                      hour={h}
+                      isFree={
+                        day.freeHalfHours.has(h * 2) ||
+                        day.freeHalfHours.has(h * 2 + 1)
+                      }
+                      first={i === 0}
+                      gap={rowGap}
+                      rowHeight={rowHeight}
+                      compact
+                      palette={palette}
+                    />
+                  ))}
                 </View>
-              </View>
-            );
-          })}
+              ))}
+            </View>
+          ) : (
+            hours.map((h, i) => (
+              <HourRow
+                key={h}
+                hour={h}
+                isFree={
+                  day.freeHalfHours.has(h * 2) ||
+                  day.freeHalfHours.has(h * 2 + 1)
+                }
+                first={i === 0}
+                gap={rowGap}
+                rowHeight={rowHeight}
+                palette={palette}
+              />
+            ))
+          )}
         </View>
       )}
 
@@ -563,6 +591,74 @@ function TodayAvailabilityLayout({
   return (
     <View style={[availStoryStyles.canvas, { backgroundColor: palette.bg }]}>
       {inner}
+    </View>
+  );
+}
+
+/**
+ * Single timeline row — hour label + busy/free rectangle. Extracted
+ * so the single-column and two-column code paths render identically.
+ *
+ * `compact` shrinks the hour label width + the "Libre" caption font
+ * size for the narrower cells in two-column mode.
+ */
+function HourRow({
+  hour,
+  isFree,
+  first,
+  gap,
+  rowHeight,
+  compact = false,
+  palette,
+}: {
+  hour: number;
+  isFree: boolean;
+  first: boolean;
+  gap: number;
+  rowHeight: number;
+  compact?: boolean;
+  palette: ThemePalette;
+}) {
+  return (
+    <View
+      style={[
+        todayStyles.row,
+        { marginTop: first ? 0 : gap },
+      ]}
+    >
+      <Text
+        style={[
+          compact ? todayStyles.hourLabelCompact : todayStyles.hourLabel,
+          {
+            color: isFree ? palette.text : palette.textMuted,
+            fontWeight: isFree ? '700' : '500',
+          },
+        ]}
+      >
+        {hour}h
+      </Text>
+      <View
+        style={[
+          todayStyles.cell,
+          {
+            height: rowHeight,
+            backgroundColor: isFree ? palette.cellFree : palette.cellBusy,
+            paddingHorizontal: compact ? 6 : 10,
+          },
+        ]}
+      >
+        {isFree && (
+          <Text
+            style={[
+              todayStyles.cellLabel,
+              compact && { fontSize: 10 },
+            ]}
+            numberOfLines={1}
+          >
+            Libre
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -669,8 +765,21 @@ const todayStyles = StyleSheet.create({
     opacity: 0.85,
   },
 
-  // Hour-by-hour timeline
+  // Hour-by-hour timeline. `overflow: hidden` is a safety net so a
+  // computed row height that ends up slightly off doesn't bleed
+  // rows past the canvas onto the footer.
   timeline: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  // Two-column wrapper for long opening ranges (>14 hours). Inner
+  // columns split the hours half-and-half.
+  columns: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  column: {
     flex: 1,
   },
   row: {
@@ -682,6 +791,13 @@ const todayStyles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'left',
     marginRight: 6,
+    fontVariant: ['tabular-nums'],
+  },
+  hourLabelCompact: {
+    width: 26,
+    fontSize: 11,
+    textAlign: 'left',
+    marginRight: 4,
     fontVariant: ['tabular-nums'],
   },
   cell: {
