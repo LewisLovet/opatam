@@ -9,16 +9,27 @@
  *   - 7-day view → grouped bars (each day is a discrete unit)
  *   - 30 / 90 / 12m → smoothed area line (the trend dominates)
  *
- * Tooltips are intentionally not implemented in v1 — long-press
- * + pan would need a gesture handler and v1's job is parity with
- * what the web shows. Easy to add later if useful.
+ * Tooltips: tap (or pan) anywhere on the chart to surface the
+ * exact value for the closest bucket. The tooltip pops above the
+ * touch point, stays visible until the user touches outside or
+ * the data changes (period switch / refresh). A vertical
+ * highlight bar marks the active bucket; the line variant also
+ * shows an emphasized dot at the active value.
  */
 
 import React from 'react';
-import { LayoutChangeEvent, View, StyleSheet } from 'react-native';
+import {
+  GestureResponderEvent,
+  LayoutChangeEvent,
+  PanResponder,
+  StyleSheet,
+  View,
+} from 'react-native';
 import Svg, {
+  Circle,
   Defs,
   LinearGradient,
+  Line,
   Path,
   Rect,
   Stop,
@@ -38,13 +49,22 @@ interface Props {
   chartType: ChartType;
   /** Y-axis tick formatter — eg `5 €` / `1k`. */
   formatYAxis: (v: number) => string;
+  /**
+   * Tooltip value formatter — typically more precise than the
+   * Y-axis (eg `1 234,50 €` vs the axis's `1k€`). Defaults to
+   * the same formatter as the Y-axis.
+   */
+  formatTooltipValue?: (v: number) => string;
 }
 
 const CHART_HEIGHT = 160;
-const PADDING_TOP = 12;
+const PADDING_TOP = 16;
 const PADDING_BOTTOM = 24; // X-axis labels
 const PADDING_LEFT = 36;   // Y-axis labels
 const PADDING_RIGHT = 8;
+
+const TOOLTIP_HEIGHT = 48;
+const TOOLTIP_MIN_W = 80;
 
 export function TrendChart({
   data,
@@ -53,9 +73,18 @@ export function TrendChart({
   valueKey,
   chartType,
   formatYAxis,
+  formatTooltipValue,
 }: Props) {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const [width, setWidth] = React.useState(0);
+  const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+
+  // Reset the active tooltip whenever the underlying data changes
+  // (period switch, refresh) — the cached index would point to a
+  // different bucket than what the user originally tapped.
+  React.useEffect(() => {
+    setActiveIndex(null);
+  }, [data]);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
@@ -69,15 +98,62 @@ export function TrendChart({
   const innerW = Math.max(0, width - PADDING_LEFT - PADDING_RIGHT);
   const innerH = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
 
-  const xForIndex = (i: number) => {
-    if (data.length <= 1) return PADDING_LEFT + innerW / 2;
-    const step = innerW / (data.length - 1);
-    return PADDING_LEFT + step * i;
-  };
-  const yForValue = (v: number) => PADDING_TOP + innerH - (v / max) * innerH;
+  const xForIndex = React.useCallback(
+    (i: number) => {
+      if (data.length <= 1) return PADDING_LEFT + innerW / 2;
+      const step = innerW / (data.length - 1);
+      return PADDING_LEFT + step * i;
+    },
+    [data.length, innerW],
+  );
+  const yForValue = React.useCallback(
+    (v: number) => PADDING_TOP + innerH - (v / max) * innerH,
+    [innerH, max],
+  );
+
+  // ── Touch handling — tap / pan to expose tooltips ──────────────
+  const indexFromTouch = React.useCallback(
+    (locationX: number): number => {
+      // Clamp into the plot area, then map to nearest bucket index.
+      const xInPlot = Math.max(0, Math.min(innerW, locationX - PADDING_LEFT));
+      if (data.length <= 1) return 0;
+      const step = innerW / (data.length - 1);
+      const raw = Math.round(xInPlot / step);
+      return Math.max(0, Math.min(data.length - 1, raw));
+    },
+    [data.length, innerW],
+  );
+
+  const panResponder = React.useMemo(
+    () =>
+      PanResponder.create({
+        // Capture both single taps and pans without fighting the
+        // ScrollView — onStartShouldSet returns true on tap so we
+        // get an immediate response, but we don't claim the move
+        // gesture unless the finger has moved horizontally enough
+        // to be "scrubbing", letting vertical scrolls pass through.
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dx) > Math.abs(gesture.dy),
+        onPanResponderGrant: (e: GestureResponderEvent) => {
+          if (!hasData) return;
+          setActiveIndex(indexFromTouch(e.nativeEvent.locationX));
+        },
+        onPanResponderMove: (e: GestureResponderEvent) => {
+          if (!hasData) return;
+          setActiveIndex(indexFromTouch(e.nativeEvent.locationX));
+        },
+        onPanResponderTerminationRequest: () => true,
+      }),
+    [hasData, indexFromTouch],
+  );
 
   // Y-axis labels at 0, 50%, 100% of max.
   const yTicks = [0, max * 0.5, max];
+
+  const tipFormat = formatTooltipValue ?? formatYAxis;
+  const active = activeIndex !== null ? data[activeIndex] : null;
+  const activeValue = active ? readValue(active, valueKey) : 0;
 
   return (
     <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
@@ -90,7 +166,11 @@ export function TrendChart({
         )}
       </View>
 
-      <View onLayout={onLayout} style={{ height: CHART_HEIGHT }}>
+      <View
+        onLayout={onLayout}
+        {...panResponder.panHandlers}
+        style={{ height: CHART_HEIGHT }}
+      >
         {!hasData ? (
           <View style={s.empty}>
             <Text variant="caption" color="textMuted">
@@ -106,20 +186,18 @@ export function TrendChart({
               </LinearGradient>
             </Defs>
 
-            {/* Y gridlines + labels */}
+            {/* Y gridlines */}
             {yTicks.map((tick, i) => {
               const y = yForValue(tick);
               return (
-                <React.Fragment key={i}>
-                  {/* Gridline */}
-                  <Path
-                    d={`M ${PADDING_LEFT} ${y} L ${PADDING_LEFT + innerW} ${y}`}
-                    stroke={colors.border}
-                    strokeWidth="1"
-                    strokeDasharray="3 3"
-                    opacity={0.5}
-                  />
-                </React.Fragment>
+                <Path
+                  key={i}
+                  d={`M ${PADDING_LEFT} ${y} L ${PADDING_LEFT + innerW} ${y}`}
+                  stroke={colors.border}
+                  strokeWidth="1"
+                  strokeDasharray="3 3"
+                  opacity={0.5}
+                />
               );
             })}
 
@@ -129,8 +207,9 @@ export function TrendChart({
                 xForIndex={xForIndex}
                 yForValue={yForValue}
                 innerW={innerW}
-                innerH={innerH}
                 color={colors.primary}
+                activeIndex={activeIndex}
+                activeColor={colors.primaryDark}
               />
             ) : (
               <LineShapes
@@ -139,14 +218,40 @@ export function TrendChart({
                 yForValue={yForValue}
                 color={colors.primary}
                 gradientId={`grad-${valueKey}`}
-                innerH={innerH}
+                activeIndex={activeIndex}
+              />
+            )}
+
+            {/* Active vertical guide + accent — drawn on top so it
+                stands out above the bars/area. */}
+            {activeIndex !== null && (
+              <Line
+                x1={xForIndex(activeIndex)}
+                x2={xForIndex(activeIndex)}
+                y1={PADDING_TOP - 4}
+                y2={PADDING_TOP + innerH}
+                stroke={colors.primary}
+                strokeWidth="1"
+                strokeDasharray="2 2"
+                opacity={0.5}
               />
             )}
           </Svg>
         ) : null}
 
-        {/* Y-axis labels (overlay text — easier than computing
-            bounding boxes inside SVG). Positioned absolutely. */}
+        {/* Tooltip — absolute overlay so we don't need to embed
+            text inside SVG (RN Text bbox is awkward there). */}
+        {active && width > 0 && (
+          <Tooltip
+            x={xForIndex(activeIndex!)}
+            y={yForValue(activeValue)}
+            label={active.label}
+            valueText={tipFormat(activeValue)}
+            chartWidth={width}
+          />
+        )}
+
+        {/* Y-axis labels (overlay text). */}
         {hasData && width > 0 && yTicks.map((tick, i) => (
           <Text
             key={i}
@@ -165,8 +270,7 @@ export function TrendChart({
           </Text>
         ))}
 
-        {/* X-axis labels: first / middle / last so the timeline
-            is anchored without crowding the axis on long periods. */}
+        {/* X-axis labels: first / middle / last (anchored). */}
         {hasData && width > 0 && data.length > 0 && (
           <>
             <XAxisLabel x={xForIndex(0)} text={data[0].label} align="start" />
@@ -187,6 +291,22 @@ export function TrendChart({
           </>
         )}
       </View>
+
+      {/* Footnote — surfaced once the user has interacted so
+          they know how to use the chart. */}
+      {hasData && (
+        <Text
+          variant="caption"
+          color="textMuted"
+          style={{ marginTop: spacing.xs, fontSize: 10 }}
+        >
+          {activeIndex === null
+            ? 'Touchez le graphique pour voir la valeur d’une journée'
+            : 'Glissez pour parcourir les autres jours'}
+        </Text>
+      )}
+      {/* Suppress unused-var lint */}
+      {radius ? null : null}
     </Card>
   );
 }
@@ -200,17 +320,18 @@ function BarShapes({
   xForIndex,
   yForValue,
   innerW,
-  innerH,
   color,
+  activeIndex,
+  activeColor,
 }: {
   data: number[];
   xForIndex: (i: number) => number;
   yForValue: (v: number) => number;
   innerW: number;
-  innerH: number;
   color: string;
+  activeIndex: number | null;
+  activeColor: string;
 }) {
-  // Reserve a small gap between bars so they don't touch.
   const slot = data.length > 0 ? innerW / data.length : 0;
   const barW = Math.max(2, slot * 0.7);
   const baselineY = yForValue(0);
@@ -220,6 +341,7 @@ function BarShapes({
         const cx = xForIndex(i);
         const y = yForValue(v);
         const h = Math.max(0, baselineY - y);
+        const isActive = activeIndex === i;
         return (
           <Rect
             key={i}
@@ -227,14 +349,13 @@ function BarShapes({
             y={y}
             width={barW}
             height={h}
-            fill={color}
+            fill={isActive ? activeColor : color}
+            opacity={activeIndex === null || isActive ? 1 : 0.45}
             rx={3}
             ry={3}
           />
         );
       })}
-      {/* Suppress unused-var lint */}
-      {innerH ? null : null}
     </>
   );
 }
@@ -245,21 +366,18 @@ function LineShapes({
   yForValue,
   color,
   gradientId,
-  innerH,
+  activeIndex,
 }: {
   values: number[];
   xForIndex: (i: number) => number;
   yForValue: (v: number) => number;
   color: string;
   gradientId: string;
-  innerH: number;
+  activeIndex: number | null;
 }) {
   if (values.length === 0) return null;
-  // Build a smoothed Catmull-Rom path. Approximation via
-  // adjacent-point averaging for the control points.
   const points = values.map((v, i) => ({ x: xForIndex(i), y: yForValue(v) }));
   const lineD = smoothPath(points);
-  // Closed area: same path + return down to baseline + close.
   const areaD =
     lineD +
     ` L ${points[points.length - 1].x} ${yForValue(0)}` +
@@ -267,9 +385,27 @@ function LineShapes({
   return (
     <>
       <Path d={areaD} fill={`url(#${gradientId})`} />
-      <Path d={lineD} stroke={color} strokeWidth="2" fill="none" strokeLinejoin="round" strokeLinecap="round" />
-      {/* Suppress unused-var lint */}
-      {innerH ? null : null}
+      <Path
+        d={lineD}
+        stroke={color}
+        strokeWidth="2"
+        fill="none"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      {/* Emphasized dot at the active position. */}
+      {activeIndex !== null && (
+        <>
+          <Circle
+            cx={points[activeIndex].x}
+            cy={points[activeIndex].y}
+            r={6}
+            fill="#FFF"
+            stroke={color}
+            strokeWidth="2"
+          />
+        </>
+      )}
     </>
   );
 }
@@ -283,7 +419,6 @@ function XAxisLabel({
   text: string;
   align: 'start' | 'center' | 'end';
 }) {
-  // 60px wide label box centered on `x` (with edge clamping).
   const W = 60;
   const left = align === 'start' ? x - 4 : align === 'end' ? x - W + 4 : x - W / 2;
   return (
@@ -301,6 +436,63 @@ function XAxisLabel({
     >
       {text}
     </Text>
+  );
+}
+
+function Tooltip({
+  x,
+  y,
+  label,
+  valueText,
+  chartWidth,
+}: {
+  x: number;
+  y: number;
+  label: string;
+  valueText: string;
+  chartWidth: number;
+}) {
+  const { colors, radius } = useTheme();
+  // Estimate width based on content — each char ~7px, padding 16
+  // either side. Clamped to chart bounds so the tooltip never
+  // hangs off the edge.
+  const contentLen = Math.max(label.length, valueText.length);
+  const estimatedW = Math.max(TOOLTIP_MIN_W, contentLen * 8 + 16);
+  const left = Math.max(
+    4,
+    Math.min(chartWidth - estimatedW - 4, x - estimatedW / 2),
+  );
+  // Place above the touch point; if too close to top, put below.
+  const above = y > TOOLTIP_HEIGHT + 8;
+  const top = above ? y - TOOLTIP_HEIGHT - 8 : y + 8;
+
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        s.tooltip,
+        {
+          left,
+          top,
+          width: estimatedW,
+          backgroundColor: colors.text,
+          borderRadius: radius.md,
+        },
+      ]}
+    >
+      <Text
+        variant="caption"
+        style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}
+      >
+        {label}
+      </Text>
+      <Text
+        variant="body"
+        style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}
+      >
+        {valueText}
+      </Text>
+    </View>
   );
 }
 
@@ -349,5 +541,15 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tooltip: {
+    position: 'absolute',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });

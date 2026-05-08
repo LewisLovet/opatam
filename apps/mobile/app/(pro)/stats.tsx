@@ -375,6 +375,10 @@ export default function StatsScreen() {
                     ? `${Math.round(v / 100_000)}k€`
                     : `${(v / 100).toFixed(0)}€`
                 }
+                // Precise value when the user taps a bar / point —
+                // avoids the abbreviated "1k€" you get on the
+                // Y-axis. Uses the same helper as the hero KPI.
+                formatTooltipValue={formatPrice}
               />
               <TrendChart
                 data={stats.trend}
@@ -383,6 +387,9 @@ export default function StatsScreen() {
                 chartType={stats.chartType}
                 formatYAxis={(v) =>
                   v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${v}`
+                }
+                formatTooltipValue={(v) =>
+                  `${v.toLocaleString('fr-FR')} vue${v !== 1 ? 's' : ''}`
                 }
               />
             </>
