@@ -5,7 +5,8 @@
  */
 
 import { analyticsService, bookingService } from '@booking-app/firebase';
-import type { PageViewStats } from '@booking-app/shared';
+import { deltaPercent, type PageViewStats, type TrendPoint } from '@booking-app/shared';
+import { Sparkline } from '../../../components/stats/Sparkline';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -163,6 +164,28 @@ function formatFrenchDate(date: Date): string {
 
 function formatTime(date: Date): string {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+}
+
+/**
+ * Sum a numeric field of the last N entries of a trend array,
+ * optionally offset from the end. Used by the home screen to slice
+ * the 30-day trend into a 7d window + a previous-7d window for
+ * the delta calculation, without a second hook call.
+ */
+function sumLast(
+  arr: TrendPoint[],
+  n: number,
+  key: 'revenue' | 'bookingsCount' | 'pageViews',
+  offsetFromEnd = 0,
+): number {
+  if (arr.length === 0) return 0;
+  const end = Math.max(0, arr.length - offsetFromEnd);
+  const start = Math.max(0, end - n);
+  let sum = 0;
+  for (let i = start; i < end; i++) {
+    sum += arr[i][key] ?? 0;
+  }
+  return sum;
 }
 
 function formatPrice(centimes: number): string {
@@ -335,6 +358,42 @@ function TimelineBookingItem({
 // Stat Cards
 // ---------------------------------------------------------------------------
 
+/**
+ * DeltaChip — small +/-X% pill used by the modernised stat cards.
+ * Green when positive, red when negative, gray on baseline / null
+ * (e.g. previous period was 0 so the % is undefined).
+ */
+function DeltaChip({ delta }: { delta: number | null }) {
+  const { colors } = useTheme();
+  if (delta === null) {
+    return (
+      <View style={[styles.deltaChip, { backgroundColor: colors.surfaceSecondary }]}>
+        <Text variant="caption" style={{ fontSize: 10, color: colors.textMuted, fontWeight: '600' }}>—</Text>
+      </View>
+    );
+  }
+  const positive = delta > 0;
+  const negative = delta < 0;
+  const tone = positive ? colors.success : negative ? colors.error : colors.textMuted;
+  return (
+    <View
+      style={[
+        styles.deltaChip,
+        { backgroundColor: tone + '18' },
+      ]}
+    >
+      <Ionicons
+        name={positive ? 'arrow-up' : negative ? 'arrow-down' : 'remove'}
+        size={9}
+        color={tone}
+      />
+      <Text variant="caption" style={{ fontSize: 10, color: tone, fontWeight: '700' }}>
+        {delta > 0 ? '+' : ''}{delta}%
+      </Text>
+    </View>
+  );
+}
+
 function StatCardToday({ bookingsCount, revenue, passedCount }: { bookingsCount: number; revenue: number; passedCount: number }) {
   const { colors, spacing, radius } = useTheme();
   const progress = bookingsCount > 0 ? passedCount / bookingsCount : 0;
@@ -360,61 +419,104 @@ function StatCardToday({ bookingsCount, revenue, passedCount }: { bookingsCount:
   );
 }
 
-function StatCardWeek({ bookingsCount, perDay }: { bookingsCount: number; perDay: number[] }) {
+/**
+ * 7-day card — modernised. Replaces the chunky D/L/M/M/J/V/S bars
+ * with a smoothed sparkline of CA over the last 7 days, the
+ * period total, and a delta vs the previous 7 days.
+ */
+function StatCardWeek({
+  revenue,
+  delta,
+  trend,
+  bookingsCount,
+  onPress,
+}: {
+  revenue: number;
+  delta: number | null;
+  trend: number[];
+  bookingsCount: number;
+  onPress?: () => void;
+}) {
   const { colors, spacing, radius } = useTheme();
-  const maxPerDay = Math.max(...perDay, 1);
-  const todayIdx = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; })();
-
   return (
-    <View style={[styles.statCard, { borderColor: colors.border, borderRadius: radius.xl }]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.statCard,
+        { borderColor: colors.border, borderRadius: radius.xl, opacity: pressed && onPress ? 0.85 : 1 },
+      ]}
+    >
       <View style={[styles.statCardHeader, { marginBottom: spacing.md }]}>
-        <Ionicons name="bar-chart-outline" size={18} color={colors.info} />
-        <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500' }}>Cette semaine</Text>
+        <Ionicons name="trending-up-outline" size={18} color={colors.info} />
+        <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500', flex: 1 }}>
+          7 derniers jours
+        </Text>
+        <DeltaChip delta={delta} />
       </View>
-      <Text variant="h2" style={{ fontWeight: '800', marginBottom: spacing.md }}>{bookingsCount} <Text variant="bodySmall" color="textMuted">RDV</Text></Text>
-      {/* Mini bar chart */}
-      <View style={styles.miniChart}>
-        {perDay.map((count, i) => (
-          <View key={i} style={styles.miniChartCol}>
-            <View style={[styles.miniChartBarBg, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.sm }]}>
-              <View
-                style={[
-                  styles.miniChartBarFill,
-                  {
-                    height: `${(count / maxPerDay) * 100}%`,
-                    backgroundColor: i === todayIdx ? colors.primary : colors.border,
-                    borderRadius: radius.sm,
-                  },
-                ]}
-              />
-            </View>
-            <Text variant="caption" style={{ fontSize: 10, color: i === todayIdx ? colors.primary : colors.textMuted, fontWeight: i === todayIdx ? '700' : '400', marginTop: 2 }}>
-              {DAY_LABELS[i]}
-            </Text>
-          </View>
-        ))}
+      <Text variant="h2" style={{ fontWeight: '800' }}>{formatPrice(revenue)}</Text>
+      <Text variant="caption" color="textMuted" style={{ marginTop: 2, marginBottom: spacing.sm }}>
+        {bookingsCount} RDV
+      </Text>
+      {/* Smoothed sparkline (height 32). Renders nothing if <2 data
+          points — keeps the card visually tidy in that edge case. */}
+      <View style={styles.sparklineSlot}>
+        <Sparkline data={trend} width={STAT_CARD_WIDTH - 48} height={36} color={colors.info} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
-function StatCardMonth({ revenue, completionRate, bookingsCount, onPress }: { revenue: number; completionRate: number; bookingsCount: number; onPress?: () => void }) {
+/**
+ * 30-day card — modernised. CA + delta vs 30j précédents + sparkline,
+ * tappable to deep-link into /pro/stats.
+ */
+function StatCardMonth({
+  revenue,
+  delta,
+  trend,
+  completionRate,
+  bookingsCount,
+  onPress,
+}: {
+  revenue: number;
+  delta: number | null;
+  trend: number[];
+  completionRate: number;
+  bookingsCount: number;
+  onPress?: () => void;
+}) {
   const { colors, spacing, radius } = useTheme();
   const rateColor = completionRate >= 80 ? colors.success : completionRate >= 50 ? colors.warning : colors.error;
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.statCard, { borderColor: colors.border, borderRadius: radius.xl, opacity: pressed && onPress ? 0.85 : 1 }]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.statCard,
+        { borderColor: colors.border, borderRadius: radius.xl, opacity: pressed && onPress ? 0.85 : 1 },
+      ]}
+    >
       <View style={[styles.statCardHeader, { marginBottom: spacing.md }]}>
         <Ionicons name="wallet-outline" size={18} color={colors.success} />
-        <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500' }}>Ce mois</Text>
+        <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500', flex: 1 }}>
+          30 derniers jours
+        </Text>
+        <DeltaChip delta={delta} />
       </View>
-      <View style={{ marginBottom: spacing.sm }}>
-        <Text variant="h2" style={{ fontWeight: '800' }}>{formatPrice(revenue)}</Text>
+      <Text variant="h2" style={{ fontWeight: '800' }}>{formatPrice(revenue)}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 }}>
+        <Text variant="caption" color="textMuted">{bookingsCount} RDV</Text>
+        <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: colors.textMuted, opacity: 0.4 }} />
+        <Text variant="caption" style={{ color: rateColor, fontWeight: '600' }}>{completionRate}% réussite</Text>
       </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text variant="caption" color="textMuted">{bookingsCount} RDV ce mois</Text>
-        {onPress && <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />}
+      <View style={[styles.sparklineSlot, { marginTop: spacing.sm }]}>
+        <Sparkline data={trend} width={STAT_CARD_WIDTH - 48} height={36} color={colors.success} />
       </View>
+      {onPress && (
+        <View style={{ position: 'absolute', top: 14, right: 14 }}>
+          <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -431,8 +533,23 @@ export default function ProDashboardScreen() {
   const { user } = useAuth();
   const sub = useSubscriptionStatus();
   const { data, isLoading, refresh } = useProviderDashboard(providerId, provider?.rating?.average);
+  // Default 30-day window — gives us enough trend depth to derive
+  // both the 7-day and 30-day cards from one fetch (sliced
+  // last 7 / last 14..7 etc.).
   const { stats } = useProviderStats(providerId);
   const { reviews } = useReviews(providerId ?? undefined);
+
+  // Derive 7-day vs previous-7-day metrics from the 30-day trend
+  // window so the Week card has its own delta + sparkline without
+  // a second hook call.
+  const trend = stats?.trend ?? [];
+  const weekRevenue = sumLast(trend, 7, 'revenue');
+  const weekRevenuePrev = sumLast(trend, 7, 'revenue', 7);
+  const weekBookings = sumLast(trend, 7, 'bookingsCount');
+  const weekDelta = deltaPercent(weekRevenue, weekRevenuePrev);
+  const weekTrendValues = trend.slice(-7).map((p) => p.revenue);
+  const monthDelta = deltaPercent(stats?.revenue ?? 0, stats?.revenuePrevious ?? 0);
+  const monthTrendValues = trend.map((p) => p.revenue);
 
   // Combined refresh: dashboard data + provider context
   const handleRefresh = useCallback(async () => {
@@ -923,13 +1040,21 @@ export default function ProDashboardScreen() {
               />
             </View>
             <View style={{ width: STAT_CARD_WIDTH, marginRight: STAT_CARD_MARGIN }}>
-              <StatCardWeek bookingsCount={weekBookingsCount} perDay={weekBookingsPerDay} />
+              <StatCardWeek
+                revenue={weekRevenue}
+                delta={weekDelta}
+                trend={weekTrendValues}
+                bookingsCount={weekBookings}
+                onPress={() => router.push('/(pro)/stats')}
+              />
             </View>
             <View style={{ width: STAT_CARD_WIDTH, marginRight: STAT_CARD_MARGIN }}>
               <StatCardMonth
-                revenue={stats?.monthlyRevenue ?? 0}
+                revenue={stats?.revenue ?? 0}
+                delta={monthDelta}
+                trend={monthTrendValues}
                 completionRate={stats?.completionRate ?? 0}
-                bookingsCount={stats?.monthlyBookingsCount ?? 0}
+                bookingsCount={stats?.bookingsCount ?? 0}
                 onPress={() => router.push('/(pro)/stats')}
               />
             </View>
@@ -1476,26 +1601,21 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
 
-  // Mini bar chart
-  miniChart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 50,
-    gap: 6,
-  },
-  miniChartCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  miniChartBarBg: {
-    width: '100%',
+  // Sparkline slot — fixed-height container so the card height
+  // stays consistent whether or not data is present.
+  sparklineSlot: {
     height: 36,
     justifyContent: 'flex-end',
   },
-  miniChartBarFill: {
-    width: '100%',
-    minHeight: 3,
+  // +/- delta pill displayed in the top-right of the modernised
+  // stat cards.
+  deltaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 100,
   },
 
   // Pagination dots
