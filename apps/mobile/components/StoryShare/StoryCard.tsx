@@ -58,6 +58,13 @@ export interface StoryCardProps {
   bookingUrl: string;
   displayMode?: 'services' | 'availabilities' | 'none';
   availabilityGrid?: AvailabilityGrid;
+  /**
+   * Inside the "availabilities" mode, switch between the existing
+   * 7-day heatmap and a today-only layout that lists the actual
+   * free time slots grouped Matin / Après-midi / Soir.
+   * Defaults to 'week' to preserve the historical render.
+   */
+  availabilityScope?: 'week' | 'day';
   /** Theme for the standard layout (services / QR Code) AND the
    *  availability calendar. One toggle, applied everywhere. */
   storyTheme?: StoryTheme;
@@ -339,6 +346,246 @@ function AvailabilityStoryLayout({
   );
 }
 
+// ─── Today-only availability story (single-day list of free slots) ───────
+
+const FRENCH_DAYS = [
+  'Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi',
+];
+const FRENCH_MONTHS_LONG = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+];
+
+/** Format a YYYY-MM-DD into "Vendredi 9 mai 2026". */
+function formatLongFrenchDate(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return `${FRENCH_DAYS[date.getDay()]} ${date.getDate()} ${FRENCH_MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+/** Convert a half-hour bucket (`hour*2 + min/30`) back to a French
+ *  display label — "9h" for the top of the hour, "9h30" for the half. */
+function bucketToTimeLabel(bucket: number): string {
+  const hour = Math.floor(bucket / 2);
+  const min = (bucket % 2) * 30;
+  return min === 0 ? `${hour}h` : `${hour}h${min}`;
+}
+
+/**
+ * Today-only availability layout — replaces the 7-day heatmap with
+ * a list of the actual free time slots grouped by part of day.
+ * Designed for "post on Insta this morning to fill this afternoon"
+ * use case where a heatmap is overkill.
+ */
+function TodayAvailabilityLayout({
+  businessName,
+  category,
+  city,
+  photoURL,
+  day,
+  theme,
+}: {
+  businessName: string;
+  category: string;
+  city?: string;
+  photoURL?: string | null;
+  day: AvailabilityDay;
+  theme: AvailabilityTheme;
+}) {
+  const palette = theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE;
+
+  // Split the free buckets into morning / afternoon / evening based
+  // on standard salon hours (cutoffs 12h and 18h). Sorted ascending
+  // so chips read in time order on the card.
+  const slots = [...day.freeHalfHours].sort((a, b) => a - b);
+  const morning = slots.filter((b) => b < 24);          // < 12h
+  const afternoon = slots.filter((b) => b >= 24 && b < 36); // 12-18h
+  const evening = slots.filter((b) => b >= 36);          // ≥ 18h
+
+  const totalSlots = slots.length;
+  const fullDateLabel = formatLongFrenchDate(day.dateKey);
+  const isFullyBooked = totalSlots === 0;
+
+  // Avatar fallback initials — same logic as the week layout.
+  const initials =
+    businessName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? '')
+      .join('') || 'O';
+
+  const inner = (
+    <>
+      {/* Top-right decor circle (matches the week layout). */}
+      <View style={[availStoryStyles.decorCircle, { backgroundColor: palette.decor }]} />
+
+      {/* Header — same component shape as the week story. */}
+      <View style={availStoryStyles.header}>
+        <View style={[availStoryStyles.avatar, { backgroundColor: palette.avatarBg }]}>
+          {photoURL ? (
+            <Image source={{ uri: photoURL }} style={availStoryStyles.avatarImg} />
+          ) : (
+            <Text style={[availStoryStyles.avatarInitials, { color: palette.avatarText }]}>
+              {initials}
+            </Text>
+          )}
+        </View>
+        <View style={{ marginLeft: 10, flex: 1 }}>
+          <Text style={[availStoryStyles.bizName, { color: palette.text }]} numberOfLines={1}>
+            {businessName.toUpperCase()}
+          </Text>
+          <Text style={[availStoryStyles.bizSubtitle, { color: palette.textMuted }]} numberOfLines={1}>
+            {[category, city].filter(Boolean).join(' · ')}
+          </Text>
+        </View>
+      </View>
+
+      {/* Big title — kept on two lines like the week version for
+          the same visual rhythm. */}
+      <Text style={[availStoryStyles.bigTitle, { color: palette.text }]}>
+        Mes dispos{'\n'}aujourd'hui
+      </Text>
+      <Text style={[availStoryStyles.dateRange, { color: palette.textMuted }]}>
+        {fullDateLabel}
+      </Text>
+
+      {/* Body — either a friendly empty state or the grouped slots. */}
+      {isFullyBooked ? (
+        <View style={todayStyles.emptyWrap}>
+          <Text style={[todayStyles.emptyTitle, { color: palette.text }]}>
+            Complet pour aujourd'hui 💪
+          </Text>
+          <Text style={[todayStyles.emptySubtitle, { color: palette.textMuted }]}>
+            Réservez en ligne pour les prochains jours
+          </Text>
+        </View>
+      ) : (
+        <View style={todayStyles.body}>
+          <Text
+            style={[
+              todayStyles.summaryLine,
+              { color: palette.cellFree },
+            ]}
+          >
+            {totalSlots} créneau{totalSlots > 1 ? 'x' : ''} libre{totalSlots > 1 ? 's' : ''}
+          </Text>
+
+          <SlotSection title="🌅  Matin" slots={morning} palette={palette} />
+          <SlotSection title="☀️  Après-midi" slots={afternoon} palette={palette} />
+          <SlotSection title="🌙  Soir" slots={evening} palette={palette} />
+        </View>
+      )}
+    </>
+  );
+
+  if (palette.gradient) {
+    return (
+      <LinearGradient
+        colors={palette.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={availStoryStyles.canvas}
+      >
+        {inner}
+      </LinearGradient>
+    );
+  }
+  return (
+    <View style={[availStoryStyles.canvas, { backgroundColor: palette.bg }]}>
+      {inner}
+    </View>
+  );
+}
+
+/** Single section (Matin / Après-midi / Soir) — title + grid of
+ *  time chips. Hides itself entirely when empty so the layout
+ *  doesn't show a stranded heading. */
+function SlotSection({
+  title,
+  slots,
+  palette,
+}: {
+  title: string;
+  slots: number[];
+  palette: ThemePalette;
+}) {
+  if (slots.length === 0) return null;
+  return (
+    <View style={todayStyles.section}>
+      <Text style={[todayStyles.sectionTitle, { color: palette.text }]}>
+        {title}
+      </Text>
+      <View style={todayStyles.chipRow}>
+        {slots.map((bucket) => (
+          <View
+            key={bucket}
+            style={[
+              todayStyles.chip,
+              { backgroundColor: palette.cellFree },
+            ]}
+          >
+            <Text style={todayStyles.chipText}>{bucketToTimeLabel(bucket)}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const todayStyles = StyleSheet.create({
+  body: {
+    flex: 1,
+    marginTop: 16,
+  },
+  summaryLine: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 14,
+  },
+  section: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  chipText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+});
+
 const availStoryStyles = StyleSheet.create({
   canvas: {
     width: STORY_WIDTH,
@@ -595,6 +842,7 @@ export function StoryCard({
   bookingUrl,
   displayMode = 'services',
   availabilityGrid,
+  availabilityScope = 'week',
   storyTheme = 'light',
   gradientColors,
 }: StoryCardProps) {
@@ -611,9 +859,27 @@ export function StoryCard({
 
   // The "availabilities" mode uses a fully custom full-canvas layout
   // (matches the design reference) instead of the generic gradient
-  // story shell. We bail out early here so none of the standard
-  // sections (avatar, divider, services, etc.) bleed through.
+  // story shell. Two layouts share the slot — the historical 7-day
+  // heatmap and the new today-only list of free time slots. The
+  // sub-toggle in the modal controls which one renders.
   if (displayMode === 'availabilities' && availabilityGrid && availabilityGrid.days.length > 0) {
+    if (availabilityScope === 'day') {
+      return (
+        <View style={styles.container}>
+          <TodayAvailabilityLayout
+            businessName={businessName}
+            category={category}
+            city={city}
+            photoURL={photoURL}
+            // We pass the FIRST day of the grid — when scope is
+            // 'day' the hook fetched a single-day window so this
+            // is always today.
+            day={availabilityGrid.days[0]}
+            theme={storyTheme}
+          />
+        </View>
+      );
+    }
     return (
       <View style={styles.container}>
         <AvailabilityStoryLayout

@@ -83,6 +83,13 @@ function formatWeekRange(offset: number, days: number): string {
 type WithId<T> = { id: string } & T;
 
 type DisplayMode = 'services' | 'availabilities' | 'none';
+/**
+ * Sub-toggle inside the "Dispos" mode — week-grid (the historical
+ * heatmap) vs the new today-only list of free time slots. Picked
+ * as a sub-mode rather than a 4th top-level mode to keep the
+ * primary toggle to 3 chips and avoid crowding.
+ */
+type AvailabilityScope = 'week' | 'day';
 
 interface StoryShareModalProps {
   visible: boolean;
@@ -132,16 +139,25 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const [weekOffset, setWeekOffset] = useState(0);
   const MAX_WEEK_OFFSET = 4;
 
+  // Sub-toggle inside the "Dispos" mode — see AvailabilityScope above.
+  const [availabilityScope, setAvailabilityScope] =
+    useState<AvailabilityScope>('week');
+
   // Fetch upcoming availabilities — only when the user actually opens
   // the "Dispos" mode, since it triggers a heavier scheduling query.
+  // Day scope = single day window; week scope = the existing 7-day
+  // heatmap. The same hook handles both — we just narrow `days`.
   const {
     grid: availabilityGrid,
     loading: loadingAvailabilities,
     refresh: refreshAvailabilities,
   } = useUpcomingAvailabilities({
     providerId: provider?.id,
-    days: 7,
-    weekOffset,
+    days: availabilityScope === 'day' ? 1 : 7,
+    // For "day" scope we always look at today (offset = 0). The
+    // weekOffset slider is hidden in that case so this stays
+    // intentional.
+    weekOffset: availabilityScope === 'day' ? 0 : weekOffset,
     enabled: visible && displayMode === 'availabilities',
   });
 
@@ -331,6 +347,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     bookingUrl,
     displayMode,
     availabilityGrid,
+    availabilityScope,
     storyTheme,
   };
 
@@ -420,11 +437,66 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             </View>
           </View>
 
-          {/* Week selector — only in "Dispos" mode, lets the pro pick
-              which week they want to share. Reads the actual date
-              range straight off the grid so it matches what the story
-              renders. */}
+          {/* Scope sub-toggle inside "Dispos" — pick between the
+              7-day heatmap and the today-only slot list. Sits above
+              the week selector because it CHANGES whether the week
+              selector is even relevant. */}
           {displayMode === 'availabilities' && (
+            <View style={styles.sectionSpacing}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                Quand ?
+              </Text>
+              <View
+                style={[
+                  styles.scopeToggle,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                {(
+                  [
+                    { key: 'week', label: 'Cette semaine', icon: 'calendar-outline' },
+                    { key: 'day', label: "Aujourd'hui", icon: 'sunny-outline' },
+                  ] as const
+                ).map((opt) => {
+                  const active = availabilityScope === opt.key;
+                  return (
+                    <Pressable
+                      key={opt.key}
+                      onPress={() => setAvailabilityScope(opt.key)}
+                      style={[
+                        styles.scopeToggleOption,
+                        active && {
+                          backgroundColor: colors.primary,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={opt.icon as any}
+                        size={14}
+                        color={active ? '#FFF' : colors.text}
+                      />
+                      <Text
+                        style={[
+                          styles.scopeToggleLabel,
+                          { color: active ? '#FFF' : colors.text },
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Week selector — only in "Dispos" mode AND week scope.
+              Hidden for "today" since today is by definition not
+              navigable across weeks. */}
+          {displayMode === 'availabilities' && availabilityScope === 'week' && (
             <View style={styles.sectionSpacing}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
                 Semaine
@@ -755,6 +827,27 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   modeLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  // Scope toggle (week vs day) inside the Dispos mode
+  scopeToggle: {
+    flexDirection: 'row',
+    padding: 4,
+    borderWidth: 1,
+    borderRadius: 12,
+    gap: 4,
+  },
+  scopeToggleOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  scopeToggleLabel: {
     fontSize: 13,
     fontWeight: '600',
   },
