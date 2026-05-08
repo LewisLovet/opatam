@@ -4,7 +4,7 @@
  * Only visible in __DEV__ mode
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Pressable,
@@ -12,7 +12,9 @@ import {
   Modal,
   Animated,
   Dimensions,
+  PanResponder,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
@@ -23,6 +25,13 @@ import {
   resetNewFeaturesSeen,
   resetOnboarding,
 } from '../../utils';
+
+/** AsyncStorage key for the FAB's last position — survives reloads
+ *  so a dev who parked it top-left finds it there next time. */
+const POSITION_KEY = '@opatam/devfab_position';
+const FAB_SIZE = 44;
+const EDGE_PADDING = 16;
+const TAP_THRESHOLD = 5; // px — anything below counts as a tap, not a drag
 
 interface MenuItem {
   icon: keyof typeof Ionicons.glyphMap;
@@ -35,6 +44,120 @@ export function DevFAB() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isConfiguratorOpen, setIsConfiguratorOpen] = useState(false);
+
+  // ─── Drag-to-move ──────────────────────────────────────────────
+  // Translation from the FAB's "home" position (bottom-right). The
+  // FAB itself stays anchored bottom/right via styles.fab; we only
+  // animate translateX/translateY relative to that anchor.
+  // Negative X moves it left, negative Y moves it up.
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  // Track whether the user actually dragged so we don't fire
+  // toggleMenu on a "drag end" tap event.
+  const draggedRef = useRef(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Restore last position from storage on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(POSITION_KEY);
+        if (raw && !cancelled) {
+          const saved = JSON.parse(raw) as { x: number; y: number };
+          if (
+            typeof saved.x === 'number' &&
+            typeof saved.y === 'number' &&
+            Number.isFinite(saved.x) &&
+            Number.isFinite(saved.y)
+          ) {
+            pan.setValue(saved);
+          }
+        }
+      } catch {
+        /* ignore — first launch / corrupt JSON */
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pan]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        // Don't claim the gesture on touch start — let it reach the
+        // inner Pressable (so taps work normally).
+        onStartShouldSetPanResponder: () => false,
+        // Claim only once the finger has actually moved past the
+        // tap threshold. Distinguishes drags from accidental
+        // micro-movements during a tap.
+        onMoveShouldSetPanResponder: (_, gs) =>
+          Math.abs(gs.dx) > TAP_THRESHOLD ||
+          Math.abs(gs.dy) > TAP_THRESHOLD,
+        onPanResponderGrant: () => {
+          draggedRef.current = true;
+          // Move current value to offset so dx/dy from the gesture
+          // adds on top of where the FAB already sits.
+          pan.extractOffset();
+        },
+        onPanResponderMove: Animated.event(
+          [null, { dx: pan.x, dy: pan.y }],
+          { useNativeDriver: false },
+        ),
+        onPanResponderRelease: () => {
+          pan.flattenOffset();
+          // Read the current X/Y after flattenOffset.
+          // @ts-expect-error — _value exists at runtime even though
+          // it's not in the public typings.
+          const currentX = pan.x._value as number;
+          // @ts-expect-error
+          const currentY = pan.y._value as number;
+
+          // Snap horizontally to the closest edge — common UX for
+          // floating debug overlays. The FAB's anchor is bottom-right
+          // with right: 16, so:
+          //   x = 0   → docked right
+          //   x = -(width - FAB_SIZE - 2*EDGE_PADDING) → docked left
+          const screenW = Dimensions.get('window').width;
+          const fabAbsoluteRight = EDGE_PADDING - currentX; // distance from right edge
+          const fabAbsoluteCenter = screenW - fabAbsoluteRight - FAB_SIZE / 2;
+          const targetX =
+            fabAbsoluteCenter < screenW / 2
+              ? -(screenW - FAB_SIZE - EDGE_PADDING * 2) // left edge
+              : 0; // right edge
+
+          // Clamp Y so the FAB stays on-screen.
+          const screenH = Dimensions.get('window').height;
+          // Default position is bottom: 24, so y = 0 means at the
+          // bottom. We can move up to roughly screen height minus
+          // padding.
+          const minY = -(screenH - FAB_SIZE - EDGE_PADDING * 4);
+          const maxY = 0;
+          const targetY = Math.max(minY, Math.min(maxY, currentY));
+
+          Animated.spring(pan, {
+            toValue: { x: targetX, y: targetY },
+            useNativeDriver: false,
+            friction: 8,
+            tension: 60,
+          }).start(() => {
+            // Persist after the spring lands.
+            AsyncStorage.setItem(
+              POSITION_KEY,
+              JSON.stringify({ x: targetX, y: targetY }),
+            ).catch(() => {});
+            // Reset the drag flag a tick later so onPress (if it
+            // fires from the same gesture) is correctly suppressed.
+            setTimeout(() => {
+              draggedRef.current = false;
+            }, 50);
+          });
+        },
+      }),
+    [pan],
+  );
 
   // Don't render in production
   if (!__DEV__) {
@@ -110,30 +233,55 @@ export function DevFAB() {
   ];
 
   const toggleMenu = () => {
+    // Suppress the open if the gesture was actually a drag (the
+    // Pressable's onPress can still fire after a release if the
+    // finger never left its hit area). Reset on the next tap.
+    if (draggedRef.current) {
+      draggedRef.current = false;
+      return;
+    }
     setIsMenuOpen(!isMenuOpen);
   };
 
   return (
     <>
-      {/* FAB Button */}
-      <Pressable
-        onPress={toggleMenu}
-        style={({ pressed }) => [
+      {/* FAB Button — wrapped in an Animated.View so it can be
+          dragged anywhere on screen. Position is anchored
+          bottom-right via styles.fab; pan transforms move it from
+          there. Hidden until storage hydration finishes so we
+          don't flash at the default position then jump. */}
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[
           styles.fab,
           {
-            backgroundColor: colors.primary,
-            borderRadius: radius.full,
-            ...shadows.md,
+            transform: [
+              { translateX: pan.x },
+              { translateY: pan.y },
+            ],
+            opacity: hydrated ? 1 : 0,
           },
-          pressed && styles.fabPressed,
         ]}
       >
-        <Ionicons
-          name={isMenuOpen ? 'close' : 'code-slash'}
-          size={18}
-          color={colors.textInverse}
-        />
-      </Pressable>
+        <Pressable
+          onPress={toggleMenu}
+          style={({ pressed }) => [
+            styles.fabInner,
+            {
+              backgroundColor: colors.primary,
+              borderRadius: radius.full,
+              ...shadows.md,
+            },
+            pressed && styles.fabPressed,
+          ]}
+        >
+          <Ionicons
+            name={isMenuOpen ? 'close' : 'code-slash'}
+            size={18}
+            color={colors.textInverse}
+          />
+        </Pressable>
+      </Animated.View>
 
       {/* Menu Modal */}
       <Modal
@@ -199,18 +347,25 @@ export function DevFAB() {
   );
 }
 
-const { width, height } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
+  // Outer — handles positioning (anchored bottom-right) + the
+  // animated translate. No visual styling; it's a wrapper for
+  // PanResponder to hook into.
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 44,
-    height: 44,
+    bottom: EDGE_PADDING,
+    right: EDGE_PADDING,
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    zIndex: 1000,
+  },
+  // Inner — the visible Pressable. Same size as fab so the drag
+  // hit area matches the button.
+  fabInner: {
+    width: FAB_SIZE,
+    height: FAB_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
   },
   fabPressed: {
     opacity: 0.9,
