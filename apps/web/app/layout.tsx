@@ -6,7 +6,6 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 import { Providers } from './providers';
 import { APP_CONFIG } from '@booking-app/shared';
-import { DevTools } from '@/components/dev/DevTools';
 import { ClarityScript } from '@/components/analytics/ClarityScript';
 
 const inter = Inter({
@@ -68,7 +67,6 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <Providers>{children as ReactNode}</Providers>
-        <DevTools />
         {/* ── Analytics ─────────────────────────────────────────────
             - Vercel Analytics: page-view counts + top pages /
               referrers / countries. Auto-enabled on Vercel deploys.
