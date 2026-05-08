@@ -23,6 +23,9 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 
 // Safe import — react-native-view-shot requires native module
 let captureRef: typeof import('react-native-view-shot').captureRef | null = null;
@@ -78,6 +81,48 @@ function formatWeekRange(offset: number, days: number): string {
     return `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]} → ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`;
   }
   return `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]} ${start.getFullYear()} → ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`;
+}
+
+/** Resolve a Date that's `offset` days after today (midnight). Used by
+ *  the day-scope label + date picker initial value. */
+function dateForDayOffset(offset: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + offset);
+  return d;
+}
+
+/** Compute the day offset between today and a picked date — clamped
+ *  to [0, MAX] by the caller. */
+function dayOffsetFromDate(picked: Date): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(picked);
+  target.setHours(0, 0, 0, 0);
+  const diff = Math.round(
+    (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  return Math.max(0, diff);
+}
+
+const DAY_LABEL_NAMES = [
+  'Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi',
+];
+
+/** "Aujourd'hui" / "Demain" / "Mardi 13 mai" — the headline of the
+ *  day selector. Concise + readable across any offset. */
+function formatDayOffsetLabel(offset: number): string {
+  if (offset === 0) return "Aujourd'hui";
+  if (offset === 1) return 'Demain';
+  const d = dateForDayOffset(offset);
+  return `${DAY_LABEL_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+}
+
+/** Subtitle under the headline — full date so an offset like
+ *  "Demain" still tells you exactly which day. */
+function formatDayOffsetSubtitle(offset: number): string {
+  const d = dateForDayOffset(offset);
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 type WithId<T> = { id: string } & T;
@@ -143,10 +188,21 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const [availabilityScope, setAvailabilityScope] =
     useState<AvailabilityScope>('week');
 
+  // Day offset (0 = today, 1 = tomorrow, …) used by the day scope.
+  // Capped to 90 days so the picker stays sane — providers rarely
+  // accept bookings further out than that.
+  const [dayOffset, setDayOffset] = useState(0);
+  const MAX_DAY_OFFSET = 90;
+
+  // Native date-picker sheet for "pick a specific date" UX. Only
+  // mounted when the user explicitly taps the date label.
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   // Fetch upcoming availabilities — only when the user actually opens
   // the "Dispos" mode, since it triggers a heavier scheduling query.
-  // Day scope = single day window; week scope = the existing 7-day
-  // heatmap. The same hook handles both — we just narrow `days`.
+  // Day scope = single day window at `dayOffset`; week scope = the
+  // existing 7-day heatmap at `weekOffset`. The hook prioritises
+  // dayOffset over weekOffset when both are passed.
   const {
     grid: availabilityGrid,
     loading: loadingAvailabilities,
@@ -154,10 +210,8 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   } = useUpcomingAvailabilities({
     providerId: provider?.id,
     days: availabilityScope === 'day' ? 1 : 7,
-    // For "day" scope we always look at today (offset = 0). The
-    // weekOffset slider is hidden in that case so this stays
-    // intentional.
-    weekOffset: availabilityScope === 'day' ? 0 : weekOffset,
+    weekOffset: availabilityScope === 'day' ? undefined : weekOffset,
+    dayOffset: availabilityScope === 'day' ? dayOffset : undefined,
     enabled: visible && displayMode === 'availabilities',
   });
 
@@ -493,9 +547,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             </View>
           )}
 
-          {/* Week selector — only in "Dispos" mode AND week scope.
-              Hidden for "today" since today is by definition not
-              navigable across weeks. */}
+          {/* Week selector — only in "Dispos" mode AND week scope. */}
           {displayMode === 'availabilities' && availabilityScope === 'week' && (
             <View style={styles.sectionSpacing}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -545,6 +597,79 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                   <Ionicons name="chevron-forward" size={20} color={colors.text} />
                 </Pressable>
               </View>
+            </View>
+          )}
+
+          {/* Day selector — only in "Dispos" mode AND day scope.
+              Same chevron-pattern as the week selector but the label
+              itself is tappable to open a native date picker for
+              direct day selection (much faster than 30+ chevron taps
+              if the pro wants a date 5 weeks out). */}
+          {displayMode === 'availabilities' && availabilityScope === 'day' && (
+            <View style={styles.sectionSpacing}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                Jour
+              </Text>
+              <View
+                style={[
+                  styles.weekSelector,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Pressable
+                  onPress={() => setDayOffset((o) => Math.max(0, o - 1))}
+                  disabled={dayOffset === 0}
+                  hitSlop={8}
+                  style={[
+                    styles.weekArrow,
+                    dayOffset === 0 && { opacity: 0.3 },
+                  ]}
+                >
+                  <Ionicons name="chevron-back" size={20} color={colors.text} />
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowDatePicker(true)}
+                  style={{ flex: 1, alignItems: 'center' }}
+                >
+                  <Text style={[styles.weekLabel, { color: colors.text }]}>
+                    {formatDayOffsetLabel(dayOffset)}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={[styles.weekRange, { color: colors.textSecondary }]}>
+                      {formatDayOffsetSubtitle(dayOffset)}
+                    </Text>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={11}
+                      color={colors.textSecondary}
+                    />
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={() =>
+                    setDayOffset((o) => Math.min(MAX_DAY_OFFSET, o + 1))
+                  }
+                  disabled={dayOffset === MAX_DAY_OFFSET}
+                  hitSlop={8}
+                  style={[
+                    styles.weekArrow,
+                    dayOffset === MAX_DAY_OFFSET && { opacity: 0.3 },
+                  ]}
+                >
+                  <Ionicons name="chevron-forward" size={20} color={colors.text} />
+                </Pressable>
+              </View>
+              <Text
+                style={[
+                  styles.dayHint,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Touchez la date pour choisir un autre jour
+              </Text>
             </View>
           )}
 
@@ -738,6 +863,89 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             </Pressable>
           </Pressable>
         </Modal>
+
+        {/* ── Date picker — pick a specific day directly ───────────
+            Android renders its native modal automatically when the
+            element mounts; iOS shows an inline calendar so we wrap
+            it in our own bottom-sheet Modal with a "Terminé" button
+            for explicit dismissal. */}
+        {showDatePicker && Platform.OS === 'android' && (
+          <DateTimePicker
+            value={dateForDayOffset(dayOffset)}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            maximumDate={dateForDayOffset(MAX_DAY_OFFSET)}
+            onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
+              setShowDatePicker(false);
+              if (selectedDate && event.type === 'set') {
+                setDayOffset(
+                  Math.min(MAX_DAY_OFFSET, dayOffsetFromDate(selectedDate)),
+                );
+              }
+            }}
+          />
+        )}
+        {showDatePicker && Platform.OS === 'ios' && (
+          <Modal
+            transparent
+            animationType="fade"
+            visible
+            onRequestClose={() => setShowDatePicker(false)}
+          >
+            <Pressable
+              style={styles.datePickerBackdrop}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <Pressable
+                style={[
+                  styles.datePickerSheet,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={() => {
+                  /* swallow tap so backdrop dismiss doesn't fire */
+                }}
+              >
+                <DateTimePicker
+                  value={dateForDayOffset(dayOffset)}
+                  mode="date"
+                  display="inline"
+                  minimumDate={new Date()}
+                  maximumDate={dateForDayOffset(MAX_DAY_OFFSET)}
+                  locale="fr-FR"
+                  themeVariant={
+                    // The theme tokens type colors.background as a string
+                    // literal so a direct === comparison fails strict
+                    // checks; cast to defeat that and pick by hex.
+                    (colors.background as string) === '#0a1628' ||
+                    (colors.background as string) === '#000000'
+                      ? 'dark'
+                      : 'light'
+                  }
+                  onChange={(_event, selectedDate) => {
+                    if (selectedDate) {
+                      setDayOffset(
+                        Math.min(MAX_DAY_OFFSET, dayOffsetFromDate(selectedDate)),
+                      );
+                    }
+                  }}
+                />
+                <Pressable
+                  onPress={() => setShowDatePicker(false)}
+                  style={[
+                    styles.datePickerDoneBtn,
+                    { backgroundColor: colors.primary },
+                  ]}
+                >
+                  <Text style={styles.datePickerDoneText}>Terminé</Text>
+                </Pressable>
+              </Pressable>
+            </Pressable>
+          </Modal>
+        )}
       </View>
     </Modal>
   );
@@ -829,6 +1037,45 @@ const styles = StyleSheet.create({
   modeLabel: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  // Hint under the day selector — guides the user to tap the date
+  // for direct picking.
+  dayHint: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  // Native date-picker backdrop + sheet (iOS only — Android uses
+  // its system modal). Plain centered card with the inline calendar
+  // and a Terminé button below.
+  datePickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  datePickerSheet: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  datePickerDoneBtn: {
+    marginTop: 8,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  datePickerDoneText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
   },
   // Scope toggle (week vs day) inside the Dispos mode
   scopeToggle: {

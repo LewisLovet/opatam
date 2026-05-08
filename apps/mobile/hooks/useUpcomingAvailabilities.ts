@@ -56,8 +56,13 @@ interface UseUpcomingAvailabilitiesParams {
   /** Week offset from today. 0 = next 7 days from today, 1 = days
    *  7-13, 2 = days 14-20, etc. Lets the share modal step forward
    *  through future weeks. Negative values are clamped to 0 since
-   *  past dispos can't be booked. */
+   *  past dispos can't be booked. Ignored when `dayOffset` is set. */
   weekOffset?: number;
+  /** Day offset from today. 0 = today, 1 = tomorrow, ...
+   *  Takes precedence over `weekOffset` — used by the day-scope
+   *  story to point at a specific date. Negative values clamped
+   *  to 0 (no past dispos). */
+  dayOffset?: number;
   /** When false, the hook is idle (no fetch). Used to gate the heavy
    *  scheduling query to when the user actually opens the "Dispos" mode. */
   enabled?: boolean;
@@ -84,8 +89,14 @@ function dateKey(d: Date): string {
 export function useUpcomingAvailabilities(
   params: UseUpcomingAvailabilitiesParams,
 ): UseUpcomingAvailabilitiesResult {
-  const { providerId, days = 7, weekOffset = 0, enabled = true } = params;
-  const safeOffset = Math.max(0, weekOffset);
+  const { providerId, days = 7, weekOffset = 0, dayOffset, enabled = true } = params;
+  // dayOffset wins when provided — gives the day-scope story
+  // direct day-level navigation without the week granularity. When
+  // both are set, dayOffset is the authoritative one.
+  const offsetDays =
+    dayOffset !== undefined
+      ? Math.max(0, dayOffset)
+      : Math.max(0, weekOffset) * 7;
 
   const [grid, setGrid] = useState<UpcomingScheduleGrid>(EMPTY_GRID);
   const [loading, setLoading] = useState(false);
@@ -121,7 +132,7 @@ export function useUpcomingAvailabilities(
 
       const startDate = new Date();
       startDate.setHours(0, 0, 0, 0);
-      startDate.setDate(startDate.getDate() + safeOffset * 7);
+      startDate.setDate(startDate.getDate() + offsetDays);
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + days - 1);
       endDate.setHours(23, 59, 59, 999);
@@ -199,7 +210,7 @@ export function useUpcomingAvailabilities(
     } finally {
       setLoading(false);
     }
-  }, [providerId, days, safeOffset, enabled]);
+  }, [providerId, days, offsetDays, enabled]);
 
   useEffect(() => {
     fetchSchedule();

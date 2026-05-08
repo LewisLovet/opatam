@@ -363,6 +363,28 @@ function formatLongFrenchDate(dateKey: string): string {
   return `${FRENCH_DAYS[date.getDay()]} ${date.getDate()} ${FRENCH_MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+/** Headline accent shown after "Mes dispos\n…". Reads naturally
+ *  whatever the picked date is:
+ *    today      → "aujourd'hui"
+ *    tomorrow   → "de demain"
+ *    other date → "de [jour]" (e.g. "de samedi")
+ */
+function computeDayHeadline(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const target = new Date(y, m - 1, d);
+  target.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round(
+    (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (diffDays === 0) return "aujourd'hui";
+  if (diffDays === 1) return 'de demain';
+  // Lowercase the weekday — the title reads as a sentence so it
+  // shouldn't have a stranded capital ("de Samedi" looks wrong).
+  return `de ${FRENCH_DAYS[target.getDay()].toLowerCase()}`;
+}
+
 /** Convert a half-hour bucket (`hour*2 + min/30`) back to a French
  *  display label — "9h" for the top of the hour, "9h30" for the half. */
 function bucketToTimeLabel(bucket: number): string {
@@ -406,6 +428,11 @@ function TodayAvailabilityLayout({
   const fullDateLabel = formatLongFrenchDate(day.dateKey);
   const isFullyBooked = totalSlots === 0;
 
+  // Adapt the headline based on which day is being shared so the
+  // story reads naturally for any picked date — "aujourd'hui" only
+  // when the day is literally today, otherwise the weekday name.
+  const titleAccent = computeDayHeadline(day.dateKey);
+
   // Avatar fallback initials — same logic as the week layout.
   const initials =
     businessName
@@ -442,9 +469,9 @@ function TodayAvailabilityLayout({
       </View>
 
       {/* Big title — kept on two lines like the week version for
-          the same visual rhythm. */}
+          the same visual rhythm. Accent adapts to the picked day. */}
       <Text style={[availStoryStyles.bigTitle, { color: palette.text }]}>
-        Mes dispos{'\n'}aujourd'hui
+        Mes dispos{'\n'}{titleAccent}
       </Text>
       <Text style={[availStoryStyles.dateRange, { color: palette.textMuted }]}>
         {fullDateLabel}
@@ -454,7 +481,7 @@ function TodayAvailabilityLayout({
       {isFullyBooked ? (
         <View style={todayStyles.emptyWrap}>
           <Text style={[todayStyles.emptyTitle, { color: palette.text }]}>
-            Complet pour aujourd'hui 💪
+            Complet {titleAccent} 💪
           </Text>
           <Text style={[todayStyles.emptySubtitle, { color: palette.textMuted }]}>
             Réservez en ligne pour les prochains jours
