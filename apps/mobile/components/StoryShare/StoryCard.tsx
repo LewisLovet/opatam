@@ -392,8 +392,8 @@ function computeDayHeadline(dateKey: string): string {
  *   - Dark navy canvas (or light gradient mirroring the week story)
  *   - Top bar: business initials in a small bordered square (left)
  *     + "DISPOS DU JOUR" caption (right)
- *   - Date block: weekday in caps, large day number with the month
- *     label sitting at its baseline
+ *   - Date block: lowercase headline ("jeudi 7 mai") with a small
+ *     free-window summary underneath ("3h libres entre 12h et 20h")
  *   - Hour-by-hour timeline: one row per opening hour. Each row is
  *     either a flat dark cell (busy / closed) or a primary-blue
  *     pill labelled "Libre" (at least one half-hour bucket free).
@@ -416,10 +416,13 @@ function TodayAvailabilityLayout({
 }) {
   const palette = theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE;
 
-  const fullDateLabel = formatLongFrenchDate(day.dateKey);
   const dateParts = parseDateKey(day.dateKey);
-  const weekdayUpper = FRENCH_DAYS[dateParts.dow].toUpperCase();
-  const monthShort = MONTHS_SHORT[dateParts.month];
+  // Lowercase weekday + day + long-form month — matches the
+  // reference design ("jeudi 7 mai"). Rendered as a single
+  // headline so the title block stays compact.
+  const longLowerDateLabel =
+    `${FRENCH_DAYS[dateParts.dow].toLowerCase()} ${dateParts.day} ${FRENCH_MONTHS_LONG[dateParts.month]}`;
+  const summary = summarizeFreeWindow(day);
   const isFullyBooked = day.freeHalfHours.size === 0;
 
   // Day's open-hours range. Falls back to a safe default when the
@@ -451,16 +454,19 @@ function TodayAvailabilityLayout({
   // mirror the styles below — keep in sync if those change.
   // The canvas has a generous 92px bottom-safe-zone for IG reply /
   // sticker overlays, hence the big paddingBottom term.
+  // Date block is now compact (single-line title + short subtitle)
+  // → leaves more room for the timeline than the previous big
+  // numerical date.
   const TIMELINE_AVAILABLE_HEIGHT =
     STORY_HEIGHT
     - 32 /* paddingTop */
     - 92 /* paddingBottom (IG safe-zone) */
     - 28 /* topBar height */
-    - 28 /* topBar marginBottom */
-    - 84 /* dayNumber lineHeight */
-    - 4  /* weekday marginBottom */
-    - 13 /* weekday height */
-    - 16 /* dateBlock marginBottom */
+    - 24 /* topBar marginBottom */
+    - 36 /* title lineHeight */
+    - 6  /* gap title→subtitle */
+    - 16 /* subtitle lineHeight */
+    - 20 /* dateBlock marginBottom */
     - 13 /* footer height */
     - 12; /* footer marginTop */
   const rowGap = twoColumns ? 4 : 6;
@@ -493,19 +499,25 @@ function TodayAvailabilityLayout({
         </Text>
       </View>
 
-      {/* Big date block */}
+      {/* Compact date block: lowercase headline + free-window summary.
+          Designed to read as a single sentence ("jeudi 7 mai" /
+          "3h libres entre 12h et 20h") so the timeline below has
+          maximum vertical room. */}
       <View style={todayStyles.dateBlock}>
-        <Text style={[todayStyles.weekday, { color: palette.cellFree }]}>
-          {weekdayUpper}
+        <Text
+          style={[todayStyles.title, { color: palette.text }]}
+          numberOfLines={1}
+        >
+          {longLowerDateLabel}
         </Text>
-        <View style={todayStyles.dateRow}>
-          <Text style={[todayStyles.dayNumber, { color: palette.text }]}>
-            {dateParts.day}
+        {summary && (
+          <Text
+            style={[todayStyles.subtitle, { color: palette.textMuted }]}
+            numberOfLines={1}
+          >
+            {summary.totalLabel} libres {summary.rangeLabel}
           </Text>
-          <Text style={[todayStyles.monthLabel, { color: palette.text }]}>
-            {monthShort}
-          </Text>
-        </View>
+        )}
       </View>
 
       {/* Hour timeline OR empty state */}
@@ -571,8 +583,6 @@ function TodayAvailabilityLayout({
         </Text>
       </View>
 
-      {/* Suppress unused-name warning (kept for layout parity) */}
-      {fullDateLabel ? null : null}
     </>
   );
 
@@ -704,6 +714,55 @@ function computeMaxHour(day: AvailabilityDay): number | null {
   return max < 0 ? null : Math.min(23, max + 1);
 }
 
+/**
+ * Summarise the day's free time as a one-liner above the timeline.
+ *
+ * Returns:
+ *   - `totalLabel` like "3h", "3h30", "30min" (sum of all free buckets)
+ *   - `rangeLabel` like "entre 12h et 20h" (smallest → largest free
+ *     bucket, end inclusive — the last bucket is 30 min wide)
+ *
+ * Returns `null` when the day has no free time so the caller can
+ * fall back to the empty-state UI without a misleading "0min libres".
+ */
+function summarizeFreeWindow(
+  day: AvailabilityDay,
+): { totalLabel: string; rangeLabel: string } | null {
+  if (day.freeHalfHours.size === 0) return null;
+
+  // Total time across every free 30-minute bucket.
+  const totalMinutes = day.freeHalfHours.size * 30;
+  const tH = Math.floor(totalMinutes / 60);
+  const tM = totalMinutes % 60;
+  const totalLabel =
+    tH === 0
+      ? `${tM}min`
+      : tM === 0
+        ? `${tH}h`
+        : `${tH}h${tM.toString().padStart(2, '0')}`;
+
+  // Window endpoints. min = first free bucket; max = last free bucket
+  // (its end is +30 min). e.g. buckets 24–39 → 12h00 → 20h00.
+  let minBucket = Infinity;
+  let maxBucket = -1;
+  for (const b of day.freeHalfHours) {
+    if (b < minBucket) minBucket = b;
+    if (b > maxBucket) maxBucket = b;
+  }
+  const startH = Math.floor(minBucket / 2);
+  const startM = (minBucket % 2) * 30;
+  const endBucket = maxBucket + 1; // bucket end = next bucket start
+  const endH = Math.floor(endBucket / 2);
+  const endM = (endBucket % 2) * 30;
+  const fmt = (h: number, m: number) =>
+    m === 0 ? `${h}h` : `${h}h${m.toString().padStart(2, '0')}`;
+
+  return {
+    totalLabel,
+    rangeLabel: `entre ${fmt(startH, startM)} et ${fmt(endH, endM)}`,
+  };
+}
+
 const todayStyles = StyleSheet.create({
   // Top bar — small logo + ALL-CAPS caption on the right
   topBar: {
@@ -737,31 +796,24 @@ const todayStyles = StyleSheet.create({
     opacity: 0.7,
   },
 
-  // Big date block
+  // Compact date block — single-line lowercase headline ("jeudi 7 mai")
+  // followed by a free-window summary ("3h libres entre 12h et 20h").
+  // Heights here are reflected verbatim in TIMELINE_AVAILABLE_HEIGHT,
+  // keep both in sync.
   dateBlock: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  weekday: {
-    fontSize: 13,
+  title: {
+    fontSize: 32,
     fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 4,
+    lineHeight: 36,
+    letterSpacing: -0.5,
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-  dayNumber: {
-    fontSize: 84,
-    fontWeight: '900',
-    lineHeight: 84,
-    letterSpacing: -2,
-  },
-  monthLabel: {
-    fontSize: 18,
+  subtitle: {
+    fontSize: 14,
     fontWeight: '500',
-    marginLeft: 6,
-    marginBottom: 14, // visual baseline alignment with the day number
+    lineHeight: 16,
+    marginTop: 6,
     opacity: 0.85,
   },
 
