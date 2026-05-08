@@ -76,4 +76,11 @@ export { useProBookingBadges, useClientBookingBadges } from './useBookingBadges'
 
 export { useDeepLinks } from './useDeepLinks';
 
-export { useNewFeatures, NEW_FEATURE_KEYS, type NewFeatureKey } from './useNewFeatures';
+export {
+  useNewFeatures,
+  NEW_FEATURE_KEYS,
+  MORE_TAB_FEATURE_KEYS,
+  type NewFeatureKey,
+} from './useNewFeatures';
+
+export { useProviderClients } from './useProviderClients';

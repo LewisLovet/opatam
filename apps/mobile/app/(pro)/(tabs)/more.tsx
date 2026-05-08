@@ -651,6 +651,17 @@ export default function MoreScreen() {
           </Text>
           <Card padding="none" shadow="sm">
             <MenuItem
+              icon="people-outline"
+              label="Clients"
+              isNew={isNew('clients-2026-05')}
+              onPress={() => {
+                markSeen('clients-2026-05');
+                router.push('/(pro)/clients');
+              }}
+              colors={colors}
+            />
+            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
+            <MenuItem
               icon="star-outline"
               label="Avis clients"
               badge={provider?.rating?.count || null}

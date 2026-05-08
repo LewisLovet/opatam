@@ -10,6 +10,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
 import { useProBookingBadges } from '../../../hooks';
+import {
+  MORE_TAB_FEATURE_KEYS,
+  useNewFeatures,
+} from '../../../hooks/useNewFeatures';
 
 export default function ProTabsLayout() {
   const { colors, spacing } = useTheme();
@@ -17,6 +21,10 @@ export default function ProTabsLayout() {
   const { provider } = useProvider();
   const { todayCount, pendingCount } = useProBookingBadges(provider?.id);
   const insets = useSafeAreaInsets();
+  // Discovery dot on the "Plus" tab — true while any new-feature
+  // entry behind that tab hasn't been opened yet.
+  const { hasAnyUnseen } = useNewFeatures();
+  const moreHasNew = hasAnyUnseen(MORE_TAB_FEATURE_KEYS);
 
   // See comment in (client)/(tabs)/_layout.tsx — same pattern, so the
   // tab buttons stay above Android's gesture bar / iPhone home indicator.
@@ -123,7 +131,20 @@ export default function ProTabsLayout() {
         options={{
           title: 'Plus',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="ellipsis-horizontal" size={size} color={color} />
+            <View>
+              <Ionicons name="ellipsis-horizontal" size={size} color={color} />
+              {moreHasNew && (
+                <View
+                  style={[
+                    styles.moreDot,
+                    {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.surface,
+                    },
+                  ]}
+                />
+              )}
+            </View>
           ),
         }}
       />
@@ -146,5 +167,17 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Small discovery dot overlaying the "Plus" icon when there's an
+  // unseen feature in the More menu. Border in surface color so it
+  // pops on both light + dark themes.
+  moreDot: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    borderWidth: 1.5,
   },
 });

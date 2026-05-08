@@ -28,9 +28,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export const NEW_FEATURE_KEYS = [
   'stats-2026-05',
   'payments-2026-05',
+  'clients-2026-05',
 ] as const;
 
 export type NewFeatureKey = (typeof NEW_FEATURE_KEYS)[number];
+
+/**
+ * Subset of NEW_FEATURE_KEYS that live behind the bottom-tab "Plus".
+ * Used by the tabs layout to decide whether to render a discovery
+ * dot on that tab — if any of these is still unseen, the dot shows.
+ */
+export const MORE_TAB_FEATURE_KEYS: NewFeatureKey[] = [
+  'stats-2026-05',
+  'payments-2026-05',
+  'clients-2026-05',
+];
 
 const STORAGE_KEY = '@opatam/new-features-seen-v1';
 
@@ -92,5 +104,17 @@ export function useNewFeatures() {
     [state.seen],
   );
 
-  return { isNew, markSeen, ready: state.ready };
+  /** True when at least one of the given keys is still unseen.
+   *  Use to drive a single discovery dot on the bottom-tab "Plus"
+   *  icon — we don't need to know which feature is new, just that
+   *  the user should explore the More menu. */
+  const hasAnyUnseen = useCallback(
+    (keys: readonly NewFeatureKey[]): boolean => {
+      if (!state.ready) return false;
+      return keys.some((k) => !state.seen.has(k));
+    },
+    [state],
+  );
+
+  return { isNew, hasAnyUnseen, markSeen, ready: state.ready };
 }
