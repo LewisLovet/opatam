@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { reauthenticateUser, updateUserPassword } from '@booking-app/firebase';
 import { Card, Input, Text, useToast } from '../../../components';
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
-import { useBlockedSlots } from '../../../hooks';
+import { useBlockedSlots, useNewFeatures } from '../../../hooks';
 import { useTheme } from '../../../theme';
 
 /** Map internal plan IDs to user-facing labels */
@@ -298,6 +298,7 @@ function MenuItem({
   icon,
   label,
   badge,
+  isNew = false,
   onPress,
   showArrow = true,
   danger = false,
@@ -306,6 +307,9 @@ function MenuItem({
   icon: string;
   label: string;
   badge?: string | number | null;
+  /** When true, shows a "Nouveau" pill next to the label until the
+   *  user taps the item (parent should call markSeen on press). */
+  isNew?: boolean;
   onPress: () => void;
   showArrow?: boolean;
   danger?: boolean;
@@ -322,12 +326,37 @@ function MenuItem({
       <View style={[s.menuIconContainer, { backgroundColor: danger ? '#FEE2E2' : (colors.primaryLight || '#e4effa') }]}>
         <Ionicons name={icon as any} size={20} color={danger ? '#DC2626' : colors.primary} />
       </View>
-      <Text
-        variant="body"
-        style={[s.menuLabel, danger && { color: '#DC2626' }]}
-      >
-        {label}
-      </Text>
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text
+          variant="body"
+          style={[s.menuLabel, danger && { color: '#DC2626' }, { flex: 0 }]}
+        >
+          {label}
+        </Text>
+        {isNew && (
+          <View
+            style={{
+              backgroundColor: colors.primary,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 4,
+            }}
+          >
+            <Text
+              variant="caption"
+              style={{
+                color: '#FFF',
+                fontWeight: '700',
+                fontSize: 9,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              Nouveau
+            </Text>
+          </View>
+        )}
+      </View>
       {badge != null && (
         <View style={{ backgroundColor: colors.primaryLight || '#e4effa', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginRight: 4 }}>
           <Text variant="caption" color="primary" style={{ fontWeight: '700', fontSize: 11 }}>{badge}</Text>
@@ -353,6 +382,9 @@ export default function MoreScreen() {
   const { provider, providerId } = useProvider();
   const { blockedSlots } = useBlockedSlots(providerId ?? null);
   const sub = useSubscriptionStatus();
+  // "Nouveau" badge state on menu items shipped recently — flips
+  // to off as soon as the user taps the row, persisted on-device.
+  const { isNew, markSeen } = useNewFeatures();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
@@ -637,7 +669,11 @@ export default function MoreScreen() {
             <MenuItem
               icon="stats-chart-outline"
               label="Statistiques"
-              onPress={() => router.push('/(pro)/stats')}
+              isNew={isNew('stats-2026-05')}
+              onPress={() => {
+                markSeen('stats-2026-05');
+                router.push('/(pro)/stats');
+              }}
               colors={colors}
             />
           </Card>
@@ -666,7 +702,11 @@ export default function MoreScreen() {
             <MenuItem
               icon="card-outline"
               label="Paiements & acomptes"
-              onPress={() => router.push('/(pro)/payments')}
+              isNew={isNew('payments-2026-05')}
+              onPress={() => {
+                markSeen('payments-2026-05');
+                router.push('/(pro)/payments');
+              }}
               colors={colors}
             />
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
