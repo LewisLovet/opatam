@@ -1,12 +1,36 @@
 /**
- * Pro Bookings List Screen
- * Full bookings list with status, period, and member filters.
- * Redesigned with grouped sections, accent borders, and polished filter UI.
+ * Pro Planning Screen (file kept as bookings.tsx for routing
+ * stability — see _layout.tsx note).
+ *
+ * Unified timeline of two event kinds:
+ *   - Réservations (Booking)         → client-facing, has actions
+ *     (confirm/cancel, "demander un avis", payment status, etc.)
+ *   - Activités (BlockedSlot.category)→ provider's personal events
+ *     (sport, meeting, perso, …) — no client actions, just a
+ *     glance at what's on the day
+ *
+ * Two top-level toggles:
+ *   1. View: "À venir" (default) vs. "Passé" — flips the sort
+ *      order and constrains the date range. Solves the previous
+ *      version's main pain: it was sorted past-first, which buried
+ *      tomorrow's RDV at the bottom.
+ *   2. Type: Tout / Réservations / Activités — lets the pro focus
+ *      on one stream at a time.
+ *
+ * Status (pending/confirmed/…) and member filters are kept but
+ * only relevant for bookings — they're hidden when the user picks
+ * "Activités".
  */
 
 import type { WithId } from '@booking-app/firebase';
 import { bookingService, memberService, reviewService } from '@booking-app/firebase';
-import type { Booking, BookingStatus, Member } from '@booking-app/shared';
+import type {
+  Booking,
+  BookingStatus,
+  Member,
+  BlockedSlot,
+  ActivityCategory,
+} from '@booking-app/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,8 +55,12 @@ import {
   Text,
 } from '../../../components';
 import { useAuth, useProvider } from '../../../contexts';
-import { useProviderBookings } from '../../../hooks';
+import {
+  useProviderBookings,
+  useProviderActivities,
+} from '../../../hooks';
 import { useTheme, type Colors } from '../../../theme';
+import { ACTIVITY_CATEGORY_META } from '../../../components/business/Activity/categoryMeta';
 
 // Enable LayoutAnimation on Android
 if (
@@ -61,6 +89,8 @@ function toDate(dt: any): Date {
 // ---------------------------------------------------------------------------
 
 type PeriodFilter = 'today' | 'week' | 'month' | 'all';
+type PlanningView = 'upcoming' | 'past';
+type TypeFilter = 'all' | 'bookings' | 'activities';
 
 interface StatusOption {
   label: string;
@@ -70,6 +100,17 @@ interface StatusOption {
 interface PeriodOption {
   label: string;
   value: PeriodFilter;
+}
+
+interface ViewOption {
+  label: string;
+  value: PlanningView;
+}
+
+interface TypeOption {
+  label: string;
+  value: TypeFilter;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
 }
 
 const STATUS_OPTIONS: StatusOption[] = [
@@ -87,11 +128,45 @@ const PERIOD_OPTIONS: PeriodOption[] = [
   { label: 'Tout', value: 'all' },
 ];
 
+const VIEW_OPTIONS: ViewOption[] = [
+  { label: 'À venir', value: 'upcoming' },
+  { label: 'Passé', value: 'past' },
+];
+
+const TYPE_OPTIONS: TypeOption[] = [
+  { label: 'Tout', value: 'all', icon: 'apps-outline' },
+  { label: 'Réservations', value: 'bookings', icon: 'people-outline' },
+  { label: 'Activités', value: 'activities', icon: 'calendar-outline' },
+];
+
+/**
+ * Tagged union the SectionList renders. `date` is the start instant
+ * we sort by — `datetime` for bookings, `startDate` (with
+ * `startTime` parsed in) for activities.
+ */
+type PlanningEvent =
+  | { kind: 'booking'; date: Date; data: WithId<Booking> }
+  | { kind: 'activity'; date: Date; data: WithId<BlockedSlot> };
+
+/** Window covering everything ±1 year — used as the data fetch
+ *  upper bound when the user picks "Tout" so we don't pull every
+ *  booking ever made. */
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
 // ---------------------------------------------------------------------------
 // Date Helpers
 // ---------------------------------------------------------------------------
 
-/** Returns start and end Date for a given period filter */
+/**
+ * Returns start and end Date for a given period — covers the full
+ * window (today, this week, this month, all). The view toggle
+ * (À venir / Passé) further slices this client-side; we don't push
+ * "now" into the query bounds because then changing the toggle
+ * would re-fetch unnecessarily.
+ *
+ * "Tout" is capped at ±1 year. Without a cap we'd pull the entire
+ * history every render, which is wasteful for established providers.
+ */
 function getDateRange(period: PeriodFilter): { startDate?: Date; endDate?: Date } {
   const now = new Date();
 
@@ -117,8 +192,41 @@ function getDateRange(period: PeriodFilter): { startDate?: Date; endDate?: Date 
     }
     case 'all':
     default:
-      return {};
+      return {
+        startDate: new Date(now.getTime() - ONE_YEAR_MS),
+        endDate: new Date(now.getTime() + ONE_YEAR_MS),
+      };
   }
+}
+
+/**
+ * Parse the start instant of an activity. Two cases handled:
+ *   - allDay → midnight of `startDate`
+ *   - timed  → startDate + parsed startTime (HH:MM string)
+ *
+ * Falls back to `startDate` raw if parsing the time string fails;
+ * the worst that can happen visually is a slot landing at 00:00,
+ * which is still better than the screen crashing.
+ */
+function activityStartInstant(slot: BlockedSlot): Date {
+  const base = slot.startDate instanceof Date ? slot.startDate : new Date(slot.startDate as any);
+  if (slot.allDay || !slot.startTime) {
+    return new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, 0, 0, 0);
+  }
+  const [hh, mm] = slot.startTime.split(':').map((v) => parseInt(v, 10));
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return base;
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate(), hh, mm, 0, 0);
+}
+
+/** Same idea for the end instant — used to compute durations. */
+function activityEndInstant(slot: BlockedSlot): Date {
+  const base = slot.endDate instanceof Date ? slot.endDate : new Date(slot.endDate as any);
+  if (slot.allDay || !slot.endTime) {
+    return new Date(base.getFullYear(), base.getMonth(), base.getDate(), 23, 59, 59, 999);
+  }
+  const [hh, mm] = slot.endTime.split(':').map((v) => parseInt(v, 10));
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return base;
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate(), hh, mm, 0, 0);
 }
 
 /** Formats a Date as "HH" (hours only) */
@@ -205,10 +313,10 @@ function getStatusDotColor(status: BookingStatus | string, colors: Colors): stri
 // Section data type
 // ---------------------------------------------------------------------------
 
-interface BookingSection {
+interface PlanningSection {
   title: string;
   date: Date;
-  data: WithId<Booking>[];
+  data: PlanningEvent[];
 }
 
 // ---------------------------------------------------------------------------
@@ -224,24 +332,56 @@ export default function ProBookingsScreen() {
 
   // -- Filter state ----------------------------------------------------------
 
+  const [view, setView] = useState<PlanningView>('upcoming');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<BookingStatus | undefined>(undefined);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('week');
   const [memberFilter, setMemberFilter] = useState<string | undefined>(undefined);
   const [members, setMembers] = useState<WithId<Member>[]>([]);
 
   // -- Date range (derived from period) --------------------------------------
+  // The view toggle (upcoming/past) is applied *after* the fetch
+  // by slicing the timeline at "now" — see the `events` memo. That
+  // way switching upcoming↔past is instant (no extra Firestore round
+  // trip) and the period chips keep their semantic meaning ("this
+  // week" = the entire current week, before and after now).
 
   const { startDate, endDate } = useMemo(() => getDateRange(periodFilter), [periodFilter]);
 
-  // -- Fetch bookings --------------------------------------------------------
+  // -- Fetch bookings + activities -------------------------------------------
 
-  const { bookings, isLoading, error, refresh } = useProviderBookings({
+  const {
+    bookings,
+    isLoading: bookingsLoading,
+    error: bookingsError,
+    refresh: refreshBookings,
+  } = useProviderBookings({
     providerId,
-    status: statusFilter,
+    // Status filter only applies to bookings, and only when the
+    // user hasn't explicitly hidden bookings via the type filter.
+    status: typeFilter === 'activities' ? undefined : statusFilter,
     memberId: memberFilter,
     startDate,
     endDate,
   });
+
+  const {
+    activities,
+    isLoading: activitiesLoading,
+    refresh: refreshActivities,
+  } = useProviderActivities({
+    providerId: providerId ?? null,
+    memberId: memberFilter,
+    startDate,
+    endDate,
+  });
+
+  const isLoading = bookingsLoading || activitiesLoading;
+  const error = bookingsError;
+
+  const refresh = useCallback(async () => {
+    await Promise.all([refreshBookings(), refreshActivities()]);
+  }, [refreshBookings, refreshActivities]);
 
   // -- Load members on mount -------------------------------------------------
 
@@ -285,33 +425,70 @@ export default function ProBookingsScreen() {
     [bookings],
   );
 
-  // -- Sorted bookings grouped by date (sections) ----------------------------
+  // -- Merged event timeline grouped by date (sections) ----------------------
+  //
+  // Steps:
+  //   1. Tag each booking / activity with `kind` and a sort `date`.
+  //   2. Apply the type filter (Tout / Réservations / Activités).
+  //   3. Slice on "now" based on the view toggle (upcoming/past).
+  //   4. Sort: upcoming → ascending (sooner first); past → descending
+  //      (most recent first), matching how a person scans either
+  //      direction of a timeline.
+  //   5. Group by date key and emit a list of sections.
 
-  const sections: BookingSection[] = useMemo(() => {
-    const sorted = [...bookings].sort((a, b) => {
-      const dateA = toDate(a.datetime);
-      const dateB = toDate(b.datetime);
-      return dateB.getTime() - dateA.getTime(); // Most recent first
-    });
+  const sections: PlanningSection[] = useMemo(() => {
+    const now = Date.now();
 
-    const grouped: Record<string, { date: Date; items: WithId<Booking>[] }> = {};
-    for (const booking of sorted) {
-      const bookingDate = toDate(booking.datetime);
-      const key = getDateKey(bookingDate);
-      if (!grouped[key]) {
-        grouped[key] = { date: bookingDate, items: [] };
-      }
-      grouped[key].items.push(booking);
+    const bookingEvents: PlanningEvent[] =
+      typeFilter === 'activities'
+        ? []
+        : bookings.map((b) => ({
+            kind: 'booking',
+            data: b,
+            date: toDate(b.datetime),
+          }));
+
+    const activityEvents: PlanningEvent[] =
+      typeFilter === 'bookings'
+        ? []
+        : activities.map((a) => ({
+            kind: 'activity',
+            data: a,
+            date: activityStartInstant(a),
+          }));
+
+    const merged = [...bookingEvents, ...activityEvents];
+
+    // View slice. Strict comparison with `now` so an event happening
+    // exactly at the current minute lands in "À venir" — matches user
+    // intuition ("c'est dans 0 minute" = upcoming, not past).
+    const sliced = merged.filter((e) =>
+      view === 'upcoming' ? e.date.getTime() >= now : e.date.getTime() < now,
+    );
+
+    sliced.sort((a, b) =>
+      view === 'upcoming'
+        ? a.date.getTime() - b.date.getTime()
+        : b.date.getTime() - a.date.getTime(),
+    );
+
+    const grouped: Record<string, { date: Date; items: PlanningEvent[] }> = {};
+    for (const evt of sliced) {
+      const key = getDateKey(evt.date);
+      if (!grouped[key]) grouped[key] = { date: evt.date, items: [] };
+      grouped[key].items.push(evt);
     }
 
     return Object.entries(grouped)
-      .sort(([a], [b]) => b.localeCompare(a)) // Most recent date first
+      .sort(([a], [b]) =>
+        view === 'upcoming' ? a.localeCompare(b) : b.localeCompare(a),
+      )
       .map(([, group]) => ({
         title: formatSectionDate(group.date),
         date: group.date,
         data: group.items,
       }));
-  }, [bookings]);
+  }, [bookings, activities, view, typeFilter]);
 
   // -- Booking actions -------------------------------------------------------
 
@@ -391,7 +568,7 @@ export default function ProBookingsScreen() {
   // -- Render helpers --------------------------------------------------------
 
   const renderSectionHeader = useCallback(
-    ({ section }: { section: BookingSection }) => (
+    ({ section }: { section: PlanningSection }) => (
       <View
         style={[
           styles.sectionHeader,
@@ -437,8 +614,14 @@ export default function ProBookingsScreen() {
     [reviewedClients],
   );
 
-  const renderBookingItem = useCallback(
-    ({ item: booking }: { item: WithId<Booking> }) => {
+  /**
+   * Render a single booking row. Pulled into its own callback
+   * (separate from the union-event router below) because it
+   * carries a lot of internal state — pending actions, review
+   * states — that we don't want to hydrate for every activity.
+   */
+  const renderBookingCard = useCallback(
+    (booking: WithId<Booking>) => {
       const bookingDate = toDate(booking.datetime);
       const hour = formatHour(bookingDate);
       const minutes = formatMinutes(bookingDate);
@@ -697,6 +880,148 @@ export default function ProBookingsScreen() {
     [colors, spacing, radius, shadows, navigateToBooking, handleConfirm, handleCancel, handleReviewRequest, reviewRequestLoadingId, hasClientReviewed],
   );
 
+  /**
+   * Render an activity row. Compact: time, category icon + colour
+   * stripe, title, optional address & member. Tap routes to the
+   * existing detail-by-id editor (we reuse the same flow that the
+   * calendar uses).
+   */
+  const renderActivityCard = useCallback(
+    (slot: WithId<BlockedSlot>) => {
+      const start = activityStartInstant(slot);
+      const end = activityEndInstant(slot);
+      const meta = slot.category ? ACTIVITY_CATEGORY_META[slot.category] : null;
+      const accent = meta?.color ?? colors.border;
+
+      const timeLabel = slot.allDay
+        ? 'Journée'
+        : `${formatHour(start)}h${formatMinutes(start)}`;
+      const durationMinutes = Math.max(
+        0,
+        Math.round((end.getTime() - start.getTime()) / 60000),
+      );
+
+      return (
+        <Pressable
+          // Same destination as the calendar tab's activity tap —
+          // /create-activity is also the edit screen when an `id`
+          // query param is passed (it hydrates the form from the
+          // existing slot). Reusing it means a single editor exists
+          // for both creation and editing, which is what we want
+          // until we ever build a read-only detail screen.
+          onPress={() =>
+            router.push(`/(pro)/create-activity?id=${slot.id}` as any)
+          }
+          style={({ pressed }) => [
+            styles.bookingCard,
+            {
+              marginHorizontal: spacing.lg,
+              marginBottom: spacing.md,
+              backgroundColor: pressed ? colors.surfaceSecondary : colors.surface,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderLeftWidth: 3,
+              borderLeftColor: accent,
+              ...shadows.sm,
+            },
+          ]}
+        >
+          <View style={[styles.bookingCardInner, { padding: spacing.md }]}>
+            {/* Left: Time column */}
+            <View style={[styles.timeColumn, { marginRight: spacing.md }]}>
+              {slot.allDay ? (
+                <Ionicons name="sunny-outline" size={20} color={accent} />
+              ) : (
+                <>
+                  <Text variant="h3" style={styles.timeHour}>
+                    {formatHour(start)}
+                  </Text>
+                  <Text variant="caption" color="textMuted" style={styles.timeMinutes}>
+                    {formatMinutes(start)}
+                  </Text>
+                </>
+              )}
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: accent, marginTop: spacing.xs },
+                ]}
+              />
+            </View>
+
+            {/* Center: title + category + optional address */}
+            <View style={styles.centerColumn}>
+              <View style={[styles.clientRow, { gap: spacing.sm }]}>
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: accent + '22',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {meta ? (
+                    <Ionicons name={meta.icon} size={16} color={accent} />
+                  ) : (
+                    <Ionicons name="ellipse-outline" size={16} color={accent} />
+                  )}
+                </View>
+                <View style={styles.clientInfo}>
+                  <Text variant="body" numberOfLines={1} style={styles.clientName}>
+                    {slot.title || meta?.label || 'Activité'}
+                  </Text>
+                  <Text variant="caption" color="textSecondary" numberOfLines={1}>
+                    {meta?.label ?? 'Activité'}
+                    {slot.address ? ` · ${slot.address}` : ''}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Right: time label + duration */}
+            <View style={[styles.rightColumn, { gap: spacing.xs }]}>
+              <View
+                style={[
+                  styles.durationBadge,
+                  {
+                    backgroundColor: colors.surfaceSecondary,
+                    borderRadius: radius.full,
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: 2,
+                  },
+                ]}
+              >
+                <Text variant="caption" color="textSecondary">
+                  {slot.allDay
+                    ? timeLabel
+                    : durationMinutes > 0
+                      ? formatDuration(durationMinutes)
+                      : timeLabel}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </Pressable>
+      );
+    },
+    [colors, spacing, radius, shadows, router],
+  );
+
+  /**
+   * SectionList item router — picks the booking or activity
+   * renderer based on the tagged-union event kind.
+   */
+  const renderEventItem = useCallback(
+    ({ item }: { item: PlanningEvent }) =>
+      item.kind === 'booking'
+        ? renderBookingCard(item.data)
+        : renderActivityCard(item.data),
+    [renderBookingCard, renderActivityCard],
+  );
+
   const renderEmpty = useCallback(
     () => (
       <View
@@ -725,20 +1050,122 @@ export default function ProBookingsScreen() {
           />
         </View>
         <Text variant="h3" align="center" style={{ marginBottom: spacing.xs }}>
-          Aucune réservation
+          {view === 'upcoming' ? 'Rien de prévu' : 'Aucun événement passé'}
         </Text>
         <Text variant="body" color="textSecondary" align="center">
-          Aucune réservation ne correspond aux filtres sélectionnés.
+          {view === 'upcoming'
+            ? "Aucun événement à venir ne correspond aux filtres sélectionnés."
+            : "Aucun événement passé ne correspond aux filtres sélectionnés."}
         </Text>
       </View>
     ),
-    [spacing, colors],
+    [spacing, colors, view],
   );
 
   const renderListHeader = useCallback(
     () => (
       <View style={{ paddingTop: spacing.md }}>
-        {/* ── Status filter pills ─────────────────────────────────── */}
+        {/* ── À venir / Passé toggle ──────────────────────────────── */}
+        <View
+          style={[
+            styles.segmentedControl,
+            {
+              marginHorizontal: spacing.lg,
+              marginBottom: spacing.md,
+              backgroundColor: colors.surfaceSecondary,
+              borderRadius: radius.lg,
+              padding: 3,
+            },
+          ]}
+        >
+          {VIEW_OPTIONS.map((option) => {
+            const isActive = view === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setView(option.value);
+                }}
+                style={[
+                  styles.segmentedItem,
+                  {
+                    backgroundColor: isActive ? colors.surface : 'transparent',
+                    borderRadius: radius.md,
+                    paddingVertical: spacing.sm,
+                    ...(isActive ? shadows.sm : {}),
+                  },
+                ]}
+              >
+                <Text
+                  variant="bodySmall"
+                  style={{
+                    color: isActive ? colors.text : colors.textSecondary,
+                    fontWeight: isActive ? '600' : '400',
+                  }}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* ── Type filter (Tout / Réservations / Activités) ──────── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: spacing.md }}
+          contentContainerStyle={{
+            gap: spacing.sm,
+            paddingHorizontal: spacing.lg,
+          }}
+        >
+          {TYPE_OPTIONS.map((option) => {
+            const isActive = typeFilter === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setTypeFilter(option.value);
+                }}
+                style={[
+                  styles.statusPill,
+                  {
+                    backgroundColor: isActive ? colors.primary : colors.surface,
+                    borderRadius: radius.full,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.sm,
+                    borderWidth: 1,
+                    borderColor: isActive ? colors.primary : colors.border,
+                    minHeight: 36,
+                    gap: spacing.xs,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={option.icon}
+                  size={14}
+                  color={isActive ? colors.textInverse : colors.textSecondary}
+                />
+                <Text
+                  variant="bodySmall"
+                  style={{
+                    color: isActive ? colors.textInverse : colors.text,
+                    fontWeight: isActive ? '600' : '400',
+                  }}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {/* ── Status filter pills (only meaningful for bookings —
+              hidden when "Activités" is the type filter) ─────────── */}
+        {typeFilter !== 'activities' && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -811,6 +1238,7 @@ export default function ProBookingsScreen() {
             );
           })}
         </ScrollView>
+        )}
 
         {/* ── Separator ────────────────────────────────────────────── */}
         <View
@@ -1001,6 +1429,8 @@ export default function ProBookingsScreen() {
       spacing,
       radius,
       shadows,
+      view,
+      typeFilter,
       statusFilter,
       periodFilter,
       memberFilter,
@@ -1016,7 +1446,7 @@ export default function ProBookingsScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.brandedHeader, { backgroundColor: colors.primary, paddingTop: insets.top }]}>
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-            <Text variant="h1" style={{ color: '#FFFFFF' }}>Réservations</Text>
+            <Text variant="h1" style={{ color: '#FFFFFF' }}>Planning</Text>
           </View>
         </View>
         <View style={styles.loaderContainer}>
@@ -1033,14 +1463,19 @@ export default function ProBookingsScreen() {
       {/* ── Branded Header ────────────────────────────────────────── */}
       <View style={[styles.brandedHeader, { backgroundColor: colors.primary, paddingTop: insets.top }]}>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-          <Text variant="h1" style={{ color: '#FFFFFF' }}>Réservations</Text>
+          <Text variant="h1" style={{ color: '#FFFFFF' }}>Planning</Text>
         </View>
       </View>
 
-      <SectionList
+      <SectionList<PlanningEvent, PlanningSection>
         sections={sections}
-        keyExtractor={(item) => item.id}
-        renderItem={renderBookingItem}
+        // Booking ids and BlockedSlot ids share the same Firestore
+        // shape (string), but a collision is theoretically possible
+        // — prefix with the kind so React's keying is unambiguous.
+        keyExtractor={(item) =>
+          item.kind === 'booking' ? `b:${item.data.id}` : `a:${item.data.id}`
+        }
+        renderItem={renderEventItem}
         renderSectionHeader={renderSectionHeader}
         ListHeaderComponent={renderListHeader}
         ListEmptyComponent={renderEmpty}

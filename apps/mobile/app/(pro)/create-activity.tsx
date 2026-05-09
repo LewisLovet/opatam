@@ -56,12 +56,15 @@ function formatTime(date: Date): string {
 }
 
 // ─── Category palette ─────────────────────────────────────────────────
-// Color choices match the calendar render hierarchy: each category
-// gets a distinct hue + an Ionicons glyph so the agenda reads at a
-// glance ("orange dot = sport"). These constants are intentionally
-// defined here (and not in shared/) so the mobile rendering layer
-// stays the source of truth — the web side will get its own copy
-// when the activity render lands there.
+// Single source of truth for category visuals lives in
+// components/business/Activity/categoryMeta.ts — both this create
+// sheet and the Planning list pull from there so a sport activity
+// always reads "orange + dumbbell" wherever it appears.
+import {
+  ACTIVITY_CATEGORY_META,
+  ACTIVITY_CATEGORY_ORDER,
+} from '../../components/business/Activity/categoryMeta';
+
 interface CategoryDef {
   key: ActivityCategory;
   label: string;
@@ -69,15 +72,12 @@ interface CategoryDef {
   icon: keyof typeof Ionicons.glyphMap;
 }
 
-const CATEGORIES: CategoryDef[] = [
-  { key: 'sport',    label: 'Sport',    color: '#f97316', icon: 'fitness-outline' },
-  { key: 'meeting',  label: 'Meeting',  color: '#8b5cf6', icon: 'people-outline' },
-  { key: 'personal', label: 'Perso',    color: '#ec4899', icon: 'heart-outline' },
-  { key: 'admin',    label: 'Admin',    color: '#facc15', icon: 'document-text-outline' },
-  { key: 'travel',   label: 'Trajet',   color: '#06b6d4', icon: 'airplane-outline' },
-  { key: 'imprevu',  label: 'Imprévu',  color: '#ef4444', icon: 'flash-outline' },
-  { key: 'other',    label: 'Autre',    color: '#6b7280', icon: 'ellipsis-horizontal' },
-];
+const CATEGORIES: CategoryDef[] = ACTIVITY_CATEGORY_ORDER.map((key) => ({
+  key,
+  label: ACTIVITY_CATEGORY_META[key].label,
+  color: ACTIVITY_CATEGORY_META[key].color,
+  icon: ACTIVITY_CATEGORY_META[key].icon as keyof typeof Ionicons.glyphMap,
+}));
 
 // ─── Time wheel picker ────────────────────────────────────────────────
 const HOURS = Array.from({ length: 24 }, (_, i) => i);

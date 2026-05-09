@@ -142,9 +142,13 @@ export default function ProTabsLayout() {
         }}
       />
       <Tabs.Screen
+        // File still named `bookings.tsx` to avoid a noisy
+        // file-rename + deep-link break, but the screen is now a
+        // unified planning view (réservations + activités). The
+        // tab label is what the user sees, which is what matters.
         name="bookings"
         options={{
-          title: 'RDV',
+          title: 'Planning',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" size={size} color={color} />
           ),
