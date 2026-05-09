@@ -75,6 +75,10 @@ export * from './business';
 export { NotificationInitializer } from './NotificationInitializer';
 export { NotificationPermissionPrompt } from './NotificationPermissionPrompt';
 
+// Location Initializer (priming for the foreground permission prompt)
+export { LocationInitializer } from './LocationInitializer';
+export { LocationPermissionPrompt } from './LocationPermissionPrompt';
+
 // Logo
 export { Logo, LogoWhite } from './Logo';
 

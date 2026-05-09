@@ -1,7 +1,18 @@
 /**
  * useUserLocation Hook
- * Requests location permission and returns the user's current position
- * Uses expo-location (included in Expo Go)
+ *
+ * Returns the user's current position when the foreground permission
+ * is already granted. **Does not trigger the native iOS/Android
+ * permission dialog** — that's the job of `LocationInitializer`,
+ * which shows a friendly priming modal first (see
+ * `LocationPermissionPrompt`). The screens that consume this hook
+ * just read whatever the current grant state allows.
+ *
+ * Coordination: when the priming flow grants permission for the
+ * first time, the initializer calls `notifyLocationPermissionGranted`
+ * which forces every mounted instance of this hook to re-fetch.
+ * Without it, screens that mounted before the prompt was answered
+ * would stay stuck on `loading: false, location: null`.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -20,6 +31,22 @@ export interface UseUserLocationResult {
   refresh: () => Promise<void>;
 }
 
+// Module-level subscriber set used by LocationInitializer to ping
+// every mounted hook instance after a permission flip. Cheaper and
+// simpler than a Context since location is consumed across multiple
+// route trees (home + search) and adding a Provider for one piece
+// of state would over-engineer this.
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+/** Called by LocationInitializer right after the user has answered
+ *  the priming flow (whether they granted or not). Forces every
+ *  consumer of useUserLocation to re-evaluate the current permission
+ *  status and fetch the position if newly granted. */
+export function notifyLocationPermissionChanged(): void {
+  listeners.forEach((fn) => fn());
+}
+
 export function useUserLocation(): UseUserLocationResult {
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,12 +57,24 @@ export function useUserLocation(): UseUserLocationResult {
     setLoading(true);
 
     try {
-      // Check / request permission
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      // Read-only check — does NOT show the native permission
+      // dialog. The dialog is only shown by LocationInitializer
+      // after the user has accepted the priming modal.
+      const { status } = await Location.getForegroundPermissionsAsync();
 
-      if (status !== 'granted') {
+      if (status === 'denied') {
         if (mountedRef.current) {
           setPermissionDenied(true);
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (status !== 'granted') {
+        // 'undetermined' — the user hasn't been asked yet. Bail
+        // out silently; LocationInitializer will surface the
+        // priming modal and re-trigger this hook on accept.
+        if (mountedRef.current) {
           setLoading(false);
         }
         return;
@@ -76,10 +115,15 @@ export function useUserLocation(): UseUserLocationResult {
     mountedRef.current = true;
     fetchLocation();
 
+    // Subscribe so we re-fetch when the priming flow flips the
+    // permission to granted (or denied).
+    listeners.add(fetchLocation);
+
     return () => {
       mountedRef.current = false;
+      listeners.delete(fetchLocation);
     };
-  }, []);
+  }, [fetchLocation]);
 
   return {
     location,

@@ -26,6 +26,49 @@ import { useLocations } from '../../../../hooks';
 
 const API_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://opatam.com';
 
+/** App Store / Play Store URLs for the "update" CTA. iOS app id +
+ *  Android package come from app.json. The `itms-apps://` /
+ *  `market://` schemes open the store app directly when present;
+ *  the https:// fallbacks open in-browser when the schemes aren't
+ *  registered (e.g. simulator). */
+const STORE_URLS = {
+  ios: 'itms-apps://apps.apple.com/app/id6759246218',
+  iosFallback: 'https://apps.apple.com/app/id6759246218',
+  android: 'market://details?id=com.kamerleontech.opatam',
+  androidFallback:
+    'https://play.google.com/store/apps/details?id=com.kamerleontech.opatam',
+} as const;
+
+/**
+ * Shows a native dialog inviting the user to update Opatam, with a
+ * direct link to the App Store / Play Store. Triggered when the
+ * server refuses a booking via 426 + CLIENT_UPGRADE_REQUIRED.
+ */
+function showAppUpgradeDialog(message: string): void {
+  Alert.alert('Mise à jour requise', message, [
+    { text: 'Plus tard', style: 'cancel' },
+    {
+      text: 'Mettre à jour',
+      style: 'default',
+      onPress: async () => {
+        const primary = Platform.OS === 'ios' ? STORE_URLS.ios : STORE_URLS.android;
+        const fallback =
+          Platform.OS === 'ios'
+            ? STORE_URLS.iosFallback
+            : STORE_URLS.androidFallback;
+        try {
+          const canOpen = await Linking.canOpenURL(primary);
+          await Linking.openURL(canOpen ? primary : fallback);
+        } catch {
+          // Final fallback — if even the https URL fails, drop the
+          // user on the web home page rather than crashing.
+          Linking.openURL('https://opatam.com').catch(() => {});
+        }
+      },
+    },
+  ]);
+}
+
 // Format date in French
 function formatDate(date: Date): string {
   const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -124,6 +167,11 @@ export default function ConfirmBookingScreen() {
       // is honored: server creates the booking, computes the deposit, and
       // returns either { bookingId } (no deposit) or {bookingId,
       // requiresPayment, paymentIntent, ephemeralKey, customer} (deposit).
+      // `clientCapabilities` advertises which client-side flows this
+      // build can drive — server uses it to refuse deposit-required
+      // bookings on legacy mobile builds (which would otherwise leave
+      // the doc in pending_payment forever). Add new entries here when
+      // shipping new payment flows (apple-pay, paypal, etc.).
       const res = await fetch(`${API_URL}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -140,11 +188,27 @@ export default function ConfirmBookingScreen() {
             phone: cleanedPhone,
           },
           source: 'mobile',
+          clientCapabilities: ['deposit'],
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
+        // 426 + CLIENT_UPGRADE_REQUIRED → server refused because this
+        // build is too old for the booking flow this service needs.
+        // Surface a dedicated dialog with a deep link to the store
+        // instead of a plain error toast — gives the user something
+        // actionable. Should not fire on the current build (we
+        // advertise 'deposit' above) but the handler is forward-safe
+        // for future capabilities the server may add to its allowlist.
+        if (data?.code === 'CLIENT_UPGRADE_REQUIRED') {
+          showAppUpgradeDialog(
+            data.error ||
+              'Cette prestation nécessite une version plus récente d’Opatam.',
+          );
+          setIsSubmitting(false);
+          return;
+        }
         throw new Error(data.error || 'Erreur lors de la réservation');
       }
 
@@ -243,9 +307,13 @@ export default function ConfirmBookingScreen() {
             console.warn('Abandon call failed:', err);
           }
 
-          // Wipe the booking flow state and bounce to the start so the
-          // slot picker re-fetches fresh availability — no stale local
-          // cache showing the slot as still selected/taken.
+          // Wipe the booking flow state, then unwind the entire
+          // booking stack and bounce back to the provider page. The
+          // previous version replaced only the *current* screen
+          // with the booking flow's start — the inner Stack still
+          // had `index → date → confirm` underneath, so the user
+          // had to mash back 3-5 times to actually leave. Abandoning
+          // a booking means the user wants out of the flow, full stop.
           resetBooking();
           showToast({
             variant: abandoned ? 'info' : 'error',
@@ -253,7 +321,20 @@ export default function ConfirmBookingScreen() {
               ? 'Réservation annulée. Le créneau est de nouveau disponible.'
               : "Le créneau sera libéré sous 30 min. Merci de réessayer plus tard.",
           });
-          router.replace(`/(client)/booking/${providerId}`);
+          // dismissAll pops every screen in the booking inner Stack
+          // back to its root so React Navigation drops the cached
+          // intermediate routes. The replace then takes us out to
+          // the provider page — landing somewhere actionable rather
+          // than back at booking/index where the user could retap
+          // straight into the same flow they just abandoned.
+          if (typeof router.dismissAll === 'function') {
+            try { router.dismissAll(); } catch { /* nothing to dismiss */ }
+          }
+          if (provider?.slug) {
+            router.replace(`/(client)/provider/${provider.slug}` as any);
+          } else {
+            router.replace('/(client)/(tabs)');
+          }
           return;
         }
 

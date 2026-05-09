@@ -5,7 +5,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { ThemeProvider } from '../theme';
-import { ToastProvider, NotificationInitializer } from '../components';
+import {
+  ToastProvider,
+  NotificationInitializer,
+  LocationInitializer,
+} from '../components';
 import { DevFAB } from '../components/DevFAB';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
 import { useAppReady, useDeepLinks } from '../hooks';
@@ -45,6 +49,12 @@ export default function RootLayout() {
         <ThemeProvider>
           <AuthProvider>
             <NotificationInitializer />
+            {/* Foreground location permission priming. Does NOT
+                require auth (the prompt is informational and safe
+                to show pre-login), but kept inside AuthProvider for
+                rendering order — both initializers stay grouped so
+                they show in sequence on a fresh install. */}
+            <LocationInitializer />
             <ProvidersCacheProvider>
               <ToastProvider>
                 <StatusBar style="auto" />

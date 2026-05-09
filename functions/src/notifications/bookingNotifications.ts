@@ -20,6 +20,13 @@ interface BookingData {
   providerName: string;
   status: string;
   cancelledBy?: 'client' | 'provider' | null;
+  /** Optional — present only on bookings that required a deposit.
+   *  Used to flag the new-booking push when the deposit was actually
+   *  paid (status flipped from pending_payment → confirmed). */
+  deposit?: {
+    amount: number;          // cents
+    status: 'pending' | 'paid' | 'refunded' | 'failed';
+  } | null;
 }
 
 /**
@@ -185,12 +192,34 @@ export async function notifyProviderNewBooking(booking: BookingData, bookingId: 
   const datetime = booking.datetime.toDate();
   const dateStr = formatDateFr(datetime);
 
+  // Highlight the deposit when one was paid as part of the booking.
+  // Surfaces the value of the Sérénité add-on at every relevant push.
+  // Backward compat: title prefix and body suffix are pure text — old
+  // mobile clients render them fine. The `data.type` stays
+  // 'new_booking' so legacy push routers continue to work; new
+  // optional `depositAmount` field is read by recent clients only.
+  const depositPaid =
+    booking.deposit?.status === 'paid' && (booking.deposit.amount ?? 0) > 0;
+  const depositEuros = depositPaid
+    ? formatDepositAmount(booking.deposit!.amount)
+    : null;
+
+  const title = depositPaid
+    ? 'Nouveau RDV avec acompte'
+    : 'Nouveau rendez-vous';
+  const body = depositPaid
+    ? `${booking.clientInfo.name} · ${booking.serviceName} le ${dateStr} · ${depositEuros} encaissés`
+    : `${booking.clientInfo.name} - ${booking.serviceName} le ${dateStr}`;
+
   const result = await sendPushNotifications(pushTokens, {
-    title: 'Nouveau rendez-vous',
-    body: `${booking.clientInfo.name} - ${booking.serviceName} le ${dateStr}`,
+    title,
+    body,
     data: {
       type: 'new_booking',
       bookingId,
+      ...(depositPaid
+        ? { depositAmount: booking.deposit!.amount, depositPaid: true }
+        : {}),
     },
   });
 
@@ -199,6 +228,16 @@ export async function notifyProviderNewBooking(booking: BookingData, bookingId: 
   if (result.invalidTokens.length > 0) {
     await removeInvalidTokens(providerUserId, result.invalidTokens);
   }
+}
+
+/** Format cents → "30 €" / "29,50 €". Kept local rather than imported
+ *  from shared because shared's formatPrice returns "Gratuit" for 0,
+ *  which would never apply here (we only call it on paid deposits)
+ *  but the explicit local version makes the intent clearer. */
+function formatDepositAmount(cents: number): string {
+  const euros = cents / 100;
+  if (euros % 1 === 0) return `${euros} €`;
+  return `${euros.toFixed(2).replace('.', ',')} €`;
 }
 
 /**

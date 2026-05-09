@@ -87,6 +87,49 @@ export async function POST(request: NextRequest) {
       skipDeposit,
     });
 
+    // ─────────────────────────────────────────────────────────────────
+    // Backward-compat guard for old mobile builds.
+    //
+    // Older versions of the mobile app (predating the deposit flow)
+    // don't know how to drive the Stripe PaymentSheet, so they'd
+    // silently leave the booking in `pending_payment` forever and
+    // ghost the user. Recent builds advertise their support via
+    // `clientCapabilities: ['deposit']`. When mobile + deposit
+    // required + capability missing, we delete the just-created
+    // doc (no side effects: pending_payment defers both emails and
+    // push) and return 426 with a code the new client recognises
+    // to show an "update Opatam" dialog.
+    //
+    // Web clients don't need this guard — they're stateless and
+    // always run the latest code.
+    // ─────────────────────────────────────────────────────────────────
+    if (booking.status === 'pending_payment' && isMobileClient) {
+      const caps = Array.isArray(body.clientCapabilities)
+        ? (body.clientCapabilities as string[])
+        : [];
+      if (!caps.includes('deposit')) {
+        try {
+          await getAdminFirestore()
+            .collection('bookings')
+            .doc(booking.id)
+            .delete();
+        } catch (err) {
+          console.error(
+            '[bookings] failed to roll back legacy-client booking:',
+            err,
+          );
+        }
+        return NextResponse.json(
+          {
+            error:
+              "Cette prestation nécessite un acompte. Mettez à jour Opatam pour réserver.",
+            code: 'CLIENT_UPGRADE_REQUIRED',
+          },
+          { status: 426 },
+        );
+      }
+    }
+
     // Stamp the clientId via Admin SDK (bypasses Firestore rules — see
     // note above the schema parse). Without this the booking is invisible
     // to "Mes rendez-vous" since useClientBookings queries by clientId.
