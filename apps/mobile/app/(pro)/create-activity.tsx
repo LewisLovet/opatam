@@ -469,6 +469,42 @@ export default function CreateActivityScreen() {
     }
   };
 
+  // ─── Delete (only when editing) ─────────────────────────────────────
+  // Two-step confirm to avoid accidental taps. Returns to the
+  // calendar on success — the calendar's useFocusEffect picks up
+  // the change and re-fetches blockedSlots automatically.
+  const handleDelete = () => {
+    if (!editId || !providerId) return;
+    Alert.alert(
+      "Supprimer l'activité ?",
+      `« ${title.trim() || 'Cette activité'} » sera retirée de votre agenda.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsSubmitting(true);
+              await schedulingService.unblockPeriod(providerId, editId);
+              router.back();
+            } catch (error) {
+              console.error('Error deleting activity:', error);
+              Alert.alert(
+                'Erreur',
+                error instanceof Error
+                  ? error.message
+                  : "Impossible de supprimer l'activité",
+              );
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
@@ -709,6 +745,29 @@ export default function CreateActivityScreen() {
           disabled={isSubmitting}
           style={{ backgroundColor: activeCategory.color }}
         />
+
+        {/* Delete — only when editing an existing activity. Two-step
+            confirm in handleDelete so accidental taps don't lose
+            data. Hidden during create flow where there's nothing to
+            delete yet. */}
+        {isEditing && (
+          <Pressable
+            onPress={handleDelete}
+            disabled={isSubmitting}
+            style={({ pressed }) => [
+              {
+                marginTop: spacing.md,
+                paddingVertical: spacing.md,
+                alignItems: 'center',
+                opacity: isSubmitting ? 0.5 : pressed ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Text variant="body" style={{ color: '#DC2626', fontWeight: '600' }}>
+              Supprimer cette activité
+            </Text>
+          </Pressable>
+        )}
       </ScrollView>
 
       {/* Time picker */}

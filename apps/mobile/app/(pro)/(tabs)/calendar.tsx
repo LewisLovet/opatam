@@ -385,6 +385,13 @@ interface WeekViewProps {
   blockedSlots?: WeekBlockedSlot[];
   onDayPress: (date: Date) => void;
   onBookingPress: (id: string) => void;
+  /** Triggered when the user taps an activity card (a blocked slot
+   *  with a category + title). Only activities are tappable from
+   *  week view — plain blocked periods stay as background slabs.
+   *  Without this, the tap falls through to the day cell and
+   *  zooms to day view, which forces a 2-step interaction.
+   *  See user feedback 2026-05-08. */
+  onActivityPress?: (id: string) => void;
   onDisambiguate?: (bookings: WeekBooking[]) => void;
   showMemberAvatars: boolean;
   startHour?: number;
@@ -403,6 +410,7 @@ function WeekView({
   blockedSlots = [],
   onDayPress,
   onBookingPress,
+  onActivityPress,
   onDisambiguate,
   showMemberAvatars,
   startHour = DEFAULT_WEEK_START_HOUR,
@@ -751,11 +759,16 @@ function WeekView({
                       // color + white text. Solid fill (no transparency)
                       // so the activity reads as a real event rather
                       // than a faded blocking zone.
+                      // Wrapped in Pressable so the tap goes straight
+                      // to the activity detail screen instead of
+                      // falling through to the day cell (which would
+                      // zoom to day view and require a second tap).
                       const accent = bs.categoryColor || colors.textMuted;
                       return (
-                        <View
+                        <Pressable
                           key={`activity-${bs.id}-${dayIdx}`}
-                          style={[
+                          onPress={() => onActivityPress?.(bs.id)}
+                          style={({ pressed }) => [
                             styles.weekBlockedBar,
                             {
                               top: bsTop,
@@ -765,6 +778,7 @@ function WeekView({
                               marginHorizontal: 1,
                               paddingHorizontal: 3,
                               paddingVertical: 1,
+                              opacity: pressed ? 0.75 : 1,
                             },
                           ]}
                         >
@@ -795,7 +809,7 @@ function WeekView({
                               {bs.reason}
                             </Text>
                           )}
-                        </View>
+                        </Pressable>
                       );
                     }
 
@@ -1407,52 +1421,52 @@ export default function CalendarScreen() {
     [router],
   );
 
-  // Tapping a blocked slot / activity → present an action sheet.
-  // Activities get Modifier + Supprimer, plain blocked periods (no
-  // category) only Supprimer because there's no "edit period" screen
-  // yet. Modifier opens create-activity in edit mode via the `id`
-  // query param.
+  // Tap on activity / blocked slot.
+  //
+  // Activities open the dedicated edit screen directly — same
+  // pattern as a booking opens its detail screen. The Modifier /
+  // Supprimer choice happens inside that screen, not in a native
+  // alert (which felt jarring vs. the booking flow). See user
+  // feedback 2026-05-08.
+  //
+  // Plain blocked periods (vacation, training without category)
+  // don't have an edit screen yet, so we keep the inline confirm
+  // → delete path. After the delete, refresh blockedSlots so the
+  // calendar updates immediately (the previous version waited for
+  // the next focus event, which never fired since we stayed on
+  // the same screen).
   const handleBlockedSlotPress = useCallback(
     (id: string) => {
       const slot = blockedSlots.find((s) => s.id === id);
       const isActivity = !!slot?.category;
-      const label = isActivity
-        ? slot?.title || 'Activité'
-        : slot?.reason || 'Période bloquée';
-
-      const deleteAction = {
-        text: 'Supprimer',
-        style: 'destructive' as const,
-        onPress: async () => {
-          if (!providerId) return;
-          try {
-            await schedulingService.unblockPeriod(providerId, id);
-          } catch (err) {
-            Alert.alert(
-              'Erreur',
-              err instanceof Error ? err.message : 'Impossible de supprimer',
-            );
-          }
-        },
-      };
 
       if (isActivity) {
-        Alert.alert(label, 'Que voulez-vous faire ?', [
-          { text: 'Annuler', style: 'cancel' },
-          {
-            text: 'Modifier',
-            onPress: () => {
-              router.push(`/(pro)/create-activity?id=${id}` as any);
-            },
-          },
-          deleteAction,
-        ]);
-      } else {
-        Alert.alert(label, 'Voulez-vous supprimer cette période ?', [
-          { text: 'Annuler', style: 'cancel' },
-          deleteAction,
-        ]);
+        router.push(`/(pro)/create-activity?id=${id}` as any);
+        return;
       }
+
+      const label = slot?.reason || 'Période bloquée';
+      Alert.alert(label, 'Voulez-vous supprimer cette période ?', [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            if (!providerId) return;
+            try {
+              await schedulingService.unblockPeriod(providerId, id);
+              // Drop the row from local state so the calendar
+              // reflects the delete without a refetch.
+              setBlockedSlots((prev) => prev.filter((s) => s.id !== id));
+            } catch (err) {
+              Alert.alert(
+                'Erreur',
+                err instanceof Error ? err.message : 'Impossible de supprimer',
+              );
+            }
+          },
+        },
+      ]);
     },
     [blockedSlots, providerId, router],
   );
@@ -1827,6 +1841,7 @@ export default function CalendarScreen() {
           blockedSlots={weekBlockedSlots}
           onDayPress={handleWeekDayPress}
           onBookingPress={handleBookingPress}
+          onActivityPress={handleBlockedSlotPress}
           onDisambiguate={setDisambiguationBookings}
           showMemberAvatars={members.length > 1}
           startHour={effectiveStartHour}
