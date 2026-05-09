@@ -22,7 +22,7 @@
  *     repository; shown disabled when nothing changed.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -98,7 +98,14 @@ export default function ClientDetailScreen() {
   const [notes, setNotes] = useState('');
   const [prefs, setPrefs] = useState<Array<{ key: string; value: string }>>([]);
   const [saving, setSaving] = useState(false);
-  const baselineRef = useRef<{ notes: string; prefs: string }>({
+  // The "saved baseline" used to compute `isDirty`. Has to live in
+  // state (not a ref) — useMemo's dep array can't see ref mutations,
+  // so a ref-backed baseline left the Save button stuck looking
+  // "dirty" even after a successful save. Moving it to state means
+  // updating it (after load OR after save) re-runs the memo
+  // immediately, and the button switches back to its idle "ghost"
+  // appearance.
+  const [baseline, setBaseline] = useState<{ notes: string; prefs: string }>({
     notes: '',
     prefs: '[]',
   });
@@ -123,10 +130,10 @@ export default function ClientDetailScreen() {
           : [];
         setNotes(initialNotes);
         setPrefs(initialPrefs);
-        baselineRef.current = {
+        setBaseline({
           notes: initialNotes,
           prefs: JSON.stringify(initialPrefs),
-        };
+        });
       } catch (err) {
         console.error('[ClientDetail] load doc:', err);
         if (!cancelled) showToast({ message: 'Impossible de charger la fiche', variant: 'error' });
@@ -171,10 +178,10 @@ export default function ClientDetailScreen() {
 
   const isDirty = useMemo(() => {
     return (
-      notes !== baselineRef.current.notes ||
-      JSON.stringify(prefs) !== baselineRef.current.prefs
+      notes !== baseline.notes ||
+      JSON.stringify(prefs) !== baseline.prefs
     );
-  }, [notes, prefs]);
+  }, [notes, prefs, baseline]);
 
   const frequencyLabel = useMemo(
     () => (client ? computeFrequency(client) : null),
@@ -207,10 +214,10 @@ export default function ClientDetailScreen() {
         patch,
       );
       setClient((c) => (c ? { ...c, ...patch } : c));
-      baselineRef.current = {
+      setBaseline({
         notes,
         prefs: JSON.stringify(prefs),
-      };
+      });
       showToast({ message: 'Modifications enregistrées', variant: 'success' });
     } catch (err) {
       console.error('[ClientDetail] save:', err);
@@ -304,6 +311,16 @@ export default function ClientDetailScreen() {
           paddingBottom: spacing.xl + 80,
         }}
         keyboardShouldPersistTaps="handled"
+        // Auto-scroll the focused TextInput above the keyboard on
+        // iOS — without this, tapping into the multiline notes
+        // field left it sitting directly behind the keyboard,
+        // forcing the user to manually drag the view up. The
+        // Android equivalent is `adjustResize` in the manifest,
+        // which is already configured globally.
+        automaticallyAdjustKeyboardInsets
+        // Drag-to-dismiss feels right for a long-form notes field —
+        // matches Mail / Notes behaviour on iOS.
+        keyboardDismissMode="interactive"
       >
         {/* Identity */}
         <Card padding="md" style={{ marginBottom: spacing.md }}>

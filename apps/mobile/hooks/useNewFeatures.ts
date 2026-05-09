@@ -14,6 +14,15 @@
  *
  * Storage key versioned so a future schema change doesn't break
  * older clients silently.
+ *
+ * Implementation note: the seen-set lives at module scope rather
+ * than inside `useState`. Without that, every screen calling
+ * `useNewFeatures()` got its OWN isolated copy — so tapping a
+ * MenuItem in `more.tsx` updated AsyncStorage but the discovery
+ * dot driven by a SEPARATE hook instance in `(tabs)/_layout.tsx`
+ * kept showing the badge until the next app launch (re-hydration).
+ * The fix: a shared module-level state + a tiny pub/sub so every
+ * mounted hook re-renders on every change.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -57,63 +66,76 @@ export const MORE_TAB_FEATURE_KEYS: NewFeatureKey[] = [
 
 const STORAGE_KEY = '@opatam/new-features-seen-v1';
 
-interface State {
-  seen: Set<string>;
-  ready: boolean;
+// ─── Module-level shared state ──────────────────────────────────────
+//
+// One Set, one ready flag, one set of subscribers. Every hook
+// instance reads from these and is notified of changes via the
+// `subscribers` callbacks, so taking action in one screen
+// instantly updates badges everywhere else.
+
+let globalSeen: Set<string> = new Set();
+let globalReady = false;
+let hydratePromise: Promise<void> | null = null;
+const subscribers = new Set<() => void>();
+
+function notifyAll() {
+  subscribers.forEach((cb) => cb());
+}
+
+/** Hydrate from AsyncStorage exactly once, ever. Subsequent calls
+ *  return the same promise so callers can `await` it without racing. */
+function ensureHydrated(): Promise<void> {
+  if (hydratePromise) return hydratePromise;
+  hydratePromise = (async () => {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      const arr: string[] = raw ? JSON.parse(raw) : [];
+      globalSeen = new Set(arr);
+    } catch (err) {
+      console.warn('[useNewFeatures] hydrate failed:', err);
+    } finally {
+      globalReady = true;
+      notifyAll();
+    }
+  })();
+  return hydratePromise;
 }
 
 export function useNewFeatures() {
-  const [state, setState] = useState<State>({
-    seen: new Set<string>(),
-    ready: false,
-  });
+  // We don't track values in state — they live in module scope.
+  // This counter just forces a re-render when something changes.
+  const [, forceUpdate] = useState(0);
 
-  // Hydrate from AsyncStorage on mount.
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (cancelled) return;
-        const arr: string[] = raw ? JSON.parse(raw) : [];
-        setState({ seen: new Set(arr), ready: true });
-      } catch (err) {
-        console.warn('[useNewFeatures] hydrate failed:', err);
-        if (!cancelled) {
-          setState({ seen: new Set(), ready: true });
-        }
-      }
-    })();
+    ensureHydrated();
+    const onChange = () => forceUpdate((v) => v + 1);
+    subscribers.add(onChange);
     return () => {
-      cancelled = true;
+      subscribers.delete(onChange);
     };
   }, []);
 
   /** True when the feature has NOT been seen yet (and we know that for sure). */
-  const isNew = useCallback(
-    (key: NewFeatureKey): boolean => {
-      if (!state.ready) return false; // don't flash "Nouveau" before hydration
-      return !state.seen.has(key);
-    },
-    [state],
-  );
+  const isNew = useCallback((key: NewFeatureKey): boolean => {
+    if (!globalReady) return false; // don't flash "Nouveau" before hydration
+    return !globalSeen.has(key);
+  }, []);
 
-  /** Mark the feature as seen — persist + flip local state. */
-  const markSeen = useCallback(
-    async (key: NewFeatureKey) => {
-      // No-op if already seen — saves a write.
-      if (state.seen.has(key)) return;
-      const next = new Set(state.seen);
-      next.add(key);
-      setState((s) => ({ ...s, seen: next }));
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
-      } catch (err) {
-        console.warn('[useNewFeatures] persist failed:', err);
-      }
-    },
-    [state.seen],
-  );
+  /** Mark the feature as seen — persist + flip local state across all hook instances. */
+  const markSeen = useCallback(async (key: NewFeatureKey) => {
+    if (globalSeen.has(key)) return; // no-op if already seen
+    globalSeen = new Set(globalSeen);
+    globalSeen.add(key);
+    notifyAll(); // re-render every mounted hook instance immediately
+    try {
+      await AsyncStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify([...globalSeen]),
+      );
+    } catch (err) {
+      console.warn('[useNewFeatures] persist failed:', err);
+    }
+  }, []);
 
   /** True when at least one of the given keys is still unseen.
    *  Use to drive a single discovery dot on the bottom-tab "Plus"
@@ -121,11 +143,11 @@ export function useNewFeatures() {
    *  the user should explore the More menu. */
   const hasAnyUnseen = useCallback(
     (keys: readonly NewFeatureKey[]): boolean => {
-      if (!state.ready) return false;
-      return keys.some((k) => !state.seen.has(k));
+      if (!globalReady) return false;
+      return keys.some((k) => !globalSeen.has(k));
     },
-    [state],
+    [],
   );
 
-  return { isNew, hasAnyUnseen, markSeen, ready: state.ready };
+  return { isNew, hasAnyUnseen, markSeen, ready: globalReady };
 }

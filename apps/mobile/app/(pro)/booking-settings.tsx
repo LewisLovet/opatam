@@ -346,11 +346,18 @@ export default function BookingSettingsScreen() {
           </View>
         </Card>
 
-        {/* Info box */}
+        {/* Info box — needs explicit top margin so it doesn't read
+            as "part of" the auto-review card above. The previous
+            version sat flush against it which made the À propos
+            block look glued to the toggle. */}
         <View
           style={[
             styles.infoBox,
-            { backgroundColor: '#EFF6FF', borderRadius: radius.md },
+            {
+              backgroundColor: '#EFF6FF',
+              borderRadius: radius.md,
+              marginTop: spacing.lg,
+            },
           ]}
         >
           <Ionicons name="information-circle-outline" size={18} color="#3B82F6" />

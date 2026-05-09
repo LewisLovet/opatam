@@ -24,6 +24,13 @@
  *   - Survives slug renames / re-publishing
  *   - Mirrors how a "since last visit" badge typically works
  *     elsewhere in the product (notifications, etc.)
+ *
+ * Implementation note: the timestamp lives at module scope (same
+ * pattern as useNewFeatures) so calling `markVisited()` from the
+ * help screen instantly clears the pill that the More-tab menu
+ * was showing in another mounted instance of this hook. Without
+ * that, every call to `useNewArticles()` got its OWN copy of the
+ * state and changes only propagated on next app launch.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -43,6 +50,35 @@ export { NEW_ARTICLE_DAYS, isArticleNew };
 
 const STORAGE_KEY = '@opatam/help-last-visit-v1';
 
+// ─── Module-level shared state ──────────────────────────────────────
+
+let globalLastVisit: number | null = null;
+let globalReady = false;
+let hydratePromise: Promise<void> | null = null;
+const subscribers = new Set<() => void>();
+
+function notifyAll() {
+  subscribers.forEach((cb) => cb());
+}
+
+function ensureHydrated(): Promise<void> {
+  if (hydratePromise) return hydratePromise;
+  hydratePromise = (async () => {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? Number.parseInt(raw, 10) : 0;
+      globalLastVisit = Number.isFinite(parsed) ? parsed : 0;
+    } catch (err) {
+      console.warn('[useNewArticles] hydrate failed:', err);
+      globalLastVisit = 0;
+    } finally {
+      globalReady = true;
+      notifyAll();
+    }
+  })();
+  return hydratePromise;
+}
+
 interface UseNewArticlesResult {
   /** True if at least one article was published since `lastVisitAt`. */
   hasNew: boolean;
@@ -56,7 +92,8 @@ interface UseNewArticlesResult {
   ready: boolean;
   /**
    * Persist the current time as the user's last visit. Call from
-   * the help screen on mount — that visually clears the menu badge.
+   * the help screen on mount — that visually clears the menu badge
+   * across all mounted hook instances immediately.
    */
   markVisited: () => Promise<void>;
 }
@@ -75,33 +112,25 @@ export function useNewArticles(
   category?: ArticleCategory,
 ): UseNewArticlesResult {
   const { articles } = useArticles(category);
-  const [lastVisit, setLastVisit] = useState<number | null>(null);
-  const [ready, setReady] = useState(false);
+  // Tick bumped by every shared-state notification so the
+  // useMemo below picks up changes to the module-level globals.
+  // (We can't put module-scoped variables directly in a useMemo
+  // dep list — React only sees React state.)
+  const [tick, setTick] = useState(0);
 
-  // Hydrate once.
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (cancelled) return;
-        const parsed = raw ? Number.parseInt(raw, 10) : 0;
-        setLastVisit(Number.isFinite(parsed) ? parsed : 0);
-      } catch (err) {
-        console.warn('[useNewArticles] hydrate failed:', err);
-        if (!cancelled) setLastVisit(0);
-      } finally {
-        if (!cancelled) setReady(true);
-      }
-    })();
+    ensureHydrated();
+    const onChange = () => setTick((v) => v + 1);
+    subscribers.add(onChange);
     return () => {
-      cancelled = true;
+      subscribers.delete(onChange);
     };
   }, []);
 
   const markVisited = useCallback(async () => {
     const now = Date.now();
-    setLastVisit(now);
+    globalLastVisit = now;
+    notifyAll(); // re-render every mounted hook instance
     try {
       await AsyncStorage.setItem(STORAGE_KEY, String(now));
     } catch (err) {
@@ -112,9 +141,10 @@ export function useNewArticles(
   const { hasNew, newCount } = useMemo(() => {
     // Don't claim "new" until hydration has happened — otherwise we
     // briefly flash the badge to every user on every mount.
-    if (!ready || lastVisit == null) {
+    if (!globalReady || globalLastVisit == null) {
       return { hasNew: false, newCount: 0 };
     }
+    const lastVisit = globalLastVisit;
     const fresh = articles.filter((a) => {
       const ms = toArticleEpoch(a.publishedAt);
       // Two guards:
@@ -128,7 +158,8 @@ export function useNewArticles(
       );
     });
     return { hasNew: fresh.length > 0, newCount: fresh.length };
-  }, [articles, lastVisit, ready]);
+    // `tick` is the React-visible signal that module state changed.
+  }, [articles, tick]);
 
-  return { hasNew, newCount, ready, markVisited };
+  return { hasNew, newCount, ready: globalReady, markVisited };
 }

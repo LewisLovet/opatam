@@ -725,16 +725,16 @@ export default function MoreScreen() {
               icon="calendar-outline"
               label="Paramètres de réservation"
               // Surface the auto-review "Nouveau" indicator on the
-              // entry point too, otherwise the dot on the Plus tab
-              // (driven by `auto-review-2026-05` in MORE_TAB_FEATURE_KEYS)
-              // fires without any visible cue inside the menu — the
-              // actual pill lives on a toggle deep in booking-settings.
-              // We deliberately do NOT markSeen on tap: the indicator
-              // should persist until the user interacts with the toggle
-              // itself, otherwise opening this menu accidentally would
-              // hide the discovery cue forever.
+              // entry point so the Plus-tab dot has a visible
+              // counterpart in the menu. Mark seen on tap — making
+              // the user actually flip the toggle just to clear the
+              // pill is too much friction (and confusing when they
+              // don't realise the pill is gated on the toggle).
               isNew={isNew('auto-review-2026-05')}
-              onPress={() => router.push('/(pro)/booking-settings')}
+              onPress={() => {
+                markSeen('auto-review-2026-05');
+                router.push('/(pro)/booking-settings');
+              }}
               colors={colors}
             />
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
