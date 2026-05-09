@@ -1571,6 +1571,19 @@ export default function CalendarScreen() {
 
   // ---- Pull-to-refresh ----
   const [refreshing, setRefreshing] = useState(false);
+
+  // ---- Did we ever finish a load? ----
+  // Tracks whether the initial load has completed at least once.
+  // Used to keep the calendar visible during *subsequent* refreshes
+  // (return from /create-activity, focus regained, etc.) instead of
+  // unmounting it behind a Loader. Without this, WeekView remounts
+  // on every refresh, which resets its internal scroll position
+  // back to col 1 — see commit 4587f0d (which only fixed the
+  // re-render path, not the unmount path).
+  const hasLoadedOnce = useRef(false);
+  useEffect(() => {
+    if (!isLoading) hasLoadedOnce.current = true;
+  }, [isLoading]);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
@@ -1804,7 +1817,10 @@ export default function CalendarScreen() {
       )}
 
       {/* ===== Content Area ===== */}
-      {isLoading && !refreshing ? (
+      {/* Loader only on the very first load — once we've shown the
+          calendar at least once, subsequent refreshes keep the
+          existing render so WeekView's scroll position survives. */}
+      {isLoading && !refreshing && !hasLoadedOnce.current ? (
         <View style={styles.loaderContainer}>
           <Loader />
         </View>
