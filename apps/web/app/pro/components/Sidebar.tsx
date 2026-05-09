@@ -24,6 +24,7 @@ import {
   X as XIcon,
   CreditCard,
   Wallet,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDaysRemaining } from '@/lib/date-utils';
@@ -91,6 +92,21 @@ const navGroups: NavGroup[] = [
         newFeatureKey: 'payments-2026-05',
       },
       { label: 'Paramètres', href: '/pro/parametres', icon: <Settings className="w-5 h-5" /> },
+    ],
+  },
+  // Groupe 4: Aide & ressources — dedicated bucket so the menu
+  // doesn't conflate operational settings with educational content.
+  {
+    items: [
+      {
+        label: 'Tutoriels & guides',
+        href: '/pro/tutoriels',
+        icon: <BookOpen className="w-5 h-5" />,
+        // "Nouveau" pill until the pro clicks the entry — same
+        // discovery pattern the mobile app uses for its in-app
+        // help surface.
+        newFeatureKey: 'tutoriels-2026-05',
+      },
     ],
   },
 ];

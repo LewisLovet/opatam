@@ -29,6 +29,7 @@ export const NEW_FEATURE_KEYS = [
   'payments-2026-05',    // [retire-après: 2026-07-01]
   'clients-2026-05',     // [retire-après: 2026-07-08]
   'auto-review-2026-05', // [retire-après: 2026-07-15]
+  'tutoriels-2026-05',   // [retire-après: 2026-07-15]
 ] as const;
 
 export type NewFeatureKey = (typeof NEW_FEATURE_KEYS)[number];
@@ -39,6 +40,7 @@ export const FEATURE_DISPLAY_LABELS: Record<NewFeatureKey, string> = {
   'payments-2026-05': 'Paiements',
   'clients-2026-05': 'Clients',
   'auto-review-2026-05': 'Relance automatique des avis',
+  'tutoriels-2026-05': 'Tutoriels & guides',
 };
 
 const STORAGE_KEY = '@opatam/web-new-features-seen-v1';
