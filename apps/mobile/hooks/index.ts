@@ -85,3 +85,9 @@ export {
 
 export { useProviderClients } from './useProviderClients';
 export { useProviderClientsCount } from './useProviderClientsCount';
+
+export { useDepositsSummary } from './useDepositsSummary';
+export type {
+  DepositsSummary,
+  DepositsTopService,
+} from './useDepositsSummary';

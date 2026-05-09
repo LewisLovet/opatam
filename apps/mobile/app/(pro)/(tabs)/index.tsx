@@ -69,7 +69,12 @@ class NativeModuleBoundary extends React.Component<
   }
 }
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
-import { useProviderDashboard, useProviderStats, useReviews } from '../../../hooks';
+import {
+  useDepositsSummary,
+  useProviderDashboard,
+  useProviderStats,
+  useReviews,
+} from '../../../hooks';
 import {
   MORE_TAB_FEATURE_KEYS,
   useNewFeatures,
@@ -527,6 +532,128 @@ function StatCardMonth({
 }
 
 // ---------------------------------------------------------------------------
+// Deposits card — visible only when the Sérénité add-on is active.
+// Surfaces the 30-day "Acomptes encaissés" total + top services so
+// the pro understands the value of what they pay 5 €/mois for, and
+// can spot trends at a glance from the dashboard.
+// ---------------------------------------------------------------------------
+function DepositsCard({
+  totalAmount,
+  bookingsCount,
+  topServices,
+  loading,
+  onPress,
+}: {
+  totalAmount: number;
+  bookingsCount: number;
+  topServices: { serviceId: string; serviceName: string; bookingsCount: number }[];
+  loading: boolean;
+  onPress?: () => void;
+}) {
+  const { colors, spacing, radius } = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          marginHorizontal: spacing.lg,
+          marginBottom: spacing.lg,
+          padding: spacing.lg,
+          borderRadius: radius.xl,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+          opacity: pressed && onPress ? 0.92 : 1,
+        },
+      ]}
+    >
+      {/* Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+        <View
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            backgroundColor: colors.success + '20',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="shield-checkmark" size={16} color={colors.success} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text variant="body" style={{ fontWeight: '700' }}>
+            Acomptes encaissés
+          </Text>
+          <Text variant="caption" color="textMuted">
+            30 derniers jours · Sérénité
+          </Text>
+        </View>
+        {onPress && (
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        )}
+      </View>
+
+      {/* Big amount + booking count */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginTop: spacing.xs }}>
+        <Text variant="h1" style={{ fontWeight: '800' }}>
+          {formatPrice(totalAmount)}
+        </Text>
+        <Text variant="bodySmall" color="textMuted" style={{ marginBottom: 6 }}>
+          sur {bookingsCount} RDV
+        </Text>
+      </View>
+
+      {/* Top services */}
+      {!loading && topServices.length > 0 && (
+        <View style={{ marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
+          <Text
+            variant="caption"
+            color="textMuted"
+            style={{
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              fontWeight: '600',
+              marginBottom: spacing.xs,
+            }}
+          >
+            Prestations concernées
+          </Text>
+          {topServices.map((svc) => (
+            <View
+              key={svc.serviceId}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 4,
+              }}
+            >
+              <Text variant="bodySmall" numberOfLines={1} style={{ flex: 1 }}>
+                {svc.serviceName}
+              </Text>
+              <Text variant="caption" color="textMuted">
+                {svc.bookingsCount} RDV
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Empty state — Sérénité active but no deposits collected yet */}
+      {!loading && bookingsCount === 0 && (
+        <View style={{ marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
+          <Text variant="caption" color="textSecondary">
+            Aucun acompte encaissé sur la période. Configurez un acompte
+            par défaut ou par prestation pour commencer.
+          </Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // New-feature display labels
 // ---------------------------------------------------------------------------
 // User-facing names for each NewFeatureKey. Used by the discovery
@@ -569,6 +696,15 @@ export default function ProDashboardScreen() {
   // last 7 / last 14..7 etc.).
   const { stats } = useProviderStats(providerId);
   const { reviews } = useReviews(providerId ?? undefined);
+
+  // Deposits collected (last 30 days) — only meaningful when the
+  // Sérénité add-on is active. The hook itself is harmless to call
+  // either way (just returns zeros) but skipping the fetch entirely
+  // when the addon is off saves a Firestore round-trip.
+  const depositsAddonActive = !!provider?.depositsAddonActive;
+  const depositsSummary = useDepositsSummary(
+    depositsAddonActive ? providerId ?? undefined : undefined,
+  );
 
   // Discovery banner — surfaces a prominent "Nouveautés" card on
   // the home tab while at least one feature behind /Plus hasn't
@@ -1187,6 +1323,17 @@ export default function ProDashboardScreen() {
             <QuickAction icon="globe-outline" label="En ligne" onPress={handleViewOnline} />
             <QuickAction icon="create-outline" label="Modifier" onPress={handleEditShop} />
           </View>
+        )}
+
+        {/* ── Acomptes encaissés (Sérénité add-on subscribers only) ── */}
+        {depositsAddonActive && (
+          <DepositsCard
+            totalAmount={depositsSummary.totalAmount}
+            bookingsCount={depositsSummary.bookingsCount}
+            topServices={depositsSummary.topServices}
+            loading={depositsSummary.loading}
+            onPress={() => router.push('/(pro)/payments')}
+          />
         )}
 
         {/* ── Team Section ── */}

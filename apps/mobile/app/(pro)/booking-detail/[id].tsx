@@ -702,6 +702,38 @@ export default function ProBookingDetailScreen() {
     valueWeight: '700' as const,
   });
 
+  // Deposit row — surfaces the Sérénité add-on benefit directly
+  // on the booking. Status-specific colour so the pro instantly
+  // sees whether the money has actually been collected.
+  if (booking.deposit && booking.deposit.amount > 0) {
+    const status = booking.deposit.status;
+    const statusLabel: Record<typeof status, string> = {
+      paid: 'payé',
+      refunded: 'remboursé',
+      failed: 'échec du paiement',
+      pending: 'en attente',
+    };
+    const statusColor: Record<typeof status, string> = {
+      paid: colors.success,
+      refunded: colors.textMuted,
+      failed: colors.error,
+      pending: colors.warning,
+    };
+    const statusIcon: Record<typeof status, keyof typeof Ionicons.glyphMap> = {
+      paid: 'checkmark-circle',
+      refunded: 'arrow-undo',
+      failed: 'alert-circle',
+      pending: 'time-outline',
+    };
+    detailRows.push({
+      icon: statusIcon[status],
+      label: 'Acompte',
+      value: `${formatPrice(booking.deposit.amount)} · ${statusLabel[status]}`,
+      valueColor: statusColor[status],
+      valueWeight: '700' as const,
+    });
+  }
+
   if ((booking as any).notes) {
     detailRows.push({
       icon: 'document-text-outline',
