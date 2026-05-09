@@ -1,7 +1,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, PlayCircle } from 'lucide-react';
-import { ARTICLE_CATEGORY_LABELS, type ArticleCategory } from '@booking-app/shared';
+import { ArrowRight, PlayCircle, Sparkles } from 'lucide-react';
+import {
+  ARTICLE_CATEGORY_LABELS,
+  isArticleNew,
+  type ArticleCategory,
+} from '@booking-app/shared';
 import { YouTubeThumbnail } from './YouTubeThumbnail';
 
 export interface ArticleCardData {
@@ -97,9 +101,23 @@ export function ArticleCard({ article, featured = false }: Props) {
 
       {/* Content */}
       <div className={`p-5 ${featured ? 'sm:p-7 flex flex-col justify-center' : ''}`}>
-        <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400 mb-2">
-          {ARTICLE_CATEGORY_LABELS[article.category]}
-        </span>
+        {/* Category pill + optional "Nouveau" pill on the same row.
+            Both share the same uppercase-caption visual treatment so
+            they read as siblings rather than the freshness badge
+            being mistaken for a separate category. The recency check
+            is purely time-based (14 days, see shared/utils/articles)
+            so old posts age out automatically without per-user state. */}
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">
+            {ARTICLE_CATEGORY_LABELS[article.category]}
+          </span>
+          {isArticleNew(article.publishedAt) && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-600 text-white text-[10px] font-bold uppercase tracking-wide">
+              <Sparkles className="w-3 h-3" />
+              Nouveau
+            </span>
+          )}
+        </div>
         <h3
           className={`font-bold text-gray-900 dark:text-white leading-tight group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors ${
             featured ? 'text-2xl sm:text-3xl' : 'text-lg'

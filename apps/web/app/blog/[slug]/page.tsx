@@ -3,10 +3,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { ChevronLeft, Clock } from 'lucide-react';
+import { ChevronLeft, Clock, Sparkles } from 'lucide-react';
 import { articleRepository } from '@booking-app/firebase';
 import {
   ARTICLE_CATEGORY_LABELS,
+  isArticleNew,
   type ArticleCategory,
 } from '@booking-app/shared';
 import { Header } from '@/components/layout/Header';
@@ -203,12 +204,24 @@ export default async function ArticlePage({ params }: PageProps) {
             <article className="lg:col-span-8">
               {/* Header */}
               <header className="mb-8">
-                <Link
-                  href={`/blog/categorie/${article.category}`}
-                  className="inline-block text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-primary-400 hover:underline mb-3"
-                >
-                  {ARTICLE_CATEGORY_LABELS[article.category as ArticleCategory]}
-                </Link>
+                {/* Category link + optional "Nouveau" pill — matches
+                    the same pattern used on /blog cards so a fresh
+                    article is recognisable from the index *and* from
+                    its detail page header. */}
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <Link
+                    href={`/blog/categorie/${article.category}`}
+                    className="inline-block text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    {ARTICLE_CATEGORY_LABELS[article.category as ArticleCategory]}
+                  </Link>
+                  {isArticleNew(article.publishedAt) && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-600 text-white text-[10px] font-bold uppercase tracking-wide">
+                      <Sparkles className="w-3 h-3" />
+                      Nouveau
+                    </span>
+                  )}
+                </div>
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
                   {article.title}
                 </h1>

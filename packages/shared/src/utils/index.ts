@@ -16,6 +16,9 @@ export * from './youtube';
 // Markdown helpers — heading extraction + slugifier shared between
 // the web blog sidebar TOC and the mobile inline sommaire.
 export * from './markdown';
+// Article freshness — the "Nouveau" pill recency check used by both
+// the web blog cards and the mobile in-app tutoriels list.
+export * from './articles';
 
 /**
  * Format price from cents to display string

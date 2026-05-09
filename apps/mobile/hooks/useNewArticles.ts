@@ -30,41 +30,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useArticles } from './useArticles';
 import type { ArticleCategory } from '@booking-app/shared';
+import {
+  NEW_ARTICLE_DAYS,
+  isArticleNew,
+  toArticleEpoch,
+} from '@booking-app/shared';
+
+// Re-export so existing mobile imports of `isArticleNew` /
+// `NEW_ARTICLE_DAYS` from this file keep resolving — the helpers
+// just live in shared now so the web blog can use them too.
+export { NEW_ARTICLE_DAYS, isArticleNew };
 
 const STORAGE_KEY = '@opatam/help-last-visit-v1';
-
-/**
- * How long after publication an article keeps the "Nouveau" pill
- * on its card. Two weeks gives us a sensible window: long enough
- * that providers who only open the app weekly still see new posts
- * highlighted, short enough that the pill doesn't lose meaning.
- */
-export const NEW_ARTICLE_DAYS = 14;
-
-/** Coerce Firestore-y date values into a plain epoch ms number. */
-function toEpoch(d: Date | { toDate: () => Date } | string | null | undefined): number {
-  if (!d) return 0;
-  if (typeof d === 'string') {
-    const t = new Date(d).getTime();
-    return Number.isFinite(t) ? t : 0;
-  }
-  if (d instanceof Date) return d.getTime();
-  if (typeof (d as { toDate?: () => Date }).toDate === 'function') {
-    return (d as { toDate: () => Date }).toDate().getTime();
-  }
-  return 0;
-}
-
-/** True when `publishedAt` is within the recency window. */
-export function isArticleNew(
-  publishedAt: Date | { toDate: () => Date } | string | null | undefined,
-  days: number = NEW_ARTICLE_DAYS,
-): boolean {
-  const ms = toEpoch(publishedAt);
-  if (!ms) return false;
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-  return ms >= cutoff;
-}
 
 interface UseNewArticlesResult {
   /** True if at least one article was published since `lastVisitAt`. */
@@ -139,7 +116,7 @@ export function useNewArticles(
       return { hasNew: false, newCount: 0 };
     }
     const fresh = articles.filter((a) => {
-      const ms = toEpoch(a.publishedAt);
+      const ms = toArticleEpoch(a.publishedAt);
       // Two guards:
       //  - publication strictly newer than the user's last visit
       //  - and within the recency window — avoid resurfacing an
