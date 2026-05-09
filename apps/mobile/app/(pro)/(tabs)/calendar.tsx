@@ -555,6 +555,31 @@ function WeekView({
     return clamped * columnWidth;
   }, [weekDays, selectedDate, columnWidth]);
 
+  // Apply the initial scroll position imperatively, *not* via the
+  // ScrollView's `contentOffset` prop. The prop is re-applied every
+  // render with a new object reference, which jolts the user back
+  // to col 1 every time the calendar refreshes (e.g. when returning
+  // from /create-activity). Using scrollTo keyed off the actual
+  // numeric offset value means we only scroll when selectedDate
+  // genuinely changes — render-cycle refreshes are no-ops, the
+  // user's manual scroll position is preserved.
+  const lastAppliedOffsetRef = React.useRef<number | null>(null);
+  React.useLayoutEffect(() => {
+    if (lastAppliedOffsetRef.current === initialHorizontalOffset) return;
+    lastAppliedOffsetRef.current = initialHorizontalOffset;
+    bodyHorizontalScrollRef.current?.scrollTo({
+      x: initialHorizontalOffset,
+      y: 0,
+      animated: false,
+    });
+    // Keep the header in sync with the body's new offset.
+    headerScrollRef.current?.scrollTo({
+      x: initialHorizontalOffset,
+      y: 0,
+      animated: false,
+    });
+  }, [initialHorizontalOffset]);
+
   return (
     <View style={{ flex: 1 }}>
       {/* Column headers — horizontally scrollable, mirrors body scroll */}
@@ -692,7 +717,9 @@ function WeekView({
             showsHorizontalScrollIndicator={false}
             scrollEventThrottle={16}
             onScroll={handleBodyHorizontalScroll}
-            contentOffset={{ x: initialHorizontalOffset, y: 0 }}
+            // Initial scroll position is set imperatively via the
+            // useLayoutEffect above so refreshes don't jolt the
+            // user back to col 1.
             style={{ flex: 1 }}
           >
           <View style={{ width: gridWidth, flexDirection: 'row', position: 'relative' }}>
