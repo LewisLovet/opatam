@@ -41,6 +41,12 @@ interface Props {
   article: ArticleCardData;
   /** Visual emphasis variant — used for the first card on /blog. */
   featured?: boolean;
+  /**
+   * Path prefix to navigate to. Defaults to `/blog` (public reader),
+   * but the in-dashboard pro tutoriels list passes `/pro/tutoriels`
+   * so a click stays inside the pro chrome.
+   */
+  hrefBase?: string;
 }
 
 function formatDate(iso: string | null): string {
@@ -52,7 +58,11 @@ function formatDate(iso: string | null): string {
   });
 }
 
-export function ArticleCard({ article, featured = false }: Props) {
+export function ArticleCard({
+  article,
+  featured = false,
+  hrefBase = '/blog',
+}: Props) {
   const staticCover = resolveStaticCover(article);
   const hasVideo = !!article.videoUrl;
   // Falls back to a YouTube auto-thumbnail (HD with hq fallback) when
@@ -61,7 +71,7 @@ export function ArticleCard({ article, featured = false }: Props) {
 
   return (
     <Link
-      href={`/blog/${article.slug}`}
+      href={`${hrefBase}/${article.slug}`}
       className={`group block rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-xl hover:border-primary-200 dark:hover:border-primary-800 transition-all ${
         featured ? 'sm:grid sm:grid-cols-2 sm:gap-0' : ''
       }`}

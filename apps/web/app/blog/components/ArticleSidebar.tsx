@@ -32,9 +32,16 @@ import type { Heading } from '../lib/article-utils';
 interface Props {
   headings: Heading[];
   related: ArticleCardData[];
+  /**
+   * Path prefix the related-article links should target. Defaults
+   * to `/blog` so the public side is unchanged; the in-dashboard
+   * pro reader passes `/pro/tutoriels` so siblings stay inside
+   * the chrome.
+   */
+  hrefBase?: string;
 }
 
-export function ArticleSidebar({ headings, related }: Props) {
+export function ArticleSidebar({ headings, related, hrefBase = '/blog' }: Props) {
   const [activeId, setActiveId] = useState<string>('');
   // Track the last "intentional" hash so smooth-scroll clicks land
   // on the heading at top-of-viewport instead of the heading the
@@ -133,7 +140,7 @@ export function ArticleSidebar({ headings, related }: Props) {
           <ul className="space-y-4">
             {related.map((a) => (
               <li key={a.slug}>
-                <RelatedItem article={a} />
+                <RelatedItem article={a} hrefBase={hrefBase} />
               </li>
             ))}
           </ul>
@@ -167,14 +174,20 @@ export function ArticleSidebar({ headings, related }: Props) {
  * on the left + category + title on the right. Same hover
  * affordance as the full ArticleCard so it reads as a peer.
  */
-function RelatedItem({ article }: { article: ArticleCardData }) {
+function RelatedItem({
+  article,
+  hrefBase,
+}: {
+  article: ArticleCardData;
+  hrefBase: string;
+}) {
   // Same fallback chain as the full card: explicit cover →
   // video poster → YouTube auto-thumb → letter placeholder.
   const staticCover = article.coverImageURL || article.videoCoverURL;
   const showYouTube = !staticCover && !!article.videoUrl;
 
   return (
-    <Link href={`/blog/${article.slug}`} className="group flex gap-3 items-start">
+    <Link href={`${hrefBase}/${article.slug}`} className="group flex gap-3 items-start">
       <div className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/20">
         {staticCover ? (
           <Image

@@ -9,11 +9,11 @@
  * dashboard isn't where we want to sell the platform back to people
  * who've already bought it.
  *
- * Card → /blog/<slug>. We don't duplicate the article-render
- * machinery into pro chrome; the public blog page already has the
- * polished sommaire / sidebar / related-articles experience and
- * works for an authenticated pro just as well as for a visitor.
- * Pros use the browser back button to return.
+ * Card → /pro/tutoriels/<slug>. The shared <ArticleBody>
+ * component renders both the public /blog and this in-dashboard
+ * reader so they stay in sync; the difference is just the
+ * surrounding chrome (Header/Footer on /blog, sidebar on /pro)
+ * and the navigation destinations (back link, category pill).
  *
  * The default landing view is "tutoriels" because that's the most
  * directly actionable bucket. The chip strip lets the pro flip to
@@ -159,7 +159,15 @@ export default async function ProTutorielsPage({ searchParams }: PageProps) {
         // specific topic, not browsing leisurely.
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((a) => (
-            <ArticleCard key={a.slug} article={a} />
+            <ArticleCard
+              key={a.slug}
+              article={a}
+              // Stay inside the pro chrome on click — opens the
+              // /pro/tutoriels/[slug] reader which uses the same
+              // shared <ArticleBody> the public /blog renders, just
+              // wrapped in the dashboard sidebar.
+              hrefBase="/pro/tutoriels"
+            />
           ))}
         </div>
       )}
