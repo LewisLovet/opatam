@@ -10,6 +10,17 @@ import { useTheme, type Colors } from '../../../theme';
 import { Text } from '../../Text';
 import { type BookingStatus } from '../BookingStatusBadge';
 
+/**
+ * Cents → "120 €" / "89,50 €" — kept local rather than imported
+ * from @booking-app/shared because formatPrice there returns
+ * "Gratuit" for 0, which we treat as "no amount" upstream.
+ */
+function formatActivityAmount(cents: number): string {
+  const euros = cents / 100;
+  if (euros % 1 === 0) return `${euros} €`;
+  return `${euros.toFixed(2).replace('.', ',')} €`;
+}
+
 export interface DayScheduleBooking {
   id: string;
   startTime: string; // "09:30"
@@ -49,6 +60,9 @@ export interface DayScheduleBlockedSlot {
   title?: string | null;
   /** Free-text address shown under the title when present. */
   address?: string | null;
+  /** Amount earned for this activity, in cents. Optional — shown
+   *  as a small badge in the bottom-right of the card. */
+  amount?: number | null;
 }
 
 export interface DayScheduleProps {
@@ -505,6 +519,35 @@ export function DaySchedule({
                       {slot.isAllMembers
                         ? 'Tous les membres'
                         : slot.members.map((m) => m.name.split(' ')[0]).join(', ')}
+                    </Text>
+                  </View>
+                )}
+                {/* Amount badge — bottom-right of activity cards
+                    when an amount is set. Same convention as the
+                    week view's smaller badge. */}
+                {isActivity && slot.amount != null && slot.amount > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      bottom: 6,
+                      right: 8,
+                      backgroundColor: 'rgba(255,255,255,0.22)',
+                      paddingHorizontal: 7,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <Text
+                      variant="caption"
+                      style={{
+                        fontSize: 11,
+                        lineHeight: 13,
+                        fontWeight: '700',
+                        color: '#FFFFFF',
+                      }}
+                      numberOfLines={1}
+                    >
+                      {formatActivityAmount(slot.amount)}
                     </Text>
                   </View>
                 )}

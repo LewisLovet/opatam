@@ -591,6 +591,13 @@ export interface BlockedSlot {
    *  sport, 12 rue X" or "Café Z"). Optional — distinct from the
    *  internal `locationId` which is always the member's home base. */
   address?: string | null;
+  /** Amount earned for this activity, in cents. Optional — set
+   *  only for paid activities (workshop, off-platform consultation,
+   *  etc.). Currently displayed as a badge on the calendar; will
+   *  be aggregated into the stats pipeline as "Autres revenus" in
+   *  Phase 2. NOT counted in any ProviderClient revenue since
+   *  activities aren't tied to a client. */
+  amount?: number | null;
   createdAt: Date;
 }
 

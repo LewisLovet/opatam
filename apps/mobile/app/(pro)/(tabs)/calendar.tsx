@@ -119,6 +119,17 @@ function formatTime(date: Date): string {
   );
 }
 
+/**
+ * Cents → "120 €" / "89,50 €" — compact form for the small amount
+ * badge on activity cards. Drops the cents when the amount is a
+ * round euro so "12000" cents = "120 €" not "120,00 €".
+ */
+function formatActivityAmount(cents: number): string {
+  const euros = cents / 100;
+  if (euros % 1 === 0) return `${euros} €`;
+  return `${euros.toFixed(2).replace('.', ',')} €`;
+}
+
 function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60_000);
 }
@@ -376,6 +387,10 @@ interface WeekBlockedSlot {
   category?: import('@booking-app/shared').ActivityCategory | null;
   categoryColor?: string | null;
   title?: string | null;
+  /** Amount earned for this activity, in cents. Optional — only set
+   *  for paid activities. Drives the small `120 €` badge on the
+   *  card. */
+  amount?: number | null;
 }
 
 interface WeekViewProps {
@@ -835,6 +850,34 @@ function WeekView({
                             >
                               {bs.reason}
                             </Text>
+                          )}
+                          {/* Amount badge — bottom-right corner of
+                              the card. Hidden when the card is
+                              tiny (< 18px tall) to avoid clipping. */}
+                          {bs.amount != null && bs.amount > 0 && bsHeight > 18 && (
+                            <View
+                              style={{
+                                position: 'absolute',
+                                bottom: 1,
+                                right: 1,
+                                backgroundColor: 'rgba(255,255,255,0.22)',
+                                paddingHorizontal: 4,
+                                paddingVertical: 0,
+                                borderRadius: 3,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 8,
+                                  lineHeight: 10,
+                                  fontWeight: '700',
+                                  color: '#FFFFFF',
+                                }}
+                                numberOfLines={1}
+                              >
+                                {formatActivityAmount(bs.amount)}
+                              </Text>
+                            </View>
                           )}
                         </Pressable>
                       );
@@ -1296,6 +1339,7 @@ export default function CalendarScreen() {
         categoryColor,
         title: g.bs.title ?? null,
         address: g.bs.address ?? null,
+        amount: g.bs.amount ?? null,
       };
     });
   }, [blockedSlots, viewMode, selectedMemberId, dayStart, dayEnd, memberNameMap, memberColorMap, members]);
@@ -1406,6 +1450,7 @@ export default function CalendarScreen() {
         category: bs.category ?? null,
         categoryColor,
         title: bs.title ?? null,
+        amount: bs.amount ?? null,
       };
     });
   }, [blockedSlots, viewMode, selectedMemberId, memberNameMap, memberColorMap, members]);

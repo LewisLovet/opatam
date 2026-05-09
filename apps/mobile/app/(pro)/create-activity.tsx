@@ -298,6 +298,11 @@ export default function CreateActivityScreen() {
   });
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
+  // Amount earned for this activity, as a free-text input. Stored
+  // in euros for the form (so the user types "120" / "120.50") and
+  // converted to cents at submit time. Empty string = no amount,
+  // persisted as null on the doc.
+  const [amount, setAmount] = useState('');
   const [activePicker, setActivePicker] = useState<PickerMode>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -340,6 +345,17 @@ export default function CreateActivityScreen() {
           setEndTime(endDt);
           setAddress(existing.address || '');
           setNotes(existing.reason || '');
+          // Hydrate amount from cents → euros string. Display 2
+          // decimals only when needed so "12000" cents shows as
+          // "120" not "120.00".
+          if (existing.amount != null && existing.amount > 0) {
+            const euros = existing.amount / 100;
+            setAmount(
+              euros % 1 === 0 ? String(euros) : euros.toFixed(2),
+            );
+          } else {
+            setAmount('');
+          }
           return;
         }
 
@@ -417,6 +433,19 @@ export default function CreateActivityScreen() {
       return;
     }
 
+    // Parse the optional amount input (euros → cents). Empty string,
+    // dash, or only whitespace = null. Reject NaN / negative.
+    const trimmedAmount = amount.trim().replace(',', '.');
+    let amountCents: number | null = null;
+    if (trimmedAmount.length > 0) {
+      const parsed = Number.parseFloat(trimmedAmount);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        Alert.alert('Montant invalide', 'Saisissez un montant en euros (ex : 120 ou 89,50).');
+        return;
+      }
+      amountCents = Math.round(parsed * 100);
+    }
+
     try {
       setIsSubmitting(true);
       if (editId) {
@@ -435,6 +464,7 @@ export default function CreateActivityScreen() {
           category,
           title: title.trim(),
           address: address.trim() || null,
+          amount: amountCents,
         });
         Alert.alert('Activité modifiée', `${title.trim()} a été mis à jour.`, [
           { text: 'OK', onPress: () => router.back() },
@@ -453,6 +483,7 @@ export default function CreateActivityScreen() {
           category,
           title: title.trim(),
           address: address.trim() || null,
+          amount: amountCents,
         });
         Alert.alert('Activité ajoutée', `${title.trim()} a été ajouté à votre agenda.`, [
           { text: 'OK', onPress: () => router.back() },
@@ -726,6 +757,27 @@ export default function CreateActivityScreen() {
             multiline
             numberOfLines={3}
             maxLength={200}
+          />
+        </View>
+
+        {/* Amount (optional) — for paid activities (workshop, gig…)
+            Currently shown as a badge on the calendar card. Will be
+            aggregated into "Autres revenus" in the stats Phase 2. */}
+        <View style={{ marginBottom: spacing.lg }}>
+          <Input
+            label="Montant facturé (optionnel)"
+            placeholder="0"
+            value={amount}
+            onChangeText={(v) => {
+              // Allow digits + one comma/dot for cents. Strip the rest.
+              const cleaned = v.replace(/[^0-9.,]/g, '').replace(',', '.');
+              const dotCount = (cleaned.match(/\./g) || []).length;
+              if (dotCount > 1) return; // refuse second decimal point
+              setAmount(cleaned);
+            }}
+            keyboardType="decimal-pad"
+            maxLength={10}
+            helperText="Pour une activité rémunérée hors plateforme. Affiché comme badge sur l'agenda."
           />
         </View>
 

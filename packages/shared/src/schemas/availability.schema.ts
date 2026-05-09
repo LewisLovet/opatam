@@ -104,6 +104,16 @@ export const blockedSlotSchema = z.object({
     .max(200, { message: 'L\'adresse ne peut pas dépasser 200 caractères' })
     .nullable()
     .optional(),
+  /** Amount earned in cents — for paid activities (off-platform
+   *  workshops, freelance gigs, etc.). Capped at 1 M€ to catch
+   *  mis-entered amounts (e.g. forgetting cents). */
+  amount: z
+    .number()
+    .int({ message: 'Le montant doit être en centimes (entier)' })
+    .min(0, { message: 'Le montant doit être positif ou nul' })
+    .max(100_000_000, { message: 'Montant trop élevé' })
+    .nullable()
+    .optional(),
   isRecurring: z.boolean().default(false),
   recurringDays: z
     .array(z.number().int().min(0).max(6))
