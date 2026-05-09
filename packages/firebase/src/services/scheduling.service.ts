@@ -294,6 +294,11 @@ export class SchedulingService {
       category: validated.category ?? null,
       title: validated.title ?? null,
       address: validated.address ?? null,
+      // Optional amount earned (cents). Important to whitelist
+      // here — without it the field gets dropped on create even
+      // though edit (which goes straight through the repo) keeps
+      // it. That's the bug users hit on first save.
+      amount: validated.amount ?? null,
     });
   }
 

@@ -130,6 +130,48 @@ function formatActivityAmount(cents: number): string {
   return `${euros.toFixed(2).replace('.', ',')} €`;
 }
 
+/**
+ * Does two blocked slots' time windows intersect on the same day?
+ * Used to detect stacked activities so we can show a disambiguation
+ * sheet on tap instead of always opening whichever one happens to
+ * be on top in z-order.
+ *
+ * Both slots must:
+ *  - share at least one calendar day (they CAN span multiple days,
+ *    we count them as overlapping if any day is shared)
+ *  - have intersecting time ranges on that shared day. allDay
+ *    counts as 00:00 → 23:59.
+ */
+function overlapsInTime(
+  a: { startDate: Date; endDate: Date; allDay: boolean; startTime: string | null; endTime: string | null },
+  b: { startDate: Date; endDate: Date; allDay: boolean; startTime: string | null; endTime: string | null },
+): boolean {
+  // Day-level overlap first.
+  const aStartDay = new Date(a.startDate);
+  aStartDay.setHours(0, 0, 0, 0);
+  const aEndDay = new Date(a.endDate);
+  aEndDay.setHours(0, 0, 0, 0);
+  const bStartDay = new Date(b.startDate);
+  bStartDay.setHours(0, 0, 0, 0);
+  const bEndDay = new Date(b.endDate);
+  bEndDay.setHours(0, 0, 0, 0);
+  if (aEndDay < bStartDay || bEndDay < aStartDay) return false;
+
+  // Time-level overlap. Convert both to minutes-from-midnight,
+  // treating allDay or missing times as the full 0–1440 range.
+  const minutesOf = (
+    s: { allDay: boolean; startTime: string | null; endTime: string | null },
+  ) => {
+    if (s.allDay || !s.startTime || !s.endTime) return [0, 24 * 60] as const;
+    const [sh, sm] = s.startTime.split(':').map(Number);
+    const [eh, em] = s.endTime.split(':').map(Number);
+    return [sh * 60 + sm, eh * 60 + em] as const;
+  };
+  const [aFrom, aTo] = minutesOf(a);
+  const [bFrom, bTo] = minutesOf(b);
+  return aFrom < bTo && bFrom < aTo;
+}
+
 function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60_000);
 }
@@ -1180,6 +1222,11 @@ export default function CalendarScreen() {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(memberIdParam ?? null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [disambiguationBookings, setDisambiguationBookings] = useState<WeekBooking[] | null>(null);
+  // Same idea for stacked activities — a tap on an overlapping
+  // group opens a sheet so the pro can pick which one to open.
+  // Without this they get whichever one is on top in z-order.
+  const [disambiguationActivities, setDisambiguationActivities] =
+    useState<WithId<BlockedSlot>[] | null>(null);
   // Bottom sheet for the unified "+ ajouter" action — three flavours:
   // client booking, personal activity, blocked period.
   const [showAddSheet, setShowAddSheet] = useState(false);
@@ -1512,8 +1559,23 @@ export default function CalendarScreen() {
       const slot = blockedSlots.find((s) => s.id === id);
       const isActivity = !!slot?.category;
 
-      if (isActivity) {
-        router.push(`/(pro)/create-activity?id=${id}` as any);
+      if (isActivity && slot) {
+        // Detect other activities sharing any time window with the
+        // tapped one. If there's more than one, show a sheet so the
+        // pro can pick — overlapping activities all stack at the
+        // same z-index and only the topmost would otherwise receive
+        // taps.
+        const overlapping = blockedSlots.filter(
+          (other) =>
+            !!other.category &&
+            (selectedMemberId == null || other.memberId === selectedMemberId) &&
+            overlapsInTime(slot, other),
+        );
+        if (overlapping.length > 1) {
+          setDisambiguationActivities(overlapping);
+        } else {
+          router.push(`/(pro)/create-activity?id=${id}` as any);
+        }
         return;
       }
 
@@ -2235,6 +2297,156 @@ export default function CalendarScreen() {
                   </Pressable>
                 );
               })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ===== Activity Disambiguation Bottom Sheet ===== */}
+      {/* Same UX as the booking version above, but with the
+          activity-specific fields (title, category, amount). */}
+      <Modal
+        visible={disambiguationActivities !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDisambiguationActivities(null)}
+      >
+        <Pressable
+          style={styles.datePickerOverlay}
+          onPress={() => setDisambiguationActivities(null)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation?.()}
+            style={[
+              styles.datePickerModal,
+              {
+                backgroundColor: colors.surface,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                maxHeight: 400,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.datePickerHeader,
+                {
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.divider,
+                  paddingHorizontal: spacing.lg,
+                  paddingVertical: spacing.md,
+                },
+              ]}
+            >
+              <Text variant="body" style={{ fontWeight: '600' }}>
+                {disambiguationActivities?.length ?? 0} activités à ce créneau
+              </Text>
+              <Pressable onPress={() => setDisambiguationActivities(null)}>
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ paddingVertical: spacing.xs }}>
+              {disambiguationActivities
+                ?.slice()
+                .sort((a, b) => {
+                  // Sort by start time-of-day so the list reads
+                  // chronologically inside the overlapping window.
+                  const at = a.startTime ?? '00:00';
+                  const bt = b.startTime ?? '00:00';
+                  return at.localeCompare(bt);
+                })
+                .map((activity) => {
+                  const meta = activity.category
+                    ? ACTIVITY_CATEGORY_META[activity.category]
+                    : null;
+                  const accent = meta?.color || colors.textMuted;
+                  const timeStr =
+                    activity.allDay
+                      ? 'Journée'
+                      : `${activity.startTime ?? '—'} – ${activity.endTime ?? '—'}`;
+                  return (
+                    <Pressable
+                      key={activity.id}
+                      onPress={() => {
+                        setDisambiguationActivities(null);
+                        router.push(
+                          `/(pro)/create-activity?id=${activity.id}` as any,
+                        );
+                      }}
+                      style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: spacing.lg,
+                        paddingVertical: spacing.md,
+                        backgroundColor: pressed
+                          ? colors.surfaceSecondary
+                          : 'transparent',
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: colors.divider,
+                        gap: spacing.sm,
+                      })}
+                    >
+                      {/* Category color dot */}
+                      <View
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: 5,
+                          backgroundColor: accent,
+                        }}
+                      />
+
+                      {/* Time */}
+                      <Text
+                        variant="label"
+                        style={{ fontWeight: '600', minWidth: 88 }}
+                      >
+                        {timeStr}
+                      </Text>
+
+                      {/* Title + category */}
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          variant="body"
+                          numberOfLines={1}
+                          style={{ fontWeight: '500' }}
+                        >
+                          {activity.title || meta?.label || 'Activité'}
+                        </Text>
+                        {meta && (
+                          <Text
+                            variant="caption"
+                            color="textSecondary"
+                            numberOfLines={1}
+                          >
+                            {meta.label}
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Amount badge if present */}
+                      {activity.amount != null && activity.amount > 0 && (
+                        <Text
+                          variant="caption"
+                          style={{
+                            color: colors.text,
+                            fontWeight: '700',
+                            fontVariant: ['tabular-nums'],
+                          }}
+                        >
+                          {formatActivityAmount(activity.amount)}
+                        </Text>
+                      )}
+
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color={colors.textMuted}
+                      />
+                    </Pressable>
+                  );
+                })}
             </ScrollView>
           </Pressable>
         </Pressable>
