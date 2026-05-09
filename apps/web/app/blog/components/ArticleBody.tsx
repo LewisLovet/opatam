@@ -94,6 +94,25 @@ function navFor(context: ArticleBodyContext) {
 export function ArticleBody({ article, related, context }: Props) {
   const nav = navFor(context);
 
+  // Container width strategy.
+  //   - public: capped at 7xl (~1280px) and centred — the public
+  //     blog has no sidebar, so without a cap the article column
+  //     would stretch to ridiculous widths on 1440+ screens.
+  //   - pro: no cap. The pro layout already constrains horizontal
+  //     space with its sidebar; capping again here leaves the body
+  //     stranded in the middle of the content area with empty
+  //     gutters on both sides, which looks broken. We still keep
+  //     the px gutters so text doesn't run flush against the
+  //     dashboard edges.
+  const widthClass =
+    context === 'pro'
+      ? 'w-full px-4 sm:px-6 lg:px-8'
+      : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8';
+  const relatedWidthClass =
+    context === 'pro'
+      ? 'w-full px-4 sm:px-6 lg:px-8'
+      : 'max-w-6xl mx-auto px-4 sm:px-6 lg:px-8';
+
   const relatedCards: ArticleCardData[] = related.map((a) => ({
     slug: a.slug,
     title: a.title,
@@ -115,7 +134,7 @@ export function ArticleBody({ article, related, context }: Props) {
   return (
     <div className="pb-16">
       {/* Back link */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <div className={`${widthClass} pt-8`}>
         <Link
           href={nav.backHref}
           className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
@@ -129,7 +148,7 @@ export function ArticleBody({ article, related, context }: Props) {
           sidebar (4 cols). On mobile/tablet, sidebar disappears
           and the related grid below the article handles its
           relationship-discovery role in the linear flow. */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <div className={`${widthClass} mt-6`}>
         <div className="lg:grid lg:grid-cols-12 lg:gap-10">
           <article className="lg:col-span-8">
             {/* Header */}
@@ -332,7 +351,7 @@ export function ArticleBody({ article, related, context }: Props) {
           sidebar already covers this need on desktop. Keeps the
           mobile flow informative without duplication. */}
       {relatedCards.length > 0 && (
-        <section className="lg:hidden max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 pt-12 border-t border-gray-200 dark:border-gray-800">
+        <section className={`lg:hidden ${relatedWidthClass} mt-16 pt-12 border-t border-gray-200 dark:border-gray-800`}>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
             Articles similaires
           </h2>
