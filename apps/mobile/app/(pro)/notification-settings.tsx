@@ -9,14 +9,11 @@ import {
   StyleSheet,
   ScrollView,
   Switch,
-  ActivityIndicator,
-  Pressable,
-  SafeAreaView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text, useToast } from '../../components';
+import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { providerService } from '@booking-app/firebase';
 import type { ProviderNotificationPreferences } from '@booking-app/shared';
@@ -77,7 +74,6 @@ function SettingRow({
 
 export default function ProNotificationSettingsScreen() {
   const { colors, spacing, radius } = useTheme();
-  const router = useRouter();
   const { provider, providerId, refreshProvider } = useProvider();
   const { showToast } = useToast();
 
@@ -113,17 +109,11 @@ export default function ProNotificationSettingsScreen() {
   const channelsDisabled = !prefs.pushEnabled && !prefs.emailEnabled;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text variant="h2" style={{ marginLeft: spacing.md, flex: 1 }}>
-          Notifications
-        </Text>
-        {saving && <ActivityIndicator size="small" color={colors.primary} />}
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Branded blue header. Auto-save is fast and any failure
+          surfaces via toast, so the inline spinner the previous
+          header showed isn't worth a custom right-slot here. */}
+      <BrandedHeader title="Notifications" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -226,7 +216,7 @@ export default function ProNotificationSettingsScreen() {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -237,10 +227,6 @@ export default function ProNotificationSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   sectionTitle: {
     marginBottom: 8,

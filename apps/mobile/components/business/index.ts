@@ -17,6 +17,8 @@ export * from './RegionSelect';
 export * from './CategorySelect';
 export * from './EmptyState';
 export * from './ScreenHeader';
+export * from './BrandedHeader';
+export * from './Activity';
 export * from './SocialLinks';
 
 // Lot 2 - Services

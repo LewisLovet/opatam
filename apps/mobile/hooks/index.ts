@@ -63,6 +63,12 @@ export type { DashboardData, UseProviderDashboardResult } from './useProviderDas
 export { useBlockedSlots } from './useBlockedSlots';
 export type { UseBlockedSlotsResult } from './useBlockedSlots';
 
+export { useProviderActivities } from './useProviderActivities';
+export type {
+  UseProviderActivitiesOptions,
+  UseProviderActivitiesResult,
+} from './useProviderActivities';
+
 export { useProviderStats } from './useProviderStats';
 export type { ProviderStats, UseProviderStatsResult } from './useProviderStats';
 
@@ -91,3 +97,11 @@ export type {
   DepositsSummary,
   DepositsTopService,
 } from './useDepositsSummary';
+
+export { useArticles, useArticle, useRelatedArticles } from './useArticles';
+
+export {
+  useNewArticles,
+  isArticleNew,
+  NEW_ARTICLE_DAYS,
+} from './useNewArticles';

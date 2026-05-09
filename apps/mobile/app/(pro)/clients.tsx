@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text, Card, Avatar, Badge } from '../../components';
+import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useProviderClients } from '../../hooks';
 import type { ProviderClient, ProviderClientTag } from '@booking-app/shared';
@@ -99,12 +100,17 @@ export default function ClientsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
+      {/* Branded blue header — title bar only; the search, tag
+          chips and sort toolbar live in their own neutral panel
+          below so dark text stays legible. */}
+      <BrandedHeader title="Clients" />
+
+      {/* Filter / search panel */}
       <View
         style={[
           styles.header,
           {
-            paddingTop: insets.top + spacing.sm,
+            paddingTop: spacing.sm,
             paddingHorizontal: spacing.lg,
             paddingBottom: spacing.sm,
             borderBottomColor: colors.border,
@@ -112,22 +118,6 @@ export default function ClientsScreen() {
           },
         ]}
       >
-        <View style={styles.headerRow}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              styles.backBtn,
-              { opacity: pressed ? 0.6 : 1 },
-            ]}
-          >
-            <Ionicons name="chevron-back" size={26} color={colors.text} />
-          </Pressable>
-          <Text variant="h3" style={{ fontWeight: '600' }}>
-            Clients
-          </Text>
-          <View style={{ width: 40 }} />
-        </View>
-
         {/* Search */}
         <View
           style={[
@@ -610,18 +600,6 @@ const styles = StyleSheet.create({
   },
   header: {
     borderBottomWidth: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   searchWrap: {
     flexDirection: 'row',

@@ -25,6 +25,7 @@ import { Card, Input, Text, useToast } from '../../../components';
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
 import {
   useBlockedSlots,
+  useNewArticles,
   useNewFeatures,
   useProviderClientsCount,
 } from '../../../hooks';
@@ -404,6 +405,10 @@ export default function MoreScreen() {
   // "Nouveau" badge state on menu items shipped recently — flips
   // to off as soon as the user taps the row, persisted on-device.
   const { isNew, markSeen } = useNewFeatures();
+  // Same pattern but driven by article publication dates rather
+  // than a hardcoded feature key, so the Tutoriels & guides entry
+  // re-fires "Nouveau" whenever a fresh tutorial is published.
+  const { hasNew: hasNewTutorials } = useNewArticles();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
@@ -719,6 +724,16 @@ export default function MoreScreen() {
             <MenuItem
               icon="calendar-outline"
               label="Paramètres de réservation"
+              // Surface the auto-review "Nouveau" indicator on the
+              // entry point too, otherwise the dot on the Plus tab
+              // (driven by `auto-review-2026-05` in MORE_TAB_FEATURE_KEYS)
+              // fires without any visible cue inside the menu — the
+              // actual pill lives on a toggle deep in booking-settings.
+              // We deliberately do NOT markSeen on tap: the indicator
+              // should persist until the user interacts with the toggle
+              // itself, otherwise opening this menu accidentally would
+              // hide the discovery cue forever.
+              isNew={isNew('auto-review-2026-05')}
               onPress={() => router.push('/(pro)/booking-settings')}
               colors={colors}
             />
@@ -756,6 +771,19 @@ export default function MoreScreen() {
             Support
           </Text>
           <Card padding="none" shadow="sm">
+            <MenuItem
+              icon="book-outline"
+              label="Tutoriels & guides"
+              isNew={hasNewTutorials}
+              onPress={() => {
+                // The help screen itself calls markVisited on mount,
+                // which is what actually clears the badge on next
+                // render — no need to do it here too.
+                router.push('/(pro)/help');
+              }}
+              colors={colors}
+            />
+            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="help-circle-outline"
               label="Aide et contact"

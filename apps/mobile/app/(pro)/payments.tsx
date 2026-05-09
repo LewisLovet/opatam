@@ -26,8 +26,8 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,7 +35,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { auth as firebaseAuth } from '@booking-app/firebase';
 import { useTheme } from '../../theme';
 import { Text, Card, Button, Switch, useToast } from '../../components';
+import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
+import { useDepositsSummary, useServices } from '../../hooks';
+import { formatPrice } from '@booking-app/shared';
 
 const BASE_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://opatam.com';
 
@@ -57,7 +60,6 @@ const HOURS_PRESETS: { value: number; label: string }[] = [
 export default function PaymentsScreen() {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const toast = useToast();
   const { provider, isLoading } = useProvider();
 
@@ -66,6 +68,34 @@ export default function PaymentsScreen() {
   const connectActive = connectStatus === 'active';
   const addonActive = !!provider?.depositsAddonActive;
   const depositDefault = provider?.settings?.depositDefault ?? null;
+
+  // ─── Stats for the "Vue d'ensemble" strip ──────────────────────────
+  // Skip both fetches when the addon is off — no point showing
+  // (zeros / 0 services) to a pro who hasn't subscribed.
+  const { services } = useServices(addonActive ? provider?.id : undefined);
+  const depositsSummary = useDepositsSummary(
+    addonActive ? provider?.id : undefined,
+  );
+
+  // Count how many services would actually charge a deposit at
+  // booking time. A service charges if it has its own non-'none'
+  // deposit, OR inherits (deposit null/undefined) AND the
+  // provider has a default. Mirrors the resolution in the
+  // booking flow.
+  const servicesWithDeposit = useMemo(() => {
+    if (!services || services.length === 0) return { count: 0, total: 0 };
+    const hasDefault = !!depositDefault;
+    let count = 0;
+    for (const svc of services) {
+      const d = svc.deposit;
+      if (d && d.type !== 'none') {
+        count += 1;
+      } else if ((d === null || d === undefined) && hasDefault) {
+        count += 1;
+      }
+    }
+    return { count, total: services.length };
+  }, [services, depositDefault]);
 
   // ─── Local edit state for the default deposit form ────────────────
   // Synced from the provider doc when not editing; once the user
@@ -227,19 +257,18 @@ export default function PaymentsScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[s.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={[s.backBtn, { backgroundColor: colors.surface, borderRadius: radius.full }]}
-        >
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text variant="h2" style={s.title}>
-          Paiements & acomptes
-        </Text>
-      </View>
+      {/* Branded blue header — matches the rest of the pro space. */}
+      <BrandedHeader title="Paiements & acomptes" />
 
+      {/* KeyboardAvoidingView so the refund-deadline + percent
+          inputs stay visible above the keyboard on iOS. Without
+          this, tapping into either input made the keyboard cover
+          the field with no way to see what was typed. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={insets.top + 60}
+      >
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
@@ -248,6 +277,7 @@ export default function PaymentsScreen() {
           gap: spacing.md,
         }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         {/* ── Hero card — top-of-funnel summary ─────────────────────── */}
         <HeroCard
@@ -500,6 +530,82 @@ export default function PaymentsScreen() {
           </Card>
         )}
 
+        {/* ── Stats strip — visible only when the addon is active.
+              Three KPIs at a glance:
+                • Prestations avec acompte (X / Y)
+                • Acomptes encaissés (30 j)
+                • RDV concernés (30 j)
+              Helps the pro feel the value of the 5 €/mois subscription
+              and spot when no service has a deposit configured. */}
+        {addonActive && (
+          <Card padding="md">
+            <SectionHeader
+              icon="stats-chart-outline"
+              title="Vue d'ensemble"
+              subtitle="30 derniers jours"
+              tint={colors.primary}
+              colors={colors}
+              spacing={spacing}
+            />
+            <View
+              style={{
+                flexDirection: 'row',
+                marginTop: spacing.md,
+                gap: spacing.sm,
+              }}
+            >
+              <DepositKpi
+                label="Prestations"
+                value={
+                  servicesWithDeposit.total > 0
+                    ? `${servicesWithDeposit.count}/${servicesWithDeposit.total}`
+                    : '—'
+                }
+                sublabel="avec acompte"
+                colors={colors}
+                spacing={spacing}
+                radius={radius}
+              />
+              <DepositKpi
+                label="Encaissé"
+                value={formatPrice(depositsSummary.totalAmount)}
+                sublabel="30 j"
+                colors={colors}
+                spacing={spacing}
+                radius={radius}
+              />
+              <DepositKpi
+                label="RDV"
+                value={depositsSummary.bookingsCount.toString()}
+                sublabel="concernés"
+                colors={colors}
+                spacing={spacing}
+                radius={radius}
+              />
+            </View>
+            {servicesWithDeposit.total > 0 && servicesWithDeposit.count === 0 && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: spacing.md,
+                  padding: spacing.sm,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.warning + '15',
+                }}
+              >
+                <Ionicons name="information-circle" size={14} color={colors.warning} />
+                <Text variant="caption" style={{ color: colors.warning, flex: 1 }}>
+                  Aucune prestation ne demande d'acompte. Activez-en au moins
+                  une dans Prestations, ou définissez un acompte par défaut
+                  ci-dessous.
+                </Text>
+              </View>
+            )}
+          </Card>
+        )}
+
         {/* ── 3. Default deposit (inline editable) ───────── */}
         <Card padding="md" style={{ opacity: addonActive ? 1 : 0.55 }}>
           <SectionHeader
@@ -728,6 +834,7 @@ export default function PaymentsScreen() {
           )}
         </Card>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -861,6 +968,60 @@ function SectionHeader({
   );
 }
 
+function DepositKpi({
+  label,
+  value,
+  sublabel,
+  colors,
+  spacing,
+  radius,
+}: {
+  label: string;
+  value: string;
+  sublabel: string;
+  colors: any;
+  spacing: any;
+  radius: any;
+}) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.surfaceSecondary,
+        borderRadius: radius.md,
+        padding: spacing.sm,
+      }}
+    >
+      <Text
+        variant="caption"
+        color="textMuted"
+        style={{
+          textTransform: 'uppercase',
+          letterSpacing: 0.4,
+          fontWeight: '600',
+          fontSize: 10,
+        }}
+      >
+        {label}
+      </Text>
+      <Text
+        variant="body"
+        style={{
+          fontWeight: '800',
+          fontSize: 17,
+          marginTop: 2,
+        }}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+      <Text variant="caption" color="textMuted" style={{ fontSize: 10, marginTop: 1 }}>
+        {sublabel}
+      </Text>
+    </View>
+  );
+}
+
 function StatusBadge({ ok, status }: { ok: boolean; status: string }) {
   const { colors, spacing, radius } = useTheme();
   const bg = ok ? colors.success + '20' : colors.warning + '20';
@@ -887,14 +1048,6 @@ function StatusBadge({ ok, status }: { ok: boolean; status: string }) {
 const s = StyleSheet.create({
   container: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: 16,
-    gap: 12,
-  },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1 },
 
   // Hero
   heroWrap: {

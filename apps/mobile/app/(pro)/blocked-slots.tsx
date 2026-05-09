@@ -7,7 +7,6 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   Pressable,
   Alert,
@@ -17,6 +16,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text, Card, Loader, EmptyState } from '../../components';
+import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useBlockedSlots } from '../../hooks';
 import { schedulingService, memberService } from '@booking-app/firebase';
@@ -236,28 +236,17 @@ export default function BlockedSlotsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { padding: spacing.lg, paddingBottom: spacing.md }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text variant="h2" style={{ flex: 1, marginLeft: spacing.md }}>
-          Créneaux bloqués
-        </Text>
-        <Pressable
-          onPress={() => router.push('/(pro)/block-slot')}
-          style={[
-            styles.addButton,
-            {
-              backgroundColor: colors.primary,
-              borderRadius: radius.full,
-            },
-          ]}
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-        </Pressable>
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Branded blue header — the "+" lives in the right slot
+          so the chrome matches the rest of the pro space. */}
+      <BrandedHeader
+        title="Créneaux bloqués"
+        rightAction={{
+          icon: 'add',
+          onPress: () => router.push('/(pro)/block-slot'),
+          accessibilityLabel: 'Ajouter un créneau bloqué',
+        }}
+      />
 
       {isLoading ? (
         <View style={styles.center}>
@@ -281,17 +270,13 @@ export default function BlockedSlotsScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   center: {
     flex: 1,
@@ -308,12 +293,6 @@ const styles = StyleSheet.create({
   deleteButton: {
     width: 36,
     height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButton: {
-    width: 40,
-    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },

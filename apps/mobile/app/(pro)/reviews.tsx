@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text, Card, useToast } from '../../components';
+import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import {
   reviewRepository,
@@ -193,31 +194,9 @@ export default function ReviewsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + spacing.sm,
-            paddingHorizontal: spacing.lg,
-            paddingBottom: spacing.md,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
-        <View style={styles.headerRow}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </Pressable>
-          <Text variant="h3" style={{ fontWeight: '600' }}>
-            Avis clients
-          </Text>
-          <View style={{ width: 44 }} />
-        </View>
-      </View>
+      {/* Branded blue header — same chrome as the rest of the
+          pro space. Stats card and review list start below. */}
+      <BrandedHeader title="Avis clients" />
 
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }}
@@ -464,18 +443,6 @@ export default function ReviewsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { borderBottomWidth: 1 },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   // Stats
   statsContainer: {
     flexDirection: 'row',
