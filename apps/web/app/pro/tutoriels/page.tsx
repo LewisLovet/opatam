@@ -95,8 +95,15 @@ export default async function ProTutorielsPage({ searchParams }: PageProps) {
     authorName: a.authorName,
   }));
 
+  // Full width inside the dashboard content area — the layout
+  // already constrains horizontal space with its sidebar so we
+  // don't need a max-w cap here. Without this, the grid sat
+  // stranded in the middle on wide screens with empty gutters
+  // either side. The 2xl breakpoint on the grid below adds a
+  // 4th column so big monitors don't end up with cards stretched
+  // to ~600px each.
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full">
       {/* Page header — short caption + value prop. No back button:
           the pro layout's sidebar is the navigation. */}
       <div className="mb-8">
@@ -157,7 +164,7 @@ export default async function ProTutorielsPage({ searchParams }: PageProps) {
         // Grid of cards — no featured/hero treatment here; this is
         // a utilitarian help surface, the pro is looking for a
         // specific topic, not browsing leisurely.
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
           {cards.map((a) => (
             <ArticleCard
               key={a.slug}
