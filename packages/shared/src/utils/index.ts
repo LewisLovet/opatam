@@ -10,6 +10,12 @@ export * from './statsPeriod';
 // Client-side roll-up helpers — sum daily/monthly docs into KPIs +
 // build continuous trend series for charts.
 export * from './statsAggregate';
+// YouTube URL helpers — used by the blog article renderer (web)
+// and the in-app tutoriels screen (mobile).
+export * from './youtube';
+// Markdown helpers — heading extraction + slugifier shared between
+// the web blog sidebar TOC and the mobile inline sommaire.
+export * from './markdown';
 
 /**
  * Format price from cents to display string
