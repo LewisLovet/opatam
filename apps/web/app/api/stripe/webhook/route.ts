@@ -3,7 +3,6 @@ import { Resend } from 'resend';
 import {
   getStripe,
   getStripeDev,
-  getDepositsAddonPriceId,
   getWebhookSecrets,
 } from '@/lib/stripe';
 import { getAdminFirestore } from '@/lib/firebase-admin';
@@ -420,6 +419,26 @@ async function handleInvoicePaid(
 
   console.log(`[STRIPE-WEBHOOK] providerId: ${providerId}`);
 
+  // Sérénité invoices: a successful payment renews the dedicated
+  // sub's period, but it has NO impact on the base Pro plan's
+  // `validUntil`. Just refresh `serenity.currentPeriodEnd` and bail
+  // — the rest of this handler (affiliate commission, plan-renewal
+  // email, etc.) only makes sense for the base sub.
+  if (stripeSubscription.metadata?.productType === 'serenity') {
+    const rawEnd = getSubscriptionPeriodEnd(stripeSubscription);
+    const periodEnd = rawEnd ? new Date(rawEnd * 1000) : null;
+    const update: Record<string, any> = {
+      'serenity.status': 'active',
+      'serenity.cancelAtPeriodEnd': stripeSubscription.cancel_at_period_end,
+      depositsAddonActive: true,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    if (periodEnd) update['serenity.currentPeriodEnd'] = periodEnd;
+    await db.collection('providers').doc(providerId).update(update);
+    console.log(`[STRIPE-WEBHOOK/SERENITY] Provider ${providerId} invoice paid, renewed until ${periodEnd?.toISOString() ?? 'null'}`);
+    return;
+  }
+
   const providerRef = db.collection('providers').doc(providerId);
   const providerDoc = await providerRef.get();
   if (!providerDoc.exists) {
@@ -531,6 +550,15 @@ async function handleSubscriptionUpdated(
     return;
   }
 
+  // Route Sérénité subs to their dedicated handler so they don't
+  // clobber `provider.subscription.*` (which only tracks the base
+  // Pro plan). Sérénité subs carry `metadata.productType = 'serenity'`
+  // when created via /api/pro/deposits-addon/activate (v1.5+).
+  if (subscription.metadata?.productType === 'serenity') {
+    await handleSerenitySubscriptionEvent(db, stripe, subscription, 'updated');
+    return;
+  }
+
   // Retrieve the FULL subscription from Stripe API
   const fullSub = await stripe.subscriptions.retrieve(subscription.id);
 
@@ -584,24 +612,17 @@ async function handleSubscriptionUpdated(
     .get();
   const activeMemberCount = membersSnapshot.size;
 
-  // Detect whether the deposits add-on (+5€/mo) is on this subscription.
-  // We tolerate a missing/unconfigured product (returns false) so envs
-  // without the add-on configured don't blow up here.
-  let depositsAddonActive = false;
-  try {
-    const addonPriceId = await getDepositsAddonPriceId(stripe);
-    depositsAddonActive = fullSub.items.data.some(
-      (it) => it.price.id === addonPriceId
-    );
-  } catch {
-    // Add-on product not in Stripe yet — feature effectively disabled
-  }
+  // Note: `depositsAddonActive` is no longer derived here. Sérénité
+  // is now a separate Stripe sub (productType === 'serenity'),
+  // routed at the top of this handler to `handleSerenitySubscriptionEvent`
+  // which owns the `depositsAddonActive` flag and the `serenity.*`
+  // fields. Leaving the base-sub items detection in place would
+  // race with the Sérénité handler.
 
   const updateData: Record<string, any> = {
     'subscription.status': status,
     'subscription.cancelAtPeriodEnd': fullSub.cancel_at_period_end,
     'subscription.memberCount': activeMemberCount,
-    depositsAddonActive,
     updatedAt: FieldValue.serverTimestamp(),
   };
 
@@ -743,6 +764,15 @@ async function handleSubscriptionDeleted(
     return;
   }
 
+  // Route Sérénité sub deletion to its dedicated handler — it
+  // flips `depositsAddonActive: false` and stamps the serenity
+  // tombstone WITHOUT touching the base subscription or
+  // unpublishing the profile (which only the base plan should do).
+  if (subscription.metadata?.productType === 'serenity') {
+    await handleSerenitySubscriptionEvent(db, stripe, subscription, 'deleted');
+    return;
+  }
+
   const providerRef = db.collection('providers').doc(providerId);
   const providerDoc = await providerRef.get();
   if (!providerDoc.exists) {
@@ -758,6 +788,94 @@ async function handleSubscriptionDeleted(
   });
 
   console.log(`[STRIPE-WEBHOOK] Provider ${providerId} subscription deleted - profile unpublished`);
+}
+
+/**
+ * Handler for Sérénité-only subscription events (created/updated/deleted).
+ *
+ * Sérénité is a dedicated Stripe sub independent of the base Pro
+ * plan — see /api/pro/deposits-addon/activate for the rationale.
+ * This handler mirrors the sub's state into `provider.serenity.*`
+ * and toggles the top-level `depositsAddonActive` flag, but
+ * NEVER touches `provider.subscription.*` (which only tracks the
+ * base plan, possibly billed via Apple / Google / Stripe).
+ */
+async function handleSerenitySubscriptionEvent(
+  db: FirebaseFirestore.Firestore,
+  stripe: Stripe,
+  subscription: Stripe.Subscription,
+  kind: 'updated' | 'deleted',
+) {
+  const providerId = subscription.metadata?.providerId;
+  if (!providerId) {
+    console.error('[STRIPE-WEBHOOK/SERENITY] No providerId in subscription metadata');
+    return;
+  }
+
+  const providerRef = db.collection('providers').doc(providerId);
+  const providerDoc = await providerRef.get();
+  if (!providerDoc.exists) {
+    console.warn(`[STRIPE-WEBHOOK/SERENITY] Provider ${providerId} not found, skipping`);
+    return;
+  }
+
+  // Hard-end case: sub was deleted (period ended after a
+  // cancel-at-period-end, or hard cancellation). Strip access
+  // and stamp the tombstone.
+  if (kind === 'deleted') {
+    await providerRef.update({
+      depositsAddonActive: false,
+      'serenity.status': 'cancelled',
+      'serenity.cancelAtPeriodEnd': false,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    console.log(`[STRIPE-WEBHOOK/SERENITY] Provider ${providerId} Sérénité ended`);
+    return;
+  }
+
+  // Updated case: read the full sub for fresh state, mirror it
+  // into Firestore. We keep `depositsAddonActive` true as long as
+  // the sub is active or trialing — even when cancel_at_period_end
+  // is set, the pro keeps access until period end.
+  const fullSub = await stripe.subscriptions.retrieve(subscription.id);
+  const status = fullSub.status; // active | trialing | past_due | canceled | …
+  const isAccessGranted = status === 'active' || status === 'trialing';
+
+  const rawEnd = getSubscriptionPeriodEnd(fullSub);
+  const currentPeriodEnd = rawEnd ? new Date(rawEnd * 1000) : null;
+
+  // Stripe uses "canceled", we store "cancelled" (consistent with
+  // the rest of the codebase). Map at the boundary.
+  type OurStatus = 'trialing' | 'active' | 'past_due' | 'cancelled' | 'incomplete';
+  const statusMap: Record<string, OurStatus> = {
+    trialing: 'trialing',
+    active: 'active',
+    past_due: 'past_due',
+    canceled: 'cancelled',
+    incomplete: 'incomplete',
+    incomplete_expired: 'cancelled',
+    unpaid: 'past_due',
+    paused: 'active',
+  };
+  const mappedStatus: OurStatus = statusMap[status] ?? 'active';
+
+  const updateData: Record<string, any> = {
+    depositsAddonActive: isAccessGranted,
+    'serenity.status': mappedStatus,
+    'serenity.cancelAtPeriodEnd': fullSub.cancel_at_period_end,
+    'serenity.stripeSubscriptionId': fullSub.id,
+    'serenity.stripeCustomerId': extractId(fullSub.customer as any),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (currentPeriodEnd) {
+    updateData['serenity.currentPeriodEnd'] = currentPeriodEnd;
+  }
+
+  await providerRef.update(updateData);
+
+  console.log(
+    `[STRIPE-WEBHOOK/SERENITY] Provider ${providerId} Sérénité ${mappedStatus}, cancelAtPeriodEnd: ${fullSub.cancel_at_period_end}`,
+  );
 }
 
 // ---------------------------------------------------------------------------

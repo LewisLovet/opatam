@@ -155,8 +155,24 @@ export function PaymentsSection() {
     }
   };
 
-  // Pre-flight conditions for activating the add-on
-  const hasPaidSubscription = !!provider?.subscription?.stripeSubscriptionId;
+  // Pre-flight conditions for activating the add-on.
+  //
+  // v1.5 decoupled Sérénité from the base subscription's payment
+  // source — an Apple/Google-billed pro can now subscribe just
+  // like a Stripe-billed pro. So "do you have a paid sub?" is no
+  // longer a `stripeSubscriptionId !== null` check; it's a check
+  // against the *active* base subscription regardless of channel.
+  // Server enforces the same rule in /api/pro/deposits-addon/activate.
+  const baseStatus = provider?.subscription?.status;
+  const baseValidUntilRaw = provider?.subscription?.validUntil as any;
+  const baseValidUntil =
+    baseValidUntilRaw?.toDate?.() ??
+    (baseValidUntilRaw instanceof Date ? baseValidUntilRaw : null);
+  const hasPaidSubscription =
+    (baseStatus === 'active' || baseStatus === 'trialing') &&
+    baseValidUntil !== null &&
+    baseValidUntil.getTime() > Date.now();
+
   const connectActive = status?.status === 'active';
   // Hard gate: Connect must be fully active to subscribe to
   // Sérénité. A pending/restricted Connect account would cause
@@ -166,6 +182,16 @@ export function PaymentsSection() {
   // check in /api/pro/deposits-addon/activate.
   const canToggleAddon = hasPaidSubscription && connectActive;
   const addonActive = !!provider?.depositsAddonActive;
+  // "Résiliation prévue le DD/MM" indicator — read from the
+  // dedicated `serenity.*` sub-object (v1.5+). Falls back to the
+  // legacy field for an in-flight migration window.
+  const serenityCancelAtPeriodEnd =
+    !!provider?.serenity?.cancelAtPeriodEnd;
+  const serenityCurrentPeriodEnd: Date | null =
+    (provider?.serenity?.currentPeriodEnd as any)?.toDate?.() ??
+    (provider?.serenity?.currentPeriodEnd instanceof Date
+      ? (provider?.serenity?.currentPeriodEnd as Date)
+      : null);
 
   // ── Default deposit (acomptes par défaut) — applied to every service ──
   // Local form state, init from the provider doc; saved via PUT.
@@ -470,6 +496,21 @@ export function PaymentsSection() {
                   </Link>
                   .
                 </p>
+                {/* Surface the "cancel scheduled" state so the pro
+                    isn't surprised when access drops at the next
+                    billing cycle. Mirrors what Apple / Spotify /
+                    Netflix etc. show in similar UIs. */}
+                {serenityCancelAtPeriodEnd && serenityCurrentPeriodEnd && (
+                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-400 font-medium">
+                    Résiliation prévue le{' '}
+                    {serenityCurrentPeriodEnd.toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                    . Vous gardez l&apos;accès jusqu&apos;à cette date.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -490,15 +531,20 @@ export function PaymentsSection() {
                 </div>
               </div>
             )}
-            <button
-              type="button"
-              disabled={addonWorking}
-              onClick={() => toggleAddon(false)}
-              className="text-sm text-red-600 dark:text-red-400 hover:underline inline-flex items-center gap-1.5 disabled:opacity-50"
-            >
-              {addonWorking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-              Désactiver l'abonnement
-            </button>
+            {/* Hide the deactivate button once a cancellation is
+                already scheduled — the pro just has to wait for
+                the period to end, no further action needed. */}
+            {!serenityCancelAtPeriodEnd && (
+              <button
+                type="button"
+                disabled={addonWorking}
+                onClick={() => toggleAddon(false)}
+                className="text-sm text-red-600 dark:text-red-400 hover:underline inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {addonWorking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Désactiver l&apos;abonnement
+              </button>
+            )}
           </>
         )}
       </div>

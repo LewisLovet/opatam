@@ -89,7 +89,32 @@ export interface Provider {
   stripeConnectStatus: 'pending' | 'active' | 'restricted' | null;
   stripeConnectChargesEnabled: boolean;        // can charge cards on the account
   stripeConnectPayoutsEnabled: boolean;        // can transfer funds to the bank account
-  depositsAddonActive: boolean;                // gated by the +5€/mo Stripe subscription item
+  /**
+   * Cached "Sérénité add-on is in effect" flag. Single source of
+   * truth read by the booking flow and the UI. Synchronised by
+   * the Stripe webhook from `serenity.status`:
+   *   - true while serenity.status === 'active' || 'trialing'
+   *   - flips to false on customer.subscription.deleted (period
+   *     end after a user-triggered cancel-at-period-end)
+   * Kept as a top-level boolean for O(1) reads in security rules
+   * and per-booking checks.
+   */
+  depositsAddonActive: boolean;
+  /**
+   * Dedicated Sérénité (acomptes add-on) subscription state.
+   *
+   * Decoupled from `subscription.*` since v1.5: the base Pro plan
+   * can be billed through Stripe / Apple / Google, but the
+   * Sérénité add-on is ALWAYS a separate Stripe sub. That way an
+   * Apple-billed pro can also subscribe to Sérénité — the two
+   * billing channels never touch the same Firestore field.
+   *
+   * `null` when the pro has never activated Sérénité (default
+   * state). Once activated, this object lives forever — even
+   * after a cancellation — so the UI can show "résiliation
+   * prévue le X" until the period ends.
+   */
+  serenity?: SerenitySubscription | null;
   // Analytics (pageViews.today incremented in real-time, rest updated nightly)
   stats?: {
     pageViews: PageViewStats;
@@ -467,6 +492,41 @@ export interface Subscription {
   // Payment source tracking (for cross-platform subscription management)
   paymentSource: PaymentSource;
   revenuecatAppUserId: string | null;
+}
+
+/**
+ * Stripe subscription dedicated to the Sérénité add-on (acomptes).
+ *
+ * Always Stripe-billed regardless of the base Pro plan's
+ * `paymentSource` (Apple-billed pros get a dedicated Stripe sub
+ * just for this — that's the whole reason this object is split
+ * from `Subscription`).
+ *
+ * Lifecycle:
+ *  - activate    → creates a new Stripe sub with a single
+ *                  Sérénité price item, populates this object,
+ *                  flips `depositsAddonActive: true`
+ *  - cancel      → sets `cancelAtPeriodEnd: true`, status stays
+ *                  active, depositsAddonActive stays true. The
+ *                  pro keeps access until `currentPeriodEnd`.
+ *  - period end  → Stripe fires `customer.subscription.deleted`,
+ *                  the webhook flips status to 'cancelled' AND
+ *                  `depositsAddonActive: false`. This object
+ *                  stays in place as a tombstone so the UI can
+ *                  show "résiliation effective" history.
+ *
+ * The `stripeCustomerId` here may equal `subscription.stripeCustomerId`
+ * when the base plan is also Stripe-billed (we reuse the same
+ * Customer to keep one billing relationship). For Apple/Google-
+ * billed bases, a NEW Stripe Customer is created on first
+ * activate and lives in this field only.
+ */
+export interface SerenitySubscription {
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  status: 'trialing' | 'active' | 'past_due' | 'cancelled' | 'incomplete' | null;
+  currentPeriodEnd: Date | null;
+  cancelAtPeriodEnd: boolean;
 }
 
 // Member types (Teams)
