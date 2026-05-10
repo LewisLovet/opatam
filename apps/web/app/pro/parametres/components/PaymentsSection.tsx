@@ -162,14 +162,20 @@ export function PaymentsSection() {
   // like a Stripe-billed pro. So "do you have a paid sub?" is no
   // longer a `stripeSubscriptionId !== null` check; it's a check
   // against the *active* base subscription regardless of channel.
-  // Server enforces the same rule in /api/pro/deposits-addon/activate.
+  //
+  // Trials are explicitly excluded: Sérénité is a paid add-on,
+  // charging 5€/mois on top of a free trial would be confusing
+  // and could surprise-charge a pro who hasn't even committed
+  // yet. Server enforces the same rule in
+  // /api/pro/deposits-addon/activate.
   const baseStatus = provider?.subscription?.status;
   const baseValidUntilRaw = provider?.subscription?.validUntil as any;
   const baseValidUntil =
     baseValidUntilRaw?.toDate?.() ??
     (baseValidUntilRaw instanceof Date ? baseValidUntilRaw : null);
+  const isTrial = baseStatus === 'trialing';
   const hasPaidSubscription =
-    (baseStatus === 'active' || baseStatus === 'trialing') &&
+    baseStatus === 'active' &&
     baseValidUntil !== null &&
     baseValidUntil.getTime() > Date.now();
 
@@ -443,13 +449,26 @@ export function PaymentsSection() {
               Encaissez un acompte au moment de la réservation pour réduire les no-shows.
               Annulable à tout moment.
             </p>
-            {!hasPaidSubscription && (
+            {!hasPaidSubscription && isTrial && (
+              // Trial users see a distinct (non-link) note — there's
+              // nothing for them to click; they just have to wait
+              // until the trial ends and the real subscription kicks
+              // in. Linking to /pro/abonnement would be misleading.
+              <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  Sérénité est réservé aux abonnements payants.
+                  Disponible à la fin de votre période d&apos;essai.
+                </p>
+              </div>
+            )}
+            {!hasPaidSubscription && !isTrial && (
               <Link
                 href="/pro/abonnement"
                 className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mb-3 hover:underline"
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
-                Souscrivez à un plan payant d'abord
+                Souscrivez à un plan payant d&apos;abord
               </Link>
             )}
             {hasPaidSubscription && !connectActive && (

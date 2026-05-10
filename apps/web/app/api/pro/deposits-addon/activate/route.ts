@@ -60,11 +60,18 @@ export async function POST(request: NextRequest) {
     }
     const provider = providerSnap.data()!;
 
-    // ── Gate 1: base subscription must be active ─────────────────────
-    // Sérénité is an add-on. We don't allow it without a paying base
-    // plan, regardless of the payment source (Stripe / Apple / Google).
+    // ── Gate 1: base subscription must be active (not trial) ────────
+    // Sérénité is a paid add-on. Restricted to pros on a real
+    // paying plan — `status === 'active'` only. Trials are
+    // excluded on purpose: charging 5€/mois on top of a free
+    // trial period is confusing UX and risks an unwanted charge
+    // before the pro has even committed to the platform. Same
+    // rule applies regardless of the payment channel (Stripe /
+    // Apple / Google).
+    //
     // `validUntil` is the source of truth used elsewhere in the app
-    // for the "is this pro paid up?" check, so we mirror it here.
+    // for the "is this pro paid up?" check, so we double-check it
+    // here as defense-in-depth against a stale `status` field.
     const subStatus = provider.subscription?.status as string | undefined;
     const validUntilRaw = provider.subscription?.validUntil;
     const validUntil =
@@ -73,8 +80,19 @@ export async function POST(request: NextRequest) {
         : validUntilRaw instanceof Date
           ? validUntilRaw
           : null;
+
+    if (subStatus === 'trialing') {
+      return NextResponse.json(
+        {
+          error:
+            "Sérénité est réservé aux abonnements payants. Attendez la fin de votre période d'essai pour souscrire.",
+        },
+        { status: 400 }
+      );
+    }
+
     const baseActive =
-      (subStatus === 'active' || subStatus === 'trialing') &&
+      subStatus === 'active' &&
       validUntil !== null &&
       validUntil.getTime() > Date.now();
     if (!baseActive) {
