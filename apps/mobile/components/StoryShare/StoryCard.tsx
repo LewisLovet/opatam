@@ -79,11 +79,6 @@ const STORY_HEIGHT = 640;
 
 // ─── Availability story (full-canvas layout) ─────────────────────────────
 
-const MONTHS_SHORT = [
-  'janv', 'févr', 'mars', 'avr', 'mai', 'juin',
-  'juill', 'août', 'sept', 'oct', 'nov', 'déc',
-];
-
 interface ThemePalette {
   /** When set, renders the canvas with a LinearGradient using these
    *  colors (matches the standard story card backgrounds). When null,
@@ -135,27 +130,6 @@ const LIGHT_PALETTE: ThemePalette = {
   footerText: '#1a6daf',
 };
 
-/** Format the date range covered by the grid as "6 → 12 mai 2026"
- *  (or with cross-month / cross-year handling). */
-function formatDateRange(days: AvailabilityDay[]): string {
-  if (days.length === 0) return '';
-  const parse = (k: string) => {
-    const [y, m, d] = k.split('-').map(Number);
-    return new Date(y, m - 1, d);
-  };
-  const first = parse(days[0].dateKey);
-  const last = parse(days[days.length - 1].dateKey);
-  const sameMonth = first.getMonth() === last.getMonth();
-  const sameYear = first.getFullYear() === last.getFullYear();
-  if (sameMonth && sameYear) {
-    return `${first.getDate()} → ${last.getDate()} ${MONTHS_SHORT[last.getMonth()]} ${last.getFullYear()}`;
-  }
-  if (sameYear) {
-    return `${first.getDate()} ${MONTHS_SHORT[first.getMonth()]} → ${last.getDate()} ${MONTHS_SHORT[last.getMonth()]} ${last.getFullYear()}`;
-  }
-  return `${first.getDate()} ${MONTHS_SHORT[first.getMonth()]} ${first.getFullYear()} → ${last.getDate()} ${MONTHS_SHORT[last.getMonth()]} ${last.getFullYear()}`;
-}
-
 /** Full-canvas availability story — replaces the standard StoryCard
  *  layout when displayMode === 'availabilities'. */
 function AvailabilityStoryLayout({
@@ -174,7 +148,6 @@ function AvailabilityStoryLayout({
   theme: AvailabilityTheme;
 }) {
   const palette = theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE;
-  const dateRange = formatDateRange(grid.days);
 
   const hourLabels: number[] = [];
   for (let h = grid.minHour; h <= grid.maxHour; h++) hourLabels.push(h);
@@ -198,9 +171,7 @@ function AvailabilityStoryLayout({
     - 36  /* avatar */
     - 18  /* header marginBottom */
     - 76  /* bigTitle 2 lines × 38 lineHeight */
-    - 6   /* dateRange marginTop */
-    - 13  /* dateRange line */
-    - 18  /* dateRange marginBottom */
+    - 18  /* bigTitle → dayHeaderRow gap (used to host the date range) */
     - 30  /* dayHeaderRow (label + dayNum) */
     - 6   /* dayHeaderRow marginBottom */
     - 4   /* gridBody marginTop */
@@ -268,15 +239,13 @@ function AvailabilityStoryLayout({
         </View>
       </View>
 
-      {/* Big title */}
+      {/* Big title — date range used to live just below ("17 → 23
+          mai 2026") but the day-header row that follows already
+          shows each day number, and the user wanted the freed
+          vertical space for the grid bars instead. */}
       <Text style={[availStoryStyles.bigTitle, { color: palette.text }]}>
         Mes dispos{'\n'}de la semaine
       </Text>
-      {!!dateRange && (
-        <Text style={[availStoryStyles.dateRange, { color: palette.textMuted }]}>
-          {dateRange}
-        </Text>
-      )}
 
       {/* Day headers */}
       <View style={availStoryStyles.dayHeaderRow}>
@@ -991,17 +960,13 @@ const availStoryStyles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // Big title
+  // Big title — owns the gap to the day-header row directly
+  // (used to be provided by the now-removed dateRange).
   bigTitle: {
     fontSize: 36,
     fontWeight: '800',
     lineHeight: 38,
     letterSpacing: -0.5,
-  },
-  dateRange: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 6,
     marginBottom: 18,
   },
 
