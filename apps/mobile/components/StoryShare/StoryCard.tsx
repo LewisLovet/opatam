@@ -179,6 +179,51 @@ function AvailabilityStoryLayout({
   const hourLabels: number[] = [];
   for (let h = grid.minHour; h <= grid.maxHour; h++) hourLabels.push(h);
 
+  // Compute the per-row height precisely from what's left of the
+  // canvas after the surrounding chrome (avatar header, big title,
+  // date range, day-headers, legend, footer, IG safe-zones). The
+  // previous layout relied on `flex: 1` on each row plus
+  // `aspectRatio: 2.2` on the cell, which on a typical 14-hour
+  // window squeezed each row to ~17 px — too short for the 10-pt
+  // hour label, so labels overflowed into their neighbours and
+  // got visually clipped (see user feedback). Mirrors the pattern
+  // already used in TodayAvailabilityLayout.
+  //
+  // Numbers track the styles below — keep them in sync if you
+  // adjust paddings or font sizes elsewhere.
+  const GRID_AVAILABLE_HEIGHT =
+    STORY_HEIGHT
+    - 32  /* canvas paddingTop */
+    - 92  /* canvas paddingBottom (IG safe-zone) */
+    - 36  /* avatar */
+    - 18  /* header marginBottom */
+    - 76  /* bigTitle 2 lines × 38 lineHeight */
+    - 6   /* dateRange marginTop */
+    - 13  /* dateRange line */
+    - 18  /* dateRange marginBottom */
+    - 30  /* dayHeaderRow (label + dayNum) */
+    - 6   /* dayHeaderRow marginBottom */
+    - 4   /* gridBody marginTop */
+    - 12  /* legend marginTop */
+    - 18  /* legend height */
+    - 12  /* legend marginBottom */
+    - 18; /* footer */
+
+  // Row height clamped: floor at 16 px (the hour label uses
+  // lineHeight 12 plus a 2-px breathing margin top/bottom), ceiling
+  // at 36 px (otherwise short windows like 9-12h produce huge
+  // empty rows that look weird). The cell rendered inside is
+  // full-row-height with a small vertical inset.
+  //
+  // 14-hour windows (typical 8h→21h) → ~17 px / row, just enough
+  // for the label not to overlap its neighbour. 10-hour windows
+  // (9h→19h) → ~24 px / row, comfortable.
+  const rowHeight = clamp(
+    16,
+    36,
+    Math.floor(GRID_AVAILABLE_HEIGHT / Math.max(1, hourLabels.length)),
+  );
+
   // Pull initials from the business name for the avatar fallback —
   // matches the "KT" style in the design reference.
   const initials = businessName
@@ -248,10 +293,16 @@ function AvailabilityStoryLayout({
         ))}
       </View>
 
-      {/* Grid rows — one per hour */}
+      {/* Grid rows — one per hour. Height is fixed (computed
+          above) instead of flex-distributed, so the hour label
+          always has enough room to render fully. Cells fill the
+          row height and stretch to the available width. */}
       <View style={availStoryStyles.gridBody}>
         {hourLabels.map((hour) => (
-          <View key={hour} style={availStoryStyles.gridRow}>
+          <View
+            key={hour}
+            style={[availStoryStyles.gridRow, { height: rowHeight }]}
+          >
             <View style={availStoryStyles.hourCol}>
               <Text
                 style={[availStoryStyles.hourLabel, { color: palette.textMuted }]}
@@ -980,31 +1031,33 @@ const availStoryStyles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  // Grid body
+  // Grid body — rows have an explicit height (computed in the
+  // layout component) so the hour label gets enough room to
+  // render fully. Without this the previous flex:1 + aspectRatio
+  // combo squeezed each row to ~17 px on a 14-hour window and
+  // labels got clipped.
   gridBody: {
-    flex: 1,
-    justifyContent: 'space-between',
     marginTop: 4,
   },
   gridRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
   hourLabel: {
     fontSize: 10,
     fontWeight: '600',
+    lineHeight: 12,
   },
   cellWrap: {
     flex: 1,
+    height: '100%',
     paddingHorizontal: 2,
     paddingVertical: 2,
   },
   cell: {
     width: '100%',
-    aspectRatio: 2.2, // wide-ish rectangle, matches the design ref
+    height: '100%',
     borderRadius: 5,
-    minHeight: 14,
     overflow: 'hidden',
     position: 'relative',
   },
