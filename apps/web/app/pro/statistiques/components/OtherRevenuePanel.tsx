@@ -24,6 +24,7 @@ import {
 /** Display label per category — keep in sync with the mobile copy
  *  in apps/mobile/components/business/Activity/categoryMeta.ts. */
 const CATEGORY_LABEL: Record<ActivityCategory, string> = {
+  prestation: 'Prestation',
   sport: 'Sport',
   meeting: 'Meeting',
   personal: 'Perso',
@@ -35,6 +36,7 @@ const CATEGORY_LABEL: Record<ActivityCategory, string> = {
 
 /** Brand colour per category — same hex set as the mobile palette. */
 const CATEGORY_COLOR: Record<ActivityCategory, string> = {
+  prestation: '#10b981',
   sport: '#f97316',
   meeting: '#8b5cf6',
   personal: '#ec4899',

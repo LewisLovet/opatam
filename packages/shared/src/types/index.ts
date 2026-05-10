@@ -599,6 +599,14 @@ export interface TimeSlot {
 // Both flavors block client bookings via schedulingService — there's
 // no special-casing in the slot-availability pipeline.
 export type ActivityCategory =
+  /**
+   * Paid work performed off-platform (one-off service for a
+   * client paid in cash, side gig, freelance booking taken
+   * outside Opatam, etc.). The most useful default for the
+   * "Autres revenus" track — appears first in pickers because
+   * it's the typical reason a pro logs an activity with an amount.
+   */
+  | 'prestation'
   | 'sport'
   | 'meeting'
   | 'personal'

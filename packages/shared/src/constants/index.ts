@@ -137,16 +137,26 @@ export const SERVICE_COLORS = [
  * to its own icon set.
  */
 export const ACTIVITY_CATEGORY_META: Record<
-  'sport' | 'meeting' | 'personal' | 'admin' | 'travel' | 'imprevu' | 'other',
+  | 'prestation'
+  | 'sport'
+  | 'meeting'
+  | 'personal'
+  | 'admin'
+  | 'travel'
+  | 'imprevu'
+  | 'other',
   { label: string; color: string }
 > = {
-  sport:    { label: 'Sport',    color: '#f97316' },
-  meeting:  { label: 'Meeting',  color: '#8b5cf6' },
-  personal: { label: 'Perso',    color: '#ec4899' },
-  admin:    { label: 'Admin',    color: '#facc15' },
-  travel:   { label: 'Trajet',   color: '#06b6d4' },
-  imprevu:  { label: 'Imprévu',  color: '#ef4444' },
-  other:    { label: 'Autre',    color: '#6b7280' },
+  // Paid off-platform work — emerald colour ("earnings green") so
+  // the calendar tile reads as "money in" at a glance.
+  prestation: { label: 'Prestation', color: '#10b981' },
+  sport:      { label: 'Sport',      color: '#f97316' },
+  meeting:    { label: 'Meeting',    color: '#8b5cf6' },
+  personal:   { label: 'Perso',      color: '#ec4899' },
+  admin:      { label: 'Admin',      color: '#facc15' },
+  travel:     { label: 'Trajet',     color: '#06b6d4' },
+  imprevu:    { label: 'Imprévu',    color: '#ef4444' },
+  other:      { label: 'Autre',      color: '#6b7280' },
 };
 
 /**

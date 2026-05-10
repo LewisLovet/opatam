@@ -284,7 +284,11 @@ export default function CreateActivityScreen() {
   // Form state
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const [category, setCategory] = useState<ActivityCategory>('sport');
+  // Default to "prestation" — the most likely reason a pro logs
+  // an activity with an amount (paid off-platform work). Lowers
+  // the friction of the common case while still letting the user
+  // override to sport / perso / etc.
+  const [category, setCategory] = useState<ActivityCategory>('prestation');
   const [title, setTitle] = useState('');
   const [activityDate, setActivityDate] = useState(initialDate);
   const [startTime, setStartTime] = useState(() => {

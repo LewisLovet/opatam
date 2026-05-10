@@ -80,6 +80,7 @@ export interface ProviderStatsMemberBreakdown {
 
 /** Mirror of ActivityCategory in @booking-app/shared. Keep in sync. */
 export type ActivityCategory =
+  | 'prestation'
   | 'sport'
   | 'meeting'
   | 'personal'

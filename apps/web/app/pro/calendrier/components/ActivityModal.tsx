@@ -36,7 +36,7 @@ import {
 } from '@booking-app/shared';
 import {
   Loader2, Clock, Users,
-  Dumbbell, Handshake, Heart, FileText, Plane, Zap, Circle,
+  Briefcase, Dumbbell, Handshake, Heart, FileText, Plane, Zap, Circle,
 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -47,13 +47,18 @@ const CATEGORIES: {
   color: string;
   Icon: typeof Dumbbell;
 }[] = [
-  { key: 'sport',    label: 'Sport',    color: ACTIVITY_CATEGORY_META.sport.color,    Icon: Dumbbell },
-  { key: 'meeting',  label: 'Meeting',  color: ACTIVITY_CATEGORY_META.meeting.color,  Icon: Handshake },
-  { key: 'personal', label: 'Perso',    color: ACTIVITY_CATEGORY_META.personal.color, Icon: Heart },
-  { key: 'admin',    label: 'Admin',    color: ACTIVITY_CATEGORY_META.admin.color,    Icon: FileText },
-  { key: 'travel',   label: 'Trajet',   color: ACTIVITY_CATEGORY_META.travel.color,   Icon: Plane },
-  { key: 'imprevu',  label: 'Imprévu',  color: ACTIVITY_CATEGORY_META.imprevu.color,  Icon: Zap },
-  { key: 'other',    label: 'Autre',    color: ACTIVITY_CATEGORY_META.other.color,    Icon: Circle },
+  // Prestation listed first — paid off-platform work is the most
+  // common reason a pro logs an activity with an amount, so it's
+  // the natural default tap target. Mirrors the order in
+  // apps/mobile/components/business/Activity/categoryMeta.ts.
+  { key: 'prestation', label: 'Prestation', color: ACTIVITY_CATEGORY_META.prestation.color, Icon: Briefcase },
+  { key: 'sport',      label: 'Sport',      color: ACTIVITY_CATEGORY_META.sport.color,      Icon: Dumbbell },
+  { key: 'meeting',    label: 'Meeting',    color: ACTIVITY_CATEGORY_META.meeting.color,    Icon: Handshake },
+  { key: 'personal',   label: 'Perso',      color: ACTIVITY_CATEGORY_META.personal.color,   Icon: Heart },
+  { key: 'admin',      label: 'Admin',      color: ACTIVITY_CATEGORY_META.admin.color,      Icon: FileText },
+  { key: 'travel',     label: 'Trajet',     color: ACTIVITY_CATEGORY_META.travel.color,     Icon: Plane },
+  { key: 'imprevu',    label: 'Imprévu',    color: ACTIVITY_CATEGORY_META.imprevu.color,    Icon: Zap },
+  { key: 'other',      label: 'Autre',      color: ACTIVITY_CATEGORY_META.other.color,      Icon: Circle },
 ];
 
 function formatDateInput(d: Date): string {
@@ -106,7 +111,10 @@ export function ActivityModal({
 
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [memberId, setMemberId] = useState<string>('');
-  const [category, setCategory] = useState<ActivityCategory>('sport');
+  // Default to "prestation" — the most likely category when a
+  // pro logs an activity with an amount (paid off-platform work).
+  // Same default as the mobile create-activity sheet.
+  const [category, setCategory] = useState<ActivityCategory>('prestation');
   const [title, setTitle] = useState('');
 
   const initialDateStr = formatDateInput(initialDate ?? new Date());
@@ -185,7 +193,7 @@ export function ActivityModal({
             activeMembers.find((m) => m.isDefault) || activeMembers[0];
           const target = requested || fallback;
           if (target) setMemberId(target.id);
-          setCategory('sport');
+          setCategory('prestation');
           setTitle('');
           setDate(initialDateStr);
           setStartTime(initialStartTime ?? formatTimeInput(initialStart));

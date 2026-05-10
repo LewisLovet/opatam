@@ -91,7 +91,20 @@ export const blockedSlotSchema = z.object({
   // blocked period. The slot-availability pipeline doesn't care
   // either way: both flavors block the calendar.
   category: z
-    .enum(['sport', 'meeting', 'personal', 'admin', 'travel', 'imprevu', 'other'])
+    .enum([
+      // Keep in sync with the ActivityCategory union in
+      // packages/shared/src/types/index.ts. `prestation` is listed
+      // first because it's the default category for paid
+      // off-platform work — see the type comment.
+      'prestation',
+      'sport',
+      'meeting',
+      'personal',
+      'admin',
+      'travel',
+      'imprevu',
+      'other',
+    ])
     .nullable()
     .optional(),
   title: z
