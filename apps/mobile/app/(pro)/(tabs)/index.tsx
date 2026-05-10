@@ -404,12 +404,32 @@ function DeltaChip({ delta }: { delta: number | null }) {
   );
 }
 
-function StatCardToday({ bookingsCount, revenue, passedCount }: { bookingsCount: number; revenue: number; passedCount: number }) {
+function StatCardToday({
+  bookingsCount,
+  revenue,
+  passedCount,
+  onPress,
+}: {
+  bookingsCount: number;
+  revenue: number;
+  passedCount: number;
+  onPress?: () => void;
+}) {
   const { colors, spacing, radius } = useTheme();
   const progress = bookingsCount > 0 ? passedCount / bookingsCount : 0;
 
   return (
-    <View style={[styles.statCard, { borderColor: colors.border, borderRadius: radius.xl }]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.statCard,
+        {
+          borderColor: colors.border,
+          borderRadius: radius.xl,
+          opacity: pressed && onPress ? 0.85 : 1,
+        },
+      ]}
+    >
       <View style={[styles.statCardHeader, { marginBottom: spacing.md }]}>
         <Ionicons name="today-outline" size={18} color={colors.primary} />
         <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500' }}>Aujourd'hui</Text>
@@ -425,7 +445,7 @@ function StatCardToday({ bookingsCount, revenue, passedCount }: { bookingsCount:
       <Text variant="caption" color="textMuted" style={{ marginTop: spacing.xs }}>
         {passedCount}/{bookingsCount} passés
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -1293,6 +1313,11 @@ export default function ProDashboardScreen() {
                 bookingsCount={todayBookings.length}
                 revenue={todayRevenue}
                 passedCount={passedTodayCount}
+                // Tap → Planning tab. The "Aujourd'hui" card is a
+                // summary of the day's bookings, so the natural drill-
+                // down is the chronological list of today's events
+                // (Planning defaults to "À venir" with today on top).
+                onPress={() => router.push('/(pro)/(tabs)/bookings')}
               />
             </View>
             <View style={{ width: STAT_CARD_WIDTH, marginRight: STAT_CARD_MARGIN }}>
