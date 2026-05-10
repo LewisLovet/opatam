@@ -200,11 +200,19 @@ export function useUpcomingAvailabilities(
       }
 
       const allEmpty = out.every((d) => !d.isAvailable);
-      // Clamp to a friendly business-hours window so the grid doesn't
-      // start at 6am or end at 11pm if the data has a single outlier.
-      // maxHour is INCLUSIVE — it's the last hour label shown.
+      // Friendly business-hours framing for the grid. The min is
+      // still hard-floored at 8h so a single 6 AM outlier doesn't
+      // dilate every story; pros that open earlier stay capped at
+      // 8h on the visible grid. The max used to be hard-capped at
+      // 21h, which clipped late-night activity for pros open
+      // 22h→23h59 (e.g. studios, bars, audiovisual). Loosened
+      // upper bound to 23h so genuinely-late availability shows
+      // up; the lower-bound at 18h keeps the grid showing a full
+      // afternoon on quiet days.
+      //
+      // INCLUSIVE — clampedMax is the last hour label rendered.
       const clampedMin = allEmpty ? 9 : Math.max(8, Math.min(minHour, 12));
-      const clampedMax = allEmpty ? 19 : Math.min(21, Math.max(maxHour, 18));
+      const clampedMax = allEmpty ? 19 : Math.min(23, Math.max(maxHour, 18));
 
       setGrid({
         days: out,
