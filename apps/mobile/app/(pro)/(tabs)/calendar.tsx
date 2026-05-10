@@ -1502,7 +1502,12 @@ export default function CalendarScreen() {
     });
   }, [blockedSlots, viewMode, selectedMemberId, memberNameMap, memberColorMap, members]);
 
-  // ---- Compute effective hour range from bookings ----
+  // ---- Compute effective hour range from bookings + activities ----
+  // Walks both data sources so an activity / categorised blocked
+  // slot ending at 22:30 still gets its row painted instead of
+  // being clipped at the default 21:00 cap. allDay vacations are
+  // intentionally skipped — they cover 00→24 conceptually but
+  // shouldn't expand the visible grid to the full day.
   const { effectiveStartHour, effectiveEndHour } = useMemo(() => {
     let minHour = DEFAULT_WEEK_START_HOUR;
     let maxHour = DEFAULT_WEEK_END_HOUR;
@@ -1526,11 +1531,28 @@ export default function CalendarScreen() {
       if (bEndHour > maxHour) maxHour = bEndHour;
     }
 
+    for (const bs of weekBlockedSlots) {
+      if (bs.allDay) continue;
+      // weekBlockedSlots prep already substitutes from startDate /
+      // endDate when the time strings are absent, so these are
+      // always non-null here. Defensive parse anyway.
+      const [sh] = (bs.startTime || '00:00').split(':').map(Number);
+      const [eh, em] = (bs.endTime || '00:00').split(':').map(Number);
+      const startHour = sh;
+      let endHour =
+        eh === 0 && em === 0 ? 24 : Math.ceil(eh + em / 60);
+      // crossing midnight (end ≤ start) → cap at 24
+      if (endHour <= startHour) endHour = 24;
+
+      if (startHour < minHour) minHour = startHour;
+      if (endHour > maxHour) maxHour = endHour;
+    }
+
     return {
       effectiveStartHour: Math.max(0, minHour),
       effectiveEndHour: Math.min(24, maxHour),
     };
-  }, [bookings]);
+  }, [bookings, weekBlockedSlots]);
 
   // ---- Handlers ----
   const handleBookingPress = useCallback(
