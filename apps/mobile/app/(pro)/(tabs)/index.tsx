@@ -522,11 +522,14 @@ function StatCardMonth({
       <View style={[styles.sparklineSlot, { marginTop: spacing.sm }]}>
         <Sparkline data={trend} width={STAT_CARD_WIDTH - 48} height={36} color={colors.success} />
       </View>
-      {onPress && (
-        <View style={{ position: 'absolute', top: 14, right: 14 }}>
-          <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-        </View>
-      )}
+      {/* No corner chevron: the card is already a Pressable and
+          the DeltaChip lives in that exact spot. The previous
+          version drew a small chevron at top:14/right:14 which
+          rendered ON TOP of the "—" DeltaChip when the delta was
+          null, producing a "chevron inside a grey circle" visual
+          bug. The other carousel cards (Today, Week) don't carry
+          a corner chevron either, so removing it also makes the
+          three cards visually consistent. */}
     </Pressable>
   );
 }
