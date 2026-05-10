@@ -51,9 +51,18 @@ interface Props {
    *  whatever the parent shows in the KPI bar. */
   total: number;
   count: number;
+  /**
+   * Human-readable label of the period the parent filter is set
+   * to (e.g. "30 jours"). Surfaced in the subtitle since this
+   * panel has no chart to visually anchor the time window — the
+   * KPI bar / trend chart make the period obvious for the rest
+   * of the page, but the user might miss the link here without
+   * an explicit cue.
+   */
+  periodLabel: string;
 }
 
-export function OtherRevenuePanel({ data, total, count }: Props) {
+export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
   if (total === 0 || data.length === 0) return null;
   const max = Math.max(...data.map((d) => d.revenue), 1);
 
@@ -65,7 +74,7 @@ export function OtherRevenuePanel({ data, total, count }: Props) {
             Autres revenus
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Activités hors RDV — workshops, consultations, etc.
+            Activités hors RDV · {periodLabel}
           </p>
         </div>
         <div className="text-right flex-shrink-0">

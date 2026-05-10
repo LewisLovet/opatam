@@ -39,6 +39,7 @@ import type {
 import { Loader } from '@/components/ui';
 import { Sparkles } from 'lucide-react';
 import {
+  PERIOD_LABELS,
   activityBreakdownFromDailies,
   buildContinuousTrend,
   formatPrice,
@@ -413,6 +414,7 @@ export default function StatistiquesPage() {
             data={view.activitiesByCategory}
             total={view.totals.activityRevenue}
             count={view.totals.activityCount}
+            periodLabel={PERIOD_LABELS[state.period]}
           />
 
           {/* Quality indicators */}

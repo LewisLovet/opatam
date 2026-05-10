@@ -349,6 +349,7 @@ export default function StatsScreen() {
               data={stats.activitiesByCategory}
               total={stats.activityRevenue}
               count={stats.activityCount}
+              periodLabel={PERIOD_LABELS[period]}
             />
           )}
 

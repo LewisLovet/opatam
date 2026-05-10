@@ -32,9 +32,15 @@ interface Props {
    *  matches whatever the parent might show in a header. */
   total: number;
   count: number;
+  /**
+   * Human-readable label of the period the parent filter is set
+   * to (e.g. "30 jours"). Surfaced in the subtitle since this
+   * panel has no chart to visually anchor the time window.
+   */
+  periodLabel: string;
 }
 
-export function OtherRevenuePanel({ data, total, count }: Props) {
+export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
   const { colors, spacing, radius } = useTheme();
   if (total === 0 || data.length === 0) return null;
   const max = Math.max(...data.map((d) => d.revenue), 1);
@@ -56,7 +62,7 @@ export function OtherRevenuePanel({ data, total, count }: Props) {
         <View style={{ flex: 1 }}>
           <Text variant="h3">Autres revenus</Text>
           <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
-            Activités hors RDV — workshops, consultations…
+            Activités hors RDV · {periodLabel}
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
