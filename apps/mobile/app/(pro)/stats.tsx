@@ -20,6 +20,7 @@ import { Card, Loader, Text } from '../../components';
 import { TrendChart } from '../../components/stats/TrendChart';
 import { TopServicesPanel } from '../../components/stats/TopServicesPanel';
 import { TopClientsPanel } from '../../components/stats/TopClientsPanel';
+import { OtherRevenuePanel } from '../../components/stats/OtherRevenuePanel';
 import { QualityIndicators } from '../../components/stats/QualityIndicators';
 import { HeatmapPanel } from '../../components/stats/HeatmapPanel';
 import { useProvider } from '../../contexts';
@@ -337,6 +338,18 @@ export default function StatsScreen() {
               <TopServicesPanel data={stats.topServices} />
               <TopClientsPanel data={stats.topClients} />
             </>
+          )}
+
+          {/* ── Autres revenus (paid activities) ──
+              Renders nothing when there's no activity revenue on
+              the period, so providers who don't use the feature
+              never see this block. */}
+          {stats && (
+            <OtherRevenuePanel
+              data={stats.activitiesByCategory}
+              total={stats.activityRevenue}
+              count={stats.activityCount}
+            />
           )}
 
           {/* ── Booking Breakdown ── */}

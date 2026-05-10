@@ -178,6 +178,21 @@ export interface ProviderStatsMemberBreakdown {
 }
 
 /**
+ * Per-category breakdown of paid activity revenue (sport, meeting,
+ * perso, admin, voyage, imprévu, other). Mirrors
+ * ProviderStatsServiceBreakdown but for the "Autres revenus" track —
+ * money the pro earns off-platform (workshops, paid consultations,
+ * etc.) tagged via the activity category field on a BlockedSlot.
+ */
+export interface ProviderStatsActivityBreakdown {
+  category: ActivityCategory;
+  /** Number of paid activities in this category on the day/month. */
+  count: number;
+  /** Sum of `amount` (cents) for paid activities in this category. */
+  revenue: number;
+}
+
+/**
  * Daily aggregate — one document per (provider, calendar day). The
  * `date` field is the booking's `datetime.toISOString().slice(0,10)`
  * in the provider's timezone. NB: revenue here is the SUM of all
@@ -201,6 +216,20 @@ export interface ProviderStatsDaily {
 
   /** Revenue (cents) — sum of `price` over confirmed bookings on this day. */
   revenue: number;
+
+  /**
+   * "Autres revenus" — sum of `amount` (cents) over paid activities
+   * (BlockedSlot with `category` set AND `amount > 0`) on this day.
+   * Tracked separately from the booking `revenue` field so the UI
+   * can show the two streams side by side without inflating the
+   * core booking KPI. Defaults to 0 — backward-compatible with old
+   * daily docs that pre-date this field.
+   */
+  activityRevenue: number;
+  /** Number of paid activities on this day. */
+  activityCount: number;
+  /** Per-category breakdown of activity revenue. */
+  activitiesByCategory: ProviderStatsActivityBreakdown[];
 
   /**
    * Distinct client identities. Hashed (sha256 hex) for privacy so
@@ -240,6 +269,13 @@ export interface ProviderStatsMonthly {
   noshowCount: number;
 
   revenue: number;
+
+  /** Paid-activity revenue track — mirror of the daily fields,
+   *  rolled up across the calendar month. See ProviderStatsDaily
+   *  for full semantics. */
+  activityRevenue: number;
+  activityCount: number;
+  activitiesByCategory: ProviderStatsActivityBreakdown[];
 
   clientHashes: string[];
   newClientHashes: string[];

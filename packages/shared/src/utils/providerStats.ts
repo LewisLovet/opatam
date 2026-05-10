@@ -25,9 +25,12 @@
 
 import { DEFAULT_TIMEZONE } from '../constants';
 import type {
+  ActivityCategory,
+  BlockedSlot,
   Booking,
   BookingStatus,
   ProviderClient,
+  ProviderStatsActivityBreakdown,
   ProviderStatsDaily,
   ProviderStatsMemberBreakdown,
   ProviderStatsMonthly,
@@ -129,6 +132,9 @@ function emptyDaily(providerId: string, date: string): ProviderStatsDaily {
     cancelledCount: 0,
     noshowCount: 0,
     revenue: 0,
+    activityRevenue: 0,
+    activityCount: 0,
+    activitiesByCategory: [],
     clientHashes: [],
     newClientHashes: [],
     services: [],
@@ -149,6 +155,9 @@ function emptyMonthly(providerId: string, month: string): ProviderStatsMonthly {
     cancelledCount: 0,
     noshowCount: 0,
     revenue: 0,
+    activityRevenue: 0,
+    activityCount: 0,
+    activitiesByCategory: [],
     clientHashes: [],
     newClientHashes: [],
     services: [],
@@ -264,6 +273,69 @@ export function aggregateBookingsToDaily(
   return dailies;
 }
 
+/**
+ * Fold paid activities (BlockedSlot entries with `category` set AND
+ * `amount > 0`) into the daily docs as the "Autres revenus" track.
+ *
+ * Mutates the input map in place: existing daily docs gain
+ * `activityRevenue` / `activityCount` / `activitiesByCategory`
+ * contributions, and a fresh empty daily is created on dates that
+ * had activities but no bookings (otherwise the activity revenue
+ * would be lost on bookless days).
+ *
+ * Activities WITHOUT a `category` (raw blocked periods like vacations)
+ * are ignored — they're not "earnings". Activities with `amount` ≤ 0
+ * or null are ignored too — those are unpaid personal events
+ * (sport, perso) and shouldn't bump the revenue track.
+ *
+ * Future-dated activities are kept on principle (the pro entered
+ * a planned paid workshop): the read layer applies the same
+ * "past only" rule to activityRevenue as it does to revenue, so
+ * the future never leaks into "today's CA". Daily docs for
+ * yesterday and earlier are 100% past so the read layer doesn't
+ * filter there.
+ */
+export function mergeActivitiesIntoDailies(
+  activities: BlockedSlot[],
+  dailies: Map<string, ProviderStatsDaily>,
+  opts: { providerId: string; timezone?: string },
+): Map<string, ProviderStatsDaily> {
+  const tz = opts.timezone ?? DEFAULT_TIMEZONE;
+
+  for (const slot of activities) {
+    if (!slot.category) continue;
+    const amount = slot.amount ?? 0;
+    if (amount <= 0) continue;
+
+    const date = dateKeyInTz(slot.startDate, tz);
+    let daily = dailies.get(date);
+    if (!daily) {
+      daily = emptyDaily(opts.providerId, date);
+      dailies.set(date, daily);
+    }
+
+    daily.activityRevenue += amount;
+    daily.activityCount += 1;
+    upsertActivityBreakdown(daily.activitiesByCategory, slot.category, amount);
+  }
+
+  return dailies;
+}
+
+function upsertActivityBreakdown(
+  list: ProviderStatsActivityBreakdown[],
+  category: ActivityCategory,
+  amount: number,
+): void {
+  let entry = list.find((e) => e.category === category);
+  if (!entry) {
+    entry = { category, count: 0, revenue: 0 };
+    list.push(entry);
+  }
+  entry.count += 1;
+  entry.revenue += amount;
+}
+
 function upsertServiceBreakdown(
   services: ProviderStatsServiceBreakdown[],
   booking: Booking,
@@ -348,6 +420,20 @@ export function aggregateDailiesToMonthly(
     monthly.cancelledCount += daily.cancelledCount;
     monthly.noshowCount += daily.noshowCount;
     monthly.revenue += daily.revenue;
+
+    // "Autres revenus" track — defaults guard against legacy daily
+    // docs written before activityRevenue was added to the schema.
+    monthly.activityRevenue += daily.activityRevenue ?? 0;
+    monthly.activityCount += daily.activityCount ?? 0;
+    for (const c of daily.activitiesByCategory ?? []) {
+      let entry = monthly.activitiesByCategory.find((x) => x.category === c.category);
+      if (!entry) {
+        entry = { category: c.category, count: 0, revenue: 0 };
+        monthly.activitiesByCategory.push(entry);
+      }
+      entry.count += c.count;
+      entry.revenue += c.revenue;
+    }
 
     // Union client hashes across the month.
     for (const h of daily.clientHashes) {
@@ -550,10 +636,24 @@ export function aggregateFullPipeline(
       string,
       { displayName: string; photoURL: string | null; phone: string | null }
     >;
+    /**
+     * Paid activities (BlockedSlot with category + amount). Optional
+     * for backward-compat with callers that don't (yet) source them;
+     * when omitted the activity-revenue fields stay at 0 across all
+     * daily/monthly docs. Pass an empty array to be explicit about
+     * "no paid activities" vs. "didn't fetch".
+     */
+    activities?: BlockedSlot[];
   },
   now: Date = new Date(),
 ): FullAggregateResult {
   const dailyMap = aggregateBookingsToDaily(bookings, opts);
+  if (opts.activities && opts.activities.length > 0) {
+    mergeActivitiesIntoDailies(opts.activities, dailyMap, {
+      providerId: opts.providerId,
+      timezone: opts.timezone,
+    });
+  }
   const dailyArr = [...dailyMap.values()].sort((a, b) =>
     a.date.localeCompare(b.date),
   );

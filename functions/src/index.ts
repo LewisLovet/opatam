@@ -25,6 +25,7 @@ export { purgeProviderStats } from './callable/purgeProviderStats';
 export { onBookingWrite } from './triggers/onBookingWrite';
 export { onUserWrite, onProviderWrite, onBookingWriteStats, onReviewWrite } from './triggers/onStatsUpdate';
 export { onBookingWriteProviderStats } from './triggers/onBookingWriteProviderStats';
+export { onBlockedSlotWriteProviderStats } from './triggers/onBlockedSlotWriteProviderStats';
 export { onReviewCreate } from './triggers/onReviewCreate';
 export { onReviewRatingUpdate } from './triggers/onReviewRatingUpdate';
 export { onAffiliateLogAggregate } from './triggers/onAffiliateLogAggregate';

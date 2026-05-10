@@ -78,6 +78,34 @@ export interface ProviderStatsMemberBreakdown {
   revenue: number;
 }
 
+/** Mirror of ActivityCategory in @booking-app/shared. Keep in sync. */
+export type ActivityCategory =
+  | 'sport'
+  | 'meeting'
+  | 'personal'
+  | 'admin'
+  | 'travel'
+  | 'imprevu'
+  | 'other';
+
+/** Per-category breakdown of paid-activity revenue ("Autres revenus"). */
+export interface ProviderStatsActivityBreakdown {
+  category: ActivityCategory;
+  count: number;
+  revenue: number;
+}
+
+/**
+ * Minimal BlockedSlot shape used by the activity aggregator. The
+ * trigger maps the Firestore doc into this shape (Timestamp →
+ * Date).
+ */
+export interface BlockedSlotLike {
+  category?: ActivityCategory | null;
+  amount?: number | null;
+  startDate: Date;
+}
+
 export interface ProviderStatsDaily {
   providerId: string;
   date: string;
@@ -88,6 +116,11 @@ export interface ProviderStatsDaily {
   cancelledCount: number;
   noshowCount: number;
   revenue: number;
+  /** Paid-activity revenue track. See @booking-app/shared for full
+   *  semantics. Defaults to 0 — backward-compatible with older docs. */
+  activityRevenue: number;
+  activityCount: number;
+  activitiesByCategory: ProviderStatsActivityBreakdown[];
   clientHashes: string[];
   newClientHashes: string[];
   services: ProviderStatsServiceBreakdown[];
@@ -106,6 +139,9 @@ export interface ProviderStatsMonthly {
   cancelledCount: number;
   noshowCount: number;
   revenue: number;
+  activityRevenue: number;
+  activityCount: number;
+  activitiesByCategory: ProviderStatsActivityBreakdown[];
   clientHashes: string[];
   newClientHashes: string[];
   services: ProviderStatsServiceBreakdown[];
@@ -249,6 +285,7 @@ function emptyDaily(providerId: string, date: string): ProviderStatsDaily {
     providerId, date,
     bookingsCount: 0, confirmedCount: 0, pendingCount: 0, pendingPaymentCount: 0,
     cancelledCount: 0, noshowCount: 0, revenue: 0,
+    activityRevenue: 0, activityCount: 0, activitiesByCategory: [],
     clientHashes: [], newClientHashes: [], services: [], members: [],
     hourCounts: new Array(24).fill(0),
     updatedAt: new Date(),
@@ -260,6 +297,7 @@ function emptyMonthly(providerId: string, month: string): ProviderStatsMonthly {
     providerId, month,
     bookingsCount: 0, confirmedCount: 0, pendingCount: 0, pendingPaymentCount: 0,
     cancelledCount: 0, noshowCount: 0, revenue: 0,
+    activityRevenue: 0, activityCount: 0, activitiesByCategory: [],
     clientHashes: [], newClientHashes: [], services: [], members: [],
     hourCounts: new Array(24).fill(0),
     updatedAt: new Date(),
@@ -335,6 +373,45 @@ function upsertService(arr: ProviderStatsServiceBreakdown[], b: BookingLike) {
   }
 }
 
+/**
+ * Fold paid activities (BlockedSlot with category set + amount > 0)
+ * into the daily docs as the "Autres revenus" track. Mutates the
+ * map in place; creates a fresh empty daily on dates that had
+ * activities but no bookings. See providerStats.ts (shared package)
+ * for the full doc — this is the byte-for-byte equivalent on the
+ * functions side.
+ */
+export function mergeActivitiesIntoDailies(
+  activities: BlockedSlotLike[],
+  dailies: Map<string, ProviderStatsDaily>,
+  opts: { providerId: string; timezone?: string },
+): Map<string, ProviderStatsDaily> {
+  const tz = opts.timezone ?? DEFAULT_TIMEZONE;
+  for (const slot of activities) {
+    if (!slot.category) continue;
+    const amount = slot.amount ?? 0;
+    if (amount <= 0) continue;
+
+    const date = dateKeyInTz(slot.startDate, tz);
+    let daily = dailies.get(date);
+    if (!daily) {
+      daily = emptyDaily(opts.providerId, date);
+      dailies.set(date, daily);
+    }
+
+    daily.activityRevenue += amount;
+    daily.activityCount += 1;
+    let entry = daily.activitiesByCategory.find((e) => e.category === slot.category);
+    if (!entry) {
+      entry = { category: slot.category, count: 0, revenue: 0 };
+      daily.activitiesByCategory.push(entry);
+    }
+    entry.count += 1;
+    entry.revenue += amount;
+  }
+  return dailies;
+}
+
 function upsertMember(arr: ProviderStatsMemberBreakdown[], b: BookingLike, opts: AggregateOptions) {
   const memberId = b.memberId;
   let e = arr.find((x) => x.memberId === memberId);
@@ -375,6 +452,16 @@ export function aggregateDailiesToMonthly(
     m.cancelledCount += d.cancelledCount;
     m.noshowCount += d.noshowCount;
     m.revenue += d.revenue;
+    // "Autres revenus" rollup — defaults guard against legacy daily
+    // docs written before activityRevenue was added to the schema.
+    m.activityRevenue += d.activityRevenue ?? 0;
+    m.activityCount += d.activityCount ?? 0;
+    for (const c of d.activitiesByCategory ?? []) {
+      let e = m.activitiesByCategory.find((x) => x.category === c.category);
+      if (!e) { e = { category: c.category, count: 0, revenue: 0 }; m.activitiesByCategory.push(e); }
+      e.count += c.count;
+      e.revenue += c.revenue;
+    }
     for (const h of d.clientHashes) if (!m.clientHashes.includes(h)) m.clientHashes.push(h);
     for (const h of d.newClientHashes) if (!m.newClientHashes.includes(h)) m.newClientHashes.push(h);
     for (let h = 0; h < 24; h++) m.hourCounts[h] += d.hourCounts[h] ?? 0;

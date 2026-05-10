@@ -39,6 +39,7 @@ import type {
 import { Loader } from '@/components/ui';
 import { Sparkles } from 'lucide-react';
 import {
+  activityBreakdownFromDailies,
   buildContinuousTrend,
   formatPrice,
   periodBounds,
@@ -56,6 +57,7 @@ import { TopServicesPanel } from './components/TopServicesPanel';
 import { TopClientsPanel } from './components/TopClientsPanel';
 import { HeatmapPanel } from './components/HeatmapPanel';
 import { QualityIndicators } from './components/QualityIndicators';
+import { OtherRevenuePanel } from './components/OtherRevenuePanel';
 
 interface State {
   loading: boolean;
@@ -289,6 +291,15 @@ export default function StatistiquesPage() {
       ? 0
       : totals.noshowCount / totals.bookingsCount;
 
+    // Per-category activity breakdown for the "Autres revenus"
+    // panel. Computed from dailies (always loaded) regardless of
+    // monthly granularity — same source of truth, deterministic.
+    const activitiesByCategory = activityBreakdownFromDailies(
+      isMonthly
+        ? (state.monthlies as unknown as ProviderStatsDaily[])
+        : state.dailies,
+    );
+
     // True empty state — provider has literally no signal at all
     // on the platform yet. We show one friendly placeholder
     // instead of zero panels stacked on top of each other.
@@ -304,6 +315,7 @@ export default function StatistiquesPage() {
       chartType,
       topServices,
       topClients,
+      activitiesByCategory,
       cancellationRate,
       noshowRate,
       isCompletelyEmpty,
@@ -393,6 +405,15 @@ export default function StatistiquesPage() {
             <TopServicesPanel data={view.topServices} />
             <TopClientsPanel data={view.topClients} />
           </div>
+
+          {/* "Autres revenus" — paid activities. Renders nothing
+              when there's no activity revenue on the period, so
+              providers who don't use the feature never see it. */}
+          <OtherRevenuePanel
+            data={view.activitiesByCategory}
+            total={view.totals.activityRevenue}
+            count={view.totals.activityCount}
+          />
 
           {/* Quality indicators */}
           <QualityIndicators

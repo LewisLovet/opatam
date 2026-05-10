@@ -32,12 +32,14 @@ import {
 import {
   buildContinuousTrend,
   periodBounds,
+  activityBreakdownFromDailies,
   topServicesFromDailies,
   totalsFromDailies,
   totalsFromMonthlies,
   trendFromDailies,
   trendFromMonthlies,
   type Period,
+  type ProviderStatsActivityBreakdown,
   type ProviderStatsDaily,
   type ProviderStatsMonthly,
   type ProviderStatsRolling,
@@ -88,6 +90,14 @@ export interface ProviderStats {
   /** Period-independent heatmap (always 90d). null when no rolling doc yet. */
   heatmap90d: number[] | null;
 
+  // ── "Autres revenus" track (paid activities) ──
+  /** Sum of paid-activity amounts on the period (cents). */
+  activityRevenue: number;
+  /** Count of paid activities on the period. */
+  activityCount: number;
+  /** Per-category breakdown, sorted by revenue desc. */
+  activitiesByCategory: ProviderStatsActivityBreakdown[];
+
   // ── Quality indicators (derived) ──
   cancellationRate: number; // 0..1
   noshowRate: number;       // 0..1
@@ -120,6 +130,9 @@ const EMPTY_STATS = (period: Period): ProviderStats => ({
   topServices: [],
   topClients: [],
   heatmap90d: null,
+  activityRevenue: 0,
+  activityCount: 0,
+  activitiesByCategory: [],
   cancellationRate: 0,
   noshowRate: 0,
 });
@@ -268,6 +281,16 @@ export function useProviderStats(
         ? 0
         : totals.noshowCount / totals.bookingsCount;
 
+      // Per-category activity breakdown for the "Autres revenus"
+      // panel. Always computed from the daily-level docs (the
+      // monthly track has the same shape so we cast for monthly
+      // periods, mirroring totalsFromMonthlies).
+      const activitiesByCategory = activityBreakdownFromDailies(
+        isMonthly
+          ? (monthlies as unknown as ProviderStatsDaily[])
+          : dailies,
+      );
+
       setStats({
         period,
         revenue: totals.revenue,
@@ -288,6 +311,9 @@ export function useProviderStats(
         topServices,
         topClients,
         heatmap90d: rolling?.heatmap90d ?? null,
+        activityRevenue: totals.activityRevenue,
+        activityCount: totals.activityCount,
+        activitiesByCategory,
         cancellationRate,
         noshowRate,
       });

@@ -31,6 +31,7 @@ import {
   bookingFromFirestore,
   clientDocId,
   dailyDocId,
+  mergeActivitiesIntoDailies,
   monthlyDocId,
   type BookingLike,
   type ProviderClient,
@@ -38,6 +39,7 @@ import {
   type ProviderStatsMonthly,
   type ProviderStatsRolling,
 } from '../lib/providerStatsAgg';
+import { blockedSlotFromFirestore } from '../lib/providerStatsRecompute';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 
@@ -79,10 +81,14 @@ export async function backfillProviderStats(
   performWrites: boolean = true,
 ): Promise<BackfillResponse> {
   // ── Load provider context ─────────────────────────────────
-    const [providerSnap, membersSnap, bookingsSnap] = await Promise.all([
+    // Activities (paid blocked slots) are fetched alongside bookings
+    // so the backfill rebuilds the "Autres revenus" track too. Both
+    // collections are providerId-scoped, so they parallelise cleanly.
+    const [providerSnap, membersSnap, bookingsSnap, activitiesSnap] = await Promise.all([
       db.doc(`providers/${providerId}`).get(),
       db.collection(`providers/${providerId}/members`).get(),
       db.collection('bookings').where('providerId', '==', providerId).get(),
+      db.collection(`providers/${providerId}/blockedSlots`).get(),
     ]);
     if (!providerSnap.exists) {
       throw new HttpsError('not-found', `provider ${providerId} not found`);
@@ -100,9 +106,23 @@ export async function backfillProviderStats(
       bookingFromFirestore(d.data()),
     );
 
+    // ── Hydrate paid activities ───────────────────────────────
+    // Filter in-memory to those with category set + amount > 0 —
+    // the per-provider count is small (dozens of activities/year
+    // for a heavy user), no need for a Firestore composite index.
+    const activities = activitiesSnap.docs
+      .map((d) => blockedSlotFromFirestore(d.data()))
+      .filter((s) => !!s.category && (s.amount ?? 0) > 0);
+
     // ── Run the full pipeline ─────────────────────────────────
     const opts = { providerId, providerName, membersById, timezone: DEFAULT_TIMEZONE };
     const dailyMap = aggregateBookingsToDaily(bookings, opts);
+    if (activities.length > 0) {
+      mergeActivitiesIntoDailies(activities, dailyMap, {
+        providerId,
+        timezone: DEFAULT_TIMEZONE,
+      });
+    }
     const dailyArr: ProviderStatsDaily[] = [...dailyMap.values()].sort((a, b) =>
       a.date.localeCompare(b.date),
     );

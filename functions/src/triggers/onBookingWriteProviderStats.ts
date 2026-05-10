@@ -29,23 +29,21 @@
 
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
 import {
   aggregateBookingsToClients,
-  aggregateBookingsToDaily,
-  aggregateDailiesToMonthly,
   bookingFromFirestore,
   clientDocId,
-  dailyDocId,
   dateKeyInTz,
   getClientKey,
-  monthKeyInTz,
-  monthlyDocId,
   type BookingLike,
-  type ProviderStatsDaily,
 } from '../lib/providerStatsAgg';
-
-const DEFAULT_TIMEZONE = 'Europe/Paris';
+import {
+  DEFAULT_TIMEZONE,
+  loadProviderContext,
+  recomputeDailyDoc,
+  recomputeMonthlyDoc,
+  type ProviderContext,
+} from '../lib/providerStatsRecompute';
 
 export const onBookingWriteProviderStats = onDocumentWritten(
   {
@@ -113,124 +111,10 @@ export const onBookingWriteProviderStats = onDocumentWritten(
 );
 
 // ────────────────────────────────────────────────────────────────
-// Helpers
+// Client-doc recompute — local to this trigger because it's only
+// driven by booking writes (activities don't touch the CRM doc).
+// The day/month recomputes are imported from providerStatsRecompute.
 // ────────────────────────────────────────────────────────────────
-
-interface ProviderContext {
-  providerName: string;
-  membersById: Record<string, { name: string }>;
-}
-
-async function loadProviderContext(providerId: string): Promise<ProviderContext | null> {
-  const db = admin.firestore();
-  const [providerSnap, membersSnap] = await Promise.all([
-    db.doc(`providers/${providerId}`).get(),
-    db.collection(`providers/${providerId}/members`).get(),
-  ]);
-  if (!providerSnap.exists) return null;
-  const providerData = providerSnap.data() ?? {};
-  const membersById: Record<string, { name: string }> = {};
-  for (const m of membersSnap.docs) {
-    const d = m.data();
-    membersById[m.id] = { name: (d.name as string) ?? '—' };
-  }
-  return {
-    providerName: (providerData.businessName as string) ?? 'Provider',
-    membersById,
-  };
-}
-
-function dayBounds(date: string): { start: Date; end: Date } {
-  // We treat the day in the provider's timezone but Firestore
-  // stores datetime in UTC. dateKeyInTz already accounts for this
-  // when the data goes IN; for the OUT query we widen the window
-  // by 24h on each side to catch all bookings whose Europe/Paris
-  // calendar date matches `date`. The aggregator filters again by
-  // dateKeyInTz so over-fetching is harmless.
-  const [y, m, d] = date.split('-').map(Number);
-  const start = new Date(Date.UTC(y, m - 1, d - 1)); // -1 day buffer
-  const end = new Date(Date.UTC(y, m - 1, d + 2));   // +1 day buffer
-  return { start, end };
-}
-
-function monthBounds(month: string): { start: Date; end: Date } {
-  const [y, m] = month.split('-').map(Number);
-  const start = new Date(Date.UTC(y, m - 2, 1)); // previous month for tz buffer
-  const end = new Date(Date.UTC(y, m + 1, 1));   // next month for tz buffer
-  return { start, end };
-}
-
-async function recomputeDailyDoc(
-  providerId: string,
-  date: string,
-  ctx: ProviderContext,
-): Promise<void> {
-  const db = admin.firestore();
-  const { start, end } = dayBounds(date);
-  const snap = await db
-    .collection('bookings')
-    .where('providerId', '==', providerId)
-    .where('datetime', '>=', Timestamp.fromDate(start))
-    .where('datetime', '<', Timestamp.fromDate(end))
-    .get();
-
-  const bookings: BookingLike[] = snap.docs.map((d) => bookingFromFirestore(d.data()));
-  const dailies = aggregateBookingsToDaily(bookings, {
-    providerId,
-    providerName: ctx.providerName,
-    membersById: ctx.membersById,
-    timezone: DEFAULT_TIMEZONE,
-  });
-
-  const daily = dailies.get(date);
-  const ref = db.collection('providerStatsDaily').doc(dailyDocId(providerId, date));
-  if (daily) {
-    await ref.set(daily, { merge: false });
-  } else {
-    // No bookings remain on that day → delete the doc.
-    await ref.delete().catch(() => undefined);
-  }
-}
-
-async function recomputeMonthlyDoc(
-  providerId: string,
-  month: string,
-): Promise<void> {
-  const db = admin.firestore();
-  // Sum existing daily docs for this month — far cheaper than
-  // re-querying raw bookings of the whole month. Daily docs are
-  // already up to date because we just wrote the affected one.
-  const snap = await db
-    .collection('providerStatsDaily')
-    .where('providerId', '==', providerId)
-    .where('date', '>=', `${month}-01`)
-    .where('date', '<', nextMonthKey(month) + '-01')
-    .get();
-
-  const dailies: ProviderStatsDaily[] = snap.docs.map((d) => d.data() as ProviderStatsDaily);
-  // Hydrate any Timestamp into Date — daily docs were written by
-  // us so most fields are Dates already; defensive only.
-  for (const d of dailies) {
-    if ((d.updatedAt as unknown) instanceof Timestamp) {
-      d.updatedAt = (d.updatedAt as unknown as Timestamp).toDate();
-    }
-  }
-
-  const monthlies = aggregateDailiesToMonthly(dailies, providerId);
-  const monthly = monthlies.get(month);
-  const ref = db.collection('providerStatsMonthly').doc(monthlyDocId(providerId, month));
-  if (monthly) {
-    await ref.set(monthly, { merge: false });
-  } else {
-    await ref.delete().catch(() => undefined);
-  }
-}
-
-function nextMonthKey(month: string): string {
-  const [y, m] = month.split('-').map(Number);
-  if (m === 12) return `${y + 1}-01`;
-  return `${y}-${String(m + 1).padStart(2, '0')}`;
-}
 
 async function recomputeClientDoc(
   providerId: string,

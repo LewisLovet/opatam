@@ -6,6 +6,7 @@
  */
 
 import type {
+  ProviderStatsActivityBreakdown,
   ProviderStatsDaily,
   ProviderStatsMonthly,
   ProviderStatsServiceBreakdown,
@@ -19,6 +20,13 @@ export interface PeriodTotals {
   confirmedCount: number;
   cancelledCount: number;
   noshowCount: number;
+  /**
+   * "Autres revenus" track — sum of paid-activity `amount` (cents)
+   * over the period. Tracked separately so the UI can show CA RDV
+   * and CA hors-RDV side by side without conflating the two.
+   */
+  activityRevenue: number;
+  activityCount: number;
   /** Distinct client identities across the period (union of hashes). */
   uniqueClients: number;
   /** Bookings whose first-ever appearance for this provider falls in the period. */
@@ -35,6 +43,8 @@ export function totalsFromDailies(
   let confirmedCount = 0;
   let cancelledCount = 0;
   let noshowCount = 0;
+  let activityRevenue = 0;
+  let activityCount = 0;
 
   for (const d of dailies) {
     revenue += d.revenue;
@@ -42,6 +52,11 @@ export function totalsFromDailies(
     confirmedCount += d.confirmedCount;
     cancelledCount += d.cancelledCount;
     noshowCount += d.noshowCount;
+    // `?? 0` guards legacy daily docs written before the
+    // activityRevenue field was added — old docs read as 0 instead
+    // of NaN, which keeps the KPI bar honest.
+    activityRevenue += d.activityRevenue ?? 0;
+    activityCount += d.activityCount ?? 0;
     for (const h of d.clientHashes) clientHashes.add(h);
     for (const h of d.newClientHashes) newClientHashes.add(h);
   }
@@ -52,6 +67,8 @@ export function totalsFromDailies(
     confirmedCount,
     cancelledCount,
     noshowCount,
+    activityRevenue,
+    activityCount,
     uniqueClients: clientHashes.size,
     newClients: newClientHashes.size,
   };
@@ -62,6 +79,29 @@ export function totalsFromMonthlies(
 ): PeriodTotals {
   // Identical shape — share the implementation.
   return totalsFromDailies(monthlies as unknown as ProviderStatsDaily[]);
+}
+
+/**
+ * Roll up the per-category activity breakdown across a set of
+ * daily docs. Returned sorted by revenue desc so the UI can
+ * render top contributors first.
+ */
+export function activityBreakdownFromDailies(
+  dailies: ProviderStatsDaily[],
+): ProviderStatsActivityBreakdown[] {
+  const acc = new Map<string, ProviderStatsActivityBreakdown>();
+  for (const d of dailies) {
+    for (const c of d.activitiesByCategory ?? []) {
+      let entry = acc.get(c.category);
+      if (!entry) {
+        entry = { category: c.category, count: 0, revenue: 0 };
+        acc.set(c.category, entry);
+      }
+      entry.count += c.count;
+      entry.revenue += c.revenue;
+    }
+  }
+  return [...acc.values()].sort((a, b) => b.revenue - a.revenue);
 }
 
 /**

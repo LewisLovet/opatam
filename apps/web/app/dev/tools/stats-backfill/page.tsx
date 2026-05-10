@@ -23,6 +23,7 @@ import { useMemo, useState } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   app,
+  blockedSlotRepository,
   bookingRepository,
   memberService,
   providerRepository,
@@ -130,10 +131,11 @@ export default function StatsBackfillDryRunPage() {
     setResult(null);
 
     try {
-      const [provider, members, bookings] = await Promise.all([
+      const [provider, members, bookings, blockedSlots] = await Promise.all([
         providerRepository.getById(id),
         memberService.getByProvider(id),
         bookingRepository.getByProvider(id),
+        blockedSlotRepository.getByProvider(id),
       ]);
 
       if (!provider) {
@@ -145,12 +147,19 @@ export default function StatsBackfillDryRunPage() {
         membersById[m.id] = { name: m.name };
       }
 
+      // Paid activities only — the unpaid ones (vacations etc.) don't
+      // contribute to "Autres revenus".
+      const paidActivities = blockedSlots.filter(
+        (s) => !!s.category && (s.amount ?? 0) > 0,
+      );
+
       const { daily, monthly, rolling, clients } = aggregateFullPipeline(
         bookings,
         {
           providerId: id,
           providerName: provider.businessName,
           membersById,
+          activities: paidActivities,
           // No registeredUsers map at dry-run time — the trigger
           // and backfill enrich from the users collection on the
           // server side. The dry-run uses the booking's denormalised
