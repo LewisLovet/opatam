@@ -233,26 +233,36 @@ export function DaySchedule({
       wEnd = 24 * 60;
     }
 
-    // Expand range to fit all bookings
-    for (const b of bookings) {
-      const bStart = parseTime(b.startTime);
-      let bEnd = parseTime(b.endTime);
-      // If endTime is "00:00" and startTime is not, treat as midnight (24:00)
-      if (bEnd === 0 && bStart > 0) {
-        bEnd = 24 * 60;
-      }
-      // Also handle endTime < startTime (crossing midnight)
-      if (bEnd <= bStart) {
-        bEnd = 24 * 60;
-      }
+    /**
+     * Expand the visible range so any event sticking out of the
+     * default working-hours window stays on screen. Both bookings
+     * AND blocked slots / activities count — a paid activity at
+     * 22:00 used to be invisible because only `bookings` was
+     * walked here.
+     *
+     * `allDay` blocked slots are skipped: they intentionally cover
+     * the whole day with a diagonal-stripe overlay and shouldn't
+     * push the visible range out to 00→24.
+     */
+    const expand = (startStr: string, endStr: string) => {
+      const s = parseTime(startStr);
+      let e = parseTime(endStr);
+      // "00:00" end with non-zero start → midnight (24:00)
+      if (e === 0 && s > 0) e = 24 * 60;
+      // endTime ≤ startTime → crossing midnight, clamp at 24:00
+      if (e <= s) e = 24 * 60;
 
-      // Floor start to the previous full hour
-      const bStartHour = Math.floor(bStart / 60) * 60;
-      // Ceil end to the next full hour
-      const bEndHour = Math.ceil(bEnd / 60) * 60;
+      const startHour = Math.floor(s / 60) * 60; // floor to previous hour
+      const endHour = Math.ceil(e / 60) * 60;    // ceil to next hour
 
-      if (bStartHour < wStart) wStart = bStartHour;
-      if (bEndHour > wEnd) wEnd = bEndHour;
+      if (startHour < wStart) wStart = startHour;
+      if (endHour > wEnd) wEnd = endHour;
+    };
+
+    for (const b of bookings) expand(b.startTime, b.endTime);
+    for (const bs of blockedSlots) {
+      if (bs.allDay) continue;
+      expand(bs.startTime, bs.endTime);
     }
 
     // Clamp to 0..1440
@@ -260,7 +270,7 @@ export function DaySchedule({
     wEnd = Math.min(24 * 60, wEnd);
 
     return { effectiveStart: wStart, effectiveEnd: wEnd };
-  }, [workingHours, bookings]);
+  }, [workingHours, bookings, blockedSlots]);
 
   const startMinutes = effectiveStart;
   const endMinutes = effectiveEnd;
