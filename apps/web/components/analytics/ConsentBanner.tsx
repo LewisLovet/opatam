@@ -44,13 +44,13 @@ export function ConsentBanner() {
               id="consent-banner-title"
               className="text-base font-semibold text-gray-900 dark:text-white mb-2"
             >
-              Cookies de mesure publicitaire
+              Aidez-nous à faire grandir Opatam
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-              Nous utilisons le pixel Meta pour mesurer l&apos;efficacité de
-              nos campagnes publicitaires (Facebook, Instagram). Acceptez
-              pour nous aider à mieux comprendre comment vous nous avez
-              trouvés. Refuser n&apos;a aucun impact sur le service.{' '}
+              En acceptant les cookies de mesure, vous nous aidez à
+              savoir ce qui vous a amené ici et à mieux investir dans
+              nos campagnes Instagram et Facebook. Refuser n&apos;a
+              aucun impact sur votre expérience.{' '}
               <Link
                 href="/legal/confidentialite"
                 className="text-primary-600 dark:text-primary-400 hover:underline"
