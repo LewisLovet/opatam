@@ -160,3 +160,71 @@ export function setAdvertiserTracking(enabled: boolean): void {
     console.warn('[metaSdk] setAdvertiserTracking failed:', err);
   }
 }
+
+/**
+ * Plaintext PII to attach to subsequent app events for Meta's
+ * "Advanced Matching" — the SDK normalises (trim + lowercase) and
+ * SHA-256 hashes these values **on-device** before sending, so no
+ * raw value leaves the app. Mirrors the web Pixel's `fbq('init',
+ * pixelId, { em, external_id, ... })` shape.
+ *
+ * Property keys match the FB SDK's `UserDataKey` constants:
+ *   em → email, ph → phone (digits only), fn / ln → first / last
+ *   name, ge → gender, ct → city, st → state, zip → postal code,
+ *   country → ISO-3166 alpha-2.
+ */
+export interface MetaUserData {
+  em?: string | null;
+  ph?: string | null;
+  fn?: string | null;
+  ln?: string | null;
+  ge?: 'm' | 'f' | null;
+  ct?: string | null;
+  st?: string | null;
+  zip?: string | null;
+  country?: string | null;
+}
+
+/**
+ * Push Advanced Matching user data to the SDK. Every subsequent
+ * `trackEvent` call ships these hashes alongside the event, so
+ * Meta can attribute conversions back to a Facebook account even
+ * when the IDFA is unavailable (ATT denied) — match quality
+ * typically goes from ~4/10 to ~7-8/10.
+ *
+ * Call this on login + whenever the user's profile changes (email
+ * update, etc.). Pass an empty object to clear on logout.
+ *
+ * Note: `setUserData` and `setUserID` are complementary — the
+ * former enriches matching, the latter pins a stable identifier.
+ * Use both for best results.
+ */
+export function setUserData(data: MetaUserData): void {
+  try {
+    // The SDK expects all-string values and drops null/undefined.
+    // We normalise here so call sites can pass nullish fields
+    // without scrubbing.
+    const payload: Record<string, string> = {};
+    if (data.em) payload.em = data.em;
+    if (data.ph) payload.ph = data.ph;
+    if (data.fn) payload.fn = data.fn;
+    if (data.ln) payload.ln = data.ln;
+    if (data.ge) payload.ge = data.ge;
+    if (data.ct) payload.ct = data.ct;
+    if (data.st) payload.st = data.st;
+    if (data.zip) payload.zip = data.zip;
+    if (data.country) payload.country = data.country;
+    // The SDK uses different method names across SDK versions; the
+    // generic call below works since v13. Casting to any keeps us
+    // forwards-compatible without committing to a specific shape.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const logger = AppEventsLogger as any;
+    if (typeof logger.setUserData === 'function') {
+      logger.setUserData(payload);
+    } else if (typeof logger.updateUserProperties === 'function') {
+      logger.updateUserProperties(payload);
+    }
+  } catch (err) {
+    console.warn('[metaSdk] setUserData failed:', err);
+  }
+}

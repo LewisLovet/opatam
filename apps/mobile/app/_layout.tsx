@@ -9,6 +9,8 @@ import {
   ToastProvider,
   NotificationInitializer,
   LocationInitializer,
+  MetaAuthSync,
+  TrackingInitializer,
 } from '../components';
 import { DevFAB } from '../components/DevFAB';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
@@ -55,6 +57,16 @@ export default function RootLayout() {
                 rendering order — both initializers stay grouped so
                 they show in sequence on a fresh install. */}
             <LocationInitializer />
+            {/* Meta SDK Advanced Matching sync — pushes the
+                authenticated user's email / UID / name / phone to
+                the FB SDK so subsequent app events ship hashed
+                Advanced Matching data. Silent, renders nothing. */}
+            <MetaAuthSync />
+            {/* iOS App Tracking Transparency prompt — fires once
+                the user lands on the main app stack (skipped while
+                in the auth flow to avoid interrupting onboarding).
+                On grant, enables IDFA tracking on the FB SDK. */}
+            <TrackingInitializer />
             <ProvidersCacheProvider>
               <ToastProvider>
                 <StatusBar style="auto" />

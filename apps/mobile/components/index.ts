@@ -75,6 +75,12 @@ export * from './business';
 export { NotificationInitializer } from './NotificationInitializer';
 export { NotificationPermissionPrompt } from './NotificationPermissionPrompt';
 
+// Meta SDK — sync Firebase auth state into the SDK (Advanced Matching)
+export { MetaAuthSync } from './MetaAuthSync';
+
+// iOS App Tracking Transparency prompt
+export { TrackingInitializer } from './TrackingInitializer';
+
 // Location Initializer (priming for the foreground permission prompt)
 export { LocationInitializer } from './LocationInitializer';
 export { LocationPermissionPrompt } from './LocationPermissionPrompt';
