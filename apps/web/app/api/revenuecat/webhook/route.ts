@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
 
 // ---------------------------------------------------------------------------
 // RevenueCat Webhook Handler
@@ -298,6 +299,55 @@ async function handleInitialPurchase(
   await providerRef.update(updateData);
 
   console.log(`[RC-WEBHOOK] Provider ${providerId} subscription activated via ${paymentSource}: plan=${plan}, status=${status}, expires=${expirationDate?.toISOString() ?? 'null'}`);
+
+  // Meta CAPI — fire StartTrial or Subscribe based on RC period_type.
+  // action_source='app' because the purchase happened through native
+  // IAP (App Store / Play Store) inside our mobile app. `_capi.*`
+  // flags guard against webhook retries.
+  try {
+    const isTrial = event.period_type === 'TRIAL';
+    const eventName = isTrial ? 'StartTrial' : 'Subscribe';
+    const alreadyFired = isTrial
+      ? Boolean(existingData?._capi?.startTrialAt)
+      : Boolean(existingData?._capi?.subscribeAt);
+    if (alreadyFired) {
+      console.log(`[RC-WEBHOOK/CAPI] ${eventName} already fired for ${providerId}, skipping`);
+    } else {
+      const planDisplayName = plan === 'team' ? 'Studio' : 'Pro';
+      const emailAttr = event.subscriber_attributes?.['$email']?.value
+        ?? event.subscriber_attributes?.email?.value
+        ?? existingData?.email
+        ?? null;
+      const result = await sendCapiEvent({
+        eventName,
+        eventId: subscriptionEventId(eventName, event.original_transaction_id),
+        actionSource: 'app',
+        userData: {
+          email: emailAttr,
+          externalId: providerId,
+          country: event.country_code?.toLowerCase() ?? 'fr',
+        },
+        customData: {
+          value: isTrial ? 0 : (event.price_in_purchased_currency ?? 0),
+          currency: event.currency ?? 'EUR',
+          contentName: `${planDisplayName} plan`,
+          contentCategory: 'subscription',
+          contentIds: [event.product_id],
+          subscriptionId: event.original_transaction_id,
+          numItems: 1,
+        },
+      });
+      if (result.ok) {
+        const field = isTrial ? 'startTrialAt' : 'subscribeAt';
+        await providerRef.update({
+          [`_capi.${field}`]: FieldValue.serverTimestamp(),
+          [`_capi.${field}EventId`]: result.eventId,
+        });
+      }
+    }
+  } catch (capiErr) {
+    console.error('[RC-WEBHOOK/CAPI] Conversion event error (non-blocking):', capiErr);
+  }
 }
 
 async function handleRenewal(
@@ -342,6 +392,50 @@ async function handleRenewal(
   await providerRef.update(updateData);
 
   console.log(`[RC-WEBHOOK] Provider ${providerId} subscription renewed, expires=${expirationDate?.toISOString() ?? 'null'}`);
+
+  // Meta CAPI Subscribe on the FIRST paid renewal (trial → paid).
+  // For no-trial flows the Subscribe was already fired by
+  // handleInitialPurchase. The `_capi.subscribeAt` flag short-circuits
+  // subsequent renewals — Subscribe fires exactly once per pro.
+  try {
+    const alreadyFired = Boolean(existingData?._capi?.subscribeAt);
+    const amount = event.price_in_purchased_currency ?? 0;
+    if (!alreadyFired && amount > 0) {
+      const plan = existingData?.plan ?? (event.product_id.includes('team') ? 'team' : 'solo');
+      const planDisplayName = plan === 'team' ? 'Studio' : 'Pro';
+      const emailAttr = event.subscriber_attributes?.['$email']?.value
+        ?? event.subscriber_attributes?.email?.value
+        ?? existingData?.email
+        ?? null;
+      const result = await sendCapiEvent({
+        eventName: 'Subscribe',
+        eventId: subscriptionEventId('Subscribe', event.original_transaction_id),
+        actionSource: 'app',
+        userData: {
+          email: emailAttr,
+          externalId: providerId,
+          country: event.country_code?.toLowerCase() ?? 'fr',
+        },
+        customData: {
+          value: amount,
+          currency: event.currency ?? 'EUR',
+          contentName: `${planDisplayName} plan`,
+          contentCategory: 'subscription',
+          contentIds: [event.product_id],
+          subscriptionId: event.original_transaction_id,
+          numItems: 1,
+        },
+      });
+      if (result.ok) {
+        await providerRef.update({
+          '_capi.subscribeAt': FieldValue.serverTimestamp(),
+          '_capi.subscribeEventId': result.eventId,
+        });
+      }
+    }
+  } catch (capiErr) {
+    console.error('[RC-WEBHOOK/CAPI] Subscribe (renewal) error (non-blocking):', capiErr);
+  }
 }
 
 async function handleCancellation(

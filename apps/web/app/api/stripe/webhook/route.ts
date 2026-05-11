@@ -9,6 +9,7 @@ import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
 import { generatePlanChangeEmail } from '@/lib/emails/planChange';
+import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
 
 // ---------------------------------------------------------------------------
 // Stripe Webhook Handler
@@ -386,6 +387,57 @@ async function handleCheckoutCompleted(
   } catch (welcomeErr) {
     console.error('[STRIPE-WEBHOOK] Welcome email error:', welcomeErr);
   }
+
+  // Fire-and-forget: Meta CAPI event for the conversion. We fire
+  // StartTrial when the sub is created with a trial (no money yet)
+  // and Subscribe when there's no trial (immediate charge). The
+  // trial→paid Subscribe is fired separately from `handleInvoicePaid`
+  // on the first paid invoice. `_capi.*` flags guard against
+  // double-fires on webhook retries.
+  try {
+    const status = stripeSubscription.status;
+    const isTrial = status === 'trialing';
+    const eventName = isTrial ? 'StartTrial' : 'Subscribe';
+    const alreadyFired = isTrial
+      ? Boolean(existingData?._capi?.startTrialAt)
+      : Boolean(existingData?._capi?.subscribeAt);
+    if (alreadyFired) {
+      console.log(`[STRIPE-WEBHOOK/CAPI] ${eventName} already fired for ${providerId}, skipping`);
+    } else {
+      const planDisplayName = plan === 'team' ? 'Studio' : 'Pro';
+      const amountCents = session.amount_total ?? 0;
+      const currency = (session.currency ?? 'eur').toUpperCase();
+      const result = await sendCapiEvent({
+        eventName,
+        eventId: subscriptionEventId(eventName, subscriptionId),
+        actionSource: 'website',
+        eventSourceUrl: 'https://opatam.com/inscription/pro',
+        userData: {
+          email: existingData?.email ?? existingData?.contactEmail ?? null,
+          externalId: providerId,
+          country: existingData?.countryCode ?? 'FR',
+        },
+        customData: {
+          value: amountCents > 0 ? amountCents / 100 : 0,
+          currency,
+          contentName: `${planDisplayName} plan`,
+          contentCategory: 'subscription',
+          contentIds: [plan],
+          subscriptionId,
+          numItems: 1,
+        },
+      });
+      if (result.ok) {
+        const field = isTrial ? 'startTrialAt' : 'subscribeAt';
+        await providerRef.update({
+          [`_capi.${field}`]: FieldValue.serverTimestamp(),
+          [`_capi.${field}EventId`]: result.eventId,
+        });
+      }
+    }
+  } catch (capiErr) {
+    console.error('[STRIPE-WEBHOOK/CAPI] Conversion event error (non-blocking):', capiErr);
+  }
 }
 
 async function handleInvoicePaid(
@@ -534,6 +586,48 @@ async function handleInvoicePaid(
     }
   } catch (affiliateErr) {
     console.error('[STRIPE-WEBHOOK] Affiliate recurring transfer error (non-blocking):', affiliateErr);
+  }
+
+  // Fire-and-forget: Meta CAPI Subscribe on the FIRST paid invoice
+  // (the trial→paid conversion). For no-trial flows the Subscribe
+  // is already fired by handleCheckoutCompleted, so the `_capi`
+  // flag short-circuits this. Renewals are also guarded — Subscribe
+  // fires exactly once per pro lifetime.
+  try {
+    const amountPaid = invoice.amount_paid; // cents, post-discount
+    const alreadyFired = Boolean(existingData?._capi?.subscribeAt);
+    if (!alreadyFired && amountPaid && amountPaid > 0) {
+      const plan = stripeSubscription.metadata?.plan || existingData?.plan || 'solo';
+      const planDisplayName = plan === 'team' ? 'Studio' : 'Pro';
+      const result = await sendCapiEvent({
+        eventName: 'Subscribe',
+        eventId: subscriptionEventId('Subscribe', subscriptionId),
+        actionSource: 'website',
+        eventSourceUrl: 'https://opatam.com/pro',
+        userData: {
+          email: existingData?.email ?? existingData?.contactEmail ?? null,
+          externalId: providerId,
+          country: existingData?.countryCode ?? 'FR',
+        },
+        customData: {
+          value: amountPaid / 100,
+          currency: (invoice.currency ?? 'eur').toUpperCase(),
+          contentName: `${planDisplayName} plan`,
+          contentCategory: 'subscription',
+          contentIds: [plan],
+          subscriptionId,
+          numItems: 1,
+        },
+      });
+      if (result.ok) {
+        await providerRef.update({
+          '_capi.subscribeAt': FieldValue.serverTimestamp(),
+          '_capi.subscribeEventId': result.eventId,
+        });
+      }
+    }
+  } catch (capiErr) {
+    console.error('[STRIPE-WEBHOOK/CAPI] Subscribe (invoice) error (non-blocking):', capiErr);
   }
 }
 
