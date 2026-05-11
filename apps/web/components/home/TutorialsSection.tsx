@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, GraduationCap } from 'lucide-react';
 import { ArticleCard, type ArticleCardData } from '@/app/blog/components/ArticleCard';
+import { TutorialsCarousel } from './TutorialsCarousel';
 
 interface TutorialsSectionProps {
   tutorials: ArticleCardData[];
@@ -35,7 +36,15 @@ export function TutorialsSection({ tutorials }: TutorialsSectionProps) {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Mobile: auto-advancing carousel (one card at a time,
+            scroll-snap, dots indicator). Hidden from sm+ via a
+            `sm:hidden` on its wrapper. */}
+        <TutorialsCarousel tutorials={tutorials} />
+
+        {/* Tablet + desktop: original 2/3-col grid. Hidden under
+            sm so it never stacks vertically on phones (the
+            carousel above takes over there). */}
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {tutorials.map((t) => (
             <ArticleCard key={t.slug} article={t} />
           ))}
