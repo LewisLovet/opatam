@@ -311,6 +311,21 @@ export class BookingService {
   }
 
   /**
+   * Real-time subscription to a provider's bookings. Same filter
+   * semantics as `getProviderBookings` but the callback fires on
+   * every Firestore change (add / edit / cancel). Returns an
+   * unsubscribe to call on cleanup.
+   */
+  subscribeToProviderBookings(
+    providerId: string,
+    filters: BookingFilters | undefined,
+    onChange: (bookings: WithId<Booking>[]) => void,
+    onError?: (err: Error) => void,
+  ) {
+    return bookingRepository.subscribeByProvider(providerId, filters, onChange, onError);
+  }
+
+  /**
    * Get client's bookings
    */
   async getClientBookings(clientId: string): Promise<WithId<Booking>[]> {

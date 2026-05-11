@@ -1272,14 +1272,21 @@ export default function CalendarScreen() {
     }
   }, [memberIdParam]);
 
-  // ---- Fetch blocked slots for the current range ----
+  // ---- Live blocked slots for the current range ----
+  // Real-time Firestore subscription — any add / edit / delete (from
+  // /create-activity, /block-slot, or even another device) reflects
+  // here immediately. No pull-to-refresh required.
   const [blockedSlots, setBlockedSlots] = useState<WithId<BlockedSlot>[]>([]);
   useEffect(() => {
     if (!providerId) return;
-    schedulingService
-      .getBlockedSlotsInRange(providerId, fetchStart, fetchEnd)
-      .then(setBlockedSlots)
-      .catch(() => setBlockedSlots([]));
+    const unsub = schedulingService.subscribeToBlockedSlotsInRange(
+      providerId,
+      fetchStart,
+      fetchEnd,
+      setBlockedSlots,
+      () => setBlockedSlots([]),
+    );
+    return unsub;
   }, [providerId, fetchStart, fetchEnd]);
 
   // ---- Whether to show the member filter ----

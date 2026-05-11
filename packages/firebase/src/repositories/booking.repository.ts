@@ -3,9 +3,13 @@ import {
   orderBy,
   limit,
   Timestamp,
+  query,
+  onSnapshot,
+  type Unsubscribe,
+  type QueryConstraint,
 } from 'firebase/firestore';
 import type { Booking, BookingStatus } from '@booking-app/shared';
-import { BaseRepository, removeUndefined, type WithId } from './base.repository';
+import { BaseRepository, convertTimestamps, removeUndefined, type WithId } from './base.repository';
 
 /**
  * Booking filter options
@@ -79,6 +83,56 @@ export class BookingRepository extends BaseRepository<Booking> {
     }
 
     return this.query(constraints);
+  }
+
+  /**
+   * Real-time subscription to a provider's bookings. Same filter
+   * semantics as `getByProvider` but updates the callback whenever
+   * Firestore emits a change (add / edit / cancel). Returns an
+   * unsubscribe to call on cleanup.
+   *
+   * Use this when the consumer needs the calendar / dashboard to
+   * stay in sync without a pull-to-refresh — adding a booking in
+   * one screen reflects on every other open screen.
+   */
+  subscribeByProvider(
+    providerId: string,
+    filters: BookingFilters | undefined,
+    onChange: (bookings: WithId<Booking>[]) => void,
+    onError?: (err: Error) => void,
+  ): Unsubscribe {
+    const constraints: QueryConstraint[] = [
+      where('providerId', '==', providerId),
+      orderBy('datetime', 'desc'),
+    ];
+    if (filters?.status) {
+      if (Array.isArray(filters.status)) {
+        constraints.push(where('status', 'in', filters.status));
+      } else {
+        constraints.push(where('status', '==', filters.status));
+      }
+    }
+    if (filters?.memberId) constraints.push(where('memberId', '==', filters.memberId));
+    if (filters?.locationId) constraints.push(where('locationId', '==', filters.locationId));
+    if (filters?.startDate) constraints.push(where('datetime', '>=', Timestamp.fromDate(filters.startDate)));
+    if (filters?.endDate) constraints.push(where('datetime', '<=', Timestamp.fromDate(filters.endDate)));
+    if (filters?.limit) constraints.push(limit(filters.limit));
+
+    const q = query(this.getCollectionRef(), ...constraints);
+    return onSnapshot(
+      q,
+      (snap) => {
+        const bookings = snap.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...convertTimestamps<Booking>(docSnap.data()),
+        }));
+        onChange(bookings);
+      },
+      (err) => {
+        console.error('[bookingRepository] subscribeByProvider error', err);
+        onError?.(err);
+      },
+    );
   }
 
   /**

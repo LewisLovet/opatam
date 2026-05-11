@@ -12,7 +12,9 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  onSnapshot,
   type Firestore,
+  type Unsubscribe,
 } from 'firebase/firestore';
 import type { BlockedSlot } from '@booking-app/shared';
 import { getFirebaseApp } from '../lib/config';
@@ -147,6 +149,45 @@ export class BlockedSlotRepository {
       id: docSnap.id,
       ...convertTimestamps<BlockedSlot>(docSnap.data()),
     }));
+  }
+
+  /**
+   * Real-time subscription to blocked slots in a date range. Returns
+   * an unsubscribe function — call it on cleanup. The callback runs
+   * every time the query result changes (add / edit / delete), so
+   * the calendar updates without needing manual refetch or pull-to-
+   * refresh.
+   *
+   * Same query shape as `getInRange` — keep them in sync if you tweak
+   * the range semantics.
+   */
+  subscribeInRange(
+    providerId: string,
+    startDate: Date,
+    endDate: Date,
+    onChange: (slots: WithId<BlockedSlot>[]) => void,
+    onError?: (err: Error) => void,
+  ): Unsubscribe {
+    const q = query(
+      this.getCollectionRef(providerId),
+      where('startDate', '<=', Timestamp.fromDate(endDate)),
+      where('endDate', '>=', Timestamp.fromDate(startDate)),
+      orderBy('startDate', 'asc')
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const slots = snap.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...convertTimestamps<BlockedSlot>(docSnap.data()),
+        }));
+        onChange(slots);
+      },
+      (err) => {
+        console.error('[blockedSlotRepository] subscribeInRange error', err);
+        onError?.(err);
+      },
+    );
   }
 
   /**

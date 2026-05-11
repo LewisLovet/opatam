@@ -338,6 +338,22 @@ export class SchedulingService {
   }
 
   /**
+   * Real-time subscription to blocked slots within a date range.
+   * Use this in screens that need to stay in sync without manual
+   * refetch (calendar, planning) — the callback fires immediately
+   * with the current state and on every subsequent change.
+   */
+  subscribeToBlockedSlotsInRange(
+    providerId: string,
+    startDate: Date,
+    endDate: Date,
+    onChange: (slots: WithId<BlockedSlot>[]) => void,
+    onError?: (err: Error) => void,
+  ) {
+    return blockedSlotRepository.subscribeInRange(providerId, startDate, endDate, onChange, onError);
+  }
+
+  /**
    * Calculate available time slots for booking
    * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
    */
