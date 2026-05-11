@@ -35,7 +35,7 @@ import {
   type Member,
 } from '@booking-app/shared';
 import {
-  Loader2, Clock, Users,
+  Loader2, Clock, Users, Euro,
   Briefcase, Dumbbell, Handshake, Heart, FileText, Plane, Zap, Circle,
 } from 'lucide-react';
 
@@ -138,6 +138,11 @@ export function ActivityModal({
   );
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
+  // Amount in euros as a raw string (what the user types). Parsed
+  // to integer cents at submit time. Stored as string so the input
+  // can hold partial states like "12." while the user is typing.
+  // Empty string = no amount (this is an unpaid activity).
+  const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -184,6 +189,13 @@ export function ActivityModal({
           setEndTime(formatTimeInput(endDt));
           setAddress(existing.address || '');
           setNotes(existing.reason || '');
+          // Amount stored in cents → display in euros. Falsy
+          // (null / undefined / 0) shows as empty input, not "0".
+          setAmount(
+            typeof existing.amount === 'number' && existing.amount > 0
+              ? (existing.amount / 100).toString()
+              : '',
+          );
         } else {
           // Create mode defaults
           const requested = initialMemberId
@@ -200,6 +212,7 @@ export function ActivityModal({
           setEndTime(initialEndTime ?? formatTimeInput(initialEnd));
           setAddress('');
           setNotes('');
+          setAmount('');
         }
       } catch (err) {
         console.error('[ActivityModal] load failed:', err);
@@ -235,6 +248,18 @@ export function ActivityModal({
       return;
     }
 
+    // Parse amount → integer cents. Tolerant of comma decimal
+    // separators ("12,50") which French keyboards default to.
+    // Empty / unparseable / ≤0 sends `null` to indicate "no
+    // amount" — keeps the BlockedSlot a plain activity rather
+    // than a paid one for the stats pipeline.
+    const trimmedAmount = amount.trim().replace(',', '.');
+    const parsedAmount = trimmedAmount === '' ? NaN : Number(trimmedAmount);
+    const amountCents =
+      Number.isFinite(parsedAmount) && parsedAmount > 0
+        ? Math.round(parsedAmount * 100)
+        : null;
+
     setSaving(true);
     try {
       if (editId) {
@@ -250,6 +275,7 @@ export function ActivityModal({
           category,
           title: title.trim(),
           address: address.trim() || null,
+          amount: amountCents,
         });
         toast.success('Activité modifiée');
       } else {
@@ -266,6 +292,7 @@ export function ActivityModal({
           category,
           title: title.trim(),
           address: address.trim() || null,
+          amount: amountCents,
         });
         toast.success('Activité ajoutée à votre agenda');
       }
@@ -429,6 +456,33 @@ export function ActivityModal({
               onChange={(e) => setAddress(e.target.value)}
               maxLength={200}
             />
+
+            {/* Amount (optional) — paid off-platform work.
+                Type="text" + inputMode="decimal" rather than
+                type="number" so French keyboards offer the comma
+                key by default and the input handles partial states
+                like "12." while the user is typing. Parsed to
+                integer cents at submit, see handleSubmit. */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Montant (optionnel)
+              </label>
+              <div className="relative">
+                <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="ex : 80"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Pour les prestations payées hors plateforme. Le montant
+                apparaîtra dans &laquo; Autres revenus &raquo; de vos statistiques.
+              </p>
+            </div>
 
             {/* Notes (optional) */}
             <Textarea
