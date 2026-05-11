@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import * as Notifications from 'expo-notifications';
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { userRepository } from '@booking-app/firebase';
 import { registerForPushNotifications, getNotificationPermissionStatus } from '../utils/notifications';
@@ -23,6 +23,15 @@ interface NotificationResponse {
 export function useNotifications() {
   const { user, userData } = useAuth();
   const router = useRouter();
+  // `useSegments` returns the current route segments — first one is
+  // the route group, e.g. `(auth)` while the user is in the
+  // registration / login flow, `(pro)` or `(client)` once they
+  // land in the real app. We use it to defer the permission prompt
+  // away from the registration wizard — asking right after sign-up
+  // pollutes the onboarding flow with a system dialog before the
+  // user has even seen the app.
+  const segments = useSegments();
+  const inAuthFlow = segments[0] === '(auth)';
   const currentTokenRef = useRef<string | null>(null);
   const previousUidRef = useRef<string | null>(null);
   const notificationListener = useRef<Notifications.Subscription | null>(null);
@@ -100,7 +109,14 @@ export function useNotifications() {
     router.push(`/(client)/booking-detail/${bookingId}`);
   }, [router]);
 
-  // Check permission and show pre-prompt if needed
+  // Check permission and show pre-prompt if needed.
+  //
+  // Gated on `!inAuthFlow` so we never ask while the user is still
+  // in the registration wizard or on the login screen. Once they
+  // land on the main app stack (`(pro)` / `(client)`) we re-evaluate
+  // and surface the prompt then. If permission was already granted
+  // we still register the token eagerly — that's silent and useful
+  // for token refresh across app updates.
   useEffect(() => {
     if (!user?.uid || !userData) return;
 
@@ -108,11 +124,11 @@ export function useNotifications() {
       const status = await getNotificationPermissionStatus();
       if (status === 'granted') {
         registerAndSaveToken();
-      } else if (status === 'undetermined') {
+      } else if (status === 'undetermined' && !inAuthFlow) {
         setShowPermissionPrompt(true);
       }
     })();
-  }, [user?.uid, userData, registerAndSaveToken]);
+  }, [user?.uid, userData, inAuthFlow, registerAndSaveToken]);
 
   // Called when user accepts the pre-prompt
   const acceptNotifications = useCallback(async () => {
