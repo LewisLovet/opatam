@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { trackEvent } from '@/lib/meta-pixel';
 import { Sparkles } from 'lucide-react';
 import { ProviderHero } from './ProviderHero';
 import { ProviderNav } from './ProviderNav';
@@ -196,7 +197,17 @@ export function ProviderPageClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ providerId: provider.id }),
     }).catch(() => {});
-  }, [provider.id, isDemo]);
+    // Meta Pixel — ViewContent. Drives Meta's mid-funnel optimisation
+    // ("people who viewed a provider page") and lets us build retargeting
+    // audiences on engaged visitors. No-op when consent is denied.
+    trackEvent('ViewContent', {
+      content_name: provider.businessName,
+      content_category: provider.category,
+      content_ids: [provider.slug],
+      value: minPrice ? minPrice / 100 : undefined,
+      currency: minPrice ? 'EUR' : undefined,
+    });
+  }, [provider.id, provider.businessName, provider.category, provider.slug, minPrice, isDemo]);
 
   // Check if has portfolio photos
   const hasPortfolio = provider.portfolioPhotos.length > 0;

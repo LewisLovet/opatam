@@ -1285,6 +1285,38 @@ async function handleDepositPaymentIntentSucceeded(
   console.log(
     `[STRIPE-WEBHOOK] booking ${bookingId}: pending_payment → confirmed (PI ${intent.id})`,
   );
+
+  // Meta CAPI Purchase — the client-side Pixel also fires this from
+  // the confirmation page using the SAME event_id, so Meta dedupes
+  // the two transports. CAPI guarantees the event lands even when
+  // an ad blocker silences the browser-side Pixel. Best-effort.
+  try {
+    const amountCents = intent.amount_received ?? booking.deposit?.amount ?? 0;
+    if (amountCents > 0) {
+      await sendCapiEvent({
+        eventName: 'Purchase',
+        eventId: `Purchase:${bookingId}`,
+        actionSource: 'website',
+        eventSourceUrl: `https://opatam.com/reservation/confirmation/${bookingId}`,
+        userData: {
+          email: booking.clientInfo?.email ?? null,
+          phone: booking.clientInfo?.phone ?? null,
+          firstName: booking.clientInfo?.name?.split(' ')[0] ?? null,
+        },
+        customData: {
+          value: amountCents / 100,
+          currency: (intent.currency ?? 'eur').toUpperCase(),
+          contentName: `Acompte — ${booking.providerName ?? 'prestataire'}`,
+          contentCategory: 'booking-deposit',
+          contentIds: [bookingId],
+          orderId: bookingId,
+          numItems: 1,
+        },
+      });
+    }
+  } catch (capiErr) {
+    console.error('[STRIPE-WEBHOOK/CAPI] Purchase (deposit) error (non-blocking):', capiErr);
+  }
 }
 
 /**

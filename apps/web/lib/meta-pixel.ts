@@ -66,15 +66,28 @@ declare global {
   }
 }
 
+/** Options for a single `track` call. `eventID` enables Meta's
+ *  client/server deduplication when the same conversion is also
+ *  emitted from the server-side CAPI — pass an identifier that
+ *  matches what the server sends (typically `${eventName}:${entityId}`). */
+export interface MetaEventOptions {
+  /** Unique id of this conversion. Meta dedupes when the same id
+   *  is seen via Pixel + CAPI within a 7-day window. */
+  eventID?: string;
+}
+
 /** Fire a Pixel event by name. No-op if the script isn't loaded
  *  yet (= visitor hasn't consented), so call sites are guard-free. */
 export function trackEvent(
   name: MetaStandardEvent,
   params?: MetaEventParams,
+  options?: MetaEventOptions,
 ): void {
   if (typeof window === 'undefined') return;
   if (!window.fbq) return;
-  if (params) {
+  if (options?.eventID) {
+    window.fbq('track', name, params ?? {}, { eventID: options.eventID });
+  } else if (params) {
     window.fbq('track', name, params);
   } else {
     window.fbq('track', name);

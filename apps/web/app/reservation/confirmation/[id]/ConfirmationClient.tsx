@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download, Sparkles } from 'lucide-react';
+import { trackEvent } from '@/lib/meta-pixel';
 
 interface Booking {
   id: string;
@@ -157,6 +158,29 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
     const timer = setTimeout(() => setMounted(true), 100);
     return () => clearTimeout(timer);
   }, []);
+
+  // Meta Pixel — Purchase event when the deposit has actually been
+  // paid (real money landed). We piggyback on `sessionStorage` to
+  // avoid double-firing if the user refreshes the confirmation page.
+  // The `event_id` matches what the Stripe webhook sends via CAPI
+  // so Meta dedupes the two transports.
+  useEffect(() => {
+    if (!depositPaid) return;
+    const fbDedupKey = `fb_purchase_${booking.id}`;
+    if (sessionStorage.getItem(fbDedupKey)) return;
+    sessionStorage.setItem(fbDedupKey, '1');
+    trackEvent(
+      'Purchase',
+      {
+        content_name: `Acompte — ${booking.providerName}`,
+        content_category: 'booking-deposit',
+        content_ids: [booking.id],
+        value: (booking.deposit?.amount ?? 0) / 100,
+        currency: 'EUR',
+      },
+      { eventID: `Purchase:${booking.id}` },
+    );
+  }, [depositPaid, booking.id, booking.providerName, booking.deposit?.amount]);
 
   // While we're in pending_payment, the webhook is still processing —
   // refresh every 3 s for ~30 s so the page flips to "confirmed" without

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { trackEvent } from '@/lib/meta-pixel';
 import { ArrowLeft, Check, CalendarCheck, Sparkles, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { APP_CONFIG } from '@booking-app/shared/constants';
@@ -190,6 +191,24 @@ export function BookingFlow({
 
     return members;
   }, [selectedService, members]);
+
+  // Meta Pixel — InitiateCheckout once per landing on the booking
+  // flow. We fire on mount (not per-step) because reaching this page
+  // is already strong intent: the visitor clicked "Réserver" from the
+  // public profile. We include the preselected service price when
+  // available so Meta can optimise on value, but it's not required
+  // (the event is still useful without a value).
+  useEffect(() => {
+    if (isDemo) return;
+    trackEvent('InitiateCheckout', {
+      content_name: provider.businessName,
+      content_category: 'booking',
+      content_ids: [provider.slug],
+      value: selectedService?.price ? selectedService.price / 100 : undefined,
+      currency: selectedService?.price ? 'EUR' : undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-select member if only one available (for non-team or single member scenarios)
   useEffect(() => {
