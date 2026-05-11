@@ -18,7 +18,7 @@ export default function ConfidentialitePage() {
       <main className="min-h-screen bg-white">
         <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
           <h1 className="mb-8 text-3xl font-bold text-gray-900">Politique de confidentialité</h1>
-          <p className="mb-8 text-sm text-gray-500">Dernière mise à jour : 9 février 2026</p>
+          <p className="mb-8 text-sm text-gray-500">Dernière mise à jour : 11 mai 2026</p>
 
           <div className="space-y-8 text-gray-700 leading-relaxed">
             <section>
@@ -82,12 +82,30 @@ export default function ConfidentialitePage() {
               <p>Vos données peuvent être transmises aux sous-traitants suivants, dans le strict cadre des finalités décrites :</p>
               <ul className="mt-2 list-disc pl-6 space-y-1">
                 <li><strong>Google Firebase</strong> (Google Cloud Platform) : hébergement et base de données (UE - europe-west1)</li>
-                <li><strong>Vercel Inc.</strong> : hébergement du site web</li>
+                <li><strong>Vercel Inc.</strong> : hébergement du site web, statistiques d&apos;audience agrégées (Vercel Analytics) et indicateurs de performance (Speed Insights) sans cookie publicitaire</li>
                 <li><strong>Stripe Inc.</strong> : traitement des paiements par carte bancaire</li>
+                <li><strong>RevenueCat</strong> : gestion des abonnements achetés via l&apos;App Store et le Google Play Store</li>
                 <li><strong>Resend</strong> : envoi des emails transactionnels (confirmations, rappels)</li>
                 <li><strong>Expo (EAS)</strong> : envoi des notifications push mobiles</li>
+                <li><strong>Microsoft Clarity</strong> : analyse anonymisée des parcours utilisateurs sur le site (avec anonymisation d&apos;adresse IP et de saisies clavier)</li>
+                <li>
+                  <strong>Meta Platforms Ireland Ltd.</strong> (Facebook / Instagram) : mesure de l&apos;efficacité des
+                  campagnes publicitaires et création d&apos;audiences similaires. Les données transmises sont
+                  <strong> hashées (SHA-256)</strong> côté client avant envoi : adresse email, identifiant utilisateur,
+                  nom, téléphone et ville. Sur mobile, l&apos;identifiant publicitaire de l&apos;appareil (IDFA sur iOS,
+                  AAID sur Android) est également transmis, <em>uniquement</em> si vous y avez consenti via le
+                  système d&apos;App Tracking Transparency d&apos;Apple ou la bannière de consentement Android.
+                  Les évènements de conversion (inscription, achat, abonnement) sont également transmis via
+                  l&apos;<em>API Conversions</em> de Meta côté serveur. Ce traitement est gouverné par la
+                  <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline"> politique de confidentialité de Meta</a>.
+                </li>
               </ul>
-              <p className="mt-2">Aucune donnée n&apos;est vendue ou cédée à des tiers à des fins commerciales ou publicitaires.</p>
+              <p className="mt-2">
+                Le partage de données avec Meta est conditionné à votre <strong>consentement explicite</strong> :
+                bannière de cookies sur le site web (vous pouvez refuser à tout moment), prompt iOS
+                « Autoriser le suivi » sur l&apos;application mobile. Aucune donnée n&apos;est vendue ou cédée à
+                des tiers à d&apos;autres fins que celles décrites ci-dessus.
+              </p>
             </section>
 
             <section>
@@ -100,12 +118,39 @@ export default function ConfidentialitePage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-xl font-semibold text-gray-900">7. Cookies</h2>
-              <p>Le site utilise uniquement des cookies strictement nécessaires au fonctionnement du service (authentification, session). Aucun cookie publicitaire ou de suivi tiers n&apos;est utilisé.</p>
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">7. Cookies et traceurs</h2>
+              <p>Le site utilise deux catégories de cookies et traceurs :</p>
+              <h3 className="mt-3 mb-1 font-semibold text-gray-900">Cookies strictement nécessaires</h3>
+              <p>Authentification, session, préférences de l&apos;utilisateur, mémoire du choix de consentement. Ces cookies sont indispensables au fonctionnement du service et ne nécessitent pas votre consentement préalable.</p>
+              <h3 className="mt-3 mb-1 font-semibold text-gray-900">Cookies de mesure publicitaire (Meta Pixel)</h3>
+              <p>Soumis à votre <strong>consentement explicite</strong> via la bannière de cookies affichée à votre première visite. Le Pixel Meta dépose le cookie <code>_fbp</code> et, si vous arrivez via une publicité, le cookie <code>_fbc</code>. Ces cookies permettent à Meta de mesurer l&apos;efficacité de nos campagnes publicitaires et de constituer des audiences similaires. Vous pouvez retirer votre consentement à tout moment en supprimant les cookies dans votre navigateur ou en nous écrivant à <a href="mailto:contact@opatam.com" className="text-indigo-600 hover:underline">contact@opatam.com</a>.</p>
+              <h3 className="mt-3 mb-1 font-semibold text-gray-900">Statistiques d&apos;audience anonymisées</h3>
+              <p>Vercel Analytics, Vercel Speed Insights et Microsoft Clarity collectent des données agrégées (pages vues, temps de chargement, parcours utilisateurs anonymisés) sans cookie publicitaire et avec anonymisation IP. Ces traceurs respectent les critères CNIL d&apos;exemption de consentement.</p>
             </section>
 
             <section>
-              <h2 className="mb-3 text-xl font-semibold text-gray-900">8. Vos droits (RGPD)</h2>
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">8. Application mobile — App Tracking Transparency</h2>
+              <p>
+                Sur iOS, conformément aux exigences d&apos;Apple, une demande d&apos;autorisation
+                <em> « App Tracking Transparency » </em>vous est présentée à la première utilisation de
+                l&apos;application Opatam après votre inscription. Cette demande concerne uniquement
+                l&apos;accès à l&apos;identifiant publicitaire de votre appareil (IDFA), utilisé pour mesurer
+                l&apos;efficacité de nos campagnes publicitaires sur les plateformes de Meta.
+              </p>
+              <p className="mt-2">
+                <strong>Refuser n&apos;a aucun impact sur le fonctionnement de l&apos;application.</strong>
+                Vous pouvez modifier votre choix à tout moment dans <em>Réglages iOS → Confidentialité
+                et sécurité → Suivi → Opatam</em>.
+              </p>
+              <p className="mt-2">
+                Sur Android, le même principe s&apos;applique via les paramètres système
+                <em> « Paramètres → Confidentialité → Annonces »</em> où vous pouvez désactiver
+                l&apos;identifiant publicitaire (AAID).
+              </p>
+            </section>
+
+            <section>
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">9. Vos droits (RGPD)</h2>
               <p>Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez des droits suivants :</p>
               <ul className="mt-2 list-disc pl-6 space-y-1">
                 <li><strong>Droit d&apos;accès :</strong> obtenir une copie de vos données personnelles</li>
@@ -120,17 +165,17 @@ export default function ConfidentialitePage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-xl font-semibold text-gray-900">9. Sécurité</h2>
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">10. Sécurité</h2>
               <p>Nous mettons en oeuvre les mesures techniques et organisationnelles appropriées pour protéger vos données : chiffrement des communications (HTTPS/TLS), authentification sécurisée via Firebase Auth, accès restreint aux données, et paiements sécurisés via Stripe (certifié PCI-DSS).</p>
             </section>
 
             <section>
-              <h2 className="mb-3 text-xl font-semibold text-gray-900">10. Modifications</h2>
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">11. Modifications</h2>
               <p>Nous nous réservons le droit de modifier la présente politique de confidentialité. Toute modification sera publiée sur cette page avec la date de mise à jour. En cas de modification substantielle, les utilisateurs seront informés par email.</p>
             </section>
 
             <section>
-              <h2 className="mb-3 text-xl font-semibold text-gray-900">11. Contact</h2>
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">12. Contact</h2>
               <p>Pour toute question relative à la protection de vos données personnelles :</p>
               <ul className="mt-2 list-none space-y-1">
                 <li>Email : <a href="mailto:contact@opatam.com" className="text-indigo-600 hover:underline">contact@opatam.com</a></li>
