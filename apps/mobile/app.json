@@ -129,7 +129,20 @@
           "enableGooglePay": true
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "1684425662573536",
+          "clientToken": "e95d84506efebcda36c7dfdcd8820a49",
+          "displayName": "Opatam",
+          "scheme": "fb1684425662573536",
+          "advertiserIDCollectionEnabled": true,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true,
+          "iosUserTrackingPermission": "Cette autorisation permet à Opatam de mesurer l'efficacité de ses campagnes publicitaires. Refuser n'a aucun impact sur le fonctionnement de l'application."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

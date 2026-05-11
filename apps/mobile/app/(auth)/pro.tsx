@@ -37,6 +37,7 @@ import {
   schedulingService,
 } from '@booking-app/firebase';
 import { CATEGORIES, DAYS_OF_WEEK, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared/constants';
+import { trackEvent } from '../../lib/metaSdk';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -390,6 +391,10 @@ export default function ProRegisterScreen() {
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
     ]).start();
+    // Meta SDK: top-of-funnel signal — the pro started the
+    // pro-signup wizard. Mirrors the `Lead` event the web fires on
+    // /register so Meta sees one consolidated funnel.
+    trackEvent('Lead', { contentName: 'pro-register-wizard' });
   }, []);
 
   // Step transition animation
@@ -721,6 +726,13 @@ export default function ProRegisterScreen() {
       );
 
       await authService.logout();
+
+      // Meta SDK: signal the completed registration. Same event
+      // name & semantics as the web /register flow, so the Meta
+      // dashboard sees a single funnel across surfaces.
+      trackEvent('CompleteRegistration', {
+        contentCategory: 'pro',
+      });
 
       showToast({
         variant: 'success',
