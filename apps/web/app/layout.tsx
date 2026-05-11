@@ -69,7 +69,23 @@ export default function RootLayout({
         <meta name="apple-itunes-app" content="app-id=6759246218" />
       </head>
       <body className="antialiased">
-        <Providers>{children as ReactNode}</Providers>
+        <Providers>
+          {children as ReactNode}
+          {/* ── Consented analytics ───────────────────────────────
+              Meta Pixel drops the `_fbp` cookie and shares hits
+              with Facebook, so it's gated behind the consent
+              banner. Lives INSIDE <Providers> because it consumes
+              useAuth() for Advanced Matching (hashed email/UID
+              forwarded to Meta on login). Wrapped in a Suspense
+              boundary because <MetaPixel> also uses
+              useSearchParams() to fire PageView on route changes
+              — App Router requires this for static-prerender
+              paths to stay opt-in. */}
+          <Suspense fallback={null}>
+            <MetaPixel />
+          </Suspense>
+          <ConsentBanner />
+        </Providers>
         {/* ── Analytics ─────────────────────────────────────────────
             - Vercel Analytics: page-view counts + top pages /
               referrers / countries. Auto-enabled on Vercel deploys.
@@ -82,17 +98,6 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <ClarityScript />
-        {/* ── Consented analytics ───────────────────────────────────
-            Meta Pixel drops the `_fbp` cookie and shares hits with
-            Facebook, so it's gated behind the consent banner.
-            Wrapped in a Suspense boundary because <MetaPixel>
-            consumes useSearchParams() to fire PageView on route
-            changes — App Router requires this for static-prerender
-            paths to stay opt-in. */}
-        <Suspense fallback={null}>
-          <MetaPixel />
-        </Suspense>
-        <ConsentBanner />
       </body>
     </html>
   );
