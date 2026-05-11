@@ -32,6 +32,7 @@ import {
   memberService,
 } from '@booking-app/firebase';
 import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared';
+import { trackEvent } from '@/lib/meta-pixel';
 
 // Storage key for localStorage
 const STORAGE_KEY = 'opatam-register-wizard';
@@ -159,6 +160,14 @@ export default function RegisterPage() {
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<WizardData>(DEFAULT_DATA);
+
+  // Fire a `Lead` event on first mount — Meta uses this to model
+  // the top-of-funnel pool for ad audiences. The pixel itself is
+  // gated on consent, so calling here is safe even if the user
+  // hasn't accepted yet (the helper no-ops).
+  useEffect(() => {
+    trackEvent('Lead', { content_name: 'register-wizard' });
+  }, []);
 
   // Read ?ref= from URL and verify the code
   useEffect(() => {
@@ -522,6 +531,14 @@ export default function RegisterPage() {
 
       localStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem('register-step');
+
+      // Pixel: signal a completed registration. The `content_category`
+      // helps differentiate this from any future B2C registration
+      // event we might add. Meta uses this as the main top-of-funnel
+      // conversion for ad optimisation.
+      trackEvent('CompleteRegistration', {
+        content_category: 'pro',
+      });
 
       // Redirect to login with success message
       router.push('/login?registered=true');

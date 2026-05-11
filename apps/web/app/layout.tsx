@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { Suspense } from 'react';
 import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -7,6 +8,8 @@ import './globals.css';
 import { Providers } from './providers';
 import { APP_CONFIG } from '@booking-app/shared';
 import { ClarityScript } from '@/components/analytics/ClarityScript';
+import { MetaPixel } from '@/components/analytics/MetaPixel';
+import { ConsentBanner } from '@/components/analytics/ConsentBanner';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -71,14 +74,25 @@ export default function RootLayout({
             - Vercel Analytics: page-view counts + top pages /
               referrers / countries. Auto-enabled on Vercel deploys.
             - Vercel Speed Insights: Core Web Vitals from real users.
-            - Microsoft Clarity: heatmaps + session recordings.
-              Renders nothing unless NEXT_PUBLIC_CLARITY_PROJECT_ID
-              is set, so local dev stays clean.
-            All three are no-cookie / privacy-friendly so we don't
-            need a consent banner. */}
+            - Microsoft Clarity: heatmaps + session recordings with
+              IP anonymisation.
+            All three are no-cookie / aggregate-only and don't
+            require explicit consent — they stay outside the
+            <ConsentBanner> gate. */}
         <Analytics />
         <SpeedInsights />
         <ClarityScript />
+        {/* ── Consented analytics ───────────────────────────────────
+            Meta Pixel drops the `_fbp` cookie and shares hits with
+            Facebook, so it's gated behind the consent banner.
+            Wrapped in a Suspense boundary because <MetaPixel>
+            consumes useSearchParams() to fire PageView on route
+            changes — App Router requires this for static-prerender
+            paths to stay opt-in. */}
+        <Suspense fallback={null}>
+          <MetaPixel />
+        </Suspense>
+        <ConsentBanner />
       </body>
     </html>
   );
