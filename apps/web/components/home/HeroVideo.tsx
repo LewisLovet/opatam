@@ -204,8 +204,11 @@ export function HeroVideo({
   }
 
   // Default panel variant — card with shadow + floating animation.
+  // The max-width scales aggressively at lg/xl so vertical landings
+  // give the hero video real presence on large screens (~ +60 % at
+  // xl vs the homepage default). The 16:9 aspect ratio is preserved.
   return (
-    <div className="relative mx-auto max-w-lg animate-float">
+    <div className="relative mx-auto max-w-lg lg:max-w-xl xl:max-w-3xl animate-float">
       <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 aspect-video bg-gray-900 hover:shadow-3xl transition-shadow duration-500">
         <HeroVideoLoader tagline={loaderTagline} />
         {videoElement}

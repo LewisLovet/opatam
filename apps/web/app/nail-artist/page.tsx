@@ -9,6 +9,7 @@ import { HeroVideo } from '@/components/home/HeroVideo';
 import { articleRepository, landingGalleryRepository } from '@booking-app/firebase';
 import { ArticleCard, type ArticleCardData } from '@/app/blog/components/ArticleCard';
 import { TutorialsCarousel } from '@/components/home/TutorialsCarousel';
+import { AppStoreBadges } from '@/components/common/AppStoreBadges';
 import { CamBeautyBookingButton } from './CamBeautyBookingButton';
 import type { LandingGalleryItem } from '@booking-app/shared';
 
@@ -267,9 +268,9 @@ export default async function NailArtistPage() {
             doesn't feel like a 50/50 SaaS template. H1 carries the SEO
             keyword verbatim. No gradient — just cream + ink. */}
         <section className="border-b border-stone-200">
-          <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 pt-14 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28">
-            <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
-              <div className="lg:col-span-7">
+          <div className="mx-auto max-w-7xl xl:max-w-[96rem] px-6 sm:px-8 lg:px-12 pt-14 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28">
+            <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 xl:gap-12 items-center">
+              <div className="lg:col-span-7 xl:col-span-5">
                 <p className="text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-stone-500 mb-7">
                   Pour les nail artists &amp; prothésistes ongulaires
                 </p>
@@ -303,7 +304,7 @@ export default async function NailArtistPage() {
                 </p>
               </div>
 
-              <div className="lg:col-span-5">
+              <div className="lg:col-span-5 xl:col-span-7">
                 <HeroVideo
                   variant="panel"
                   desktopSrc="/nail-hero.mp4"
@@ -866,6 +867,16 @@ export default async function NailArtistPage() {
               >
                 Voir les tarifs
               </Link>
+            </div>
+
+            {/* Mobile install path — shared component with the home
+                page, so badges, copy and the Play Store waitlist
+                modal stay consistent across the site. */}
+            <div className="mt-12 flex flex-col items-center gap-4">
+              <p className="text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-stone-500">
+                Aussi sur mobile
+              </p>
+              <AppStoreBadges />
             </div>
           </div>
         </section>
