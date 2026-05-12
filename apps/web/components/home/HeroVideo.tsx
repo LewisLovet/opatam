@@ -34,6 +34,20 @@ interface HeroVideoProps {
    *    used as the cinematic hero backdrop with text overlay.
    */
   variant?: 'panel' | 'background';
+  /**
+   * Desktop video source (landscape, 16:9). Defaults to the homepage
+   * hero — vertical landing pages (e.g. /nail-artist) override this.
+   */
+  desktopSrc?: string;
+  /**
+   * Mobile video source (portrait, 9:16). Defaults to the homepage
+   * portrait hero. When a landing page has no portrait shot, pass
+   * the same value as `desktopSrc` — the browser will letterbox.
+   */
+  mobileSrc?: string;
+  /** Optional tagline shown under the brand mark while the video
+   *  loads. Defaults to the homepage tagline. */
+  loaderTagline?: string;
 }
 
 /**
@@ -51,7 +65,7 @@ interface HeroVideoProps {
  *    the user sees a clean handoff; if it takes 2-3s, the splash
  *    looks intentional, like a brand intro.
  */
-function HeroVideoLoader() {
+function HeroVideoLoader({ tagline }: { tagline: string }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-950 via-[#0b0b1a] to-gray-950">
       {/* Slow-drifting primary glow — provides ambient motion to the
@@ -92,7 +106,7 @@ function HeroVideoLoader() {
 
         {/* Tagline — gives the frame purpose beyond "we're loading". */}
         <span className="text-white/60 text-xs sm:text-sm font-light tracking-wide max-w-xs text-center px-6">
-          La réservation en ligne, sans commission
+          {tagline}
         </span>
       </div>
     </div>
@@ -106,7 +120,12 @@ function HeroVideoLoader() {
  */
 const MOBILE_MEDIA_QUERY = '(max-width: 767px)';
 
-export function HeroVideo({ variant = 'panel' }: HeroVideoProps) {
+export function HeroVideo({
+  variant = 'panel',
+  desktopSrc = '/hero-loop.mp4',
+  mobileSrc = '/hero-mobile.mp4',
+  loaderTagline = 'La réservation en ligne, sans commission',
+}: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
@@ -140,7 +159,7 @@ export function HeroVideo({ variant = 'panel' }: HeroVideoProps) {
 
   // Source resolution. Desktop landscape (1280×720) vs mobile portrait
   // (720×1280) — same scene, framed for the device.
-  const videoSrc = isMobile ? '/hero-mobile.mp4' : '/hero-loop.mp4';
+  const videoSrc = isMobile ? mobileSrc : desktopSrc;
 
   // Reset readiness when the src flips so the splash briefly covers
   // the swap window (resize / orientation change) instead of showing
@@ -178,7 +197,7 @@ export function HeroVideo({ variant = 'panel' }: HeroVideoProps) {
       <>
         {/* Branded loader sits underneath. Stays in place; the video
             fades IN above it so the handoff is seamless. */}
-        <HeroVideoLoader />
+        <HeroVideoLoader tagline={loaderTagline} />
         {videoElement}
       </>
     );
@@ -188,7 +207,7 @@ export function HeroVideo({ variant = 'panel' }: HeroVideoProps) {
   return (
     <div className="relative mx-auto max-w-lg animate-float">
       <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 aspect-video bg-gray-900 hover:shadow-3xl transition-shadow duration-500">
-        <HeroVideoLoader />
+        <HeroVideoLoader tagline={loaderTagline} />
         {videoElement}
       </div>
     </div>

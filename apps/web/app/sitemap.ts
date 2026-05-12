@@ -37,6 +37,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.7,
     },
+    // Vertical landing pages — one per trade. Prioritised slightly
+    // below the homepage because they are conversion entry points
+    // for organic search on trade-specific keywords.
+    {
+      url: `${BASE_URL}/nail-artist`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
     // Blog category landing pages
     ...ARTICLE_CATEGORIES.map((cat) => ({
       url: `${BASE_URL}/blog/categorie/${cat}`,
