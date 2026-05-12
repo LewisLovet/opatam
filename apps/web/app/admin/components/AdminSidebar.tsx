@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   KeyRound,
   FileText,
+  Images,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -66,6 +67,7 @@ const navGroups: NavGroup[] = [
     label: 'Contenu',
     items: [
       { label: 'Blog', href: '/admin/articles', icon: <FileText className="w-5 h-5" /> },
+      { label: 'Galeries landings', href: '/admin/galleries', icon: <Images className="w-5 h-5" /> },
     ],
   },
 ];

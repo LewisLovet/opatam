@@ -72,8 +72,8 @@ export function ArticleCard({
   return (
     <Link
       href={`${hrefBase}/${article.slug}`}
-      className={`group block rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-xl hover:border-primary-200 dark:hover:border-primary-800 transition-all ${
-        featured ? 'sm:grid sm:grid-cols-2 sm:gap-0' : ''
+      className={`group rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-xl hover:border-primary-200 dark:hover:border-primary-800 transition-all ${
+        featured ? 'block sm:grid sm:grid-cols-2 sm:gap-0' : 'flex flex-col h-full'
       }`}
     >
       {/* Cover */}
@@ -110,7 +110,7 @@ export function ArticleCard({
       </div>
 
       {/* Content */}
-      <div className={`p-5 ${featured ? 'sm:p-7 flex flex-col justify-center' : ''}`}>
+      <div className={`p-5 ${featured ? 'sm:p-7 flex flex-col justify-center' : 'flex-1 flex flex-col'}`}>
         {/* Category pill + optional "Nouveau" pill on the same row.
             Both share the same uppercase-caption visual treatment so
             they read as siblings rather than the freshness badge
@@ -142,7 +142,7 @@ export function ArticleCard({
         >
           {article.excerpt}
         </p>
-        <div className="mt-4 flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
+        <div className="mt-auto pt-4 flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
           <span>
             {article.authorName} · {formatDate(article.publishedAt)}
           </span>

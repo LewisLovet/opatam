@@ -115,21 +115,28 @@ export function TutorialsCarousel({ tutorials }: Props) {
 
   return (
     <div className="sm:hidden">
-      {/* Horizontal scroll track. `overscroll-x-contain` keeps the
-          page from bouncing horizontally when the user swipes past
-          the last card on iOS. */}
+      {/* Horizontal scroll track.
+          - `basis-[82%]` + `snap-center` gives a "1.5-card peek": the
+            active card sits centered in the viewport with ~9 % of the
+            previous AND next card visible on each side, signalling
+            there's more to swipe through.
+          - `px-5` + `gap-3` add breathing room between the card edges
+            and the screen, so the carousel doesn't feel claustrophobic
+            on phones with tight gutters.
+          - `overscroll-x-contain` prevents iOS from bouncing the whole
+            page horizontally when the user swipes past the last card. */}
       <div
         ref={trackRef}
         onScroll={onTrackScroll}
         onTouchStart={bumpPause}
         onPointerDown={bumpPause}
-        className="-mx-4 flex overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain px-5 pb-2 gap-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {tutorials.map((t) => (
           <div
             key={t.slug}
             data-carousel-card
-            className="snap-center shrink-0 basis-full pr-4 last:pr-0"
+            className="snap-center shrink-0 basis-[82%]"
           >
             <ArticleCard article={t} />
           </div>

@@ -195,6 +195,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // === LANDING GALLERIES ===
+    //
+    // One doc per vertical landing (id = slug, e.g. `nail-artist`),
+    // holds the ordered image list shown in the "Vos créations"
+    // marquee. Public read because the landings are public-facing.
+    // Writes are restricted to authenticated admins — actual
+    // admin authority is enforced by the AdminGuard React component
+    // wrapping /admin/galleries; here we just block anonymous writes.
+    match /landingGalleries/{slug} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
     // === PAGE VIEWS DAILY (read-only by provider, written by Cloud Function) ===
     //
     // Daily counts of vitrine views, populated by the

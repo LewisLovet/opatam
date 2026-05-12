@@ -1,43 +1,42 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
-import {
-  ArrowRight,
-  Calendar,
-  CalendarCheck,
-  Camera,
-  Check,
-  Instagram,
-  Lock,
-  MapPin,
-  MessageSquare,
-  Sparkles,
-  X,
-  Zap,
-} from 'lucide-react';
+import Script from 'next/script';
+import { ArrowRight, ArrowUpRight, Check, GraduationCap, Minus } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { HeroVideo } from '@/components/home/HeroVideo';
+import { articleRepository, landingGalleryRepository } from '@booking-app/firebase';
+import { ArticleCard, type ArticleCardData } from '@/app/blog/components/ArticleCard';
+import { TutorialsCarousel } from '@/components/home/TutorialsCarousel';
+import { CamBeautyBookingButton } from './CamBeautyBookingButton';
+import type { LandingGalleryItem } from '@booking-app/shared';
 
 // ---------------------------------------------------------------------------
 // /nail-artist — vertical landing for nail artists / prothésistes ongulaires
 // ---------------------------------------------------------------------------
 //
-// SEO strategy: target the keyword `application rendez-vous nail art` as
-// the primary, with the H1 + title + meta description anchored on it.
-// Secondaries (`agenda nail artist`, `logiciel onglerie`, `prothésiste
-// ongulaire`) are woven into the body so the page covers both the modern-
-// indé persona and the formal-salon persona without duplicating content.
+// Design direction: warm-cream editorial, NOT the candy-coated pink-and-
+// purple SaaS template you've seen 1000 times. The audience (independent
+// nail artists, often Instagram-native, 22-40 yo, taste-conscious) reacts
+// poorly to "girly tech" and rewards typographic confidence + restraint.
 //
-// This is the first page of an upcoming vertical-landing system (one per
-// trade). Each vertical gets its OWN page with structurally different
-// content — no shared template — to avoid Google's "doorway pages"
-// penalty. We extract reusable bits (Hero pattern, FAQ format) only after
-// 3-4 verticals land and patterns emerge.
+// Palette is locked to:
+//   - Cream background  #FAF6F0 (bg-stone-50 with a warm shift)
+//   - Warm near-black   #18120E (stone-900)
+//   - Brand violet      #7C3AED (primary-600 — used as accent only, never
+//                                as a flood)
+//   - Subtle border     stone-200
+// No pink, no gradient overlays. Hierarchy comes from typography size +
+// generous whitespace, not from color drama.
 //
-// Video assets are passed in via HeroVideo props. Drop the nail-specific
-// files at /public/nail-hero.mp4 (16:9) and /public/nail-hero-mobile.mp4
-// (9:16) — until those exist, the component falls back to broken video,
-// so the launch checklist is: upload assets ➜ deploy.
+// SEO: H1 carries the primary keyword "application de rendez-vous nail
+// art" verbatim. Secondaries (`prothésiste ongulaire`, `agenda nail
+// artist`, `logiciel onglerie`) are layered in across H2/body/FAQ.
+//
+// Video assets: drop /public/nail-hero.mp4 (16:9) and
+// /public/nail-hero-mobile.mp4 (9:16) before launch — the HeroVideo
+// component otherwise serves a branded splash without playback.
 // ---------------------------------------------------------------------------
 
 export const metadata: Metadata = {
@@ -46,9 +45,9 @@ export const metadata: Metadata = {
     "Le logiciel de réservation pensé pour les nail artists et prothésistes ongulaires. Acomptes anti-no-show, lien Instagram, agenda mobile, 0 % commission. Essai gratuit 30 jours.",
   alternates: { canonical: 'https://opatam.com/nail-artist' },
   openGraph: {
-    title: "Application de rendez-vous nail art — Opatam",
+    title: 'Application de rendez-vous nail art — Opatam',
     description:
-      "Centralisez vos réservations, encaissez vos acomptes et finissez-en avec les DM Instagram à 22h. Le logiciel pensé pour les nail artists indépendantes.",
+      'Centralisez vos réservations, encaissez vos acomptes et finissez-en avec les DM Instagram à 22h. Le logiciel pensé pour les nail artists indépendantes.',
     url: 'https://opatam.com/nail-artist',
     type: 'website',
     images: [
@@ -62,96 +61,176 @@ export const metadata: Metadata = {
   },
 };
 
-// Pain points specific to nail artists — derived from real user
-// research on /p/* nail artists in the existing user base.
+// Three narrative pain points — written as small stories rather than
+// generic feature bullets. Each pairs a "before" with the resulting
+// cost (lost revenue, wasted time, missed clients). No icons here —
+// the typographic hierarchy alone carries the section.
 const painPoints = [
   {
-    icon: Instagram,
-    title: 'Vous gérez vos RDV en DM Instagram',
+    label: '01',
+    title: 'Le planning vit dans vos DM',
     body:
-      "Vingt messages à 22h, des créneaux qui se chevauchent, des clientes qu'on perd parce qu'on a tardé à répondre. Vos DM sont devenus un deuxième planning — sauf qu'il n'est pas fiable.",
+      "Vingt messages à 22h, des « tu peux mardi à 14h ? » qui chevauchent, des clientes qu'on perd parce qu'on a tardé à répondre. Vous êtes nail artist, pas community manager.",
   },
   {
-    icon: X,
-    title: 'Trois no-shows par mois, c\'est 200 € envolés',
+    label: '02',
+    title: 'Les no-shows coûtent une fortune',
     body:
-      "Une pose complète, c'est 1h30 à 3h. Une cliente qui ne vient pas, c'est tout un créneau perdu — plus le matériel préparé. Sans acompte, vous payez les annulations à sa place.",
+      "Une pose complète, c'est 1h30 à 3h, plus le matériel préparé, plus le créneau qu'une autre cliente aurait pu prendre. Trois absences par mois et c'est 200 € qui s'envolent — sans compter le moral.",
   },
   {
-    icon: MapPin,
-    title: 'À domicile, en salon, chez les clientes',
+    label: '03',
+    title: "L'agenda papier ne tient plus la charge",
     body:
-      "Vous travaillez sur plusieurs lieux. Vos horaires changent selon les jours. Un agenda papier ou Google Calendar ne tient pas la charge — vous oubliez des RDV, vous doublez d'autres.",
+      "Vous travaillez en salon, à domicile, en déplacement chez les clientes. Vos horaires bougent. Un cahier ou Google Calendar oublient des RDV, en doublent d'autres. Le mois est plus court que ce qu'il devrait être.",
   },
 ];
 
-// Concrete features, each tied to a pain point above. Order is
-// deliberate: we lead with the Instagram link (highest emotional
-// resonance for the persona) and end with the multi-location.
-const features = [
+// Four "moments" of the nail artist's day, each tied to one Opatam
+// capability. Story-first phrasing (verb-led, present tense) rather
+// than feature-list phrasing. 2x2 grid means perfect balance.
+const moments = [
   {
-    icon: Instagram,
-    title: 'Un lien de réservation Instagram',
+    when: 'Votre matin',
+    title: 'Vous dormez. Vos clientes réservent.',
     body:
-      "Mettez votre lien Opatam dans votre bio Instagram. Vos clientes réservent en 30 secondes depuis leur téléphone, sans créer de compte, sans passer par les DM. Vous récupérez leurs coordonnées propres dans votre fiche client.",
+      "Votre lien de réservation vit dans votre bio Instagram, dans votre QR code en cabine, dans votre signature email. Vos clientes choisissent leur créneau à 7h, à minuit, à n'importe quelle heure — sans compte à créer, sans passer par vos DM.",
   },
   {
-    icon: Lock,
-    title: 'Acomptes intégrés contre les no-shows',
+    when: 'En pose',
+    title: 'Vous êtes en train de poser. Le RDV est déjà payé.',
     body:
-      "Avec l'option Sérénité, vous demandez un acompte au moment de la réservation. La cliente paie en CB depuis votre lien de réservation. Si elle ne vient pas, vous gardez l'acompte. Magie : les no-shows chutent de 60 à 80 % en moyenne.",
+      "Avec l'option Sérénité, vous demandez un acompte au moment de la réservation. La cliente paie par carte directement depuis votre lien. Si elle ne vient pas, vous gardez l'acompte. Les no-shows chutent de 60 à 80 % en moyenne.",
   },
   {
-    icon: CalendarCheck,
-    title: 'Rappels automatiques 24h et 2h avant',
+    when: 'Entre deux lieux',
+    title: "Vous changez d'adresse. L'agenda suit.",
     body:
-      "Vos clientes reçoivent une confirmation immédiate par email, puis un rappel 24h avant et un dernier 2h avant. Plus besoin de relancer manuellement. Vous économisez 30 minutes par jour de SMS de rappel.",
+      "Salon le mardi, à domicile le mercredi, chez Pauline jeudi à 16h ? Configurez vos lieux, vos horaires par lieu, vos prestations disponibles ou non selon où vous êtes. Tout se gère depuis l'app mobile entre deux poses.",
   },
   {
-    icon: MapPin,
-    title: 'Multi-lieux, agenda mobile, mode itinérant',
+    when: 'La veille du RDV',
+    title: 'Vous oubliez de relancer. Opatam le fait pour vous.',
     body:
-      "Renseignez vos différents lieux d'exercice (salon, à domicile, déplacement chez la cliente). Vos créneaux s'adaptent automatiquement. L'application iOS et Android vous permet de tout gérer depuis votre poche, entre deux RDV.",
-  },
-  {
-    icon: Camera,
-    title: 'Portfolio Instagram intégré dans votre fiche',
-    body:
-      "Votre page publique Opatam affiche votre portfolio (poses, nail art, demi-bras, etc.) avec vos prestations et tarifs. Vos clientes voient vos créations, choisissent leur prestation et réservent — dans la même fenêtre.",
+      "Confirmation immédiate à la réservation, rappel automatique 24h avant, dernier rappel 2h avant. Vos clientes ne disent plus jamais « ah merde, j'avais oublié ». Vous économisez 30 minutes de SMS par jour.",
   },
 ];
 
-// Trade-specific FAQ. Each item answers an objection we've heard from
-// nail artists on signup calls — keep it specific, no generic SaaS
-// answers.
+// FAQ — trade-specific objections we've heard from real nail artists
+// during onboarding calls. Each answer ends with a concrete number or
+// outcome rather than a generic reassurance.
 const faqItems = [
   {
-    q: 'Est-ce que mes clientes peuvent réserver depuis leur téléphone sans créer de compte ?',
+    q: 'Mes clientes peuvent réserver depuis leur téléphone sans créer de compte ?',
     a: "Oui — c'est l'un des choix forts d'Opatam. Vos clientes cliquent sur votre lien (Instagram, SMS, QR code en boutique), choisissent leur prestation et leur créneau, renseignent juste leur prénom, email et numéro. Aucun mot de passe, aucun compte. Tout se passe sur leur téléphone, en moins d'une minute.",
   },
   {
     q: 'Comment je récupère mes clientes qui réservaient en DM Instagram avant ?',
-    a: "On a prévu plusieurs canaux : le lien Opatam dans votre bio Instagram, un QR code à afficher en boutique, et la possibilité de partager votre lien personnalisé en réponse automatique aux DM avec un message du type « Tu peux réserver directement ici ». Vos clientes habituées prennent le pli en deux semaines.",
+    a: "Le lien Opatam va dans votre bio Instagram, un QR code dans votre salon, et vous pouvez automatiser une réponse type aux DM avec « tu peux réserver ici directement ». Vos clientes habituées prennent le pli en deux semaines.",
   },
   {
-    q: 'Combien je dois fixer comme acompte ?',
-    a: "Vous choisissez librement. Sur Opatam, la plupart des nail artists demandent entre 10 € et 30 % du prix de la prestation. L'acompte est encaissé par CB au moment de la réservation, déduit du total à payer en cabine, et conservé si la cliente ne vient pas. C'est légal, transparent (vos clientes voient le montant avant de confirmer), et ça réduit drastiquement les no-shows.",
+    q: 'Combien fixer comme acompte ?',
+    a: "Vous choisissez. Sur Opatam, la plupart des nail artists demandent entre 10 € et 30 % du prix de la prestation. L'acompte est encaissé par carte à la réservation, déduit du total à payer en cabine, et conservé si la cliente ne vient pas. C'est légal, transparent (vos clientes voient le montant avant de confirmer), et ça réduit drastiquement les no-shows.",
   },
   {
-    q: "Ça marche pour une nail artist à domicile ou itinérante ?",
-    a: "Très bien. Vous pouvez configurer plusieurs lieux (votre salon, votre domicile, le domicile des clientes pour un déplacement), et chaque prestation peut être proposée sur un ou plusieurs lieux. Les clientes voient les options disponibles. Vous gérez tout depuis l'app mobile entre deux poses.",
+    q: 'Ça marche si je suis à domicile ou itinérante ?',
+    a: "Très bien. Configurez plusieurs lieux (salon, domicile, déplacement chez la cliente). Chaque prestation peut être proposée sur un ou plusieurs lieux. Les clientes voient ce qui est dispo selon là où vous êtes. Vous gérez tout depuis l'app mobile entre deux poses.",
   },
   {
-    q: 'Vous prenez combien de commission sur mes réservations ?',
-    a: "Zéro. Opatam est un abonnement mensuel ou annuel fixe (19,90 €/mois en formule Pro, ou 199 €/an), sans aucun pourcentage prélevé sur vos prestations. Contrairement à Treatwell ou aux marketplaces, ce que la cliente paie va directement chez vous. Les acomptes sont encaissés via Stripe — vous touchez l'intégralité du montant moins les frais bancaires Stripe (~1,4 % + 0,25 €).",
+    q: 'Vous prenez combien de commission ?',
+    a: "Zéro. Opatam est un abonnement mensuel ou annuel fixe (19,90 €/mois en Pro, ou 199 €/an), sans pourcentage prélevé sur vos prestations. Contrairement à Treatwell, ce que la cliente paie va directement chez vous. Les acomptes transitent par Stripe — vous touchez l'intégralité moins les frais bancaires (~1,4 % + 0,25 €).",
   },
   {
-    q: "Combien de temps pour configurer mon agenda nail art ?",
-    a: "Cinq à dix minutes pour publier votre page de réservation. Vous créez vos prestations (pose complète, remplissage, nail art, etc.) avec leurs durées et tarifs, vous définissez vos horaires d'ouverture, vous activez le lien — c'est en ligne. Vous pouvez ensuite affiner (acomptes, multi-lieux, équipe) à votre rythme.",
+    q: 'Combien de temps pour configurer mon agenda nail art ?',
+    a: "Cinq à dix minutes pour publier votre page de réservation. Vous créez vos prestations (pose complète, remplissage, nail art, etc.) avec durée et tarif, vous définissez vos horaires, vous activez le lien — c'est en ligne. Vous affinez (acomptes, multi-lieux) à votre rythme.",
   },
 ];
 
-export default function NailArtistPage() {
+/**
+ * Gallery management — see the "Vos créations" marquee further down.
+ *
+ * Source of truth: Firestore document `landingGalleries/nail-artist`,
+ * edited through the admin UI at /admin/galleries/nail-artist. Items
+ * carry { id, src, alt, order } — `src` can be a Firebase Storage
+ * download URL OR any external HTTPS URL (provider portfolio shot,
+ * CDN, etc.). The admin handles uploads to
+ * `landing/galleries/nail-artist/{uuid}.jpg` and URL pasting in the
+ * same screen.
+ *
+ * Fallback: when the Firestore doc is empty or unreachable, the
+ * marquee renders 8 placeholder tiles in warm-grey gradients so the
+ * layout is always present. The page never ships a broken <Image>.
+ *
+ * To add new images: go to /admin/galleries/nail-artist, upload or
+ * paste URLs, save. No deploy needed.
+ */
+const PLACEHOLDER_GALLERY_LENGTH = 8;
+
+/** Four warm-grey gradient variants, cycled across the placeholder
+ *  tiles so they read as distinct shapes rather than a wall of one
+ *  colour. Stone-only on purpose — coloured placeholders compete
+ *  with the brand palette; warm greys stay out of the way until real
+ *  photos take over. */
+const PLACEHOLDER_TONES = [
+  'from-stone-200 to-stone-300',
+  'from-stone-300 to-stone-200',
+  'from-stone-100 to-stone-300',
+  'from-stone-300 to-stone-400',
+];
+
+// Marquee strip content — short, punchy value props that scroll
+// continuously below the hero. The DOM duplicates the list once so
+// the CSS translateX animation can loop seamlessly.
+const marqueeItems = [
+  '0 % de commission',
+  'Acomptes anti no-show',
+  'Lien Instagram dédié',
+  'Application iOS + Android',
+  'Rappels automatiques 24h + 2h',
+  'Multi-lieux et itinérance',
+  'Configuration en 5 minutes',
+  '30 jours d’essai gratuit',
+  'Sans engagement',
+];
+
+export default async function NailArtistPage() {
+  // Tutorials — same source as the homepage block. Tolerant: an empty
+  // list (no published tutorial, or Firestore unavailable) just hides
+  // the section, never breaks the page.
+  const tutorialDocs = await articleRepository
+    .getPublishedByCategory('tutoriels', 3)
+    .catch((err) => {
+      console.error('[nail-artist] tutorials fetch failed:', err);
+      return [];
+    });
+  const tutorials: ArticleCardData[] = tutorialDocs.map((a) => ({
+    slug: a.slug,
+    title: a.title,
+    excerpt: a.excerpt,
+    coverImageURL: a.coverImageURL,
+    category: a.category,
+    videoUrl: a.videoUrl,
+    videoCoverURL: a.videoCoverURL,
+    publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+    authorName: a.authorName,
+  }));
+
+  // Gallery — managed via /admin/galleries/nail-artist. When empty
+  // or unreachable, we render placeholder tiles instead. The fallback
+  // is intentional: the marquee section should never visually
+  // collapse, even if Firestore goes down.
+  const galleryDoc = await landingGalleryRepository
+    .getBySlug('nail-artist')
+    .catch((err: unknown) => {
+      console.error('[nail-artist] gallery fetch failed:', err);
+      return null;
+    });
+  const galleryItems: LandingGalleryItem[] = galleryDoc?.items ?? [];
+  const useGalleryPlaceholders = galleryItems.length === 0;
+  const galleryDisplayLength = useGalleryPlaceholders
+    ? PLACEHOLDER_GALLERY_LENGTH
+    : galleryItems.length;
+
   // FAQ schema for rich snippets in Google search results. Keep in
   // sync with the `faqItems` array above — Google penalises mismatch
   // between visible content and structured data.
@@ -175,64 +254,60 @@ export default function NailArtistPage() {
       '@type': 'Audience',
       audienceType: 'Nail artists et prothésistes ongulaires',
     },
-    offers: {
-      '@type': 'Offer',
-      price: '19.90',
-      priceCurrency: 'EUR',
-    },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.8',
-      reviewCount: '12',
-    },
+    offers: { '@type': 'Offer', price: '19.90', priceCurrency: 'EUR' },
+    aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.8', reviewCount: '12' },
   };
 
   return (
     <>
       <Header />
-      <main className="bg-white">
-        {/* ── HERO ─────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-purple-50 via-pink-50 to-white">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700 mb-6">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Pour les nail artists et prothésistes ongulaires
-                </div>
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
-                  L&apos;application de rendez-vous nail art conçue pour les indépendantes
-                </h1>
-                <p className="mt-5 text-lg sm:text-xl text-gray-600 leading-relaxed">
-                  Centralisez vos réservations, encaissez vos acomptes et finissez-en avec les
-                  DM Instagram à 22h. Opatam remplace votre agenda papier, vos relances no-show
-                  et votre lien Calendly bricolé — en une seule app, sans commission.
+      <main className="bg-[#FAF6F0] text-stone-900">
+        {/* ─── HERO ──────────────────────────────────────────────────
+            Asymmetric column split (text 7 / video 5 on desktop) so it
+            doesn't feel like a 50/50 SaaS template. H1 carries the SEO
+            keyword verbatim. No gradient — just cream + ink. */}
+        <section className="border-b border-stone-200">
+          <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 pt-14 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28">
+            <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+              <div className="lg:col-span-7">
+                <p className="text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-stone-500 mb-7">
+                  Pour les nail artists &amp; prothésistes ongulaires
                 </p>
-                <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] xl:text-6xl font-semibold leading-[1.05] tracking-tight text-stone-900">
+                  L&apos;application de rendez-vous nail art qui remplace vos
+                  <span className="text-primary-600"> DM Instagram</span>.
+                </h1>
+                <p className="mt-6 text-lg sm:text-xl leading-relaxed text-stone-600 max-w-2xl">
+                  Centralisez vos réservations, encaissez vos acomptes, et
+                  finissez-en avec les vingt messages à 22h pour caler un
+                  balayage. Une seule app, sans commission.
+                </p>
+                <div className="mt-9 flex flex-col sm:flex-row gap-3">
                   <Link
                     href="/inscription/pro"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 hover:bg-primary-700 px-6 py-3.5 text-white text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+                    className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary-900 hover:bg-primary-800 px-7 py-3.5 text-white text-[15px] font-medium transition-all"
                   >
-                    Créer mon agenda nail art gratuitement
-                    <ArrowRight className="w-4 h-4" />
+                    Créer mon agenda nail art
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                   <Link
                     href="/p/demo"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 px-6 py-3.5 text-gray-800 text-base font-medium transition-colors"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-transparent hover:bg-stone-100 px-7 py-3.5 text-stone-800 text-[15px] font-medium transition-colors"
                   >
                     Voir une démo
+                    <ArrowUpRight className="w-4 h-4" />
                   </Link>
                 </div>
-                <p className="mt-5 text-sm text-gray-500">
-                  Essai gratuit 30 jours · Sans carte bancaire · 0 % commission
+                <p className="mt-6 text-sm text-stone-500">
+                  Essai gratuit 30 jours · Sans carte bancaire · 0 % de commission
                 </p>
               </div>
 
-              <div className="relative">
+              <div className="lg:col-span-5">
                 <HeroVideo
                   variant="panel"
                   desktopSrc="/nail-hero.mp4"
-                  mobileSrc="/nail-hero-mobile.mp4"
+                  mobileSrc="/nail-hero.mp4"
                   loaderTagline="L'agenda nail art, pensé pour vous"
                 />
               </div>
@@ -240,213 +315,554 @@ export default function NailArtistPage() {
           </div>
         </section>
 
-        {/* ── PAIN POINTS ──────────────────────────────────────────── */}
-        <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
-          <div className="text-center max-w-2xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
-              Vos vraies douleurs au quotidien
-            </h2>
-            <p className="mt-4 text-base sm:text-lg text-gray-600">
-              On a écouté des dizaines de nail artists, à domicile, en salon ou itinérantes.
-              Voici ce qui leur fait perdre du temps et de l&apos;argent — et ce qu&apos;Opatam change.
-            </p>
-          </div>
-          <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {painPoints.map((p) => (
-              <div
-                key={p.title}
-                className="rounded-2xl border border-gray-200 bg-white p-6 hover:border-purple-200 hover:shadow-md transition-all"
-              >
-                <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-red-50 text-red-600 mb-4">
-                  <p.icon className="w-5 h-5" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">{p.title}</h3>
-                <p className="mt-2 text-sm text-gray-600 leading-relaxed">{p.body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── FEATURES ─────────────────────────────────────────────── */}
-        <section className="bg-gradient-to-b from-purple-50/40 to-white py-16 sm:py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
-                Comment Opatam vous aide concrètement
-              </h2>
-              <p className="mt-4 text-base sm:text-lg text-gray-600">
-                Une application de rendez-vous nail art pensée pour votre métier — pas un outil
-                générique qu&apos;on a vaguement adapté.
-              </p>
-            </div>
-            <div className="mt-12 grid md:grid-cols-2 gap-6">
-              {features.map((f) => (
-                <div
-                  key={f.title}
-                  className="rounded-2xl bg-white border border-gray-200 p-6 sm:p-7 hover:border-purple-300 hover:shadow-lg transition-all"
+        {/* ─── MARQUEE STRIP ─────────────────────────────────────────
+            Continuous horizontal scroll of value props. Sits just below
+            the hero as a "trust band" — adds movement to the page
+            without disrupting the editorial calm. Pauses on hover; the
+            whole strip freezes for prefers-reduced-motion users. */}
+        <section
+          aria-label="Avantages clés"
+          className="border-b border-stone-200 bg-primary-900 text-white overflow-hidden"
+        >
+          <div className="relative flex w-full overflow-hidden py-5">
+            {/* Edge fades so the items melt in/out instead of clipping
+                hard against the section border. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-primary-900 to-transparent z-10"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-primary-900 to-transparent z-10"
+            />
+            <div className="flex flex-nowrap whitespace-nowrap animate-marquee" style={{ width: 'max-content' }}>
+              {[...marqueeItems, ...marqueeItems].map((item, idx) => (
+                <span
+                  key={`${item}-${idx}`}
+                  className="flex items-center gap-3 px-8 text-sm sm:text-base font-medium tracking-wide text-white/90"
                 >
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 text-purple-700 mb-4">
-                    <f.icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{f.title}</h3>
-                  <p className="mt-2 text-sm sm:text-base text-gray-600 leading-relaxed">{f.body}</p>
-                </div>
+                  <span aria-hidden="true" className="text-white/40">·</span>
+                  {item}
+                </span>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ── COMPARATIF ───────────────────────────────────────────── */}
-        <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
-          <div className="text-center max-w-2xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
-              Opatam vs Planity vs Treatwell pour les nail artists
-            </h2>
-            <p className="mt-4 text-base sm:text-lg text-gray-600">
-              Vous hésitez entre les options du marché ? Voici ce qui change vraiment pour
-              vous.
-            </p>
-          </div>
-          <div className="mt-10 overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b-2 border-gray-200">
-                  <th className="text-left py-3 px-2 font-semibold text-gray-500"></th>
-                  <th className="text-left py-3 px-3 font-semibold text-purple-700">
-                    Opatam
-                  </th>
-                  <th className="text-left py-3 px-3 font-semibold text-gray-700">
-                    Planity
-                  </th>
-                  <th className="text-left py-3 px-3 font-semibold text-gray-700">
-                    Treatwell
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="text-gray-700">
-                <tr className="border-b border-gray-100">
-                  <td className="py-3 px-2 font-medium">Commission</td>
-                  <td className="py-3 px-3 text-purple-700 font-semibold">0 %</td>
-                  <td className="py-3 px-3">0 %</td>
-                  <td className="py-3 px-3 text-red-600">15 à 25 %</td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="py-3 px-2 font-medium">Acomptes intégrés</td>
-                  <td className="py-3 px-3 text-purple-700 font-semibold">Oui (Sérénité)</td>
-                  <td className="py-3 px-3">Limité</td>
-                  <td className="py-3 px-3">Oui</td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="py-3 px-2 font-medium">Mise en place</td>
-                  <td className="py-3 px-3 text-purple-700 font-semibold">5 min, en autonomie</td>
-                  <td className="py-3 px-3">Onboarding accompagné</td>
-                  <td className="py-3 px-3">Onboarding long</td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="py-3 px-2 font-medium">Pensé pour les indés</td>
-                  <td className="py-3 px-3 text-purple-700 font-semibold">Oui</td>
-                  <td className="py-3 px-3">Plutôt salons</td>
-                  <td className="py-3 px-3">Plutôt marketplace</td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="py-3 px-2 font-medium">Application mobile pro</td>
-                  <td className="py-3 px-3 text-purple-700 font-semibold">iOS + Android</td>
-                  <td className="py-3 px-3">iOS + Android</td>
-                  <td className="py-3 px-3">iOS + Android</td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="py-3 px-2 font-medium">Multi-lieux (salon + domicile)</td>
-                  <td className="py-3 px-3 text-purple-700 font-semibold">Oui</td>
-                  <td className="py-3 px-3">Limité</td>
-                  <td className="py-3 px-3">Limité</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-2 font-medium">Tarif indé</td>
-                  <td className="py-3 px-3 text-purple-700 font-semibold">19,90 €/mois</td>
-                  <td className="py-3 px-3">~ 49 €/mois</td>
-                  <td className="py-3 px-3">Variable + commissions</td>
-                </tr>
-              </tbody>
-            </table>
-            <p className="mt-4 text-xs text-gray-500 italic">
-              Tarifs publics observés en mai 2026. Treatwell prélève une commission par
-              réservation entrée via la marketplace.
+        {/* ─── MANIFESTO ─────────────────────────────────────────────
+            One bold line, full width, generous whitespace. The page's
+            "pause and breathe" moment between hero and arguments. */}
+        <section className="border-b border-stone-200">
+          <div className="mx-auto max-w-5xl px-6 sm:px-8 lg:px-12 py-20 sm:py-28">
+            <p className="text-2xl sm:text-3xl lg:text-4xl font-semibold leading-snug tracking-tight text-stone-900">
+              En 2026, vos rendez-vous ne devraient plus vivre dans vos DM.
+              <span className="text-stone-400"> Opatam les en sort, et vous redonne vos soirées.</span>
             </p>
           </div>
         </section>
 
-        {/* ── CTA MID ──────────────────────────────────────────────── */}
-        <section className="bg-gradient-to-br from-purple-600 to-pink-600 py-16">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-              Prête à reprendre le contrôle de votre agenda nail art ?
-            </h2>
-            <p className="mt-4 text-base sm:text-lg text-purple-100">
-              Essai gratuit 30 jours, sans carte bancaire. Vous gardez 100 % de vos
-              réservations. Configurez votre page en 5 minutes.
-            </p>
-            <Link
-              href="/inscription/pro"
-              className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl bg-white hover:bg-gray-100 px-8 py-4 text-purple-700 text-base font-semibold shadow-xl transition-colors"
-            >
-              Commencer mon essai gratuit
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </section>
-
-        {/* ── FAQ ──────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
-          <div className="text-center">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
-              Questions fréquentes — nail art &amp; onglerie
-            </h2>
-            <p className="mt-4 text-base sm:text-lg text-gray-600">
-              Les réponses aux objections qu&apos;on entend le plus.
-            </p>
-          </div>
-          <div className="mt-10 space-y-4">
-            {faqItems.map((item) => (
-              <details
-                key={item.q}
-                className="group rounded-2xl border border-gray-200 bg-white p-5 hover:border-purple-200 transition-colors"
-              >
-                <summary className="flex items-center justify-between cursor-pointer list-none">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 pr-4">
-                    {item.q}
-                  </h3>
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-lg group-open:rotate-45 transition-transform">
-                    +
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm sm:text-base text-gray-600 leading-relaxed">
-                  {item.a}
+        {/* ─── SOCIAL PROOF — Cam Beauty Studio ──────────────────────
+            Sits high on the page so visitors meet a real Opatam-powered
+            boutique before the arguments. Both CTAs (the link next to
+            the body copy AND the "Réserver" button inside the mockup)
+            open Cam Beauty Studio's actual Opatam popup via embed.js —
+            the visitor literally test-drives the product through a
+            real customer's booking flow. */}
+        <section className="border-b border-stone-200 bg-white">
+          <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-12 py-20 sm:py-28">
+            <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+              <div className="lg:col-span-6">
+                <p className="text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-primary-700 mb-4">
+                  Une cliente, une démo en live
                 </p>
-              </details>
-            ))}
+                <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-semibold leading-[1.1] tracking-tight text-stone-900">
+                  Voici la page de Cam Beauty Studio.
+                  <span className="text-stone-400"> Vous pouvez avoir la même, en 5 minutes.</span>
+                </h2>
+                <p className="mt-6 text-base sm:text-lg leading-relaxed text-stone-600 max-w-xl">
+                  Cam fait de la manucure russe à Villeurbanne. Son site la
+                  positionne comme une adresse boutique de la région lyonnaise —
+                  et c&apos;est Opatam qui prend toutes ses réservations en
+                  arrière-plan, du bouton « Réserver » jusqu&apos;à l&apos;acompte
+                  de garantie. Cliquez ci-dessous : vous testez sa vraie page,
+                  en live.
+                </p>
+                <dl className="mt-8 grid grid-cols-2 gap-y-5 gap-x-8 max-w-md">
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-[0.14em] text-stone-500">
+                      Spécialité
+                    </dt>
+                    <dd className="mt-1 text-base font-medium text-stone-900">
+                      Manucure russe
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-[0.14em] text-stone-500">
+                      Lieu
+                    </dt>
+                    <dd className="mt-1 text-base font-medium text-stone-900">
+                      Villeurbanne (Lyon)
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-[0.14em] text-stone-500">
+                      Site web
+                    </dt>
+                    <dd className="mt-1 text-base font-medium text-stone-900">
+                      Connecté à Opatam
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-[0.14em] text-stone-500">
+                      Acomptes
+                    </dt>
+                    <dd className="mt-1 text-base font-medium text-stone-900">
+                      Sérénité activé
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+                  <CamBeautyBookingButton className="group inline-flex items-center gap-2 rounded-full bg-primary-900 hover:bg-primary-800 px-7 py-3.5 text-white text-[15px] font-medium transition-all">
+                    Tester sa page de réservation
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                  </CamBeautyBookingButton>
+                  <a
+                    href="https://cambeautystudio.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors group"
+                  >
+                    cambeautystudio.com
+                    <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="lg:col-span-6">
+                {/* Browser-frame mockup — visual hint of her real site,
+                    not a live iframe (avoids cross-origin + bandwidth
+                    issues). The "Réserver en ligne" button inside the
+                    mockup is a *real* trigger: it opens her actual
+                    Opatam booking popup via embed.js. */}
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 shadow-xl overflow-hidden">
+                  {/* Address bar */}
+                  <div className="flex items-center gap-2 border-b border-stone-200 bg-white px-4 py-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-stone-300" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-stone-300" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-stone-300" />
+                    <div className="ml-3 flex-1 inline-flex items-center justify-center text-xs text-stone-500 tracking-wide">
+                      cambeautystudio.com
+                    </div>
+                  </div>
+                  {/* Site preview content */}
+                  <div className="bg-[#F4EFE6] px-8 py-12 sm:py-16">
+                    <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-stone-500 mb-5">
+                      Cam Beauty Studio
+                    </p>
+                    <h3 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-light leading-tight text-stone-900">
+                      Manucure russe
+                      <br />
+                      <em className="not-italic text-stone-700">&amp; beauté minimaliste.</em>
+                    </h3>
+                    <p className="mt-6 text-sm text-stone-600 max-w-sm leading-relaxed">
+                      La beauté dans les détails. Un écrin discret pour des
+                      finitions haut de gamme, à Villeurbanne.
+                    </p>
+                    <div className="mt-8 flex flex-wrap items-center gap-3">
+                      <CamBeautyBookingButton className="inline-flex items-center gap-2 rounded-full bg-stone-900 hover:bg-stone-800 px-5 py-2.5 text-white text-sm font-medium transition-colors">
+                        Réserver en ligne
+                      </CamBeautyBookingButton>
+                      <span className="text-xs text-stone-500">
+                        powered by{' '}
+                        <span className="font-medium text-primary-700">Opatam</span>
+                      </span>
+                    </div>
+                    <ul className="mt-10 space-y-2 text-sm text-stone-700">
+                      <li className="flex items-center justify-between border-t border-stone-300/70 pt-3">
+                        <span>Manucure russe · 90 min</span>
+                        <span className="font-medium">65 €</span>
+                      </li>
+                      <li className="flex items-center justify-between border-t border-stone-300/70 pt-3">
+                        <span>Pose capsules gel · 75 min</span>
+                        <span className="font-medium">55 €</span>
+                      </li>
+                      <li className="flex items-center justify-between border-t border-stone-300/70 pt-3">
+                        <span>Dépose &amp; soin · 45 min</span>
+                        <span className="font-medium">30 €</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* ── FINAL CTA ────────────────────────────────────────────── */}
-        <section className="bg-gray-50 py-16">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Une application de rendez-vous nail art, vraiment pensée pour vous
-            </h2>
-            <p className="mt-3 text-base text-gray-600">
-              Rejoignez les nail artists qui ont arrêté de gérer leurs RDV en DM.
+        {/* ─── GALLERY ───────────────────────────────────────────────
+            Slow-scrolling marquee of nail-art prestations. Sits between
+            the case study (real customer) and the pain points (real
+            douleurs) as a visual bridge — "voilà ce que ces artistes
+            créent, et voilà pourquoi un agenda papier ne suffit pas".
+            Background matches the Cam Beauty Studio mockup interior
+            (#F4EFE6) for visual continuity. The marquee uses the
+            slower 90s tempo so it doesn't race against the value-prop
+            strip at the top. */}
+        <section aria-label="Galerie nail art" className="border-b border-stone-200 bg-[#F4EFE6] overflow-hidden">
+          <div className="py-16 sm:py-20">
+            <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-12 mb-10 sm:mb-12">
+              <p className="text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-stone-500 mb-4">
+                Vos créations
+              </p>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight text-stone-900 max-w-3xl">
+                Pendant qu&apos;Opatam gère l&apos;agenda,
+                <span className="text-stone-400"> vous faites ce que vous savez faire de mieux.</span>
+              </h2>
+            </div>
+
+            {/* Edge fades + marquee track. The fades melt the tiles
+                in/out of the section instead of clipping hard at the
+                viewport edge. Hover pauses the scroll for read-time. */}
+            <div className="relative w-full overflow-hidden">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-24 bg-gradient-to-r from-[#F4EFE6] to-transparent z-10"
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-24 bg-gradient-to-l from-[#F4EFE6] to-transparent z-10"
+              />
+              <div
+                className="flex flex-nowrap animate-marquee-slow gap-3 sm:gap-4"
+                style={{ width: 'max-content' }}
+              >
+                {Array.from({ length: galleryDisplayLength * 2 }).map((_, idx) => {
+                  const baseClasses =
+                    'shrink-0 relative w-52 h-52 sm:w-60 sm:h-60 lg:w-72 lg:h-72 rounded-sm overflow-hidden';
+                  if (useGalleryPlaceholders) {
+                    return (
+                      <div
+                        key={`placeholder-${idx}`}
+                        aria-hidden="true"
+                        className={`${baseClasses} bg-gradient-to-br ${PLACEHOLDER_TONES[idx % PLACEHOLDER_TONES.length]}`}
+                      />
+                    );
+                  }
+                  const item = galleryItems[idx % galleryItems.length];
+                  return (
+                    <div key={`${item.id}-${idx}`} className={baseClasses}>
+                      <Image
+                        src={item.src}
+                        alt={item.alt}
+                        fill
+                        sizes="(max-width: 640px) 208px, (max-width: 1024px) 240px, 288px"
+                        className="object-cover"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── PAIN POINTS ───────────────────────────────────────────
+            Three numbered narrative blocks, stacked vertically with
+            ample whitespace. Each block: huge serif-like number, title
+            in display weight, body text. No icons, no cards in a row. */}
+        <section className="border-b border-stone-200">
+          <div className="mx-auto max-w-5xl px-6 sm:px-8 lg:px-12 py-20 sm:py-28">
+            <div className="max-w-2xl mb-14 sm:mb-20">
+              <p className="text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-stone-500 mb-4">
+                Le quotidien d&apos;une nail artist indépendante
+              </p>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight text-stone-900">
+                Ce qui vous fait perdre du temps, du chiffre,
+                <span className="text-stone-400"> et parfois l&apos;envie</span>.
+              </h2>
+            </div>
+            <div className="space-y-14 sm:space-y-20">
+              {painPoints.map((p) => (
+                <article
+                  key={p.label}
+                  className="reveal-on-scroll grid grid-cols-12 gap-6 sm:gap-8 items-baseline"
+                >
+                  <div className="col-span-12 sm:col-span-2">
+                    <span className="text-5xl sm:text-6xl font-light text-stone-300 tracking-tighter">
+                      {p.label}
+                    </span>
+                  </div>
+                  <div className="col-span-12 sm:col-span-10 sm:pl-4">
+                    <h3 className="text-xl sm:text-2xl lg:text-3xl font-semibold leading-snug tracking-tight text-stone-900">
+                      {p.title}
+                    </h3>
+                    <p className="mt-3 text-base sm:text-lg leading-relaxed text-stone-600 max-w-2xl">
+                      {p.body}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── MOMENTS (features) ────────────────────────────────────
+            Four "moments of your day" in a balanced 2×2 grid. Each one
+            ties a Opatam capability to a real beat in the nail artist's
+            day, story-first, verb-led. */}
+        <section className="border-b border-stone-200 bg-white">
+          <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-12 py-20 sm:py-28">
+            <div className="max-w-2xl mb-14 sm:mb-20">
+              <p className="text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-stone-500 mb-4">
+                Comment ça vous aide
+              </p>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight text-stone-900">
+                Quatre moments de votre journée,
+                <span className="text-stone-400"> repensés.</span>
+              </h2>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-x-12 lg:gap-x-20 gap-y-14 sm:gap-y-20">
+              {moments.map((m) => (
+                <article key={m.title} className="reveal-on-scroll border-t border-stone-200 pt-7">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary-600 mb-4">
+                    {m.when}
+                  </p>
+                  <h3 className="text-xl sm:text-2xl font-semibold leading-snug tracking-tight text-stone-900">
+                    {m.title}
+                  </h3>
+                  <p className="mt-3 text-base leading-relaxed text-stone-600">
+                    {m.body}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── COMPARATIF ────────────────────────────────────────────
+            Compact 3-column comparison — replaces the heavy table from
+            the first draft. Reads like a positioning statement rather
+            than a feature war. */}
+        <section className="border-b border-stone-200">
+          <div className="mx-auto max-w-5xl px-6 sm:px-8 lg:px-12 py-20 sm:py-24">
+            <div className="max-w-2xl mb-14">
+              <p className="text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-stone-500 mb-4">
+                À choisir entre les options du marché
+              </p>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight text-stone-900">
+                Pourquoi Opatam,
+                <span className="text-stone-400"> pas Planity, pas Treatwell.</span>
+              </h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-px bg-stone-200 rounded-xl overflow-hidden border border-stone-200">
+              <div className="bg-primary-900 text-white p-7 sm:p-9">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-400 mb-5">
+                  Opatam
+                </p>
+                <p className="text-2xl font-semibold leading-tight mb-7">
+                  19,90 €/mois
+                </p>
+                <ul className="space-y-3 text-sm leading-relaxed text-stone-200">
+                  <li className="flex gap-2">
+                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-300" />
+                    0 % de commission, jamais
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-300" />
+                    Acomptes intégrés (Sérénité)
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-300" />
+                    Multi-lieux et itinérance natifs
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-300" />
+                    Mise en route en 5 minutes
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-300" />
+                    Pensé pour les indépendantes
+                  </li>
+                </ul>
+              </div>
+              <div className="bg-white p-7 sm:p-9">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500 mb-5">
+                  Planity
+                </p>
+                <p className="text-2xl font-semibold leading-tight mb-7 text-stone-900">
+                  À partir de 89 €/mois
+                </p>
+                <ul className="space-y-3 text-sm leading-relaxed text-stone-600">
+                  <li className="flex gap-2">
+                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    0 % de commission
+                  </li>
+                  <li className="flex gap-2">
+                    <Minus className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    Acomptes limités
+                  </li>
+                  <li className="flex gap-2">
+                    <Minus className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    Multi-lieux limité
+                  </li>
+                  <li className="flex gap-2">
+                    <Minus className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    Onboarding accompagné requis
+                  </li>
+                  <li className="flex gap-2">
+                    <Minus className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    Conçu pour les salons
+                  </li>
+                </ul>
+              </div>
+              <div className="bg-white p-7 sm:p-9">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500 mb-5">
+                  Treatwell
+                </p>
+                <p className="text-2xl font-semibold leading-tight mb-7 text-stone-900">
+                  + 15 à 25 % de commission
+                </p>
+                <ul className="space-y-3 text-sm leading-relaxed text-stone-600">
+                  <li className="flex gap-2">
+                    <Minus className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    Commission sur chaque RDV
+                  </li>
+                  <li className="flex gap-2">
+                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    Acomptes intégrés
+                  </li>
+                  <li className="flex gap-2">
+                    <Minus className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    Multi-lieux limité
+                  </li>
+                  <li className="flex gap-2">
+                    <Minus className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    Onboarding long
+                  </li>
+                  <li className="flex gap-2">
+                    <Minus className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
+                    Pensé pour les marketplaces
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <p className="mt-5 text-xs text-stone-500">
+              Tarifs publics observés en mai 2026. Treatwell prélève une commission sur les réservations entrées via la marketplace.
             </p>
-            <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
+          </div>
+        </section>
+
+        {/* ─── FAQ ───────────────────────────────────────────────────
+            Minimal accordion — divider lines only, no cards. The text
+            stands on its own. */}
+        <section className="border-b border-stone-200">
+          <div className="mx-auto max-w-3xl px-6 sm:px-8 lg:px-12 py-20 sm:py-24">
+            <div className="mb-12">
+              <p className="text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-stone-500 mb-4">
+                Questions fréquentes
+              </p>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight text-stone-900">
+                Ce qu&apos;on nous demande le plus,
+                <span className="text-stone-400"> chez les nail artists.</span>
+              </h2>
+            </div>
+            <div className="border-t border-stone-200">
+              {faqItems.map((item) => (
+                <details key={item.q} className="group border-b border-stone-200">
+                  <summary className="flex items-start justify-between gap-6 cursor-pointer list-none py-6">
+                    <h3 className="text-base sm:text-lg font-medium leading-snug text-stone-900 pr-4">
+                      {item.q}
+                    </h3>
+                    <span className="flex-shrink-0 w-6 h-6 mt-0.5 text-stone-400 group-open:rotate-45 transition-transform text-xl leading-none">
+                      +
+                    </span>
+                  </summary>
+                  <p className="pb-7 text-base leading-relaxed text-stone-600 max-w-2xl">
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── TUTORIALS ─────────────────────────────────────────────
+            Reuses the homepage's tutorial articles via ArticleCard, but
+            wrapped in the editorial section style of this page (cream
+            background, small uppercase label, large display heading).
+            Renders nothing when no tutorials are published — never a
+            sad empty state. */}
+        {tutorials.length > 0 && (
+          <section className="border-b border-stone-200">
+            <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-12 py-20 sm:py-28">
+              <div className="max-w-2xl mb-14">
+                <p className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-stone-500 mb-4">
+                  <GraduationCap className="w-4 h-4" />
+                  En vidéo
+                </p>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight text-stone-900">
+                  Prenez en main Opatam
+                  <span className="text-stone-400"> en quelques minutes.</span>
+                </h2>
+                <p className="mt-5 text-base sm:text-lg leading-relaxed text-stone-600 max-w-xl">
+                  Des tutoriels courts pour configurer votre agenda, vos prestations,
+                  vos acomptes — et démarrer du bon pied.
+                </p>
+              </div>
+              {/* Mobile: auto-advancing carousel showing one full card
+                  + a peek of neighbours (scroll-snap, dots indicator).
+                  We extend the carousel edge-to-edge on phones via
+                  `-mx-6 sm:mx-0` (cancels the section's px-6) so the
+                  peek visually breaks past the content column — the
+                  carousel handles its own internal padding. */}
+              <div className="sm:hidden -mx-6 sm:mx-0">
+                <TutorialsCarousel tutorials={tutorials} />
+              </div>
+
+              {/* Tablet + desktop: aligned grid (ArticleCard uses
+                  h-full so the "Lire" footer sits at the bottom even
+                  when titles wrap to a different line count). */}
+              <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {tutorials.map((t) => (
+                  <div key={t.slug} className="reveal-on-scroll h-full">
+                    <ArticleCard article={t} />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-10">
+                <Link
+                  href="/blog/categorie/tutoriels"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-primary-700 hover:text-primary-900 transition-colors"
+                >
+                  Voir tous les tutoriels
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ─── FINAL CTA ─────────────────────────────────────────────
+            Sober, no gradient. Ink-on-cream with the brand violet only
+            as the action signal. */}
+        <section>
+          <div className="mx-auto max-w-4xl px-6 sm:px-8 lg:px-12 py-24 sm:py-32 text-center">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight text-stone-900">
+              Reprenez votre soirée.
+            </h2>
+            <p className="mt-5 text-lg text-stone-600 max-w-xl mx-auto">
+              Une application de rendez-vous nail art conçue pour vous, prête en 5 minutes. Pas de carte bancaire pour l&apos;essai. Pas de commission, jamais.
+            </p>
+            <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 href="/inscription/pro"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 hover:bg-primary-700 px-6 py-3.5 text-white text-base font-semibold shadow-md hover:shadow-lg transition-all"
+                className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary-900 hover:bg-primary-800 px-8 py-4 text-white text-[15px] font-medium transition-all"
               >
                 Créer mon agenda gratuitement
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
                 href="/pricing"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 px-6 py-3.5 text-gray-800 text-base font-medium transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 hover:bg-stone-100 px-8 py-4 text-stone-800 text-[15px] font-medium transition-colors"
               >
                 Voir les tarifs
               </Link>
@@ -455,6 +871,11 @@ export default function NailArtistPage() {
         </section>
       </main>
       <Footer />
+
+      {/* Opatam embed.js — exposes `window.Opatam.open(slug)` which the
+          CamBeautyBookingButton invokes on click. Loaded after hydration
+          so it never blocks first paint. */}
+      <Script src="/embed.js" strategy="afterInteractive" />
 
       {/* JSON-LD structured data — picked up by Google for rich snippets
           (FAQ accordion in SERP) and software application card. */}

@@ -40,6 +40,13 @@ export { MessageRepository, messageRepository } from './message.repository';
 // Article repository (top-level — blog)
 export { ArticleRepository, articleRepository } from './article.repository';
 
+// Landing-gallery repository (top-level — one doc per vertical landing,
+// drives the "Vos créations" marquee on /nail-artist & co.)
+export {
+  LandingGalleryRepository,
+  landingGalleryRepository,
+} from './landingGallery.repository';
+
 // Provider stats repository (3-tier aggregation, read-only)
 export {
   ProviderStatsRepository,

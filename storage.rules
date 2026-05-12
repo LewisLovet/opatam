@@ -19,6 +19,15 @@ service firebase.storage {
       return request.resource.size < 5 * 1024 * 1024;
     }
 
+    // Public brand assets (logos, social-share images, default
+    // covers — anything served from the apps as static brand
+    // resources). Read-only public; writes go through Firebase
+    // Console / Admin SDK only.
+    match /assets/{path=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // User profile photos
     match /users/{userId}/{allPaths=**} {
       allow read: if true;
@@ -29,6 +38,16 @@ service firebase.storage {
     match /providers/{providerId}/{allPaths=**} {
       allow read: if true;
       // Write requires being the provider admin - checked via Firestore rules
+      allow write: if isAuthenticated() && isImageType() && isUnder5MB();
+    }
+
+    // Vertical-landing gallery photos (one folder per vertical:
+    // nail-artist, coiffeur, …). Uploaded via /admin/galleries.
+    // Reads are public — the landing pages are public-facing.
+    // Writes require authentication; admin authority is enforced
+    // through the AdminGuard wrapper on the admin pages.
+    match /landing/galleries/{slug}/{allPaths=**} {
+      allow read: if true;
       allow write: if isAuthenticated() && isImageType() && isUnder5MB();
     }
   }

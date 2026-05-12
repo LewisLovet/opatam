@@ -28,6 +28,10 @@ export const storagePaths = {
   providerPortfolio: (providerId: string) => `providers/${providerId}/portfolio`,
   memberPhotos: (providerId: string, memberId: string) =>
     `providers/${providerId}/members/${memberId}`,
+  /** Landing-page galleries — one folder per vertical (nail-artist,
+   *  coiffeur, …). Admin uploads land here; the URL is then stored
+   *  in the `landingGalleries/{slug}` Firestore doc. */
+  landingGallery: (slug: string) => `landing/galleries/${slug}`,
 } as const;
 
 /**

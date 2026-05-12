@@ -968,3 +968,45 @@ export interface Article {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// ─── Landing galleries ────────────────────────────────────────────────
+//
+// Vertical landing pages (/nail-artist, future /coiffeur, /barbier, …)
+// each get a visual "Vos créations" marquee fed from Firebase. Items
+// live in Firestore so non-developers can manage them through the
+// admin UI (/admin/galleries/[slug]) — no commit / no deploy needed.
+//
+// Storage model:
+//   landingGalleries/{slug}    Firestore doc, one per vertical
+//   ├─ items: LandingGalleryItem[]   ordered, max ~20
+//   └─ updatedAt: Date
+//
+// Images themselves can come from anywhere — uploaded via the admin
+// (then stored under `landing/galleries/{slug}/{uuid}.jpg` in Firebase
+// Storage) OR pasted as external URLs (a previously-uploaded
+// provider portfolio shot, for instance). We don't care about the
+// origin, only that `src` is a reachable HTTPS URL.
+
+export interface LandingGalleryItem {
+  /** Stable identifier (uuid). Survives reordering / edits. */
+  id: string;
+  /** Full HTTPS URL of the image (Firebase Storage or external). */
+  src: string;
+  /** Alt text for accessibility AND SEO. */
+  alt: string;
+  /** Sort key (low to high). The admin reorders items by editing this. */
+  order: number;
+  /** When the item was added to the gallery. */
+  uploadedAt?: Date;
+  /** UID of the admin who added it (for audit). */
+  uploadedBy?: string;
+}
+
+export interface LandingGallery {
+  /** Slug of the vertical landing this gallery feeds, e.g. `nail-artist`. */
+  slug: string;
+  /** Ordered list of items (already sorted by `order` when read). */
+  items: LandingGalleryItem[];
+  /** Last write timestamp. */
+  updatedAt: Date;
+}

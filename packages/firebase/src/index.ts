@@ -131,6 +131,10 @@ export {
   // Article (blog)
   ArticleRepository,
   articleRepository,
+  // Landing gallery (one doc per vertical landing — drives the
+  // "Vos créations" marquee on /nail-artist & co.)
+  LandingGalleryRepository,
+  landingGalleryRepository,
   // Provider stats (3-tier aggregation)
   ProviderStatsRepository,
   providerStatsRepository,
