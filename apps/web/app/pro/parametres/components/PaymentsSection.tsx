@@ -508,7 +508,7 @@ export function PaymentsSection() {
                   un acompte par défaut ci-dessous, ou un acompte spécifique pour chaque
                   prestation depuis{' '}
                   <Link
-                    href="/pro/services"
+                    href="/pro/activite?tab=prestations"
                     className="text-primary-600 dark:text-primary-400 hover:underline"
                   >
                     Prestations
