@@ -285,7 +285,7 @@ export default async function NailArtistPage() {
                 </p>
                 <div className="mt-9 flex flex-col sm:flex-row gap-3">
                   <Link
-                    href="/inscription/pro"
+                    href="/register"
                     className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary-900 hover:bg-primary-800 px-7 py-3.5 text-white text-[15px] font-medium transition-all"
                   >
                     Créer mon agenda nail art
@@ -855,7 +855,7 @@ export default async function NailArtistPage() {
             </p>
             <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                href="/inscription/pro"
+                href="/register"
                 className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary-900 hover:bg-primary-800 px-8 py-4 text-white text-[15px] font-medium transition-all"
               >
                 Créer mon agenda gratuitement
