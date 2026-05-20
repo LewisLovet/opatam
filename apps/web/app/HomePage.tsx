@@ -39,6 +39,7 @@ import { SocialLinks } from '@/components/common/SocialLinks';
 import { TutorialsSection } from '@/components/home/TutorialsSection';
 import { HowItWorksAnimated } from '@/components/home/HowItWorksAnimated';
 import { HeroVideo } from '@/components/home/HeroVideo';
+import { StorySection } from '@/components/home/StorySection';
 import type { ArticleCardData } from '@/app/blog/components/ArticleCard';
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -51,37 +52,37 @@ const faqItems = [
   {
     question: 'Quel est le meilleur logiciel de prise de rendez-vous en ligne pour indépendants ?',
     answer:
-      'OPATAM est conçu spécialement pour les indépendants et petites équipes : agenda en ligne, page de réservation personnalisée, rappels automatiques, application mobile — le tout sans commission et prêt en 5 minutes. Plus de 15 secteurs d\'activité sont pris en charge (beauté, bien-être, coaching, artisans, et bien d\'autres).',
+      'OPATAM est conçu spécifiquement pour les indépendants et les petites équipes : agenda en ligne, page de réservation personnalisée, rappels automatiques 24h et 2h avant, application mobile — sans commission, prêt en 5 minutes. Plus de 15 métiers de service y trouvent leur compte.',
   },
   {
     question: 'Comment permettre à mes clients de réserver en ligne sans créer de compte ?',
     answer:
-      'Avec OPATAM, vos clients réservent en renseignant simplement leur nom, email et téléphone — en 3 clics. Aucun compte à créer, aucun mot de passe. Vous recevez un lien personnalisé et un QR code à partager sur vos réseaux, par SMS ou à afficher en boutique.',
+      'Vos clients tapent leur nom, leur email et leur téléphone — c\'est tout. Pas de compte à créer, pas de mot de passe. Vous récupérez un lien personnalisé et un QR code à mettre dans votre bio Instagram, sur vos flyers, ou à afficher en boutique. Réservation finalisée en 3 clics.',
   },
   {
     question: 'Comment gérer les rendez-vous de mon équipe depuis un seul outil ?',
     answer:
-      'Le plan Studio (29,90\u20AC/mois) permet de gérer jusqu\'à 10 agendas synchronisés. Chaque membre a son propre planning et ses prestations. Vous pouvez leur envoyer le récap quotidien de leur journée, les notifier individuellement de chaque rendez-vous, et garder la vue d\'ensemble sur toute l\'équipe.',
+      'Le plan Studio (29,90\u20AC/mois) gère jusqu\'à 10 agendas synchronisés. Chaque membre a son propre planning et ses propres prestations. Vous pouvez les notifier de chaque nouveau rendez-vous, leur envoyer le récap quotidien le soir d\'avant, et garder la vue d\'ensemble sur toute l\'équipe.',
   },
   {
     question: 'Comment réduire les rendez-vous manqués et les oublis de mes clients ?',
     answer:
-      'OPATAM envoie automatiquement un rappel par email et notification push 24h avant le rendez-vous, puis un second rappel 2h avant. Vos clients reçoivent aussi une confirmation instantanée à la réservation. Résultat : moins d\'oublis, moins de créneaux perdus.',
+      'OPATAM envoie automatiquement un rappel 24h avant le rendez-vous, puis un second 2h avant. Vos clients reçoivent aussi une confirmation instantanée à la réservation. Concrètement : moins d\'oublis, plus de créneaux qui tiennent, plus de revenus à la fin du mois.',
   },
   {
     question: 'Combien coûte un logiciel de réservation en ligne professionnel ?',
     answer:
-      'OPATAM propose deux formules sans engagement : le plan Pro à 19,90\u20AC/mois (ou 199\u20AC/an) pour les indépendants, et le plan Studio à 29,90\u20AC/mois (ou 299\u20AC/an) pour les équipes jusqu\'à 10 personnes. Essai gratuit de 30 jours, sans carte bancaire.',
+      'Deux formules sans engagement : Pro à 19,90\u20AC/mois (ou 199\u20AC/an) pour les indépendants, Studio à 29,90\u20AC/mois (ou 299\u20AC/an) pour les équipes jusqu\'à 10 personnes. Essai gratuit de 30 jours, sans carte bancaire. Et zéro commission sur vos réservations — vous gardez 100% de ce que vous facturez.',
   },
   {
     question: 'Peut-on utiliser un agenda de réservation en ligne sur téléphone ?',
     answer:
-      'Oui. OPATAM propose une application mobile qui vous permet de consulter votre agenda, recevoir les alertes de nouveaux rendez-vous en temps réel et gérer votre planning où que vous soyez. La configuration initiale se fait sur ordinateur ou tablette, et le quotidien se gère depuis votre poche.',
+      'Oui. L\'application mobile iOS et Android vous laisse consulter votre agenda, valider les nouveaux rendez-vous et recevoir les notifications en temps réel. Vous configurez sur votre ordinateur, vous gérez votre quotidien depuis votre poche — entre deux rendez-vous, dans le métro, où vous voulez.',
   },
   {
     question: 'Est-ce qu\'OPATAM est adapté aux métiers de la beauté, du bien-être et du coaching ?',
     answer:
-      'Absolument. OPATAM est multi-secteurs : coiffeurs, esthéticiennes, masseurs, coachs sportifs, thérapeutes, photographes, formateurs, artisans… Chaque professionnel personnalise ses prestations, ses durées et ses tarifs selon son activité.',
+      'Coiffeurs, esthéticiennes, barbiers, prothésistes ongulaires, masseurs, sophrologues, coachs sportifs, thérapeutes, photographes, artisans, formateurs… Chaque pro personnalise ses prestations, ses durées, ses tarifs et son agenda comme il l\'entend.',
   },
 ];
 
@@ -103,21 +104,21 @@ const testimonials = [
     role: 'Coiffeuse indépendante',
     city: 'Lyon',
     initials: 'ML',
-    text: "0% de commission, c'est ce qui m'a convaincue. Je garde 100% de ce que je gagne, et l'outil est hyper simple à utiliser.",
+    text: "0% de commission, c'est ce qui m'a convaincue. Je garde 100% de ce que je gagne. Et l'outil est tellement simple que j'ai été en ligne en 10 minutes.",
   },
   {
     name: 'Karim B.',
     role: 'Barbier',
     city: 'Paris',
     initials: 'KB',
-    text: "J'ai configuré mon profil en 10 minutes. Le soir même, j'avais déjà 3 réservations. L'interface est claire, mes clients adorent pouvoir réserver en ligne à n'importe quelle heure.",
+    text: "Le soir de l'inscription, j'avais déjà trois réservations via le lien dans ma bio Instagram. Plus besoin de répondre aux DM à 22h pour caler un créneau.",
   },
   {
     name: 'Sophie D.',
     role: "Gérante d'institut de beauté",
     city: 'Marseille',
     initials: 'SD',
-    text: "On est 3 dans mon institut et OPATAM Studio nous permet de gérer les agendas de toute l'équipe. Le rapport qualité-prix est imbattable par rapport à ce qu'on payait avant.",
+    text: "On est trois dans l'institut, chacune a son agenda sur le sien. Pour moitié moins cher que ce qu'on payait avant — et mieux pensé pour notre métier.",
   },
 ];
 
@@ -126,33 +127,33 @@ const testimonials = [
 // If image is null, the CSS mockup fallback is displayed instead.
 const mainFeatures = [
   {
-    title: 'Un agenda qui travaille pour vous',
+    title: 'Un agenda qui se remplit tout seul',
     description:
-      "Visualisez votre semaine en un coup d'œil. Vos créneaux se remplissent automatiquement, les rappels partent tout seuls, et vous gardez le contrôle depuis votre téléphone ou votre ordinateur.",
+      "Vos créneaux disponibles, vos pauses, vos jours off — tout est visible en un coup d'œil. Les rappels partent automatiquement à vos clients. Plus jamais de SMS de relance à écrire à 22h.",
     icon: Calendar,
     mockup: 'agenda' as const,
     image: null as string | null, // e.g. '/images/features/agenda.png'
   },
   {
-    title: 'Vos clients réservent même quand vous dormez',
+    title: 'Vos clients réservent pendant que vous dormez',
     description:
-      'Votre page de réservation personnalisée est accessible 24h/24. Vos clients choisissent la prestation, le créneau et réservent en 3 clics — sans créer de compte.',
+      'Votre page de réservation est en ligne 24h/24. Vos clients choisissent leur prestation et leur créneau en trois clics — sans créer de compte, sans vous DM. Au réveil, votre planning est rempli.',
     icon: Globe,
     mockup: 'booking' as const,
     image: null as string | null, // e.g. '/images/features/booking-mobile.png'
   },
   {
-    title: 'Configurez sur votre ordinateur, gérez depuis votre poche',
+    title: 'Tout votre agenda dans votre poche',
     description:
-      "Créez vos services, configurez vos horaires et gérez vos membres depuis votre ordinateur ou tablette. Au quotidien, suivez vos rendez-vous et recevez vos alertes en temps réel directement sur l'application mobile — où que vous soyez.",
+      "Vous configurez vos prestations et vos horaires depuis votre ordinateur. Au quotidien, vous suivez votre planning, vous validez les nouveaux rendez-vous et vous recevez vos alertes directement dans l'application mobile.",
     icon: Smartphone,
     mockup: 'mobile' as const,
     image: null as string | null, // e.g. '/images/features/mobile-app.png'
   },
   {
-    title: "Toute votre équipe, un seul outil",
+    title: "Toute l'équipe synchronisée",
     description:
-      "Chaque membre a son propre agenda, ses prestations et son code d'accès au planning. Envoyez-leur le récap de leur journée, notifiez-les de chaque nouveau rendez-vous individuellement, et gardez la vue d'ensemble sur toute l'équipe.",
+      "Chaque membre a son propre planning, ses propres prestations, son propre code d'accès. Vous gardez la vue d'ensemble. Plus de carnet partagé, plus de « on s'est marché dessus ».",
     icon: Users,
     mockup: 'team' as const,
     image: null as string | null, // e.g. '/images/features/team.png'
@@ -160,14 +161,14 @@ const mainFeatures = [
 ];
 
 const secondaryFeatures = [
-  { icon: Globe, title: 'Vitrine en ligne', description: 'Votre page pro avec services, avis, photos et infos pratiques' },
-  { icon: QrCode, title: 'QR Code personnalisé', description: 'Affichez-le en boutique ou sur vos cartes — vos clients scannent et réservent' },
-  { icon: Bell, title: 'Rappels automatiques', description: 'Vos clients reçoivent un rappel 24h et 2h avant leur rendez-vous' },
-  { icon: BarChart3, title: 'Tableau de bord', description: 'Suivez vos réservations, vos vues et votre activité en temps réel' },
-  { icon: MapPin, title: 'Multi-lieux', description: "Gérez jusqu'à 10 adresses avec des disponibilités par lieu" },
-  { icon: Mail, title: 'Récap quotidien', description: "Recevez chaque soir l'agenda du lendemain, pour vous et votre équipe" },
-  { icon: Smartphone, title: 'App mobile', description: 'Gérez vos rendez-vous depuis votre téléphone, où que vous soyez' },
-  { icon: Shield, title: 'Données sécurisées', description: 'Hébergement en Europe, conforme RGPD, vos données vous appartiennent' },
+  { icon: Globe, title: 'Votre vitrine en ligne', description: 'Une vraie page pro avec vos prestations, vos avis et vos photos — partageable en un lien' },
+  { icon: QrCode, title: 'QR Code à afficher', description: 'Un QR Code à coller sur votre comptoir ou sur vos cartes. Vos clientes scannent, elles réservent' },
+  { icon: Bell, title: 'Plus jamais d\'oubli', description: 'Rappel automatique 24h et 2h avant chaque rendez-vous. Vos no-shows baissent, votre journée tient' },
+  { icon: BarChart3, title: 'Vos chiffres en clair', description: 'Réservations, vues de votre page, activité de la semaine — tout sur un seul écran, mis à jour en direct' },
+  { icon: MapPin, title: 'Plusieurs adresses, un agenda', description: "Salon, domicile, déplacement — jusqu'à 10 lieux avec des disponibilités différentes pour chacun" },
+  { icon: Mail, title: 'Le récap de demain, ce soir', description: "Chaque soir, vous recevez par email l'agenda du lendemain. Plus de surprise au réveil" },
+  { icon: Smartphone, title: 'L\'app iOS et Android', description: 'Votre agenda dans votre poche, notifs en temps réel à chaque réservation' },
+  { icon: Shield, title: 'Hébergé en Europe', description: 'Conforme RGPD, données hébergées en France. Vous restez propriétaire de tout' },
 ];
 
 const sectors = [
@@ -260,12 +261,10 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
           <div className="relative z-10 h-full flex flex-col justify-center max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="max-w-3xl text-center lg:text-left mx-auto lg:mx-0">
               <h1 className="animate-fade-in-up text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight drop-shadow-lg">
-                Gérez vos rendez-vous en ligne, sans commission
+                Vos rendez-vous ne devraient plus vivre dans vos DM.
               </h1>
               <p className="animate-fade-in-up animation-delay-150 mt-5 sm:mt-6 text-base sm:text-lg lg:text-xl text-white/90 max-w-2xl mx-auto lg:mx-0 drop-shadow-md">
-                {APP_CONFIG.name} est la plateforme de réservation en ligne pour les professionnels de services.
-                Vos clients réservent 24h/24, vous recevez des rappels automatiques et vous ne payez aucune
-                commission. Prêt en 5 minutes.
+                Le logiciel de réservation en ligne pour les indépendants. Vos clients réservent 24h/24, les rappels partent automatiquement, et vous gardez 100% de vos gains. Prêt en 5 minutes.
               </p>
 
               {/* Trust pills — frosted-glass chips so they read on the
@@ -380,16 +379,18 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
           </div>
         </section>
 
+        {/* ── Section 3b - Instagram / Snapchat story feature ─────── */}
+        <StorySection />
+
         {/* ── Section 4 - Main Features (Alternating) ──────────────── */}
         <section id="fonctionnalites" className="py-16 sm:py-24 bg-white dark:bg-gray-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                Tout ce dont vous avez besoin pour gérer vos rendez-vous
+                Reprenez le contrôle de votre quotidien
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Fini les appels manqués, les agendas papier. {APP_CONFIG.name} automatise la gestion de
-                vos réservations pour que vous puissiez vous concentrer sur votre métier.
+                Fini les DM Instagram à 22h, les agendas papier, les SMS de relance. {APP_CONFIG.name} s'occupe de l'administratif pour que vous restiez concentré sur votre métier.
               </p>
             </div>
 
@@ -579,10 +580,10 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-12">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                Et bien plus encore
+                Et tout le reste, déjà inclus
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Toutes les fonctionnalités essentielles, incluses dès le départ.
+                Pas de modules à débloquer, pas d'options payantes cachées. Ce que vous voyez, c'est ce que vous avez.
               </p>
             </div>
 
@@ -611,10 +612,10 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-12">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                Quelle que soit votre activité, {APP_CONFIG.name} s&apos;adapte à votre métier
+                Pensé pour les indépendants. Tous les indépendants.
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Plus de 15 secteurs d&apos;activité couverts — de la beauté au coaching, des artisans à l&apos;audiovisuel.
+                De la coiffeuse à domicile au tatoueur de studio, du coach sportif au thérapeute — {APP_CONFIG.name} s&apos;adapte à votre métier, pas l&apos;inverse.
               </p>
             </div>
 
@@ -646,7 +647,7 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                Ils ont adopte {APP_CONFIG.name}
+                Ce qu'en disent les indépendants qui l'utilisent
               </h2>
             </div>
 
@@ -693,11 +694,10 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-12">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                {APP_CONFIG.name}, la solution pensée pour votre rentabilité
+                Pourquoi {APP_CONFIG.name}, et pas les autres
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Comparez ce qui compte vraiment : un tarif transparent, sans commission cachée, et toutes les
-                fonctionnalités essentielles incluses dès le départ.
+                Un prix clair, zéro commission, toutes les fonctionnalités essentielles dès le premier jour. Pas de petite ligne, pas de plan caché.
               </p>
             </div>
 
@@ -770,7 +770,7 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
                 Un prix juste, sans surprise
               </h2>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                Deux plans simples. Pas de commission cachée. Pas de frais supplémentaires. Annulez quand vous voulez.
+                Deux formules. Aucune commission. Vous annulez quand vous voulez.
               </p>
             </div>
 
@@ -809,8 +809,7 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
                       </div>
 
                       <p className="text-base text-gray-400 max-w-lg mb-6">
-                        Inscrivez-vous maintenant et verrouillez votre tarif pour toujours,
-                        même si nos prix augmentent.
+                        Inscrivez-vous maintenant : votre tarif est bloqué à vie. Même si on augmente nos prix demain, vous restez à 19,90\u20AC.
                       </p>
 
                       {/* Trust points */}
@@ -1038,10 +1037,9 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
         {/* ── Section 12 - Final CTA ─────────────────────────────────── */}
         <section className="py-16 sm:py-24 bg-primary-600">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Prêt à remplir votre agenda ?</h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Reprenez votre soirée.</h2>
             <p className="mt-4 text-lg text-white/80">
-              Rejoignez les professionnels qui ont choisi la simplicité et la transparence. Votre première réservation
-              est à 5 minutes.
+              Votre première page de réservation est en ligne en 5 minutes. 30 jours d'essai gratuit, sans carte bancaire, sans engagement.
             </p>
 
             <div className="mt-10">
