@@ -5,7 +5,11 @@ import Image from 'next/image';
 import { Badge, Switch } from '@/components/ui';
 import { ChevronUp, ChevronDown, Clock, Euro } from 'lucide-react';
 import type { Service, Member } from '@booking-app/shared';
-import { resolveDeposit } from '@booking-app/shared';
+import {
+  resolveDeposit,
+  getServiceMinPrice,
+  getServiceMinDuration,
+} from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -112,6 +116,10 @@ export function ServiceCard({
 
   const depositBadge = depositsEnabled ? depositBadgeProps(service, defaultDeposit) : null;
 
+  // Price varies when the prestation has variations or optional add-ons.
+  const priceVaries =
+    (service.variations?.length ?? 0) > 0 || (service.options?.length ?? 0) > 0;
+
   const handleToggle = async (checked: boolean) => {
     setToggling(true);
     try {
@@ -207,14 +215,23 @@ export function ServiceCard({
                 </p>
               )}
 
-              {/* Duration & Price */}
+              {/* Duration & Price — variation-aware. When the price varies
+                  (variations or options), show the minimum prefixed with
+                  "À partir de". getServiceMinPrice/Duration fall back to the
+                  base values for services without choices. */}
               <div className="mt-1.5 sm:mt-3 flex items-center gap-3 sm:gap-4 text-xs sm:text-sm flex-wrap">
                 <span className="flex items-center gap-1 sm:gap-1.5 text-gray-600 dark:text-gray-300">
                   <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
-                  {formatDuration(service.duration)}
+                  {priceVaries && '~'}
+                  {formatDuration(getServiceMinDuration(service))}
                 </span>
                 <span className="flex items-center gap-1 sm:gap-1.5 font-medium text-gray-900 dark:text-white">
-                  {formatPrice(service.price)}
+                  {priceVaries && (
+                    <span className="text-[11px] font-normal text-gray-400">
+                      à partir de
+                    </span>
+                  )}
+                  {formatPrice(getServiceMinPrice(service))}
                 </span>
                 {depositBadge && (
                   <span

@@ -1,4 +1,5 @@
 export { PrestationsTab } from './PrestationsTab';
 export { ServiceCard } from './ServiceCard';
-export { ServiceModal, type ServiceFormData } from './ServiceModal';
+// Service create/edit now lives on a dedicated route (./prestations/…),
+// not a modal — the legacy ServiceModal was removed.
 export { CategoryModal, type CategoryFormData } from './CategoryModal';

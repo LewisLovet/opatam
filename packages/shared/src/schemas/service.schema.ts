@@ -36,6 +36,78 @@ export const serviceDepositSchema = z
   ])
   .nullable();
 
+/**
+ * Client-facing choices (variations / options / info fields) attached to
+ * a service. All absolute pricing (cents) and duration (minutes). These
+ * mirror the `Service*` interfaces in ../types and are validated the same
+ * way on create and update. Every field is OPTIONAL on the service
+ * schemas below so legacy prestations (no choices) keep validating.
+ */
+const choiceNameSchema = z
+  .string({ required_error: 'Le nom est requis' })
+  .min(1, { message: 'Le nom est requis' })
+  .max(100, { message: 'Le nom ne peut pas dépasser 100 caractères' });
+
+const choiceDescriptionSchema = z
+  .string()
+  .max(300, { message: 'La description ne peut pas dépasser 300 caractères' })
+  .nullable()
+  .optional();
+
+const choicePriceSchema = z
+  .number()
+  .int({ message: 'Le prix doit être en centimes (nombre entier)' })
+  .min(0, { message: 'Le prix ne peut pas être négatif' })
+  .max(1000000, { message: 'Le prix ne peut pas dépasser 10 000€' });
+
+const choiceDurationSchema = z
+  .number()
+  .int({ message: 'La durée doit être un nombre entier' })
+  .min(0, { message: 'La durée ne peut pas être négative' })
+  // Variation / option durations can be long (braids, dreadlocks…) and
+  // define the whole prestation, so allow up to 24h here (vs 8h on the
+  // base service duration).
+  .max(1440, { message: 'La durée maximum est de 24 heures (1440 minutes)' });
+
+/** One selectable row inside a variation (e.g. "Mi-dos · 70€ · +30min"). */
+export const serviceVariationOptionSchema = z.object({
+  id: z.string(),
+  name: choiceNameSchema,
+  description: choiceDescriptionSchema,
+  price: choicePriceSchema,
+  duration: choiceDurationSchema,
+});
+
+/** A required, mutually-exclusive group of choices (radio), e.g. "Longueur". */
+export const serviceVariationSchema = z.object({
+  id: z.string(),
+  name: choiceNameSchema,
+  description: choiceDescriptionSchema,
+  options: z.array(serviceVariationOptionSchema),
+});
+
+/** A purely informative question (no price impact). */
+export const serviceInfoFieldSchema = z.object({
+  id: z.string(),
+  name: choiceNameSchema,
+  description: choiceDescriptionSchema,
+  type: z.enum(['select', 'text', 'boolean']),
+  values: z.array(z.string()).optional(),
+  required: z.boolean(),
+});
+
+/** A top-level add-on (checkbox). Can expose its own nested variations
+ *  and info fields, only relevant when the option is checked. */
+export const serviceOptionSchema = z.object({
+  id: z.string(),
+  name: choiceNameSchema,
+  description: choiceDescriptionSchema,
+  price: choicePriceSchema,
+  duration: choiceDurationSchema,
+  nestedVariations: z.array(serviceVariationSchema),
+  nestedInfoFields: z.array(serviceInfoFieldSchema),
+});
+
 // Create service schema - MINIMUM requis (name, duration, price)
 export const createServiceSchema = z.object({
   name: z
@@ -97,6 +169,12 @@ export const createServiceSchema = z.object({
 
   // Per-service deposit override. See serviceDepositSchema above.
   deposit: serviceDepositSchema.optional(),
+
+  // Client-facing choices — all optional, default empty so a service
+  // without them validates exactly as before.
+  variations: z.array(serviceVariationSchema).optional(),
+  options: z.array(serviceOptionSchema).optional(),
+  infoFields: z.array(serviceInfoFieldSchema).optional(),
 })
   .refine(
     (data) => !data.priceMax || data.priceMax > data.price,
@@ -189,6 +267,11 @@ export const updateServiceSchema = z.object({
   deposit: serviceDepositSchema.optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
+
+  // Client-facing choices — see createServiceSchema for the field docs.
+  variations: z.array(serviceVariationSchema).optional(),
+  options: z.array(serviceOptionSchema).optional(),
+  infoFields: z.array(serviceInfoFieldSchema).optional(),
 });
 
 // Export types

@@ -573,6 +573,72 @@ export interface ServiceCategory {
   updatedAt: Date;
 }
 
+// ─── Service configuration (variations + options + info fields) ────
+//
+// A Service can optionally expose CHOICES that the client makes at
+// booking time. These choices determine the final price and
+// duration. Three kinds of choices, see acid test in /docs:
+//
+// 1. Variation  → REQUIRED choice that the client must make for the
+//    prestation to make sense (ex: "Longueur" for hair braids).
+//    Multiple variations sum up: total = base + Σ chosen prices.
+//
+// 2. Option     → OPTIONAL add-on the client can check (ex: "Mèches
+//    incluses"). When checked, can expose its OWN nested variations
+//    and info fields that only appear conditionally.
+//
+// 3. Info field → INFORMATIVE field with NO price / duration impact
+//    (ex: "Couleur du vernis"). Just captured for the pro to read.
+//
+// All prices are ABSOLUTE (in cents) — no deltas, no base anchor
+// tied to one variation. The client's final price is computed as:
+//    basePrice (Service.price)
+//  + Σ selected ServiceVariationOption.price
+//  + Σ selected ServiceOption.price (top-level + nested)
+// Same logic for duration. The basePrice is the "fee plancher" —
+// 0 for services where variations carry all the cost.
+
+/** One row inside a variation, e.g. "Mi-dos 70€" under "Longueur". */
+export interface ServiceVariationOption {
+  id: string;                       // stable uuid
+  name: string;                     // "Mi-dos"
+  description?: string | null;      // optional helper text shown to client
+  price: number;                    // absolute, in cents, can be 0
+  duration: number;                 // absolute, in minutes, can be 0
+}
+
+/** A group of mutually-exclusive choices (radio), e.g. "Longueur". */
+export interface ServiceVariation {
+  id: string;
+  name: string;                     // "Longueur"
+  description?: string | null;      // optional group-level helper text
+  options: ServiceVariationOption[]; // at least one option to be usable
+}
+
+/** A question with no price impact. `select` shows a list of choices,
+ *  `text` a free input, `boolean` a simple Oui / Non. */
+export interface ServiceInfoField {
+  id: string;
+  name: string;                     // "Couleur des mèches"
+  description?: string | null;
+  type: 'select' | 'text' | 'boolean';
+  values?: string[];                // required when type='select'
+  required: boolean;
+}
+
+/** A top-level add-on (checkbox). When checked, contributes its
+ *  own price / duration AND can expose nested variations + info
+ *  fields that are only visible while the option is checked. */
+export interface ServiceOption {
+  id: string;
+  name: string;                     // "Mèches incluses"
+  description?: string | null;
+  price: number;                    // absolute, in cents, added when checked
+  duration: number;                 // absolute, in minutes, added when checked
+  nestedVariations: ServiceVariation[]; // only visible if this option is checked
+  nestedInfoFields: ServiceInfoField[]; // only visible if this option is checked
+}
+
 // Service types
 export interface Service {
   name: string;
@@ -591,6 +657,15 @@ export interface Service {
    *  calendar. When null, the booking falls back to the member's color.
    *  Lets the pro segment their agenda by service type at a glance. */
   color?: string | null;
+
+  /** Optional client-facing choices that determine the final price /
+   *  duration at booking time. All three fields are OPTIONAL — a
+   *  Service without them behaves exactly as before (flat price +
+   *  duration), backward-compatible with every existing prestation
+   *  in Firestore. See the doc block above for semantics. */
+  variations?: ServiceVariation[];
+  options?: ServiceOption[];
+  infoFields?: ServiceInfoField[];
 
   /**
    * Per-service deposit configuration. Three states:
@@ -802,8 +877,59 @@ export interface Booking {
    */
   deposit?: BookingDeposit | null;
 
+  /**
+   * Variation choices the client made when booking. Denormalised at
+   * creation time so the booking detail reads the right labels even
+   * if the pro renames or deletes a variation later. The booking's
+   * `price` and `duration` already incorporate these — they're kept
+   * here only for human display (recap on the booking, in the
+   * confirmation email, etc.). Empty / undefined for legacy
+   * bookings and for services without variations.
+   */
+  selectedVariations?: BookingSelectedVariation[];
+
+  /**
+   * Add-on options the client ticked. Each carries its own
+   * denormalised nested choices (variations + info answers). Same
+   * semantic as `selectedVariations` — for display only, the price
+   * is already baked into `booking.price`.
+   */
+  selectedOptions?: BookingSelectedOption[];
+
+  /**
+   * Top-level info-field answers (questions with no price impact,
+   * exposed directly on the service rather than nested under an
+   * option). Keyed by infoField id → free-text or selected value.
+   */
+  selectedInfoValues?: Record<string, string>;
+
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** One variation choice captured at booking time. Fully denormalised
+ *  — the booking remains readable even if the variation is later
+ *  edited / deleted on the Service. */
+export interface BookingSelectedVariation {
+  variationId: string;
+  variationName: string;            // "Longueur"
+  optionId: string;
+  optionName: string;               // "Mi-dos"
+  price: number;                    // contribution to total, in cents
+  duration: number;                 // contribution to total, in minutes
+}
+
+/** One add-on captured at booking time, with its nested choices. */
+export interface BookingSelectedOption {
+  optionId: string;
+  optionName: string;               // "Mèches incluses"
+  price: number;                    // option's own price
+  duration: number;                 // option's own duration
+  /** Variation choices made WITHIN this option (only relevant when
+   *  the option exposes nested variations). */
+  nestedVariations: BookingSelectedVariation[];
+  /** Info answers made WITHIN this option, keyed by infoField id. */
+  infoValues: Record<string, string>;
 }
 
 export interface ClientInfo {
