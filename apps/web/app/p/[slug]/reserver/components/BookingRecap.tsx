@@ -193,10 +193,6 @@ export function BookingRecap({
                 ))}
               </ul>
             )}
-            <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mt-1">
-              <Clock className="w-4 h-4" />
-              <span>{formatDuration(displayDuration)}</span>
-            </div>
           </div>
         ) : (
           <div className="text-sm text-gray-400 dark:text-gray-500">
@@ -274,9 +270,18 @@ export function BookingRecap({
         )}
       </div>
 
-      {/* Total */}
+      {/* Total + durée — mis en avant ensemble */}
       {service && (
-        <div className="mt-1 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-1 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300">
+              <Clock className="w-4 h-4" />
+              Durée
+            </span>
+            <span className="text-base font-semibold text-gray-900 dark:text-white">
+              {formatDuration(displayDuration)}
+            </span>
+          </div>
           <div className="flex items-end justify-between">
             <span className="text-base font-semibold text-gray-900 dark:text-white">
               Total
