@@ -2,6 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Clock, Check, ChevronRight } from 'lucide-react';
+import {
+  getServiceMinPrice,
+  getServiceMinDuration,
+  type ServiceVariation,
+  type ServiceOption,
+  type ServiceInfoField,
+} from '@booking-app/shared';
 
 interface Service {
   id: string;
@@ -13,6 +20,9 @@ interface Service {
   categoryId?: string | null;
   locationIds: string[];
   memberIds: string[] | null;
+  variations?: ServiceVariation[];
+  options?: ServiceOption[];
+  infoFields?: ServiceInfoField[];
 }
 
 interface ServiceCategory {
@@ -71,6 +81,10 @@ function ServiceButton({
     }
   }, [service.description]);
 
+  // Price varies when the service has variations or optional add-ons.
+  const priceVaries =
+    (service.variations?.length ?? 0) > 0 || (service.options?.length ?? 0) > 0;
+
   return (
     <button
       onClick={() => onSelect(service.id)}
@@ -116,12 +130,17 @@ function ServiceButton({
           )}
           <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500">
             <Clock className="w-4 h-4" />
-            <span>{formatDuration(service.duration)}</span>
+            <span>{formatDuration(getServiceMinDuration(service))}</span>
           </div>
         </div>
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 text-right">
+          {priceVaries && (
+            <span className="block text-[11px] font-normal text-gray-400">
+              à partir de
+            </span>
+          )}
           <span className="text-lg font-bold text-gray-900 dark:text-white">
-            {formatPrice(service.price)}
+            {formatPrice(getServiceMinPrice(service))}
           </span>
         </div>
       </div>

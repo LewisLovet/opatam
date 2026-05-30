@@ -241,7 +241,7 @@ export function ServiceEditor({
         onSave={handleSave}
       />
 
-      <div className="mt-5 max-w-6xl w-full mx-auto lg:flex lg:gap-6 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
+      <div className="mt-5 w-full lg:flex lg:gap-6 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
         <div className="flex-1 min-w-0 space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1 lg:pb-12">
         <SectionEssentiel
           data={formData}

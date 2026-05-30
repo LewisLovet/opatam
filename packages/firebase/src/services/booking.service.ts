@@ -11,6 +11,9 @@ import type { Booking, BookingDeposit, BookingStatus } from '@booking-app/shared
 import {
   createBookingSchema,
   resolveDeposit,
+  computeServiceTotal,
+  buildBookingSelections,
+  emptyServiceSelections,
   type CreateBookingInput,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
@@ -89,8 +92,16 @@ export class BookingService {
       effectiveMemberId = defaultMember.id;
     }
 
+    // Resolve the effective price + duration from the client's selections.
+    // The server recomputes these from the authoritative Service doc — the
+    // client only sends which variations/options it picked, never a price.
+    const selections = validated.selections ?? emptyServiceSelections();
+    const effective = computeServiceTotal(service, selections);
+    const { selectedVariations, selectedOptions, selectedInfoValues } =
+      buildBookingSelections(service, selections);
+
     // Calculate total duration including buffer
-    const totalDuration = service.duration + service.bufferTime;
+    const totalDuration = effective.duration + service.bufferTime;
 
     // Check slot availability
     const isAvailable = await schedulingService.isSlotAvailable({
@@ -105,7 +116,7 @@ export class BookingService {
     }
 
     // Calculate end datetime
-    const endDatetime = new Date(validated.datetime.getTime() + service.duration * 60 * 1000);
+    const endDatetime = new Date(validated.datetime.getTime() + effective.duration * 60 * 1000);
 
     // Generate cancel token
     const cancelToken = this.generateCancelToken();
@@ -120,7 +131,8 @@ export class BookingService {
       provider.stripeConnectStatus === 'active' &&
       !!provider.stripeConnectAccountId;
     const resolvedDeposit = depositReady
-      ? resolveDeposit(service, provider.settings ?? {})
+      ? // Deposit is a % of the EFFECTIVE price (incl. variations/options).
+        resolveDeposit({ ...service, price: effective.price }, provider.settings ?? {})
       : null;
 
     // Status precedence:
@@ -172,9 +184,15 @@ export class BookingService {
       serviceId: validated.serviceId,
       serviceName: service.name,
       serviceColor: service.color || null,
-      duration: service.duration,
-      price: service.price,
+      // Effective values (base + chosen variations/options). For a plain
+      // service these equal service.duration / service.price.
+      duration: effective.duration,
+      price: effective.price,
       priceMax: service.priceMax ?? null,
+      // Denormalised choices (frozen names/prices) — only when present.
+      ...(selectedVariations.length ? { selectedVariations } : {}),
+      ...(selectedOptions.length ? { selectedOptions } : {}),
+      ...(Object.keys(selectedInfoValues).length ? { selectedInfoValues } : {}),
       clientInfo: validated.clientInfo!,
       datetime: validated.datetime,
       endDatetime,

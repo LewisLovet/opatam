@@ -6,6 +6,19 @@ import { trackEvent } from '@/lib/meta-pixel';
 import { ArrowLeft, Check, CalendarCheck, Sparkles, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { APP_CONFIG } from '@booking-app/shared/constants';
+import {
+  computeServiceTotal,
+  validateServiceSelections,
+  emptyServiceSelections,
+  serviceHasChoices,
+  formatPrice,
+  formatDuration,
+  type ServiceSelections,
+  type ServiceVariation,
+  type ServiceOption,
+  type ServiceInfoField,
+} from '@booking-app/shared';
+import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import { StepService } from './StepService';
 import { StepMember } from './StepMember';
 import { StepSlot } from './StepSlot';
@@ -48,6 +61,9 @@ interface Service {
   categoryId?: string | null;
   locationIds: string[];
   memberIds: string[] | null;
+  variations?: ServiceVariation[];
+  options?: ServiceOption[];
+  infoFields?: ServiceInfoField[];
 }
 
 interface Location {
@@ -103,6 +119,8 @@ interface BookingState {
   memberId: string | null;
   locationId: string | null;
   slot: TimeSlotWithDate | null;
+  /** Variations / options chosen for the selected service. */
+  selections: ServiceSelections;
   clientInfo: {
     name: string;
     email: string;
@@ -143,8 +161,15 @@ export function BookingFlow({
     memberId: null,
     locationId: null,
     slot: null,
+    selections: emptyServiceSelections(),
     clientInfo: initialClientInfo,
   });
+
+  // When set, the service step shows the variations/options picker for this
+  // service instead of the service list.
+  const [configuringServiceId, setConfiguringServiceId] = useState<string | null>(
+    null,
+  );
 
   // Current step
   const [currentStep, setCurrentStep] = useState<BookingStep>(
@@ -164,6 +189,45 @@ export function BookingFlow({
     () => services.find((s) => s.id === state.serviceId) || null,
     [services, state.serviceId]
   );
+
+  // Effective price + duration given the current variation/option choices
+  // (equals the base values when the service has no choices).
+  const effective = useMemo(
+    () =>
+      selectedService
+        ? computeServiceTotal(selectedService, state.selections)
+        : { price: 0, duration: 0 },
+    [selectedService, state.selections],
+  );
+
+  // Required choices still missing — gates the "Continuer" button.
+  const choicesValidation = useMemo(
+    () =>
+      selectedService
+        ? validateServiceSelections(selectedService, state.selections)
+        : { valid: true, missing: [] as string[] },
+    [selectedService, state.selections],
+  );
+  const missingSet = useMemo(
+    () => new Set(choicesValidation.missing),
+    [choicesValidation],
+  );
+
+  // Human-readable labels of the chosen variations/options for the recap.
+  const choiceLabels = useMemo(() => {
+    if (!selectedService) return [] as string[];
+    const labels: string[] = [];
+    for (const v of selectedService.variations ?? []) {
+      const chosen = v.options.find(
+        (o) => o.id === state.selections.variations[v.id],
+      );
+      if (chosen) labels.push(`${v.name}: ${chosen.name}`);
+    }
+    for (const o of selectedService.options ?? []) {
+      if (state.selections.options[o.id]) labels.push(o.name);
+    }
+    return labels;
+  }, [selectedService, state.selections]);
 
   const selectedMember = useMemo(
     () => members.find((m) => m.id === state.memberId) || null,
@@ -280,20 +344,51 @@ export function BookingFlow({
     }
   };
 
+  // After the (optional) booking notice: a service with variations/options
+  // opens the picker (stay on the service step); a plain one advances.
+  const enterServiceConfig = (serviceId: string) => {
+    const svc = services.find((s) => s.id === serviceId);
+    if (svc && serviceHasChoices(svc)) {
+      setState((prev) => ({
+        ...prev,
+        serviceId,
+        selections: emptyServiceSelections(),
+        memberId: null,
+        locationId: null,
+        slot: null,
+      }));
+      setConfiguringServiceId(serviceId);
+    } else {
+      proceedWithService(serviceId);
+    }
+  };
+
   const handleServiceSelect = (serviceId: string) => {
     const notice = provider.settings.bookingNotice;
     if (notice) {
       setPendingServiceId(serviceId);
       setShowNotice(true);
     } else {
-      proceedWithService(serviceId);
+      enterServiceConfig(serviceId);
     }
+  };
+
+  // Confirm the chosen variations/options and move on to the next step.
+  const handleChoicesContinue = () => {
+    if (!state.serviceId) return;
+    setConfiguringServiceId(null);
+    proceedWithService(state.serviceId);
+  };
+
+  const handleChoicesBack = () => {
+    setConfiguringServiceId(null);
+    setState((prev) => ({ ...prev, serviceId: null, selections: emptyServiceSelections() }));
   };
 
   const handleNoticeAccept = () => {
     setShowNotice(false);
     if (pendingServiceId) {
-      proceedWithService(pendingServiceId);
+      enterServiceConfig(pendingServiceId);
       setPendingServiceId(null);
     }
   };
@@ -364,6 +459,8 @@ export function BookingFlow({
           locationId: state.locationId,
           datetime: state.slot.datetime,
           clientInfo: state.clientInfo,
+          // Server recomputes price + duration from these.
+          selections: state.selections,
         }),
       });
 
@@ -468,13 +565,71 @@ export function BookingFlow({
               </div>
             )}
 
-            {currentStep === 'service' && (
+            {currentStep === 'service' && !configuringServiceId && (
               <StepService
                 services={services}
                 categories={serviceCategories}
                 selectedServiceId={state.serviceId}
                 onSelect={handleServiceSelect}
               />
+            )}
+
+            {/* Variations / options picker for the chosen service */}
+            {currentStep === 'service' && configuringServiceId && selectedService && (
+              <div>
+                <button
+                  type="button"
+                  onClick={handleChoicesBack}
+                  className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-4"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Changer de prestation
+                </button>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {selectedService.name}
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-5">
+                  Composez votre prestation
+                </p>
+
+                <ServiceChoicesPicker
+                  service={{
+                    variations: selectedService.variations,
+                    options: selectedService.options,
+                    infoFields: selectedService.infoFields,
+                  }}
+                  selections={state.selections}
+                  onChange={(sel) =>
+                    setState((prev) => ({ ...prev, selections: sel }))
+                  }
+                  missing={missingSet}
+                />
+
+                <div className="mt-6 flex items-center justify-between gap-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatDuration(effective.duration)}
+                    </p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">
+                      {formatPrice(effective.price)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleChoicesContinue}
+                    disabled={!choicesValidation.valid}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Continuer
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+                {!choicesValidation.valid && (
+                  <p className="mt-2 text-right text-xs text-error-600 dark:text-error-400">
+                    À choisir : {choicesValidation.missing.join(', ')}
+                  </p>
+                )}
+              </div>
             )}
 
             {currentStep === 'member' && selectedService && (
@@ -492,7 +647,7 @@ export function BookingFlow({
                 providerId={provider.id}
                 serviceId={state.serviceId!}
                 memberId={state.memberId}
-                serviceDuration={selectedService.duration + selectedService.bufferTime}
+                serviceDuration={effective.duration + selectedService.bufferTime}
                 maxAdvanceDays={provider.settings.maxBookingAdvance}
                 selectedSlot={state.slot}
                 onSelect={handleSlotSelect}
@@ -625,6 +780,9 @@ export function BookingFlow({
               location={selectedLocation}
               slot={state.slot}
               provider={provider}
+              effectivePrice={effective.price}
+              effectiveDuration={effective.duration}
+              choiceLabels={choiceLabels}
             />
           </div>
           )}
@@ -640,6 +798,9 @@ export function BookingFlow({
             location={selectedLocation}
             slot={state.slot}
             provider={provider}
+            effectivePrice={effective.price}
+            effectiveDuration={effective.duration}
+            choiceLabels={choiceLabels}
             compact
           />
         </div>

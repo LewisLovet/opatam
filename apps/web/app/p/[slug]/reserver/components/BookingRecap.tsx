@@ -55,6 +55,12 @@ interface BookingRecapProps {
   slot: TimeSlotWithDate | null;
   provider: Provider;
   compact?: boolean;
+  /** Effective price/duration including the chosen variations/options.
+   *  When provided they override the service base values. */
+  effectivePrice?: number;
+  effectiveDuration?: number;
+  /** Labels of the chosen variations/options to list under the service. */
+  choiceLabels?: string[];
 }
 
 function formatDuration(minutes: number): string {
@@ -98,7 +104,16 @@ export function BookingRecap({
   slot,
   provider,
   compact = false,
+  effectivePrice,
+  effectiveDuration,
+  choiceLabels = [],
 }: BookingRecapProps) {
+  // When an effective price is given (variations/options), it's an exact
+  // amount — drop the base range.
+  const displayPrice = effectivePrice ?? service?.price ?? 0;
+  const displayMax = effectivePrice != null ? null : service?.priceMax;
+  const displayDuration = effectiveDuration ?? service?.duration ?? 0;
+
   if (compact) {
     // Mobile compact version
     return (
@@ -110,7 +125,7 @@ export function BookingRecap({
                 {service.name}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {formatDuration(service.duration)} · {formatPrice(service.price, service.priceMax)}
+                {formatDuration(displayDuration)} · {formatPrice(displayPrice, displayMax)}
               </p>
             </>
           ) : (
@@ -121,7 +136,7 @@ export function BookingRecap({
         </div>
         {service && (
           <span className="text-xl font-bold text-gray-900 dark:text-white">
-            {formatPrice(service.price, service.priceMax)}
+            {formatPrice(displayPrice, displayMax)}
           </span>
         )}
       </div>
@@ -169,9 +184,18 @@ export function BookingRecap({
             <p className="font-medium text-gray-900 dark:text-white">
               {service.name}
             </p>
+            {choiceLabels.length > 0 && (
+              <ul className="mt-1 space-y-0.5">
+                {choiceLabels.map((label, i) => (
+                  <li key={i} className="text-sm text-gray-500 dark:text-gray-400">
+                    · {label}
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mt-1">
               <Clock className="w-4 h-4" />
-              <span>{formatDuration(service.duration)}</span>
+              <span>{formatDuration(displayDuration)}</span>
             </div>
           </div>
         ) : (
@@ -258,7 +282,7 @@ export function BookingRecap({
               Total
             </span>
             <span className="text-xl font-bold text-gray-900 dark:text-white">
-              {formatPrice(service.price, service.priceMax)}
+              {formatPrice(displayPrice, displayMax)}
             </span>
           </div>
         </div>

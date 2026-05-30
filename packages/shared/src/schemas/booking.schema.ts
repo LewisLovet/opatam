@@ -34,6 +34,23 @@ export const clientInfoSchema = z.object({
     .refine((val) => isValidPhone(val), { message: 'Numéro de téléphone invalide' }),
 });
 
+/**
+ * Client choices for a service with variations / options / infos. Holds
+ * only IDs / answers — the server recomputes the price, duration and the
+ * denormalised selection labels from the authoritative Service doc, so a
+ * tampered payload can't change what the client pays.
+ */
+export const serviceSelectionsSchema = z.object({
+  variations: z.record(z.string()),
+  options: z.record(
+    z.object({
+      nestedVariations: z.record(z.string()),
+      infoValues: z.record(z.string()),
+    }),
+  ),
+  infoValues: z.record(z.string()),
+});
+
 // Create booking schema
 export const createBookingSchema = z.object({
   providerId: z.string({ required_error: 'Le prestataire est requis' }).min(1),
@@ -47,6 +64,9 @@ export const createBookingSchema = z.object({
     .string()
     .max(500, { message: 'Les notes ne peuvent pas dépasser 500 caractères' })
     .optional(),
+  // Service variations / options / infos chosen by the client. Optional —
+  // absent for plain services. Server recomputes price + duration from it.
+  selections: serviceSelectionsSchema.optional(),
 }).refine(
   (data) => data.clientInfo !== undefined || data.clientId !== undefined,
   { message: 'Les informations du client sont requises' }

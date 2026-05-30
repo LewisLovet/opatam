@@ -120,6 +120,10 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     categoryId: s.categoryId ?? null,
     locationIds: s.locationIds,
     memberIds: s.memberIds,
+    // Client-facing choices (empty arrays for plain services).
+    variations: s.variations ?? [],
+    options: s.options ?? [],
+    infoFields: s.infoFields ?? [],
   }));
 
   const serializedCategories = serviceCategories

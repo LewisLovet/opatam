@@ -27,7 +27,7 @@ export function EditorTopBar({
 }: EditorTopBarProps) {
   return (
     <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-200 dark:border-gray-800">
-      <div className="flex items-center gap-3 max-w-6xl mx-auto">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}

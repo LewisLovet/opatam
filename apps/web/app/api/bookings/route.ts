@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
       locationId: body.locationId,
       datetime: new Date(body.datetime),
       clientInfo: body.clientInfo,
+      // Variations/options chosen by the client. The booking service
+      // recomputes price + duration from these server-side.
+      selections: body.selections,
     });
     const clientUid: string | null =
       typeof body.clientId === 'string' && body.clientId.length > 0

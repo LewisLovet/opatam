@@ -11,7 +11,7 @@ import {
   formatDuration,
   type ServiceSelections,
 } from '@booking-app/shared';
-import { ServiceChoicesPicker } from './ServiceChoicesPicker';
+import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import type { ServiceFormData } from './types';
 
 /**
