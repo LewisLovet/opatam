@@ -605,8 +605,10 @@ export function BookingFlow({
                   missing={missingSet}
                 />
 
-                <div className="mt-6 flex items-center justify-between gap-4 border-t border-gray-100 dark:border-gray-800 pt-4">
-                  <div>
+                <div className="mt-6 flex items-center justify-between lg:justify-end gap-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+                  {/* Price/duration shown here only on mobile — on desktop it
+                      lives in the recap sidebar to avoid duplication. */}
+                  <div className="lg:hidden">
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {formatDuration(effective.duration)}
                     </p>
@@ -789,8 +791,9 @@ export function BookingFlow({
         </div>
       </div>
 
-      {/* Mobile Recap */}
-      {selectedService && currentStep !== 'demo-success' && (
+      {/* Mobile Recap — hidden while configuring choices (the picker shows
+          its own price/duration footer there). */}
+      {selectedService && currentStep !== 'demo-success' && !configuringServiceId && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 z-30">
           <BookingRecap
             service={selectedService}

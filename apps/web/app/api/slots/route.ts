@@ -50,6 +50,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Effective total slot length (service + variations/options + buffer),
+    // sent by the booking flow when the service has variations.
+    const durationParam = searchParams.get('duration');
+    const durationOverride = durationParam ? parseInt(durationParam, 10) : undefined;
+
     // Get available slots
     const slots = await schedulingService.getAvailableSlots({
       providerId,
@@ -57,6 +62,10 @@ export async function GET(request: NextRequest) {
       memberId,
       startDate,
       endDate,
+      durationOverride:
+        durationOverride && Number.isFinite(durationOverride)
+          ? durationOverride
+          : undefined,
     });
 
     // Serialize slots for client

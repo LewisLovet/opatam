@@ -141,6 +141,9 @@ export function StepSlot({
           serviceId,
           memberId,
           date: dateStr,
+          // Effective total length (incl. chosen variations/options + buffer)
+          // so the generated slots match the real prestation duration.
+          duration: String(serviceDuration),
         });
 
         const response = await fetch(`/api/slots?${params}`);

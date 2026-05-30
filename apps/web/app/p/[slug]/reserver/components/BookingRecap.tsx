@@ -276,12 +276,12 @@ export function BookingRecap({
 
       {/* Total */}
       {service && (
-        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-gray-900 dark:text-white">
+        <div className="mt-1 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-end justify-between">
+            <span className="text-base font-semibold text-gray-900 dark:text-white">
               Total
             </span>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">
+            <span className="text-2xl font-extrabold text-primary-600 dark:text-primary-400">
               {formatPrice(displayPrice, displayMax)}
             </span>
           </div>
