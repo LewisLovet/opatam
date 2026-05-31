@@ -50,6 +50,9 @@ interface Provider {
 
 interface BookingRecapProps {
   service: Service | null;
+  /** Overrides the displayed service name (e.g. "2 prestations" for a
+   *  multi-prestation cart). Falls back to service.name when omitted. */
+  serviceLabel?: string;
   member: Member | null;
   location: Location | null;
   slot: TimeSlotWithDate | null;
@@ -99,6 +102,7 @@ function formatDate(isoString: string): string {
 
 export function BookingRecap({
   service,
+  serviceLabel,
   member,
   location,
   slot,
@@ -108,6 +112,7 @@ export function BookingRecap({
   effectiveDuration,
   choiceLabels = [],
 }: BookingRecapProps) {
+  const displayName = serviceLabel ?? service?.name ?? '';
   // When an effective price is given (variations/options), it's an exact
   // amount — drop the base range.
   const displayPrice = effectivePrice ?? service?.price ?? 0;
@@ -122,7 +127,7 @@ export function BookingRecap({
           {service ? (
             <>
               <p className="font-semibold text-gray-900 dark:text-white truncate">
-                {service.name}
+                {displayName}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {formatDuration(displayDuration)} · {formatPrice(displayPrice, displayMax)}
@@ -182,7 +187,7 @@ export function BookingRecap({
               Prestation
             </p>
             <p className="font-medium text-gray-900 dark:text-white">
-              {service.name}
+              {displayName}
             </p>
             {choiceLabels.length > 0 && (
               <ul className="mt-1 space-y-0.5">

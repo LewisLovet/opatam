@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
-import { ArrowLeft, Check, CalendarCheck, Sparkles, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Check, CalendarCheck, Sparkles, ArrowRight, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 import {
@@ -114,8 +114,18 @@ interface BookingFlowProps {
 
 export type BookingStep = 'service' | 'member' | 'slot' | 'confirm' | 'demo-success';
 
+/** One prestation in the "panier": a service + its chosen variations/options. */
+interface CartItem {
+  serviceId: string;
+  selections: ServiceSelections;
+}
+
 interface BookingState {
+  /** Primary service — kept in sync with cart[0]?.serviceId. Many
+   *  references (member filtering, selectedService, recap) rely on it. */
   serviceId: string | null;
+  /** Multi-prestation cart. cart[0] is the primary service. */
+  cart: CartItem[];
   memberId: string | null;
   locationId: string | null;
   slot: TimeSlotWithDate | null;
@@ -126,6 +136,23 @@ interface BookingState {
     email: string;
     phone: string;
   };
+}
+
+/** Human-readable labels of the chosen variations/options for a service. */
+function buildChoiceLabels(
+  service: Service | undefined,
+  selections: ServiceSelections,
+): string[] {
+  if (!service) return [];
+  const labels: string[] = [];
+  for (const v of service.variations ?? []) {
+    const chosen = v.options.find((o) => o.id === selections.variations[v.id]);
+    if (chosen) labels.push(`${v.name}: ${chosen.name}`);
+  }
+  for (const o of service.options ?? []) {
+    if (selections.options[o.id]) labels.push(o.name);
+  }
+  return labels;
 }
 
 const initialClientInfo = {
@@ -147,17 +174,28 @@ export function BookingFlow({
 }: BookingFlowProps) {
   const router = useRouter();
 
-  // Determine initial service
-  const initialServiceId = useMemo(() => {
-    if (preselectedServiceId && services.some((s) => s.id === preselectedServiceId)) {
-      return preselectedServiceId;
+  // Determine initial service (deep-link via ?service=)
+  const initialService = useMemo(() => {
+    if (preselectedServiceId) {
+      return services.find((s) => s.id === preselectedServiceId) ?? null;
     }
     return null;
   }, [preselectedServiceId, services]);
 
+  // A deep-linked service with NO choices can be added to the cart straight
+  // away (and the flow advances past the service step). A deep-linked
+  // service WITH choices must be configured first, so we seed the
+  // configuration view instead of the cart and stay on the service step.
+  const initialHasChoices = !!initialService && serviceHasChoices(initialService);
+  const initialCart: CartItem[] =
+    initialService && !initialHasChoices
+      ? [{ serviceId: initialService.id, selections: emptyServiceSelections() }]
+      : [];
+
   // Booking state
   const [state, setState] = useState<BookingState>({
-    serviceId: initialServiceId,
+    serviceId: initialService?.id ?? null,
+    cart: initialCart,
     memberId: null,
     locationId: null,
     slot: null,
@@ -166,23 +204,34 @@ export function BookingFlow({
   });
 
   // When set, the service step shows the variations/options picker for this
-  // service instead of the service list.
+  // service instead of the cart + service list. Used both for the
+  // "+ ajouter" draft and for a deep-linked service that needs configuring.
   const [configuringServiceId, setConfiguringServiceId] = useState<string | null>(
-    null,
+    initialHasChoices ? initialService!.id : null,
   );
 
-  // Current step
+  // Current step. A deep-link with a fully-resolved cart (no choices) skips
+  // straight ahead; otherwise we stay on the service step.
   const [currentStep, setCurrentStep] = useState<BookingStep>(
-    initialServiceId ? (isTeam ? 'member' : 'slot') : 'service'
+    initialCart.length > 0 ? (isTeam ? 'member' : 'slot') : 'service'
   );
 
   // Loading and error states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Booking notice modal
+  // Booking notice modal — shown ONCE before proceeding to the slot step
+  // (on "Continuer"), not on every prestation added to the cart.
   const [showNotice, setShowNotice] = useState(false);
-  const [pendingServiceId, setPendingServiceId] = useState<string | null>(null);
+  const [noticeAcknowledged, setNoticeAcknowledged] = useState(false);
+
+  // Keep state.serviceId == cart[0].serviceId (the "primary"). Member
+  // filtering, selectedService and the recap rely on it — mirrors the pro
+  // modal which keeps formData.serviceId in sync with cart[0].
+  useEffect(() => {
+    const primary = state.cart[0]?.serviceId ?? null;
+    setState((prev) => (prev.serviceId === primary ? prev : { ...prev, serviceId: primary }));
+  }, [state.cart]);
 
   // Get selected entities
   const selectedService = useMemo(
@@ -190,44 +239,63 @@ export function BookingFlow({
     [services, state.serviceId]
   );
 
-  // Effective price + duration given the current variation/option choices
-  // (equals the base values when the service has no choices).
-  const effective = useMemo(
+  // Cart prestations resolved to their Service docs + effective
+  // price/duration (variations/options applied). Drives the cart list, the
+  // running total, the slot duration, the recap.
+  const cartLines = useMemo(
     () =>
-      selectedService
-        ? computeServiceTotal(selectedService, state.selections)
-        : { price: 0, duration: 0 },
-    [selectedService, state.selections],
+      state.cart
+        .map((item) => {
+          const service = services.find((s) => s.id === item.serviceId);
+          if (!service) return null;
+          const total = computeServiceTotal(service, item.selections);
+          return { item, service, price: total.price, duration: total.duration };
+        })
+        .filter((l): l is NonNullable<typeof l> => l !== null),
+    [state.cart, services],
   );
 
-  // Required choices still missing — gates the "Continuer" button.
-  const choicesValidation = useMemo(
-    () =>
-      selectedService
-        ? validateServiceSelections(selectedService, state.selections)
-        : { valid: true, missing: [] as string[] },
-    [selectedService, state.selections],
+  // Summed effective price/duration over the whole cart. The duration also
+  // adds a SINGLE buffer at the end (the last cart service's bufferTime),
+  // which drives the slot length — mirrors the pro modal's totalDuration.
+  const cartTotalPrice = useMemo(
+    () => cartLines.reduce((sum, l) => sum + l.price, 0),
+    [cartLines],
   );
-  const missingSet = useMemo(
-    () => new Set(choicesValidation.missing),
-    [choicesValidation],
+  const cartTotalDuration = useMemo(
+    () => cartLines.reduce((sum, l) => sum + l.duration, 0),
+    [cartLines],
+  );
+  const cartSlotDuration = useMemo(
+    () =>
+      cartLines.length === 0
+        ? 0
+        : cartTotalDuration + (cartLines[cartLines.length - 1].service.bufferTime ?? 0),
+    [cartLines, cartTotalDuration],
   );
 
-  // Human-readable labels of the chosen variations/options for the recap.
+  // Human-readable labels of every cart item's chosen variations/options
+  // for the recap. When the cart holds more than one prestation, each label
+  // is prefixed with the service name (e.g. "Dread locks · Longueur: Mi-dos")
+  // so the client can tell which prestation a choice belongs to.
   const choiceLabels = useMemo(() => {
-    if (!selectedService) return [] as string[];
+    const multi = cartLines.length > 1;
     const labels: string[] = [];
-    for (const v of selectedService.variations ?? []) {
-      const chosen = v.options.find(
-        (o) => o.id === state.selections.variations[v.id],
-      );
-      if (chosen) labels.push(`${v.name}: ${chosen.name}`);
-    }
-    for (const o of selectedService.options ?? []) {
-      if (state.selections.options[o.id]) labels.push(o.name);
+    for (const line of cartLines) {
+      const itemLabels = buildChoiceLabels(line.service, line.item.selections);
+      if (multi) {
+        // Always surface the service name (with its choices appended).
+        labels.push(
+          itemLabels.length > 0
+            ? `${line.service.name} · ${itemLabels.join(' · ')}`
+            : line.service.name,
+        );
+      } else {
+        labels.push(...itemLabels);
+      }
     }
     return labels;
-  }, [selectedService, state.selections]);
+  }, [cartLines]);
 
   const selectedMember = useMemo(
     () => members.find((m) => m.id === state.memberId) || null,
@@ -239,22 +307,27 @@ export function BookingFlow({
     [locations, state.locationId]
   );
 
-  // Get available members for selected service
+  // Get members who can perform EVERY prestation in the cart (intersection).
+  // A member qualifies for a single cart service when: it's in the service's
+  // memberIds (if set), else its location is in the service's locationIds
+  // (if set), else any member qualifies.
   const availableMembers = useMemo(() => {
-    if (!selectedService) return [];
+    if (cartLines.length === 0) return [];
 
-    // If service has specific members assigned, filter to those
-    if (selectedService.memberIds && selectedService.memberIds.length > 0) {
-      return members.filter((m) => selectedService.memberIds?.includes(m.id));
-    }
+    const qualifiesFor = (memberId: string, locationId: string, svc: Service) => {
+      if (svc.memberIds && svc.memberIds.length > 0) {
+        return svc.memberIds.includes(memberId);
+      }
+      if (svc.locationIds.length > 0) {
+        return svc.locationIds.includes(locationId);
+      }
+      return true;
+    };
 
-    // If service has specific locations, filter members by those locations
-    if (selectedService.locationIds.length > 0) {
-      return members.filter((m) => selectedService.locationIds.includes(m.locationId));
-    }
-
-    return members;
-  }, [selectedService, members]);
+    return members.filter((m) =>
+      cartLines.every((line) => qualifiesFor(m.id, m.locationId, line.service)),
+    );
+  }, [cartLines, members]);
 
   // Meta Pixel — InitiateCheckout once per landing on the booking
   // flow. We fire on mount (not per-step) because reaching this page
@@ -317,24 +390,94 @@ export function BookingFlow({
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
 
   // Navigation handlers
-  const proceedWithService = (serviceId: string) => {
+
+  // Add a fully-resolved prestation to the cart.
+  const addToCart = (item: CartItem) => {
     setState((prev) => ({
       ...prev,
-      serviceId,
+      cart: [...prev.cart, item],
+      // Adding/removing a prestation changes the total duration → any
+      // already-picked member/slot must be re-validated downstream.
       memberId: null,
       locationId: null,
       slot: null,
     }));
+  };
 
+  const removeFromCart = (index: number) => {
+    setState((prev) => ({
+      ...prev,
+      cart: prev.cart.filter((_, i) => i !== index),
+      memberId: null,
+      locationId: null,
+      slot: null,
+    }));
+  };
+
+  // Tap a service in the list: a service with variations/options opens the
+  // picker (stay on the service step); a plain one is added straight away.
+  // No booking notice here — it now shows once, on "Continuer".
+  const handleServiceSelect = (serviceId: string) => {
+    const svc = services.find((s) => s.id === serviceId);
+    if (svc && serviceHasChoices(svc)) {
+      setState((prev) => ({ ...prev, selections: emptyServiceSelections() }));
+      setConfiguringServiceId(serviceId);
+    } else if (svc) {
+      addToCart({ serviceId, selections: emptyServiceSelections() });
+    }
+  };
+
+  // The service currently being configured in the choices picker (the draft).
+  const configuringService = useMemo(
+    () => services.find((s) => s.id === configuringServiceId) || null,
+    [services, configuringServiceId],
+  );
+
+  const draftValidation = useMemo(
+    () =>
+      configuringService
+        ? validateServiceSelections(configuringService, state.selections)
+        : { valid: true, missing: [] as string[] },
+    [configuringService, state.selections],
+  );
+  const draftMissingSet = useMemo(
+    () => new Set(draftValidation.missing),
+    [draftValidation],
+  );
+  const draftEffective = useMemo(
+    () =>
+      configuringService
+        ? computeServiceTotal(configuringService, state.selections)
+        : { price: 0, duration: 0 },
+    [configuringService, state.selections],
+  );
+
+  // Confirm the chosen variations/options → push the draft to the cart and
+  // return to the cart view (so the client can add more or continue).
+  const handleAddConfiguredToCart = () => {
+    if (!configuringServiceId || !draftValidation.valid) return;
+    addToCart({ serviceId: configuringServiceId, selections: state.selections });
+    setConfiguringServiceId(null);
+    setState((prev) => ({ ...prev, selections: emptyServiceSelections() }));
+  };
+
+  const handleChoicesBack = () => {
+    setConfiguringServiceId(null);
+    setState((prev) => ({ ...prev, selections: emptyServiceSelections() }));
+  };
+
+  // Advance from the service step to the next step. The booking notice (if
+  // any) is shown ONCE here, before proceeding — not on every add.
+  const advanceFromService = () => {
+    if (state.cart.length === 0) return;
     if (isTeam) {
       setCurrentStep('member');
     } else {
-      // Auto-select default member for solo providers
+      // Auto-select default member for solo providers.
       const defaultMember = members.find((m) => m.isDefault) || members[0];
       if (defaultMember) {
         setState((prev) => ({
           ...prev,
-          serviceId,
           memberId: defaultMember.id,
           locationId: defaultMember.locationId,
           slot: null,
@@ -344,58 +487,24 @@ export function BookingFlow({
     }
   };
 
-  // After the (optional) booking notice: a service with variations/options
-  // opens the picker (stay on the service step); a plain one advances.
-  const enterServiceConfig = (serviceId: string) => {
-    const svc = services.find((s) => s.id === serviceId);
-    if (svc && serviceHasChoices(svc)) {
-      setState((prev) => ({
-        ...prev,
-        serviceId,
-        selections: emptyServiceSelections(),
-        memberId: null,
-        locationId: null,
-        slot: null,
-      }));
-      setConfiguringServiceId(serviceId);
-    } else {
-      proceedWithService(serviceId);
-    }
-  };
-
-  const handleServiceSelect = (serviceId: string) => {
+  const handleContinueFromService = () => {
+    if (state.cart.length === 0) return;
     const notice = provider.settings.bookingNotice;
-    if (notice) {
-      setPendingServiceId(serviceId);
+    if (notice && !noticeAcknowledged) {
       setShowNotice(true);
     } else {
-      enterServiceConfig(serviceId);
+      advanceFromService();
     }
-  };
-
-  // Confirm the chosen variations/options and move on to the next step.
-  const handleChoicesContinue = () => {
-    if (!state.serviceId) return;
-    setConfiguringServiceId(null);
-    proceedWithService(state.serviceId);
-  };
-
-  const handleChoicesBack = () => {
-    setConfiguringServiceId(null);
-    setState((prev) => ({ ...prev, serviceId: null, selections: emptyServiceSelections() }));
   };
 
   const handleNoticeAccept = () => {
     setShowNotice(false);
-    if (pendingServiceId) {
-      enterServiceConfig(pendingServiceId);
-      setPendingServiceId(null);
-    }
+    setNoticeAcknowledged(true);
+    advanceFromService();
   };
 
   const handleNoticeClose = () => {
     setShowNotice(false);
-    setPendingServiceId(null);
   };
 
   const handleMemberSelect = (memberId: string) => {
@@ -429,7 +538,7 @@ export function BookingFlow({
   };
 
   const handleSubmit = async () => {
-    if (!state.serviceId || !state.memberId || !state.slot || !state.locationId) {
+    if (state.cart.length === 0 || !state.memberId || !state.slot || !state.locationId) {
       setError('Informations manquantes');
       return;
     }
@@ -454,13 +563,20 @@ export function BookingFlow({
         body: JSON.stringify({
           providerId: provider.id,
           providerSlug: provider.slug,
-          serviceId: state.serviceId,
+          serviceId: state.cart[0].serviceId,
+          // Multi-prestation cart: the server recomputes price + duration
+          // from every item and persists items[]. serviceId above stays the
+          // primary (cart[0]) for backward compatibility.
+          items: state.cart.map((c) => ({
+            serviceId: c.serviceId,
+            selections: c.selections,
+          })),
           memberId: state.memberId,
           locationId: state.locationId,
           datetime: state.slot.datetime,
           clientInfo: state.clientInfo,
-          // Server recomputes price + duration from these.
-          selections: state.selections,
+          // Kept for single-prestation backward compat (== items[0].selections).
+          selections: state.cart[0].selections,
         }),
       });
 
@@ -566,16 +682,85 @@ export function BookingFlow({
             )}
 
             {currentStep === 'service' && !configuringServiceId && (
-              <StepService
-                services={services}
-                categories={serviceCategories}
-                selectedServiceId={state.serviceId}
-                onSelect={handleServiceSelect}
-              />
+              <div>
+                {/* Cart (panier) — the prestations already added. */}
+                {cartLines.length > 0 && (
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                      Votre rendez-vous
+                    </h2>
+                    <div className="space-y-2">
+                      {cartLines.map((line, idx) => {
+                        const itemLabels = buildChoiceLabels(line.service, line.item.selections);
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-start justify-between gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                {line.service.name}
+                              </p>
+                              {itemLabels.length > 0 && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {itemLabels.join(' · ')}
+                                </p>
+                              )}
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                                {formatDuration(line.duration)} · {formatPrice(line.price)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFromCart(idx)}
+                              className="flex-shrink-0 p-2 -mr-1 rounded-lg text-gray-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 transition-colors"
+                              aria-label="Retirer la prestation"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+
+                      {/* Running total */}
+                      <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/60">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Total
+                        </span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {formatDuration(cartTotalDuration)} · {formatPrice(cartTotalPrice)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Service list — add more prestations. */}
+                <StepService
+                  services={services}
+                  categories={serviceCategories}
+                  selectedServiceId={null}
+                  onSelect={handleServiceSelect}
+                />
+
+                {/* Continue — enabled once the cart has at least one prestation. */}
+                {cartLines.length > 0 && (
+                  <div className="mt-6 flex justify-end border-t border-gray-100 dark:border-gray-800 pt-4">
+                    <button
+                      type="button"
+                      onClick={handleContinueFromService}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+                    >
+                      Continuer
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
-            {/* Variations / options picker for the chosen service */}
-            {currentStep === 'service' && configuringServiceId && selectedService && (
+            {/* Variations / options picker for the service being configured */}
+            {currentStep === 'service' && configuringServiceId && configuringService && (
               <div>
                 <button
                   type="button"
@@ -583,10 +768,10 @@ export function BookingFlow({
                   className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-4"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Changer de prestation
+                  Retour
                 </button>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {selectedService.name}
+                  {configuringService.name}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-5">
                   Composez votre prestation
@@ -594,15 +779,15 @@ export function BookingFlow({
 
                 <ServiceChoicesPicker
                   service={{
-                    variations: selectedService.variations,
-                    options: selectedService.options,
-                    infoFields: selectedService.infoFields,
+                    variations: configuringService.variations,
+                    options: configuringService.options,
+                    infoFields: configuringService.infoFields,
                   }}
                   selections={state.selections}
                   onChange={(sel) =>
                     setState((prev) => ({ ...prev, selections: sel }))
                   }
-                  missing={missingSet}
+                  missing={draftMissingSet}
                 />
 
                 <div className="mt-6 flex items-center justify-between lg:justify-end gap-4 border-t border-gray-100 dark:border-gray-800 pt-4">
@@ -610,25 +795,25 @@ export function BookingFlow({
                       lives in the recap sidebar to avoid duplication. */}
                   <div className="lg:hidden">
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDuration(effective.duration)}
+                      {formatDuration(draftEffective.duration)}
                     </p>
                     <p className="text-lg font-bold text-gray-900 dark:text-white">
-                      {formatPrice(effective.price)}
+                      {formatPrice(draftEffective.price)}
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={handleChoicesContinue}
-                    disabled={!choicesValidation.valid}
+                    onClick={handleAddConfiguredToCart}
+                    disabled={!draftValidation.valid}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Continuer
+                    Ajouter au rendez-vous
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
-                {!choicesValidation.valid && (
+                {!draftValidation.valid && (
                   <p className="mt-2 text-right text-xs text-error-600 dark:text-error-400">
-                    À choisir : {choicesValidation.missing.join(', ')}
+                    À choisir : {draftValidation.missing.join(', ')}
                   </p>
                 )}
               </div>
@@ -649,7 +834,7 @@ export function BookingFlow({
                 providerId={provider.id}
                 serviceId={state.serviceId!}
                 memberId={state.memberId}
-                serviceDuration={effective.duration + selectedService.bufferTime}
+                serviceDuration={cartSlotDuration}
                 maxAdvanceDays={provider.settings.maxBookingAdvance}
                 selectedSlot={state.slot}
                 onSelect={handleSlotSelect}
@@ -778,12 +963,13 @@ export function BookingFlow({
           <div className="hidden lg:block">
             <BookingRecap
               service={selectedService}
+              serviceLabel={cartLines.length > 1 ? `${cartLines.length} prestations` : undefined}
               member={selectedMember}
               location={selectedLocation}
               slot={state.slot}
               provider={provider}
-              effectivePrice={effective.price}
-              effectiveDuration={effective.duration}
+              effectivePrice={cartTotalPrice}
+              effectiveDuration={cartTotalDuration}
               choiceLabels={choiceLabels}
             />
           </div>
@@ -793,16 +979,17 @@ export function BookingFlow({
 
       {/* Mobile Recap — hidden while configuring choices (the picker shows
           its own price/duration footer there). */}
-      {selectedService && currentStep !== 'demo-success' && !configuringServiceId && (
+      {cartLines.length > 0 && currentStep !== 'demo-success' && !configuringServiceId && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 z-30">
           <BookingRecap
             service={selectedService}
+            serviceLabel={cartLines.length > 1 ? `${cartLines.length} prestations` : undefined}
             member={selectedMember}
             location={selectedLocation}
             slot={state.slot}
             provider={provider}
-            effectivePrice={effective.price}
-            effectiveDuration={effective.duration}
+            effectivePrice={cartTotalPrice}
+            effectiveDuration={cartTotalDuration}
             choiceLabels={choiceLabels}
             compact
           />
