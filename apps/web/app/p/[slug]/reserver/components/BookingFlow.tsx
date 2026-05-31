@@ -681,8 +681,20 @@ export function BookingFlow({
       </div>
       )}
 
-      {/* Main Content — pb-24 on mobile to account for fixed bottom recap bar */}
-      <div className={`max-w-4xl mx-auto px-4 py-6 ${selectedService && currentStep !== 'demo-success' ? 'pb-24 lg:pb-6' : ''}`}>
+      {/* Main Content — bottom padding to clear the fixed bottom bar:
+          on the service step the sticky "Continuer" bar shows on ALL widths
+          (pb-28); on the other steps only the mobile recap bar (pb-24 lg:pb-6). */}
+      <div
+        className={`max-w-4xl mx-auto px-4 py-6 ${
+          currentStep === 'demo-success'
+            ? ''
+            : currentStep === 'service' && !configuringServiceId
+              ? 'pb-28'
+              : selectedService
+                ? 'pb-24 lg:pb-6'
+                : ''
+        }`}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Step Content */}
           <div className="lg:col-span-2">
@@ -774,20 +786,24 @@ export function BookingFlow({
                   cartCounts={cartCounts}
                 />
 
-                {/* Continue — always visible, disabled until the cart has at
-                    least one prestation. The label surfaces the count + total. */}
-                <div className="mt-6 flex justify-end border-t border-gray-100 dark:border-gray-800 pt-4">
-                  <button
-                    type="button"
-                    onClick={handleContinueFromService}
-                    disabled={state.cart.length === 0}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {state.cart.length === 0
-                      ? 'Continuer'
-                      : `Continuer · ${state.cart.length} ${state.cart.length === 1 ? 'prestation' : 'prestations'} · ${formatPrice(cartTotalPrice)}`}
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                {/* Continue — sticky bar pinned to the bottom of the screen
+                    so it's reachable without scrolling past the whole list.
+                    Disabled until the cart has at least one prestation; the
+                    label surfaces the count + total. */}
+                <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-t border-gray-200 dark:border-gray-700 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+                  <div className="max-w-4xl mx-auto px-4 py-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleContinueFromService}
+                      disabled={state.cart.length === 0}
+                      className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {state.cart.length === 0
+                        ? 'Continuer'
+                        : `Continuer · ${state.cart.length} ${state.cart.length === 1 ? 'prestation' : 'prestations'} · ${formatPrice(cartTotalPrice)}`}
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1010,9 +1026,12 @@ export function BookingFlow({
         </div>
       </div>
 
-      {/* Mobile Recap — hidden while configuring choices (the picker shows
-          its own price/duration footer there). */}
-      {cartLines.length > 0 && currentStep !== 'demo-success' && !configuringServiceId && (
+      {/* Mobile Recap — hidden while configuring choices, and on the service
+          step (the sticky "Continuer" bar already shows the total there). */}
+      {cartLines.length > 0 &&
+        currentStep !== 'demo-success' &&
+        currentStep !== 'service' &&
+        !configuringServiceId && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 z-30">
           <BookingRecap
             service={selectedService}
