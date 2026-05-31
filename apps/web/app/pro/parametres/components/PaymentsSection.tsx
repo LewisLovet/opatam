@@ -92,6 +92,27 @@ export function PaymentsSection() {
     }
   }, [searchParams, fetchStatus]);
 
+  // Return from Stripe Checkout for the Sérénité add-on. On success
+  // the webhook activates the add-on, but it can lag a beat behind
+  // the redirect — so we refresh immediately and once more after a
+  // short delay to catch the webhook write.
+  useEffect(() => {
+    const serenity = searchParams.get('serenity');
+    if (serenity === 'success') {
+      toast.success('Add-on Acomptes activé');
+      refreshProvider();
+      const t = setTimeout(() => {
+        refreshProvider();
+        router.refresh();
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+    if (serenity === 'cancel') {
+      toast.info('Activation annulée');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const startOnboarding = async () => {
     setWorking(true);
     setError(null);
@@ -118,6 +139,10 @@ export function PaymentsSection() {
   const toggleAddon = async (enable: boolean) => {
     setAddonWorking(true);
     setError(null);
+    // When we hand off to Stripe Checkout we redirect the whole page,
+    // so we deliberately keep the loading spinner up (don't reset it
+    // in `finally`) until the browser navigates away.
+    let redirecting = false;
     try {
       if (!enable) {
         const ok = window.confirm(
@@ -133,16 +158,34 @@ export function PaymentsSection() {
         }
       }
       const token = await getIdToken();
-      const path = enable
-        ? '/api/pro/deposits-addon/activate'
-        : '/api/pro/deposits-addon/deactivate';
-      const res = await fetch(path, {
+
+      if (enable) {
+        // ENABLE → hand off to Stripe's hosted Checkout. It always
+        // collects a card + handles 3DS, so we never end up with an
+        // unpaid `incomplete` sub that Stripe auto-cancels. The webhook
+        // activates the add-on once the first invoice is paid; we come
+        // back via ?serenity=success.
+        const res = await fetch('/api/pro/deposits-addon/checkout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        if (!data.url) throw new Error('URL de paiement manquante');
+        // Redirect — keep the loading state until the browser navigates.
+        redirecting = true;
+        window.location.href = data.url as string;
+        return;
+      }
+
+      // DISABLE → unchanged: cancel the dedicated Sérénité sub.
+      const res = await fetch('/api/pro/deposits-addon/deactivate', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      toast.success(enable ? 'Add-on Acomptes activé' : 'Add-on Acomptes désactivé');
+      toast.success('Add-on Acomptes désactivé');
       // Refresh provider doc so the toggle reflects the new state
       await refreshProvider();
       router.refresh();
@@ -151,7 +194,7 @@ export function PaymentsSection() {
       setError(msg);
       toast.error(msg);
     } finally {
-      setAddonWorking(false);
+      if (!redirecting) setAddonWorking(false);
     }
   };
 

@@ -481,6 +481,10 @@ async function handleInvoicePaid(
     const periodEnd = rawEnd ? new Date(rawEnd * 1000) : null;
     const update: Record<string, any> = {
       'serenity.status': 'active',
+      // A web Checkout flow creates a brand-new sub — persist its id so
+      // it replaces any stale/cancelled id left over from the old
+      // `incomplete`-sub path.
+      'serenity.stripeSubscriptionId': subscriptionId,
       'serenity.cancelAtPeriodEnd': stripeSubscription.cancel_at_period_end,
       depositsAddonActive: true,
       updatedAt: FieldValue.serverTimestamp(),
