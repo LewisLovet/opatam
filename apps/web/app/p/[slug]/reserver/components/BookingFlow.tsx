@@ -210,11 +210,12 @@ export function BookingFlow({
     initialHasChoices ? initialService!.id : null,
   );
 
-  // Current step. A deep-link with a fully-resolved cart (no choices) skips
-  // straight ahead; otherwise we stay on the service step.
-  const [currentStep, setCurrentStep] = useState<BookingStep>(
-    initialCart.length > 0 ? (isTeam ? 'member' : 'slot') : 'service'
-  );
+  // Always start on the service step — even with a deep-link (?service=).
+  // The preselected prestation is pre-loaded in the cart (or its choices
+  // picker is opened), but we stay here so the client sees the
+  // "Composez votre rendez-vous" panier and can ADD other prestations
+  // before continuing, instead of being dropped straight into the calendar.
+  const [currentStep, setCurrentStep] = useState<BookingStep>('service');
 
   // Loading and error states
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -18,6 +18,7 @@ import {
   resolveDeposit,
   computeServiceTotal,
   buildBookingSelections,
+  validateServiceSelections,
   emptyServiceSelections,
   type CreateBookingInput,
 } from '@booking-app/shared';
@@ -108,6 +109,18 @@ export class BookingService {
         throw new Error('Prestation non trouvée');
       }
       const sel = reqItem.selections ?? emptyServiceSelections();
+      // Guard: a service with required variations (or required info fields)
+      // must come with valid selections. This stops a caller that ignores
+      // choices — e.g. an outdated mobile build hitting /api/bookings with
+      // only a serviceId — from creating a 0€/0min booking for a
+      // variation-defined prestation. The web flow always sends valid
+      // selections (its "Continuer" is gated), so it's unaffected.
+      const validation = validateServiceSelections(svc, sel);
+      if (!validation.valid) {
+        throw new Error(
+          `Cette prestation (« ${svc.name} ») nécessite des choix (${validation.missing.join(', ')}). Réservez-la depuis le site web.`,
+        );
+      }
       const effective = computeServiceTotal(svc, sel);
       const denorm = buildBookingSelections(svc, sel);
       resolvedItems.push({ service: svc, effective, denorm });
