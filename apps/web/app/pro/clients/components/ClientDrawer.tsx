@@ -590,9 +590,16 @@ function computeTopServices(
   const counts = new Map<string, number>();
   for (const b of bookings) {
     if (b.status === 'cancelled') continue;
-    const name = (b.serviceName || '').trim();
-    if (!name) continue;
-    counts.set(name, (counts.get(name) ?? 0) + 1);
+    // Multi-prestation appointments: count each prestation separately
+    // (b.serviceName would be the joined "A + B" pseudo-service otherwise).
+    const names =
+      b.items && b.items.length > 0
+        ? b.items.map((i) => (i.serviceName || '').trim())
+        : [(b.serviceName || '').trim()];
+    for (const name of names) {
+      if (!name) continue;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
   }
   return [...counts.entries()]
     .map(([name, count]) => ({ name, count }))

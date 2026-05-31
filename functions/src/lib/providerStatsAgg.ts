@@ -56,6 +56,10 @@ export interface BookingLike {
   serviceId: string;
   serviceName: string;
   price: number;
+  /** Per-prestation breakdown for multi-prestation appointments. When
+   *  present, per-service stats are split across these instead of dumping
+   *  the whole total onto the first (top-level) service. */
+  items?: { serviceId: string; serviceName: string; price: number }[];
   status: BookingStatus;
   datetime: Date;
   clientInfo: ClientInfoLike;
@@ -259,6 +263,7 @@ export function bookingFromFirestore(data: Record<string, unknown>): BookingLike
     serviceId: data.serviceId as string,
     serviceName: data.serviceName as string,
     price: (data.price as number) ?? 0,
+    items: data.items as BookingLike['items'],
     status: data.status as BookingStatus,
     datetime: ts(data.datetime),
     clientInfo: (data.clientInfo as ClientInfoLike) ?? {
@@ -362,15 +367,24 @@ export function aggregateBookingsToDaily(
 }
 
 function upsertService(arr: ProviderStatsServiceBreakdown[], b: BookingLike) {
-  let e = arr.find((x) => x.serviceId === b.serviceId);
-  if (!e) {
-    e = { serviceId: b.serviceId, serviceName: b.serviceName, bookingsCount: 0, confirmedCount: 0, revenue: 0 };
-    arr.push(e);
-  }
-  e.bookingsCount += 1;
-  if (b.status === 'confirmed') {
-    e.confirmedCount += 1;
-    e.revenue += b.price ?? 0;
+  // Attribute each prestation of a multi-prestation appointment to its own
+  // service (count + its own revenue), instead of dumping the whole total
+  // onto the first service. Single bookings = one implicit item.
+  const items =
+    b.items && b.items.length > 0
+      ? b.items
+      : [{ serviceId: b.serviceId, serviceName: b.serviceName, price: b.price ?? 0 }];
+  for (const item of items) {
+    let e = arr.find((x) => x.serviceId === item.serviceId);
+    if (!e) {
+      e = { serviceId: item.serviceId, serviceName: item.serviceName, bookingsCount: 0, confirmedCount: 0, revenue: 0 };
+      arr.push(e);
+    }
+    e.bookingsCount += 1;
+    if (b.status === 'confirmed') {
+      e.confirmedCount += 1;
+      e.revenue += item.price ?? 0;
+    }
   }
 }
 

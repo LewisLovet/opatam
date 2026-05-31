@@ -177,7 +177,7 @@ export class BookingService {
     let resolvedDeposit: { amount: number; refundDeadlineHours: number } | null = null;
     if (depositReady) {
       let amount = 0;
-      let refundDeadlineHours = 24;
+      let refundDeadlineHours = 0;
       let any = false;
       for (const r of resolvedItems) {
         const d = resolveDeposit(
@@ -187,10 +187,11 @@ export class BookingService {
         if (d) {
           any = true;
           amount += d.amount;
-          refundDeadlineHours = d.refundDeadlineHours;
+          // Keep the most client-favourable (longest) refund window.
+          refundDeadlineHours = Math.max(refundDeadlineHours, d.refundDeadlineHours);
         }
       }
-      resolvedDeposit = any ? { amount, refundDeadlineHours } : null;
+      resolvedDeposit = any ? { amount, refundDeadlineHours: refundDeadlineHours || 24 } : null;
     }
 
     // Status precedence:
@@ -585,13 +586,17 @@ export class BookingService {
       throw new Error('Impossible de reprogrammer vers une date passée');
     }
 
-    // Get service to calculate total duration
+    // Get service (existence check + buffer). The slot width must use the
+    // booking's STORED duration (the sum across all prestations for a
+    // multi-prestation appointment), NOT a re-fetch of the first service —
+    // otherwise a multi booking could be moved into a slot too short for
+    // the whole visit and overlap the next one.
     const service = await serviceRepository.getById(booking.providerId, booking.serviceId);
     if (!service) {
       throw new Error('Prestation non trouvée');
     }
 
-    const totalDuration = service.duration + service.bufferTime;
+    const totalDuration = booking.duration + (service.bufferTime || 0);
 
     // Check if new slot is available (excluding current booking)
     const isAvailable = await schedulingService.isSlotAvailable({

@@ -211,6 +211,9 @@ export function BookingDetailModal({
           serviceId: booking.serviceId,
           startDate: date,
           endDate: date,
+          // Use the booking's stored total duration so multi-prestation
+          // appointments are offered slots that fit the whole visit.
+          durationOverride: booking.duration,
         });
 
         // Convert to TimeSlot format

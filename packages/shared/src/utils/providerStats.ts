@@ -340,21 +340,40 @@ function upsertServiceBreakdown(
   services: ProviderStatsServiceBreakdown[],
   booking: Booking,
 ) {
-  let entry = services.find((s) => s.serviceId === booking.serviceId);
-  if (!entry) {
-    entry = {
-      serviceId: booking.serviceId,
-      serviceName: booking.serviceName,
-      bookingsCount: 0,
-      confirmedCount: 0,
-      revenue: 0,
-    };
-    services.push(entry);
-  }
-  entry.bookingsCount += 1;
-  if (booking.status === 'confirmed') {
-    entry.confirmedCount += 1;
-    entry.revenue += booking.price ?? 0;
+  // Split a multi-prestation appointment across each prestation (its own
+  // count + revenue) rather than attributing the whole total to the first
+  // service. Single bookings = one implicit item.
+  const items =
+    booking.items && booking.items.length > 0
+      ? booking.items.map((i) => ({
+          serviceId: i.serviceId,
+          serviceName: i.serviceName,
+          price: i.price,
+        }))
+      : [
+          {
+            serviceId: booking.serviceId,
+            serviceName: booking.serviceName,
+            price: booking.price ?? 0,
+          },
+        ];
+  for (const item of items) {
+    let entry = services.find((s) => s.serviceId === item.serviceId);
+    if (!entry) {
+      entry = {
+        serviceId: item.serviceId,
+        serviceName: item.serviceName,
+        bookingsCount: 0,
+        confirmedCount: 0,
+        revenue: 0,
+      };
+      services.push(entry);
+    }
+    entry.bookingsCount += 1;
+    if (booking.status === 'confirmed') {
+      entry.confirmedCount += 1;
+      entry.revenue += item.price ?? 0;
+    }
   }
 }
 

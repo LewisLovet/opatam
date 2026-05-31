@@ -96,12 +96,17 @@ export class CatalogService {
       throw new Error('Prestation non trouvée');
     }
 
-    // Check for future confirmed bookings using this service
+    // Check for future confirmed bookings using this service. A
+    // multi-prestation booking carries its prestations in `items[]`, and
+    // only the FIRST one is mirrored on top-level `serviceId` — so we must
+    // also look inside items, else we'd let the pro delete a service still
+    // booked as a non-first item of a future appointment.
     const allBookings = await bookingRepository.getByProvider(providerId);
     const now = new Date();
     const hasFutureBookings = allBookings.some(
       (b) =>
-        b.serviceId === serviceId &&
+        (b.serviceId === serviceId ||
+          b.items?.some((i) => i.serviceId === serviceId)) &&
         b.datetime > now &&
         (b.status === 'confirmed' || b.status === 'pending')
     );
