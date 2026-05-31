@@ -12,8 +12,8 @@ import {
   useToast,
 } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
-import { catalogService, schedulingService } from '@booking-app/firebase';
-import type { Member, Location, Service, ServiceSelections } from '@booking-app/shared';
+import { catalogService, schedulingService, providerClientRepository } from '@booking-app/firebase';
+import type { Member, Location, Service, ServiceSelections, ProviderClient } from '@booking-app/shared';
 import {
   resolveDeposit,
   computeServiceTotal,
@@ -23,6 +23,7 @@ import {
   formatDuration,
 } from '@booking-app/shared';
 import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
+import { ClientAutocomplete } from './ClientAutocomplete';
 import {
   Loader2,
   ChevronRight,
@@ -172,6 +173,7 @@ export function CreateBookingModal({
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [services, setServices] = useState<WithId<Service>[]>([]);
+  const [clients, setClients] = useState<WithId<ProviderClient>[]>([]);
   const [availableSlots, setAvailableSlots] = useState<SlotWithMembers[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [askDeposit, setAskDeposit] = useState(true);
@@ -264,6 +266,28 @@ export function CreateBookingModal({
     };
 
     loadServices();
+  }, [provider, isOpen]);
+
+  // Load the provider's existing clients for the "Informations client"
+  // autocomplete. Degrades gracefully (manual entry) if it fails.
+  useEffect(() => {
+    if (!provider || !isOpen) return;
+
+    let cancelled = false;
+    const loadClients = async () => {
+      try {
+        const data = await providerClientRepository.getByProvider(provider.id);
+        if (!cancelled) setClients(data);
+      } catch (error) {
+        console.error('Error loading clients for autocomplete:', error);
+        if (!cancelled) setClients([]);
+      }
+    };
+
+    loadClients();
+    return () => {
+      cancelled = true;
+    };
   }, [provider, isOpen]);
 
   // Filter services by location
@@ -989,37 +1013,35 @@ export function CreateBookingModal({
 
           {/* Step: Client Info */}
           {step === 'client' && (
-            <>
-              <Input
-                label="Nom du client"
-                name="clientName"
-                value={formData.clientName}
-                onChange={handleChange}
-                placeholder="Ex: Marie Dupont"
-                error={errors.clientName}
-                required
-              />
-
-              <Input
-                label="Email"
-                name="clientEmail"
-                type="email"
-                value={formData.clientEmail}
-                onChange={handleChange}
-                placeholder="marie.dupont@example.com"
-                error={errors.clientEmail}
-                required
-              />
-
-              <Input
-                label="Téléphone"
-                name="clientPhone"
-                type="tel"
-                value={formData.clientPhone}
-                onChange={handleChange}
-                placeholder="06 12 34 56 78"
-                error={errors.clientPhone}
-                required
+            <div className="space-y-4">
+              <ClientAutocomplete
+                clients={clients}
+                name={formData.clientName}
+                email={formData.clientEmail}
+                phone={formData.clientPhone}
+                errors={{
+                  clientName: errors.clientName,
+                  clientEmail: errors.clientEmail,
+                  clientPhone: errors.clientPhone,
+                }}
+                onFieldChange={(field, value) => {
+                  setFormData((prev) => ({ ...prev, [field]: value }));
+                  setErrors((prev) => ({ ...prev, [field]: '' }));
+                }}
+                onSelectClient={(client) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    clientName: client.name,
+                    clientEmail: client.email,
+                    clientPhone: client.phone,
+                  }));
+                  setErrors((prev) => ({
+                    ...prev,
+                    clientName: '',
+                    clientEmail: '',
+                    clientPhone: '',
+                  }));
+                }}
               />
 
               <Input
@@ -1029,7 +1051,7 @@ export function CreateBookingModal({
                 onChange={handleChange}
                 placeholder="Informations supplémentaires..."
               />
-            </>
+            </div>
           )}
 
           {/* Step: Confirmation */}
