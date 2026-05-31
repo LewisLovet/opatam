@@ -1,29 +1,26 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
-import { catalogService, locationService, memberService, providerService } from '@booking-app/firebase';
+import { catalogService, memberService } from '@booking-app/firebase';
 import { Plus, FolderPlus, Pencil, ChevronRight, Tag, Loader2 } from 'lucide-react';
 import { ServiceCard } from './ServiceCard';
-import { ServiceModal, type ServiceFormData } from './ServiceModal';
 import { CategoryModal, type CategoryFormData } from './CategoryModal';
-import type { Service, ServiceCategory, Location, Member } from '@booking-app/shared';
+import type { Service, ServiceCategory, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
 export function PrestationsTab() {
   const { provider } = useAuth();
   const toast = useToast();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState<WithId<Service>[]>([]);
-  const [locations, setLocations] = useState<WithId<Location>[]>([]);
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [categories, setCategories] = useState<WithId<ServiceCategory>[]>([]);
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingService, setEditingService] = useState<WithId<Service> | null>(null);
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<WithId<ServiceCategory> | null>(null);
@@ -39,16 +36,14 @@ export function PrestationsTab() {
 
     setLoading(true);
     try {
-      const [servicesData, locationsData, membersData, categoriesData] = await Promise.all([
+      const [servicesData, membersData, categoriesData] = await Promise.all([
         catalogService.getByProvider(provider.id),
-        locationService.getByProvider(provider.id),
         isTeamPlan ? memberService.getByProvider(provider.id) : Promise.resolve([]),
         catalogService.getCategoriesByProvider(provider.id),
       ]);
 
       // Sort by sortOrder
       setServices(servicesData.sort((a, b) => a.sortOrder - b.sortOrder));
-      setLocations(locationsData);
       setMembers(membersData);
       setCategories(categoriesData.sort((a, b) => a.sortOrder - b.sortOrder));
     } catch (error) {
@@ -114,61 +109,14 @@ export function PrestationsTab() {
     }
   };
 
-  // Update portfolio photos on provider (called when new photo uploaded via ServiceModal)
-  const handlePortfolioUpdate = async (newPhotos: string[]) => {
-    if (!provider) return;
-    try {
-      await providerService.updateProvider(provider.id, { portfolioPhotos: newPhotos });
-    } catch (err) {
-      console.error('Failed to update portfolio:', err);
-    }
-  };
-
-  // Save service (create or update)
-  const handleSaveService = async (data: ServiceFormData) => {
-    if (!provider) return;
-
-    if (editingService) {
-      // Update
-      await catalogService.updateService(provider.id, editingService.id, data);
-      toast.success('Prestation mise à jour');
-    } else {
-      // Create - add required default values
-      await catalogService.createService(provider.id, {
-        ...data,
-        isOnline: false,
-      });
-      toast.success('Prestation créée');
-    }
-
-    await fetchData();
-  };
-
-  // Delete service
-  const handleDeleteService = async (serviceId: string) => {
-    if (!provider) return;
-
-    await catalogService.deleteService(provider.id, serviceId);
-    toast.success('Prestation supprimée');
-    await fetchData();
-  };
-
-  // Open modal for creating
+  // Create / edit now happen on a dedicated full-page editor route
+  // (../prestations/nouvelle and ../prestations/[id]) rather than a modal.
   const handleCreate = () => {
-    setEditingService(null);
-    setModalOpen(true);
+    router.push('/pro/activite/prestations/nouvelle');
   };
 
-  // Open modal for editing
   const handleEdit = (service: WithId<Service>) => {
-    setEditingService(service);
-    setModalOpen(true);
-  };
-
-  // Close modal
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setEditingService(null);
+    router.push(`/pro/activite/prestations/${service.id}`);
   };
 
   // ─── Category handlers ──────────────────────────────────────────
@@ -392,24 +340,6 @@ export function PrestationsTab() {
         // Flat list (no categories)
         renderServiceList(services)
       )}
-
-      {/* Service Modal */}
-      <ServiceModal
-        isOpen={modalOpen}
-        onClose={handleCloseModal}
-        service={editingService}
-        locations={locations}
-        members={members}
-        categories={categories}
-        isTeamPlan={isTeamPlan}
-        providerId={provider?.id ?? ''}
-        portfolioPhotos={provider?.portfolioPhotos ?? []}
-        onPortfolioUpdate={handlePortfolioUpdate}
-        onSave={handleSaveService}
-        onDelete={handleDeleteService}
-        depositsEnabled={!!provider?.depositsAddonActive}
-        defaultDeposit={provider?.settings?.depositDefault ?? null}
-      />
 
       {/* Category Modal */}
       <CategoryModal

@@ -79,6 +79,14 @@ export function formatPriceFr(priceInCentimes: number, priceMaxInCentimes?: numb
   return fmt(priceInCentimes);
 }
 
+// Helper to format a duration in minutes ("45 min", "1h", "1h30")
+export function formatDurationFr(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins === 0 ? `${hours}h` : `${hours}h${mins.toString().padStart(2, '0')}`;
+}
+
 // Helper to format relative time in French ("dans 30 minutes", "dans 1h30", "demain")
 export function formatTimeUntilFr(minutesUntil: number): string {
   if (minutesUntil < 60) {
@@ -135,6 +143,13 @@ export interface BookingEmailData {
   cancelToken?: string;
   bookingId?: string;
   bookingNotice?: string | null;
+  /**
+   * Multi-prestation breakdown. Present only for "panier" bookings holding
+   * several back-to-back services. When length >= 2, each item is rendered
+   * on its own line; the top-level serviceName/duration/price stay as the
+   * joined name / totals.
+   */
+  items?: { serviceName: string; duration: number; price: number }[];
   /**
    * Deposit info — present only when this booking required one and it has
    * been paid. The amount is in cents. Confirmation emails surface this so
@@ -397,6 +412,8 @@ export interface ProviderNewBookingEmailData {
   locationName?: string;
   locationAddress?: string;
   memberName?: string;
+  /** Multi-prestation breakdown (see BookingEmailData.items). */
+  items?: { serviceName: string; duration: number; price: number }[];
   /** Deposit info — present only when the booking required a deposit
    *  and it has been paid. Surfaces "+ Acompte X€ déjà perçu" in the
    *  notification so the pro knows what's already settled. */
@@ -492,7 +509,9 @@ function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): s
                     <table style="width: 100%; border-collapse: collapse;">
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Client</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.clientName}</td></tr>
                       ${data.clientPhone ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Téléphone</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.clientPhone}</td></tr>` : ''}
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      ${data.items && data.items.length >= 2
+                        ? data.items.map((item) => `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}</td></tr>`).join('')
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Horaire</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
@@ -530,7 +549,9 @@ Un nouveau rendez-vous vient d'être confirmé.
 Détails :
 - Client : ${data.clientName}
 ${data.clientPhone ? `- Téléphone : ${data.clientPhone}` : ''}
-- Prestation : ${data.serviceName}
+${data.items && data.items.length >= 2
+  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}`).join('\n')
+  : `- Prestation : ${data.serviceName}`}
 - Date : ${data.formattedDate}
 - Horaire : ${data.formattedTime} - ${data.formattedEndTime}
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
@@ -1059,7 +1080,9 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                   <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Votre rendez-vous</p>
                     <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      ${data.items && data.items.length >= 2
+                        ? data.items.map((item) => `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}</td></tr>`).join('')
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
@@ -1111,7 +1134,9 @@ Bonjour ${data.clientName},
 Votre rendez-vous a bien été confirmé.
 
 Détails de votre rendez-vous :
-- Prestation : ${data.serviceName}
+${data.items && data.items.length >= 2
+  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}`).join('\n')
+  : `- Prestation : ${data.serviceName}`}
 - Date : ${data.formattedDate}
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min

@@ -5,6 +5,7 @@ import {
   updateServiceSchema,
   createServiceCategorySchema,
   updateServiceCategorySchema,
+  getServiceMinPrice,
   type CreateServiceInput,
   type UpdateServiceInput,
   type CreateServiceCategoryInput,
@@ -40,7 +41,13 @@ export class CatalogService {
       sortOrder,
       // Deposit override — null by default, configured per service in the
       // service edit form. Falls back to provider.settings.depositDefault.
-      deposit: null,
+      deposit: validated.deposit ?? null,
+      // Client-facing choices (variations / options / info fields).
+      // Optional — omitted entirely for simple services so Firestore docs
+      // stay lean and legacy reads are unaffected.
+      ...(validated.variations ? { variations: validated.variations } : {}),
+      ...(validated.options ? { options: validated.options } : {}),
+      ...(validated.infoFields ? { infoFields: validated.infoFields } : {}),
     });
 
     const service = await serviceRepository.getById(providerId, serviceId);
@@ -89,12 +96,17 @@ export class CatalogService {
       throw new Error('Prestation non trouvée');
     }
 
-    // Check for future confirmed bookings using this service
+    // Check for future confirmed bookings using this service. A
+    // multi-prestation booking carries its prestations in `items[]`, and
+    // only the FIRST one is mirrored on top-level `serviceId` — so we must
+    // also look inside items, else we'd let the pro delete a service still
+    // booked as a non-first item of a future appointment.
     const allBookings = await bookingRepository.getByProvider(providerId);
     const now = new Date();
     const hasFutureBookings = allBookings.some(
       (b) =>
-        b.serviceId === serviceId &&
+        (b.serviceId === serviceId ||
+          b.items?.some((i) => i.serviceId === serviceId)) &&
         b.datetime > now &&
         (b.status === 'confirmed' || b.status === 'pending')
     );
@@ -386,7 +398,12 @@ export class CatalogService {
 
     let minPrice: number | null = null;
     if (activeServices.length > 0) {
-      minPrice = Math.min(...activeServices.map((s) => s.price));
+      // Use the variation-aware minimum: for a service defined by
+      // variations the base `price` is irrelevant (often 0) — the real
+      // floor is the cheapest reachable variation. `getServiceMinPrice`
+      // falls back to `service.price` for services without variations,
+      // so this stays correct for every legacy prestation.
+      minPrice = Math.min(...activeServices.map((s) => getServiceMinPrice(s)));
     }
 
     await providerRepository.update(providerId, { minPrice });

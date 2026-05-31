@@ -4,6 +4,12 @@ import { useRef, useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, ArrowRight, X } from 'lucide-react';
+import {
+  getServiceMinPrice,
+  getServiceMinDuration,
+  type ServiceVariation,
+  type ServiceOption,
+} from '@booking-app/shared';
 
 interface ServiceItemProps {
   service: {
@@ -14,6 +20,8 @@ interface ServiceItemProps {
     duration: number;
     price: number;
     priceMax?: number | null;
+    variations?: ServiceVariation[];
+    options?: ServiceOption[];
   };
   slug: string;
   /** If set, intercepts booking click to show a notice before navigating */
@@ -45,6 +53,10 @@ export function ServiceItem({ service, slug, onBookingClick }: ServiceItemProps)
   const [descClamped, setDescClamped] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const descRef = useRef<HTMLParagraphElement>(null);
+
+  // Price varies when the service has variations or optional add-ons.
+  const priceVaries =
+    (service.variations?.length ?? 0) > 0 || (service.options?.length ?? 0) > 0;
 
   useEffect(() => {
     // Small delay to let the layout settle before measuring
@@ -91,13 +103,18 @@ export function ServiceItem({ service, slug, onBookingClick }: ServiceItemProps)
                 </h3>
                 <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500">
                   <Clock className="w-4 h-4" />
-                  <span>{formatDuration(service.duration)}</span>
+                  <span>{formatDuration(getServiceMinDuration(service))}</span>
                 </div>
               </div>
 
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                  {formatPrice(service.price, service.priceMax)}
+                  {priceVaries && (
+                    <span className="block text-[11px] font-normal text-gray-400 leading-none mb-0.5">
+                      à partir de
+                    </span>
+                  )}
+                  {formatPrice(getServiceMinPrice(service))}
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 text-white text-sm font-medium rounded-lg group-hover:bg-primary-700 transition-colors shadow-sm">
                   Reserver

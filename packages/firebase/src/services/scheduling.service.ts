@@ -27,6 +27,11 @@ interface AvailableSlotsParams {
   memberId: string; // Obligatoire maintenant
   startDate: Date;
   endDate: Date;
+  /** Effective TOTAL slot length in minutes (service + chosen
+   *  variations/options + buffer). When set it overrides the base
+   *  service.duration computation — used for services with variations so
+   *  the slots match what's checked at booking time. */
+  durationOverride?: number;
 }
 
 interface SlotCheckParams {
@@ -358,7 +363,7 @@ export class SchedulingService {
    * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
    */
   async getAvailableSlots(params: AvailableSlotsParams): Promise<TimeSlotWithDate[]> {
-    const { providerId, serviceId, memberId, startDate, endDate } = params;
+    const { providerId, serviceId, memberId, startDate, endDate, durationOverride } = params;
 
     // Get service duration
     const service = await serviceRepository.getById(providerId, serviceId);
@@ -369,7 +374,9 @@ export class SchedulingService {
     // Get provider settings for buffer time and slot interval
     const provider = await providerRepository.getById(providerId);
     const bufferTime = service.bufferTime || provider?.settings.defaultBufferTime || 0;
-    const totalDuration = service.duration + bufferTime;
+    // durationOverride is the full effective length (already includes the
+    // chosen variations/options + buffer); otherwise fall back to base.
+    const totalDuration = durationOverride ?? service.duration + bufferTime;
     const slotInterval = provider?.settings.slotInterval ?? 15;
 
     const availableSlots: TimeSlotWithDate[] = [];

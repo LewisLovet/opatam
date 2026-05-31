@@ -50,11 +50,20 @@ interface Provider {
 
 interface BookingRecapProps {
   service: Service | null;
+  /** Overrides the displayed service name (e.g. "2 prestations" for a
+   *  multi-prestation cart). Falls back to service.name when omitted. */
+  serviceLabel?: string;
   member: Member | null;
   location: Location | null;
   slot: TimeSlotWithDate | null;
   provider: Provider;
   compact?: boolean;
+  /** Effective price/duration including the chosen variations/options.
+   *  When provided they override the service base values. */
+  effectivePrice?: number;
+  effectiveDuration?: number;
+  /** Labels of the chosen variations/options to list under the service. */
+  choiceLabels?: string[];
 }
 
 function formatDuration(minutes: number): string {
@@ -93,12 +102,23 @@ function formatDate(isoString: string): string {
 
 export function BookingRecap({
   service,
+  serviceLabel,
   member,
   location,
   slot,
   provider,
   compact = false,
+  effectivePrice,
+  effectiveDuration,
+  choiceLabels = [],
 }: BookingRecapProps) {
+  const displayName = serviceLabel ?? service?.name ?? '';
+  // When an effective price is given (variations/options), it's an exact
+  // amount — drop the base range.
+  const displayPrice = effectivePrice ?? service?.price ?? 0;
+  const displayMax = effectivePrice != null ? null : service?.priceMax;
+  const displayDuration = effectiveDuration ?? service?.duration ?? 0;
+
   if (compact) {
     // Mobile compact version
     return (
@@ -107,10 +127,10 @@ export function BookingRecap({
           {service ? (
             <>
               <p className="font-semibold text-gray-900 dark:text-white truncate">
-                {service.name}
+                {displayName}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {formatDuration(service.duration)} · {formatPrice(service.price, service.priceMax)}
+                {formatDuration(displayDuration)} · {formatPrice(displayPrice, displayMax)}
               </p>
             </>
           ) : (
@@ -121,7 +141,7 @@ export function BookingRecap({
         </div>
         {service && (
           <span className="text-xl font-bold text-gray-900 dark:text-white">
-            {formatPrice(service.price, service.priceMax)}
+            {formatPrice(displayPrice, displayMax)}
           </span>
         )}
       </div>
@@ -167,12 +187,17 @@ export function BookingRecap({
               Prestation
             </p>
             <p className="font-medium text-gray-900 dark:text-white">
-              {service.name}
+              {displayName}
             </p>
-            <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mt-1">
-              <Clock className="w-4 h-4" />
-              <span>{formatDuration(service.duration)}</span>
-            </div>
+            {choiceLabels.length > 0 && (
+              <ul className="mt-1 space-y-0.5">
+                {choiceLabels.map((label, i) => (
+                  <li key={i} className="text-sm text-gray-500 dark:text-gray-400">
+                    · {label}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ) : (
           <div className="text-sm text-gray-400 dark:text-gray-500">
@@ -250,15 +275,24 @@ export function BookingRecap({
         )}
       </div>
 
-      {/* Total */}
+      {/* Total + durée — mis en avant ensemble */}
       {service && (
-        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-1 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300">
+              <Clock className="w-4 h-4" />
+              Durée
+            </span>
+            <span className="text-base font-semibold text-gray-900 dark:text-white">
+              {formatDuration(displayDuration)}
+            </span>
+          </div>
+          <div className="flex items-end justify-between">
+            <span className="text-base font-semibold text-gray-900 dark:text-white">
               Total
             </span>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">
-              {formatPrice(service.price, service.priceMax)}
+            <span className="text-2xl font-extrabold text-primary-600 dark:text-primary-400">
+              {formatPrice(displayPrice, displayMax)}
             </span>
           </div>
         </div>

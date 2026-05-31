@@ -7,10 +7,18 @@ import {
   userRepository,
 } from '../repositories';
 import { schedulingService } from './scheduling.service';
-import type { Booking, BookingDeposit, BookingStatus } from '@booking-app/shared';
+import type {
+  Booking,
+  BookingDeposit,
+  BookingStatus,
+  BookingServiceItem,
+} from '@booking-app/shared';
 import {
   createBookingSchema,
   resolveDeposit,
+  computeServiceTotal,
+  buildBookingSelections,
+  emptyServiceSelections,
   type CreateBookingInput,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
@@ -56,12 +64,6 @@ export class BookingService {
       }
     }
 
-    // Get service
-    const service = await serviceRepository.getById(validated.providerId, validated.serviceId);
-    if (!service) {
-      throw new Error('Prestation non trouvée');
-    }
-
     // Get location
     const location = await locationRepository.getById(validated.providerId, validated.locationId);
     if (!location) {
@@ -89,10 +91,59 @@ export class BookingService {
       effectiveMemberId = defaultMember.id;
     }
 
-    // Calculate total duration including buffer
-    const totalDuration = service.duration + service.bufferTime;
+    // Resolve the list of prestations. A multi-service appointment sends
+    // `items`; a single-service booking is treated as a one-item list. The
+    // server recomputes every price/duration from the authoritative Service
+    // docs — the client only sends which variations/options it picked.
+    const requestedItems =
+      validated.items && validated.items.length > 0
+        ? validated.items
+        : [{ serviceId: validated.serviceId, selections: validated.selections }];
+    const isMulti = requestedItems.length > 1;
 
-    // Check slot availability
+    const resolvedItems = [];
+    for (const reqItem of requestedItems) {
+      const svc = await serviceRepository.getById(validated.providerId, reqItem.serviceId);
+      if (!svc) {
+        throw new Error('Prestation non trouvée');
+      }
+      const sel = reqItem.selections ?? emptyServiceSelections();
+      const effective = computeServiceTotal(svc, sel);
+      const denorm = buildBookingSelections(svc, sel);
+      resolvedItems.push({ service: svc, effective, denorm });
+    }
+
+    const firstService = resolvedItems[0].service;
+    // Aggregate totals across all prestations in the visit.
+    const totalServiceDuration = resolvedItems.reduce(
+      (sum, r) => sum + r.effective.duration,
+      0,
+    );
+    const totalPrice = resolvedItems.reduce((sum, r) => sum + r.effective.price, 0);
+    // Buffer once, after the whole visit (use the last prestation's buffer).
+    const lastBuffer = resolvedItems[resolvedItems.length - 1].service.bufferTime || 0;
+    const totalDuration = totalServiceDuration + lastBuffer;
+
+    // Denormalised per-item list (only persisted for true multi bookings).
+    const bookingItems: BookingServiceItem[] = resolvedItems.map((r) => ({
+      serviceId: r.service.id,
+      serviceName: r.service.name,
+      serviceColor: r.service.color ?? null,
+      duration: r.effective.duration,
+      price: r.effective.price,
+      selectedVariations: r.denorm.selectedVariations,
+      selectedOptions: r.denorm.selectedOptions,
+      selectedInfoValues: r.denorm.selectedInfoValues,
+    }));
+
+    // Top-level (aggregate / first-item) values kept for back-compat readers.
+    const { selectedVariations, selectedOptions, selectedInfoValues } =
+      resolvedItems[0].denorm;
+    const aggregateServiceName = isMulti
+      ? bookingItems.map((i) => i.serviceName).join(' + ')
+      : firstService.name;
+
+    // Check slot availability for the whole contiguous block.
     const isAvailable = await schedulingService.isSlotAvailable({
       providerId: validated.providerId,
       memberId: effectiveMemberId as string, // Now guaranteed to be non-null
@@ -104,8 +155,10 @@ export class BookingService {
       throw new Error('Ce créneau n\'est plus disponible');
     }
 
-    // Calculate end datetime
-    const endDatetime = new Date(validated.datetime.getTime() + service.duration * 60 * 1000);
+    // End = start + sum of service durations (buffer is availability-only).
+    const endDatetime = new Date(
+      validated.datetime.getTime() + totalServiceDuration * 60 * 1000,
+    );
 
     // Generate cancel token
     const cancelToken = this.generateCancelToken();
@@ -119,9 +172,27 @@ export class BookingService {
       !!provider.depositsAddonActive &&
       provider.stripeConnectStatus === 'active' &&
       !!provider.stripeConnectAccountId;
-    const resolvedDeposit = depositReady
-      ? resolveDeposit(service, provider.settings ?? {})
-      : null;
+    // Deposit = sum of each prestation's resolved deposit (each on its own
+    // effective price + per-service config). Null when none apply.
+    let resolvedDeposit: { amount: number; refundDeadlineHours: number } | null = null;
+    if (depositReady) {
+      let amount = 0;
+      let refundDeadlineHours = 0;
+      let any = false;
+      for (const r of resolvedItems) {
+        const d = resolveDeposit(
+          { ...r.service, price: r.effective.price },
+          provider.settings ?? {},
+        );
+        if (d) {
+          any = true;
+          amount += d.amount;
+          // Keep the most client-favourable (longest) refund window.
+          refundDeadlineHours = Math.max(refundDeadlineHours, d.refundDeadlineHours);
+        }
+      }
+      resolvedDeposit = any ? { amount, refundDeadlineHours: refundDeadlineHours || 24 } : null;
+    }
 
     // Status precedence:
     //   deposit required  → pending_payment (Stripe Checkout flow)
@@ -169,12 +240,21 @@ export class BookingService {
       locationAddress: location.address
         ? `${location.address}, ${location.postalCode} ${location.city}`
         : `${location.postalCode} ${location.city}`,
-      serviceId: validated.serviceId,
-      serviceName: service.name,
-      serviceColor: service.color || null,
-      duration: service.duration,
-      price: service.price,
-      priceMax: service.priceMax ?? null,
+      // Top-level = first prestation; aggregate name when multi.
+      serviceId: firstService.id,
+      serviceName: aggregateServiceName,
+      serviceColor: firstService.color || null,
+      // Aggregate effective values (sum across all prestations).
+      duration: totalServiceDuration,
+      price: totalPrice,
+      priceMax: isMulti ? null : firstService.priceMax ?? null,
+      // Denormalised choices of the first prestation (back-compat); the
+      // full per-prestation detail lives in `items` for multi bookings.
+      ...(selectedVariations.length ? { selectedVariations } : {}),
+      ...(selectedOptions.length ? { selectedOptions } : {}),
+      ...(Object.keys(selectedInfoValues).length ? { selectedInfoValues } : {}),
+      // Per-prestation list — only persisted for true multi-service visits.
+      ...(isMulti ? { items: bookingItems } : {}),
       clientInfo: validated.clientInfo!,
       datetime: validated.datetime,
       endDatetime,
@@ -506,13 +586,17 @@ export class BookingService {
       throw new Error('Impossible de reprogrammer vers une date passée');
     }
 
-    // Get service to calculate total duration
+    // Get service (existence check + buffer). The slot width must use the
+    // booking's STORED duration (the sum across all prestations for a
+    // multi-prestation appointment), NOT a re-fetch of the first service —
+    // otherwise a multi booking could be moved into a slot too short for
+    // the whole visit and overlap the next one.
     const service = await serviceRepository.getById(booking.providerId, booking.serviceId);
     if (!service) {
       throw new Error('Prestation non trouvée');
     }
 
-    const totalDuration = service.duration + service.bufferTime;
+    const totalDuration = booking.duration + (service.bufferTime || 0);
 
     // Check if new slot is available (excluding current booking)
     const isAvailable = await schedulingService.isSlotAvailable({

@@ -11,6 +11,7 @@ import {
 } from '@booking-app/firebase';
 import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
+import { getServiceMinPrice } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
 import {
   demoProvider,
@@ -190,8 +191,12 @@ export default async function ProviderPage({ params }: PageProps) {
     availabilityRepository.getByProvider(provider.id),
   ]);
 
-  // Calculate min price from services
-  const minPrice = services.length > 0 ? Math.min(...services.map((s) => s.price)) : null;
+  // Calculate min price from services (variation-aware: cheapest reachable
+  // price; falls back to base price for services without variations).
+  const minPrice =
+    services.length > 0
+      ? Math.min(...services.map((s) => getServiceMinPrice(s)))
+      : null;
 
   // Use cached nextAvailableSlot from provider (updated by Cloud Functions on booking changes + every 2h)
   const nextAvailableDate = provider.nextAvailableSlot
@@ -312,7 +317,7 @@ export default async function ProviderPage({ params }: PageProps) {
                 name: s.name,
                 ...(s.description && { description: s.description }),
               },
-              price: (s.price / 100).toFixed(2),
+              price: (getServiceMinPrice(s) / 100).toFixed(2),
               priceCurrency: 'EUR',
             })),
           },
