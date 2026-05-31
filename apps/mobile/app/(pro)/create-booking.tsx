@@ -51,8 +51,168 @@ import {
   memberService,
   locationService,
 } from '@booking-app/firebase';
-import type { Service, Member, Location } from '@booking-app/shared';
+import type { Service, Member, Location, ProviderClient } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+import { useProviderClients } from '../../hooks/useProviderClients';
+
+// ─── Client autocomplete (step "Informations client") ──────────────────
+// Min number of "regular" clients (>= 2 bookings) before we proactively
+// surface frequent clients on an empty form.
+const CLIENT_REGULAR_THRESHOLD = 10;
+const CLIENT_FREQUENT_SHOWN = 5;
+const CLIENT_MATCH_SHOWN = 6;
+type ClientQueryField = 'name' | 'email' | 'phone' | null;
+
+function normalizeClientText(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim();
+}
+function clientDigits(s: string): string {
+  return (s || '').replace(/\D/g, '');
+}
+
+/**
+ * Suggestion list rendered inline under the "Nom" field. Driven by the
+ * last-edited field (not focus, because the shared Input owns onFocus for
+ * its border animation). Searches name + email + phone at once so the pro
+ * can find a client by whichever detail they type. When the form is still
+ * empty and the provider has enough regulars, we proactively show the most
+ * frequent clients. Tapping a row fills all three fields via onPick.
+ */
+function ClientSuggestionPanel({
+  clients,
+  queryField,
+  name,
+  email,
+  phone,
+  onPick,
+  colors,
+  spacing,
+  radius,
+}: {
+  clients: WithId<ProviderClient>[];
+  queryField: ClientQueryField;
+  name: string;
+  email: string;
+  phone: string;
+  onPick: (c: WithId<ProviderClient>) => void;
+  colors: ReturnType<typeof useTheme>['colors'];
+  spacing: ReturnType<typeof useTheme>['spacing'];
+  radius: ReturnType<typeof useTheme>['radius'];
+}) {
+  const allEmpty = !name.trim() && !email.trim() && !phone.trim();
+
+  const frequent = useMemo(() => {
+    const regulars = clients.filter((c) => (c.bookingsCount ?? 0) >= 2);
+    if (regulars.length < CLIENT_REGULAR_THRESHOLD) return [];
+    return [...clients]
+      .sort((a, b) => (b.bookingsCount ?? 0) - (a.bookingsCount ?? 0))
+      .slice(0, CLIENT_FREQUENT_SHOWN);
+  }, [clients]);
+
+  const query =
+    queryField === 'name' ? name : queryField === 'email' ? email : queryField === 'phone' ? phone : '';
+
+  const matches = useMemo(() => {
+    const qN = normalizeClientText(query);
+    const qD = clientDigits(query);
+    if (!qN && qD.length < 2) return [];
+    const out: WithId<ProviderClient>[] = [];
+    for (const c of clients) {
+      const nameN = normalizeClientText(c.name || '');
+      const emailN = normalizeClientText(c.email || '');
+      const phoneD = clientDigits(c.phone || '');
+      const byText = qN.length >= 1 && (nameN.includes(qN) || emailN.includes(qN));
+      const byPhone = qD.length >= 2 && phoneD.includes(qD);
+      if (byText || byPhone) {
+        out.push(c);
+        if (out.length >= CLIENT_MATCH_SHOWN) break;
+      }
+    }
+    return out;
+  }, [clients, query]);
+
+  const isFrequent = queryField === null && allEmpty && frequent.length > 0;
+  const list = isFrequent
+    ? frequent
+    : queryField !== null && query.trim().length > 0
+      ? matches
+      : [];
+  if (list.length === 0) return null;
+
+  return (
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: radius.md,
+        backgroundColor: colors.surface,
+        marginTop: spacing.xs,
+        overflow: 'hidden',
+      }}
+    >
+      {isFrequent && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.xs,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.xs,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+          }}
+        >
+          <Ionicons name="star" size={12} color={colors.textMuted} />
+          <Text
+            variant="caption"
+            color="textMuted"
+            style={{ textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5 }}
+          >
+            Clients fréquents
+          </Text>
+        </View>
+      )}
+      {list.map((c, i) => (
+        <Pressable
+          key={c.id}
+          onPress={() => onPick(c)}
+          android_ripple={{ color: colors.surfaceSecondary }}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            borderTopWidth: i === 0 ? 0 : 1,
+            borderTopColor: colors.border,
+            backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+          })}
+        >
+          <Avatar name={c.name || 'Client'} size="sm" />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <Text variant="body" style={{ fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>
+                {c.name || 'Client'}
+              </Text>
+              {(c.bookingsCount ?? 0) > 0 && (
+                <Text variant="caption" color="textMuted">
+                  {c.bookingsCount} RDV
+                </Text>
+              )}
+            </View>
+            <Text variant="caption" color="textMuted" numberOfLines={1}>
+              {[c.email, c.phone].filter(Boolean).join('  ·  ')}
+            </Text>
+          </View>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -426,6 +586,18 @@ export default function CreateBookingScreen() {
   const [clientEmail, setClientEmail] = useState(clientEmailParam ?? '');
   const [clientPhone, setClientPhone] = useState(clientPhoneParam ?? '');
   const [notes, setNotes] = useState('');
+
+  // Client autocomplete: existing client base + which field is being typed
+  // in right now (drives the suggestion list under the Nom field).
+  const { clients: providerClients } = useProviderClients(providerId ?? undefined);
+  const [clientQueryField, setClientQueryField] = useState<ClientQueryField>(null);
+
+  const handlePickClient = useCallback((c: WithId<ProviderClient>) => {
+    setClientName(c.name || '');
+    setClientEmail(c.email || '');
+    setClientPhone(c.phone || '');
+    setClientQueryField(null);
+  }, []);
 
   // -- Step 4 -----------------------------------------------------------------
   const [submitting, setSubmitting] = useState(false);
@@ -1171,7 +1343,10 @@ export default function CreateBookingScreen() {
                 <Input
                   label="Nom *"
                   value={clientName}
-                  onChangeText={setClientName}
+                  onChangeText={(v) => {
+                    setClientName(v);
+                    setClientQueryField('name');
+                  }}
                   placeholder="Nom du client"
                   autoCapitalize="words"
                   leftIcon={
@@ -1182,13 +1357,27 @@ export default function CreateBookingScreen() {
                     />
                   }
                 />
+                <ClientSuggestionPanel
+                  clients={providerClients}
+                  queryField={clientQueryField}
+                  name={clientName}
+                  email={clientEmail}
+                  phone={clientPhone}
+                  onPick={handlePickClient}
+                  colors={colors}
+                  spacing={spacing}
+                  radius={radius}
+                />
               </View>
 
               <View style={{ marginBottom: spacing.lg }}>
                 <Input
                   label="Email *"
                   value={clientEmail}
-                  onChangeText={setClientEmail}
+                  onChangeText={(v) => {
+                    setClientEmail(v);
+                    setClientQueryField('email');
+                  }}
                   placeholder="email@exemple.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -1206,7 +1395,10 @@ export default function CreateBookingScreen() {
                 <Input
                   label="Téléphone *"
                   value={clientPhone}
-                  onChangeText={setClientPhone}
+                  onChangeText={(v) => {
+                    setClientPhone(v);
+                    setClientQueryField('phone');
+                  }}
                   placeholder="06 12 34 56 78"
                   keyboardType="phone-pad"
                   leftIcon={
