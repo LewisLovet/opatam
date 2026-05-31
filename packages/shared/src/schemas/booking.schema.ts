@@ -67,6 +67,18 @@ export const createBookingSchema = z.object({
   // Service variations / options / infos chosen by the client. Optional —
   // absent for plain services. Server recomputes price + duration from it.
   selections: serviceSelectionsSchema.optional(),
+  // Multi-service appointment: prestations booked back-to-back in one visit.
+  // When present, the booking spans the sum of their durations. The
+  // top-level serviceId must equal items[0].serviceId (kept for back-compat).
+  items: z
+    .array(
+      z.object({
+        serviceId: z.string().min(1),
+        selections: serviceSelectionsSchema.optional(),
+      }),
+    )
+    .min(1)
+    .optional(),
 }).refine(
   (data) => data.clientInfo !== undefined || data.clientId !== undefined,
   { message: 'Les informations du client sont requises' }

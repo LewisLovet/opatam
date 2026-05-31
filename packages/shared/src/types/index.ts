@@ -903,8 +903,31 @@ export interface Booking {
    */
   selectedInfoValues?: Record<string, string>;
 
+  /**
+   * Multi-service appointments: the list of prestations booked back-to-back
+   * in this single visit. When present (length ≥ 1), the top-level
+   * `serviceId`/`serviceName`/`selected*` reflect the FIRST item and
+   * `duration`/`price` are the AGGREGATE (sum) across all items — so
+   * existing readers keep working. Absent for single-service bookings
+   * (legacy + simple), which are equivalent to a one-item list.
+   */
+  items?: BookingServiceItem[];
+
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** One prestation inside a multi-service booking. Fully denormalised so
+ *  the booking stays readable even if the service is later edited. */
+export interface BookingServiceItem {
+  serviceId: string;
+  serviceName: string;
+  serviceColor?: string | null;
+  duration: number;                 // effective minutes for this prestation
+  price: number;                    // effective price in cents
+  selectedVariations: BookingSelectedVariation[];
+  selectedOptions: BookingSelectedOption[];
+  selectedInfoValues: Record<string, string>;
 }
 
 /** One variation choice captured at booking time. Fully denormalised
