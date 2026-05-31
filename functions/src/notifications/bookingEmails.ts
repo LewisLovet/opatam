@@ -24,6 +24,11 @@ interface BookingData {
   duration?: number;
   price?: number;
   priceMax?: number | null;
+  items?: {
+    serviceName: string;
+    duration: number;
+    price: number;
+  }[];
   clientInfo: {
     name: string;
     email: string;
@@ -173,6 +178,11 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
     duration: booking.duration || 60,
     price: booking.price || 0,
     priceMax: booking.priceMax || null,
+    items: booking.items?.map((i) => ({
+      serviceName: i.serviceName,
+      duration: i.duration,
+      price: i.price,
+    })),
     providerName: booking.providerName,
     providerSlug,
     locationName: booking.locationName,
@@ -240,6 +250,11 @@ export async function emailProviderNewBooking(
     duration: booking.duration || 60,
     price: booking.price || 0,
     priceMax: booking.priceMax || null,
+    items: booking.items?.map((i) => ({
+      serviceName: i.serviceName,
+      duration: i.duration,
+      price: i.price,
+    })),
     providerName: booking.providerName,
     locationName: booking.locationName,
     locationAddress: booking.locationAddress,

@@ -224,6 +224,29 @@ export default function AdminBookingDetailPage() {
             </div>
           )}
         </div>
+
+        {booking.items && booking.items.length >= 2 && (
+          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+              Prestations
+            </p>
+            <ul className="space-y-1.5">
+              {booking.items.map((item, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-baseline justify-between gap-3 text-sm"
+                >
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {item.serviceName}
+                  </span>
+                  <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {item.duration} min &middot; {formatPrice(item.price)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Client & Provider cards */}

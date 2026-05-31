@@ -20,6 +20,7 @@ import {
   formatBookingDate,
   formatBookingTime,
   formatBookingPrice,
+  formatDuration,
 } from '@/lib/booking-utils';
 import {
   Loader2,
@@ -496,11 +497,29 @@ export function BookingDetailModal({
         {/* ── 2. Service + Member + Status ───────────────────────── */}
         <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
           <p className="text-xs uppercase tracking-wide font-semibold text-gray-500 dark:text-gray-400 mb-0.5">
-            Prestation
+            {booking.items && booking.items.length >= 2 ? 'Prestations' : 'Prestation'}
           </p>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-            {booking.serviceName}
-          </h3>
+          {booking.items && booking.items.length >= 2 ? (
+            <div className="space-y-1">
+              {booking.items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-baseline justify-between gap-3"
+                >
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {item.serviceName}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {formatDuration(item.duration)} · {formatBookingPrice(item.price)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              {booking.serviceName}
+            </h3>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {booking.memberName && (
               <span

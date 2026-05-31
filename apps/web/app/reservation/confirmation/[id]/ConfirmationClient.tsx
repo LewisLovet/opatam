@@ -17,6 +17,7 @@ interface Booking {
   duration: number;
   price: number;
   priceMax?: number | null;
+  items?: { serviceName: string; duration: number; price: number }[];
   status: string;
   clientInfo: {
     name: string;
@@ -282,18 +283,51 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             {/* Service */}
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Prestation
+                {booking.items && booking.items.length >= 2 ? 'Prestations' : 'Prestation'}
               </p>
-              <p className="font-medium text-gray-900 dark:text-white">
-                {booking.serviceName}
-              </p>
-              <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  {formatDuration(booking.duration)}
-                </span>
-                <span>{formatPrice(booking.price, booking.priceMax)}</span>
-              </div>
+              {booking.items && booking.items.length >= 2 ? (
+                <>
+                  <div className="space-y-1.5">
+                    {booking.items.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {item.serviceName}
+                        </span>
+                        <span className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            {formatDuration(item.duration)}
+                          </span>
+                          <span>{formatPrice(item.price)}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {formatDuration(booking.duration)}
+                    </span>
+                    <span>{formatPrice(booking.price, booking.priceMax)}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {booking.serviceName}
+                  </p>
+                  <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {formatDuration(booking.duration)}
+                    </span>
+                    <span>{formatPrice(booking.price, booking.priceMax)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Member */}

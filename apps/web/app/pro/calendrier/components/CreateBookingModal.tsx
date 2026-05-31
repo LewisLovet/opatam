@@ -13,8 +13,16 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { catalogService, schedulingService } from '@booking-app/firebase';
-import type { Member, Location, Service } from '@booking-app/shared';
-import { resolveDeposit } from '@booking-app/shared';
+import type { Member, Location, Service, ServiceSelections } from '@booking-app/shared';
+import {
+  resolveDeposit,
+  computeServiceTotal,
+  validateServiceSelections,
+  emptyServiceSelections,
+  serviceHasChoices,
+  formatDuration,
+} from '@booking-app/shared';
+import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import {
   Loader2,
   ChevronRight,
@@ -31,6 +39,8 @@ import {
   Sun,
   Sunset,
   Moon,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -178,6 +188,25 @@ export function CreateBookingModal({
     notes: '',
   });
 
+  // MULTI-PRESTATION ("panier"): the booking can hold several
+  // prestations. cart[0] is the "primary" service — many existing
+  // references (slot loading, deposit estimate) treat it as such, so we
+  // keep formData.serviceId in sync with cart[0].serviceId.
+  const [cart, setCart] = useState<{ serviceId: string; selections: ServiceSelections }[]>([]);
+
+  // Draft state for the "+ Ajouter une prestation" affordance: the
+  // service the pro is currently configuring before pushing to the cart.
+  const [draftServiceId, setDraftServiceId] = useState('');
+  const [draftSelections, setDraftSelections] = useState<ServiceSelections>(emptyServiceSelections());
+  const [draftShowMissing, setDraftShowMissing] = useState(false);
+
+  // Keep formData.serviceId == cart[0].serviceId (the "primary"). Slot
+  // loading, validation and the deposit estimate rely on it.
+  useEffect(() => {
+    const primary = cart[0]?.serviceId ?? '';
+    setFormData((prev) => (prev.serviceId === primary ? prev : { ...prev, serviceId: primary }));
+  }, [cart]);
+
   // Expanded sections state for time slot periods
   const [expandedSections, setExpandedSections] = useState<Record<Period, boolean>>({
     morning: true,
@@ -214,6 +243,10 @@ export function CreateBookingModal({
       setErrors({});
       setAvailableSlots([]);
       setAskDeposit(true);
+      setCart([]);
+      setDraftServiceId('');
+      setDraftSelections(emptyServiceSelections());
+      setDraftShowMissing(false);
     }
   }, [isOpen, initialDate, initialMemberId, initialLocationId, locations]);
 
@@ -248,7 +281,7 @@ export function CreateBookingModal({
   // Load available time slots for ALL members
   // NOUVEAU MODÈLE: memberId est obligatoire, on itère toujours sur les membres
   const loadSlots = useCallback(async () => {
-    if (!provider || !formData.serviceId || !formData.date || !formData.locationId) {
+    if (!provider || cart.length === 0 || !formData.date || !formData.locationId) {
       setAvailableSlots([]);
       return;
     }
@@ -270,20 +303,39 @@ export function CreateBookingModal({
 
       console.log('[CreateBooking] Loading slots for:', formData.date, 'dayOfWeek:', date.getDay());
 
-      const service = services.find((s) => s.id === formData.serviceId);
-      if (!service) {
+      // Resolve every cart prestation to its Service doc.
+      const cartServices = cart.map((item) => ({
+        item,
+        service: services.find((s) => s.id === item.serviceId),
+      }));
+      if (cartServices.some((c) => !c.service)) {
         return;
       }
+      const primaryService = cartServices[0].service!;
 
-      // NOUVEAU MODÈLE: Toujours itérer sur les membres du lieu
-      // (filtrés par service si applicable). Quand le pro a déjà
-      // pré-sélectionné un membre (filtre du header → initialMemberId),
-      // on restreint le picker à ce membre — sinon une activité qui
-      // bloque ce membre serait masquée par la dispo d'un autre membre,
-      // et le pro verrait un slot "libre" qui en réalité ne l'est pas
-      // pour le membre qu'il vient de choisir.
+      // Total block length = sum of each prestation's effective
+      // duration + a SINGLE buffer at the end (the last service's
+      // bufferTime). durationOverride drives the whole booking length.
+      const totalDuration =
+        cartServices.reduce(
+          (sum, c) => sum + computeServiceTotal(c.service!, c.item.selections).duration,
+          0,
+        ) + (cartServices[cartServices.length - 1].service!.bufferTime ?? 0);
+
+      // NOUVEAU MODÈLE: Toujours itérer sur les membres du lieu.
+      // Un membre doit pouvoir réaliser TOUTES les prestations du
+      // panier. Quand le pro a déjà pré-sélectionné un membre (filtre
+      // du header → initialMemberId), on restreint le picker à ce
+      // membre — sinon une activité qui bloque ce membre serait
+      // masquée par la dispo d'un autre membre, et le pro verrait un
+      // slot "libre" qui en réalité ne l'est pas pour le membre qu'il
+      // vient de choisir.
       const membersToCheck = locationMembers
-        .filter((m) => !service.memberIds || service.memberIds.includes(m.id))
+        .filter((m) =>
+          cartServices.every(
+            (c) => !c.service!.memberIds || c.service!.memberIds.includes(m.id),
+          ),
+        )
         .filter((m) => !formData.memberId || m.id === formData.memberId);
 
       if (membersToCheck.length === 0) {
@@ -298,13 +350,16 @@ export function CreateBookingModal({
       await Promise.all(
         membersToCheck.map(async (member) => {
           try {
-            // NOUVEAU MODÈLE: memberId est maintenant obligatoire
+            // NOUVEAU MODÈLE: memberId est maintenant obligatoire.
+            // durationOverride = longueur totale du panier (somme des
+            // durées effectives + un seul buffer) — calculée plus haut.
             const slots = await schedulingService.getAvailableSlots({
               providerId: provider.id,
-              serviceId: formData.serviceId,
+              serviceId: primaryService.id,
               memberId: member.id,
               startDate: date,
               endDate: endDate,
+              durationOverride: totalDuration,
             });
 
             console.log('[CreateBooking] Slots for member', member.id, ':', slots.length);
@@ -344,7 +399,7 @@ export function CreateBookingModal({
     } finally {
       setLoadingSlots(false);
     }
-  }, [provider, formData.serviceId, formData.date, formData.locationId, formData.memberId, services, locationMembers]);
+  }, [provider, cart, formData.date, formData.locationId, formData.memberId, services, locationMembers]);
 
   // Load slots when service or date changes
   useEffect(() => {
@@ -360,7 +415,13 @@ export function CreateBookingModal({
 
     // Reset dependent fields
     if (name === 'locationId') {
+      // Services are location-filtered → clear the cart + draft so a
+      // prestation from another location can't linger.
       setFormData((prev) => ({ ...prev, serviceId: '', time: '', memberId: '' }));
+      setCart([]);
+      setDraftServiceId('');
+      setDraftSelections(emptyServiceSelections());
+      setDraftShowMissing(false);
     }
     if (name === 'date') {
       setFormData((prev) => ({ ...prev, time: '', memberId: '' }));
@@ -393,8 +454,8 @@ export function CreateBookingModal({
     if (!formData.locationId) {
       newErrors.locationId = 'Le lieu est requis';
     }
-    if (!formData.serviceId) {
-      newErrors.serviceId = 'La prestation est requise';
+    if (cart.length === 0) {
+      newErrors.serviceId = 'Au moins une prestation est requise';
     }
     if (!formData.date) {
       newErrors.date = 'La date est requise';
@@ -471,7 +532,8 @@ export function CreateBookingModal({
         body: JSON.stringify({
           providerId: provider.id,
           locationId: formData.locationId,
-          serviceId: formData.serviceId,
+          serviceId: cart[0].serviceId,
+          items: cart.map((c) => ({ serviceId: c.serviceId, selections: c.selections })),
           memberId: formData.memberId || undefined,
           datetime: datetime.toISOString(),
           clientInfo: {
@@ -515,6 +577,30 @@ export function CreateBookingModal({
   const selectedMember = members.find((m) => m.id === formData.memberId);
   const selectedSlot = availableSlots.find((s) => s.time === formData.time);
 
+  // Cart prestations resolved to their Service docs + effective
+  // price/duration (variations/options applied). Drives the cart list,
+  // the running total, the confirm recap and the deposit estimate.
+  const cartLines = useMemo(
+    () =>
+      cart
+        .map((item) => {
+          const service = services.find((s) => s.id === item.serviceId);
+          if (!service) return null;
+          const total = computeServiceTotal(service, item.selections);
+          return { item, service, price: total.price, duration: total.duration };
+        })
+        .filter((l): l is NonNullable<typeof l> => l !== null),
+    [cart, services],
+  );
+  const cartTotalPrice = useMemo(
+    () => cartLines.reduce((sum, l) => sum + l.price, 0),
+    [cartLines],
+  );
+  const cartTotalDuration = useMemo(
+    () => cartLines.reduce((sum, l) => sum + l.duration, 0),
+    [cartLines],
+  );
+
   // Resolved deposit for the selected service. null when no deposit
   // applies, or when the deposits add-on isn't ready (Stripe Connect
   // not active, add-on disabled). Same gating as the public flow.
@@ -524,11 +610,14 @@ export function CreateBookingModal({
       provider.depositsAddonActive &&
       provider.stripeConnectStatus === 'active';
     if (!ready) return null;
+    // Estimate on the SUMMED effective price across the cart, using the
+    // primary (cart[0]) service's deposit config. The server recomputes
+    // the authoritative deposit at creation time.
     return resolveDeposit(
-      { price: selectedService.price, deposit: selectedService.deposit },
+      { price: cartTotalPrice, deposit: selectedService.deposit },
       { depositDefault: provider.settings?.depositDefault },
     );
-  }, [provider, selectedService]);
+  }, [provider, selectedService, cartTotalPrice]);
 
   // Step progress
   // NOUVEAU MODÈLE: member step only if multiple members available for selected slot
@@ -595,24 +684,125 @@ export function CreateBookingModal({
                 />
               </div>
 
-              {/* Service */}
+              {/* Prestations (panier) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   <Tag className="w-4 h-4 inline mr-1" />
-                  Prestation <span className="text-error-500">*</span>
+                  Prestations <span className="text-error-500">*</span>
                 </label>
-                <Select
-                  name="serviceId"
-                  value={formData.serviceId}
-                  onChange={handleChange}
-                  error={errors.serviceId}
-                  disabled={!formData.locationId}
-                  placeholder="Sélectionnez une prestation"
-                  options={filteredServices.map((svc) => ({
-                    value: svc.id,
-                    label: `${svc.name} - ${svc.duration} min - ${formatPrice(svc.price)}`,
-                  }))}
-                />
+
+                {/* Cart list */}
+                {cartLines.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {cartLines.map((line, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                            {line.service.name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatDuration(line.duration)} • {formatPrice(line.price)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCart((prev) => prev.filter((_, i) => i !== idx))}
+                          className="flex-shrink-0 p-1.5 rounded-md text-gray-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 transition-colors"
+                          aria-label="Retirer la prestation"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Running total */}
+                    <div className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/60 text-sm">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Total</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {formatDuration(cartTotalDuration)} • {formatPrice(cartTotalPrice)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add a prestation */}
+                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-3 space-y-3">
+                  <Select
+                    name="draftServiceId"
+                    value={draftServiceId}
+                    onChange={(e) => {
+                      setDraftServiceId(e.target.value);
+                      setDraftSelections(emptyServiceSelections());
+                      setDraftShowMissing(false);
+                    }}
+                    disabled={!formData.locationId}
+                    placeholder="+ Ajouter une prestation"
+                    options={filteredServices.map((svc) => ({
+                      value: svc.id,
+                      label: `${svc.name} - ${svc.duration} min - ${formatPrice(svc.price)}`,
+                    }))}
+                  />
+
+                  {(() => {
+                    const draftService = filteredServices.find((s) => s.id === draftServiceId);
+                    if (!draftService) return null;
+
+                    const hasChoices = serviceHasChoices(draftService);
+                    const { valid, missing } = validateServiceSelections(
+                      draftService,
+                      draftSelections,
+                    );
+                    const draftTotal = computeServiceTotal(draftService, draftSelections);
+
+                    const addToCart = () => {
+                      if (!valid) {
+                        setDraftShowMissing(true);
+                        return;
+                      }
+                      setCart((prev) => [
+                        ...prev,
+                        { serviceId: draftService.id, selections: draftSelections },
+                      ]);
+                      setDraftServiceId('');
+                      setDraftSelections(emptyServiceSelections());
+                      setDraftShowMissing(false);
+                    };
+
+                    return (
+                      <>
+                        {hasChoices && (
+                          <ServiceChoicesPicker
+                            service={draftService}
+                            selections={draftSelections}
+                            onChange={setDraftSelections}
+                            missing={draftShowMissing ? new Set(missing) : undefined}
+                          />
+                        )}
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {formatDuration(draftTotal.duration)} • {formatPrice(draftTotal.price)}
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={addToCart}
+                            disabled={!valid}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Ajouter au RDV
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {errors.serviceId && (
+                  <p className="mt-1 text-sm text-error-500">{errors.serviceId}</p>
+                )}
               </div>
 
               {/* Date */}
@@ -636,15 +826,17 @@ export function CreateBookingModal({
           {/* Step: Slot Selection */}
           {step === 'slots' && (
             <>
-              {/* Selected service summary */}
+              {/* Selected prestations summary */}
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
-                <p className="font-medium text-gray-900 dark:text-white">{selectedService?.name}</p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {cartLines.map((l) => l.service.name).join(' + ')}
+                </p>
                 <p className="text-gray-500 dark:text-gray-400">
                   {new Date(formData.date).toLocaleDateString('fr-FR', {
                     weekday: 'long',
                     day: 'numeric',
                     month: 'long',
-                  })} • {selectedService?.duration} min • {selectedService && formatPrice(selectedService.price)}
+                  })} • {formatDuration(cartTotalDuration)} • {formatPrice(cartTotalPrice)}
                 </p>
               </div>
 
@@ -742,7 +934,9 @@ export function CreateBookingModal({
           {step === 'member' && (
             <>
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm mb-4">
-                <p className="font-medium text-gray-900 dark:text-white">{selectedService?.name}</p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {cartLines.map((l) => l.service.name).join(' + ')}
+                </p>
                 <p className="text-gray-500 dark:text-gray-400">
                   {new Date(formData.date).toLocaleDateString('fr-FR', {
                     weekday: 'long',
@@ -847,11 +1041,20 @@ export function CreateBookingModal({
                 </h4>
 
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                    <span className="text-primary-800 dark:text-primary-200">
-                      {selectedService?.name} - {selectedService?.duration} min
-                    </span>
+                  <div className="flex items-start gap-2">
+                    <Tag className="w-4 h-4 text-primary-600 dark:text-primary-400 mt-0.5" />
+                    <div className="flex-1 space-y-1">
+                      {cartLines.map((line, idx) => (
+                        <div key={idx} className="flex items-center justify-between gap-2">
+                          <span className="text-primary-800 dark:text-primary-200">
+                            {line.service.name}
+                          </span>
+                          <span className="text-primary-700 dark:text-primary-300 whitespace-nowrap">
+                            {formatPrice(line.price)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -883,9 +1086,12 @@ export function CreateBookingModal({
                   )}
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-primary-200 dark:border-primary-800">
+                <div className="mt-3 pt-3 border-t border-primary-200 dark:border-primary-800 flex items-baseline justify-between">
+                  <span className="text-sm text-primary-700 dark:text-primary-300">
+                    {formatDuration(cartTotalDuration)}
+                  </span>
                   <p className="text-lg font-semibold text-primary-900 dark:text-primary-100">
-                    {selectedService && formatPrice(selectedService.price)}
+                    {formatPrice(cartTotalPrice)}
                   </p>
                 </div>
               </div>

@@ -34,6 +34,11 @@ export default async function ConfirmationPage({ params }: PageProps) {
     duration: booking.duration,
     price: booking.price,
     priceMax: booking.priceMax ?? null,
+    items: booking.items?.map((i) => ({
+      serviceName: i.serviceName,
+      duration: i.duration,
+      price: i.price,
+    })),
     status: booking.status,
     clientInfo: booking.clientInfo,
     deposit: booking.deposit

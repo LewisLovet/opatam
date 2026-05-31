@@ -35,6 +35,10 @@ export async function POST(request: NextRequest) {
       // Variations/options chosen by the client. The booking service
       // recomputes price + duration from these server-side.
       selections: body.selections,
+      // Multi-prestation cart: when present, the booking spans all items
+      // (price/duration aggregated server-side). Without this the booking
+      // would silently fall back to the single top-level serviceId.
+      items: body.items,
     });
     const clientUid: string | null =
       typeof body.clientId === 'string' && body.clientId.length > 0
