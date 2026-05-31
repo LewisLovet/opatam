@@ -15,6 +15,8 @@ interface ReviewItem {
   rating: number;
   comment: string | null;
   isPublic: boolean;
+  imported?: boolean;
+  source?: string | null;
   createdAt: string | null;
 }
 
@@ -164,6 +166,11 @@ export function ReviewTable({ items, onToggleVisibility, onDelete }: ReviewTable
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {review.clientName || 'Anonyme'}
                     </span>
+                    {review.imported && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                        Import&eacute;
+                      </span>
+                    )}
                   </div>
                 </td>
 
@@ -255,9 +262,16 @@ export function ReviewTable({ items, onToggleVisibility, onDelete }: ReviewTable
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {review.clientName || 'Anonyme'}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {review.clientName || 'Anonyme'}
+                    </p>
+                    {review.imported && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 flex-shrink-0">
+                        Import&eacute;
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                     {review.providerName || 'Inconnu'}
                   </p>

@@ -55,6 +55,18 @@ export function ReviewFilters({ filters, onChange }: ReviewFiltersProps) {
           <option value="true">Public</option>
           <option value="false">Priv&#233;</option>
         </select>
+
+        {/* Imported filter */}
+        <select
+          value={filters.imported || 'all'}
+          onChange={(e) =>
+            onChange({ ...filters, imported: e.target.value as 'true' | 'all' })
+          }
+          className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+        >
+          <option value="all">Tous les avis</option>
+          <option value="true">Import&#233;s uniquement</option>
+        </select>
       </div>
 
       {/* Date range */}

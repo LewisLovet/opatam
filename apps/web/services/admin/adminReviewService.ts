@@ -24,6 +24,7 @@ export const adminReviewService = {
     if (filters.minRating) params.set('minRating', String(filters.minRating));
     if (filters.maxRating) params.set('maxRating', String(filters.maxRating));
     if (filters.isPublic && filters.isPublic !== 'all') params.set('isPublic', filters.isPublic);
+    if (filters.imported === 'true') params.set('imported', 'true');
     if (filters.providerId) params.set('providerId', filters.providerId);
     if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
     if (filters.dateTo) params.set('dateTo', filters.dateTo);
@@ -52,6 +53,21 @@ export const adminReviewService = {
       headers: headers(adminUid),
     });
     if (!res.ok) throw new Error('Erreur lors de la suppression');
+  },
+
+  async deleteImportedReviews(
+    adminUid: string,
+    providerId: string,
+    source?: string
+  ): Promise<{ deleted: number }> {
+    const res = await fetch(`${BASE_URL}/bulk-delete-imported`, {
+      method: 'POST',
+      headers: headers(adminUid),
+      body: JSON.stringify({ providerId, ...(source ? { source } : {}) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || 'Erreur lors de la suppression');
+    return data;
   },
 
   async importReviews(

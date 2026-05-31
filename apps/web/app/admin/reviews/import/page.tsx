@@ -7,6 +7,7 @@ import { adminReviewService } from '@/services/admin/adminReviewService';
 import { Button, Input, Loader, useToast } from '@/components/ui';
 import { ArrowLeft, Search, Upload, Plus, Trash2, Star, CheckCircle2 } from 'lucide-react';
 import { parseReviewCsv, type ParsedReviewRow } from './csvParser';
+import { ConfirmModal } from '../../components/ConfirmModal';
 
 interface ProviderResult {
   id: string;
@@ -60,6 +61,24 @@ export default function ImportReviewsPage() {
   // Submit state
   const [submitting, setSubmitting] = useState(false);
   const [resultMsg, setResultMsg] = useState<{ created: number; skipped: number } | null>(null);
+
+  // Bulk-delete (undo import) state
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!user?.id || !provider) return;
+    setDeleting(true);
+    try {
+      const res = await adminReviewService.deleteImportedReviews(user.id, provider.id);
+      toast.success(`${res.deleted} avis importé(s) supprimé(s). La note globale est recalculée automatiquement.`);
+      setConfirmDelete(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erreur lors de la suppression');
+    } finally {
+      setDeleting(false);
+    }
+  }, [user?.id, provider, toast]);
 
   const searchProviders = useCallback(async () => {
     if (!user?.id || query.trim().length < 2) return;
@@ -220,7 +239,24 @@ export default function ImportReviewsPage() {
               Changer
             </Button>
           </div>
-        ) : (
+        ) : null}
+        {provider && (
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <Button
+              variant="outline"
+              size="sm"
+              className="!text-red-600 !border-red-200 hover:!bg-red-50 dark:!text-red-400 dark:!border-red-900/40 dark:hover:!bg-red-900/20"
+              leftIcon={<Trash2 className="w-4 h-4" />}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Supprimer tous les avis importés de ce prestataire
+            </Button>
+            <p className="mt-1.5 text-xs text-gray-400">
+              Annule un import : supprime tous les avis importés du prestataire (toutes sources). La note globale est recalculée automatiquement.
+            </p>
+          </div>
+        )}
+        {!provider && (
           <>
             <div className="flex gap-2">
               <Input
@@ -455,6 +491,21 @@ export default function ImportReviewsPage() {
           <Loader size="lg" />
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={handleBulkDelete}
+        loading={deleting}
+        title="Supprimer les avis importés"
+        description={
+          provider
+            ? `Tous les avis importés de « ${provider.businessName} » seront supprimés définitivement (toutes sources). Cette action est irréversible. La note globale sera recalculée automatiquement.`
+            : ''
+        }
+        confirmLabel="Tout supprimer"
+        confirmVariant="danger"
+      />
     </div>
   );
 }

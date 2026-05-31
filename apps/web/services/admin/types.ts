@@ -85,6 +85,7 @@ export interface ReviewFilters {
   minRating?: number;
   maxRating?: number;
   isPublic?: 'true' | 'false' | 'all';
+  imported?: 'true' | 'all';
   providerId?: string;
   dateFrom?: string;
   dateTo?: string;

@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const minRating = searchParams.get('minRating') ? parseInt(searchParams.get('minRating')!) : null;
     const maxRating = searchParams.get('maxRating') ? parseInt(searchParams.get('maxRating')!) : null;
     const isPublic = searchParams.get('isPublic');
+    const imported = searchParams.get('imported');
     const providerId = searchParams.get('providerId');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
@@ -60,9 +61,16 @@ export async function GET(request: NextRequest) {
         rating: data.rating,
         comment: data.comment || null,
         isPublic: data.isPublic || false,
+        imported: data.imported === true,
+        source: data.source ?? null,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
       };
     });
+
+    // In-memory filter: imported-only
+    if (imported === 'true') {
+      items = items.filter((r) => r.imported === true);
+    }
 
     // In-memory date filters
     if (dateFrom) {
