@@ -206,8 +206,8 @@ export function ClientAutocomplete({
                 onMouseEnter={() => setActiveIndex(i)}
                 className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
                   i === activeIndex
-                    ? 'bg-primary-50 dark:bg-primary-900/20'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    ? 'bg-gray-100 dark:bg-gray-700'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700/60'
                 }`}
               >
                 <span className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300">
