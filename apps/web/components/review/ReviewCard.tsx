@@ -12,6 +12,9 @@ interface ReviewCardProps {
     clientName: string;
     clientPhotoURL?: string | null;
     serviceName?: string | null;
+    /** Admin-imported external review — shows a neutral "Avis importé" badge.
+     *  The source (Planity, etc.) is NEVER exposed publicly. */
+    imported?: boolean;
     createdAt: Date;
   };
   className?: string;
@@ -65,9 +68,16 @@ export function ReviewCard({ review, className = '' }: ReviewCardProps) {
             {/* Header */}
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-white">
-                  {review.clientName}
-                </h4>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    {review.clientName}
+                  </h4>
+                  {review.imported && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                      Avis importé
+                    </span>
+                  )}
+                </div>
                 {review.serviceName && (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {review.serviceName}

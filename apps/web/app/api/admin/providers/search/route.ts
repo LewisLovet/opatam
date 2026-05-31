@@ -28,6 +28,9 @@ interface SearchResult {
   displayName: string | null;
   photoURL: string | null;
   alreadyAffiliate: boolean;
+  /** Current aggregate rating — used by the review-import preview to
+   *  compute the resulting average after adding imported ratings. */
+  rating: { average: number; count: number } | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -62,6 +65,7 @@ export async function GET(request: NextRequest) {
     const matches = snap.docs
       .map((doc) => {
         const d = doc.data() as Record<string, unknown>;
+        const rawRating = d.rating as { average?: number; count?: number } | undefined;
         return {
           id: doc.id,
           userId: (d.userId as string) ?? doc.id,
@@ -69,6 +73,9 @@ export async function GET(request: NextRequest) {
           slug: (d.slug as string) ?? '',
           photoURL: (d.photoURL as string | null) ?? null,
           affiliateId: (d.affiliateId as string | null) ?? null,
+          rating: rawRating
+            ? { average: rawRating.average ?? 0, count: rawRating.count ?? 0 }
+            : null,
         };
       })
       .filter(
@@ -109,6 +116,7 @@ export async function GET(request: NextRequest) {
         displayName: u?.displayName ?? null,
         photoURL: m.photoURL,
         alreadyAffiliate: !!m.affiliateId,
+        rating: m.rating,
       };
     });
 

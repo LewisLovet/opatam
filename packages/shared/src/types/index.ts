@@ -977,7 +977,8 @@ export interface ClientInfo {
 // Review types
 export interface Review {
   providerId: string;
-  bookingId: string;
+  /** null for imported reviews (no booking) — native reviews always have one. */
+  bookingId: string | null;
   clientId: string | null;  // null for anonymous reviews (from email link)
   clientEmail: string | null; // normalized email for dedup (one review per client per provider)
   memberId: string | null;
@@ -986,6 +987,22 @@ export interface Review {
   rating: number;
   comment: string | null;
   isPublic: boolean;
+  /**
+   * Internal provenance. 'opatam' (or undefined) = native review created
+   * through the app. For admin-imported reviews this holds the source
+   * (e.g. 'planity', 'manuel'). NEVER shown publicly — the public page only
+   * renders a neutral "Avis importé" badge driven by `imported`.
+   */
+  source?: string;
+  /** true for admin-imported reviews. Drives the neutral public badge. */
+  imported?: boolean;
+  /**
+   * Free-text prestation label carried over from the import (display-only).
+   * Does NOT map to an Opatam service. null when absent.
+   */
+  serviceLabel?: string | null;
+  /** External reference from the import source (CSV "N°"), used for dedup. */
+  sourceRef?: string | null;
   createdAt: Date;
 }
 

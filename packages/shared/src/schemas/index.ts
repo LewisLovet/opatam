@@ -118,12 +118,16 @@ export {
   updateReviewSchema,
   reviewResponseSchema,
   reviewFilterSchema,
+  importReviewItemSchema,
+  importReviewsSchema,
 } from './review.schema';
 export type {
   CreateReviewInput,
   UpdateReviewInput,
   ReviewResponseInput,
   ReviewFilterInput,
+  ImportReviewItemInput,
+  ImportReviewsInput,
 } from './review.schema';
 
 // Message schemas

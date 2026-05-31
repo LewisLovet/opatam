@@ -11,6 +11,7 @@ interface Review {
   clientPhoto: string | null;
   rating: number;
   comment: string | null;
+  imported?: boolean;
   createdAt: string;
 }
 
@@ -84,8 +85,12 @@ export function ReviewsSection({ reviews, rating }: ReviewsSectionProps) {
                   id: review.id,
                   rating: review.rating,
                   comment: review.comment,
-                  clientName: review.clientName,
-                  clientPhotoURL: review.clientPhoto,
+                  // Imported reviews are anonymous (clientName ''): show a neutral name.
+                  clientName: review.imported
+                    ? 'Client'
+                    : review.clientName || 'Client',
+                  clientPhotoURL: review.imported ? null : review.clientPhoto,
+                  imported: review.imported,
                   createdAt: new Date(review.createdAt),
                 }}
               />

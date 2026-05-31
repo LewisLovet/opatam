@@ -7,7 +7,8 @@ import type { ReviewFilters as ReviewFiltersType, PaginatedResult } from '@/serv
 import { ReviewFilters } from './components/ReviewFilters';
 import { ReviewTable } from './components/ReviewTable';
 import { Loader } from '@/components/ui';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import Link from 'next/link';
 
 export default function AdminReviewsPage() {
   const { user } = useAuth();
@@ -63,13 +64,22 @@ export default function AdminReviewsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Avis</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Avis</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {result
             ? `${result.total} avis${result.total > 1 ? '' : ''} — Mod\u00e9ration des avis clients`
             : 'Chargement...'}
-        </p>
+          </p>
+        </div>
+        <Link
+          href="/admin/reviews/import"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 transition-colors flex-shrink-0"
+        >
+          <Upload className="w-4 h-4" />
+          Importer des avis
+        </Link>
       </div>
 
       {/* Filters */}

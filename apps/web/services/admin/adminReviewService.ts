@@ -53,4 +53,28 @@ export const adminReviewService = {
     });
     if (!res.ok) throw new Error('Erreur lors de la suppression');
   },
+
+  async importReviews(
+    adminUid: string,
+    payload: {
+      providerId: string;
+      source: string;
+      reviews: {
+        rating: number;
+        createdAt: string; // ISO
+        comment?: string | null;
+        serviceLabel?: string | null;
+        sourceRef?: string | null;
+      }[];
+    }
+  ): Promise<{ created: number; skipped: number; errors?: string[] }> {
+    const res = await fetch(`${BASE_URL}/import`, {
+      method: 'POST',
+      headers: headers(adminUid),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || "Erreur lors de l'import");
+    return data;
+  },
 };

@@ -98,7 +98,7 @@ interface SerializedMember {
 interface SerializedReview {
   id: string;
   providerId: string;
-  bookingId: string;
+  bookingId: string | null;
   clientId: string | null;
   memberId: string | null;
   clientName: string;
@@ -106,6 +106,7 @@ interface SerializedReview {
   rating: number;
   comment: string | null;
   isPublic: boolean;
+  imported?: boolean;
   createdAt: string;
 }
 
