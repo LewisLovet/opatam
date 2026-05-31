@@ -23,7 +23,13 @@ import * as Clipboard from 'expo-clipboard';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { bookingService, schedulingService, memberService } from '@booking-app/firebase';
-import type { Booking, Member } from '@booking-app/shared';
+import { formatDuration } from '@booking-app/shared';
+import type {
+  Booking,
+  Member,
+  BookingSelectedVariation,
+  BookingSelectedOption,
+} from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
 import {
@@ -89,6 +95,57 @@ function formatPrice(cents: number): string {
     style: 'currency',
     currency: 'EUR',
   });
+}
+
+/**
+ * Renders the variation / option choices the client made for one
+ * prestation (denormalised on the booking, so names are frozen).
+ * Variation = "Longueur : Mi-dos", option = "+ Mèches incluses (15 €)".
+ * Returns null when there's nothing to show (legacy / choice-less
+ * prestation), so the caller can drop it in unconditionally.
+ */
+function ServiceChoiceLines({
+  variations,
+  options,
+  colors,
+  spacing,
+}: {
+  variations?: BookingSelectedVariation[];
+  options?: BookingSelectedOption[];
+  colors: ReturnType<typeof useTheme>['colors'];
+  spacing: ReturnType<typeof useTheme>['spacing'];
+}) {
+  const hasVariations = !!variations && variations.length > 0;
+  const hasOptions = !!options && options.length > 0;
+  if (!hasVariations && !hasOptions) return null;
+
+  return (
+    <View style={{ marginTop: spacing.xs, gap: 2 }}>
+      {variations?.map((v) => (
+        <Text key={`${v.variationId}:${v.optionId}`} variant="caption" color="textSecondary">
+          {v.variationName} : <Text variant="caption" style={{ color: colors.text, fontWeight: '600' }}>{v.optionName}</Text>
+        </Text>
+      ))}
+      {options?.map((o) => (
+        <View key={o.optionId}>
+          <Text variant="caption" color="textSecondary">
+            + {o.optionName}
+            {o.price > 0 ? `  (${formatPrice(o.price)})` : ''}
+          </Text>
+          {o.nestedVariations?.map((v) => (
+            <Text
+              key={`${o.optionId}:${v.variationId}:${v.optionId}`}
+              variant="caption"
+              color="textSecondary"
+              style={{ marginLeft: spacing.md }}
+            >
+              {v.variationName} : {v.optionName}
+            </Text>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
 }
 
 // ---------- Reschedule slot types & config ----------
@@ -666,6 +723,12 @@ export default function ProBookingDetailScreen() {
   const bookingDate = toDate(booking.datetime);
   const isPast = bookingDate < new Date();
 
+  // Multi-prestation: when the booking carries 2+ items we list each
+  // prestation (name · durée · prix) with its own choices; otherwise we
+  // show the single service name + its top-level choices.
+  const bookingItems = booking.items ?? [];
+  const isMultiService = bookingItems.length >= 2;
+
   // Build detail rows
   // Detail rows — service / member are now surfaced in the dedicated
   // "Service" card above, so they no longer appear here. This list is
@@ -840,11 +903,49 @@ export default function ProBookingDetailScreen() {
               marginBottom: spacing.xs,
             }}
           >
-            Prestation
+            {isMultiService ? 'Prestations' : 'Prestation'}
           </Text>
-          <Text variant="h2" style={{ fontWeight: '700' }}>
-            {booking.serviceName}
-          </Text>
+          {isMultiService ? (
+            <View style={{ gap: spacing.sm }}>
+              {bookingItems.map((item, idx) => (
+                <View key={`${item.serviceId}-${idx}`}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      gap: spacing.sm,
+                    }}
+                  >
+                    <Text variant="body" style={{ fontWeight: '700', flexShrink: 1 }}>
+                      {item.serviceName}
+                    </Text>
+                    <Text variant="caption" color="textSecondary" style={{ flexShrink: 0 }}>
+                      {formatDuration(item.duration)} · {formatPrice(item.price)}
+                    </Text>
+                  </View>
+                  <ServiceChoiceLines
+                    variations={item.selectedVariations}
+                    options={item.selectedOptions}
+                    colors={colors}
+                    spacing={spacing}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <>
+              <Text variant="h2" style={{ fontWeight: '700' }}>
+                {booking.serviceName}
+              </Text>
+              <ServiceChoiceLines
+                variations={booking.selectedVariations}
+                options={booking.selectedOptions}
+                colors={colors}
+                spacing={spacing}
+              />
+            </>
+          )}
 
           <View
             style={{
