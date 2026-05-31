@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Clock, Check, ChevronRight } from 'lucide-react';
+import { Clock, Check, ChevronRight, Plus } from 'lucide-react';
 import {
   getServiceMinPrice,
   getServiceMinDuration,
@@ -35,7 +35,10 @@ interface StepServiceProps {
   services: Service[];
   categories?: ServiceCategory[];
   selectedServiceId: string | null;
+  /** Adds the service to the cart (or opens its choices picker). */
   onSelect: (serviceId: string) => void;
+  /** How many times each service is already in the cart, keyed by service id. */
+  cartCounts?: Record<string, number>;
 }
 
 function formatDuration(minutes: number): string {
@@ -65,10 +68,12 @@ function ServiceButton({
   service,
   isSelected,
   onSelect,
+  cartCount = 0,
 }: {
   service: Service;
   isSelected: boolean;
   onSelect: (id: string) => void;
+  cartCount?: number;
 }) {
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
@@ -85,10 +90,20 @@ function ServiceButton({
   const priceVaries =
     (service.variations?.length ?? 0) > 0 || (service.options?.length ?? 0) > 0;
 
+  const inCart = cartCount > 0;
+
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onSelect(service.id)}
-      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(service.id);
+        }
+      }}
+      className={`w-full cursor-pointer text-left p-4 rounded-xl border-2 transition-all ${
         isSelected
           ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
           : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-700'
@@ -133,22 +148,41 @@ function ServiceButton({
             <span>{formatDuration(getServiceMinDuration(service))}</span>
           </div>
         </div>
-        <div className="flex-shrink-0 text-right">
-          {priceVaries && (
-            <span className="block text-[11px] font-normal text-gray-400">
-              à partir de
+        <div className="flex-shrink-0 flex flex-col items-end gap-2">
+          <div className="text-right">
+            {priceVaries && (
+              <span className="block text-[11px] font-normal text-gray-400">
+                à partir de
+              </span>
+            )}
+            <span className="text-lg font-bold text-gray-900 dark:text-white">
+              {formatPrice(getServiceMinPrice(service))}
             </span>
-          )}
-          <span className="text-lg font-bold text-gray-900 dark:text-white">
-            {formatPrice(getServiceMinPrice(service))}
-          </span>
+            {inCart && (
+              <span className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-semibold text-primary-600 dark:text-primary-400">
+                <Check className="w-3 h-3" />
+                Ajouté{cartCount > 1 ? ` ×${cartCount}` : ''}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(service.id);
+            }}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 active:bg-primary-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Ajouter
+          </button>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
-export function StepService({ services, categories = [], selectedServiceId, onSelect }: StepServiceProps) {
+export function StepService({ services, categories = [], selectedServiceId, onSelect, cartCounts = {} }: StepServiceProps) {
   const hasCategories = categories.length > 0;
 
   // When there are many categories (>3), collapse all except the first by default
@@ -195,7 +229,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
     return (
       <div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          Choisissez une prestation
+          Ajoutez des prestations
         </h2>
         <div className="space-y-3">
           {services.map((service) => (
@@ -204,6 +238,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
               service={service}
               isSelected={service.id === selectedServiceId}
               onSelect={onSelect}
+              cartCount={cartCounts[service.id] ?? 0}
             />
           ))}
         </div>
@@ -215,7 +250,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
   return (
     <div>
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-        Choisissez une prestation
+        Ajoutez des prestations
       </h2>
       <div className="space-y-6">
         {grouped.groups.map(({ category, services: catServices }) => {
@@ -244,6 +279,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
                       service={service}
                       isSelected={service.id === selectedServiceId}
                       onSelect={onSelect}
+                      cartCount={cartCounts[service.id] ?? 0}
                     />
                   ))}
                 </div>
@@ -278,6 +314,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
                     service={service}
                     isSelected={service.id === selectedServiceId}
                     onSelect={onSelect}
+                    cartCount={cartCounts[service.id] ?? 0}
                   />
                 ))}
               </div>

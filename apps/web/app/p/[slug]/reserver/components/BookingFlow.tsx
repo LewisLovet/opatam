@@ -274,6 +274,16 @@ export function BookingFlow({
     [cartLines, cartTotalDuration],
   );
 
+  // How many times each service sits in the cart (duplicates allowed) — drives
+  // the "✓ Ajouté ×N" badge on the service cards.
+  const cartCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of state.cart) {
+      counts[item.serviceId] = (counts[item.serviceId] ?? 0) + 1;
+    }
+    return counts;
+  }, [state.cart]);
+
   // Human-readable labels of every cart item's chosen variations/options
   // for the recap. When the cart holds more than one prestation, each label
   // is prefixed with the service name (e.g. "Dread locks · Longueur: Mi-dos")
@@ -683,12 +693,31 @@ export function BookingFlow({
 
             {currentStep === 'service' && !configuringServiceId && (
               <div>
-                {/* Cart (panier) — the prestations already added. */}
-                {cartLines.length > 0 && (
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                      Votre rendez-vous
-                    </h2>
+                {/* Service-step header — sets the "build a list" expectation. */}
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Composez votre rendez-vous
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Ajoutez une ou plusieurs prestations.
+                  </p>
+                </div>
+
+                {/* Cart (panier) — ALWAYS visible so the cart model is obvious. */}
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+                    Votre rendez-vous
+                  </h3>
+                  {cartLines.length === 0 ? (
+                    <div className="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 px-4 py-6 text-center">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                        Votre rendez-vous est vide
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        Ajoutez des prestations ci-dessous.
+                      </p>
+                    </div>
+                  ) : (
                     <div className="space-y-2">
                       {cartLines.map((line, idx) => {
                         const itemLabels = buildChoiceLabels(line.service, line.item.selections);
@@ -732,8 +761,8 @@ export function BookingFlow({
                         </span>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Service list — add more prestations. */}
                 <StepService
@@ -741,21 +770,24 @@ export function BookingFlow({
                   categories={serviceCategories}
                   selectedServiceId={null}
                   onSelect={handleServiceSelect}
+                  cartCounts={cartCounts}
                 />
 
-                {/* Continue — enabled once the cart has at least one prestation. */}
-                {cartLines.length > 0 && (
-                  <div className="mt-6 flex justify-end border-t border-gray-100 dark:border-gray-800 pt-4">
-                    <button
-                      type="button"
-                      onClick={handleContinueFromService}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
-                    >
-                      Continuer
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+                {/* Continue — always visible, disabled until the cart has at
+                    least one prestation. The label surfaces the count + total. */}
+                <div className="mt-6 flex justify-end border-t border-gray-100 dark:border-gray-800 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleContinueFromService}
+                    disabled={state.cart.length === 0}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {state.cart.length === 0
+                      ? 'Continuer'
+                      : `Continuer · ${state.cart.length} ${state.cart.length === 1 ? 'prestation' : 'prestations'} · ${formatPrice(cartTotalPrice)}`}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
 
