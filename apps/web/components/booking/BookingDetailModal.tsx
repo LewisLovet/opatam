@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, schedulingService, auth as firebaseAuth } from '@booking-app/firebase';
 import type { Booking, BookingStatus } from '@booking-app/shared';
+import { BookingChoices } from './BookingChoices';
 import {
   statusConfig,
   CANCEL_REASONS,
@@ -503,25 +504,38 @@ export function BookingDetailModal({
             {booking.items && booking.items.length >= 2 ? 'Prestations' : 'Prestation'}
           </p>
           {booking.items && booking.items.length >= 2 ? (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {booking.items.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-baseline justify-between gap-3"
-                >
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {item.serviceName}
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {formatDuration(item.duration)} · {formatBookingPrice(item.price)}
-                  </span>
+                <div key={idx}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {item.serviceName}
+                    </span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {formatDuration(item.duration)} · {formatBookingPrice(item.price)}
+                    </span>
+                  </div>
+                  <BookingChoices
+                    variations={item.selectedVariations}
+                    options={item.selectedOptions}
+                    info={item.selectedInfo}
+                    formatPrice={formatBookingPrice}
+                  />
                 </div>
               ))}
             </div>
           ) : (
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-              {booking.serviceName}
-            </h3>
+            <>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                {booking.serviceName}
+              </h3>
+              <BookingChoices
+                variations={booking.selectedVariations}
+                options={booking.selectedOptions}
+                info={booking.selectedInfo}
+                formatPrice={formatBookingPrice}
+              />
+            </>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {booking.memberName && (

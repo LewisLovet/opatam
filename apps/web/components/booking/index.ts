@@ -5,3 +5,4 @@ export { SlotPicker } from './SlotPicker';
 export { BookingSummary } from './BookingSummary';
 export { ClientForm } from './ClientForm';
 export { BookingDetailModal } from './BookingDetailModal';
+export { BookingChoices } from './BookingChoices';

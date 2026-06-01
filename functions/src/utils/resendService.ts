@@ -5,6 +5,11 @@
 
 import { Resend } from 'resend';
 import { defineString } from 'firebase-functions/params';
+import type {
+  BookingSelectedVariation,
+  BookingSelectedOption,
+  BookingSelectedInfo,
+} from '@booking-app/shared';
 
 // Define the Resend API key as a Firebase parameter
 const resendApiKey = defineString('RESEND_API_KEY');
@@ -87,6 +92,81 @@ export function formatDurationFr(minutes: number): string {
   return mins === 0 ? `${hours}h` : `${hours}h${mins.toString().padStart(2, '0')}`;
 }
 
+/** The client's denormalised choices for one prestation (or, in the mono
+ *  case, the booking as a whole). All fields optional / back-compat: legacy
+ *  bookings without choices render exactly as before. */
+export interface EmailSelections {
+  selectedVariations?: BookingSelectedVariation[];
+  selectedOptions?: BookingSelectedOption[];
+  selectedInfo?: BookingSelectedInfo[];
+}
+
+/** One prestation line in the email, with its denormalised choices. */
+export interface EmailServiceItem extends EmailSelections {
+  serviceName: string;
+  duration: number;
+  price: number;
+}
+
+/** True when the given selections carry at least one choice to render. */
+function hasSelections(s: EmailSelections): boolean {
+  return (
+    (s.selectedVariations?.length ?? 0) > 0 ||
+    (s.selectedOptions?.length ?? 0) > 0 ||
+    (s.selectedInfo?.length ?? 0) > 0
+  );
+}
+
+/** Render the client's choices as small muted HTML lines, indented under
+ *  the prestation they belong to. Returns '' when there's nothing to show. */
+function renderSelectionsHtml(s: EmailSelections): string {
+  const lines: string[] = [];
+  const muted = (html: string) =>
+    `<div style="font-size: 13px; color: #71717a; margin-left: 12px;">${html}</div>`;
+
+  for (const v of s.selectedVariations ?? []) {
+    lines.push(muted(`${v.variationName} : <strong>${v.optionName}</strong>`));
+  }
+  for (const o of s.selectedOptions ?? []) {
+    const extra = o.price > 0 ? ` (+${formatPriceFr(o.price)})` : '';
+    lines.push(muted(`+ <strong>${o.optionName}</strong>${extra}`));
+    for (const nv of o.nestedVariations ?? []) {
+      lines.push(muted(`${nv.variationName} : <strong>${nv.optionName}</strong>`));
+    }
+    for (const ni of o.info ?? []) {
+      lines.push(muted(`${ni.label} : <strong>${ni.value}</strong>`));
+    }
+  }
+  for (const i of s.selectedInfo ?? []) {
+    lines.push(muted(`${i.label} : <strong>${i.value}</strong>`));
+  }
+  return lines.join('');
+}
+
+/** Render the client's choices as indented plain-text lines, under the
+ *  prestation they belong to. Returns '' when there's nothing to show. */
+function renderSelectionsText(s: EmailSelections): string {
+  const lines: string[] = [];
+
+  for (const v of s.selectedVariations ?? []) {
+    lines.push(`  - ${v.variationName} : ${v.optionName}`);
+  }
+  for (const o of s.selectedOptions ?? []) {
+    const extra = o.price > 0 ? ` (+${formatPriceFr(o.price)})` : '';
+    lines.push(`  - + ${o.optionName}${extra}`);
+    for (const nv of o.nestedVariations ?? []) {
+      lines.push(`    ${nv.variationName} : ${nv.optionName}`);
+    }
+    for (const ni of o.info ?? []) {
+      lines.push(`    ${ni.label} : ${ni.value}`);
+    }
+  }
+  for (const i of s.selectedInfo ?? []) {
+    lines.push(`  - ${i.label} : ${i.value}`);
+  }
+  return lines.join('\n');
+}
+
 // Helper to format relative time in French ("dans 30 minutes", "dans 1h30", "demain")
 export function formatTimeUntilFr(minutesUntil: number): string {
   if (minutesUntil < 60) {
@@ -149,7 +229,14 @@ export interface BookingEmailData {
    * on its own line; the top-level serviceName/duration/price stay as the
    * joined name / totals.
    */
-  items?: { serviceName: string; duration: number; price: number }[];
+  items?: EmailServiceItem[];
+  /**
+   * Mono-booking choices (no items[] breakdown). Rendered under the single
+   * service line. Absent on legacy bookings / bookings without choices.
+   */
+  selectedVariations?: BookingSelectedVariation[];
+  selectedOptions?: BookingSelectedOption[];
+  selectedInfo?: BookingSelectedInfo[];
   /**
    * Deposit info — present only when this booking required one and it has
    * been paid. The amount is in cents. Confirmation emails surface this so
@@ -413,7 +500,12 @@ export interface ProviderNewBookingEmailData {
   locationAddress?: string;
   memberName?: string;
   /** Multi-prestation breakdown (see BookingEmailData.items). */
-  items?: { serviceName: string; duration: number; price: number }[];
+  items?: EmailServiceItem[];
+  /** Mono-booking choices (see BookingEmailData). Rendered under the single
+   *  service line. */
+  selectedVariations?: BookingSelectedVariation[];
+  selectedOptions?: BookingSelectedOption[];
+  selectedInfo?: BookingSelectedInfo[];
   /** Deposit info — present only when the booking required a deposit
    *  and it has been paid. Surfaces "+ Acompte X€ déjà perçu" in the
    *  notification so the pro knows what's already settled. */
@@ -510,8 +602,8 @@ function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): s
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Client</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.clientName}</td></tr>
                       ${data.clientPhone ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Téléphone</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.clientPhone}</td></tr>` : ''}
                       ${data.items && data.items.length >= 2
-                        ? data.items.map((item) => `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}</td></tr>`).join('')
-                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>`}
+                        ? data.items.map((item) => `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${hasSelections(item) ? renderSelectionsHtml(item) : ''}</td></tr>`).join('')
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Horaire</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
@@ -550,8 +642,8 @@ Détails :
 - Client : ${data.clientName}
 ${data.clientPhone ? `- Téléphone : ${data.clientPhone}` : ''}
 ${data.items && data.items.length >= 2
-  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}`).join('\n')
-  : `- Prestation : ${data.serviceName}`}
+  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
+  : `- Prestation : ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data)}` : ''}`}
 - Date : ${data.formattedDate}
 - Horaire : ${data.formattedTime} - ${data.formattedEndTime}
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
@@ -1081,8 +1173,8 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Votre rendez-vous</p>
                     <table style="width: 100%; border-collapse: collapse;">
                       ${data.items && data.items.length >= 2
-                        ? data.items.map((item) => `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}</td></tr>`).join('')
-                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>`}
+                        ? data.items.map((item) => `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${hasSelections(item) ? renderSelectionsHtml(item) : ''}</td></tr>`).join('')
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
@@ -1135,8 +1227,8 @@ Votre rendez-vous a bien été confirmé.
 
 Détails de votre rendez-vous :
 ${data.items && data.items.length >= 2
-  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}`).join('\n')
-  : `- Prestation : ${data.serviceName}`}
+  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
+  : `- Prestation : ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data)}` : ''}`}
 - Date : ${data.formattedDate}
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min

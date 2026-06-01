@@ -29,6 +29,7 @@ import type {
   Member,
   BookingSelectedVariation,
   BookingSelectedOption,
+  BookingSelectedInfo,
 } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
@@ -107,17 +108,20 @@ function formatPrice(cents: number): string {
 function ServiceChoiceLines({
   variations,
   options,
+  info,
   colors,
   spacing,
 }: {
   variations?: BookingSelectedVariation[];
   options?: BookingSelectedOption[];
+  info?: BookingSelectedInfo[];
   colors: ReturnType<typeof useTheme>['colors'];
   spacing: ReturnType<typeof useTheme>['spacing'];
 }) {
   const hasVariations = !!variations && variations.length > 0;
   const hasOptions = !!options && options.length > 0;
-  if (!hasVariations && !hasOptions) return null;
+  const hasInfo = !!info && info.length > 0;
+  if (!hasVariations && !hasOptions && !hasInfo) return null;
 
   return (
     <View style={{ marginTop: spacing.xs, gap: 2 }}>
@@ -142,7 +146,22 @@ function ServiceChoiceLines({
               {v.variationName} : {v.optionName}
             </Text>
           ))}
+          {o.info?.map((inf) => (
+            <Text
+              key={`${o.optionId}:info:${inf.fieldId}`}
+              variant="caption"
+              color="textSecondary"
+              style={{ marginLeft: spacing.md }}
+            >
+              {inf.label} : <Text variant="caption" style={{ color: colors.text, fontWeight: '600' }}>{inf.value}</Text>
+            </Text>
+          ))}
         </View>
+      ))}
+      {info?.map((inf) => (
+        <Text key={`info:${inf.fieldId}`} variant="caption" color="textSecondary">
+          {inf.label} : <Text variant="caption" style={{ color: colors.text, fontWeight: '600' }}>{inf.value}</Text>
+        </Text>
       ))}
     </View>
   );
@@ -927,6 +946,7 @@ export default function ProBookingDetailScreen() {
                   <ServiceChoiceLines
                     variations={item.selectedVariations}
                     options={item.selectedOptions}
+                    info={item.selectedInfo}
                     colors={colors}
                     spacing={spacing}
                   />
@@ -941,6 +961,7 @@ export default function ProBookingDetailScreen() {
               <ServiceChoiceLines
                 variations={booking.selectedVariations}
                 options={booking.selectedOptions}
+                info={booking.selectedInfo}
                 colors={colors}
                 spacing={spacing}
               />

@@ -147,10 +147,11 @@ export class BookingService {
       selectedVariations: r.denorm.selectedVariations,
       selectedOptions: r.denorm.selectedOptions,
       selectedInfoValues: r.denorm.selectedInfoValues,
+      selectedInfo: r.denorm.selectedInfo,
     }));
 
     // Top-level (aggregate / first-item) values kept for back-compat readers.
-    const { selectedVariations, selectedOptions, selectedInfoValues } =
+    const { selectedVariations, selectedOptions, selectedInfoValues, selectedInfo } =
       resolvedItems[0].denorm;
     const aggregateServiceName = isMulti
       ? bookingItems.map((i) => i.serviceName).join(' + ')
@@ -266,6 +267,7 @@ export class BookingService {
       ...(selectedVariations.length ? { selectedVariations } : {}),
       ...(selectedOptions.length ? { selectedOptions } : {}),
       ...(Object.keys(selectedInfoValues).length ? { selectedInfoValues } : {}),
+      ...(selectedInfo.length ? { selectedInfo } : {}),
       // Per-prestation list — only persisted for true multi-service visits.
       ...(isMulti ? { items: bookingItems } : {}),
       clientInfo: validated.clientInfo!,

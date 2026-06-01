@@ -904,6 +904,13 @@ export interface Booking {
   selectedInfoValues?: Record<string, string>;
 
   /**
+   * Labelled top-level info answers (question + answer), denormalised at
+   * booking time so any surface can render them without the service. The
+   * readable companion to `selectedInfoValues`. Absent on legacy docs.
+   */
+  selectedInfo?: BookingSelectedInfo[];
+
+  /**
    * Multi-service appointments: the list of prestations booked back-to-back
    * in this single visit. When present (length ≥ 1), the top-level
    * `serviceId`/`serviceName`/`selected*` reflect the FIRST item and
@@ -917,6 +924,16 @@ export interface Booking {
   updatedAt: Date;
 }
 
+/** One info-field answer captured at booking time, WITH its question
+ *  label denormalised — so every surface (calendar, réservations, emails,
+ *  mobile) can render "Question : Réponse" without re-fetching the service.
+ *  `selectedInfoValues` (id→value) is kept alongside for back-compat. */
+export interface BookingSelectedInfo {
+  fieldId: string;
+  label: string;                    // the question, e.g. "Allergies ?"
+  value: string;                    // the client's answer
+}
+
 /** One prestation inside a multi-service booking. Fully denormalised so
  *  the booking stays readable even if the service is later edited. */
 export interface BookingServiceItem {
@@ -928,6 +945,8 @@ export interface BookingServiceItem {
   selectedVariations: BookingSelectedVariation[];
   selectedOptions: BookingSelectedOption[];
   selectedInfoValues: Record<string, string>;
+  /** Labelled info answers (question + answer). Absent on legacy docs. */
+  selectedInfo?: BookingSelectedInfo[];
 }
 
 /** One variation choice captured at booking time. Fully denormalised
@@ -953,6 +972,9 @@ export interface BookingSelectedOption {
   nestedVariations: BookingSelectedVariation[];
   /** Info answers made WITHIN this option, keyed by infoField id. */
   infoValues: Record<string, string>;
+  /** Labelled version of `infoValues` (question + answer). Absent on
+   *  legacy docs. */
+  info?: BookingSelectedInfo[];
 }
 
 export interface ClientInfo {

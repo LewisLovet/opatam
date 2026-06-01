@@ -35,6 +35,7 @@ import type {
   ServiceOption,
   BookingSelectedVariation,
   BookingSelectedOption,
+  BookingSelectedInfo,
 } from '../types';
 
 /**
@@ -163,6 +164,7 @@ export function buildBookingSelections(
   selectedVariations: BookingSelectedVariation[];
   selectedOptions: BookingSelectedOption[];
   selectedInfoValues: Record<string, string>;
+  selectedInfo: BookingSelectedInfo[];
 } {
   const selectedVariations: BookingSelectedVariation[] = [];
   for (const variation of service.variations ?? []) {
@@ -199,6 +201,15 @@ export function buildBookingSelections(
         duration: chosen.duration,
       });
     }
+    // Labelled nested info answers (question + answer) for this option.
+    const optionInfo: BookingSelectedInfo[] = [];
+    for (const field of option.nestedInfoFields) {
+      const value = selOpt.infoValues[field.id];
+      if (value !== undefined && value !== '') {
+        optionInfo.push({ fieldId: field.id, label: field.name, value });
+      }
+    }
+
     selectedOptions.push({
       optionId: option.id,
       optionName: option.name,
@@ -206,19 +217,24 @@ export function buildBookingSelections(
       duration: option.duration,
       nestedVariations: nested,
       infoValues: { ...selOpt.infoValues },
+      info: optionInfo,
     });
   }
 
-  // Filter out empty answers so the persisted record stays tidy.
+  // Filter out empty answers so the persisted record stays tidy. We keep
+  // BOTH the id→value map (back-compat) and a labelled array (for display
+  // without re-fetching the service: emails, calendar, réservations…).
   const selectedInfoValues: Record<string, string> = {};
+  const selectedInfo: BookingSelectedInfo[] = [];
   for (const field of service.infoFields ?? []) {
     const value = selections.infoValues[field.id];
     if (value !== undefined && value !== '') {
       selectedInfoValues[field.id] = value;
+      selectedInfo.push({ fieldId: field.id, label: field.name, value });
     }
   }
 
-  return { selectedVariations, selectedOptions, selectedInfoValues };
+  return { selectedVariations, selectedOptions, selectedInfoValues, selectedInfo };
 }
 
 /**

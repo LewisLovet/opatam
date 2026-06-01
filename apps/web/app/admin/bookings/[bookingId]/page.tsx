@@ -8,6 +8,7 @@ import { adminBookingService } from '@/services/admin/adminBookingService';
 import type { BookingDetail } from '@/services/admin/types';
 import { statusConfig } from '@/lib/booking-utils';
 import { Loader } from '@/components/ui';
+import { BookingChoices } from '@/components/booking';
 import { ArrowLeft, Calendar, Clock, CreditCard, User, Briefcase } from 'lucide-react';
 import type { BookingStatus } from '@booking-app/shared';
 
@@ -225,27 +226,48 @@ export default function AdminBookingDetailPage() {
           )}
         </div>
 
-        {booking.items && booking.items.length >= 2 && (
+        {booking.items && booking.items.length >= 2 ? (
           <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
               Prestations
             </p>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2.5">
               {booking.items.map((item, idx) => (
-                <li
-                  key={idx}
-                  className="flex items-baseline justify-between gap-3 text-sm"
-                >
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {item.serviceName}
-                  </span>
-                  <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {item.duration} min &middot; {formatPrice(item.price)}
-                  </span>
+                <li key={idx} className="text-sm">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {item.serviceName}
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {item.duration} min &middot; {formatPrice(item.price)}
+                    </span>
+                  </div>
+                  <BookingChoices
+                    variations={item.selectedVariations}
+                    options={item.selectedOptions}
+                    info={item.selectedInfo}
+                    formatPrice={formatPrice}
+                  />
                 </li>
               ))}
             </ul>
           </div>
+        ) : (
+          (booking.selectedVariations?.length ||
+            booking.selectedOptions?.length ||
+            booking.selectedInfo?.length) ? (
+            <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                D&eacute;tail de la prestation
+              </p>
+              <BookingChoices
+                variations={booking.selectedVariations}
+                options={booking.selectedOptions}
+                info={booking.selectedInfo}
+                formatPrice={formatPrice}
+              />
+            </div>
+          ) : null
         )}
       </div>
 

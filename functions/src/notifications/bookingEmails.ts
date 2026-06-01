@@ -14,6 +14,11 @@ import {
   sendProviderNewBookingEmail,
   type BookingEmailData,
 } from '../utils/resendService';
+import type {
+  BookingSelectedVariation,
+  BookingSelectedOption,
+  BookingSelectedInfo,
+} from '@booking-app/shared';
 
 // Types for booking data from Firestore
 interface BookingData {
@@ -28,7 +33,14 @@ interface BookingData {
     serviceName: string;
     duration: number;
     price: number;
+    selectedVariations?: BookingSelectedVariation[];
+    selectedOptions?: BookingSelectedOption[];
+    selectedInfo?: BookingSelectedInfo[];
   }[];
+  // Mono-booking choices (no items[] breakdown).
+  selectedVariations?: BookingSelectedVariation[];
+  selectedOptions?: BookingSelectedOption[];
+  selectedInfo?: BookingSelectedInfo[];
   clientInfo: {
     name: string;
     email: string;
@@ -182,7 +194,13 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
       serviceName: i.serviceName,
       duration: i.duration,
       price: i.price,
+      selectedVariations: i.selectedVariations,
+      selectedOptions: i.selectedOptions,
+      selectedInfo: i.selectedInfo,
     })),
+    selectedVariations: booking.selectedVariations,
+    selectedOptions: booking.selectedOptions,
+    selectedInfo: booking.selectedInfo,
     providerName: booking.providerName,
     providerSlug,
     locationName: booking.locationName,
@@ -254,7 +272,13 @@ export async function emailProviderNewBooking(
       serviceName: i.serviceName,
       duration: i.duration,
       price: i.price,
+      selectedVariations: i.selectedVariations,
+      selectedOptions: i.selectedOptions,
+      selectedInfo: i.selectedInfo,
     })),
+    selectedVariations: booking.selectedVariations,
+    selectedOptions: booking.selectedOptions,
+    selectedInfo: booking.selectedInfo,
     providerName: booking.providerName,
     locationName: booking.locationName,
     locationAddress: booking.locationAddress,
