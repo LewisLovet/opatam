@@ -127,7 +127,7 @@ export const createServiceSchema = z.object({
     .max(100, { message: 'Le nom ne peut pas dépasser 100 caractères' }),
   description: z
     .string()
-    .max(500, { message: 'La description ne peut pas dépasser 500 caractères' })
+    .max(2000, { message: 'La description ne peut pas dépasser 2000 caractères' })
     .nullable()
     .optional(),
   duration: z
@@ -221,7 +221,7 @@ export const updateServiceSchema = z.object({
     .optional(),
   description: z
     .string()
-    .max(500, { message: 'La description ne peut pas dépasser 500 caractères' })
+    .max(2000, { message: 'La description ne peut pas dépasser 2000 caractères' })
     .nullable()
     .optional(),
   duration: z
