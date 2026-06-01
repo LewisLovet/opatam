@@ -6,6 +6,7 @@ import {
 } from '../repositories';
 import type { Review } from '@booking-app/shared';
 import {
+  parseOrThrow,
   createReviewSchema,
   type CreateReviewInput,
 } from '@booking-app/shared';
@@ -18,7 +19,7 @@ export class ReviewService {
    */
   async submitReview(clientId: string, input: CreateReviewInput): Promise<WithId<Review>> {
     // Validate input
-    const validated = createReviewSchema.parse(input);
+    const validated = parseOrThrow(createReviewSchema, input);
 
     // Get the booking
     const booking = await bookingRepository.getById(validated.bookingId);

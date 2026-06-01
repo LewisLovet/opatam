@@ -1,6 +1,7 @@
 import { locationRepository, bookingRepository, memberRepository, availabilityRepository, providerRepository } from '../repositories';
 import type { Location } from '@booking-app/shared';
 import {
+  parseOrThrow,
   createLocationSchema,
   updateLocationSchema,
   normalizeCity,
@@ -18,7 +19,7 @@ export class LocationService {
    */
   async createLocation(providerId: string, input: CreateLocationInput & { region?: string | null }, providerPlan?: string): Promise<WithId<Location>> {
     // Validate input
-    const validated = createLocationSchema.parse(input);
+    const validated = parseOrThrow(createLocationSchema, input);
 
     // Check plan location limit
     if (providerPlan) {
@@ -75,7 +76,7 @@ export class LocationService {
     const { region: regionOverride, ...locationInput } = input;
 
     // Validate input
-    const validated = updateLocationSchema.parse(locationInput);
+    const validated = parseOrThrow(updateLocationSchema, locationInput);
 
     // Check location exists
     const location = await locationRepository.getById(providerId, locationId);

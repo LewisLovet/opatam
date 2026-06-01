@@ -5,7 +5,7 @@ import {
   userRepository,
 } from '../repositories';
 import type { Conversation, Message } from '@booking-app/shared';
-import { sendMessageSchema, type SendMessageInput } from '@booking-app/shared';
+import { parseOrThrow, sendMessageSchema, type SendMessageInput } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 
 export class MessagingService {
@@ -70,7 +70,7 @@ export class MessagingService {
     input: SendMessageInput
   ): Promise<WithId<Message>> {
     // Validate input
-    const validated = sendMessageSchema.parse(input);
+    const validated = parseOrThrow(sendMessageSchema, input);
 
     // Verify conversation exists
     const conversation = await conversationRepository.getById(conversationId);

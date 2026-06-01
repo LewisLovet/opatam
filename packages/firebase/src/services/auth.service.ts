@@ -11,6 +11,7 @@ import { auth } from '../lib/auth';
 import { userRepository } from '../repositories';
 import type { User } from '@booking-app/shared';
 import {
+  parseOrThrow,
   loginSchema,
   registerClientSchema,
   registerProviderSchema,
@@ -71,7 +72,7 @@ export class AuthService {
    *  - and its role is 'client' or 'provider' → reject with EMAIL_ALREADY_USED.
    */
   async registerClient(input: RegisterClientInput): Promise<{ user: WithId<User>; credential: UserCredential }> {
-    const validated = registerClientSchema.parse(input);
+    const validated = parseOrThrow(registerClientSchema, input);
 
     // Upgrade path — existing user (probably an affiliate)
     const existing = await this.tryLoginExisting(validated.email, validated.password);
@@ -125,7 +126,7 @@ export class AuthService {
    * document itself is created later during onboarding.
    */
   async registerProvider(input: RegisterProviderInput): Promise<{ user: WithId<User>; credential: UserCredential }> {
-    const validated = registerProviderSchema.parse(input);
+    const validated = parseOrThrow(registerProviderSchema, input);
 
     const existing = await this.tryLoginExisting(validated.email, validated.password);
     if (existing) {
@@ -175,7 +176,7 @@ export class AuthService {
    */
   async login(input: LoginInput): Promise<{ user: WithId<User>; credential: UserCredential }> {
     // Validate input
-    const validated = loginSchema.parse(input);
+    const validated = parseOrThrow(loginSchema, input);
 
     // Sign in with Firebase Auth
     const credential = await signInWithEmailAndPassword(
@@ -261,7 +262,7 @@ export class AuthService {
    * Send password reset email
    */
   async resetPassword(email: string): Promise<void> {
-    const validated = forgotPasswordSchema.parse({ email });
+    const validated = parseOrThrow(forgotPasswordSchema, { email });
     await sendPasswordResetEmail(auth, validated.email);
   }
 

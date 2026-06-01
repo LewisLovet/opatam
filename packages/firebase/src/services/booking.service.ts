@@ -14,6 +14,7 @@ import type {
   BookingServiceItem,
 } from '@booking-app/shared';
 import {
+  parseOrThrow,
   createBookingSchema,
   resolveDeposit,
   computeServiceTotal,
@@ -39,7 +40,7 @@ export class BookingService {
     opts: { skipDeposit?: boolean } = {},
   ): Promise<WithId<Booking>> {
     // Validate input
-    const validated = createBookingSchema.parse(input);
+    const validated = parseOrThrow(createBookingSchema, input);
 
     // Get provider
     const provider = await providerRepository.getById(validated.providerId);

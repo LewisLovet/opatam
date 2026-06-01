@@ -9,6 +9,7 @@ import {
 } from '../repositories';
 import type { Provider, ProviderPlan, ProviderNotificationPreferences } from '@booking-app/shared';
 import {
+  parseOrThrow,
   createProviderSchema,
   updateProviderSchema,
   generateSearchTokens,
@@ -49,7 +50,7 @@ export class ProviderService {
    */
   async createProvider(userId: string, input: CreateProviderInput): Promise<WithId<Provider>> {
     // Validate input
-    const validated = createProviderSchema.parse(input);
+    const validated = parseOrThrow(createProviderSchema, input);
 
     // Check if provider already exists for this user (Provider.id === User.id)
     const existingProvider = await providerRepository.getById(userId);
@@ -151,7 +152,7 @@ export class ProviderService {
    */
   async updateProvider(providerId: string, input: UpdateProviderInput): Promise<void> {
     // Validate input
-    const validated = updateProviderSchema.parse(input);
+    const validated = parseOrThrow(updateProviderSchema, input);
 
     // Check provider exists
     const provider = await providerRepository.getById(providerId);

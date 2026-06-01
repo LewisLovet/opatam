@@ -1,3 +1,6 @@
+// Zod validation helpers — turn ZodError into a readable message so the
+// UI never shows a raw JSON array of issues.
+export * from './zod';
 // Provider business stats — pure aggregation logic (daily + monthly
 // + rolling). See ./providerStats.ts for the full pipeline.
 export * from './providerStats';

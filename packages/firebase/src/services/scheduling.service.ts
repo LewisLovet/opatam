@@ -7,6 +7,7 @@ import {
 } from '../repositories';
 import type { Availability, AvailabilityConflict, BlockedSlot, TimeSlot } from '@booking-app/shared';
 import {
+  parseOrThrow,
   availabilitySchema,
   blockedSlotSchema,
   type AvailabilityInput,
@@ -57,7 +58,7 @@ export class SchedulingService {
    */
   async setAvailability(providerId: string, input: AvailabilityInput): Promise<string> {
     // Validate input
-    const validated = availabilitySchema.parse(input);
+    const validated = parseOrThrow(availabilitySchema, input);
 
     // Validate time slots
     for (const slot of validated.slots) {
@@ -107,7 +108,7 @@ export class SchedulingService {
     input: AvailabilityInput & { effectiveFrom: Date }
   ): Promise<{ id: string; conflicts: AvailabilityConflict[] }> {
     // Validate input
-    const validated = availabilitySchema.parse(input);
+    const validated = parseOrThrow(availabilitySchema, input);
 
     // Validate time slots
     for (const slot of validated.slots) {
@@ -265,7 +266,7 @@ export class SchedulingService {
    */
   async blockPeriod(providerId: string, input: BlockedSlotInput): Promise<string> {
     // Validate input
-    const validated = blockedSlotSchema.parse(input);
+    const validated = parseOrThrow(blockedSlotSchema, input);
 
     // Validate dates
     if (validated.endDate < validated.startDate) {

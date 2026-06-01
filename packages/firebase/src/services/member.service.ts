@@ -1,6 +1,7 @@
 import { memberRepository, bookingRepository, availabilityRepository } from '../repositories';
 import type { Member } from '@booking-app/shared';
 import {
+  parseOrThrow,
   createMemberSchema,
   updateMemberSchema,
   PLAN_LIMITS,
@@ -22,7 +23,7 @@ export class MemberService {
    */
   async createMember(providerId: string, input: CreateMemberInput, providerPlan?: string): Promise<WithId<Member>> {
     // Validate input
-    const validated = createMemberSchema.parse(input);
+    const validated = parseOrThrow(createMemberSchema, input);
 
     // Check plan member limit
     if (providerPlan) {
@@ -117,7 +118,7 @@ export class MemberService {
     input: UpdateMemberInput
   ): Promise<void> {
     // Validate input
-    const validated = updateMemberSchema.parse(input);
+    const validated = parseOrThrow(updateMemberSchema, input);
 
     // Check member exists
     const member = await memberRepository.getById(providerId, memberId);

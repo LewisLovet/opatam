@@ -1,6 +1,7 @@
 import { serviceRepository, bookingRepository, providerRepository, serviceCategoryRepository } from '../repositories';
 import type { Service, ServiceCategory } from '@booking-app/shared';
 import {
+  parseOrThrow,
   createServiceSchema,
   updateServiceSchema,
   createServiceCategorySchema,
@@ -19,7 +20,7 @@ export class CatalogService {
    */
   async createService(providerId: string, input: CreateServiceInput): Promise<WithId<Service>> {
     // Validate input
-    const validated = createServiceSchema.parse(input);
+    const validated = parseOrThrow(createServiceSchema, input);
 
     // Get current service count for sortOrder
     const existingServices = await serviceRepository.getByProvider(providerId);
@@ -70,7 +71,7 @@ export class CatalogService {
     input: UpdateServiceInput
   ): Promise<void> {
     // Validate input
-    const validated = updateServiceSchema.parse(input);
+    const validated = parseOrThrow(updateServiceSchema, input);
 
     // Check service exists
     const service = await serviceRepository.getById(providerId, serviceId);
@@ -325,7 +326,7 @@ export class CatalogService {
   // ─── Service Categories ──────────────────────────────────────────
 
   async createCategory(providerId: string, input: CreateServiceCategoryInput): Promise<WithId<ServiceCategory>> {
-    const validated = createServiceCategorySchema.parse(input);
+    const validated = parseOrThrow(createServiceCategorySchema, input);
 
     const existing = await serviceCategoryRepository.getByProvider(providerId);
     const sortOrder = existing.length;
@@ -349,7 +350,7 @@ export class CatalogService {
     categoryId: string,
     input: UpdateServiceCategoryInput
   ): Promise<void> {
-    const validated = updateServiceCategorySchema.parse(input);
+    const validated = parseOrThrow(updateServiceCategorySchema, input);
 
     const category = await serviceCategoryRepository.getById(providerId, categoryId);
     if (!category) {
