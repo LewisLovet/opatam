@@ -189,15 +189,6 @@ export function BookingRecap({
             <p className="font-medium text-gray-900 dark:text-white">
               {displayName}
             </p>
-            {choiceLabels.length > 0 && (
-              <ul className="mt-1 space-y-0.5">
-                {choiceLabels.map((label, i) => (
-                  <li key={i} className="text-sm text-gray-500 dark:text-gray-400">
-                    · {label}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         ) : (
           <div className="text-sm text-gray-400 dark:text-gray-500">
@@ -271,6 +262,23 @@ export function BookingRecap({
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Détail des choix (variations / options / réponses aux infos) —
+            placé à la fin du récap, juste avant le total. */}
+        {service && choiceLabels.length > 0 && (
+          <div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+              Détail
+            </p>
+            <ul className="space-y-0.5">
+              {choiceLabels.map((label, i) => (
+                <li key={i} className="text-sm text-gray-700 dark:text-gray-300">
+                  {label}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

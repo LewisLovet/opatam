@@ -139,18 +139,44 @@ interface BookingState {
 }
 
 /** Human-readable labels of the chosen variations/options for a service. */
+function fmtChoiceEuro(cents: number): string {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
 function buildChoiceLabels(
   service: Service | undefined,
   selections: ServiceSelections,
 ): string[] {
   if (!service) return [];
   const labels: string[] = [];
+  // Variations: "Longueur : Mi-dos"
   for (const v of service.variations ?? []) {
     const chosen = v.options.find((o) => o.id === selections.variations[v.id]);
-    if (chosen) labels.push(`${v.name}: ${chosen.name}`);
+    if (chosen) labels.push(`${v.name} : ${chosen.name}`);
   }
+  // Options (add-ons): "+ Mèches (+15 €)" with their nested variations/infos
   for (const o of service.options ?? []) {
-    if (selections.options[o.id]) labels.push(o.name);
+    const selOpt = selections.options[o.id];
+    if (!selOpt) continue;
+    labels.push(o.price > 0 ? `+ ${o.name} (+${fmtChoiceEuro(o.price)})` : `+ ${o.name}`);
+    for (const nv of o.nestedVariations ?? []) {
+      const chosen = nv.options.find((x) => x.id === selOpt.nestedVariations[nv.id]);
+      if (chosen) labels.push(`${nv.name} : ${chosen.name}`);
+    }
+    for (const nf of o.nestedInfoFields ?? []) {
+      const val = selOpt.infoValues[nf.id];
+      if (val) labels.push(`${nf.name} : ${val}`);
+    }
+  }
+  // Top-level info answers: "Allergies ? : Oui"
+  for (const f of service.infoFields ?? []) {
+    const val = selections.infoValues[f.id];
+    if (val) labels.push(`${f.name} : ${val}`);
   }
   return labels;
 }
