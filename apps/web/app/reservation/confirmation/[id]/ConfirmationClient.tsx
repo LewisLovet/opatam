@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download, Sparkles } from 'lucide-react';
 import { trackEvent } from '@/lib/meta-pixel';
+import { BookingChoices } from '@/components/booking';
+import type {
+  BookingSelectedVariation,
+  BookingSelectedOption,
+  BookingSelectedInfo,
+} from '@booking-app/shared';
 
 interface Booking {
   id: string;
@@ -17,7 +23,17 @@ interface Booking {
   duration: number;
   price: number;
   priceMax?: number | null;
-  items?: { serviceName: string; duration: number; price: number }[];
+  items?: {
+    serviceName: string;
+    duration: number;
+    price: number;
+    selectedVariations?: BookingSelectedVariation[];
+    selectedOptions?: BookingSelectedOption[];
+    selectedInfo?: BookingSelectedInfo[];
+  }[];
+  selectedVariations?: BookingSelectedVariation[];
+  selectedOptions?: BookingSelectedOption[];
+  selectedInfo?: BookingSelectedInfo[];
   status: string;
   clientInfo: {
     name: string;
@@ -289,20 +305,25 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
                 <>
                   <div className="space-y-1.5">
                     {booking.items.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between gap-3"
-                      >
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {item.serviceName}
-                        </span>
-                        <span className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {formatDuration(item.duration)}
+                      <div key={idx}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {item.serviceName}
                           </span>
-                          <span>{formatPrice(item.price)}</span>
-                        </span>
+                          <span className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {formatDuration(item.duration)}
+                            </span>
+                            <span>{formatPrice(item.price)}</span>
+                          </span>
+                        </div>
+                        <BookingChoices
+                          variations={item.selectedVariations}
+                          options={item.selectedOptions}
+                          info={item.selectedInfo}
+                          formatPrice={formatPrice}
+                        />
                       </div>
                     ))}
                   </div>
@@ -326,6 +347,12 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
                     </span>
                     <span>{formatPrice(booking.price, booking.priceMax)}</span>
                   </div>
+                  <BookingChoices
+                    variations={booking.selectedVariations}
+                    options={booking.selectedOptions}
+                    info={booking.selectedInfo}
+                    formatPrice={formatPrice}
+                  />
                 </>
               )}
             </div>

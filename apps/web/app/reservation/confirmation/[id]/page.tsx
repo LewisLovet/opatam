@@ -38,7 +38,14 @@ export default async function ConfirmationPage({ params }: PageProps) {
       serviceName: i.serviceName,
       duration: i.duration,
       price: i.price,
+      selectedVariations: i.selectedVariations ?? [],
+      selectedOptions: i.selectedOptions ?? [],
+      selectedInfo: i.selectedInfo ?? [],
     })),
+    // Top-level choices (mono booking)
+    selectedVariations: booking.selectedVariations ?? [],
+    selectedOptions: booking.selectedOptions ?? [],
+    selectedInfo: booking.selectedInfo ?? [],
     status: booking.status,
     clientInfo: booking.clientInfo,
     deposit: booking.deposit
