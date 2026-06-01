@@ -218,9 +218,16 @@ export function ServiceEditor({
       goBack();
     } catch (error) {
       console.error('Save error:', error);
-      toast.error(
-        error instanceof Error ? error.message : 'Une erreur est survenue',
-      );
+      // A Zod validation error's `.message` is a raw JSON array of issues —
+      // never show that to the pro. Surface the first issue's human message.
+      const zodIssues = (error as { issues?: { message?: string }[] })?.issues;
+      const friendly =
+        Array.isArray(zodIssues) && zodIssues[0]?.message
+          ? zodIssues[0].message
+          : error instanceof Error
+            ? error.message
+            : 'Une erreur est survenue';
+      toast.error(friendly);
     } finally {
       setSaving(false);
     }

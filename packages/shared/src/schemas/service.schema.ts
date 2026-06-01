@@ -48,6 +48,17 @@ const choiceNameSchema = z
   .min(1, { message: 'Le nom est requis' })
   .max(100, { message: 'Le nom ne peut pas dépasser 100 caractères' });
 
+/**
+ * Info-field "name" is really a QUESTION shown to the client (e.g.
+ * "Avez-vous une information importante concernant vos cheveux ?"),
+ * not a short label like a variation/option name — so it gets a far
+ * more generous limit than `choiceNameSchema`'s 100 chars.
+ */
+const infoFieldNameSchema = z
+  .string({ required_error: 'La question est requise' })
+  .min(1, { message: 'La question est requise' })
+  .max(300, { message: 'La question ne peut pas dépasser 300 caractères' });
+
 const choiceDescriptionSchema = z
   .string()
   .max(300, { message: 'La description ne peut pas dépasser 300 caractères' })
@@ -89,7 +100,7 @@ export const serviceVariationSchema = z.object({
 /** A purely informative question (no price impact). */
 export const serviceInfoFieldSchema = z.object({
   id: z.string(),
-  name: choiceNameSchema,
+  name: infoFieldNameSchema,
   description: choiceDescriptionSchema,
   type: z.enum(['select', 'text', 'boolean']),
   values: z.array(z.string()).optional(),
