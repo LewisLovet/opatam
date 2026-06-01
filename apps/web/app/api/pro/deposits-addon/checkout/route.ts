@@ -152,6 +152,11 @@ export async function POST(request: NextRequest) {
         metadata: { providerId: uid, productType: 'serenity' },
       },
       payment_method_collection: 'always',
+      // Lets the pro enter a Stripe promotion code on the hosted page.
+      // The actual codes/coupons are created in the Stripe Dashboard
+      // (Products → Coupons → Promotion codes); this flag just exposes
+      // the "Add promotion code" field in Checkout.
+      allow_promotion_codes: true,
       success_url: `${appUrl}/pro/parametres?tab=paiements&serenity=success`,
       cancel_url: `${appUrl}/pro/parametres?tab=paiements&serenity=cancel`,
       metadata: { providerId: uid, productType: 'serenity' },

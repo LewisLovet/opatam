@@ -204,6 +204,38 @@ async function handleCheckoutCompleted(
     return;
   }
 
+  // ── Sérénité add-on checkout: do NOT fall through ────────────────
+  // The Sérénité Checkout fires this same event (providerId set, no
+  // bookingId). Its activation is handled by `invoice.paid` +
+  // `customer.subscription.updated` (which set serenity.* and
+  // depositsAddonActive). If we let it reach the base-subscription
+  // logic below, it would OVERWRITE the provider's base `subscription.*`
+  // (stripeSubscriptionId, paymentSource, validUntil…) with the add-on
+  // sub's data and corrupt their main plan. So persist just the add-on
+  // ids and bail.
+  if (session.metadata?.productType === 'serenity') {
+    const serenitySubId = extractId(session.subscription as any);
+    const serenityCustomerId = extractId(session.customer as any);
+    const serenityUpdate: Record<string, any> = {
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    if (serenityCustomerId) serenityUpdate['serenity.stripeCustomerId'] = serenityCustomerId;
+    if (serenitySubId) serenityUpdate['serenity.stripeSubscriptionId'] = serenitySubId;
+    // Safety net: a subscription Checkout that returns `payment_status:
+    // 'paid'` means the first Sérénité invoice was settled on the hosted
+    // page. Flip the add-on ON here too, so activation doesn't hinge on
+    // the `invoice.paid` event also being enabled on the webhook endpoint.
+    if (session.payment_status === 'paid') {
+      serenityUpdate['serenity.status'] = 'active';
+      serenityUpdate.depositsAddonActive = true;
+    }
+    await db.collection('providers').doc(providerId).update(serenityUpdate);
+    console.log(
+      `[STRIPE-WEBHOOK/SERENITY] checkout.session.completed for ${providerId} (payment_status=${session.payment_status}) — base subscription left untouched`,
+    );
+    return;
+  }
+
   // session.subscription / session.customer can be strings OR expanded objects
   const subscriptionId = extractId(session.subscription as any);
   const customerId = extractId(session.customer as any);
