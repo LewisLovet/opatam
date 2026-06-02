@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, AlertCircle, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button, Input, Logo } from '@/components/ui';
-import { confirmResetPassword } from '@booking-app/firebase';
+import { confirmResetPassword, applyAuthActionCode } from '@booking-app/firebase';
 
 function ResetPasswordForm({ oobCode }: { oobCode: string }) {
   const [newPassword, setNewPassword] = useState('');
@@ -133,6 +133,90 @@ function ResetPasswordForm({ oobCode }: { oobCode: string }) {
   );
 }
 
+/**
+ * Handles email action links that just need the oobCode applied:
+ *   - verifyAndChangeEmail  (confirming an email change via verifyBeforeUpdateEmail)
+ *   - verifyEmail           (confirming a new account's email)
+ *   - recoverEmail          (undoing an email change)
+ */
+function EmailActionHandler({ oobCode, mode }: { oobCode: string; mode: string }) {
+  const [state, setState] = useState<'loading' | 'success' | 'error'>('loading');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    applyAuthActionCode(oobCode)
+      .then(() => {
+        if (!cancelled) setState('success');
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        const code = err?.code || '';
+        if (code === 'auth/expired-action-code') {
+          setError('Ce lien a expiré. Relancez le changement depuis vos paramètres.');
+        } else if (code === 'auth/invalid-action-code') {
+          setError('Ce lien est invalide ou a déjà été utilisé.');
+        } else {
+          setError(err?.message || 'Une erreur est survenue.');
+        }
+        setState('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [oobCode]);
+
+  if (state === 'loading') {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Vérification en cours…</p>
+      </div>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Lien invalide</h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-8">{error}</p>
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors"
+        >
+          Se connecter
+        </Link>
+      </div>
+    );
+  }
+
+  const isChange = mode === 'verifyAndChangeEmail' || mode === 'recoverEmail';
+  return (
+    <div className="text-center">
+      <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+        <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+      </div>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        {isChange ? 'Adresse email confirmée !' : 'Email vérifié !'}
+      </h1>
+      <p className="text-gray-600 dark:text-gray-400 mb-8">
+        {isChange
+          ? 'Votre nouvelle adresse email est désormais active. Reconnectez-vous avec cette adresse.'
+          : 'Votre adresse email a bien été vérifiée.'}
+      </p>
+      <Link
+        href="/login"
+        className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors"
+      >
+        Se connecter
+      </Link>
+    </div>
+  );
+}
+
 function InvalidLink() {
   return (
     <div className="text-center">
@@ -160,12 +244,24 @@ function ActionContent() {
   const mode = searchParams.get('mode');
   const oobCode = searchParams.get('oobCode');
 
-  // Only handle resetPassword mode
-  if (mode !== 'resetPassword' || !oobCode) {
+  if (!oobCode) {
     return <InvalidLink />;
   }
 
-  return <ResetPasswordForm oobCode={oobCode} />;
+  if (mode === 'resetPassword') {
+    return <ResetPasswordForm oobCode={oobCode} />;
+  }
+
+  // Email confirmation links (change / verify / recover) just apply the code.
+  if (
+    mode === 'verifyAndChangeEmail' ||
+    mode === 'verifyEmail' ||
+    mode === 'recoverEmail'
+  ) {
+    return <EmailActionHandler oobCode={oobCode} mode={mode} />;
+  }
+
+  return <InvalidLink />;
 }
 
 export default function AuthActionPage() {

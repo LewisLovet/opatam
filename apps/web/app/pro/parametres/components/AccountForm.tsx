@@ -78,13 +78,18 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
     setSuccess(null);
 
     try {
-      // Reauthenticate user
+      // Reauthenticate user (required for this sensitive operation)
       await reauthenticateUser(emailForm.currentPassword);
 
-      // Update email
-      await updateUserEmail(emailForm.newEmail);
+      // Send a verification link to the NEW address. Firebase only swaps
+      // the account email once that link is clicked — so nothing changes
+      // yet and we must tell the user to check their new inbox.
+      const targetEmail = emailForm.newEmail.trim();
+      await updateUserEmail(targetEmail);
 
-      setSuccess('Adresse email mise à jour avec succès');
+      setSuccess(
+        `Un email de confirmation a été envoyé à ${targetEmail}. Cliquez sur le lien reçu pour valider le changement — votre adresse ne sera modifiée qu'après cette confirmation.`,
+      );
       setEmailForm({ newEmail: '', currentPassword: '' });
       setActiveSection(null);
       onSuccess?.();

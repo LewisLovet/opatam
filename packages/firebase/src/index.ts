@@ -9,6 +9,7 @@ export {
   signOutUser,
   resetPassword,
   confirmResetPassword,
+  applyAuthActionCode,
   onAuthChange,
   getCurrentUser,
   updateUserEmail,
