@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -32,7 +32,7 @@ import {
   memberService,
 } from '@booking-app/firebase';
 import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared';
-import type { RegisterPreviewData } from './LivePreview';
+import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
 
 // Storage key for localStorage
@@ -197,6 +197,30 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+
+  // Lightweight payload for the live page preview (right panel on desktop,
+  // modal on mobile). Recomputed from the wizard data only.
+  const previewData = useMemo<RegisterPreviewData>(
+    () => ({
+      businessName: data.businessName,
+      categoryLabel: CATEGORIES.find((c) => c.id === data.category)?.label ?? '',
+      description: data.description,
+      city: data.city,
+      address: data.address,
+      cityOnly: data.cityOnly,
+      services: data.services.map((s) => ({
+        name: s.name,
+        price: s.price,
+        priceMax: s.priceMax,
+        duration: s.duration,
+      })),
+      openDays: Object.entries(data.availability)
+        .filter(([, v]) => (v as DayAvailability).isOpen)
+        .map(([k]) => parseInt(k, 10)),
+    }),
+    [data],
+  );
 
   // Migrate old availability format to new slots format
   const migrateAvailability = (availability: Record<number, unknown>): { [key: number]: DayAvailability } => {
@@ -254,29 +278,10 @@ export default function RegisterPage() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, step: currentStep }));
     sessionStorage.setItem('register-step', String(currentStep));
-    // Dispatch event for layout to update
+    // Dispatch events for the layout right-panel (step + live preview data).
     window.dispatchEvent(new CustomEvent('register-step-change', { detail: currentStep }));
-
-    // Push a lightweight payload to the right-panel live preview.
-    const previewData: RegisterPreviewData = {
-      businessName: data.businessName,
-      categoryLabel: CATEGORIES.find((c) => c.id === data.category)?.label ?? '',
-      description: data.description,
-      city: data.city,
-      address: data.address,
-      cityOnly: data.cityOnly,
-      services: data.services.map((s) => ({
-        name: s.name,
-        price: s.price,
-        priceMax: s.priceMax,
-        duration: s.duration,
-      })),
-      openDays: Object.entries(data.availability)
-        .filter(([, v]) => (v as DayAvailability).isOpen)
-        .map(([k]) => parseInt(k, 10)),
-    };
     window.dispatchEvent(new CustomEvent('register-data-change', { detail: previewData }));
-  }, [data, currentStep]);
+  }, [data, currentStep, previewData]);
 
   const updateData = useCallback((updates: Partial<WizardData>) => {
     setData((prev) => ({ ...prev, ...updates }));
@@ -1577,6 +1582,34 @@ export default function RegisterPage() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Mobile-only live preview trigger — the right preview panel is hidden
+          below `lg`, so mobile users open the same fiche in a modal. */}
+      <button
+        type="button"
+        onClick={() => setShowMobilePreview(true)}
+        className="lg:hidden fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary-600 text-white text-sm font-semibold shadow-lg shadow-primary-600/30 active:scale-95 transition-transform"
+      >
+        <Eye className="w-4 h-4" /> Aperçu
+      </button>
+
+      {showMobilePreview && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-primary-500 to-primary-700 dark:from-primary-600 dark:to-primary-800">
+          <div className="flex items-center justify-end px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setShowMobilePreview(false)}
+              className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-95 transition-transform"
+              aria-label="Fermer l'aperçu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 pb-10 flex items-start justify-center">
+            <RegisterLivePreview data={previewData} />
+          </div>
+        </div>
+      )}
+
       {/* Step indicator - compact for form container */}
       <div className="mb-4">
         <StepIndicator steps={STEPS} currentStep={currentStep} />
