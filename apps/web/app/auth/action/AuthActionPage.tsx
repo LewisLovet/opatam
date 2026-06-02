@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, AlertCircle, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button, Input, Logo } from '@/components/ui';
-import { confirmResetPassword, applyAuthActionCode } from '@booking-app/firebase';
+import { confirmResetPassword, applyAuthActionCode, signOutUser } from '@booking-app/firebase';
 
 function ResetPasswordForm({ oobCode }: { oobCode: string }) {
   const [newPassword, setNewPassword] = useState('');
@@ -146,7 +146,18 @@ function EmailActionHandler({ oobCode, mode }: { oobCode: string; mode: string }
   useEffect(() => {
     let cancelled = false;
     applyAuthActionCode(oobCode)
-      .then(() => {
+      .then(async () => {
+        // A login-email change (or its undo) invalidates the current
+        // session and any cached email — force a clean re-login to avoid a
+        // stale/desynced session. (verifyEmail doesn't change the login
+        // email, so we keep the session there.)
+        if (mode === 'verifyAndChangeEmail' || mode === 'recoverEmail') {
+          try {
+            await signOutUser();
+          } catch {
+            /* no session to clear — fine */
+          }
+        }
         if (!cancelled) setState('success');
       })
       .catch((err: any) => {
@@ -164,7 +175,7 @@ function EmailActionHandler({ oobCode, mode }: { oobCode: string; mode: string }
     return () => {
       cancelled = true;
     };
-  }, [oobCode]);
+  }, [oobCode, mode]);
 
   if (state === 'loading') {
     return (

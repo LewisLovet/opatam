@@ -91,6 +91,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
           // Fetch user data from Firestore
           const userData = await userRepository.getById(fbUser.uid);
+
+          // Email reconciliation — when the pro confirmed a login-email
+          // change (Firebase Auth) via verifyBeforeUpdateEmail, the Firestore
+          // copy (users/{uid}.email) stays stale. The Cloud Functions read
+          // THAT copy to notify the pro, so we sync it the first time we see
+          // an authenticated session whose Auth email differs. Runs on login
+          // and on token refresh — i.e. as soon as the new email is visible.
+          if (userData && fbUser.email && userData.email !== fbUser.email) {
+            try {
+              await userRepository.update(fbUser.uid, { email: fbUser.email });
+              userData.email = fbUser.email;
+            } catch (syncErr) {
+              console.error('Email reconciliation failed:', syncErr);
+            }
+          }
+
           setUser(userData);
 
           // If user has a providerId, fetch provider data
