@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   Mail,
   Lock,
@@ -157,7 +157,6 @@ function getErrorMessage(error: unknown): string {
 
 
 export default function RegisterPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<WizardData>(DEFAULT_DATA);
@@ -552,9 +551,6 @@ export default function RegisterPage() {
         }),
       }).catch(() => {});
 
-      // Sign out after registration so user must log in
-      await authService.logout();
-
       localStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem('register-step');
 
@@ -566,8 +562,12 @@ export default function RegisterPage() {
         content_category: 'pro',
       });
 
-      // Redirect to login with success message
-      router.push('/login?registered=true');
+      // Auto-login: the user is already signed in from registerProvider — we
+      // DON'T log them out anymore. A hard navigation re-initialises the auth
+      // context from scratch so the freshly-created provider doc (providerId
+      // now set in Firestore) is loaded and the /pro route guard passes. The
+      // `?welcome=1` lets the dashboard show a celebratory first-run state.
+      window.location.assign('/pro?welcome=1');
     } catch (err) {
       console.error('[Register] ERROR:', err);
       setError(getErrorMessage(err));
