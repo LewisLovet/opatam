@@ -32,6 +32,7 @@ import {
   memberService,
 } from '@booking-app/firebase';
 import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared';
+import type { RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
 
 // Storage key for localStorage
@@ -255,6 +256,26 @@ export default function RegisterPage() {
     sessionStorage.setItem('register-step', String(currentStep));
     // Dispatch event for layout to update
     window.dispatchEvent(new CustomEvent('register-step-change', { detail: currentStep }));
+
+    // Push a lightweight payload to the right-panel live preview.
+    const previewData: RegisterPreviewData = {
+      businessName: data.businessName,
+      categoryLabel: CATEGORIES.find((c) => c.id === data.category)?.label ?? '',
+      description: data.description,
+      city: data.city,
+      address: data.address,
+      cityOnly: data.cityOnly,
+      services: data.services.map((s) => ({
+        name: s.name,
+        price: s.price,
+        priceMax: s.priceMax,
+        duration: s.duration,
+      })),
+      openDays: Object.entries(data.availability)
+        .filter(([, v]) => (v as DayAvailability).isOpen)
+        .map(([k]) => parseInt(k, 10)),
+    };
+    window.dispatchEvent(new CustomEvent('register-data-change', { detail: previewData }));
   }, [data, currentStep]);
 
   const updateData = useCallback((updates: Partial<WizardData>) => {

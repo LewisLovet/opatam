@@ -15,6 +15,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { RegisterLivePreview, type RegisterPreviewData } from './register/LivePreview';
 
 // Step-based content for register wizard
 const REGISTER_STEP_CONTENT = [
@@ -168,9 +169,10 @@ const DEFAULT_BENEFITS = [
 interface InfoPanelProps {
   isRight: boolean;
   registerStep?: number;
+  previewData?: RegisterPreviewData | null;
 }
 
-function InfoPanel({ isRight, registerStep }: InfoPanelProps) {
+function InfoPanel({ isRight, registerStep, previewData }: InfoPanelProps) {
   const isRegisterWizard = registerStep !== undefined && registerStep > 0;
   const stepContent = isRegisterWizard
     ? REGISTER_STEP_CONTENT[registerStep - 1] || REGISTER_STEP_CONTENT[0]
@@ -212,35 +214,42 @@ function InfoPanel({ isRight, registerStep }: InfoPanelProps) {
         </Link>
       </div>
 
-      {/* Main content with transition */}
+      {/* Main content — live page preview during the register wizard,
+          step-based marketing benefits everywhere else. */}
       <div className="my-auto relative z-10">
-        <h1
-          key={title}
-          className="text-3xl xl:text-4xl font-bold leading-tight mb-8 transition-all duration-300"
-        >
-          {title}
-        </h1>
+        {isRegisterWizard ? (
+          <RegisterLivePreview data={previewData ?? null} />
+        ) : (
+          <>
+            <h1
+              key={title}
+              className="text-3xl xl:text-4xl font-bold leading-tight mb-8 transition-all duration-300"
+            >
+              {title}
+            </h1>
 
-        <div className="space-y-6">
-          {benefits.map((benefit, index) => {
-            const Icon = benefit.icon;
-            return (
-              <div
-                key={`${benefit.title}-${index}`}
-                className="flex items-start gap-4 transition-all duration-300"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">{benefit.title}</h3>
-                  <p className="text-primary-100">{benefit.description}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+            <div className="space-y-6">
+              {benefits.map((benefit, index) => {
+                const Icon = benefit.icon;
+                return (
+                  <div
+                    key={`${benefit.title}-${index}`}
+                    className="flex items-start gap-4 transition-all duration-300"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">{benefit.title}</h3>
+                      <p className="text-primary-100">{benefit.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Security notice - styled box */}
@@ -271,8 +280,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const isRegister = pathname === '/register';
   const [registerStep, setRegisterStep] = useState(1);
+  const [previewData, setPreviewData] = useState<RegisterPreviewData | null>(null);
 
-  // Listen for step changes from register page
+  // Listen for step + live-data changes from the register page
   useEffect(() => {
     if (!isRegister) return;
 
@@ -286,10 +296,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     const handleStepChange = (event: CustomEvent<number>) => {
       setRegisterStep(event.detail);
     };
+    const handleDataChange = (event: CustomEvent<RegisterPreviewData>) => {
+      setPreviewData(event.detail);
+    };
 
     window.addEventListener('register-step-change', handleStepChange as EventListener);
+    window.addEventListener('register-data-change', handleDataChange as EventListener);
     return () => {
       window.removeEventListener('register-step-change', handleStepChange as EventListener);
+      window.removeEventListener('register-data-change', handleDataChange as EventListener);
     };
   }, [isRegister]);
 
@@ -301,7 +316,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* Split screen container */}
       <div className="flex-1 flex flex-col lg:grid lg:grid-cols-2">
         {/* Info Panel - position depends on route */}
-        <InfoPanel isRight={isRegister} registerStep={isRegister ? registerStep : undefined} />
+        <InfoPanel
+          isRight={isRegister}
+          registerStep={isRegister ? registerStep : undefined}
+          previewData={isRegister ? previewData : null}
+        />
 
         {/* Form Panel */}
         <div
