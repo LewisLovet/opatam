@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input, Button, Modal } from '@/components/ui';
 import {
-  updateUserEmail,
+  callRequestEmailChange,
   updateUserPassword,
   reauthenticateUser,
   deleteCurrentUser,
@@ -81,11 +81,13 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
       // Reauthenticate user (required for this sensitive operation)
       await reauthenticateUser(emailForm.currentPassword);
 
-      // Send a verification link to the NEW address. Firebase only swaps
-      // the account email once that link is clicked — so nothing changes
-      // yet and we must tell the user to check their new inbox.
+      // Send a verification link to the NEW address via the server (Admin
+      // SDK + Resend). The account email only swaps once that link is clicked
+      // — so nothing changes yet and we tell the user to check their new inbox.
+      // (Done server-side to avoid the client reCAPTCHA path of
+      // verifyBeforeUpdateEmail, which fails with auth/error-code:-26.)
       const targetEmail = emailForm.newEmail.trim();
-      await updateUserEmail(targetEmail);
+      await callRequestEmailChange(targetEmail);
 
       setSuccess(
         `Un email de confirmation a été envoyé à ${targetEmail}. Cliquez sur le lien reçu pour valider le changement — votre adresse ne sera modifiée qu'après cette confirmation.`,
@@ -96,7 +98,7 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
     } catch (err: unknown) {
       console.error('Email update error:', err);
       const error = err as { code?: string; message?: string };
-      if (error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         setError('Mot de passe actuel incorrect');
       } else if (error.code === 'auth/email-already-in-use') {
         setError('Cette adresse email est déjà utilisée');

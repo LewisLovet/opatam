@@ -84,5 +84,21 @@ export async function callRequestPasswordReset(
   return result.data;
 }
 
+/**
+ * Request an email-address change — generates the verify-and-change link
+ * server-side (Admin SDK) and emails it via Resend, avoiding the client-side
+ * reCAPTCHA path of verifyBeforeUpdateEmail. The caller must be authenticated.
+ */
+export async function callRequestEmailChange(
+  newEmail: string
+): Promise<{ success: boolean }> {
+  const callable = httpsCallable<{ newEmail: string }, { success: boolean }>(
+    getEuFunctions(),
+    'requestEmailChange'
+  );
+  const result = await callable({ newEmail });
+  return result.data;
+}
+
 // Re-export for convenience
 export { httpsCallable, type Functions, type HttpsCallableResult };

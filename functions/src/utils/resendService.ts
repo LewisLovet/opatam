@@ -1793,6 +1793,100 @@ L'équipe ${appConfig.name}`;
   }
 }
 
+// ─── Email Change Verification ────────────────────────────────────────────
+
+export interface EmailChangeEmailData {
+  email: string; // the NEW address (recipient)
+  changeLink: string;
+  name?: string;
+}
+
+/**
+ * Sent server-side (callable requestEmailChange) when a pro changes their
+ * login email. We generate the verify-and-change link with the Admin SDK and
+ * deliver it via Resend — avoiding the client-side reCAPTCHA path that
+ * `verifyBeforeUpdateEmail` requires (which fails with auth/error-code:-26
+ * when reCAPTCHA isn't wired up for the web app). Same pattern as the
+ * password-reset email.
+ */
+export async function sendEmailChangeEmail(data: EmailChangeEmailData): Promise<EmailResult> {
+  console.log('[EMAIL] Sending email-change verification to:', data.email);
+
+  if (!isValidEmail(data.email)) {
+    return { success: false, error: 'Invalid email format' };
+  }
+
+  try {
+    const greeting = data.name ? `Bonjour ${data.name},` : 'Bonjour,';
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background-color:#f4f4f5;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;">
+    <tr><td align="center" style="padding:40px 20px;">
+      <table role="presentation" style="max-width:480px;width:100%;border-collapse:collapse;background-color:#ffffff;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+        <tr><td style="padding:32px 32px 24px;text-align:center;">
+          <img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height:48px;max-width:200px;" />
+        </td></tr>
+        <tr><td style="padding:0 32px 24px;">
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#3f3f46;">${greeting}</p>
+          <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#3f3f46;">Vous avez demandé à utiliser cette adresse email pour votre compte ${appConfig.name}. Cliquez sur le bouton ci-dessous pour confirmer le changement.</p>
+          <table role="presentation" style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+            <tr><td align="center">
+              <a href="${data.changeLink}" style="display:inline-block;padding:14px 32px;background-color:#1a6daf;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;border-radius:8px;">Confirmer ma nouvelle adresse</a>
+            </td></tr>
+          </table>
+          <div style="background-color:#f4f4f5;border-radius:8px;padding:16px;margin-bottom:24px;">
+            <p style="margin:0;font-size:13px;color:#71717a;text-align:center;">Tant que vous n'avez pas cliqué, votre adresse actuelle reste active. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
+          </div>
+          <p style="margin:0;font-size:13px;color:#a1a1aa;">Si le bouton ne fonctionne pas, copiez ce lien :</p>
+          <p style="margin:8px 0 0;font-size:12px;color:#a1a1aa;word-break:break-all;">${data.changeLink}</p>
+        </td></tr>
+        <tr><td style="padding:24px 32px 32px;border-top:1px solid #e4e4e7;">
+          <p style="margin:0;font-size:14px;color:#71717a;text-align:center;">L'équipe <strong>${appConfig.name}</strong></p>
+        </td></tr>
+      </table>
+      <p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;text-align:center;">Cet email a été envoyé automatiquement par ${appConfig.name}.</p>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+    const text = `${greeting}
+
+Vous avez demandé à utiliser cette adresse email pour votre compte ${appConfig.name}.
+Cliquez sur le lien ci-dessous pour confirmer le changement :
+
+${data.changeLink}
+
+Tant que vous n'avez pas cliqué, votre adresse actuelle reste active.
+Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.
+
+L'équipe ${appConfig.name}`;
+
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.email,
+      replyTo: emailConfig.replyTo,
+      subject: 'Confirmez votre nouvelle adresse email Opatam',
+      html,
+      text,
+    });
+
+    if (error) {
+      console.error('[EMAIL] Resend error:', error);
+      return { success: false, error: String(error) };
+    }
+
+    console.log('[EMAIL] Email-change verification sent successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAIL] Exception:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Review request email
 // ──────────────────────────────────────────────────────────────────────

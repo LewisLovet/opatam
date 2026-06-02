@@ -17,6 +17,7 @@ admin.initializeApp();
 
 // Callable
 export { requestPasswordReset } from './callable/requestPasswordReset';
+export { requestEmailChange } from './callable/requestEmailChange';
 export { runProviderStatsBackfill } from './callable/runProviderStatsBackfill';
 export { backfillAllProviderStats } from './callable/backfillAllProviderStats';
 export { purgeProviderStats } from './callable/purgeProviderStats';

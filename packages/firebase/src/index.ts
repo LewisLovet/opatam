@@ -78,6 +78,7 @@ export {
   getFirebaseFunctions,
   callTestPushNotification,
   callRequestPasswordReset,
+  callRequestEmailChange,
   httpsCallable,
   type Functions,
   type HttpsCallableResult,
