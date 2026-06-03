@@ -183,7 +183,7 @@ function InfoPanel({ isRight, registerStep, previewData }: InfoPanelProps) {
 
   return (
     <div
-      className={`hidden lg:flex flex-col justify-between bg-gradient-to-br from-primary-500 to-primary-700 dark:from-primary-600 dark:to-primary-800 text-white p-10 xl:p-12 relative overflow-hidden ${
+      className={`hidden lg:flex flex-col justify-between bg-gradient-to-br from-primary-500 to-primary-700 dark:from-primary-600 dark:to-primary-800 text-white p-10 xl:p-12 relative overflow-hidden lg:sticky lg:top-0 lg:h-screen lg:self-start ${
         isRight ? 'order-2' : 'order-1'
       }`}
     >

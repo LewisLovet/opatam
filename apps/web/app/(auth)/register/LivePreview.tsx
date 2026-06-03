@@ -12,6 +12,8 @@ import { MapPin, Clock, Star, Calendar, Scissors } from 'lucide-react';
 
 export interface RegisterPreviewData {
   businessName: string;
+  /** Category id (e.g. 'beauty') — drives the panel background gradient. */
+  category: string;
   categoryLabel: string;
   description: string;
   city: string;
@@ -66,9 +68,12 @@ export function RegisterLivePreview({ data }: { data: RegisterPreviewData | null
       <p className="text-center text-primary-100 text-base mb-4">Aperçu de votre page</p>
 
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden text-left">
-        {/* Cover + avatar */}
-        <div className="h-28 bg-gradient-to-r from-primary-400 to-primary-600 relative">
-          <div className="absolute -bottom-9 left-6 w-24 h-24 rounded-3xl bg-white shadow-md flex items-center justify-center ring-4 ring-white">
+        {/* Cover — mirrors the real fiche (ProviderHero): blue gradient
+            default + a soft dark overlay, with a circular avatar overlapping
+            the bottom. */}
+        <div className="h-28 relative bg-gradient-to-br from-primary-400 to-primary-600">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+          <div className="absolute -bottom-9 left-6 w-24 h-24 rounded-full bg-white shadow-md flex items-center justify-center ring-4 ring-white">
             {name ? (
               <span className="text-primary-700 font-bold text-3xl">{initials(name)}</span>
             ) : (

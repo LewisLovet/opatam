@@ -211,6 +211,7 @@ export default function RegisterPage() {
   const previewData = useMemo<RegisterPreviewData>(
     () => ({
       businessName: data.businessName,
+      category: data.category,
       categoryLabel: CATEGORIES.find((c) => c.id === data.category)?.label ?? '',
       description: data.description,
       city: data.city,
