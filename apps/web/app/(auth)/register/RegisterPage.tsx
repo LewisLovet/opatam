@@ -31,7 +31,7 @@ import {
   schedulingService,
   memberService,
 } from '@booking-app/firebase';
-import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared';
+import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration } from '@booking-app/shared';
 import type { ServiceVariation, ServiceOption, ServiceInfoField } from '@booking-app/shared';
 import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
@@ -216,12 +216,27 @@ export default function RegisterPage() {
       city: data.city,
       address: data.address,
       cityOnly: data.cityOnly,
-      services: data.services.map((s) => ({
-        name: s.name,
-        price: s.price,
-        priceMax: s.priceMax,
-        duration: s.duration,
-      })),
+      services: data.services.map((s) => {
+        // Reflect variations in the preview: when a prestation has variations
+        // the price/duration is defined by them ("à partir de …"); otherwise
+        // it's the fixed base price. Base is in euros, variations in cents —
+        // normalise to cents for getServiceMinPrice, then back to euros.
+        const variable = (s.variations?.length ?? 0) > 0;
+        const priceFromCents = getServiceMinPrice({
+          price: s.price * 100,
+          variations: s.variations ?? [],
+        });
+        const durationFrom = getServiceMinDuration({
+          duration: s.duration,
+          variations: s.variations ?? [],
+        });
+        return {
+          name: s.name,
+          priceFrom: priceFromCents / 100,
+          durationFrom,
+          variable,
+        };
+      }),
       openDays: Object.entries(data.availability)
         .filter(([, v]) => (v as DayAvailability).isOpen)
         .map(([k]) => parseInt(k, 10)),
@@ -999,7 +1014,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <div className={`grid gap-3 ${svc.priceMax !== null ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <div className="grid gap-3 grid-cols-2">
             <Input
               type="number"
               label="Durée (min)"
@@ -1012,56 +1027,30 @@ export default function RegisterPage() {
             />
             <Input
               type="number"
-              label={svc.priceMax !== null ? 'Prix min (€)' : 'Prix (€)'}
+              label="Prix (€)"
               placeholder="0"
               value={svc.price || ''}
               onChange={(e) => updateService(index, 'price', parseFloat(e.target.value) || 0)}
             />
-            {svc.priceMax !== null && (
-              <Input
-                type="number"
-                label="Prix max (€)"
-                placeholder="0"
-                value={svc.priceMax || ''}
-                onChange={(e) => updateService(index, 'priceMax', parseFloat(e.target.value) || 0)}
-              />
-            )}
           </div>
 
-          {/* Price options */}
+          {/* Price options — fixed price or free. Variable pricing is handled
+              by variations below (the price range was removed). */}
           <div className="flex items-center gap-4 flex-wrap">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={svc.priceMax !== null}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    updateService(index, 'priceMax', svc.price > 0 ? svc.price + 10 : 10);
-                  } else {
-                    updateService(index, 'priceMax', null);
-                  }
-                }}
+                checked={!svc.price || svc.price === 0}
+                onChange={(e) => updateService(index, 'price', e.target.checked ? 0 : '')}
                 className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
-              <span className={`text-sm ${svc.priceMax !== null ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
-                Fourchette de prix
-              </span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={(!svc.price || svc.price === 0) && svc.priceMax === null}
-                onChange={(e) => {
-                  updateService(index, 'price', e.target.checked ? 0 : '');
-                  if (e.target.checked) updateService(index, 'priceMax', null);
-                }}
-                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span className={`text-sm ${(!svc.price || svc.price === 0) && svc.priceMax === null ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
+              <span className={`text-sm ${!svc.price || svc.price === 0 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
                 RDV gratuit
               </span>
             </label>
+            <span className="text-xs text-gray-400">
+              Prix variable ? Ajoutez des variations ci-dessous.
+            </span>
           </div>
 
           {/* Description */}

@@ -17,7 +17,7 @@ export interface RegisterPreviewData {
   city: string;
   address: string;
   cityOnly: boolean;
-  services: { name: string; price: number; priceMax: number | null; duration: number }[];
+  services: { name: string; priceFrom: number; durationFrom: number; variable: boolean }[];
   /** Day indices (0=Sun … 6=Sat) that are marked open. */
   openDays: number[];
 }
@@ -49,11 +49,9 @@ function formatOpenDays(days: number[]): string {
     .join(' · ');
 }
 
-function servicePrice(s: { price: number; priceMax: number | null }): string {
-  if (s.priceMax && s.priceMax > s.price) {
-    return `${formatEuro(s.price)}–${formatEuro(s.priceMax)}`;
-  }
-  return s.price > 0 ? formatEuro(s.price) : 'Gratuit';
+function servicePrice(s: { priceFrom: number; variable: boolean }): string {
+  if (s.priceFrom <= 0) return s.variable ? '—' : 'Gratuit';
+  return s.variable ? `à partir de ${formatEuro(s.priceFrom)}` : formatEuro(s.priceFrom);
 }
 
 export function RegisterLivePreview({ data }: { data: RegisterPreviewData | null }) {
@@ -125,7 +123,7 @@ export function RegisterLivePreview({ data }: { data: RegisterPreviewData | null
                   <li key={i} className="flex items-center justify-between gap-3">
                     <span className="text-base font-medium text-gray-800 truncate">{s.name}</span>
                     <span className="text-sm text-gray-500 whitespace-nowrap">
-                      {[formatDuration(s.duration), servicePrice(s)].filter(Boolean).join(' · ')}
+                      {[formatDuration(s.durationFrom), servicePrice(s)].filter(Boolean).join(' · ')}
                     </span>
                   </li>
                 ))}
