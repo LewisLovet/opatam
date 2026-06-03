@@ -5,3 +5,5 @@ export { RecentActivity } from './RecentActivity';
 export { QuickActions } from './QuickActions';
 export { QRDisplayModal } from './QRDisplayModal';
 export { TeamSection } from './TeamSection';
+export { ActivationHub } from './ActivationHub';
+export { WelcomeOverlay } from './WelcomeOverlay';

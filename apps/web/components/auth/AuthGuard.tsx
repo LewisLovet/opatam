@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { LoadingTips } from '@/components/common/LoadingTips';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -41,16 +42,9 @@ export function AuthGuard({ children, requireProvider = true }: AuthGuardProps) 
     }
   }, [isAuthenticated, hasCompletedOnboarding, loading, requireProvider, isClientOnly, router]);
 
-  // Show loading spinner while checking auth
+  // Branded loading state with rotating tips while auth/data boot.
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
-          <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
-        </div>
-      </div>
-    );
+    return <LoadingTips />;
   }
 
   // Not authenticated, is client only, or needs onboarding - render nothing while redirecting

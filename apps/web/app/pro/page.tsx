@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Calendar,
   Clock,
@@ -39,6 +39,8 @@ import {
   QuickActions,
   QRDisplayModal,
   TeamSection,
+  ActivationHub,
+  WelcomeOverlay,
   type Alert,
 } from './components';
 import { getStartOfWeek, getEndOfWeek, getDaysRemaining, formatFullDate } from '@/lib/date-utils';
@@ -47,6 +49,7 @@ type WithId<T> = { id: string } & T;
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, provider } = useAuth();
 
   // Data states
@@ -57,6 +60,10 @@ export default function DashboardPage() {
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [hasService, setHasService] = useState(false);
+
+  // Welcome overlay (post-signup) — shown when ?welcome=1 is present.
+  const [showWelcome, setShowWelcome] = useState(false);
 
   // Page views (real-time)
   const [pageViewStats, setPageViewStats] = useState<PageViewStats>({
@@ -136,60 +143,8 @@ export default function DashboardPage() {
         }
       }
 
-      // 3. Profile not published — CRITICAL
-      if (!provider.isPublished) {
-        alerts.push({
-          id: 'unpublished',
-          message: "Votre page n'est pas encore visible par vos clients",
-          action: 'Activer maintenant',
-          href: '/pro/profil?tab=publication',
-          priority: 'critical',
-        });
-      }
-
-      // 4. No profile photo
-      if (!provider.photoURL) {
-        alerts.push({
-          id: 'no-photo',
-          message: 'Ajoutez une photo de profil',
-          action: 'Ajouter',
-          href: '/pro/profil?tab=profil',
-          priority: 'medium',
-        });
-      }
-
-      // 5. No portfolio photos
-      if (!provider.portfolioPhotos || provider.portfolioPhotos.length === 0) {
-        alerts.push({
-          id: 'no-portfolio',
-          message: 'Ajoutez des photos à votre portfolio',
-          action: 'Ajouter',
-          href: '/pro/profil?tab=portfolio',
-          priority: 'low',
-        });
-      }
-
-      // 6. No locations
-      if (locationsData.length === 0) {
-        alerts.push({
-          id: 'no-location',
-          message: 'Ajoutez un lieu pour recevoir des réservations',
-          action: 'Configurer',
-          href: '/pro/activite?tab=lieux',
-          priority: 'high',
-        });
-      }
-
-      // 7. No services
-      if (servicesData.length === 0) {
-        alerts.push({
-          id: 'no-service',
-          message: 'Créez votre première prestation',
-          action: 'Créer',
-          href: '/pro/activite?tab=prestations',
-          priority: 'high',
-        });
-      }
+      // Setup-related items (publish, photo, portfolio, location,
+      // service) are now handled by the ActivationHub, not here.
 
       return alerts;
     },
@@ -268,6 +223,7 @@ export default function DashboardPage() {
       setWeekBookingsCount(weekData.length);
       setMembers(membersData.filter((m: WithId<Member>) => m.isActive));
       setLocations(locationsData.filter((l: WithId<Location>) => l.isActive));
+      setHasService(servicesData.length > 0);
 
       // Build alerts (servicesData used for alerts, not stored in state)
       const builtAlerts = buildAlerts(pendingData, locationsData, servicesData);
@@ -282,6 +238,13 @@ export default function DashboardPage() {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  // Show the welcome overlay once after signup (?welcome=1).
+  useEffect(() => {
+    if (searchParams.get('welcome') === '1') {
+      setShowWelcome(true);
+    }
+  }, [searchParams]);
 
   // Real-time page views subscription
   useEffect(() => {
@@ -438,6 +401,16 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Activation Hub — onboarding checklist; returns null once
+          every step is done. */}
+      {provider && (
+        <ActivationHub
+          provider={provider}
+          hasService={hasService}
+          hasLocation={locations.length > 0}
+        />
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -536,6 +509,18 @@ export default function DashboardPage() {
           businessName={provider?.businessName || ''}
           photoURL={provider?.photoURL}
           slug={provider?.slug || ''}
+        />
+      )}
+
+      {/* Welcome overlay — post-signup celebration (?welcome=1) */}
+      {showWelcome && provider && (
+        <WelcomeOverlay
+          businessName={provider.businessName}
+          slug={provider.slug}
+          onClose={() => {
+            setShowWelcome(false);
+            window.history.replaceState(null, '', '/pro');
+          }}
         />
       )}
     </div>
