@@ -338,7 +338,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
           <div
             className={`w-full mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 border border-gray-100 dark:border-gray-700 overflow-visible relative z-10 ${
-              isRegister ? 'max-w-lg' : 'max-w-md'
+              isRegister ? 'max-w-2xl' : 'max-w-md'
             }`}
           >
             {children}
