@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Calendar, User, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import { getCategoryLabel } from '@booking-app/shared';
+import { categoryCover } from '@/lib/categoryCover';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { RatingDisplay } from '@/components/review/RatingDisplay';
@@ -115,7 +116,22 @@ export function ProviderHero({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600" />
+          <>
+            {/* Blue gradient base — always present as the fallback. */}
+            <div className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600" />
+            {/* Category default cover photo, layered on top; if the file is
+                missing it hides itself and the gradient shows through. */}
+            {categoryCover(provider.category) && (
+              <img
+                src={categoryCover(provider.category)!}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
+          </>
         )}
         {/* Overlay gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

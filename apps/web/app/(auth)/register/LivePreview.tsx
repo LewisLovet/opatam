@@ -9,6 +9,7 @@
  */
 
 import { MapPin, Clock, Star, Calendar, Scissors } from 'lucide-react';
+import { categoryCover } from '@/lib/categoryCover';
 
 export interface RegisterPreviewData {
   businessName: string;
@@ -72,6 +73,16 @@ export function RegisterLivePreview({ data }: { data: RegisterPreviewData | null
             default + a soft dark overlay, with a circular avatar overlapping
             the bottom. */}
         <div className="h-28 relative bg-gradient-to-br from-primary-400 to-primary-600">
+          {categoryCover(data?.category) && (
+            <img
+              src={categoryCover(data?.category)!}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           <div className="absolute -bottom-9 left-6 w-24 h-24 rounded-full bg-white shadow-md flex items-center justify-center ring-4 ring-white">
             {name ? (
