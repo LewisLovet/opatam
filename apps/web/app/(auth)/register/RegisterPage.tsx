@@ -32,8 +32,13 @@ import {
   memberService,
 } from '@booking-app/firebase';
 import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared';
+import type { ServiceVariation, ServiceOption, ServiceInfoField } from '@booking-app/shared';
 import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
+import { VariationsListEditor } from '@/app/pro/activite/prestations/components/VariationsListEditor';
+import { OptionsListEditor } from '@/app/pro/activite/prestations/components/OptionsListEditor';
+import { InfoFieldsListEditor } from '@/app/pro/activite/prestations/components/InfoFieldsListEditor';
+import { sanitizeVariations, sanitizeOptions, sanitizeInfoFields } from '@/app/pro/activite/prestations/components/choiceHelpers';
 
 // Storage key for localStorage
 const STORAGE_KEY = 'opatam-register-wizard';
@@ -84,6 +89,9 @@ interface WizardData {
     priceMax: number | null;
     description: string;
     category: string;
+    variations: ServiceVariation[];
+    options: ServiceOption[];
+    infoFields: ServiceInfoField[];
   }[];
   // Step 4 - Availability (supports multiple slots per day)
   availability: {
@@ -124,7 +132,7 @@ const DEFAULT_DATA: WizardData = {
   city: '',
   geopoint: null,
   region: null,
-  services: [{ name: '', duration: 60, price: 0, priceMax: null as number | null, description: '', category: '' }],
+  services: [{ name: '', duration: 60, price: 0, priceMax: null as number | null, description: '', category: '', variations: [], options: [], infoFields: [] }],
   availability: DEFAULT_AVAILABILITY,
   displayName: '',
   email: '',
@@ -506,6 +514,9 @@ export default function RegisterPage() {
         locationIds: [locationId],
         memberIds: [defaultMember.id],
         sortOrder: i,
+        variations: sanitizeVariations(svc.variations ?? []),
+        options: sanitizeOptions(svc.options ?? []),
+        infoFields: sanitizeInfoFields(svc.infoFields ?? []),
       });
     }
 
@@ -850,14 +861,14 @@ export default function RegisterPage() {
   );
 
   // Step 3 - Service
-  const updateService = (index: number, field: string, value: string | number | null) => {
+  const updateService = (index: number, field: string, value: string | number | null | ServiceVariation[] | ServiceOption[] | ServiceInfoField[]) => {
     const updated = [...data.services];
     updated[index] = { ...updated[index], [field]: value };
     updateData({ services: updated });
   };
 
   const addService = () => {
-    updateData({ services: [...data.services, { name: '', duration: 60, price: 0, priceMax: null as number | null, description: '', category: '' }] });
+    updateData({ services: [...data.services, { name: '', duration: 60, price: 0, priceMax: null as number | null, description: '', category: '', variations: [], options: [], infoFields: [] }] });
   };
 
   const removeService = (index: number) => {
@@ -1061,6 +1072,28 @@ export default function RegisterPage() {
             rows={2}
             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
           />
+
+          {/* Variations / Options / Info fields (optional, collapsed) */}
+          <details className="mt-3 group">
+            <summary className="cursor-pointer select-none text-sm font-medium text-primary-600 dark:text-primary-400 list-none flex items-center gap-1.5">
+              <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+              Variations &amp; options (optionnel)
+            </summary>
+            <div className="mt-3 space-y-5 pl-1">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Variations : un choix obligatoire qui définit le prix/la durée (ex : Longueur). Si vous en ajoutez, le prix de base ci-dessus est ignoré au profit des variations.</p>
+                <VariationsListEditor variations={svc.variations ?? []} onChange={(next) => updateService(index, 'variations', next)} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Options : suppléments facultatifs qui s'ajoutent au prix (ex : Mèches).</p>
+                <OptionsListEditor options={svc.options ?? []} onChange={(next) => updateService(index, 'options', next)} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Informations à demander au client (texte, oui/non, liste) — sans impact sur le prix.</p>
+                <InfoFieldsListEditor fields={svc.infoFields ?? []} onChange={(next) => updateService(index, 'infoFields', next)} />
+              </div>
+            </div>
+          </details>
         </div>
       ))}
 
