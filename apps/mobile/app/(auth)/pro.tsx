@@ -37,6 +37,19 @@ import {
   schedulingService,
 } from '@booking-app/firebase';
 import { CATEGORIES, DAYS_OF_WEEK, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared/constants';
+import {
+  type ServiceVariation,
+  type ServiceOption,
+  type ServiceInfoField,
+  sanitizeVariations,
+  sanitizeOptions,
+  sanitizeInfoFields,
+} from '@booking-app/shared';
+import {
+  VariationsEditor,
+  OptionsEditor,
+  InfoFieldsEditor,
+} from '../../components/business/ServiceChoicesEditor';
 import { trackEvent } from '../../lib/metaSdk';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -55,6 +68,18 @@ interface DayAvailability {
   slots: TimeSlot[];
 }
 
+interface WizardService {
+  name: string;
+  duration: number;
+  price: string;
+  priceMax: string;
+  description: string;
+  category: string;
+  variations: ServiceVariation[];
+  options: ServiceOption[];
+  infoFields: ServiceInfoField[];
+}
+
 interface WizardData {
   // Step 1 — Business
   businessName: string;
@@ -70,7 +95,7 @@ interface WizardData {
   city: string;
   geopoint: { latitude: number; longitude: number } | null;
   // Step 3 — Services (multiple)
-  services: { name: string; duration: number; price: string; priceMax: string; description: string; category: string }[];
+  services: WizardService[];
   // Step 4 — Schedule
   availability: Record<number, DayAvailability>;
   // Step 6 — Account
@@ -103,7 +128,7 @@ const DEFAULT_DATA: WizardData = {
   postalCode: '',
   city: '',
   geopoint: null,
-  services: [{ name: '', duration: 60, price: '', priceMax: '', description: '', category: '' }],
+  services: [{ name: '', duration: 60, price: '', priceMax: '', description: '', category: '', variations: [], options: [], infoFields: [] }],
   availability: DEFAULT_AVAILABILITY,
   displayName: '',
   email: '',
@@ -362,6 +387,8 @@ export default function ProRegisterScreen() {
   const [copyFromDay, setCopyFromDay] = useState<number | null>(null);
   const [copyTargetDays, setCopyTargetDays] = useState<number[]>([]);
   const [editingServiceIndex, setEditingServiceIndex] = useState(0);
+  // Which service cards have their "Variations & options" section expanded.
+  const [expandedChoices, setExpandedChoices] = useState<Record<number, boolean>>({});
   const [showLocationNameModal, setShowLocationNameModal] = useState(false);
   const [showCountryModal, setShowCountryModal] = useState(false);
 
@@ -709,6 +736,9 @@ export default function ProRegisterScreen() {
           locationIds: [location.id],
           memberIds: [defaultMember.id],
           sortOrder: i,
+          variations: sanitizeVariations(svc.variations ?? []),
+          options: sanitizeOptions(svc.options ?? []),
+          infoFields: sanitizeInfoFields(svc.infoFields ?? []),
         });
       }
 
@@ -1206,14 +1236,18 @@ export default function ProRegisterScreen() {
     </View>
   );
 
-  const updateServiceField = (index: number, field: string, value: string | number) => {
+  const updateServiceField = (
+    index: number,
+    field: string,
+    value: string | number | ServiceVariation[] | ServiceOption[] | ServiceInfoField[],
+  ) => {
     const updated = [...data.services];
     updated[index] = { ...updated[index], [field]: value };
     updateField('services', updated);
   };
 
   const addServiceEntry = () => {
-    updateField('services', [...data.services, { name: '', duration: 60, price: '', priceMax: '', description: '', category: '' }]);
+    updateField('services', [...data.services, { name: '', duration: 60, price: '', priceMax: '', description: '', category: '', variations: [], options: [], infoFields: [] }]);
   };
 
   const removeServiceEntry = (index: number) => {
@@ -1228,7 +1262,7 @@ export default function ProRegisterScreen() {
 
   const renderStep3 = () => (
     <View style={{ gap: spacing.md }}>
-      {data.services.map((svc: { name: string; duration: number; price: string; priceMax: string; description: string; category: string }, index: number) => (
+      {data.services.map((svc: WizardService, index: number) => (
         <View
           key={index}
           style={{
@@ -1384,6 +1418,74 @@ export default function ProRegisterScreen() {
             multiline
             numberOfLines={2}
           />
+
+          {/* Variations & options (collapsible, optional) */}
+          <View
+            style={{
+              marginTop: spacing.sm,
+              borderTopWidth: 1,
+              borderTopColor: colors.divider,
+              paddingTop: spacing.sm,
+            }}
+          >
+            <Pressable
+              onPress={() =>
+                setExpandedChoices((prev) => ({ ...prev, [index]: !prev[index] }))
+              }
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                paddingVertical: spacing.xs,
+              }}
+            >
+              <Ionicons
+                name={expandedChoices[index] ? 'chevron-down' : 'chevron-forward'}
+                size={18}
+                color={colors.textSecondary}
+              />
+              <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.textSecondary }}>
+                Variations & options (optionnel)
+              </Text>
+            </Pressable>
+
+            {expandedChoices[index] && (
+              <View style={{ gap: spacing.lg, marginTop: spacing.sm }}>
+                <View style={{ gap: spacing.xs }}>
+                  <Text variant="label" color="text">Variations</Text>
+                  <Text variant="caption" color="textSecondary">
+                    Des choix exclusifs qui fixent le prix et la durée (ex : Longueur).
+                  </Text>
+                  <VariationsEditor
+                    variations={svc.variations ?? []}
+                    onChange={(n) => updateServiceField(index, 'variations', n)}
+                  />
+                </View>
+
+                <View style={{ gap: spacing.xs }}>
+                  <Text variant="label" color="text">Options</Text>
+                  <Text variant="caption" color="textSecondary">
+                    Des suppléments à cocher (ex : Mèches).
+                  </Text>
+                  <OptionsEditor
+                    options={svc.options ?? []}
+                    onChange={(n) => updateServiceField(index, 'options', n)}
+                  />
+                </View>
+
+                <View style={{ gap: spacing.xs }}>
+                  <Text variant="label" color="text">Infos demandées</Text>
+                  <Text variant="caption" color="textSecondary">
+                    Des questions au client, sans impact sur le prix.
+                  </Text>
+                  <InfoFieldsEditor
+                    fields={svc.infoFields ?? []}
+                    onChange={(n) => updateServiceField(index, 'infoFields', n)}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
         </View>
       ))}
 
@@ -1594,7 +1696,7 @@ export default function ProRegisterScreen() {
           <Text variant="body" style={{ fontWeight: '500' }}>
             {data.services.length} prestation{data.services.length > 1 ? 's' : ''}
           </Text>
-          {data.services.map((svc: { name: string; duration: number; price: string; priceMax: string; category: string }, i: number) => (
+          {data.services.map((svc: WizardService, i: number) => (
             <Text key={i} variant="bodySmall" color="textSecondary">
               {svc.name || '—'} • {svc.duration} min • {svc.priceMax ? `${Number(svc.price || 0).toFixed(2)} – ${Number(svc.priceMax).toFixed(2)} €` : `${Number(svc.price || 0).toFixed(2)} €`}{svc.category ? ` • ${svc.category}` : ''}
             </Text>
