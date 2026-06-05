@@ -466,14 +466,14 @@ export default function LocationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomColor: colors.border }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.7 : 1 }]}>
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
+      {/* Header — bandeau bleu (référence: availability.tsx) */}
+      <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md }}>
+          <Pressable onPress={() => router.back()} hitSlop={12} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text variant="h3" style={{ fontWeight: '600' }}>Lieux</Text>
-          <Pressable onPress={openCreate} style={({ pressed }) => [styles.addBtn, { backgroundColor: colors.primary, borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
+          <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>Lieux</Text>
+          <Pressable onPress={openCreate} style={({ pressed }) => [styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
             <Ionicons name="add" size={22} color="#FFFFFF" />
           </Pressable>
         </View>

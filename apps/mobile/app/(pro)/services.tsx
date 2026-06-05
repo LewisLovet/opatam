@@ -717,18 +717,18 @@ export default function ServicesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomColor: colors.border }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.7 : 1 }]}>
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
+      {/* Header — bandeau bleu (référence: availability.tsx) */}
+      <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md }}>
+          <Pressable onPress={() => router.back()} hitSlop={12} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text variant="h3" style={{ fontWeight: '600' }}>Prestations</Text>
+          <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>Prestations</Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <Pressable onPress={openCreateCategory} style={({ pressed }) => [styles.addBtn, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
-              <Ionicons name="folder-outline" size={18} color={colors.primary} />
+            <Pressable onPress={openCreateCategory} style={({ pressed }) => [styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
+              <Ionicons name="folder-outline" size={18} color="#FFFFFF" />
             </Pressable>
-            <Pressable onPress={openCreate} style={({ pressed }) => [styles.addBtn, { backgroundColor: colors.primary, borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
+            <Pressable onPress={openCreate} style={({ pressed }) => [styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
               <Ionicons name="add" size={22} color="#FFFFFF" />
             </Pressable>
           </View>
@@ -1053,7 +1053,11 @@ export default function ServicesScreen() {
                   <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
                     Couleur sur le calendrier <Text variant="caption" color="textMuted">(optionnel)</Text>
                   </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingRight: spacing.md, alignItems: 'center' }}
+                  >
                     <Pressable
                       onPress={() => setForm((p) => ({ ...p, color: null }))}
                       style={{
@@ -1092,39 +1096,37 @@ export default function ServicesScreen() {
                         </Pressable>
                       );
                     })}
-                  </View>
+                  </ScrollView>
                 </View>
 
-                {/* Duration — hours + minutes inputs */}
+                {/* Duration — single minutes input with a live hour preview */}
                 <View>
                   <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Durée</Text>
                   <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ width: 110 }}>
                       <Input
                         label=""
-                        placeholder="1"
-                        value={form.durationHours}
-                        onChangeText={(t) => setForm((p) => ({ ...p, durationHours: t.replace(/[^0-9]/g, '') }))}
-                        keyboardType="number-pad"
-                      />
-                    </View>
-                    <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: 4 }}>h</Text>
-                    <View style={{ flex: 1 }}>
-                      <Input
-                        label=""
-                        placeholder="0"
-                        value={form.durationMinutes}
+                        placeholder="60"
+                        value={(() => {
+                          const total = hoursMinutesToMinutes(form.durationHours, form.durationMinutes);
+                          return total ? String(total) : '';
+                        })()}
                         onChangeText={(t) => {
-                          const cleaned = t.replace(/[^0-9]/g, '');
-                          const val = parseInt(cleaned, 10);
-                          if (cleaned === '' || (val >= 0 && val <= 59)) {
-                            setForm((p) => ({ ...p, durationMinutes: cleaned }));
-                          }
+                          const total = parseInt(t.replace(/[^0-9]/g, ''), 10) || 0;
+                          const { hours, minutes } = minutesToHoursMinutes(total);
+                          setForm((p) => ({ ...p, durationHours: hours, durationMinutes: minutes }));
                         }}
                         keyboardType="number-pad"
                       />
                     </View>
-                    <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: 4 }}>min</Text>
+                    <Text variant="bodySmall" color="textSecondary">min</Text>
+                    {hoursMinutesToMinutes(form.durationHours, form.durationMinutes) >= 60 && (
+                      <View style={{ paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.md, backgroundColor: colors.surfaceSecondary }}>
+                        <Text variant="bodySmall" color="textSecondary" style={{ fontWeight: '600' }}>
+                          = {formatDuration(hoursMinutesToMinutes(form.durationHours, form.durationMinutes))}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </View>
 
@@ -1490,40 +1492,47 @@ export default function ServicesScreen() {
               />
             </View>
           </View>
-        </View>
-      </Modal>
 
-      {/* ── Client preview Modal ── */}
-      <Modal
-        visible={showPreview}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPreview(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.modalContent,
-              { height: '85%', backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-            ]}
-          >
-            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">Aperçu client</Text>
-              <Pressable onPress={() => setShowPreview(false)}>
-                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
-              </Pressable>
-            </View>
-            <ServiceChoicesPreview
-              service={{
-                name: form.name,
-                price: Math.round((parseFloat(form.price) || 0) * 100),
-                duration: hoursMinutesToMinutes(form.durationHours, form.durationMinutes),
-                variations: sanitizeVariations(form.variations),
-                options: sanitizeOptions(form.options),
-                infoFields: sanitizeInfoFields(form.infoFields),
+          {/* Client preview — overlay À L'INTÉRIEUR de la modale d'édition.
+              iOS n'affiche qu'une <Modal> à la fois : une 2e Modal sœur ne
+              s'afficherait pas. On rend donc l'aperçu en overlay plein écran. */}
+          {showPreview && (
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                justifyContent: 'flex-end',
               }}
-            />
-          </View>
+            >
+              <View
+                style={[
+                  styles.modalContent,
+                  { height: '85%', backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+                ]}
+              >
+                <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+                  <Text variant="h3">Aperçu client</Text>
+                  <Pressable onPress={() => setShowPreview(false)}>
+                    <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+                  </Pressable>
+                </View>
+                <ServiceChoicesPreview
+                  service={{
+                    name: form.name,
+                    price: Math.round((parseFloat(form.price) || 0) * 100),
+                    duration: hoursMinutesToMinutes(form.durationHours, form.durationMinutes),
+                    variations: sanitizeVariations(form.variations),
+                    options: sanitizeOptions(form.options),
+                    infoFields: sanitizeInfoFields(form.infoFields),
+                  }}
+                />
+              </View>
+            </View>
+          )}
         </View>
       </Modal>
 
