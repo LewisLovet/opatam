@@ -1504,7 +1504,7 @@ export default function ServicesScreen() {
           <View
             style={[
               styles.modalContent,
-              { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+              { height: '85%', backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
             ]}
           >
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>

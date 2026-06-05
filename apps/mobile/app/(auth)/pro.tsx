@@ -50,6 +50,7 @@ import {
   OptionsEditor,
   InfoFieldsEditor,
 } from '../../components/business/ServiceChoicesEditor';
+import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
 import { trackEvent } from '../../lib/metaSdk';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -72,7 +73,6 @@ interface WizardService {
   name: string;
   duration: number;
   price: string;
-  priceMax: string;
   description: string;
   category: string;
   variations: ServiceVariation[];
@@ -128,7 +128,7 @@ const DEFAULT_DATA: WizardData = {
   postalCode: '',
   city: '',
   geopoint: null,
-  services: [{ name: '', duration: 60, price: '', priceMax: '', description: '', category: '', variations: [], options: [], infoFields: [] }],
+  services: [{ name: '', duration: 60, price: '', description: '', category: '', variations: [], options: [], infoFields: [] }],
   availability: DEFAULT_AVAILABILITY,
   displayName: '',
   email: '',
@@ -389,6 +389,8 @@ export default function ProRegisterScreen() {
   const [editingServiceIndex, setEditingServiceIndex] = useState(0);
   // Which service cards have their "Variations & options" section expanded.
   const [expandedChoices, setExpandedChoices] = useState<Record<number, boolean>>({});
+  // Service index whose client-view preview overlay is open (null = closed).
+  const [previewServiceIndex, setPreviewServiceIndex] = useState<number | null>(null);
   const [showLocationNameModal, setShowLocationNameModal] = useState(false);
   const [showCountryModal, setShowCountryModal] = useState(false);
 
@@ -722,14 +724,13 @@ export default function ProRegisterScreen() {
       for (let i = 0; i < data.services.length; i++) {
         const svc = data.services[i];
         const catId = svc.category?.trim() ? categoryMap.get(svc.category.trim()) || null : null;
-        const priceMaxCents = svc.priceMax?.trim() ? Math.round(Number(svc.priceMax) * 100) : null;
         await serviceRepository.create(provider.id, {
           name: svc.name.trim(),
           description: svc.description.trim() || null,
           photoURL: null,
           duration: svc.duration,
           price: Math.round(Number(svc.price) * 100),
-          priceMax: priceMaxCents,
+          priceMax: null,
           bufferTime: 0,
           categoryId: catId,
           isActive: true,
@@ -1247,7 +1248,7 @@ export default function ProRegisterScreen() {
   };
 
   const addServiceEntry = () => {
-    updateField('services', [...data.services, { name: '', duration: 60, price: '', priceMax: '', description: '', category: '', variations: [], options: [], infoFields: [] }]);
+    updateField('services', [...data.services, { name: '', duration: 60, price: '', description: '', category: '', variations: [], options: [], infoFields: [] }]);
   };
 
   const removeServiceEntry = (index: number) => {
@@ -1348,62 +1349,30 @@ export default function ProRegisterScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Input
-                label={svc.priceMax ? 'Prix min (€)' : 'Prix (€)'}
+                label="Prix (€)"
                 placeholder="0"
                 value={svc.price}
                 onChangeText={(t: string) => updateServiceField(index, 'price', t)}
                 keyboardType="decimal-pad"
               />
             </View>
-            {!!svc.priceMax && (
-              <View style={{ flex: 1 }}>
-                <Input
-                  label="Prix max (€)"
-                  placeholder="0"
-                  value={svc.priceMax}
-                  onChangeText={(t: string) => updateServiceField(index, 'priceMax', t)}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            )}
           </View>
 
           {/* Price options */}
           <View style={{ flexDirection: 'row', gap: spacing.lg, flexWrap: 'wrap' }}>
             <Pressable
               onPress={() => {
-                if (svc.priceMax) {
-                  updateServiceField(index, 'priceMax', '');
-                } else {
-                  updateServiceField(index, 'priceMax', svc.price ? String(Number(svc.price) + 10) : '10');
-                }
-              }}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-            >
-              <Ionicons
-                name={svc.priceMax ? 'checkbox' : 'square-outline'}
-                size={22}
-                color={svc.priceMax ? colors.primary : colors.textMuted}
-              />
-              <Text variant="bodySmall" style={{ color: svc.priceMax ? colors.primary : colors.textSecondary, fontWeight: svc.priceMax ? '600' : '400' }}>
-                Fourchette de prix
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
                 const isFree = !svc.price || svc.price === '0';
                 updateServiceField(index, 'price', isFree ? '' : '0');
-                if (!isFree) updateServiceField(index, 'priceMax', '');
               }}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
             >
               <Ionicons
-                name={(!svc.price || svc.price === '0') && !svc.priceMax ? 'checkbox' : 'square-outline'}
+                name={!svc.price || svc.price === '0' ? 'checkbox' : 'square-outline'}
                 size={22}
-                color={(!svc.price || svc.price === '0') && !svc.priceMax ? colors.primary : colors.textMuted}
+                color={!svc.price || svc.price === '0' ? colors.primary : colors.textMuted}
               />
-              <Text variant="bodySmall" style={{ color: (!svc.price || svc.price === '0') && !svc.priceMax ? colors.primary : colors.textSecondary }}>
+              <Text variant="bodySmall" style={{ color: !svc.price || svc.price === '0' ? colors.primary : colors.textSecondary }}>
                 RDV gratuit
               </Text>
             </Pressable>
@@ -1486,6 +1455,26 @@ export default function ProRegisterScreen() {
               </View>
             )}
           </View>
+
+          {/* Aperçu client — exactement ce que verra le client en réservant */}
+          <Pressable
+            onPress={() => setPreviewServiceIndex(index)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing.xs,
+              paddingVertical: spacing.sm,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.primary,
+            }}
+          >
+            <Ionicons name="eye-outline" size={16} color={colors.primary} />
+            <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
+              Aperçu client
+            </Text>
+          </Pressable>
         </View>
       ))}
 
@@ -1698,7 +1687,7 @@ export default function ProRegisterScreen() {
           </Text>
           {data.services.map((svc: WizardService, i: number) => (
             <Text key={i} variant="bodySmall" color="textSecondary">
-              {svc.name || '—'} • {svc.duration} min • {svc.priceMax ? `${Number(svc.price || 0).toFixed(2)} – ${Number(svc.priceMax).toFixed(2)} €` : `${Number(svc.price || 0).toFixed(2)} €`}{svc.category ? ` • ${svc.category}` : ''}
+              {svc.name || '—'} • {svc.duration} min • {Number(svc.price || 0).toFixed(2)} €{svc.category ? ` • ${svc.category}` : ''}{((svc.variations?.length ?? 0) + (svc.options?.length ?? 0)) > 0 ? ` • ${(svc.variations?.length ?? 0) + (svc.options?.length ?? 0)} choix` : ''}
             </Text>
           ))}
         </View>
@@ -2012,6 +2001,37 @@ export default function ProRegisterScreen() {
               )}
               style={{ maxHeight: 400 }}
             />
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Aperçu client Modal ── */}
+      <Modal
+        visible={previewServiceIndex !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPreviewServiceIndex(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { height: '85%', backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
+            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+              <Text variant="h3">Aperçu client</Text>
+              <Pressable onPress={() => setPreviewServiceIndex(null)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            {previewServiceIndex !== null && data.services[previewServiceIndex] && (
+              <ServiceChoicesPreview
+                service={{
+                  name: data.services[previewServiceIndex].name,
+                  price: Math.round((parseFloat(data.services[previewServiceIndex].price) || 0) * 100),
+                  duration: data.services[previewServiceIndex].duration,
+                  variations: sanitizeVariations(data.services[previewServiceIndex].variations ?? []),
+                  options: sanitizeOptions(data.services[previewServiceIndex].options ?? []),
+                  infoFields: sanitizeInfoFields(data.services[previewServiceIndex].infoFields ?? []),
+                }}
+              />
+            )}
           </View>
         </View>
       </Modal>
