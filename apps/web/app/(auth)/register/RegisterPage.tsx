@@ -1377,8 +1377,16 @@ export default function RegisterPage() {
 
   // Step 5 - Preview
   const renderStep5 = () => {
-    const categoryLabel = CATEGORIES.find((c) => c.id === data.category)?.label || data.category;
-    const openDays = DAYS_OF_WEEK.filter((d) => data.availability[d.value]?.isOpen);
+    const fmtEur = (euros: number) =>
+      euros.toLocaleString('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+    const fmtDur = (min: number) =>
+      min < 60 ? `${min} min` : min % 60 === 0 ? `${Math.floor(min / 60)}h` : `${Math.floor(min / 60)}h${min % 60}`;
+    const namedServices = data.services.filter((s) => s.name.trim());
 
     return (
       <div className="space-y-5">
@@ -1394,47 +1402,87 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Preview Card */}
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="h-16 bg-gradient-to-r from-primary-500 to-primary-600" />
-          <div className="p-4 -mt-6">
-            <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-700 border-2 border-white dark:border-gray-800 flex items-center justify-center mb-3 shadow">
-              <Building2 className="w-6 h-6 text-gray-400" />
-            </div>
-            <h3 className="font-bold text-gray-900 dark:text-white">
-              {data.businessName || 'Votre activité'}
-            </h3>
-            <p className="text-xs text-primary-600 dark:text-primary-400">{categoryLabel}</p>
+        {/* Récap DÉTAILLÉ des prestations (variations / options / infos).
+            L'aperçu de droite montre déjà la fiche ; ici on récapitule ce
+            qu'on a configuré — sans le dupliquer. */}
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+            {namedServices.length > 1 ? 'Vos prestations' : 'Votre prestation'}
+          </p>
 
-            {data.description && (
-              <p className="mt-2 text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
-                {data.description}
-              </p>
-            )}
+          {namedServices.length === 0 ? (
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              Aucune prestation ajoutée — vous pourrez en créer après l'inscription.
+            </p>
+          ) : (
+            namedServices.map((s, idx) => {
+              const hasVar = (s.variations?.length ?? 0) > 0;
+              const priceFromCents = getServiceMinPrice({
+                price: s.price * 100,
+                variations: s.variations ?? [],
+              });
+              const durFrom = getServiceMinDuration({
+                duration: s.duration,
+                variations: s.variations ?? [],
+              });
+              const priceLabel = hasVar
+                ? priceFromCents > 0
+                  ? `à partir de ${fmtEur(priceFromCents / 100)}`
+                  : '—'
+                : s.price > 0
+                  ? fmtEur(s.price)
+                  : 'Gratuit';
+              return (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 p-3.5"
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-semibold text-gray-900 dark:text-white">{s.name}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {fmtDur(durFrom)} · {priceLabel}
+                    </span>
+                  </div>
 
-            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1.5">
-              <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                <MapPin className="w-3.5 h-3.5" />
-                <span>
-                  {data.locationName} - {data.city}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                <Tag className="w-3.5 h-3.5" />
-                <span>
-                  {data.services.length} prestation{data.services.length > 1 ? 's' : ''}{data.services[0]?.name ? ` (${data.services[0].name}${data.services.length > 1 ? ', ...' : ''})` : ''}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                <Clock className="w-3.5 h-3.5" />
-                <span>
-                  {openDays.length > 0
-                    ? `${openDays[0]?.label} - ${openDays[openDays.length - 1]?.label}`
-                    : 'Horaires à définir'}
-                </span>
-              </div>
-            </div>
-          </div>
+                  {hasVar && (
+                    <div className="mt-2 space-y-1">
+                      {s.variations!.map((v) => (
+                        <p key={v.id} className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">
+                            {v.name || 'Variation'}
+                          </span>
+                          {' : '}
+                          {v.options
+                            .filter((o) => o.name.trim())
+                            .map((o) => `${o.name} (${fmtEur(o.price / 100)})`)
+                            .join(' · ') || '—'}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  {(s.options?.length ?? 0) > 0 && (
+                    <div className="mt-1.5 space-y-0.5">
+                      {s.options!
+                        .filter((o) => o.name.trim())
+                        .map((o) => (
+                          <p key={o.id} className="text-xs text-gray-500 dark:text-gray-400">
+                            + {o.name}
+                            {o.price > 0 ? ` (+${fmtEur(o.price / 100)})` : ''}
+                          </p>
+                        ))}
+                    </div>
+                  )}
+
+                  {(s.infoFields?.filter((f) => f.name.trim()).length ?? 0) > 0 && (
+                    <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+                      {s.infoFields!.filter((f) => f.name.trim()).length} info(s) demandée(s) au client
+                    </p>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400">
