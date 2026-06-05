@@ -28,8 +28,27 @@ import {
   memberRepository,
   type WithId,
 } from '@booking-app/firebase';
-import type { Service, ServiceCategory, Location, Member } from '@booking-app/shared/types';
-import { resolveDeposit, SERVICE_COLORS } from '@booking-app/shared';
+import type {
+  Service,
+  ServiceCategory,
+  Location,
+  Member,
+  ServiceVariation,
+  ServiceOption,
+  ServiceInfoField,
+} from '@booking-app/shared/types';
+import {
+  resolveDeposit,
+  SERVICE_COLORS,
+  sanitizeVariations,
+  sanitizeOptions,
+  sanitizeInfoFields,
+} from '@booking-app/shared';
+import {
+  VariationsEditor,
+  OptionsEditor,
+  InfoFieldsEditor,
+} from '../../components/business/ServiceChoicesEditor';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
@@ -65,6 +84,11 @@ interface ServiceFormData {
   depositType: DepositCustomType;
   depositValue: string; // % when percent, € when fixed
   depositRefundHours: string;
+  // Variations / options / info fields — same model as the web editor and
+  // the registration wizard. Prices stored in cents.
+  variations: ServiceVariation[];
+  options: ServiceOption[];
+  infoFields: ServiceInfoField[];
 }
 
 const DEFAULT_FORM: ServiceFormData = {
@@ -86,6 +110,9 @@ const DEFAULT_FORM: ServiceFormData = {
   depositType: 'percent',
   depositValue: '30',
   depositRefundHours: '24',
+  variations: [],
+  options: [],
+  infoFields: [],
 };
 
 function minutesToHoursMinutes(totalMinutes: number): { hours: string; minutes: string } {
@@ -211,6 +238,9 @@ export default function ServicesScreen() {
   // pick an existing portfolio photo instead of uploading a new one.
   const [showPortfolio, setShowPortfolio] = useState(false);
   const portfolioPhotos = provider?.portfolioPhotos ?? [];
+
+  // Whether the "Variations & options" section of the form is expanded.
+  const [choicesExpanded, setChoicesExpanded] = useState(false);
 
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -361,6 +391,7 @@ export default function ServicesScreen() {
     });
     setExpandedPicker(null);
     setShowPortfolio(false);
+    setChoicesExpanded(false);
     setShowModal(true);
   };
 
@@ -405,9 +436,19 @@ export default function ServicesScreen() {
       depositType,
       depositValue,
       depositRefundHours,
+      variations: service.variations ?? [],
+      options: service.options ?? [],
+      infoFields: service.infoFields ?? [],
     });
     setExpandedPicker(null);
     setShowPortfolio(false);
+    // Auto-expand the section when the service already has choices so the
+    // provider sees them right away.
+    setChoicesExpanded(
+      (service.variations?.length ?? 0) > 0 ||
+        (service.options?.length ?? 0) > 0 ||
+        (service.infoFields?.length ?? 0) > 0,
+    );
     setShowModal(true);
   };
 
@@ -492,6 +533,9 @@ export default function ServicesScreen() {
         categoryId: form.categoryId,
         color: form.color,
         deposit: depositPayload,
+        variations: sanitizeVariations(form.variations),
+        options: sanitizeOptions(form.options),
+        infoFields: sanitizeInfoFields(form.infoFields),
       };
 
       if (editingId) {
@@ -1375,6 +1419,78 @@ export default function ServicesScreen() {
                     })}
                   </View>
                 )}
+
+                {/* Variations & options (collapsible, optional) */}
+                <View
+                  style={{
+                    marginTop: spacing.xs,
+                    borderTopWidth: 1,
+                    borderTopColor: colors.border,
+                    paddingTop: spacing.md,
+                  }}
+                >
+                  <Pressable
+                    onPress={() => setChoicesExpanded((v) => !v)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                      paddingVertical: spacing.xs,
+                    }}
+                  >
+                    <Ionicons
+                      name={choicesExpanded ? 'chevron-down' : 'chevron-forward'}
+                      size={18}
+                      color={colors.textSecondary}
+                    />
+                    <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                      Variations & options (optionnel)
+                    </Text>
+                  </Pressable>
+
+                  {choicesExpanded && (
+                    <View style={{ gap: spacing.lg, marginTop: spacing.sm }}>
+                      <View style={{ gap: spacing.xs }}>
+                        <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                          Variations
+                        </Text>
+                        <Text variant="caption" color="textSecondary">
+                          Des choix exclusifs qui fixent le prix et la durée (ex : Longueur).
+                        </Text>
+                        <VariationsEditor
+                          variations={form.variations}
+                          onChange={(n) => setForm((p) => ({ ...p, variations: n }))}
+                        />
+                      </View>
+
+                      <View style={{ gap: spacing.xs }}>
+                        <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                          Options
+                        </Text>
+                        <Text variant="caption" color="textSecondary">
+                          Des suppléments à cocher (ex : Mèches).
+                        </Text>
+                        <OptionsEditor
+                          options={form.options}
+                          onChange={(n) => setForm((p) => ({ ...p, options: n }))}
+                        />
+                      </View>
+
+                      <View style={{ gap: spacing.xs }}>
+                        <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                          Infos demandées
+                        </Text>
+                        <Text variant="caption" color="textSecondary">
+                          Des questions au client, sans impact sur le prix.
+                        </Text>
+                        <InfoFieldsEditor
+                          fields={form.infoFields}
+                          onChange={(n) => setForm((p) => ({ ...p, infoFields: n }))}
+                        />
+                      </View>
+                    </View>
+                  )}
+                </View>
               </View>
             </ScrollView>
 
