@@ -49,6 +49,8 @@ import {
   OptionsEditor,
   InfoFieldsEditor,
 } from '../../components/business/ServiceChoicesEditor';
+import { EditorSection } from '../../components/business/EditorSection';
+import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
@@ -67,8 +69,6 @@ interface ServiceFormData {
   durationHours: string;
   durationMinutes: string;
   price: string;
-  priceMax: string;
-  isPriceRange: boolean;
   bufferTime: string;
   isActive: boolean;
   locationIds: string[];
@@ -98,8 +98,6 @@ const DEFAULT_FORM: ServiceFormData = {
   durationHours: '1',
   durationMinutes: '0',
   price: '',
-  priceMax: '',
-  isPriceRange: false,
   bufferTime: '0',
   isActive: true,
   locationIds: [],
@@ -241,6 +239,8 @@ export default function ServicesScreen() {
 
   // Whether the "Variations & options" section of the form is expanded.
   const [choicesExpanded, setChoicesExpanded] = useState(false);
+  // Client-view preview overlay (floating "Aperçu" button).
+  const [showPreview, setShowPreview] = useState(false);
 
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -424,8 +424,6 @@ export default function ServicesScreen() {
       durationHours: hours,
       durationMinutes: minutes,
       price: String(service.price / 100),
-      priceMax: service.priceMax ? String(service.priceMax / 100) : '',
-      isPriceRange: !!service.priceMax,
       bufferTime: String(service.bufferTime),
       isActive: service.isActive,
       locationIds: service.locationIds || [],
@@ -475,16 +473,7 @@ export default function ServicesScreen() {
     setIsSaving(true);
     try {
       const bufferTimeValue = parseInt(form.bufferTime, 10) || 0;
-      const priceMaxCents = form.isPriceRange && form.priceMax.trim()
-        ? Math.round(Number(form.priceMax) * 100)
-        : null;
       const priceCents = Math.round(Number(form.price) * 100);
-
-      if (priceMaxCents !== null && priceMaxCents <= priceCents) {
-        showToast({ variant: 'error', message: 'Le prix max doit être supérieur au prix min' });
-        setIsSaving(false);
-        return;
-      }
 
       // Build the deposit payload from the form mode + custom inputs.
       let depositPayload: Service['deposit'] | null;
@@ -525,7 +514,9 @@ export default function ServicesScreen() {
         photoURL: form.photoURL,
         duration: totalDuration,
         price: priceCents,
-        priceMax: priceMaxCents,
+        // Price ranges removed in favour of variations — flatten any
+        // legacy range on the next save.
+        priceMax: null,
         bufferTime: bufferTimeValue,
         isActive: form.isActive,
         locationIds: form.locationIds,
@@ -848,7 +839,13 @@ export default function ServicesScreen() {
               showsVerticalScrollIndicator={false}
               automaticallyAdjustKeyboardInsets
             >
-              <View style={{ gap: spacing.md }}>
+              <View style={{ gap: spacing.lg }}>
+                <EditorSection
+                  title="Essentiel"
+                  subtitle="Nom, photo, catégorie, durée et prix"
+                  icon="pricetag-outline"
+                  collapsible={false}
+                >
                 <Input
                   label="Nom"
                   placeholder="Ex: Coupe femme"
@@ -1132,46 +1129,29 @@ export default function ServicesScreen() {
                 </View>
 
                 <Input
-                  label={form.isPriceRange ? 'Prix min (€)' : 'Prix (€)'}
+                  label="Prix (€)"
                   placeholder="0"
                   value={form.price}
                   onChangeText={(t) => setForm((p) => ({ ...p, price: t }))}
                   keyboardType="decimal-pad"
                 />
 
-                {form.isPriceRange && (
-                  <Input
-                    label="Prix max (€)"
-                    placeholder="0"
-                    value={form.priceMax}
-                    onChangeText={(t) => setForm((p) => ({ ...p, priceMax: t }))}
-                    keyboardType="decimal-pad"
-                  />
-                )}
+                <Input
+                  label="Description (optionnel)"
+                  placeholder="Décrivez cette prestation"
+                  value={form.description}
+                  onChangeText={(t) => setForm((p) => ({ ...p, description: t }))}
+                  multiline
+                  numberOfLines={3}
+                />
+                </EditorSection>
 
-                {/* Price options */}
-                <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' }}>
-                  <Pressable
-                    onPress={() => {
-                      setForm((p) => ({
-                        ...p,
-                        isPriceRange: !p.isPriceRange,
-                        priceMax: !p.isPriceRange ? '' : '',
-                      }));
-                    }}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                  >
-                    <Ionicons
-                      name={form.isPriceRange ? 'checkbox' : 'square-outline'}
-                      size={20}
-                      color={form.isPriceRange ? colors.primary : colors.textMuted}
-                    />
-                    <Text variant="bodySmall" color={form.isPriceRange ? 'primary' : 'textSecondary'} style={{ fontWeight: form.isPriceRange ? '600' : '400' }}>
-                      Fourchette de prix
-                    </Text>
-                  </Pressable>
-                </View>
-
+                <EditorSection
+                  title="Réglages"
+                  subtitle="Temps de battement et acompte"
+                  icon="options-outline"
+                  defaultOpen={false}
+                >
                 {/* Buffer time — free input with info box */}
                 <View>
                   <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
@@ -1193,15 +1173,6 @@ export default function ServicesScreen() {
                     keyboardType="number-pad"
                   />
                 </View>
-
-                <Input
-                  label="Description (optionnel)"
-                  placeholder="Décrivez cette prestation"
-                  value={form.description}
-                  onChangeText={(t) => setForm((p) => ({ ...p, description: t }))}
-                  multiline
-                  numberOfLines={3}
-                />
 
                 {/* Deposit configuration — only when add-on active */}
                 {depositsEnabled && (
@@ -1349,6 +1320,15 @@ export default function ServicesScreen() {
                   </View>
                 )}
 
+                </EditorSection>
+
+                {(locations.length > 1 || members.length > 1) && (
+                  <EditorSection
+                    title="Disponibilité"
+                    subtitle="Lieux et membres concernés"
+                    icon="people-outline"
+                    defaultOpen={false}
+                  >
                 {/* Locations */}
                 {locations.length > 1 && (
                   <View>
@@ -1419,80 +1399,84 @@ export default function ServicesScreen() {
                     })}
                   </View>
                 )}
+                  </EditorSection>
+                )}
 
-                {/* Variations & options (collapsible, optional) */}
-                <View
-                  style={{
-                    marginTop: spacing.xs,
-                    borderTopWidth: 1,
-                    borderTopColor: colors.border,
-                    paddingTop: spacing.md,
-                  }}
+                <EditorSection
+                  title="Variations & options"
+                  subtitle="Choix, suppléments et infos demandées au client"
+                  icon="construct-outline"
+                  open={choicesExpanded}
+                  onToggle={() => setChoicesExpanded((v) => !v)}
                 >
-                  <Pressable
-                    onPress={() => setChoicesExpanded((v) => !v)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: spacing.sm,
-                      paddingVertical: spacing.xs,
-                    }}
-                  >
-                    <Ionicons
-                      name={choicesExpanded ? 'chevron-down' : 'chevron-forward'}
-                      size={18}
-                      color={colors.textSecondary}
-                    />
+                  <View style={{ gap: spacing.xs }}>
                     <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                      Variations & options (optionnel)
+                      Variations
                     </Text>
-                  </Pressable>
+                    <Text variant="caption" color="textSecondary">
+                      Des choix exclusifs qui fixent le prix et la durée (ex : Longueur).
+                    </Text>
+                    <VariationsEditor
+                      variations={form.variations}
+                      onChange={(n) => setForm((p) => ({ ...p, variations: n }))}
+                    />
+                  </View>
 
-                  {choicesExpanded && (
-                    <View style={{ gap: spacing.lg, marginTop: spacing.sm }}>
-                      <View style={{ gap: spacing.xs }}>
-                        <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                          Variations
-                        </Text>
-                        <Text variant="caption" color="textSecondary">
-                          Des choix exclusifs qui fixent le prix et la durée (ex : Longueur).
-                        </Text>
-                        <VariationsEditor
-                          variations={form.variations}
-                          onChange={(n) => setForm((p) => ({ ...p, variations: n }))}
-                        />
-                      </View>
+                  <View style={{ gap: spacing.xs }}>
+                    <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                      Options
+                    </Text>
+                    <Text variant="caption" color="textSecondary">
+                      Des suppléments à cocher (ex : Mèches).
+                    </Text>
+                    <OptionsEditor
+                      options={form.options}
+                      onChange={(n) => setForm((p) => ({ ...p, options: n }))}
+                    />
+                  </View>
 
-                      <View style={{ gap: spacing.xs }}>
-                        <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                          Options
-                        </Text>
-                        <Text variant="caption" color="textSecondary">
-                          Des suppléments à cocher (ex : Mèches).
-                        </Text>
-                        <OptionsEditor
-                          options={form.options}
-                          onChange={(n) => setForm((p) => ({ ...p, options: n }))}
-                        />
-                      </View>
-
-                      <View style={{ gap: spacing.xs }}>
-                        <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                          Infos demandées
-                        </Text>
-                        <Text variant="caption" color="textSecondary">
-                          Des questions au client, sans impact sur le prix.
-                        </Text>
-                        <InfoFieldsEditor
-                          fields={form.infoFields}
-                          onChange={(n) => setForm((p) => ({ ...p, infoFields: n }))}
-                        />
-                      </View>
-                    </View>
-                  )}
-                </View>
+                  <View style={{ gap: spacing.xs }}>
+                    <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                      Infos demandées
+                    </Text>
+                    <Text variant="caption" color="textSecondary">
+                      Des questions au client, sans impact sur le prix.
+                    </Text>
+                    <InfoFieldsEditor
+                      fields={form.infoFields}
+                      onChange={(n) => setForm((p) => ({ ...p, infoFields: n }))}
+                    />
+                  </View>
+                </EditorSection>
               </View>
             </ScrollView>
+
+            {/* Floating "client preview" button — above the sticky footer */}
+            <Pressable
+              onPress={() => setShowPreview(true)}
+              style={{
+                position: 'absolute',
+                right: spacing.lg,
+                bottom: insets.bottom + 80,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.xs,
+                paddingVertical: spacing.sm,
+                paddingHorizontal: spacing.md,
+                borderRadius: 999,
+                backgroundColor: colors.text,
+                shadowColor: '#000',
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 5,
+              }}
+            >
+              <Ionicons name="eye-outline" size={18} color={colors.background} />
+              <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.background }}>
+                Aperçu client
+              </Text>
+            </Pressable>
 
             {/* Save Button */}
             <View style={[styles.stickyFooter, { padding: spacing.lg, paddingBottom: insets.bottom + spacing.sm, borderTopColor: colors.border }]}>
@@ -1505,6 +1489,40 @@ export default function ServicesScreen() {
                 fullWidth
               />
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Client preview Modal ── */}
+      <Modal
+        visible={showPreview}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPreview(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+            ]}
+          >
+            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+              <Text variant="h3">Aperçu client</Text>
+              <Pressable onPress={() => setShowPreview(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <ServiceChoicesPreview
+              service={{
+                name: form.name,
+                price: Math.round((parseFloat(form.price) || 0) * 100),
+                duration: hoursMinutesToMinutes(form.durationHours, form.durationMinutes),
+                variations: sanitizeVariations(form.variations),
+                options: sanitizeOptions(form.options),
+                infoFields: sanitizeInfoFields(form.infoFields),
+              }}
+            />
           </View>
         </View>
       </Modal>
