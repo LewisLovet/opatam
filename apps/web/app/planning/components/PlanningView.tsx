@@ -479,7 +479,7 @@ function ShareSection({
           {/* QR Code */}
           <div className="flex-shrink-0 flex justify-center">
             <div
-              ref={qrRef}
+              ref={qrRef as React.RefObject<HTMLDivElement>}
               className="bg-white p-4 rounded-xl border border-gray-200 dark:border-gray-600 inline-block"
             >
               <QRCodeCanvas

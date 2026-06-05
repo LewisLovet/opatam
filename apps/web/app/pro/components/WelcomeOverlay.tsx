@@ -1,6 +1,8 @@
 'use client';
 
-import { Sparkles, ExternalLink } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import confetti from 'canvas-confetti';
+import { PartyPopper, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui';
 
 interface WelcomeOverlayProps {
@@ -10,6 +12,27 @@ interface WelcomeOverlayProps {
 }
 
 export function WelcomeOverlay({ businessName, slug, onClose }: WelcomeOverlayProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Celebratory confetti burst on open — two streams from the bottom corners.
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const fire = confetti.create(canvasRef.current, { resize: true, useWorker: true });
+    const end = Date.now() + 1500;
+    const colors = ['#1a6daf', '#60a5fa', '#fbbf24', '#34d399', '#f472b6'];
+
+    const frame = () => {
+      fire({ particleCount: 5, angle: 60, spread: 60, origin: { x: 0, y: 1 }, colors });
+      fire({ particleCount: 5, angle: 120, spread: 60, origin: { x: 1, y: 1 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
+    // A single big pop from the centre to kick it off.
+    fire({ particleCount: 80, spread: 90, startVelocity: 38, origin: { y: 0.6 }, colors });
+
+    return () => fire.reset();
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -26,7 +49,7 @@ export function WelcomeOverlay({ businessName, slug, onClose }: WelcomeOverlayPr
         className="relative w-full max-w-md rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-6 sm:p-8 text-center"
       >
         <div className="mx-auto w-16 h-16 rounded-full bg-primary-50 dark:bg-primary-950 flex items-center justify-center">
-          <Sparkles className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+          <PartyPopper className="w-8 h-8 text-primary-600 dark:text-primary-400" />
         </div>
 
         <h2 className="mt-5 text-xl font-bold text-gray-900 dark:text-white">
@@ -52,6 +75,9 @@ export function WelcomeOverlay({ businessName, slug, onClose }: WelcomeOverlayPr
           </a>
         </div>
       </div>
+
+      {/* Confetti canvas — above everything, clicks pass through. */}
+      <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" />
     </div>
   );
 }
