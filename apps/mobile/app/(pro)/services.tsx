@@ -51,6 +51,7 @@ import {
 } from '../../components/business/ServiceChoicesEditor';
 import { EditorSection } from '../../components/business/EditorSection';
 import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
+import { OverlaySheet } from '../../components/OverlaySheet';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
@@ -1565,28 +1566,46 @@ export default function ServicesScreen() {
             {/* Floating "client preview" button — above the sticky footer */}
             <Pressable
               onPress={() => setShowPreview(true)}
-              style={{
+              style={({ pressed }) => ({
                 position: 'absolute',
                 right: spacing.lg,
-                bottom: insets.bottom + 80,
+                bottom: insets.bottom + 84,
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: spacing.xs,
+                gap: spacing.sm,
                 paddingVertical: spacing.sm,
-                paddingHorizontal: spacing.md,
+                paddingLeft: spacing.sm,
+                paddingRight: spacing.md,
                 borderRadius: 999,
-                backgroundColor: colors.text,
+                backgroundColor: colors.primary,
                 shadowColor: '#000',
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 3 },
-                elevation: 5,
-              }}
+                shadowOpacity: 0.25,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 4 },
+                elevation: 6,
+                opacity: pressed ? 0.9 : 1,
+              })}
             >
-              <Ionicons name="eye-outline" size={18} color={colors.background} />
-              <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.background }}>
-                Aperçu client
-              </Text>
+              <View
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: 'rgba(255,255,255,0.25)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="eye" size={17} color="#FFFFFF" />
+              </View>
+              <View>
+                <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF', lineHeight: 16 }}>
+                  Aperçu client
+                </Text>
+                <Text variant="caption" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, lineHeight: 12 }}>
+                  Voir la fiche de réservation
+                </Text>
+              </View>
             </Pressable>
 
             {/* Save Button */}
@@ -1602,46 +1621,28 @@ export default function ServicesScreen() {
             </View>
           </View>
 
-          {/* Client preview — overlay À L'INTÉRIEUR de la modale d'édition.
-              iOS n'affiche qu'une <Modal> à la fois : une 2e Modal sœur ne
-              s'afficherait pas. On rend donc l'aperçu en overlay plein écran. */}
-          {showPreview && (
-            <View
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0,0,0,0.4)',
-                justifyContent: 'flex-end',
-              }}
-            >
-              <View
-                style={[
-                  styles.modalContent,
-                  { height: '85%', backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-                ]}
-              >
-                <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-                  <Text variant="h3">Aperçu client</Text>
-                  <Pressable onPress={() => setShowPreview(false)}>
-                    <Ionicons name="close-circle" size={28} color={colors.textMuted} />
-                  </Pressable>
-                </View>
-                <ServiceChoicesPreview
-                  service={{
-                    name: form.name,
-                    price: Math.round((parseFloat(form.price) || 0) * 100),
-                    duration: hoursMinutesToMinutes(form.durationHours, form.durationMinutes),
-                    variations: sanitizeVariations(form.variations),
-                    options: sanitizeOptions(form.options),
-                    infoFields: sanitizeInfoFields(form.infoFields),
-                  }}
-                />
-              </View>
+          {/* Client preview — bottom-sheet animée, rendue en overlay À
+              L'INTÉRIEUR de la modale d'édition (iOS n'affiche qu'une <Modal>
+              à la fois → une 2e Modal sœur ne s'afficherait pas). */}
+          <OverlaySheet visible={showPreview} onClose={() => setShowPreview(false)}>
+            <View style={[styles.modalHeader, { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomColor: colors.border }]}>
+              <Text variant="h3">Aperçu client</Text>
+              <Pressable onPress={() => setShowPreview(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
             </View>
-          )}
+            <ServiceChoicesPreview
+              service={{
+                name: form.name,
+                price: Math.round((parseFloat(form.price) || 0) * 100),
+                duration: hoursMinutesToMinutes(form.durationHours, form.durationMinutes),
+                photoURL: form.photoURL,
+                variations: sanitizeVariations(form.variations),
+                options: sanitizeOptions(form.options),
+                infoFields: sanitizeInfoFields(form.infoFields),
+              }}
+            />
+          </OverlaySheet>
         </View>
       </Modal>
 

@@ -2014,7 +2014,10 @@ export default function ProRegisterScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { height: '85%', backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
-            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+            <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 2 }}>
+              <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: colors.border }} />
+            </View>
+            <View style={[styles.modalHeader, { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, paddingTop: spacing.xs, borderBottomColor: colors.border }]}>
               <Text variant="h3">Aperçu client</Text>
               <Pressable onPress={() => setPreviewServiceIndex(null)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />

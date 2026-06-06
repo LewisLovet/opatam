@@ -9,7 +9,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   type ServiceVariation,
@@ -32,6 +32,7 @@ export interface PreviewService {
   name: string;
   price: number; // cents (base)
   duration: number; // minutes (base)
+  photoURL?: string | null;
   variations: ServiceVariation[];
   options: ServiceOption[];
   infoFields: ServiceInfoField[];
@@ -258,29 +259,79 @@ export function ServiceChoicesPreview({ service }: { service: PreviewService }) 
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing['3xl'] }}
         showsVerticalScrollIndicator={false}
       >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.sm,
-            padding: spacing.sm,
-            borderRadius: radius.md,
-            backgroundColor: colors.surfaceSecondary,
-          }}
-        >
-          <Ionicons name="eye-outline" size={18} color={colors.textSecondary} />
-          <Text variant="caption" color="textSecondary" style={{ flex: 1 }}>
-            Voici ce que verra le client au moment de réserver.
+        {/* Hero — photo + name + price / duration chips */}
+        {!!service.photoURL && (
+          <Image
+            source={{ uri: service.photoURL }}
+            style={{ width: '100%', height: 150, borderRadius: radius.lg }}
+            resizeMode="cover"
+          />
+        )}
+
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="h3">{service.name || 'Prestation'}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+                paddingVertical: 5,
+                paddingHorizontal: 10,
+                borderRadius: 999,
+                backgroundColor: colors.primaryLight || '#e4effa',
+              }}
+            >
+              <Ionicons name="pricetag" size={13} color={colors.primary} />
+              <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.primary }}>
+                {hasChoices
+                  ? `À partir de ${formatPrice(getServiceMinPrice(service))}`
+                  : formatPrice(service.price)}
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+                paddingVertical: 5,
+                paddingHorizontal: 10,
+                borderRadius: 999,
+                backgroundColor: colors.surfaceSecondary,
+              }}
+            >
+              <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+              <Text variant="bodySmall" color="textSecondary" style={{ fontWeight: '600' }}>
+                {formatDuration(getServiceMinDuration(service))}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+          <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
+          <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
+            Voici exactement ce que verra le client au moment de réserver.
           </Text>
         </View>
 
-        <Text variant="h3">{service.name || 'Prestation'}</Text>
-
         {!hasChoices && (
-          <View style={{ gap: spacing.xs }}>
-            <Text variant="body" color="textSecondary">
-              Cette prestation n'a ni variation ni option : le client réserve
-              directement au prix fixe.
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              padding: spacing.md,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceSecondary,
+            }}
+          >
+            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+            <Text variant="bodySmall" color="textSecondary" style={{ flex: 1 }}>
+              Prestation à prix fixe — le client réserve directement, sans choix à faire.
+              Ajoutez des variations ou options pour enrichir cette fiche.
             </Text>
           </View>
         )}
@@ -358,7 +409,7 @@ export function ServiceChoicesPreview({ service }: { service: PreviewService }) 
         {service.infoFields.map((f) => renderInfo(f, sel.infoValues[f.id], (val) => setInfo(f.id, val)))}
       </ScrollView>
 
-      {/* Sticky total */}
+      {/* Sticky total + faux "Réserver" (illustratif) */}
       <View
         style={{
           flexDirection: 'row',
@@ -374,11 +425,29 @@ export function ServiceChoicesPreview({ service }: { service: PreviewService }) 
           <Text variant="caption" color="textSecondary">
             {complete ? 'Total' : 'À partir de'}
           </Text>
-          <Text variant="h3">{formatPrice(displayPrice)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
+            <Text variant="h3">{formatPrice(displayPrice)}</Text>
+            <Text variant="caption" color="textMuted">
+              · {formatDuration(displayDuration)}
+            </Text>
+          </View>
         </View>
-        <Text variant="bodySmall" color="textSecondary">
-          {formatDuration(displayDuration)}
-        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.xs,
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.lg,
+            borderRadius: 999,
+            backgroundColor: colors.primary,
+          }}
+        >
+          <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
+            Réserver
+          </Text>
+          <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+        </View>
       </View>
     </View>
   );
