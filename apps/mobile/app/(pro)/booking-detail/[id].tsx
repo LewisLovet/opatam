@@ -18,15 +18,17 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  ActivityIndicator,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { bookingService, schedulingService, memberService } from '@booking-app/firebase';
+import { bookingService, schedulingService, memberService, serviceRepository } from '@booking-app/firebase';
 import { formatDuration } from '@booking-app/shared';
 import type {
   Booking,
   Member,
+  Service,
   BookingSelectedVariation,
   BookingSelectedOption,
   BookingSelectedInfo,
@@ -521,6 +523,36 @@ export default function ProBookingDetailScreen() {
       .then((result) => setRescheduleMembers((result as WithId<Member>[]).filter((m) => m.isActive)))
       .catch(() => setRescheduleMembers([]));
   }, [showRescheduleModal, providerId]);
+
+  // ── Add a prestation to this booking (multi-prestation) ──────────────────
+  const [showAddService, setShowAddService] = useState(false);
+  const [addServiceList, setAddServiceList] = useState<WithId<Service>[]>([]);
+  const [addingServiceId, setAddingServiceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showAddService || !providerId) return;
+    serviceRepository
+      .getActiveByProvider(providerId)
+      .then((result) => setAddServiceList(result as WithId<Service>[]))
+      .catch(() => setAddServiceList([]));
+  }, [showAddService, providerId]);
+
+  const handleAddService = useCallback(
+    async (serviceId: string) => {
+      if (!booking || !user?.uid) return;
+      setAddingServiceId(serviceId);
+      try {
+        await bookingService.addServiceToBooking(booking.id, serviceId, user.uid);
+        await loadBooking();
+        setShowAddService(false);
+      } catch (e: any) {
+        Alert.alert("Impossible d'ajouter la prestation", e?.message || 'Veuillez réessayer.');
+      } finally {
+        setAddingServiceId(null);
+      }
+    },
+    [booking, user, loadBooking],
+  );
 
   // Load available slots when date changes in reschedule modal
   useEffect(() => {
@@ -1100,6 +1132,19 @@ export default function ProBookingDetailScreen() {
           </View>
         )}
 
+        {(booking.status === 'pending' || booking.status === 'confirmed') && !isPast && (
+          <View style={[styles.actionsContainer, { paddingHorizontal: spacing.lg, marginTop: spacing.sm }]}>
+            <Button
+              title="Ajouter une prestation"
+              variant="outline"
+              onPress={() => setShowAddService(true)}
+              disabled={actionLoading}
+              fullWidth
+              leftIcon={<Ionicons name="add" size={18} color={colors.primary} />}
+            />
+          </View>
+        )}
+
         {booking.status === 'confirmed' && (
           <View
             style={[
@@ -1270,6 +1315,77 @@ export default function ProBookingDetailScreen() {
               />
             </View>
           )}
+        </SafeAreaView>
+      </Modal>
+
+      {/* ===== Add a prestation Modal ===== */}
+      <Modal
+        visible={showAddService}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAddService(false)}
+      >
+        <SafeAreaView style={[rescheduleStyles.container, { backgroundColor: colors.background }]}>
+          <View
+            style={[
+              rescheduleStyles.header,
+              {
+                paddingHorizontal: spacing.lg,
+                paddingVertical: spacing.md,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.divider,
+              },
+            ]}
+          >
+            <Text variant="h3">Ajouter une prestation</Text>
+            <Pressable onPress={() => setShowAddService(false)} hitSlop={8}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}>
+            <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: spacing.xs }}>
+              Elle sera ajoutée à la suite de ce rendez-vous (même client). Le créneau juste après doit être libre.
+            </Text>
+            {addServiceList.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : (
+              addServiceList.map((s) => {
+                const busy = addingServiceId === s.id;
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => handleAddService(s.id)}
+                    disabled={!!addingServiceId}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                      padding: spacing.md,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: pressed ? colors.surfaceSecondary : colors.background,
+                      opacity: addingServiceId && !busy ? 0.5 : 1,
+                    })}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text variant="body" style={{ fontWeight: '600' }}>{s.name}</Text>
+                      <Text variant="caption" color="textSecondary">
+                        {formatDuration(s.duration)} · {formatPrice(s.price)}
+                      </Text>
+                    </View>
+                    {busy ? (
+                      <ActivityIndicator color={colors.primary} />
+                    ) : (
+                      <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                    )}
+                  </Pressable>
+                );
+              })
+            )}
+          </ScrollView>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>

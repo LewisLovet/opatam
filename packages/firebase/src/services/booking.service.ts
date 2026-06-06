@@ -651,6 +651,117 @@ export class BookingService {
       booking: updatedBooking,
     };
   }
+
+  /**
+   * Append a prestation to an EXISTING booking (same client, back-to-back).
+   * The booking becomes multi-service: `items` grows, `duration`/`price`
+   * aggregate, and `endDatetime` extends. Availability of the WHOLE extended
+   * block is re-checked (excluding this booking) so it can't overlap the next
+   * appointment. Variations aren't selectable here, so a service with REQUIRED
+   * variations is rejected (add it from the web instead).
+   */
+  async addServiceToBooking(
+    bookingId: string,
+    serviceId: string,
+    adminUserId: string,
+  ): Promise<WithId<Booking>> {
+    const booking = await bookingRepository.getById(bookingId);
+    if (!booking) {
+      throw new Error('Réservation non trouvée');
+    }
+    await this.verifyProviderAccess(booking.providerId, adminUserId);
+
+    const mutableStatuses: BookingStatus[] = ['pending_payment', 'pending', 'confirmed'];
+    if (!mutableStatuses.includes(booking.status)) {
+      throw new Error('Ce rendez-vous ne peut plus être modifié.');
+    }
+
+    const service = await serviceRepository.getById(booking.providerId, serviceId);
+    if (!service) {
+      throw new Error('Prestation non trouvée');
+    }
+
+    const sel = emptyServiceSelections();
+    const validation = validateServiceSelections(service, sel);
+    if (!validation.valid) {
+      throw new Error(
+        `Cette prestation (« ${service.name} ») nécessite des choix (${validation.missing.join(', ')}). Ajoutez-la depuis le site web.`,
+      );
+    }
+    const effective = computeServiceTotal(service, sel);
+    const denorm = buildBookingSelections(service, sel);
+
+    // Existing items: the stored list, or a single synthesised item from the
+    // current top-level fields (legacy / single-service bookings).
+    const existingItems: BookingServiceItem[] =
+      booking.items && booking.items.length > 0
+        ? booking.items
+        : [
+            {
+              serviceId: booking.serviceId,
+              serviceName: booking.serviceName,
+              serviceColor: booking.serviceColor ?? null,
+              duration: booking.duration,
+              price: booking.price,
+              selectedVariations: booking.selectedVariations ?? [],
+              selectedOptions: booking.selectedOptions ?? [],
+              selectedInfoValues: booking.selectedInfoValues ?? {},
+              selectedInfo: booking.selectedInfo ?? [],
+            },
+          ];
+
+    const newItem: BookingServiceItem = {
+      serviceId: service.id,
+      serviceName: service.name,
+      serviceColor: service.color ?? null,
+      duration: effective.duration,
+      price: effective.price,
+      selectedVariations: denorm.selectedVariations,
+      selectedOptions: denorm.selectedOptions,
+      selectedInfoValues: denorm.selectedInfoValues,
+      selectedInfo: denorm.selectedInfo,
+    };
+
+    const newItems = [...existingItems, newItem];
+    const newServiceDuration = booking.duration + effective.duration;
+    const newPrice = booking.price + effective.price;
+    const newEndDatetime = new Date(
+      booking.datetime.getTime() + newServiceDuration * 60 * 1000,
+    );
+
+    // Re-check the whole extended block (services back-to-back + the NEW last
+    // prestation's buffer). Skipped when no member is assigned (best effort).
+    if (booking.memberId) {
+      const lastBuffer = service.bufferTime || 0;
+      const isAvailable = await schedulingService.isSlotAvailable({
+        providerId: booking.providerId,
+        memberId: booking.memberId,
+        datetime: booking.datetime,
+        duration: newServiceDuration + lastBuffer,
+        excludeBookingId: bookingId,
+      });
+      if (!isAvailable) {
+        throw new Error(
+          'Pas de disponibilité juste après ce rendez-vous pour ajouter cette prestation.',
+        );
+      }
+    }
+
+    await bookingRepository.update(bookingId, {
+      items: newItems,
+      serviceName: newItems.map((i) => i.serviceName).join(' + '),
+      duration: newServiceDuration,
+      price: newPrice,
+      priceMax: null,
+      endDatetime: newEndDatetime,
+    });
+
+    const updated = await bookingRepository.getById(bookingId);
+    if (!updated) {
+      throw new Error('Erreur lors de la mise à jour de la réservation');
+    }
+    return updated;
+  }
 }
 
 // Singleton instance
