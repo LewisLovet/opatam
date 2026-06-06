@@ -9,7 +9,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, ScrollView, Pressable, Image } from 'react-native';
+import { View, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   type ServiceVariation,
@@ -38,7 +38,21 @@ export interface PreviewService {
   infoFields: ServiceInfoField[];
 }
 
-export function ServiceChoicesPreview({ service }: { service: PreviewService }) {
+export function ServiceChoicesPreview({
+  service,
+  mode = 'preview',
+  onConfirm,
+  confirmLabel = 'Ajouter',
+  confirmLoading = false,
+}: {
+  service: PreviewService;
+  /** 'preview' = read-only illustration ; 'picker' = the bottom CTA confirms
+   *  the current selections (used when adding a prestation to a booking). */
+  mode?: 'preview' | 'picker';
+  onConfirm?: (selections: ServiceSelections) => void;
+  confirmLabel?: string;
+  confirmLoading?: boolean;
+}) {
   const { colors, spacing, radius } = useTheme();
   const [sel, setSel] = useState<ServiceSelections>(() => emptyServiceSelections());
 
@@ -432,22 +446,52 @@ export function ServiceChoicesPreview({ service }: { service: PreviewService }) 
             </Text>
           </View>
         </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.xs,
-            paddingVertical: spacing.sm,
-            paddingHorizontal: spacing.lg,
-            borderRadius: 999,
-            backgroundColor: colors.primary,
-          }}
-        >
-          <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
-            Réserver
-          </Text>
-          <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
-        </View>
+        {mode === 'picker' ? (
+          <Pressable
+            onPress={() => complete && !confirmLoading && onConfirm?.(sel)}
+            disabled={!complete || confirmLoading}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.xs,
+              paddingVertical: spacing.sm,
+              paddingHorizontal: spacing.lg,
+              borderRadius: 999,
+              minWidth: 110,
+              justifyContent: 'center',
+              backgroundColor: complete ? colors.primary : colors.border,
+              opacity: confirmLoading ? 0.7 : 1,
+            }}
+          >
+            {confirmLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
+                  {confirmLabel}
+                </Text>
+                <Ionicons name="add" size={16} color="#FFFFFF" />
+              </>
+            )}
+          </Pressable>
+        ) : (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.xs,
+              paddingVertical: spacing.sm,
+              paddingHorizontal: spacing.lg,
+              borderRadius: 999,
+              backgroundColor: colors.primary,
+            }}
+          >
+            <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
+              Réserver
+            </Text>
+            <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+          </View>
+        )}
       </View>
     </View>
   );

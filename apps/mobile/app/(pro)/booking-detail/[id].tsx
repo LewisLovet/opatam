@@ -23,16 +23,25 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { bookingService, schedulingService, memberService, serviceRepository } from '@booking-app/firebase';
-import { formatDuration } from '@booking-app/shared';
+import {
+  bookingService,
+  schedulingService,
+  memberService,
+  serviceRepository,
+  serviceCategoryRepository,
+} from '@booking-app/firebase';
+import { formatDuration, serviceHasChoices } from '@booking-app/shared';
 import type {
   Booking,
   Member,
   Service,
+  ServiceCategory,
+  ServiceSelections,
   BookingSelectedVariation,
   BookingSelectedOption,
   BookingSelectedInfo,
 } from '@booking-app/shared';
+import { ServiceChoicesPreview } from '../../../components/business/ServiceChoicesPreview';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
 import {
@@ -527,7 +536,10 @@ export default function ProBookingDetailScreen() {
   // ── Add a prestation to this booking (multi-prestation) ──────────────────
   const [showAddService, setShowAddService] = useState(false);
   const [addServiceList, setAddServiceList] = useState<WithId<Service>[]>([]);
+  const [addServiceCategories, setAddServiceCategories] = useState<WithId<ServiceCategory>[]>([]);
   const [addingServiceId, setAddingServiceId] = useState<string | null>(null);
+  // Service awaiting variation/option choices before being added (null = list).
+  const [pendingChoiceService, setPendingChoiceService] = useState<WithId<Service> | null>(null);
 
   useEffect(() => {
     if (!showAddService || !providerId) return;
@@ -535,15 +547,21 @@ export default function ProBookingDetailScreen() {
       .getActiveByProvider(providerId)
       .then((result) => setAddServiceList(result as WithId<Service>[]))
       .catch(() => setAddServiceList([]));
+    serviceCategoryRepository
+      .getByProvider(providerId)
+      .then((result) => setAddServiceCategories(result as WithId<ServiceCategory>[]))
+      .catch(() => setAddServiceCategories([]));
   }, [showAddService, providerId]);
 
-  const handleAddService = useCallback(
-    async (serviceId: string) => {
+  // Persist the chosen prestation (with optional variation/option selections).
+  const submitAddService = useCallback(
+    async (serviceId: string, selections?: ServiceSelections) => {
       if (!booking || !user?.uid) return;
       setAddingServiceId(serviceId);
       try {
-        await bookingService.addServiceToBooking(booking.id, serviceId, user.uid);
+        await bookingService.addServiceToBooking(booking.id, serviceId, user.uid, selections);
         await loadBooking();
+        setPendingChoiceService(null);
         setShowAddService(false);
       } catch (e: any) {
         Alert.alert("Impossible d'ajouter la prestation", e?.message || 'Veuillez réessayer.');
@@ -553,6 +571,89 @@ export default function ProBookingDetailScreen() {
     },
     [booking, user, loadBooking],
   );
+
+  // Tap a service → open the choices picker if it has any, else add directly.
+  const handleServiceTap = useCallback(
+    (service: WithId<Service>) => {
+      if (serviceHasChoices(service)) {
+        setPendingChoiceService(service);
+      } else {
+        submitAddService(service.id);
+      }
+    },
+    [submitAddService],
+  );
+
+  const renderAddServiceBand = (label: string, count: number) => (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        marginTop: spacing.sm,
+        backgroundColor: colors.surfaceSecondary,
+        borderRadius: 12,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+        borderLeftWidth: 3,
+        borderLeftColor: colors.primary,
+      }}
+    >
+      <Ionicons name="folder" size={15} color={colors.primary} />
+      <Text variant="bodySmall" style={{ flex: 1, fontWeight: '700', color: colors.text }} numberOfLines={1}>
+        {label}
+      </Text>
+      <View style={{ backgroundColor: colors.primary, minWidth: 20, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10, alignItems: 'center' }}>
+        <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 11 }}>{count}</Text>
+      </View>
+    </View>
+  );
+
+  const renderAddServiceRow = (s: WithId<Service>) => {
+    const busy = addingServiceId === s.id;
+    const hasChoices = serviceHasChoices(s);
+    return (
+      <Pressable
+        key={s.id}
+        onPress={() => handleServiceTap(s)}
+        disabled={!!addingServiceId}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          padding: spacing.md,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderLeftWidth: 3,
+          borderLeftColor: s.color || colors.primary,
+          backgroundColor: pressed ? colors.surfaceSecondary : colors.background,
+          opacity: addingServiceId && !busy ? 0.5 : 1,
+        })}
+      >
+        <View style={{ flex: 1 }}>
+          <Text variant="body" style={{ fontWeight: '600' }}>{s.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 }}>
+            <Text variant="caption" color="textSecondary">
+              {formatDuration(s.duration)} · {formatPrice(s.price)}
+            </Text>
+            {hasChoices && (
+              <View style={{ backgroundColor: colors.primaryLight || '#e4effa', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                <Text variant="caption" color="primary" style={{ fontSize: 10, fontWeight: '600' }}>
+                  Options
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+        {busy ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <Ionicons name={hasChoices ? 'chevron-forward' : 'add-circle-outline'} size={22} color={colors.primary} />
+        )}
+      </Pressable>
+    );
+  };
 
   // Load available slots when date changes in reschedule modal
   useEffect(() => {
@@ -1325,69 +1426,99 @@ export default function ProBookingDetailScreen() {
         visible={showAddService}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowAddService(false)}
+        onRequestClose={() => {
+          setPendingChoiceService(null);
+          setShowAddService(false);
+        }}
       >
         <SafeAreaView style={[rescheduleStyles.container, { backgroundColor: colors.background }]}>
-          <View
-            style={[
-              rescheduleStyles.header,
-              {
-                paddingHorizontal: spacing.lg,
-                paddingVertical: spacing.md,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.divider,
-              },
-            ]}
-          >
-            <Text variant="h3">Ajouter une prestation</Text>
-            <Pressable onPress={() => setShowAddService(false)} hitSlop={8}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </Pressable>
-          </View>
-          <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}>
-            <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: spacing.xs }}>
-              Elle sera ajoutée à la suite de ce rendez-vous (même client). Le créneau juste après doit être libre.
-            </Text>
-            {addServiceList.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
-                <ActivityIndicator color={colors.primary} />
+          {pendingChoiceService ? (
+            // ── Choices picker (service with variations / options / infos) ──
+            <>
+              <View style={[rescheduleStyles.header, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
+                <Pressable
+                  onPress={() => setPendingChoiceService(null)}
+                  hitSlop={8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 }}
+                >
+                  <Ionicons name="chevron-back" size={22} color={colors.text} />
+                  <Text variant="h3" numberOfLines={1} style={{ flexShrink: 1 }}>
+                    {pendingChoiceService.name}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setPendingChoiceService(null);
+                    setShowAddService(false);
+                  }}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </Pressable>
               </View>
-            ) : (
-              addServiceList.map((s) => {
-                const busy = addingServiceId === s.id;
-                return (
-                  <Pressable
-                    key={s.id}
-                    onPress={() => handleAddService(s.id)}
-                    disabled={!!addingServiceId}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: spacing.sm,
-                      padding: spacing.md,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      backgroundColor: pressed ? colors.surfaceSecondary : colors.background,
-                      opacity: addingServiceId && !busy ? 0.5 : 1,
-                    })}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text variant="body" style={{ fontWeight: '600' }}>{s.name}</Text>
-                      <Text variant="caption" color="textSecondary">
-                        {formatDuration(s.duration)} · {formatPrice(s.price)}
-                      </Text>
-                    </View>
-                    {busy ? (
-                      <ActivityIndicator color={colors.primary} />
-                    ) : (
-                      <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
-                    )}
-                  </Pressable>
-                );
-              })
-            )}
-          </ScrollView>
+              <ServiceChoicesPreview
+                mode="picker"
+                confirmLabel="Ajouter"
+                confirmLoading={addingServiceId === pendingChoiceService.id}
+                onConfirm={(sel) => submitAddService(pendingChoiceService.id, sel)}
+                service={{
+                  name: pendingChoiceService.name,
+                  price: pendingChoiceService.price,
+                  duration: pendingChoiceService.duration,
+                  photoURL: pendingChoiceService.photoURL,
+                  variations: pendingChoiceService.variations ?? [],
+                  options: pendingChoiceService.options ?? [],
+                  infoFields: pendingChoiceService.infoFields ?? [],
+                }}
+              />
+            </>
+          ) : (
+            // ── Service list grouped by category ──
+            <>
+              <View style={[rescheduleStyles.header, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
+                <Text variant="h3">Ajouter une prestation</Text>
+                <Pressable onPress={() => setShowAddService(false)} hitSlop={8}>
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </Pressable>
+              </View>
+              <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xl }}>
+                <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: spacing.xs }}>
+                  Elle sera ajoutée à la suite de ce rendez-vous (même client). Le créneau juste après doit être libre.
+                </Text>
+                {addServiceList.length === 0 ? (
+                  <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+                    <ActivityIndicator color={colors.primary} />
+                  </View>
+                ) : (
+                  (() => {
+                    const grouped = addServiceCategories
+                      .map((cat) => ({ cat, items: addServiceList.filter((s) => s.categoryId === cat.id) }))
+                      .filter((g) => g.items.length > 0);
+                    const knownCatIds = new Set(addServiceCategories.map((c) => c.id));
+                    const uncategorized = addServiceList.filter(
+                      (s) => !s.categoryId || !knownCatIds.has(s.categoryId),
+                    );
+                    return (
+                      <>
+                        {grouped.map(({ cat, items }) => (
+                          <View key={cat.id} style={{ gap: spacing.sm }}>
+                            {renderAddServiceBand(cat.name, items.length)}
+                            {items.map(renderAddServiceRow)}
+                          </View>
+                        ))}
+                        {uncategorized.length > 0 && (
+                          <View style={{ gap: spacing.sm }}>
+                            {grouped.length > 0 && renderAddServiceBand('Autres prestations', uncategorized.length)}
+                            {uncategorized.map(renderAddServiceRow)}
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+              </ScrollView>
+            </>
+          )}
         </SafeAreaView>
       </Modal>
     </SafeAreaView>

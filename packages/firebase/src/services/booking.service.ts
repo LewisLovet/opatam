@@ -12,6 +12,7 @@ import type {
   BookingDeposit,
   BookingStatus,
   BookingServiceItem,
+  ServiceSelections,
 } from '@booking-app/shared';
 import {
   parseOrThrow,
@@ -664,6 +665,7 @@ export class BookingService {
     bookingId: string,
     serviceId: string,
     adminUserId: string,
+    selections?: ServiceSelections,
   ): Promise<WithId<Booking>> {
     const booking = await bookingRepository.getById(bookingId);
     if (!booking) {
@@ -681,11 +683,11 @@ export class BookingService {
       throw new Error('Prestation non trouvée');
     }
 
-    const sel = emptyServiceSelections();
+    const sel = selections ?? emptyServiceSelections();
     const validation = validateServiceSelections(service, sel);
     if (!validation.valid) {
       throw new Error(
-        `Cette prestation (« ${service.name} ») nécessite des choix (${validation.missing.join(', ')}). Ajoutez-la depuis le site web.`,
+        `Choix manquants pour « ${service.name} » : ${validation.missing.join(', ')}.`,
       );
     }
     const effective = computeServiceTotal(service, sel);
