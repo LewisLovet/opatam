@@ -32,7 +32,9 @@ import type { MobileAppConfig } from '@booking-app/shared';
  */
 
 const BLUE = '#3B82F6';
-const APP_ICON = require('../assets/icon.png');
+// Brand wordmark on transparent bg — clean inside the white card
+// (the square app icon carries its own navy background, too heavy here).
+const APP_ICON = require('../assets/splash-icon.png');
 
 type ReleaseNotes = { features: string[]; fixes: string[] };
 
@@ -308,27 +310,27 @@ const styles = StyleSheet.create({
   },
   ring: {
     position: 'absolute',
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 104,
+    height: 104,
+    borderRadius: 52,
     backgroundColor: '#FFFFFF',
   },
   logoCard: {
-    width: 92,
-    height: 92,
-    borderRadius: 24,
+    width: 100,
+    height: 100,
+    borderRadius: 28,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    shadowColor: '#0B2A6B',
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
   },
   logoImg: {
-    width: 60,
-    height: 60,
+    width: 78,
+    height: 78,
   },
   body: {
     flex: 1,
