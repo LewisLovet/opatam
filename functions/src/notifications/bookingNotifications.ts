@@ -405,6 +405,43 @@ export async function notifyClientBookingRescheduled(
 }
 
 /**
+ * Notify the provider when a prestation is added to an existing booking
+ * (multi-prestation). Reuses the `newBooking` preference — same "booking
+ * activity" opt-in.
+ */
+export async function notifyProviderServiceAdded(
+  booking: BookingData,
+  bookingId: string
+): Promise<void> {
+  console.log('notifyProviderServiceAdded:', booking.providerId, bookingId);
+
+  if (!(await isProviderPushAllowed(booking.providerId, 'newBooking'))) {
+    console.log('Provider has disabled newBooking push notifications, skipping');
+    return;
+  }
+
+  const providerUserId = await getProviderUserId(booking.providerId);
+  if (!providerUserId) return;
+
+  const pushTokens = await getUserPushTokens(providerUserId);
+  if (pushTokens.length === 0) return;
+
+  const dateStr = formatDateFr(booking.datetime.toDate());
+
+  const result = await sendPushNotifications(pushTokens, {
+    title: 'Prestation ajoutée',
+    body: `${booking.clientInfo.name} · ${booking.serviceName} le ${dateStr}`,
+    data: { type: 'booking_updated', bookingId },
+  });
+
+  console.log('notifyProviderServiceAdded result:', result);
+
+  if (result.invalidTokens.length > 0) {
+    await removeInvalidTokens(providerUserId, result.invalidTokens);
+  }
+}
+
+/**
  * Send reminder notification to client before their booking
  */
 export async function notifyClientBookingReminder(
@@ -550,6 +587,20 @@ export async function handleBookingNotifications(
         console.log('Booking rescheduled, notifying client');
         await notifyClientBookingRescheduled(booking, beforeData.datetime.toDate());
       }
+      return;
+    }
+
+    // Service added to an existing booking (multi-prestation): status &
+    // datetime unchanged, but the total duration grew. Notify the provider.
+    if (
+      oldStatus === newStatus &&
+      oldDatetime === newDatetime &&
+      typeof beforeData.duration === 'number' &&
+      typeof afterData.duration === 'number' &&
+      afterData.duration > beforeData.duration
+    ) {
+      console.log('Service added to booking, notifying provider');
+      await notifyProviderServiceAdded(booking, bookingId);
     }
   }
 }
