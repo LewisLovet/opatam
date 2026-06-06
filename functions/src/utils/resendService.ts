@@ -610,7 +610,15 @@ function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): s
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Client</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.clientName}</td></tr>
                       ${data.clientPhone ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Téléphone</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.clientPhone}</td></tr>` : ''}
                       ${data.items && data.items.length >= 2
-                        ? data.items.map((item) => `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${hasSelections(item) ? renderSelectionsHtml(item) : ''}</td></tr>`).join('')
+                        ? `<tr><td colspan="2" style="padding: 8px 0 4px;"><p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px;">Prestations</p>${data.items.map((item, idx) => `
+                            <div style="padding: 8px 0;${idx > 0 ? ' border-top: 1px solid #e4e4e7;' : ''}">
+                              <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr>
+                                <td style="font-size: 14px; color: #18181b; font-weight: 600;">${idx + 1}. ${item.serviceName}</td>
+                                <td style="font-size: 14px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price)}</td>
+                              </tr></table>
+                              <div style="font-size: 12px; color: #71717a; margin-top: 2px;">${formatDurationFr(item.duration)}</div>
+                              ${hasSelections(item) ? renderSelectionsHtml(item) : ''}
+                            </div>`).join('')}</td></tr>`
                         : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Horaire</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
