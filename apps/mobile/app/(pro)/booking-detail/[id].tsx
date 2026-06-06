@@ -1587,58 +1587,90 @@ export default function ProBookingDetailScreen() {
                 const adding = addingServiceId === pendingConfirm.service.id;
                 return (
                   <>
-                    <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
-                      {/* The prestation being added */}
-                      <View style={{ borderWidth: 1, borderColor: colors.primary, borderRadius: 12, padding: spacing.md, backgroundColor: colors.primaryLight || '#e4effa', gap: 4 }}>
-                        <Text variant="caption" color="primary" style={{ fontWeight: '700', letterSpacing: 0.5 }}>
-                          PRESTATION AJOUTÉE
-                        </Text>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm }}>
-                          <Text variant="body" style={{ fontWeight: '700', flex: 1 }}>{pendingConfirm.service.name}</Text>
-                          <Text variant="body" style={{ fontWeight: '700' }}>{formatPrice(eff.price)}</Text>
-                        </View>
-                        {denorm.selectedVariations.map((v) => (
-                          <Text key={v.variationId} variant="caption" color="textSecondary">
-                            {v.variationName} : {v.optionName}
+                    <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
+                      {/* Prestation being added — hero */}
+                      <View style={{ borderRadius: 16, padding: spacing.lg, backgroundColor: colors.primaryLight || '#e4effa', gap: spacing.xs }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                            <Ionicons name="add" size={15} color="#FFFFFF" />
+                          </View>
+                          <Text variant="caption" color="primary" style={{ fontWeight: '800', letterSpacing: 0.5 }}>
+                            PRESTATION AJOUTÉE
                           </Text>
-                        ))}
-                        {denorm.selectedOptions.map((o) => (
-                          <Text key={o.optionId} variant="caption" color="textSecondary">+ {o.optionName}</Text>
-                        ))}
-                        <Text variant="caption" color="textSecondary">{formatDuration(eff.duration)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm, marginTop: 2 }}>
+                          <Text variant="h3" style={{ fontWeight: '800', flex: 1 }} numberOfLines={2}>
+                            {pendingConfirm.service.name}
+                          </Text>
+                          <Text variant="h3" color="primary" style={{ fontWeight: '800' }}>{formatPrice(eff.price)}</Text>
+                        </View>
+                        {(denorm.selectedVariations.length > 0 || denorm.selectedOptions.length > 0) && (
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+                            {denorm.selectedVariations.map((v) => (
+                              <View key={v.variationId} style={{ backgroundColor: colors.background, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 }}>
+                                <Text variant="caption" color="textSecondary">{v.variationName} : {v.optionName}</Text>
+                              </View>
+                            ))}
+                            {denorm.selectedOptions.map((o) => (
+                              <View key={o.optionId} style={{ backgroundColor: colors.background, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 }}>
+                                <Text variant="caption" color="textSecondary">+ {o.optionName}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <Ionicons name="time-outline" size={13} color={colors.primary} />
+                          <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>{formatDuration(eff.duration)}</Text>
+                        </View>
                       </View>
 
-                      {/* Full booking recap */}
-                      <View style={{ gap: spacing.xs }}>
-                        <Text variant="bodySmall" style={{ fontWeight: '700' }}>Récapitulatif du rendez-vous</Text>
+                      {/* Booking recap card */}
+                      <Card padding="lg" shadow="sm">
+                        <Text variant="bodySmall" style={{ fontWeight: '700', marginBottom: spacing.sm, color: colors.text }}>
+                          Récapitulatif du rendez-vous
+                        </Text>
                         {existing.map((it, idx) => (
-                          <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
+                          <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 }}>
                             <Text variant="bodySmall" color="textSecondary" style={{ flex: 1 }} numberOfLines={1}>{it.name}</Text>
                             <Text variant="bodySmall" color="textSecondary">{formatPrice(it.price)}</Text>
                           </View>
                         ))}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
-                          <Text variant="bodySmall" color="primary" style={{ flex: 1, fontWeight: '600' }} numberOfLines={1}>
-                            {pendingConfirm.service.name}
-                          </Text>
-                          <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{formatPrice(eff.price)}</Text>
-                        </View>
-                        <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text variant="body" style={{ fontWeight: '700' }}>Nouveau total</Text>
-                          <Text variant="h3" color="primary">{formatPrice(newTotalPrice)}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-                            <Text variant="caption" color="textMuted">Horaire</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
+                            <Text variant="bodySmall" color="primary" style={{ fontWeight: '700', flex: 1 }} numberOfLines={1}>
+                              {pendingConfirm.service.name}
+                            </Text>
                           </View>
-                          <Text variant="bodySmall" style={{ fontWeight: '600' }}>
-                            {formatTime(booking.datetime)} – {formatEndTime(booking.datetime, newTotalDuration)}
-                          </Text>
+                          <Text variant="bodySmall" color="primary" style={{ fontWeight: '700' }}>{formatPrice(eff.price)}</Text>
                         </View>
-                        <Text variant="caption" color="textMuted">Durée totale : {formatDuration(newTotalDuration)}</Text>
-                      </View>
+
+                        <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.sm }} />
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text variant="body" style={{ fontWeight: '800' }}>Nouveau total</Text>
+                          <Text variant="h2" color="primary" style={{ fontWeight: '800' }}>{formatPrice(newTotalPrice)}</Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+                          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md, borderRadius: 12, backgroundColor: colors.surfaceSecondary }}>
+                            <Ionicons name="time-outline" size={16} color={colors.primary} />
+                            <View style={{ flex: 1 }}>
+                              <Text variant="caption" color="textMuted">Horaire</Text>
+                              <Text variant="bodySmall" style={{ fontWeight: '700' }} numberOfLines={1}>
+                                {formatTime(booking.datetime)} – {formatEndTime(booking.datetime, newTotalDuration)}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md, borderRadius: 12, backgroundColor: colors.surfaceSecondary }}>
+                            <Ionicons name="hourglass-outline" size={16} color={colors.primary} />
+                            <View>
+                              <Text variant="caption" color="textMuted">Durée</Text>
+                              <Text variant="bodySmall" style={{ fontWeight: '700' }}>{formatDuration(newTotalDuration)}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      </Card>
                     </ScrollView>
 
                     <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.divider }}>
