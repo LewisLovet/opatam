@@ -247,6 +247,12 @@ export interface BookingEmailData {
     amount: number;
     refundDeadlineHours: number;
   } | null;
+  /**
+   * When this confirmation is actually an UPDATE — a prestation was added to
+   * or removed from an existing booking — describe the change so the email
+   * states what happened instead of a plain "confirmé".
+   */
+  updateContext?: { type: 'added' | 'removed'; serviceName: string };
 }
 
 /**
@@ -315,7 +321,9 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
     const { error } = await getResend().emails.send({
       from: emailConfig.from,
       to: data.clientEmail,
-      subject: `Confirmation de votre rendez-vous - ${data.serviceName}`,
+      subject: data.updateContext
+        ? `Votre rendez-vous a été mis à jour - ${businessName}`
+        : `Confirmation de votre rendez-vous - ${data.serviceName}`,
       attachments: [
         {
           filename: 'rendez-vous.ics',
@@ -1168,12 +1176,28 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
               <tr>
                 <td style="padding: 0 32px 24px;">
                   <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
-                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous a bien été <strong style="color: #16a34a;">confirmé</strong>.</p>
+                  ${data.updateContext
+                    ? `<p style="margin: 0 0 6px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Une prestation a été ${data.updateContext.type === 'added'
+                        ? '<strong style="color: #16a34a;">ajoutée à</strong>'
+                        : '<strong style="color: #dc2626;">retirée de</strong>'} votre rendez-vous&nbsp;: <strong>${data.updateContext.serviceName}</strong>.</p>
+                       <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #71717a;">Voici votre rendez-vous mis à jour.</p>`
+                    : `<p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous a bien été <strong style="color: #16a34a;">confirmé</strong>.</p>`}
                   <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Votre rendez-vous</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">${data.items && data.items.length >= 2 ? 'Vos prestations' : 'Votre rendez-vous'}</p>
+                    ${data.items && data.items.length >= 2
+                      ? `<div style="margin-bottom: 16px;">${data.items.map((item, idx) => `
+                          <div style="padding: 10px 0;${idx > 0 ? ' border-top: 1px solid #bbf7d0;' : ''}">
+                            <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr>
+                              <td style="font-size: 15px; color: #18181b; font-weight: 600;">${idx + 1}. ${item.serviceName}</td>
+                              <td style="font-size: 15px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price)}</td>
+                            </tr></table>
+                            <div style="font-size: 13px; color: #71717a; margin-top: 2px;">${formatDurationFr(item.duration)}</div>
+                            ${hasSelections(item) ? renderSelectionsHtml(item) : ''}
+                          </div>`).join('')}</div>`
+                      : ''}
                     <table style="width: 100%; border-collapse: collapse;">
                       ${data.items && data.items.length >= 2
-                        ? data.items.map((item) => `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${hasSelections(item) ? renderSelectionsHtml(item) : ''}</td></tr>`).join('')
+                        ? ''
                         : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
@@ -1223,7 +1247,9 @@ function generateConfirmationText(data: ConfirmationTemplateData): string {
   return `
 Bonjour ${data.clientName},
 
-Votre rendez-vous a bien été confirmé.
+${data.updateContext
+  ? `Une prestation a été ${data.updateContext.type === 'added' ? 'ajoutée à' : 'retirée de'} votre rendez-vous : ${data.updateContext.serviceName}.\nVoici votre rendez-vous mis à jour.`
+  : 'Votre rendez-vous a bien été confirmé.'}
 
 Détails de votre rendez-vous :
 ${data.items && data.items.length >= 2

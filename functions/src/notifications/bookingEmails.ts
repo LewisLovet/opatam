@@ -218,7 +218,8 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
  */
 export async function emailClientBookingConfirmed(
   booking: BookingData,
-  bookingId: string
+  bookingId: string,
+  updateContext?: { type: 'added' | 'removed'; serviceName: string }
 ): Promise<void> {
   console.log('[EMAIL] emailClientBookingConfirmed:', booking.clientInfo?.email);
 
@@ -230,7 +231,7 @@ export async function emailClientBookingConfirmed(
   const emailData = await toEmailData(booking, bookingId);
   if (!emailData) return;
 
-  const result = await sendConfirmationEmail(emailData);
+  const result = await sendConfirmationEmail({ ...emailData, updateContext });
   console.log('[EMAIL] Confirmation email result:', result);
 }
 
@@ -543,8 +544,21 @@ export async function handleBookingEmails(
       typeof afterData.duration === 'number' &&
       afterData.duration !== beforeData.duration
     ) {
-      console.log('[EMAIL] Prestation added/removed, re-sending updated confirmation to client');
-      await emailClientBookingConfirmed(booking, bookingId);
+      const added = afterData.duration > beforeData.duration;
+      const beforeItems = Array.isArray(beforeData.items) ? beforeData.items : [];
+      const afterItems = Array.isArray(afterData.items) ? afterData.items : [];
+      const changedName: string = added
+        ? afterItems.length
+          ? afterItems[afterItems.length - 1].serviceName
+          : afterData.serviceName
+        : beforeItems.length
+          ? beforeItems[beforeItems.length - 1].serviceName
+          : beforeData.serviceName;
+      console.log(`[EMAIL] Prestation ${added ? 'added' : 'removed'}, emailing updated booking to client`);
+      await emailClientBookingConfirmed(booking, bookingId, {
+        type: added ? 'added' : 'removed',
+        serviceName: changedName,
+      });
     }
   }
 }
