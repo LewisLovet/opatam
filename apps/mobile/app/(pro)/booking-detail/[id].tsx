@@ -1132,7 +1132,9 @@ export default function ProBookingDetailScreen() {
           </View>
         )}
 
-        {(booking.status === 'pending' || booking.status === 'confirmed') && !isPast && (
+        {(booking.status === 'pending_payment' ||
+          booking.status === 'pending' ||
+          booking.status === 'confirmed') && (
           <View style={[styles.actionsContainer, { paddingHorizontal: spacing.lg, marginTop: spacing.sm }]}>
             <Button
               title="Ajouter une prestation"
