@@ -53,6 +53,7 @@ import {
 import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
 import { OverlaySheet } from '../../components/OverlaySheet';
 import { LoadingTips } from '../../components/LoadingTips';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { trackEvent } from '../../lib/metaSdk';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -767,6 +768,14 @@ export default function ProRegisterScreen() {
       trackEvent('CompleteRegistration', {
         contentCategory: 'pro',
       });
+
+      // Flag the fresh registration so the dashboard shows the welcome 🎉
+      // overlay once (survives the redirect to /(pro)).
+      try {
+        await AsyncStorage.setItem('opatam.justRegistered', '1');
+      } catch {
+        // non-blocking
+      }
 
       // Auto-login : on NE déconnecte PAS. registerProvider a déjà connecté
       // l'utilisateur ; le layout (auth) redirige réactivement vers /(pro)

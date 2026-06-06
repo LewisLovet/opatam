@@ -7,10 +7,12 @@
 import { analyticsService, bookingService } from '@booking-app/firebase';
 import { deltaPercent, type PageViewStats, type TrendPoint } from '@booking-app/shared';
 import { Sparkline } from '../../../components/stats/Sparkline';
+import { WelcomeOverlay } from '../../../components/WelcomeOverlay';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import {
   Alert,
@@ -711,6 +713,21 @@ export default function ProDashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { provider, providerId, refreshProvider } = useProvider();
+
+  // Welcome 🎉 overlay — shown once, right after a fresh registration.
+  const [showWelcome, setShowWelcome] = useState(false);
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('opatam.justRegistered').then((v) => {
+      if (active && v === '1') {
+        setShowWelcome(true);
+        AsyncStorage.removeItem('opatam.justRegistered').catch(() => {});
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   const { user } = useAuth();
   const sub = useSubscriptionStatus();
   const { data, isLoading, refresh } = useProviderDashboard(providerId, provider?.rating?.average);
@@ -1678,6 +1695,13 @@ export default function ProDashboardScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Welcome 🎉 overlay (first launch after registration) ── */}
+      <WelcomeOverlay
+        visible={showWelcome}
+        onDismiss={() => setShowWelcome(false)}
+        businessName={provider?.businessName}
+      />
 
       {/* ── QR Code Modal ── */}
       {shopUrl && (
