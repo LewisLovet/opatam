@@ -530,19 +530,20 @@ export async function handleBookingEmails(
       return;
     }
 
-    // Service added (multi-prestation): status & datetime unchanged, duration
-    // grew. Re-send the now-updated confirmation so the client sees the new
-    // prestations + total. Only for confirmed bookings — a "confirmée" email
-    // would be wrong on a pending one.
+    // Prestation added or removed (multi-prestation): status & datetime
+    // unchanged, but the duration changed. Re-send the now-updated
+    // confirmation so the client sees the current prestations + total. Only
+    // for confirmed bookings — a "confirmée" email would be wrong on a
+    // pending one.
     if (
       oldStatus === newStatus &&
       newStatus === 'confirmed' &&
       oldDatetime === newDatetime &&
       typeof beforeData.duration === 'number' &&
       typeof afterData.duration === 'number' &&
-      afterData.duration > beforeData.duration
+      afterData.duration !== beforeData.duration
     ) {
-      console.log('[EMAIL] Service added, re-sending updated confirmation to client');
+      console.log('[EMAIL] Prestation added/removed, re-sending updated confirmation to client');
       await emailClientBookingConfirmed(booking, bookingId);
     }
   }

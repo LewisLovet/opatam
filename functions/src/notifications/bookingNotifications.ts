@@ -405,15 +405,16 @@ export async function notifyClientBookingRescheduled(
 }
 
 /**
- * Notify the provider when a prestation is added to an existing booking
- * (multi-prestation). Reuses the `newBooking` preference — same "booking
- * activity" opt-in.
+ * Notify the provider when a prestation is added to OR removed from an
+ * existing booking (multi-prestation). Reuses the `newBooking` preference —
+ * same "booking activity" opt-in.
  */
-export async function notifyProviderServiceAdded(
+export async function notifyProviderServiceChange(
   booking: BookingData,
-  bookingId: string
+  bookingId: string,
+  added: boolean
 ): Promise<void> {
-  console.log('notifyProviderServiceAdded:', booking.providerId, bookingId);
+  console.log('notifyProviderServiceChange:', booking.providerId, bookingId, added);
 
   if (!(await isProviderPushAllowed(booking.providerId, 'newBooking'))) {
     console.log('Provider has disabled newBooking push notifications, skipping');
@@ -429,12 +430,12 @@ export async function notifyProviderServiceAdded(
   const dateStr = formatDateFr(booking.datetime.toDate());
 
   const result = await sendPushNotifications(pushTokens, {
-    title: 'Prestation ajoutée',
+    title: added ? 'Prestation ajoutée' : 'Prestation retirée',
     body: `${booking.clientInfo.name} · ${booking.serviceName} le ${dateStr}`,
     data: { type: 'booking_updated', bookingId },
   });
 
-  console.log('notifyProviderServiceAdded result:', result);
+  console.log('notifyProviderServiceChange result:', result);
 
   if (result.invalidTokens.length > 0) {
     await removeInvalidTokens(providerUserId, result.invalidTokens);
@@ -590,17 +591,19 @@ export async function handleBookingNotifications(
       return;
     }
 
-    // Service added to an existing booking (multi-prestation): status &
-    // datetime unchanged, but the total duration grew. Notify the provider.
+    // Prestation added to / removed from an existing booking (multi-
+    // prestation): status & datetime unchanged, but the total duration
+    // changed. Notify the provider.
     if (
       oldStatus === newStatus &&
       oldDatetime === newDatetime &&
       typeof beforeData.duration === 'number' &&
       typeof afterData.duration === 'number' &&
-      afterData.duration > beforeData.duration
+      afterData.duration !== beforeData.duration
     ) {
-      console.log('Service added to booking, notifying provider');
-      await notifyProviderServiceAdded(booking, bookingId);
+      const added = afterData.duration > beforeData.duration;
+      console.log(`Service ${added ? 'added to' : 'removed from'} booking, notifying provider`);
+      await notifyProviderServiceChange(booking, bookingId, added);
     }
   }
 }
