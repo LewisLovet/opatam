@@ -30,7 +30,14 @@ import {
   serviceRepository,
   serviceCategoryRepository,
 } from '@booking-app/firebase';
-import { formatDuration, serviceHasChoices, getServiceMinDuration } from '@booking-app/shared';
+import {
+  formatDuration,
+  serviceHasChoices,
+  getServiceMinDuration,
+  computeServiceTotal,
+  buildBookingSelections,
+  emptyServiceSelections,
+} from '@booking-app/shared';
 import type {
   Booking,
   Member,
@@ -543,6 +550,11 @@ export default function ProBookingDetailScreen() {
   // Per-service: does it fit in the free time right after this booking?
   // (id absent / true = fits ; false = not enough time → greyed out)
   const [serviceFit, setServiceFit] = useState<Record<string, boolean>>({});
+  // Add awaiting final confirmation (recap view) — chosen prestation + choices.
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    service: WithId<Service>;
+    selections?: ServiceSelections;
+  } | null>(null);
 
   useEffect(() => {
     if (!showAddService || !providerId) return;
@@ -605,6 +617,7 @@ export default function ProBookingDetailScreen() {
         await bookingService.addServiceToBooking(booking.id, serviceId, user.uid, selections);
         await loadBooking();
         setPendingChoiceService(null);
+        setPendingConfirm(null);
         setShowAddService(false);
       } catch (e: any) {
         Alert.alert("Impossible d'ajouter la prestation", e?.message || 'Veuillez réessayer.');
@@ -615,17 +628,15 @@ export default function ProBookingDetailScreen() {
     [booking, user, loadBooking],
   );
 
-  // Tap a service → open the choices picker if it has any, else add directly.
-  const handleServiceTap = useCallback(
-    (service: WithId<Service>) => {
-      if (serviceHasChoices(service)) {
-        setPendingChoiceService(service);
-      } else {
-        submitAddService(service.id);
-      }
-    },
-    [submitAddService],
-  );
+  // Tap a service → open the choices picker if it has any, else go straight
+  // to the confirmation recap.
+  const handleServiceTap = useCallback((service: WithId<Service>) => {
+    if (serviceHasChoices(service)) {
+      setPendingChoiceService(service);
+    } else {
+      setPendingConfirm({ service });
+    }
+  }, []);
 
   const renderAddServiceBand = (label: string, count: number) => (
     <View
@@ -1482,11 +1493,111 @@ export default function ProBookingDetailScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => {
           setPendingChoiceService(null);
+          setPendingConfirm(null);
           setShowAddService(false);
         }}
       >
         <SafeAreaView style={[rescheduleStyles.container, { backgroundColor: colors.background }]}>
-          {pendingChoiceService ? (
+          {pendingConfirm ? (
+            // ── Confirmation recap (final acceptance before adding) ──
+            <>
+              <View style={[rescheduleStyles.header, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
+                <Pressable
+                  onPress={() => {
+                    const svc = pendingConfirm.service;
+                    setPendingConfirm(null);
+                    if (serviceHasChoices(svc)) setPendingChoiceService(svc);
+                  }}
+                  hitSlop={8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
+                >
+                  <Ionicons name="chevron-back" size={22} color={colors.text} />
+                  <Text variant="h3">Confirmer l&apos;ajout</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setPendingConfirm(null);
+                    setPendingChoiceService(null);
+                    setShowAddService(false);
+                  }}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </Pressable>
+              </View>
+              {(() => {
+                const sel = pendingConfirm.selections ?? emptyServiceSelections();
+                const eff = computeServiceTotal(pendingConfirm.service, sel);
+                const denorm = buildBookingSelections(pendingConfirm.service, sel);
+                const existing = bookingItems.length
+                  ? bookingItems.map((i) => ({ name: i.serviceName, price: i.price }))
+                  : [{ name: booking.serviceName, price: booking.price }];
+                const newTotalPrice = booking.price + eff.price;
+                const newTotalDuration = booking.duration + eff.duration;
+                const adding = addingServiceId === pendingConfirm.service.id;
+                return (
+                  <>
+                    <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
+                      {/* The prestation being added */}
+                      <View style={{ borderWidth: 1, borderColor: colors.primary, borderRadius: 12, padding: spacing.md, backgroundColor: colors.primaryLight || '#e4effa', gap: 4 }}>
+                        <Text variant="caption" color="primary" style={{ fontWeight: '700', letterSpacing: 0.5 }}>
+                          PRESTATION AJOUTÉE
+                        </Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm }}>
+                          <Text variant="body" style={{ fontWeight: '700', flex: 1 }}>{pendingConfirm.service.name}</Text>
+                          <Text variant="body" style={{ fontWeight: '700' }}>{formatPrice(eff.price)}</Text>
+                        </View>
+                        {denorm.selectedVariations.map((v) => (
+                          <Text key={v.variationId} variant="caption" color="textSecondary">
+                            {v.variationName} : {v.optionName}
+                          </Text>
+                        ))}
+                        {denorm.selectedOptions.map((o) => (
+                          <Text key={o.optionId} variant="caption" color="textSecondary">+ {o.optionName}</Text>
+                        ))}
+                        <Text variant="caption" color="textSecondary">{formatDuration(eff.duration)}</Text>
+                      </View>
+
+                      {/* Full booking recap */}
+                      <View style={{ gap: spacing.xs }}>
+                        <Text variant="bodySmall" style={{ fontWeight: '700' }}>Récapitulatif du rendez-vous</Text>
+                        {existing.map((it, idx) => (
+                          <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
+                            <Text variant="bodySmall" color="textSecondary" style={{ flex: 1 }} numberOfLines={1}>{it.name}</Text>
+                            <Text variant="bodySmall" color="textSecondary">{formatPrice(it.price)}</Text>
+                          </View>
+                        ))}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
+                          <Text variant="bodySmall" color="primary" style={{ flex: 1, fontWeight: '600' }} numberOfLines={1}>
+                            {pendingConfirm.service.name}
+                          </Text>
+                          <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{formatPrice(eff.price)}</Text>
+                        </View>
+                        <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text variant="body" style={{ fontWeight: '700' }}>Nouveau total</Text>
+                          <Text variant="h3" color="primary">{formatPrice(newTotalPrice)}</Text>
+                        </View>
+                        <Text variant="caption" color="textMuted">Durée totale : {formatDuration(newTotalDuration)}</Text>
+                      </View>
+                    </ScrollView>
+
+                    <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.divider }}>
+                      <Button
+                        title="Confirmer l'ajout"
+                        variant="primary"
+                        fullWidth
+                        onPress={() => submitAddService(pendingConfirm.service.id, pendingConfirm.selections)}
+                        disabled={adding}
+                        loading={adding}
+                        leftIcon={<Ionicons name="checkmark" size={18} color="#FFFFFF" />}
+                      />
+                    </View>
+                  </>
+                );
+              })()}
+            </>
+          ) : pendingChoiceService ? (
             // ── Choices picker (service with variations / options / infos) ──
             <>
               <View style={[rescheduleStyles.header, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
@@ -1512,9 +1623,12 @@ export default function ProBookingDetailScreen() {
               </View>
               <ServiceChoicesPreview
                 mode="picker"
-                confirmLabel="Ajouter"
-                confirmLoading={addingServiceId === pendingChoiceService.id}
-                onConfirm={(sel) => submitAddService(pendingChoiceService.id, sel)}
+                confirmLabel="Continuer"
+                confirmLoading={false}
+                onConfirm={(sel) => {
+                  setPendingConfirm({ service: pendingChoiceService, selections: sel });
+                  setPendingChoiceService(null);
+                }}
                 service={{
                   name: pendingChoiceService.name,
                   price: pendingChoiceService.price,
