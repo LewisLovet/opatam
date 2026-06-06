@@ -17,11 +17,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import DraggableFlatList, {
-  ScaleDecorator,
-  type RenderItemParams,
-} from 'react-native-draggable-flatlist';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text, Button, Input, Card, useToast } from '../../components';
@@ -66,13 +61,6 @@ import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
 
 type DepositMode = 'inherit' | 'custom' | 'none';
 type DepositCustomType = 'fixed' | 'percent';
-
-/** A row in the flattened drag-and-drop list: a category band, the
- *  "uncategorized" band, or a draggable service card. */
-type ServiceRow =
-  | { type: 'category'; key: string; cat: WithId<ServiceCategory>; count: number; collapsed: boolean }
-  | { type: 'uncat'; key: string; count: number }
-  | { type: 'service'; key: string; service: WithId<Service> };
 
 interface ServiceFormData {
   name: string;
@@ -253,6 +241,8 @@ export default function ServicesScreen() {
   const [choicesExpanded, setChoicesExpanded] = useState(false);
   // Client-view preview overlay (floating "Aperçu" button).
   const [showPreview, setShowPreview] = useState(false);
+  // Service whose "Déplacer vers une catégorie" sheet is open (null = closed).
+  const [moveTarget, setMoveTarget] = useState<WithId<Service> | null>(null);
 
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -629,11 +619,7 @@ export default function ServicesScreen() {
   // Render service card
   // ---------------------------------------------------------------------------
 
-  const renderServiceCard = (
-    service: WithId<Service>,
-    drag?: () => void,
-    isActive?: boolean,
-  ) => {
+  const renderServiceCard = (service: WithId<Service>) => {
     // Resolve assigned members for this service
     const assignedMembers = service.memberIds
       ? members.filter((m) => service.memberIds!.includes(m.id))
@@ -647,10 +633,7 @@ export default function ServicesScreen() {
       <Pressable
         key={service.id}
         onPress={() => openEdit(service)}
-        onLongPress={drag}
-        delayLongPress={180}
-        disabled={isActive}
-        style={({ pressed }) => ({ opacity: isActive ? 0.92 : pressed ? 0.95 : 1 })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.95 : 1 })}
       >
         <Card padding="md" shadow="sm">
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -707,15 +690,14 @@ export default function ServicesScreen() {
                 </View>
               )}
             </View>
-            <View style={{ alignItems: 'center', gap: spacing.xs }}>
-              {drag && (
+            <View style={{ alignItems: 'center', gap: spacing.sm }}>
+              {categories.length > 0 && (
                 <Pressable
-                  onPressIn={drag}
-                  onLongPress={drag}
+                  onPress={(e) => { e.stopPropagation(); setMoveTarget(service); }}
                   hitSlop={12}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.4 : 0.6, padding: 4 })}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 4 })}
                 >
-                  <Ionicons name="reorder-three-outline" size={20} color={colors.textMuted} />
+                  <Ionicons name="folder-outline" size={19} color={colors.textMuted} />
                 </Pressable>
               )}
               <Pressable
@@ -746,76 +728,23 @@ export default function ServicesScreen() {
 
   const { grouped, uncategorized } = getServicesByCategory();
 
-  // Flatten categories + their services + uncategorized into a single list
-  // for the drag-and-drop FlatList (category bands stay as non-draggable
-  // anchors; services are draggable across bands).
-  const rows: ServiceRow[] = [];
-  categories.forEach((cat) => {
-    const catServices = grouped[cat.id] || [];
-    const collapsed = collapsedCategories.has(cat.id);
-    rows.push({ type: 'category', key: `cat-${cat.id}`, cat, count: catServices.length, collapsed });
-    if (!collapsed) {
-      catServices.forEach((s) => rows.push({ type: 'service', key: `svc-${s.id}`, service: s }));
-    }
-  });
-  if (uncategorized.length > 0) {
-    if (categories.length > 0) rows.push({ type: 'uncat', key: 'uncat', count: uncategorized.length });
-    uncategorized.forEach((s) => rows.push({ type: 'service', key: `svc-${s.id}`, service: s }));
-  }
-
-  // Persist a drag: recompute each service's categoryId (from the band that
-  // now precedes it) + a fresh global sortOrder. Collapsed categories keep
-  // their hidden services intact.
-  const handleDragEnd = async ({ data }: { data: ServiceRow[] }) => {
-    if (!providerId) return;
-    const visByCat = new Map<string, string[]>();
-    let catKey = '__uncat__';
-    for (const row of data) {
-      if (row.type === 'category') catKey = row.cat.id;
-      else if (row.type === 'uncat') catKey = '__uncat__';
-      else {
-        const arr = visByCat.get(catKey) ?? [];
-        arr.push(row.service.id);
-        visByCat.set(catKey, arr);
-      }
-    }
-
-    const byId = new Map(services.map((s) => [s.id, s]));
-    const ordered: WithId<Service>[] = [];
-    let sort = 0;
-    const place = (id: string, categoryId: string | null) => {
-      const s = byId.get(id);
-      if (!s || ordered.some((o) => o.id === id)) return;
-      ordered.push({ ...s, categoryId, sortOrder: sort++ });
-    };
-    categories.forEach((cat) => {
-      if (collapsedCategories.has(cat.id)) {
-        services.filter((s) => s.categoryId === cat.id).forEach((s) => place(s.id, cat.id));
-      } else {
-        (visByCat.get(cat.id) ?? []).forEach((id) => place(id, cat.id));
-      }
-    });
-    (visByCat.get('__uncat__') ?? []).forEach((id) => place(id, null));
-    services.forEach((s) => place(s.id, s.categoryId ?? null)); // safety net
-
-    const changed = ordered.filter((s) => {
-      const prev = byId.get(s.id)!;
-      return prev.categoryId !== s.categoryId || prev.sortOrder !== s.sortOrder;
-    });
-    if (changed.length === 0) return;
-
-    setServices(ordered); // optimistic
+  // Move a service to another category. (Drag & drop was dropped: the DnD
+  // lib was incompatible with this React version — replaced by a reliable
+  // "Déplacer vers…" picker triggered from each card.)
+  const moveServiceToCategory = async (
+    service: WithId<Service>,
+    categoryId: string | null,
+  ) => {
+    setMoveTarget(null);
+    if (!providerId || (service.categoryId ?? null) === categoryId) return;
+    setServices((prev) =>
+      prev.map((s) => (s.id === service.id ? { ...s, categoryId } : s)),
+    ); // optimistic
     try {
-      await Promise.all(
-        changed.map((s) =>
-          serviceRepository.update(providerId, s.id, {
-            categoryId: s.categoryId ?? null,
-            sortOrder: s.sortOrder,
-          }),
-        ),
-      );
+      await serviceRepository.update(providerId, service.id, { categoryId });
+      showToast({ variant: 'success', message: 'Prestation déplacée' });
     } catch {
-      showToast({ variant: 'error', message: 'Réorganisation non enregistrée' });
+      showToast({ variant: 'error', message: 'Déplacement non enregistré' });
       loadData();
     }
   };
@@ -873,27 +802,6 @@ export default function ServicesScreen() {
     </View>
   );
 
-  const renderRow = ({ item, drag, isActive }: RenderItemParams<ServiceRow>) => {
-    if (item.type === 'category') {
-      return renderCategoryBand(item.cat.name, item.count, {
-        collapsed: item.collapsed,
-        onToggle: () => toggleCollapse(item.cat.id),
-        onEdit: () => openEditCategory(item.cat),
-        accent: colors.primary,
-      });
-    }
-    if (item.type === 'uncat') {
-      return renderCategoryBand('Autres prestations', item.count, { accent: colors.textMuted });
-    }
-    return (
-      <ScaleDecorator>
-        <View style={{ marginLeft: spacing.md }}>
-          {renderServiceCard(item.service, drag, isActive)}
-        </View>
-      </ScaleDecorator>
-    );
-  };
-
   const renderListFooter = () => (
     <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
       <Pressable
@@ -940,7 +848,7 @@ export default function ServicesScreen() {
   );
 
   return (
-    <GestureHandlerRootView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header — bandeau bleu (référence: availability.tsx) */}
       <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md }}>
@@ -977,18 +885,49 @@ export default function ServicesScreen() {
           </View>
         </ScrollView>
       ) : (
-        <DraggableFlatList
-          data={rows}
-          keyExtractor={(item) => item.key}
-          renderItem={renderRow}
-          onDragEnd={handleDragEnd}
-          activationDistance={12}
-          containerStyle={{ flex: 1 }}
+        <ScrollView
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing['3xl'] }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           showsVerticalScrollIndicator={false}
-          ListFooterComponent={renderListFooter}
-        />
+        >
+          {categories.map((cat) => {
+            const catServices = grouped[cat.id] || [];
+            const collapsed = collapsedCategories.has(cat.id);
+            return (
+              <View key={cat.id}>
+                {renderCategoryBand(cat.name, catServices.length, {
+                  collapsed,
+                  onToggle: () => toggleCollapse(cat.id),
+                  onEdit: () => openEditCategory(cat),
+                  accent: colors.primary,
+                })}
+                {!collapsed && (
+                  <View style={{ gap: spacing.sm, marginLeft: spacing.md }}>
+                    {catServices.length === 0 ? (
+                      <Text variant="caption" color="textMuted" style={{ fontStyle: 'italic', paddingVertical: spacing.xs }}>
+                        Aucune prestation dans cette catégorie
+                      </Text>
+                    ) : (
+                      catServices.map(renderServiceCard)
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })}
+
+          {uncategorized.length > 0 && (
+            <View>
+              {categories.length > 0 &&
+                renderCategoryBand('Autres prestations', uncategorized.length, { accent: colors.textMuted })}
+              <View style={{ gap: spacing.sm, marginLeft: categories.length > 0 ? spacing.md : 0 }}>
+                {uncategorized.map(renderServiceCard)}
+              </View>
+            </View>
+          )}
+
+          {renderListFooter()}
+        </ScrollView>
       )}
 
       {/* ── Create/Edit Service Modal ── */}
@@ -1706,6 +1645,79 @@ export default function ServicesScreen() {
         </View>
       </Modal>
 
+      {/* ── Déplacer vers une catégorie ── */}
+      <Modal
+        visible={moveTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMoveTarget(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setMoveTarget(null)}>
+          <Pressable
+            style={[styles.modalContent, { maxHeight: '70%', backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+              <View style={{ flex: 1 }}>
+                <Text variant="h3">Déplacer vers…</Text>
+                {moveTarget && (
+                  <Text variant="caption" color="textSecondary" numberOfLines={1}>
+                    {moveTarget.name}
+                  </Text>
+                )}
+              </View>
+              <Pressable onPress={() => setMoveTarget(null)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xs }}>
+              {categories.map((cat) => {
+                const current = moveTarget?.categoryId === cat.id;
+                return (
+                  <Pressable
+                    key={cat.id}
+                    onPress={() => moveTarget && moveServiceToCategory(moveTarget, cat.id)}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                      paddingVertical: spacing.md,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: radius.lg,
+                      backgroundColor: current ? colors.primaryLight : pressed ? colors.surfaceSecondary : 'transparent',
+                    })}
+                  >
+                    <Ionicons name="folder" size={18} color={colors.primary} />
+                    <Text variant="body" style={{ flex: 1, fontWeight: current ? '700' : '400', color: current ? colors.primary : colors.text }}>
+                      {cat.name}
+                    </Text>
+                    {current && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                onPress={() => moveTarget && moveServiceToCategory(moveTarget, null)}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.sm,
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.lg,
+                  backgroundColor: !moveTarget?.categoryId ? colors.primaryLight : pressed ? colors.surfaceSecondary : 'transparent',
+                })}
+              >
+                <Ionicons name="ellipsis-horizontal-circle-outline" size={18} color={colors.textMuted} />
+                <Text variant="body" style={{ flex: 1, fontWeight: !moveTarget?.categoryId ? '700' : '400', color: !moveTarget?.categoryId ? colors.primary : colors.text }}>
+                  Sans catégorie (Autres prestations)
+                </Text>
+                {!moveTarget?.categoryId && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+              </Pressable>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ── Category Create/Edit Modal ── */}
       <Modal visible={showCategoryModal} transparent animationType="fade">
         <View style={styles.categoryModalOverlay}>
@@ -1753,7 +1765,7 @@ export default function ServicesScreen() {
           </View>
         </View>
       </Modal>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 
