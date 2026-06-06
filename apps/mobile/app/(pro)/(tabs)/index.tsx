@@ -1008,6 +1008,7 @@ export default function ProDashboardScreen() {
   const totalSteps = setupSteps.length;
   const progressPct = totalSteps > 0 ? completedSteps / totalSteps : 0;
   const isSetupComplete = completedSteps === totalSteps;
+  const isPublished = !!provider?.isPublished;
 
   // Find the next upcoming booking (first one not yet passed)
   const sortedToday = [...todayBookings].sort((a, b) => toDate(a.datetime).getTime() - toDate(b.datetime).getTime());
@@ -1232,15 +1233,18 @@ export default function ProDashboardScreen() {
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg }}>
             <Card padding="lg" shadow="sm">
               {/* Header */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                  <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="rocket-outline" size={18} color={colors.primary} />
-                  </View>
-                  <View>
-                    <Text variant="body" style={{ fontWeight: '700' }}>Configurez votre espace</Text>
-                    <Text variant="caption" color="textSecondary">{completedSteps}/{totalSteps} étapes complétées</Text>
-                  </View>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm, marginBottom: spacing.md }}>
+                <View style={{ flex: 1 }}>
+                  <Text variant="body" style={{ fontWeight: '700' }}>
+                    {isPublished
+                      ? 'Votre page est en ligne 🎉'
+                      : `Votre page est prête à ${Math.round(progressPct * 100)} %`}
+                  </Text>
+                  <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                    {isPublished
+                      ? 'Quelques détails de plus pour tirer le meilleur de votre page.'
+                      : 'Finalisez votre page pour recevoir vos premières réservations.'}
+                  </Text>
                 </View>
                 <Text variant="h3" style={{ color: colors.primary, fontWeight: '800' }}>{Math.round(progressPct * 100)}%</Text>
               </View>
@@ -1252,7 +1256,36 @@ export default function ProDashboardScreen() {
 
               {/* Checklist */}
               <View style={{ gap: spacing.sm }}>
-                {setupSteps.map((step) => (
+                {setupSteps.map((step) => {
+                  // Finale CTA — the "publish" step becomes a prominent button.
+                  if (step.id === 'published' && !step.done) {
+                    return (
+                      <View
+                        key={step.id}
+                        style={{ marginTop: spacing.xs, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}
+                      >
+                        <Pressable
+                          onPress={() => router.push(step.route as any)}
+                          style={({ pressed }) => ({
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: spacing.xs,
+                            paddingVertical: spacing.md,
+                            borderRadius: 12,
+                            backgroundColor: colors.primary,
+                            opacity: pressed ? 0.9 : 1,
+                          })}
+                        >
+                          <Ionicons name="rocket-outline" size={18} color="#FFFFFF" />
+                          <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
+                            Publier ma page
+                          </Text>
+                        </Pressable>
+                      </View>
+                    );
+                  }
+                  return (
                   <Pressable
                     key={step.id}
                     onPress={step.done ? undefined : () => router.push(step.route as any)}
@@ -1292,7 +1325,8 @@ export default function ProDashboardScreen() {
                       <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
                     )}
                   </Pressable>
-                ))}
+                  );
+                })}
               </View>
             </Card>
           </View>
