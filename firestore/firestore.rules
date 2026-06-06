@@ -176,6 +176,14 @@ service cloud.firestore {
       }
     }
 
+    // === GLOBAL APP CONFIG (mobile update gate, maintenance, …) ===
+    // Public read — the app reads it on launch. Writes only via the Admin SDK
+    // (admin API route), never from the client.
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /_affiliateLogs/{logId} {
       allow read: if isAuthenticated();
       allow write: if false; // Admin SDK only

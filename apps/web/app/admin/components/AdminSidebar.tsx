@@ -22,6 +22,7 @@ import {
   KeyRound,
   FileText,
   Images,
+  Smartphone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -68,6 +69,12 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Blog', href: '/admin/articles', icon: <FileText className="w-5 h-5" /> },
       { label: 'Galeries landings', href: '/admin/galleries', icon: <Images className="w-5 h-5" /> },
+    ],
+  },
+  {
+    label: 'Système',
+    items: [
+      { label: 'Application mobile', href: '/admin/app', icon: <Smartphone className="w-5 h-5" /> },
     ],
   },
 ];

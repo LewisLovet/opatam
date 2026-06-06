@@ -11,6 +11,7 @@ import {
   LocationInitializer,
   MetaAuthSync,
   TrackingInitializer,
+  UpdateGate,
 } from '../components';
 import { DevFAB } from '../components/DevFAB';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
@@ -100,6 +101,11 @@ export default function RootLayout() {
           </AuthProvider>
         </ThemeProvider>
         </StripeProvider>
+        {/* Blocking update / maintenance gate — full-screen overlay
+            driven by Firestore config/mobile (admin back-office).
+            Rendered last so it sits on top of the entire app, incl.
+            the DevFAB. Fails open on any read error. */}
+        <UpdateGate />
       </View>
     </SafeAreaProvider>
   );

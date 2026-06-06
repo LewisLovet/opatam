@@ -1198,3 +1198,25 @@ export interface LandingGallery {
   /** Last write timestamp. */
   updatedAt: Date;
 }
+
+/**
+ * Global runtime config for the MOBILE app, stored at Firestore `config/mobile`.
+ * Read publicly by the app on launch; written only by admins (server-side).
+ * Drives the "update required" / "maintenance" blocking gate.
+ */
+export interface MobileAppConfig {
+  /** Installed native versions strictly BELOW this (semver) are blocked. */
+  minSupportedVersion: string;
+  /** Latest version available — shown on the gate / "update available". */
+  latestVersion?: string;
+  /** Hard block for everyone regardless of version (emergency switch). */
+  forceUpdate?: boolean;
+  /** Maintenance mode — block everyone with a message. */
+  maintenance?: boolean;
+  /** Optional custom message shown on the block screen. */
+  message?: string | null;
+  /** Deep links to the stores (fallbacks used when absent). */
+  iosStoreUrl?: string | null;
+  androidStoreUrl?: string | null;
+  updatedAt?: Date;
+}

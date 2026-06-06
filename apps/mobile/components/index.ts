@@ -94,3 +94,6 @@ export { UpgradeToStudioModal } from './UpgradeToStudioModal';
 
 // Trial Reminder
 export { TrialReminderBanner } from './TrialReminderBanner';
+
+// Update / maintenance gate (driven by Firestore config/mobile)
+export { UpdateGate } from './UpdateGate';
