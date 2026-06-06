@@ -28,6 +28,7 @@ import {
 } from '@booking-app/shared';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
+import { Input } from '../Input';
 
 export interface PreviewService {
   name: string;
@@ -255,22 +256,30 @@ export function ServiceChoicesPreview({
           })}
         </View>
       )}
-      {f.type === 'text' && (
-        <View
-          style={{
-            padding: spacing.sm,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderStyle: 'dashed',
-            borderColor: colors.border,
-            backgroundColor: colors.surfaceSecondary,
-          }}
-        >
-          <Text variant="caption" color="textMuted">
-            Réponse libre du client…
-          </Text>
-        </View>
-      )}
+      {f.type === 'text' &&
+        (mode === 'picker' ? (
+          <Input
+            placeholder="Votre réponse…"
+            value={value ?? ''}
+            onChangeText={onSet}
+            multiline
+          />
+        ) : (
+          <View
+            style={{
+              padding: spacing.sm,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderStyle: 'dashed',
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceSecondary,
+            }}
+          >
+            <Text variant="caption" color="textMuted">
+              Réponse libre du client…
+            </Text>
+          </View>
+        ))}
     </View>
   );
 
