@@ -1628,6 +1628,15 @@ export default function ProBookingDetailScreen() {
                           <Text variant="body" style={{ fontWeight: '700' }}>Nouveau total</Text>
                           <Text variant="h3" color="primary">{formatPrice(newTotalPrice)}</Text>
                         </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+                            <Text variant="caption" color="textMuted">Horaire</Text>
+                          </View>
+                          <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+                            {formatTime(booking.datetime)} – {formatEndTime(booking.datetime, newTotalDuration)}
+                          </Text>
+                        </View>
                         <Text variant="caption" color="textMuted">Durée totale : {formatDuration(newTotalDuration)}</Text>
                       </View>
                     </ScrollView>
