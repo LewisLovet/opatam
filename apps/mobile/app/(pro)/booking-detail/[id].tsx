@@ -1153,53 +1153,98 @@ export default function ProBookingDetailScreen() {
             {isMultiService ? 'Prestations' : 'Prestation'}
           </Text>
           {isMultiService ? (
-            <View style={{ gap: spacing.sm }}>
-              {bookingItems.map((item, idx) => (
-                <View key={`${item.serviceId}-${idx}`}>
+            <View>
+              {bookingItems.map((item, idx) => {
+                const isLast = idx === bookingItems.length - 1;
+                const canEdit =
+                  booking.status === 'pending_payment' ||
+                  booking.status === 'pending' ||
+                  booking.status === 'confirmed';
+                return (
                   <View
+                    key={`${item.serviceId}-${idx}`}
                     style={{
                       flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'baseline',
+                      alignItems: 'flex-start',
                       gap: spacing.sm,
+                      paddingVertical: spacing.sm,
+                      borderTopWidth: idx === 0 ? 0 : 1,
+                      borderTopColor: colors.border,
                     }}
                   >
-                    <Text variant="body" style={{ fontWeight: '700', flexShrink: 1 }}>
-                      {item.serviceName}
-                    </Text>
-                    <Text variant="caption" color="textSecondary" style={{ flexShrink: 0 }}>
-                      {formatDuration(item.duration)} · {formatPrice(item.price)}
-                    </Text>
-                  </View>
-                  <ServiceChoiceLines
-                    variations={item.selectedVariations}
-                    options={item.selectedOptions}
-                    info={item.selectedInfo}
-                    colors={colors}
-                    spacing={spacing}
-                  />
-                  {idx === bookingItems.length - 1 &&
-                    (booking.status === 'pending_payment' ||
-                      booking.status === 'pending' ||
-                      booking.status === 'confirmed') && (
-                      <Pressable
-                        onPress={handleRemoveLastService}
-                        disabled={removingLast}
-                        hitSlop={6}
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.xs, alignSelf: 'flex-start' }}
-                      >
-                        {removingLast ? (
-                          <ActivityIndicator size="small" color={colors.error} />
-                        ) : (
-                          <Ionicons name="trash-outline" size={14} color={colors.error} />
-                        )}
-                        <Text variant="caption" style={{ color: colors.error, fontWeight: '600' }}>
-                          Retirer cette prestation
+                    {/* Order badge — these prestations run back-to-back */}
+                    <View
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 11,
+                        backgroundColor: colors.primaryLight || '#e4effa',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginTop: 1,
+                      }}
+                    >
+                      <Text variant="caption" color="primary" style={{ fontWeight: '800', fontSize: 11 }}>
+                        {idx + 1}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm }}>
+                        <Text variant="body" style={{ fontWeight: '700', flexShrink: 1 }}>
+                          {item.serviceName}
                         </Text>
-                      </Pressable>
-                    )}
+                        <Text variant="body" style={{ fontWeight: '700', flexShrink: 0 }}>
+                          {item.price > 0 ? formatPrice(item.price) : 'Gratuit'}
+                        </Text>
+                      </View>
+                      <Text variant="caption" color="textMuted">{formatDuration(item.duration)}</Text>
+                      <ServiceChoiceLines
+                        variations={item.selectedVariations}
+                        options={item.selectedOptions}
+                        info={item.selectedInfo}
+                        colors={colors}
+                        spacing={spacing}
+                      />
+                      {isLast && canEdit && (
+                        <Pressable
+                          onPress={handleRemoveLastService}
+                          disabled={removingLast}
+                          hitSlop={6}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.xs, alignSelf: 'flex-start' }}
+                        >
+                          {removingLast ? (
+                            <ActivityIndicator size="small" color={colors.error} />
+                          ) : (
+                            <Ionicons name="trash-outline" size={14} color={colors.error} />
+                          )}
+                          <Text variant="caption" style={{ color: colors.error, fontWeight: '600' }}>
+                            Retirer cette prestation
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+
+              {/* Total */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                  paddingTop: spacing.sm,
+                  marginTop: spacing.xs,
+                }}
+              >
+                <Text variant="body" style={{ fontWeight: '800' }}>Total</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text variant="body" style={{ fontWeight: '800' }}>{formatPrice(booking.price)}</Text>
+                  <Text variant="caption" color="textMuted">{formatDuration(booking.duration)}</Text>
                 </View>
-              ))}
+              </View>
             </View>
           ) : (
             <>
