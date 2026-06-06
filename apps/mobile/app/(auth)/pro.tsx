@@ -51,6 +51,7 @@ import {
   InfoFieldsEditor,
 } from '../../components/business/ServiceChoicesEditor';
 import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
+import { OverlaySheet } from '../../components/OverlaySheet';
 import { trackEvent } from '../../lib/metaSdk';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -2005,39 +2006,31 @@ export default function ProRegisterScreen() {
         </View>
       </Modal>
 
-      {/* ── Aperçu client Modal ── */}
-      <Modal
+      {/* ── Aperçu client — bottom-sheet animée (parité avec l'éditeur) ── */}
+      <OverlaySheet
         visible={previewServiceIndex !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPreviewServiceIndex(null)}
+        onClose={() => setPreviewServiceIndex(null)}
+        heightPct={0.85}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { height: '85%', backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
-            <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 2 }}>
-              <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: colors.border }} />
-            </View>
-            <View style={[styles.modalHeader, { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, paddingTop: spacing.xs, borderBottomColor: colors.border }]}>
-              <Text variant="h3">Aperçu client</Text>
-              <Pressable onPress={() => setPreviewServiceIndex(null)}>
-                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
-              </Pressable>
-            </View>
-            {previewServiceIndex !== null && data.services[previewServiceIndex] && (
-              <ServiceChoicesPreview
-                service={{
-                  name: data.services[previewServiceIndex].name,
-                  price: Math.round((parseFloat(data.services[previewServiceIndex].price) || 0) * 100),
-                  duration: data.services[previewServiceIndex].duration,
-                  variations: sanitizeVariations(data.services[previewServiceIndex].variations ?? []),
-                  options: sanitizeOptions(data.services[previewServiceIndex].options ?? []),
-                  infoFields: sanitizeInfoFields(data.services[previewServiceIndex].infoFields ?? []),
-                }}
-              />
-            )}
-          </View>
+        <View style={[styles.modalHeader, { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomColor: colors.border }]}>
+          <Text variant="h3">Aperçu client</Text>
+          <Pressable onPress={() => setPreviewServiceIndex(null)}>
+            <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+          </Pressable>
         </View>
-      </Modal>
+        {previewServiceIndex !== null && data.services[previewServiceIndex] && (
+          <ServiceChoicesPreview
+            service={{
+              name: data.services[previewServiceIndex].name,
+              price: Math.round((parseFloat(data.services[previewServiceIndex].price) || 0) * 100),
+              duration: data.services[previewServiceIndex].duration,
+              variations: sanitizeVariations(data.services[previewServiceIndex].variations ?? []),
+              options: sanitizeOptions(data.services[previewServiceIndex].options ?? []),
+              infoFields: sanitizeInfoFields(data.services[previewServiceIndex].infoFields ?? []),
+            }}
+          />
+        )}
+      </OverlaySheet>
 
       {/* ── Duration Modal ── */}
       <Modal visible={showDurationModal} transparent animationType="slide">
