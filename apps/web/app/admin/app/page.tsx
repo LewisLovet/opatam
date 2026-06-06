@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button, Input, Textarea, Switch, Loader, useToast } from '@/components/ui';
-import { Smartphone, Save, AlertTriangle, Wrench } from 'lucide-react';
+import { Button, Input, Select, Textarea, Switch, Loader, useToast } from '@/components/ui';
+import { Smartphone, Save, AlertTriangle, Wrench, Plus, X, Tag } from 'lucide-react';
 
 interface AppConfigForm {
   minSupportedVersion: string;
   latestVersion: string;
+  releasedVersions: string[];
   forceUpdate: boolean;
   maintenance: boolean;
   message: string;
@@ -16,8 +17,9 @@ interface AppConfigForm {
 }
 
 const EMPTY: AppConfigForm = {
-  minSupportedVersion: '0.0.0',
+  minSupportedVersion: '',
   latestVersion: '',
+  releasedVersions: [],
   forceUpdate: false,
   maintenance: false,
   message: '',
@@ -25,11 +27,27 @@ const EMPTY: AppConfigForm = {
   androidStoreUrl: '',
 };
 
+const SEMVER_RE = /^\d+\.\d+\.\d+$/;
+
+/** Descending semver sort (newest first). */
+function sortDesc(versions: string[]): string[] {
+  return [...versions].sort((a, b) => {
+    const pa = a.split('.').map((n) => parseInt(n, 10) || 0);
+    const pb = b.split('.').map((n) => parseInt(n, 10) || 0);
+    for (let i = 0; i < 3; i++) {
+      if ((pb[i] ?? 0) !== (pa[i] ?? 0)) return (pb[i] ?? 0) - (pa[i] ?? 0);
+    }
+    return 0;
+  });
+}
+
 export default function AdminAppConfigPage() {
   const { user } = useAuth();
   const toast = useToast();
 
   const [form, setForm] = useState<AppConfigForm>(EMPTY);
+  const [currentAppVersion, setCurrentAppVersion] = useState<string | null>(null);
+  const [newVersion, setNewVersion] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -39,11 +57,15 @@ export default function AdminAppConfigPage() {
     try {
       const res = await fetch('/api/admin/app-config');
       const json = await res.json();
+      setCurrentAppVersion(json.currentAppVersion ?? null);
       const cfg = json.config;
       if (cfg) {
         setForm({
-          minSupportedVersion: cfg.minSupportedVersion ?? '0.0.0',
+          minSupportedVersion: cfg.minSupportedVersion ?? '',
           latestVersion: cfg.latestVersion ?? '',
+          releasedVersions: sortDesc(
+            Array.isArray(cfg.releasedVersions) ? cfg.releasedVersions : []
+          ),
           forceUpdate: !!cfg.forceUpdate,
           maintenance: !!cfg.maintenance,
           message: cfg.message ?? '',
@@ -72,18 +94,47 @@ export default function AdminAppConfigPage() {
   const set = <K extends keyof AppConfigForm>(key: K, value: AppConfigForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  const addVersion = (raw: string) => {
+    const v = raw.trim();
+    if (!SEMVER_RE.test(v)) {
+      toast.error('Format de version invalide (x.y.z)');
+      return;
+    }
+    if (form.releasedVersions.includes(v)) {
+      toast.error('Cette version est déjà dans la liste');
+      return;
+    }
+    set('releasedVersions', sortDesc([...form.releasedVersions, v]));
+    setNewVersion('');
+  };
+
+  const removeVersion = (v: string) => {
+    setForm((f) => ({
+      ...f,
+      releasedVersions: f.releasedVersions.filter((x) => x !== v),
+      // Clear selections that point to a now-removed version.
+      minSupportedVersion: f.minSupportedVersion === v ? '' : f.minSupportedVersion,
+      latestVersion: f.latestVersion === v ? '' : f.latestVersion,
+    }));
+  };
+
   const save = async () => {
     if (!user) return;
-    if (!/^\d+\.\d+\.\d+$/.test(form.minSupportedVersion.trim())) {
-      toast.error('Version minimale invalide (format x.y.z)');
+    if (form.forceUpdate && !SEMVER_RE.test(form.minSupportedVersion)) {
+      toast.error('Choisis une version minimale avant de forcer la mise à jour');
       return;
     }
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        // Default the threshold to 0.0.0 (blocks nobody) when left empty.
+        minSupportedVersion: form.minSupportedVersion || '0.0.0',
+      };
       const res = await fetch('/api/admin/app-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-uid': user.id },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -107,6 +158,14 @@ export default function AdminAppConfigPage() {
     );
   }
 
+  const versionOptions = form.releasedVersions.map((v) => ({
+    value: v,
+    label: v === currentAppVersion ? `${v} (version actuelle)` : v,
+  }));
+  const noVersions = form.releasedVersions.length === 0;
+  const canQuickAddCurrent =
+    !!currentAppVersion && !form.releasedVersions.includes(currentAppVersion);
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
@@ -122,35 +181,111 @@ export default function AdminAppConfigPage() {
         </div>
       </div>
 
-      {/* Versions */}
+      {/* Versions publiées (référentiel) */}
+      <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Versions publiées
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Le référentiel des versions réellement sorties. Les menus ci-dessous y piochent —
+            on évite ainsi de saisir une version au hasard.
+          </p>
+        </div>
+
+        {/* Chips */}
+        {noVersions ? (
+          <p className="text-sm text-gray-400 italic">Aucune version enregistrée pour le moment.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {form.releasedVersions.map((v) => (
+              <span
+                key={v}
+                className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-800 dark:text-gray-100"
+              >
+                <Tag className="w-3.5 h-3.5 text-gray-400" />
+                {v}
+                {v === currentAppVersion && (
+                  <span className="text-[10px] uppercase tracking-wide text-primary-600 dark:text-primary-400">
+                    actuelle
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeVersion(v)}
+                  className="ml-0.5 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-white dark:hover:bg-gray-800"
+                  aria-label={`Retirer ${v}`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Add */}
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <Input
+              value={newVersion}
+              onChange={(e) => setNewVersion(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addVersion(newVersion);
+                }
+              }}
+              placeholder="Ex. 1.5.0"
+            />
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => addVersion(newVersion)}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            Ajouter
+          </Button>
+        </div>
+        {canQuickAddCurrent && (
+          <button
+            type="button"
+            onClick={() => addVersion(currentAppVersion!)}
+            className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+          >
+            + Ajouter la version actuelle de l'app ({currentAppVersion})
+          </button>
+        )}
+      </section>
+
+      {/* Sélection des versions */}
       <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Versions
+          Versions de référence
         </h2>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Version minimale requise
-            </label>
-            <Input
+            <Select
+              label="Version minimale requise"
               value={form.minSupportedVersion}
               onChange={(e) => set('minSupportedVersion', e.target.value)}
-              placeholder="1.4.0"
+              placeholder={noVersions ? 'Ajoute d’abord une version' : 'Sélectionner…'}
+              options={versionOptions}
+              disabled={noVersions}
             />
             <p className="text-xs text-gray-400 mt-1">
-              En dessous, l'app affiche un blocage « Mise à jour requise ».
+              En dessous, l'app affiche le blocage « Mise à jour requise ».
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Dernière version publiée
-            </label>
-            <Input
+            <Select
+              label="Dernière version publiée"
               value={form.latestVersion}
               onChange={(e) => set('latestVersion', e.target.value)}
-              placeholder="1.4.0"
+              placeholder={noVersions ? 'Ajoute d’abord une version' : 'Aucune'}
+              options={versionOptions}
+              disabled={noVersions}
             />
-            <p className="text-xs text-gray-400 mt-1">Informatif (proposition de mise à jour).</p>
+            <p className="text-xs text-gray-400 mt-1">Informatif uniquement.</p>
           </div>
         </div>
       </section>

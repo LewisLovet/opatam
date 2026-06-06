@@ -1209,6 +1209,12 @@ export interface MobileAppConfig {
   minSupportedVersion: string;
   /** Latest version available — shown on the gate / "update available". */
   latestVersion?: string;
+  /**
+   * Curated list of versions actually released (semver, newest first).
+   * Feeds the admin dropdowns so the critical version fields are picked
+   * from known builds instead of free-typed (avoids human error).
+   */
+  releasedVersions?: string[];
   /** Hard block for everyone regardless of version (emergency switch). */
   forceUpdate?: boolean;
   /** Maintenance mode — block everyone with a message. */
