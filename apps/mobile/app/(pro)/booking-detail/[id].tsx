@@ -30,7 +30,7 @@ import {
   serviceRepository,
   serviceCategoryRepository,
 } from '@booking-app/firebase';
-import { formatDuration, serviceHasChoices } from '@booking-app/shared';
+import { formatDuration, serviceHasChoices, getServiceMinDuration } from '@booking-app/shared';
 import type {
   Booking,
   Member,
@@ -540,6 +540,9 @@ export default function ProBookingDetailScreen() {
   const [addingServiceId, setAddingServiceId] = useState<string | null>(null);
   // Service awaiting variation/option choices before being added (null = list).
   const [pendingChoiceService, setPendingChoiceService] = useState<WithId<Service> | null>(null);
+  // Per-service: does it fit in the free time right after this booking?
+  // (id absent / true = fits ; false = not enough time → greyed out)
+  const [serviceFit, setServiceFit] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!showAddService || !providerId) return;
@@ -552,6 +555,46 @@ export default function ProBookingDetailScreen() {
       .then((result) => setAddServiceCategories(result as WithId<ServiceCategory>[]))
       .catch(() => setAddServiceCategories([]));
   }, [showAddService, providerId]);
+
+  // Compute which prestations fit in the free time right after this booking
+  // (between its end and the next obstacle for that member). Greys out the
+  // ones too long. Uses the SAME availability check as the actual add.
+  useEffect(() => {
+    if (!showAddService || !booking || addServiceList.length === 0) {
+      setServiceFit({});
+      return;
+    }
+    const memberId = booking.memberId;
+    if (!memberId) {
+      setServiceFit({}); // no member assigned → can't check, allow all
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        addServiceList.map(async (s) => {
+          // Shortest reachable duration (variations only add time) + buffer.
+          const dur = getServiceMinDuration(s) + (s.bufferTime || 0);
+          try {
+            const ok = await schedulingService.isSlotAvailable({
+              providerId: booking.providerId,
+              memberId,
+              datetime: booking.endDatetime,
+              duration: dur,
+              excludeBookingId: booking.id,
+            });
+            return [s.id, ok] as const;
+          } catch {
+            return [s.id, true] as const; // fail-open
+          }
+        }),
+      );
+      if (!cancelled) setServiceFit(Object.fromEntries(entries));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showAddService, booking, addServiceList]);
 
   // Persist the chosen prestation (with optional variation/option selections).
   const submitAddService = useCallback(
@@ -612,11 +655,12 @@ export default function ProBookingDetailScreen() {
   const renderAddServiceRow = (s: WithId<Service>) => {
     const busy = addingServiceId === s.id;
     const hasChoices = serviceHasChoices(s);
+    const fits = serviceFit[s.id] !== false; // undefined (not checked) = fits
     return (
       <Pressable
         key={s.id}
-        onPress={() => handleServiceTap(s)}
-        disabled={!!addingServiceId}
+        onPress={() => fits && handleServiceTap(s)}
+        disabled={!!addingServiceId || !fits}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
@@ -626,28 +670,38 @@ export default function ProBookingDetailScreen() {
           borderWidth: 1,
           borderColor: colors.border,
           borderLeftWidth: 3,
-          borderLeftColor: s.color || colors.primary,
-          backgroundColor: pressed ? colors.surfaceSecondary : colors.background,
-          opacity: addingServiceId && !busy ? 0.5 : 1,
+          borderLeftColor: fits ? s.color || colors.primary : colors.border,
+          backgroundColor: pressed && fits ? colors.surfaceSecondary : colors.background,
+          opacity: !fits ? 0.5 : addingServiceId && !busy ? 0.5 : 1,
         })}
       >
         <View style={{ flex: 1 }}>
-          <Text variant="body" style={{ fontWeight: '600' }}>{s.name}</Text>
+          <Text variant="body" style={{ fontWeight: '600', color: fits ? colors.text : colors.textMuted }}>
+            {s.name}
+          </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 }}>
             <Text variant="caption" color="textSecondary">
               {formatDuration(s.duration)} · {formatPrice(s.price)}
             </Text>
-            {hasChoices && (
+            {!fits ? (
+              <View style={{ backgroundColor: (colors.error || '#DC2626') + '18', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                <Text variant="caption" style={{ fontSize: 10, fontWeight: '600', color: colors.error || '#DC2626' }}>
+                  Pas assez de temps
+                </Text>
+              </View>
+            ) : hasChoices ? (
               <View style={{ backgroundColor: colors.primaryLight || '#e4effa', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
                 <Text variant="caption" color="primary" style={{ fontSize: 10, fontWeight: '600' }}>
                   Options
                 </Text>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
         {busy ? (
           <ActivityIndicator color={colors.primary} />
+        ) : !fits ? (
+          <Ionicons name="time-outline" size={20} color={colors.textMuted} />
         ) : (
           <Ionicons name={hasChoices ? 'chevron-forward' : 'add-circle-outline'} size={22} color={colors.primary} />
         )}
