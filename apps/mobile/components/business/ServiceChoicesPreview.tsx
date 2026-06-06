@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import { View, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
   type ServiceVariation,
@@ -44,6 +45,7 @@ export function ServiceChoicesPreview({
   onConfirm,
   confirmLabel = 'Ajouter',
   confirmLoading = false,
+  safeAreaBottom = false,
 }: {
   service: PreviewService;
   /** 'preview' = read-only illustration ; 'picker' = the bottom CTA confirms
@@ -52,8 +54,13 @@ export function ServiceChoicesPreview({
   onConfirm?: (selections: ServiceSelections) => void;
   confirmLabel?: string;
   confirmLoading?: boolean;
+  /** Add the device's bottom safe-area inset to the sticky bar. Set when the
+   *  component sits flush against the screen bottom (full-screen step or
+   *  custom overlay) rather than inside a SafeAreaView / pageSheet. */
+  safeAreaBottom?: boolean;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const insets = useSafeAreaInsets();
   const [sel, setSel] = useState<ServiceSelections>(() => emptyServiceSelections());
 
   const hasChoices = serviceHasChoices(service);
@@ -322,12 +329,14 @@ export function ServiceChoicesPreview({
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
-          <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
-            Voici exactement ce que verra le client au moment de réserver.
-          </Text>
-        </View>
+        {mode !== 'picker' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
+            <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
+              Voici exactement ce que verra le client au moment de réserver.
+            </Text>
+          </View>
+        )}
 
         {!hasChoices && (
           <View
@@ -429,7 +438,9 @@ export function ServiceChoicesPreview({
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: spacing.lg,
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.lg,
+          paddingBottom: safeAreaBottom ? insets.bottom + spacing.md : spacing.lg,
           borderTopWidth: 1,
           borderTopColor: colors.border,
           backgroundColor: colors.background,

@@ -2027,6 +2027,7 @@ export default function ProRegisterScreen() {
         </View>
         {previewServiceIndex !== null && data.services[previewServiceIndex] && (
           <ServiceChoicesPreview
+            safeAreaBottom
             service={{
               name: data.services[previewServiceIndex].name,
               price: Math.round((parseFloat(data.services[previewServiceIndex].price) || 0) * 100),

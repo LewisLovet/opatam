@@ -1632,6 +1632,7 @@ export default function ServicesScreen() {
               </Pressable>
             </View>
             <ServiceChoicesPreview
+              safeAreaBottom
               service={{
                 name: form.name,
                 price: Math.round((parseFloat(form.price) || 0) * 100),

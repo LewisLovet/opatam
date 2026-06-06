@@ -160,6 +160,7 @@ export default function MemberSelectionScreen() {
         <ServiceChoicesPreview
           mode="picker"
           confirmLabel="Continuer"
+          safeAreaBottom
           onConfirm={(sel) => setSelections(sel)}
           service={{
             name: bookingService.name,
