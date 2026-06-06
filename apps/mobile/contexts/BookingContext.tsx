@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import type { Service, Member, Location, Provider } from '@booking-app/shared';
+import type { Service, Member, Location, Provider, ServiceSelections } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
 // Time slot from scheduling service
@@ -25,6 +25,9 @@ interface BookingState {
   service: WithId<Service> | null;
   serviceId: string | null;
 
+  // Client's variation / option / info choices for the service.
+  selections: ServiceSelections | null;
+
   // Selected member (team member performing the service)
   member: WithId<Member> | null;
   memberId: string | null;
@@ -41,6 +44,7 @@ interface BookingState {
 interface BookingContextValue extends BookingState {
   // Actions
   initBooking: (provider: WithId<Provider>, service: WithId<Service>) => void;
+  setSelections: (selections: ServiceSelections) => void;
   setMember: (member: WithId<Member>) => void;
   setLocation: (location: WithId<Location>) => void;
   setDateAndSlot: (date: Date, slot: TimeSlot) => void;
@@ -56,6 +60,7 @@ const initialState: BookingState = {
   providerId: null,
   service: null,
   serviceId: null,
+  selections: null,
   member: null,
   memberId: null,
   location: null,
@@ -78,6 +83,11 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       service,
       serviceId: service.id,
     });
+  }, []);
+
+  // Set the client's variation/option/info choices.
+  const setSelections = useCallback((selections: ServiceSelections) => {
+    setState((prev) => ({ ...prev, selections }));
   }, []);
 
   // Set member (and their associated location)
@@ -136,6 +146,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       value={{
         ...state,
         initBooking,
+        setSelections,
         setMember,
         setLocation,
         setDateAndSlot,

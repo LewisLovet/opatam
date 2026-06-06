@@ -25,6 +25,7 @@ import {
   StickyConfirmButton,
 } from '../../../../components';
 import { useBooking } from '../../../../contexts';
+import { computeServiceTotal } from '@booking-app/shared';
 import { availabilityRepository } from '@booking-app/firebase';
 import { useAvailableSlots, useNextAvailableDate, type TimeSlot } from '../../../../hooks';
 
@@ -98,7 +99,20 @@ export default function DateSelectionScreen() {
   const { providerId } = useLocalSearchParams<{ providerId: string }>();
 
   // Booking context
-  const { provider, service, member, memberId, setDateAndSlot } = useBooking();
+  const { provider, service, member, memberId, selections, setDateAndSlot } = useBooking();
+
+  // Effective totals (variations chosen) — used for the slot length + the
+  // summary bar so the client sees the real price/duration.
+  const eff = service
+    ? selections
+      ? computeServiceTotal(service, selections)
+      : { price: service.price, duration: service.duration }
+    : null;
+  // Reserve the full visit length (effective duration + the service buffer).
+  const durationOverride =
+    service && selections
+      ? computeServiceTotal(service, selections).duration + (service.bufferTime || 0)
+      : undefined;
 
   // Get next available date to auto-scroll calendar
   const { nextAvailableDate } = useNextAvailableDate(providerId, memberId ?? undefined);
@@ -154,6 +168,7 @@ export default function DateSelectionScreen() {
     memberId,
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
+    durationOverride,
   });
 
   // Group slots by period
@@ -244,8 +259,8 @@ export default function DateSelectionScreen() {
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
             <BookingSummary
               serviceName={service.name}
-              duration={service.duration}
-              price={service.price}
+              duration={eff?.duration ?? service.duration}
+              price={eff?.price ?? service.price}
               providerName={provider.businessName}
               providerPhotoURL={provider.photoURL}
               memberName={member?.name}

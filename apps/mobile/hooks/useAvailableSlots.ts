@@ -28,6 +28,10 @@ export interface UseAvailableSlotsParams {
   memberId: string | undefined;
   startDate: Date;
   endDate: Date;
+  /** Full effective length of the visit (variations chosen) including the
+   *  service buffer. When set, overrides the service's base duration so the
+   *  slot search reserves the right amount of time. */
+  durationOverride?: number;
 }
 
 export interface UseAvailableSlotsResult {
@@ -88,7 +92,7 @@ function groupSlotsByDay(slots: TimeSlot[]): DaySlots[] {
 }
 
 export function useAvailableSlots(params: UseAvailableSlotsParams): UseAvailableSlotsResult {
-  const { providerId, serviceId, memberId, startDate, endDate } = params;
+  const { providerId, serviceId, memberId, startDate, endDate, durationOverride } = params;
 
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +114,7 @@ export function useAvailableSlots(params: UseAvailableSlotsParams): UseAvailable
         memberId,
         startDate,
         endDate,
+        durationOverride,
       });
       // Deduplicate slots to avoid duplicate keys in UI
       const uniqueSlots = deduplicateSlots(data);
@@ -121,7 +126,7 @@ export function useAvailableSlots(params: UseAvailableSlotsParams): UseAvailable
     } finally {
       setLoading(false);
     }
-  }, [providerId, serviceId, memberId, startDate.getTime(), endDate.getTime()]);
+  }, [providerId, serviceId, memberId, startDate.getTime(), endDate.getTime(), durationOverride]);
 
   useEffect(() => {
     fetchSlots();

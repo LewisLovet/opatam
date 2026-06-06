@@ -19,8 +19,10 @@ import { useTheme } from '../../../../theme';
 import { Text, Card, EmptyState, useToast } from '../../../../components';
 import { useBooking } from '../../../../contexts';
 import { useProviderById, useServices, useMembers, useLocations } from '../../../../hooks';
+import { computeServiceTotal, serviceHasChoices } from '@booking-app/shared';
 import type { Member } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+import { ServiceChoicesPreview } from '../../../../components/business/ServiceChoicesPreview';
 
 export default function MemberSelectionScreen() {
   const { colors, spacing, radius } = useTheme();
@@ -30,7 +32,14 @@ export default function MemberSelectionScreen() {
   const { providerId, serviceId } = useLocalSearchParams<{ providerId: string; serviceId: string }>();
 
   // Booking context
-  const { initBooking, setMember, provider: bookingProvider, service: bookingService } = useBooking();
+  const {
+    initBooking,
+    setMember,
+    setSelections,
+    provider: bookingProvider,
+    service: bookingService,
+    selections,
+  } = useBooking();
 
   // Fetch data - use useProviderById since we have the ID, not the slug
   const { provider, loading: loadingProvider, error: providerError } = useProviderById(providerId);
@@ -58,12 +67,17 @@ export default function MemberSelectionScreen() {
     router.push(`/(client)/booking/${providerId}/date`);
   };
 
-  // Auto-select if only one member
+  // The client still has variation/option choices to make for this service.
+  const choicesPending =
+    !!bookingService && serviceHasChoices(bookingService) && !selections;
+
+  // Auto-select if only one member — but NOT before the client has made
+  // their choices (otherwise we'd skip the choices step).
   useEffect(() => {
-    if (!loadingMembers && members.length === 1) {
+    if (!loadingMembers && members.length === 1 && !choicesPending) {
       handleSelectMember(members[0]);
     }
-  }, [loadingMembers, members]);
+  }, [loadingMembers, members, choicesPending]);
 
   // Get location name for a member
   const getMemberLocation = (member: WithId<Member>): string => {
@@ -129,6 +143,38 @@ export default function MemberSelectionScreen() {
     );
   }
 
+  // ── Choices step: the client picks variations / options before continuing ──
+  if (choicesPending && bookingService) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
+          <Pressable
+            onPress={() => router.back()}
+            style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </Pressable>
+          <Text variant="h2" style={styles.headerTitle}>Vos options</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <ServiceChoicesPreview
+          mode="picker"
+          confirmLabel="Continuer"
+          onConfirm={(sel) => setSelections(sel)}
+          service={{
+            name: bookingService.name,
+            price: bookingService.price,
+            duration: bookingService.duration,
+            photoURL: bookingService.photoURL,
+            variations: bookingService.variations ?? [],
+            options: bookingService.options ?? [],
+            infoFields: bookingService.infoFields ?? [],
+          }}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -153,11 +199,11 @@ export default function MemberSelectionScreen() {
                   {bookingService.name}
                 </Text>
                 <Text variant="caption" color="textSecondary">
-                  {bookingService.duration} min
+                  {(selections ? computeServiceTotal(bookingService, selections).duration : bookingService.duration)} min
                 </Text>
               </View>
               <Text variant="h3" color="primary">
-                {(bookingService.price / 100).toFixed(2)} €
+                {((selections ? computeServiceTotal(bookingService, selections).price : bookingService.price) / 100).toFixed(2)} €
               </Text>
             </View>
           </Card>
