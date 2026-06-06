@@ -3,6 +3,15 @@
     "name": "Opatam",
     "slug": "opatam",
     "version": "1.4.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7888b402-9fbd-40fb-a64f-146f27c140d6",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "opatam",
