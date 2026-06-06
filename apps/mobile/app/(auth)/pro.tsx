@@ -52,6 +52,7 @@ import {
 } from '../../components/business/ServiceChoicesEditor';
 import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
 import { OverlaySheet } from '../../components/OverlaySheet';
+import { LoadingTips } from '../../components/LoadingTips';
 import { trackEvent } from '../../lib/metaSdk';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -392,6 +393,9 @@ export default function ProRegisterScreen() {
   const [expandedChoices, setExpandedChoices] = useState<Record<number, boolean>>({});
   // Service index whose client-view preview overlay is open (null = closed).
   const [previewServiceIndex, setPreviewServiceIndex] = useState<number | null>(null);
+  // True once the account is created: shows the finalisation screen while the
+  // auth state propagates and the (auth) layout redirects to /(pro).
+  const [finalizing, setFinalizing] = useState(false);
   const [showLocationNameModal, setShowLocationNameModal] = useState(false);
   const [showCountryModal, setShowCountryModal] = useState(false);
 
@@ -757,8 +761,6 @@ export default function ProRegisterScreen() {
         schedule
       );
 
-      await authService.logout();
-
       // Meta SDK: signal the completed registration. Same event
       // name & semantics as the web /register flow, so the Meta
       // dashboard sees a single funnel across surfaces.
@@ -766,12 +768,11 @@ export default function ProRegisterScreen() {
         contentCategory: 'pro',
       });
 
-      showToast({
-        variant: 'success',
-        message: 'Compte créé avec succès ! Connectez-vous pour commencer.',
-      });
-
-      router.replace('/(auth)/login');
+      // Auto-login : on NE déconnecte PAS. registerProvider a déjà connecté
+      // l'utilisateur ; le layout (auth) redirige réactivement vers /(pro)
+      // dès que userData est chargé. On affiche l'écran de finalisation
+      // (LoadingTips) le temps que l'auth se propage.
+      setFinalizing(true);
     } catch (err: any) {
       console.error('Registration error:', err);
       const msg = err?.message || "Erreur lors de l'inscription";
@@ -1790,6 +1791,12 @@ export default function ProRegisterScreen() {
   // ---------------------------------------------------------------------------
 
   const isLastStep = currentStep === STEPS.length - 1;
+
+  // Account just created → show the branded finalisation screen while the
+  // auth state propagates and the (auth) layout redirects to /(pro).
+  if (finalizing) {
+    return <LoadingTips message="Création de votre espace…" />;
+  }
 
   return (
     <LinearGradient

@@ -39,6 +39,10 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
     onChange([...variations, newVariation()]);
   };
 
+  const moveVariation = (vi: number, dir: -1 | 1) => {
+    onChange(moveItem(variations, vi, dir));
+  };
+
   const updateOption = (
     vi: number,
     oi: number,
@@ -90,13 +94,17 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
                 autoCapitalize="sentences"
               />
             </View>
-            <Pressable
-              onPress={() => removeVariation(vi)}
-              hitSlop={8}
-              style={{ paddingBottom: 12 }}
-            >
-              <Ionicons name="trash-outline" size={22} color={colors.error} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingBottom: 12 }}>
+              <Pressable onPress={() => moveVariation(vi, -1)} hitSlop={6} disabled={vi === 0}>
+                <Ionicons name="chevron-up" size={20} color={vi === 0 ? colors.disabled : colors.textSecondary} />
+              </Pressable>
+              <Pressable onPress={() => moveVariation(vi, 1)} hitSlop={6} disabled={vi === variations.length - 1}>
+                <Ionicons name="chevron-down" size={20} color={vi === variations.length - 1 ? colors.disabled : colors.textSecondary} />
+              </Pressable>
+              <Pressable onPress={() => removeVariation(vi)} hitSlop={6}>
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
+              </Pressable>
+            </View>
           </View>
 
           {/* Choices */}

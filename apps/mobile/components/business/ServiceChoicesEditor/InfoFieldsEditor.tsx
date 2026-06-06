@@ -8,7 +8,7 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { type ServiceInfoField, newInfoField } from '@booking-app/shared';
+import { type ServiceInfoField, newInfoField, moveItem } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Input } from '../../Input';
@@ -38,6 +38,10 @@ export function InfoFieldsEditor({ fields, onChange }: InfoFieldsEditorProps) {
 
   const addField = () => {
     onChange([...fields, newInfoField()]);
+  };
+
+  const moveField = (fi: number, dir: -1 | 1) => {
+    onChange(moveItem(fields, fi, dir));
   };
 
   const updateValue = (fi: number, vi: number, text: string) => {
@@ -78,13 +82,17 @@ export function InfoFieldsEditor({ fields, onChange }: InfoFieldsEditorProps) {
                 autoCapitalize="sentences"
               />
             </View>
-            <Pressable
-              onPress={() => removeField(fi)}
-              hitSlop={8}
-              style={{ paddingBottom: 12 }}
-            >
-              <Ionicons name="trash-outline" size={22} color={colors.error} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingBottom: 12 }}>
+              <Pressable onPress={() => moveField(fi, -1)} hitSlop={6} disabled={fi === 0}>
+                <Ionicons name="chevron-up" size={20} color={fi === 0 ? colors.disabled : colors.textSecondary} />
+              </Pressable>
+              <Pressable onPress={() => moveField(fi, 1)} hitSlop={6} disabled={fi === fields.length - 1}>
+                <Ionicons name="chevron-down" size={20} color={fi === fields.length - 1 ? colors.disabled : colors.textSecondary} />
+              </Pressable>
+              <Pressable onPress={() => removeField(fi)} hitSlop={6}>
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
+              </Pressable>
+            </View>
           </View>
 
           {/* Type selector */}

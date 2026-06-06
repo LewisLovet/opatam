@@ -11,7 +11,7 @@
 import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { type ServiceOption, newOption } from '@booking-app/shared';
+import { type ServiceOption, newOption, moveItem } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Input } from '../../Input';
@@ -38,6 +38,10 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
 
   const addOption = () => {
     onChange([...options, newOption()]);
+  };
+
+  const moveOption = (oi: number, dir: -1 | 1) => {
+    onChange(moveItem(options, oi, dir));
   };
 
   return (
@@ -68,13 +72,17 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
                   autoCapitalize="sentences"
                 />
               </View>
-              <Pressable
-                onPress={() => removeOption(oi)}
-                hitSlop={8}
-                style={{ paddingBottom: 12 }}
-              >
-                <Ionicons name="trash-outline" size={22} color={colors.error} />
-              </Pressable>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingBottom: 12 }}>
+                <Pressable onPress={() => moveOption(oi, -1)} hitSlop={6} disabled={oi === 0}>
+                  <Ionicons name="chevron-up" size={20} color={oi === 0 ? colors.disabled : colors.textSecondary} />
+                </Pressable>
+                <Pressable onPress={() => moveOption(oi, 1)} hitSlop={6} disabled={oi === options.length - 1}>
+                  <Ionicons name="chevron-down" size={20} color={oi === options.length - 1 ? colors.disabled : colors.textSecondary} />
+                </Pressable>
+                <Pressable onPress={() => removeOption(oi)} hitSlop={6}>
+                  <Ionicons name="trash-outline" size={20} color={colors.error} />
+                </Pressable>
+              </View>
             </View>
 
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
