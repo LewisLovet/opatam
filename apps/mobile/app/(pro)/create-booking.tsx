@@ -21,6 +21,7 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  Modal,
   KeyboardAvoidingView,
   Platform,
   Animated,
@@ -51,8 +52,14 @@ import {
   memberService,
   locationService,
 } from '@booking-app/firebase';
-import type { Service, Member, Location, ProviderClient } from '@booking-app/shared';
+import {
+  computeServiceTotal,
+  emptyServiceSelections,
+  serviceHasChoices,
+} from '@booking-app/shared';
+import type { Service, Member, Location, ProviderClient, ServiceSelections } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
 import { useProviderClients } from '../../hooks/useProviderClients';
 
 // ─── Client autocomplete (step "Informations client") ──────────────────
@@ -550,14 +557,25 @@ export default function CreateBookingScreen() {
   // confirmation primary view; the rest are booked back-to-back in the
   // same visit (durations sum, single buffer after the last one).
   const [selectedServices, setSelectedServices] = useState<WithId<Service>[]>([]);
+  // Variation / option / info selections per chosen service (id → selections).
+  const [selectionsByService, setSelectionsByService] = useState<Record<string, ServiceSelections>>({});
+  // Service awaiting variation/option choices (picker modal). null = none.
+  const [pendingChoiceService, setPendingChoiceService] = useState<WithId<Service> | null>(null);
+
   const selectedService = selectedServices[0] ?? null;
+  // Effective price/duration of a service given its chosen variations/options.
+  const effFor = useCallback(
+    (s: WithId<Service>) =>
+      computeServiceTotal(s, selectionsByService[s.id] ?? emptyServiceSelections()),
+    [selectionsByService],
+  );
   const totalServiceDuration = useMemo(
-    () => selectedServices.reduce((sum, s) => sum + s.duration, 0),
-    [selectedServices],
+    () => selectedServices.reduce((sum, s) => sum + effFor(s).duration, 0),
+    [selectedServices, effFor],
   );
   const totalServicePrice = useMemo(
-    () => selectedServices.reduce((sum, s) => sum + s.price, 0),
-    [selectedServices],
+    () => selectedServices.reduce((sum, s) => sum + effFor(s).price, 0),
+    [selectedServices, effFor],
   );
   // Full visit length for the availability search (services back-to-back +
   // one buffer after the last). Mirrors booking.service aggregation.
@@ -853,17 +871,42 @@ export default function CreateBookingScreen() {
     }
   }, [step, router, animateStepTransition]);
 
-  // Toggle a service in/out of the visit (multi-prestation). Tapping no
-  // longer auto-advances — the user adds as many as needed then taps
-  // "Continuer". Any chosen slot is cleared since the duration changed.
-  const handleSelectService = useCallback((service: WithId<Service>) => {
-    setSelectedServices((prev) =>
-      prev.some((s) => s.id === service.id)
-        ? prev.filter((s) => s.id !== service.id)
-        : [...prev, service],
-    );
-    setSelectedSlot(null);
-  }, []);
+  const addServiceToCart = useCallback(
+    (service: WithId<Service>, selections?: ServiceSelections) => {
+      setSelectedServices((prev) =>
+        prev.some((s) => s.id === service.id) ? prev : [...prev, service],
+      );
+      if (selections) {
+        setSelectionsByService((prev) => ({ ...prev, [service.id]: selections }));
+      }
+      setSelectedSlot(null);
+    },
+    [],
+  );
+
+  // Tap a service: toggle off if already in the visit; else open the choices
+  // picker (variations/options) when it has any, otherwise add it directly.
+  // Tapping no longer auto-advances — add as many as needed then "Continuer".
+  const handleSelectService = useCallback(
+    (service: WithId<Service>) => {
+      if (selectedServices.some((s) => s.id === service.id)) {
+        setSelectedServices((prev) => prev.filter((s) => s.id !== service.id));
+        setSelectionsByService((prev) => {
+          const next = { ...prev };
+          delete next[service.id];
+          return next;
+        });
+        setSelectedSlot(null);
+        return;
+      }
+      if (serviceHasChoices(service)) {
+        setPendingChoiceService(service);
+      } else {
+        addServiceToCart(service);
+      }
+    },
+    [selectedServices, addServiceToCart],
+  );
 
   const proceedFromServices = useCallback(() => {
     if (selectedServices.length === 0) return;
@@ -972,7 +1015,10 @@ export default function CreateBookingScreen() {
           serviceId: selectedService.id,
           // Multi-prestation visit: the server recomputes durations/prices
           // and aggregates. serviceId (first) kept for back-compat.
-          items: selectedServices.map((s) => ({ serviceId: s.id })),
+          items: selectedServices.map((s) => ({
+            serviceId: s.id,
+            selections: selectionsByService[s.id],
+          })),
           memberId: selectedSlot.memberId,
           locationId: memberLocation.id,
           datetime: new Date(selectedSlot.datetime).toISOString(),
@@ -1010,6 +1056,7 @@ export default function CreateBookingScreen() {
   }, [
     selectedService,
     selectedServices,
+    selectionsByService,
     selectedSlot,
     providerId,
     memberLocation,
@@ -1113,7 +1160,7 @@ export default function CreateBookingScreen() {
                         <Text variant="h3">{service.name}</Text>
 
                         {/* Duration + Price pills */}
-                        <View style={[styles.pillRow, { marginTop: spacing.sm }]}>
+                        <View style={[styles.pillRow, { marginTop: spacing.sm, flexWrap: 'wrap', rowGap: spacing.xs }]}>
                           {/* Duration pill */}
                           <View
                             style={[
@@ -1161,9 +1208,28 @@ export default function CreateBookingScreen() {
                               color="primary"
                               style={{ fontWeight: '600', fontSize: 13 }}
                             >
-                              {formatPrice(service.price)}
+                              {formatPrice(isSelected ? effFor(service).price : service.price)}
                             </Text>
                           </View>
+
+                          {/* Variations indicator */}
+                          {serviceHasChoices(service) && (
+                            <View
+                              style={[
+                                styles.pill,
+                                {
+                                  backgroundColor: colors.surfaceSecondary,
+                                  borderRadius: radius.full,
+                                  paddingHorizontal: spacing.sm,
+                                  paddingVertical: spacing.xs,
+                                  marginLeft: spacing.sm,
+                                },
+                              ]}
+                            >
+                              <Ionicons name="options-outline" size={13} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                              <Text variant="caption" color="textSecondary">Variantes</Text>
+                            </View>
+                          )}
                         </View>
 
                         {/* Description (max 2 lines) */}
@@ -1182,7 +1248,13 @@ export default function CreateBookingScreen() {
                       {/* Add / selected indicator */}
                       <View style={styles.serviceChevron}>
                         <Ionicons
-                          name={isSelected ? 'checkmark-circle' : 'add-circle-outline'}
+                          name={
+                            isSelected
+                              ? 'checkmark-circle'
+                              : serviceHasChoices(service)
+                                ? 'chevron-forward'
+                                : 'add-circle-outline'
+                          }
                           size={24}
                           color={isSelected ? colors.primary : colors.textMuted}
                         />
@@ -1560,7 +1632,7 @@ export default function CreateBookingScreen() {
                         {idx + 1}. {s.name}
                       </Text>
                       <Text variant="bodySmall" color="textSecondary">
-                        {s.duration} min · {formatPrice(s.price)}
+                        {effFor(s).duration} min · {formatPrice(effFor(s).price)}
                       </Text>
                     </View>
                   ))}
@@ -1737,6 +1809,61 @@ export default function CreateBookingScreen() {
           </ScrollView>
         )}
       </Animated.View>
+
+      {/* ── Variations / options picker (service with choices) ── */}
+      <Modal
+        visible={pendingChoiceService !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPendingChoiceService(null)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: spacing.lg,
+              paddingVertical: spacing.md,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.divider,
+            }}
+          >
+            <Pressable
+              onPress={() => setPendingChoiceService(null)}
+              hitSlop={8}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 }}
+            >
+              <Ionicons name="chevron-back" size={22} color={colors.text} />
+              <Text variant="h3" numberOfLines={1} style={{ flexShrink: 1 }}>
+                {pendingChoiceService?.name}
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => setPendingChoiceService(null)} hitSlop={8}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </Pressable>
+          </View>
+          {pendingChoiceService && (
+            <ServiceChoicesPreview
+              mode="picker"
+              confirmLabel="Ajouter"
+              onConfirm={(sel) => {
+                addServiceToCart(pendingChoiceService, sel);
+                setPendingChoiceService(null);
+              }}
+              service={{
+                name: pendingChoiceService.name,
+                price: pendingChoiceService.price,
+                duration: pendingChoiceService.duration,
+                photoURL: pendingChoiceService.photoURL,
+                variations: pendingChoiceService.variations ?? [],
+                options: pendingChoiceService.options ?? [],
+                infoFields: pendingChoiceService.infoFields ?? [],
+              }}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
