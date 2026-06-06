@@ -103,12 +103,21 @@ export default function ConfirmBookingScreen() {
     selections,
     selectedDate,
     selectedSlot,
+    cart,
     isReady,
     resetBooking,
   } = useBooking();
 
-  // Effective totals once variations/options are chosen (null = no choices).
-  const eff = service && selections ? computeServiceTotal(service, selections) : null;
+  // Whole-visit totals across the cart.
+  const cartPrice = cart.reduce(
+    (sum, c) => sum + computeServiceTotal(c.service, c.selections).price,
+    0,
+  );
+  const cartDuration = cart.reduce(
+    (sum, c) => sum + computeServiceTotal(c.service, c.selections).duration,
+    0,
+  );
+  const isMulti = cart.length > 1;
 
   // Get locations to display location info
   const { locations } = useLocations(providerId);
@@ -183,8 +192,9 @@ export default function ConfirmBookingScreen() {
         body: JSON.stringify({
           providerId: provider.id,
           serviceId: service.id,
-          // Variation/option/info choices made by the client (if any).
-          selections: selections ?? undefined,
+          // Multi-prestation visit: the server recomputes durations/prices and
+          // aggregates. serviceId (first) kept for back-compat.
+          items: cart.map((c) => ({ serviceId: c.service.id, selections: c.selections })),
           locationId: locationId!,
           memberId: memberId || undefined,
           datetime: selectedSlot.datetime,
@@ -445,11 +455,31 @@ export default function ConfirmBookingScreen() {
               <Ionicons name="pricetag-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.detailContent}>
-              <Text variant="caption" color="textSecondary">Prestation</Text>
-              <Text variant="body" style={{ fontWeight: '600' }}>{service.name}</Text>
-              <Text variant="caption" color="textSecondary">
-                {eff ? eff.duration : service.duration} min - {eff ? `${(eff.price / 100).toFixed(2)} €` : service.priceMax ? `De ${(service.price / 100).toFixed(2)} € à ${(service.priceMax / 100).toFixed(2)} €` : `${(service.price / 100).toFixed(2)} €`}
-              </Text>
+              <Text variant="caption" color="textSecondary">{isMulti ? 'Prestations' : 'Prestation'}</Text>
+              {isMulti ? (
+                <>
+                  {cart.map((c, idx) => {
+                    const e = computeServiceTotal(c.service, c.selections);
+                    return (
+                      <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, marginTop: idx ? 2 : 0 }}>
+                        <Text variant="body" style={{ fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                          {idx + 1}. {c.service.name}
+                        </Text>
+                        <Text variant="caption" color="textSecondary">
+                          {e.duration} min · {(e.price / 100).toFixed(2)} €
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </>
+              ) : (
+                <>
+                  <Text variant="body" style={{ fontWeight: '600' }}>{service.name}</Text>
+                  <Text variant="caption" color="textSecondary">
+                    {cartDuration} min - {(cartPrice / 100).toFixed(2)} €
+                  </Text>
+                </>
+              )}
             </View>
           </View>
 
@@ -557,7 +587,7 @@ export default function ConfirmBookingScreen() {
           <View style={styles.priceRow}>
             <Text variant="body">Total</Text>
             <Text variant="h2" color="primary">
-              {eff ? (eff.price === 0 ? 'Gratuit' : `${(eff.price / 100).toFixed(2)} €`) : service.price === 0 && !service.priceMax ? 'Gratuit' : service.priceMax ? `De ${(service.price / 100).toFixed(2)} à ${(service.priceMax / 100).toFixed(2)} €` : `${(service.price / 100).toFixed(2)} €`}
+              {cartPrice === 0 ? 'Gratuit' : `${(cartPrice / 100).toFixed(2)} €`}
             </Text>
           </View>
           <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>

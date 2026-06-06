@@ -99,19 +99,21 @@ export default function DateSelectionScreen() {
   const { providerId } = useLocalSearchParams<{ providerId: string }>();
 
   // Booking context
-  const { provider, service, member, memberId, selections, setDateAndSlot } = useBooking();
+  const { provider, service, member, memberId, cart, setDateAndSlot } = useBooking();
 
-  // Effective totals (variations chosen) — used for the slot length + the
-  // summary bar so the client sees the real price/duration.
-  const eff = service
-    ? selections
-      ? computeServiceTotal(service, selections)
-      : { price: service.price, duration: service.duration }
-    : null;
-  // Reserve the full visit length (effective duration + the service buffer).
+  // Whole-visit effective totals across the cart (variations chosen).
+  const cartPrice = cart.reduce(
+    (sum, c) => sum + computeServiceTotal(c.service, c.selections).price,
+    0,
+  );
+  const cartDuration = cart.reduce(
+    (sum, c) => sum + computeServiceTotal(c.service, c.selections).duration,
+    0,
+  );
+  // Reserve the full visit length (sum of durations + the LAST service's buffer).
   const durationOverride =
-    service && selections
-      ? computeServiceTotal(service, selections).duration + (service.bufferTime || 0)
+    cart.length > 0
+      ? cartDuration + (cart[cart.length - 1].service.bufferTime || 0)
       : undefined;
 
   // Get next available date to auto-scroll calendar
@@ -258,9 +260,9 @@ export default function DateSelectionScreen() {
         {service && provider && (
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
             <BookingSummary
-              serviceName={service.name}
-              duration={eff?.duration ?? service.duration}
-              price={eff?.price ?? service.price}
+              serviceName={cart.length > 1 ? `${cart.length} prestations` : service.name}
+              duration={cartDuration}
+              price={cartPrice}
               providerName={provider.businessName}
               providerPhotoURL={provider.photoURL}
               memberName={member?.name}

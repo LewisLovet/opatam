@@ -3,7 +3,7 @@
  * Allows user to select a team member for their appointment
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,16 +11,17 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../../theme';
-import { Text, Card, EmptyState, useToast } from '../../../../components';
+import { Text, Card, EmptyState, ServiceCategory, useToast } from '../../../../components';
 import { useBooking } from '../../../../contexts';
-import { useProviderById, useServices, useMembers, useLocations } from '../../../../hooks';
+import { useProviderById, useServices, useServiceCategories, useMembers, useLocations } from '../../../../hooks';
 import { computeServiceTotal, serviceHasChoices } from '@booking-app/shared';
-import type { Member } from '@booking-app/shared';
+import type { Member, Service } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { ServiceChoicesPreview } from '../../../../components/business/ServiceChoicesPreview';
 
@@ -34,50 +35,65 @@ export default function MemberSelectionScreen() {
   // Booking context
   const {
     initBooking,
+    addToCart,
+    removeFromCart,
     setMember,
-    setSelections,
-    provider: bookingProvider,
-    service: bookingService,
-    selections,
+    cart,
   } = useBooking();
 
   // Fetch data - use useProviderById since we have the ID, not the slug
   const { provider, loading: loadingProvider, error: providerError } = useProviderById(providerId);
   const { services, loading: loadingServices } = useServices(providerId);
+  const { categories } = useServiceCategories(providerId);
   const { members, loading: loadingMembers, error: membersError } = useMembers(providerId);
   const { locations } = useLocations(providerId);
 
-  // Initialize booking when data is loaded
+  // Service awaiting its variation/option choices (picker overlay).
+  const [pendingChoiceService, setPendingChoiceService] = useState<WithId<Service> | null>(null);
+  // "Ajouter une prestation" modal (provider's full service list).
+  const [showServicePicker, setShowServicePicker] = useState(false);
+
+  // Add a service to the cart — open its choices picker first when it has any.
+  const handleAddService = useCallback(
+    (s: WithId<Service>) => {
+      setShowServicePicker(false);
+      if (serviceHasChoices(s)) setPendingChoiceService(s);
+      else addToCart(s);
+    },
+    [addToCart],
+  );
+
+  // Initialise the provider + seed the cart with the deep-linked first service.
+  const [seeded, setSeeded] = useState(false);
   useEffect(() => {
-    if (provider && services.length > 0 && serviceId) {
-      const selectedService = services.find((s) => s.id === serviceId);
-      if (selectedService && !bookingProvider) {
-        initBooking(provider, selectedService);
-      }
+    if (seeded || !provider || services.length === 0) return;
+    initBooking(provider); // fresh: provider + empty cart
+    const first = serviceId ? services.find((s) => s.id === serviceId) : undefined;
+    if (first) {
+      if (serviceHasChoices(first)) setPendingChoiceService(first);
+      else addToCart(first);
     }
-  }, [provider, services, serviceId, initBooking, bookingProvider]);
+    setSeeded(true);
+  }, [seeded, provider, services, serviceId, initBooking, addToCart]);
 
   // Loading state
   const isLoading = loadingProvider || loadingServices || loadingMembers;
 
-  // Handle member selection
+  // Cart total price (effective, in cents).
+  const cartTotalPrice = useMemo(
+    () => cart.reduce((sum, c) => sum + computeServiceTotal(c.service, c.selections).price, 0),
+    [cart],
+  );
+
+  // Proceed to date for the chosen member.
   const handleSelectMember = (member: WithId<Member>) => {
+    if (cart.length === 0) {
+      showToast({ variant: 'warning', message: 'Ajoutez au moins une prestation' });
+      return;
+    }
     setMember(member);
-    // Navigate to date selection
     router.push(`/(client)/booking/${providerId}/date`);
   };
-
-  // The client still has variation/option choices to make for this service.
-  const choicesPending =
-    !!bookingService && serviceHasChoices(bookingService) && !selections;
-
-  // Auto-select if only one member — but NOT before the client has made
-  // their choices (otherwise we'd skip the choices step).
-  useEffect(() => {
-    if (!loadingMembers && members.length === 1 && !choicesPending) {
-      handleSelectMember(members[0]);
-    }
-  }, [loadingMembers, members, choicesPending]);
 
   // Get location name for a member
   const getMemberLocation = (member: WithId<Member>): string => {
@@ -143,33 +159,38 @@ export default function MemberSelectionScreen() {
     );
   }
 
-  // ── Choices step: the client picks variations / options before continuing ──
-  if (choicesPending && bookingService) {
+  // ── Choices step: the client picks a prestation's variations / options ──
+  if (pendingChoiceService) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => setPendingChoiceService(null)}
             style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
           >
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </Pressable>
-          <Text variant="h2" style={styles.headerTitle}>Vos options</Text>
+          <Text variant="h2" style={styles.headerTitle} numberOfLines={1}>
+            {pendingChoiceService.name}
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
         <ServiceChoicesPreview
           mode="picker"
-          confirmLabel="Continuer"
+          confirmLabel="Ajouter"
           safeAreaBottom
-          onConfirm={(sel) => setSelections(sel)}
+          onConfirm={(sel) => {
+            addToCart(pendingChoiceService, sel);
+            setPendingChoiceService(null);
+          }}
           service={{
-            name: bookingService.name,
-            price: bookingService.price,
-            duration: bookingService.duration,
-            photoURL: bookingService.photoURL,
-            variations: bookingService.variations ?? [],
-            options: bookingService.options ?? [],
-            infoFields: bookingService.infoFields ?? [],
+            name: pendingChoiceService.name,
+            price: pendingChoiceService.price,
+            duration: pendingChoiceService.duration,
+            photoURL: pendingChoiceService.photoURL,
+            variations: pendingChoiceService.variations ?? [],
+            options: pendingChoiceService.options ?? [],
+            infoFields: pendingChoiceService.infoFields ?? [],
           }}
         />
       </View>
@@ -186,30 +207,81 @@ export default function MemberSelectionScreen() {
         >
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
-        <Text variant="h2" style={styles.headerTitle}>Choisir un membre</Text>
+        <Text variant="h2" style={styles.headerTitle}>Votre réservation</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Service info */}
-      {bookingService && (
-        <View style={[styles.serviceInfo, { paddingHorizontal: spacing.lg, marginTop: spacing.md }]}>
-          <Card padding="md" shadow="sm">
-            <View style={styles.serviceRow}>
-              <View style={{ flex: 1 }}>
-                <Text variant="body" style={{ fontWeight: '600' }}>
-                  {bookingService.name}
-                </Text>
-                <Text variant="caption" color="textSecondary">
-                  {(selections ? computeServiceTotal(bookingService, selections).duration : bookingService.duration)} min
-                </Text>
-              </View>
-              <Text variant="h3" color="primary">
-                {((selections ? computeServiceTotal(bookingService, selections).price : bookingService.price) / 100).toFixed(2)} €
+      {/* Cart — the prestations booked in this visit */}
+      <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
+        <Card padding="md" shadow="sm">
+          {cart.length === 0 ? (
+            <Text variant="bodySmall" color="textSecondary">
+              Aucune prestation sélectionnée.
+            </Text>
+          ) : (
+            <View style={{ gap: spacing.sm }}>
+              {cart.map((item, idx) => {
+                const eff = computeServiceTotal(item.service, item.selections);
+                return (
+                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="body" style={{ fontWeight: '600' }} numberOfLines={1}>
+                        {item.service.name}
+                      </Text>
+                      <Text variant="caption" color="textSecondary">
+                        {eff.duration} min · {(eff.price / 100).toFixed(2)} €
+                      </Text>
+                    </View>
+                    <Pressable onPress={() => removeFromCart(idx)} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
+                      <Ionicons name="close-circle" size={22} color={colors.textMuted} />
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          <Pressable
+            onPress={() => setShowServicePicker(true)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing.xs,
+              marginTop: cart.length ? spacing.md : spacing.sm,
+              paddingVertical: spacing.sm,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderStyle: 'dashed',
+              borderColor: colors.primary,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Ionicons name="add" size={18} color={colors.primary} />
+            <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
+              Ajouter une prestation
+            </Text>
+          </Pressable>
+
+          {cart.length > 1 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                marginTop: spacing.md,
+                paddingTop: spacing.sm,
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+              }}
+            >
+              <Text variant="body" style={{ fontWeight: '700' }}>Total</Text>
+              <Text variant="body" color="primary" style={{ fontWeight: '700' }}>
+                {(cartTotalPrice / 100).toFixed(2)} €
               </Text>
             </View>
-          </Card>
-        </View>
-      )}
+          )}
+        </Card>
+      </View>
 
       {/* Members list */}
       <ScrollView
@@ -289,6 +361,72 @@ export default function MemberSelectionScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Add a prestation: provider's service list ── */}
+      <Modal
+        visible={showServicePicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowServicePicker(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: spacing.lg,
+              paddingVertical: spacing.md,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <Text variant="h3">Ajouter une prestation</Text>
+            <Pressable onPress={() => setShowServicePicker(false)} hitSlop={8}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
+            {(() => {
+              const known = new Set(categories.map((c) => c.id));
+              const groups: { id: string; title: string; items: WithId<Service>[] }[] = [];
+              for (const cat of categories) {
+                const items = services.filter((s) => s.categoryId === cat.id);
+                if (items.length) groups.push({ id: cat.id, title: cat.name, items });
+              }
+              const uncat = services.filter((s) => !s.categoryId || !known.has(s.categoryId));
+              if (uncat.length) {
+                groups.push({
+                  id: '__uncat__',
+                  title: categories.length ? 'Autres prestations' : 'Prestations',
+                  items: uncat,
+                });
+              }
+              return groups.map((g) => (
+                <ServiceCategory
+                  key={g.id}
+                  title={g.title}
+                  services={g.items.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    description: s.description,
+                    photoURL: s.photoURL,
+                    duration: s.duration,
+                    price: s.price / 100,
+                    priceMax: s.priceMax ? s.priceMax / 100 : null,
+                  }))}
+                  onSelectService={(id) => {
+                    const svc = services.find((s) => s.id === id);
+                    if (svc) handleAddService(svc);
+                  }}
+                  collapsible={groups.length > 1}
+                  defaultExpanded
+                />
+              ));
+            })()}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
