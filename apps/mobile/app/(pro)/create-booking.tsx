@@ -546,7 +546,26 @@ export default function CreateBookingScreen() {
   const [loadingData, setLoadingData] = useState(true);
 
   // -- Step 1 -----------------------------------------------------------------
-  const [selectedService, setSelectedService] = useState<WithId<Service> | null>(null);
+  // Multi-prestation cart. The FIRST service drives the member/slot/
+  // confirmation primary view; the rest are booked back-to-back in the
+  // same visit (durations sum, single buffer after the last one).
+  const [selectedServices, setSelectedServices] = useState<WithId<Service>[]>([]);
+  const selectedService = selectedServices[0] ?? null;
+  const totalServiceDuration = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + s.duration, 0),
+    [selectedServices],
+  );
+  const totalServicePrice = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + s.price, 0),
+    [selectedServices],
+  );
+  // Full visit length for the availability search (services back-to-back +
+  // one buffer after the last). Mirrors booking.service aggregation.
+  const totalVisitDuration = useMemo(() => {
+    if (selectedServices.length === 0) return 0;
+    const lastBuffer = selectedServices[selectedServices.length - 1].bufferTime || 0;
+    return totalServiceDuration + lastBuffer;
+  }, [selectedServices, totalServiceDuration]);
 
   // -- Step 2 -----------------------------------------------------------------
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -672,6 +691,7 @@ export default function CreateBookingScreen() {
               memberId: member.id,
               startDate: today,
               endDate: lookAhead,
+              durationOverride: totalVisitDuration,
             });
             result[member.id] = memberSlots.length > 0 ? memberSlots[0].datetime : null;
           } catch {
@@ -688,7 +708,7 @@ export default function CreateBookingScreen() {
 
     fetchNextAvail();
     return () => { cancelled = true; };
-  }, [needsMemberStep, step, STEP_MEMBER, selectedService, providerId, activeMembers]);
+  }, [needsMemberStep, step, STEP_MEMBER, selectedService, providerId, activeMembers, totalVisitDuration]);
 
   // -- Fetch closed days for selected member (for CalendarStrip) --------------
   useEffect(() => {
@@ -740,6 +760,8 @@ export default function CreateBookingScreen() {
               memberId: member.id,
               startDate: selectedDate,
               endDate: selectedDate,
+              // Total length of the whole visit (all prestations + buffer).
+              durationOverride: totalVisitDuration,
             });
             return memberSlots.map((slot) => ({
               ...slot,
@@ -782,7 +804,7 @@ export default function CreateBookingScreen() {
     };
 
     loadSlots();
-  }, [step, STEP_TIMESLOT, selectedDate, selectedService, providerId, activeMembers, selectedMemberId]);
+  }, [step, STEP_TIMESLOT, selectedDate, selectedService, providerId, activeMembers, selectedMemberId, totalVisitDuration]);
 
   // -- Grouped slots by period ------------------------------------------------
   const groupedSlots = useMemo(() => {
@@ -831,16 +853,24 @@ export default function CreateBookingScreen() {
     }
   }, [step, router, animateStepTransition]);
 
-  const handleSelectService = useCallback(
-    (service: WithId<Service>) => {
-      setSelectedService(service);
-      animateStepTransition('forward', () => {
-        // Go to member step if multiple members, otherwise timeslot step
-        setStep((needsMemberStep ? STEP_MEMBER : STEP_TIMESLOT) as Step);
-      });
-    },
-    [animateStepTransition, needsMemberStep, STEP_TIMESLOT],
-  );
+  // Toggle a service in/out of the visit (multi-prestation). Tapping no
+  // longer auto-advances — the user adds as many as needed then taps
+  // "Continuer". Any chosen slot is cleared since the duration changed.
+  const handleSelectService = useCallback((service: WithId<Service>) => {
+    setSelectedServices((prev) =>
+      prev.some((s) => s.id === service.id)
+        ? prev.filter((s) => s.id !== service.id)
+        : [...prev, service],
+    );
+    setSelectedSlot(null);
+  }, []);
+
+  const proceedFromServices = useCallback(() => {
+    if (selectedServices.length === 0) return;
+    animateStepTransition('forward', () => {
+      setStep((needsMemberStep ? STEP_MEMBER : STEP_TIMESLOT) as Step);
+    });
+  }, [selectedServices.length, animateStepTransition, needsMemberStep, STEP_TIMESLOT]);
 
   const handleSelectMember = useCallback(
     (memberId: string) => {
@@ -940,6 +970,9 @@ export default function CreateBookingScreen() {
         body: JSON.stringify({
           providerId,
           serviceId: selectedService.id,
+          // Multi-prestation visit: the server recomputes durations/prices
+          // and aggregates. serviceId (first) kept for back-compat.
+          items: selectedServices.map((s) => ({ serviceId: s.id })),
           memberId: selectedSlot.memberId,
           locationId: memberLocation.id,
           datetime: new Date(selectedSlot.datetime).toISOString(),
@@ -976,6 +1009,7 @@ export default function CreateBookingScreen() {
     }
   }, [
     selectedService,
+    selectedServices,
     selectedSlot,
     providerId,
     memberLocation,
@@ -1043,7 +1077,9 @@ export default function CreateBookingScreen() {
       >
         {/* ── Step: Select Service (always step 1) ─────────────────────── */}
         {step === 1 && (
+          <View style={styles.flex}>
           <ScrollView
+            style={styles.flex}
             contentContainerStyle={[styles.scrollContent, { padding: spacing.lg }]}
             showsVerticalScrollIndicator={false}
           >
@@ -1055,7 +1091,7 @@ export default function CreateBookingScreen() {
               />
             ) : (
               services.map((service) => {
-                const isSelected = selectedService?.id === service.id;
+                const isSelected = selectedServices.some((s) => s.id === service.id);
                 return (
                   <Card
                     key={service.id}
@@ -1143,9 +1179,13 @@ export default function CreateBookingScreen() {
                         ) : null}
                       </View>
 
-                      {/* Right chevron */}
+                      {/* Add / selected indicator */}
                       <View style={styles.serviceChevron}>
-                        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                        <Ionicons
+                          name={isSelected ? 'checkmark-circle' : 'add-circle-outline'}
+                          size={24}
+                          color={isSelected ? colors.primary : colors.textMuted}
+                        />
                       </View>
                     </View>
                   </Card>
@@ -1153,6 +1193,36 @@ export default function CreateBookingScreen() {
               })
             )}
           </ScrollView>
+
+          {selectedServices.length > 0 && (
+            <View
+              style={[
+                styles.fixedBottomButton,
+                {
+                  padding: spacing.lg,
+                  paddingBottom: spacing.xl,
+                  backgroundColor: colors.background,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.divider,
+                },
+              ]}
+            >
+              {selectedServices.length > 1 && (
+                <Text variant="caption" color="textSecondary" style={{ textAlign: 'center', marginBottom: spacing.sm }}>
+                  {selectedServices.length} prestations · {totalServiceDuration} min · {formatPrice(totalServicePrice)}
+                </Text>
+              )}
+              <Button
+                title={selectedServices.length > 1 ? `Continuer — ${selectedServices.length} prestations` : 'Continuer'}
+                variant="primary"
+                size="lg"
+                onPress={proceedFromServices}
+                fullWidth
+                leftIcon={<Ionicons name="arrow-forward" size={20} color="#FFFFFF" />}
+              />
+            </View>
+          )}
+          </View>
         )}
 
         {/* ── Step: Select Member (only when multiple members) ──────────── */}
@@ -1462,19 +1532,40 @@ export default function CreateBookingScreen() {
           >
             {/* Receipt-style card */}
             <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.lg }}>
-              {/* Service name + price header */}
+              {/* Service name + price header (count when multi) */}
               <View style={styles.receiptHeader}>
                 <Text variant="h2" style={styles.receiptServiceName}>
-                  {selectedService.name}
+                  {selectedServices.length > 1
+                    ? `${selectedServices.length} prestations`
+                    : selectedService.name}
                 </Text>
                 <Text
                   variant="h2"
                   color="primary"
                   style={{ fontWeight: '700' }}
                 >
-                  {formatPrice(selectedService.price)}
+                  {formatPrice(totalServicePrice)}
                 </Text>
               </View>
+
+              {/* Per-prestation breakdown (multi only) */}
+              {selectedServices.length > 1 && (
+                <View style={{ marginTop: spacing.sm, gap: spacing.xs }}>
+                  {selectedServices.map((s, idx) => (
+                    <View
+                      key={s.id}
+                      style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm }}
+                    >
+                      <Text variant="bodySmall" color="textSecondary" style={{ flex: 1 }} numberOfLines={1}>
+                        {idx + 1}. {s.name}
+                      </Text>
+                      <Text variant="bodySmall" color="textSecondary">
+                        {s.duration} min · {formatPrice(s.price)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               {/* Dashed divider */}
               <View
@@ -1515,7 +1606,7 @@ export default function CreateBookingScreen() {
                   </View>
                   <View style={styles.detailTextColumn}>
                     <Text variant="caption" color="textMuted">Durée</Text>
-                    <Text variant="body">{selectedService.duration} min</Text>
+                    <Text variant="body">{totalServiceDuration} min</Text>
                   </View>
                 </View>
 
