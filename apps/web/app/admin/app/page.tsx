@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, Select, Textarea, Switch, Loader, useToast } from '@/components/ui';
-import { Smartphone, Save, AlertTriangle, Wrench, Plus, X, Tag } from 'lucide-react';
+import {
+  Smartphone,
+  Save,
+  AlertTriangle,
+  Wrench,
+  Plus,
+  X,
+  Tag,
+  Rocket,
+  Bug,
+} from 'lucide-react';
 
 interface AppConfigForm {
   minSupportedVersion: string;
@@ -12,6 +22,8 @@ interface AppConfigForm {
   forceUpdate: boolean;
   maintenance: boolean;
   message: string;
+  features: string[];
+  fixes: string[];
   iosStoreUrl: string;
   androidStoreUrl: string;
 }
@@ -23,6 +35,8 @@ const EMPTY: AppConfigForm = {
   forceUpdate: false,
   maintenance: false,
   message: '',
+  features: [],
+  fixes: [],
   iosStoreUrl: '',
   androidStoreUrl: '',
 };
@@ -48,6 +62,8 @@ export default function AdminAppConfigPage() {
   const [form, setForm] = useState<AppConfigForm>(EMPTY);
   const [currentAppVersion, setCurrentAppVersion] = useState<string | null>(null);
   const [newVersion, setNewVersion] = useState('');
+  const [newFeature, setNewFeature] = useState('');
+  const [newFix, setNewFix] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -69,6 +85,8 @@ export default function AdminAppConfigPage() {
           forceUpdate: !!cfg.forceUpdate,
           maintenance: !!cfg.maintenance,
           message: cfg.message ?? '',
+          features: Array.isArray(cfg.releaseNotes?.features) ? cfg.releaseNotes.features : [],
+          fixes: Array.isArray(cfg.releaseNotes?.fixes) ? cfg.releaseNotes.fixes : [],
           iosStoreUrl: cfg.iosStoreUrl ?? '',
           androidStoreUrl: cfg.androidStoreUrl ?? '',
         });
@@ -118,6 +136,20 @@ export default function AdminAppConfigPage() {
     }));
   };
 
+  const addNote = (kind: 'features' | 'fixes', raw: string) => {
+    const v = raw.trim();
+    if (!v) return;
+    set(kind, [...form[kind], v]);
+    if (kind === 'features') setNewFeature('');
+    else setNewFix('');
+  };
+
+  const removeNote = (kind: 'features' | 'fixes', idx: number) =>
+    set(
+      kind,
+      form[kind].filter((_, i) => i !== idx)
+    );
+
   const save = async () => {
     if (!user) return;
     if (form.forceUpdate && !SEMVER_RE.test(form.minSupportedVersion)) {
@@ -130,6 +162,7 @@ export default function AdminAppConfigPage() {
         ...form,
         // Default the threshold to 0.0.0 (blocks nobody) when left empty.
         minSupportedVersion: form.minSupportedVersion || '0.0.0',
+        releaseNotes: { features: form.features, fixes: form.fixes },
       };
       const res = await fetch('/api/admin/app-config', {
         method: 'POST',
@@ -338,6 +371,118 @@ export default function AdminAppConfigPage() {
             placeholder="Ex. Une nouvelle version est disponible avec des améliorations importantes."
             rows={3}
           />
+        </div>
+      </section>
+
+      {/* Nouveautés de la version */}
+      <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Nouveautés de la version
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Affiché en liste stylisée sur l'écran de mise à jour vu par le client.
+          </p>
+        </div>
+
+        {/* Nouveautés */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+            <Rocket className="w-4 h-4 text-primary-500" />
+            Nouvelles fonctionnalités
+          </div>
+          {form.features.length > 0 && (
+            <ul className="space-y-2">
+              {form.features.map((f, i) => (
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg px-3 py-2"
+                >
+                  <span className="text-sm text-gray-800 dark:text-gray-100">{f}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeNote('features', i)}
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-500"
+                    aria-label="Retirer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Input
+                value={newFeature}
+                onChange={(e) => setNewFeature(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addNote('features', newFeature);
+                  }
+                }}
+                placeholder="Ex. Réservation de plusieurs prestations à la suite"
+              />
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => addNote('features', newFeature)}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              Ajouter
+            </Button>
+          </div>
+        </div>
+
+        {/* Corrections */}
+        <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+            <Bug className="w-4 h-4 text-emerald-500" />
+            Corrections de bugs
+          </div>
+          {form.fixes.length > 0 && (
+            <ul className="space-y-2">
+              {form.fixes.map((f, i) => (
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2"
+                >
+                  <span className="text-sm text-gray-800 dark:text-gray-100">{f}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeNote('fixes', i)}
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-500"
+                    aria-label="Retirer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Input
+                value={newFix}
+                onChange={(e) => setNewFix(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addNote('fixes', newFix);
+                  }
+                }}
+                placeholder="Ex. Correction de l'affichage des créneaux"
+              />
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => addNote('fixes', newFix)}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              Ajouter
+            </Button>
+          </div>
         </div>
       </section>
 

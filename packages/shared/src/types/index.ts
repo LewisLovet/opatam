@@ -1221,6 +1221,14 @@ export interface MobileAppConfig {
   maintenance?: boolean;
   /** Optional custom message shown on the block screen. */
   message?: string | null;
+  /**
+   * Structured "what's new" shown on the update screen, split into
+   * new features and bug fixes. Rendered as a styled list client-side.
+   */
+  releaseNotes?: {
+    features?: string[];
+    fixes?: string[];
+  } | null;
   /** Deep links to the stores (fallbacks used when absent). */
   iosStoreUrl?: string | null;
   androidStoreUrl?: string | null;

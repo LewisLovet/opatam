@@ -100,6 +100,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Structured release notes (features / fixes) — trimmed, non-empty, capped.
+    const cleanList = (v: unknown): string[] =>
+      Array.isArray(v)
+        ? v
+            .map((x) => (typeof x === 'string' ? x.trim() : ''))
+            .filter(Boolean)
+            .slice(0, 20)
+        : [];
+    const releaseNotes = {
+      features: cleanList(body.releaseNotes?.features),
+      fixes: cleanList(body.releaseNotes?.fixes),
+    };
+
     const data = {
       minSupportedVersion,
       latestVersion,
@@ -107,6 +120,7 @@ export async function POST(request: NextRequest) {
       forceUpdate: !!body.forceUpdate,
       maintenance: !!body.maintenance,
       message: str(body.message),
+      releaseNotes,
       iosStoreUrl: str(body.iosStoreUrl),
       androidStoreUrl: str(body.androidStoreUrl),
       updatedAt: new Date(),
