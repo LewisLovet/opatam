@@ -764,6 +764,75 @@ export class BookingService {
     }
     return updated;
   }
+
+  /**
+   * Remove the LAST prestation from a multi-service booking. Mirror of
+   * `addServiceToBooking`: shortens duration/price and pulls back endDatetime.
+   * A booking must keep at least one prestation — when only one would remain
+   * the call is rejected (cancel the whole booking instead). When it drops
+   * back to a single prestation, `items` is cleared (the top-level fields
+   * already reflect that first prestation).
+   */
+  async removeLastServiceFromBooking(
+    bookingId: string,
+    adminUserId: string,
+  ): Promise<WithId<Booking>> {
+    const booking = await bookingRepository.getById(bookingId);
+    if (!booking) {
+      throw new Error('Réservation non trouvée');
+    }
+    await this.verifyProviderAccess(booking.providerId, adminUserId);
+
+    const mutableStatuses: BookingStatus[] = ['pending_payment', 'pending', 'confirmed'];
+    if (!mutableStatuses.includes(booking.status)) {
+      throw new Error('Ce rendez-vous ne peut plus être modifié.');
+    }
+
+    const items: BookingServiceItem[] =
+      booking.items && booking.items.length > 0
+        ? booking.items
+        : [
+            {
+              serviceId: booking.serviceId,
+              serviceName: booking.serviceName,
+              serviceColor: booking.serviceColor ?? null,
+              duration: booking.duration,
+              price: booking.price,
+              selectedVariations: booking.selectedVariations ?? [],
+              selectedOptions: booking.selectedOptions ?? [],
+              selectedInfoValues: booking.selectedInfoValues ?? {},
+              selectedInfo: booking.selectedInfo ?? [],
+            },
+          ];
+
+    if (items.length <= 1) {
+      throw new Error(
+        'Une réservation doit garder au moins une prestation. Annulez le rendez-vous à la place.',
+      );
+    }
+
+    const remaining = items.slice(0, -1);
+    const newDuration = remaining.reduce((sum, i) => sum + i.duration, 0);
+    const newPrice = remaining.reduce((sum, i) => sum + i.price, 0);
+    const newEndDatetime = new Date(booking.datetime.getTime() + newDuration * 60 * 1000);
+
+    await bookingRepository.update(bookingId, {
+      // Back to a single prestation → drop the per-item list (top-level
+      // fields already reflect the first/only prestation).
+      items: remaining.length >= 2 ? remaining : [],
+      serviceName: remaining.map((i) => i.serviceName).join(' + '),
+      duration: newDuration,
+      price: newPrice,
+      priceMax: null,
+      endDatetime: newEndDatetime,
+    });
+
+    const updated = await bookingRepository.getById(bookingId);
+    if (!updated) {
+      throw new Error('Erreur lors de la mise à jour de la réservation');
+    }
+    return updated;
+  }
 }
 
 // Singleton instance

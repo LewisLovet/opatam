@@ -555,6 +555,7 @@ export default function ProBookingDetailScreen() {
     service: WithId<Service>;
     selections?: ServiceSelections;
   } | null>(null);
+  const [removingLast, setRemovingLast] = useState(false);
 
   useEffect(() => {
     if (!showAddService || !providerId) return;
@@ -627,6 +628,35 @@ export default function ProBookingDetailScreen() {
     },
     [booking, user, loadBooking],
   );
+
+  // Remove the LAST prestation from a multi-prestation booking.
+  const handleRemoveLastService = useCallback(() => {
+    if (!booking || !user?.uid) return;
+    const items = booking.items ?? [];
+    const lastName = items[items.length - 1]?.serviceName ?? 'cette prestation';
+    Alert.alert(
+      'Retirer la prestation',
+      `Retirer « ${lastName} » de ce rendez-vous ? La durée et le prix seront recalculés.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Retirer',
+          style: 'destructive',
+          onPress: async () => {
+            setRemovingLast(true);
+            try {
+              await bookingService.removeLastServiceFromBooking(booking.id, user.uid);
+              await loadBooking();
+            } catch (e: any) {
+              Alert.alert('Erreur', e?.message || 'Impossible de retirer la prestation.');
+            } finally {
+              setRemovingLast(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [booking, user, loadBooking]);
 
   // Tap a service → open the choices picker if it has any, else go straight
   // to the confirmation recap.
@@ -1148,6 +1178,26 @@ export default function ProBookingDetailScreen() {
                     colors={colors}
                     spacing={spacing}
                   />
+                  {idx === bookingItems.length - 1 &&
+                    (booking.status === 'pending_payment' ||
+                      booking.status === 'pending' ||
+                      booking.status === 'confirmed') && (
+                      <Pressable
+                        onPress={handleRemoveLastService}
+                        disabled={removingLast}
+                        hitSlop={6}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.xs, alignSelf: 'flex-start' }}
+                      >
+                        {removingLast ? (
+                          <ActivityIndicator size="small" color={colors.error} />
+                        ) : (
+                          <Ionicons name="trash-outline" size={14} color={colors.error} />
+                        )}
+                        <Text variant="caption" style={{ color: colors.error, fontWeight: '600' }}>
+                          Retirer cette prestation
+                        </Text>
+                      </Pressable>
+                    )}
                 </View>
               ))}
             </View>
