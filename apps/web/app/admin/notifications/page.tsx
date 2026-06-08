@@ -289,6 +289,10 @@ export default function AdminNotificationsPage() {
 
   const startEdit = (row: NotifRow) => {
     setEditingId(row.id);
+    // Backfill the tutorial thumbnail from the live tutorials list when
+    // the stored notif predates the thumbnail feature, so the preview
+    // (and a re-save) pick it up without re-selecting the tutorial.
+    const linkedTuto = tutorials.find((t) => t.slug === (row.ctaArticleSlug ?? ''));
     setForm({
       title: row.title ?? '',
       body: row.body ?? '',
@@ -301,8 +305,8 @@ export default function AdminNotificationsPage() {
       imageUrl: row.imageUrl ?? '',
       ctaLabel: row.ctaLabel ?? '',
       ctaArticleSlug: row.ctaArticleSlug ?? '',
-      ctaThumbUrl: (row as any).ctaThumbUrl ?? '',
-      ctaIsVideo: !!(row as any).ctaIsVideo,
+      ctaThumbUrl: (row as any).ctaThumbUrl || linkedTuto?.thumbUrl || '',
+      ctaIsVideo: !!(row as any).ctaIsVideo || !!linkedTuto?.isVideo,
       isPublished: !!row.isPublished,
       sendPush: !!row.sendPush,
     });
