@@ -99,6 +99,63 @@ interface ProviderResult {
   photoURL?: string | null;
 }
 
+/** Live preview mimicking how the notification renders in the mobile app
+ *  (drawer row + detail). Updates as the admin types. */
+function NotifPreview({ form }: { form: NotifForm }) {
+  const Icon = ICON_OPTIONS.find((o) => o.value === form.iconName)?.Icon ?? Megaphone;
+  const title = form.title.trim() || 'Titre de la notification';
+  const body = form.body.trim() || 'Message court affiché dans la liste.';
+  const detail = form.modalBody.trim() || body;
+  const ctaLabel = form.ctaLabel.trim() || 'Voir le tutoriel';
+
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-3">
+        Aperçu (vue mobile)
+      </p>
+
+      {/* Drawer row */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 flex items-start gap-3">
+        <div className="w-9 h-9 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+          <Icon className="w-[18px] h-[18px] text-primary-600 dark:text-primary-400" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />
+            <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{title}</p>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{body}</p>
+        </div>
+      </div>
+
+      {/* Detail card */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 mt-3">
+        <div className="w-12 h-12 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center mb-3">
+          <Icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+        </div>
+        <p className="font-extrabold text-gray-900 dark:text-white">{title}</p>
+        {form.imageUrl.trim() ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={form.imageUrl.trim()}
+            alt=""
+            className="w-full h-32 object-cover rounded-lg mt-3"
+          />
+        ) : null}
+        <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 whitespace-pre-line leading-relaxed">
+          {detail}
+        </p>
+        {form.ctaArticleSlug ? (
+          <div className="mt-4 flex items-center justify-center gap-2 bg-primary-600 text-white rounded-xl py-2.5 text-sm font-bold">
+            <PlayCircle className="w-4 h-4" />
+            {ctaLabel}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminNotificationsPage() {
   const { user } = useAuth();
   const toast = useToast();
@@ -284,6 +341,8 @@ export default function AdminNotificationsPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             {editingId ? 'Modifier la notification' : 'Nouvelle notification'}
           </h2>
+
+          <NotifPreview form={form} />
 
           <div className="grid sm:grid-cols-2 gap-4">
             <Select

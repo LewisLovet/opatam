@@ -144,7 +144,9 @@ export function NotificationsDrawer({
             styles.panel,
             {
               backgroundColor: colors.background,
-              paddingTop: insets.top,
+              // +12 of breathing room below the status bar / Dynamic
+              // Island so the header never butts against the safe area.
+              paddingTop: insets.top + 12,
               paddingBottom: insets.bottom,
               width: PANEL_WIDTH,
               transform: [{ translateX }],
