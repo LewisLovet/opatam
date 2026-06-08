@@ -96,9 +96,47 @@ export function useProviderActivities(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerId, startDate?.getTime(), endDate?.getTime(), memberId]);
 
+  // Live subscription — any add / edit / delete of an activity
+  // (from /create-activity, /block-slot, or another device) reflects
+  // here immediately, no manual refresh needed. Mirrors
+  // useProviderBookings. The `refresh` callback above is kept for the
+  // pull-to-refresh gesture (user feedback) and backwards-compat.
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (!providerId) {
+      setActivities([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    const rangeStart = startDate ?? FAR_PAST;
+    const rangeEnd = endDate ?? FAR_FUTURE;
+    const unsubscribe = schedulingService.subscribeToBlockedSlotsInRange(
+      providerId,
+      rangeStart,
+      rangeEnd,
+      (slots) => {
+        // Keep only categorised entries (= activités) + optional member filter.
+        const filtered = slots.filter((s) => {
+          if (!s.category) return false;
+          if (memberId && s.memberId !== memberId) return false;
+          return true;
+        });
+        setActivities(filtered);
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error('[useProviderActivities] subscribe error:', err);
+        setError(err.message || 'Erreur de chargement');
+        setActivities([]);
+        setIsLoading(false);
+      },
+    );
+    return unsubscribe;
+  // Date instances change every render even when the underlying ms is
+  // identical — serialise to numbers in the dep array.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerId, startDate?.getTime(), endDate?.getTime(), memberId]);
 
   return { activities, isLoading, error, refresh };
 }

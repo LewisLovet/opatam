@@ -468,35 +468,13 @@ function TodayAvailabilityLayout({
   const twoColumns = hours.length > TWO_COLUMN_THRESHOLD;
   const rowsPerColumn = twoColumns ? Math.ceil(hours.length / 2) : hours.length;
 
-  // Available height for the timeline = canvas - padding - topBar
-  // - dateBlock - footer. Computed precisely (not an estimate) so
-  // the rows honour the canvas dimensions on long ranges. Numbers
-  // mirror the styles below — keep in sync if those change.
-  // The canvas has a generous 92px bottom-safe-zone for IG reply /
-  // sticker overlays, hence the big paddingBottom term.
-  // Date block is now compact (single-line title + short subtitle)
-  // → leaves more room for the timeline than the previous big
-  // numerical date.
-  const TIMELINE_AVAILABLE_HEIGHT =
-    STORY_HEIGHT
-    - 32 /* paddingTop */
-    - 92 /* paddingBottom (IG safe-zone) */
-    - 36 /* topBar height (round avatar) */
-    - 24 /* topBar marginBottom */
-    - 36 /* title lineHeight */
-    - 6  /* gap title→subtitle */
-    - 16 /* subtitle lineHeight */
-    - 20 /* dateBlock marginBottom */
-    - 13 /* footer height */
-    - 12; /* footer marginTop */
+  // Rows FLEX to fill the timeline (flex:1) container, so they always
+  // fit the canvas whatever the opening range — no fragile pixel
+  // budgeting that silently drifts out of sync with the styles and
+  // clips the last hour. `maxRowHeight` only stops a near-empty day
+  // from rendering giant rows; the gap keeps them separated.
   const rowGap = twoColumns ? 4 : 6;
-  const rowHeight = clamp(
-    14,
-    twoColumns ? 28 : 34,
-    Math.floor(
-      (TIMELINE_AVAILABLE_HEIGHT - rowGap * (rowsPerColumn - 1)) / rowsPerColumn,
-    ),
-  );
+  const maxRowHeight = twoColumns ? 28 : 34;
 
   const inner = (
     <>
@@ -572,7 +550,7 @@ function TodayAvailabilityLayout({
                       }
                       first={i === 0}
                       gap={rowGap}
-                      rowHeight={rowHeight}
+                      maxRowHeight={maxRowHeight}
                       compact
                       palette={palette}
                     />
@@ -591,7 +569,7 @@ function TodayAvailabilityLayout({
                 }
                 first={i === 0}
                 gap={rowGap}
-                rowHeight={rowHeight}
+                maxRowHeight={maxRowHeight}
                 palette={palette}
               />
             ))
@@ -640,7 +618,7 @@ function HourRow({
   isFree,
   first,
   gap,
-  rowHeight,
+  maxRowHeight,
   compact = false,
   palette,
 }: {
@@ -648,7 +626,7 @@ function HourRow({
   isFree: boolean;
   first: boolean;
   gap: number;
-  rowHeight: number;
+  maxRowHeight: number;
   compact?: boolean;
   palette: ThemePalette;
 }) {
@@ -656,7 +634,10 @@ function HourRow({
     <View
       style={[
         todayStyles.row,
-        { marginTop: first ? 0 : gap },
+        // flex:1 + maxHeight → rows divide the timeline (flex:1) evenly
+        // and shrink to fit when the range is long, so the last hour is
+        // never clipped. minHeight:0 lets them shrink below content size.
+        { flex: 1, minHeight: 0, maxHeight: maxRowHeight, marginTop: first ? 0 : gap },
       ]}
     >
       <Text
@@ -674,7 +655,7 @@ function HourRow({
         style={[
           todayStyles.cell,
           {
-            height: rowHeight,
+            alignSelf: 'stretch',
             backgroundColor: isFree ? palette.cellFree : palette.cellBusy,
             paddingHorizontal: compact ? 6 : 10,
           },
