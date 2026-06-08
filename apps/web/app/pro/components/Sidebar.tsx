@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { NotificationsBell } from './NotificationsBell';
 import {
   Home,
   Calendar,
@@ -524,8 +525,12 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
         <LogoWhite size="md" variant="light" />
       </Link>
 
-      {/* User avatar */}
-      <div className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center">
+      <div className="flex items-center gap-1">
+        {/* Notification center */}
+        <NotificationsBell variant="light" />
+
+        {/* User avatar */}
+        <div className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center">
         {user?.photoURL ? (
           <img
             src={user.photoURL}
@@ -537,6 +542,7 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
             {(provider?.businessName || user?.displayName)?.charAt(0).toUpperCase() || 'U'}
           </span>
         )}
+        </div>
       </div>
     </header>
   );
