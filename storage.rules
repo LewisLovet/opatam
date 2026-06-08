@@ -50,5 +50,13 @@ service firebase.storage {
       allow read: if true;
       allow write: if isAuthenticated() && isImageType() && isUnder5MB();
     }
+
+    // In-app notification images (uploaded from /admin/notifications).
+    // Public read (shown in the app); authenticated image writes,
+    // admin authority enforced by the AdminGuard on the admin page.
+    match /app-notifications/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isImageType() && isUnder5MB();
+    }
   }
 }

@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { storage } from '@booking-app/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, Textarea, Select, Switch, Loader, useToast } from '@/components/ui';
 import {
@@ -20,6 +22,8 @@ import {
   Search,
   X,
   Loader2,
+  Upload,
+  ImageIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -174,6 +178,10 @@ export default function AdminNotificationsPage() {
   const [providerResults, setProviderResults] = useState<ProviderResult[]>([]);
   const [searchingProviders, setSearchingProviders] = useState(false);
 
+  // Image upload
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   const searchProviders = useCallback(
     async (q: string) => {
       if (!user || !q.trim()) {
@@ -224,6 +232,33 @@ export default function AdminNotificationsPage() {
 
   const set = <K extends keyof NotifForm>(k: K, v: NotifForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez choisir une image');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image trop lourde (max 5 Mo)');
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const rand = Math.random().toString(36).slice(2, 8);
+      const path = `app-notifications/${Date.now()}-${rand}.${ext}`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file, { contentType: file.type });
+      const url = await getDownloadURL(storageRef);
+      set('imageUrl', url);
+      toast.success('Image téléversée');
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Échec du téléversement de l'image");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const startCreate = () => {
     setEditingId(null);
@@ -496,13 +531,67 @@ export default function AdminNotificationsPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Image (URL, optionnel)
+              Image (optionnel)
             </label>
-            <Input
-              value={form.imageUrl}
-              onChange={(e) => set('imageUrl', e.target.value)}
-              placeholder="https://…"
+            {form.imageUrl ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={form.imageUrl}
+                  alt=""
+                  className="w-full h-40 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                />
+                <button
+                  type="button"
+                  onClick={() => set('imageUrl', '')}
+                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                  aria-label="Retirer l'image"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImage}
+                className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-primary-400 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors"
+              >
+                {uploadingImage ? (
+                  <>
+                    <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+                    <span className="text-sm">Téléversement…</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-6 h-6" />
+                    <span className="text-sm font-medium">Téléverser une image</span>
+                    <span className="text-xs text-gray-400">PNG, JPG — max 5 Mo</span>
+                  </>
+                )}
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void handleImageUpload(f);
+                e.target.value = '';
+              }}
             />
+            {/* URL fallback */}
+            <div className="relative mt-2">
+              <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                value={form.imageUrl}
+                onChange={(e) => set('imageUrl', e.target.value)}
+                placeholder="… ou coller une URL d'image"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
           </div>
 
           {/* CTA */}

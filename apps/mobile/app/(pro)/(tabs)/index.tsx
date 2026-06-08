@@ -1124,20 +1124,29 @@ export default function ProDashboardScreen() {
                 <View
                   style={{
                     position: 'absolute',
-                    top: -4,
-                    right: -4,
+                    top: -5,
+                    right: -5,
                     minWidth: 20,
                     height: 20,
                     borderRadius: 10,
-                    paddingHorizontal: 5,
+                    paddingHorizontal: unreadCount > 9 ? 5 : 0,
                     backgroundColor: '#EF4444',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderWidth: 1.5,
+                    borderWidth: 2,
                     borderColor: '#FFFFFF',
                   }}
                 >
-                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>
+                  <Text
+                    style={{
+                      color: '#FFF',
+                      fontSize: 11,
+                      fontWeight: '800',
+                      lineHeight: 14,
+                      textAlign: 'center',
+                      includeFontPadding: false,
+                    }}
+                  >
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </Text>
                 </View>

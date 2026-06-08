@@ -143,16 +143,23 @@ export function NotificationsDrawer({
           style={[
             styles.panel,
             {
-              backgroundColor: colors.background,
-              // +12 of breathing room below the status bar / Dynamic
-              // Island so the header never butts against the safe area.
-              paddingTop: insets.top + 12,
-              paddingBottom: insets.bottom,
               width: PANEL_WIDTH,
               transform: [{ translateX }],
             },
           ]}
         >
+          {/* Transparent status-bar strip — the iOS status info (time,
+              battery…) stays visible over the dimmed backdrop instead of
+              being hidden behind a white block. */}
+          <View style={{ height: insets.top }} />
+
+          {/* White surface starts below the safe area. */}
+          <View
+            style={[
+              styles.surface,
+              { backgroundColor: colors.background, paddingBottom: insets.bottom },
+            ]}
+          >
           {/* Header */}
           <View
             style={[
@@ -339,6 +346,7 @@ export function NotificationsDrawer({
               ))}
             </ScrollView>
           )}
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -357,6 +365,9 @@ const styles = StyleSheet.create({
   },
   panel: {
     height: '100%',
+  },
+  surface: {
+    flex: 1,
     shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },
     shadowOpacity: 0.15,
