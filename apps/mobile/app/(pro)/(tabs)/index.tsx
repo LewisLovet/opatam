@@ -1101,24 +1101,6 @@ export default function ProDashboardScreen() {
                   size="lg"
                 />
               </View>
-              {/* Bell affordance (bottom-right) */}
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: -2,
-                  right: -2,
-                  width: 22,
-                  height: 22,
-                  borderRadius: 11,
-                  backgroundColor: '#FFFFFF',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1.5,
-                  borderColor: colors.primary,
-                }}
-              >
-                <Ionicons name="notifications" size={12} color={colors.primary} />
-              </View>
               {/* Unread count (top-right) */}
               {unreadCount > 0 && (
                 <View

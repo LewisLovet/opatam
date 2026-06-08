@@ -39,6 +39,8 @@ interface NotifForm {
   imageUrl: string;
   ctaLabel: string;
   ctaArticleSlug: string;
+  ctaThumbUrl: string;
+  ctaIsVideo: boolean;
   isPublished: boolean;
   sendPush: boolean;
 }
@@ -51,6 +53,8 @@ interface NotifRow extends NotifForm {
 interface Tutorial {
   slug: string;
   title: string;
+  thumbUrl?: string | null;
+  isVideo?: boolean;
 }
 
 const EMPTY: NotifForm = {
@@ -65,6 +69,8 @@ const EMPTY: NotifForm = {
   imageUrl: '',
   ctaLabel: '',
   ctaArticleSlug: '',
+  ctaThumbUrl: '',
+  ctaIsVideo: false,
   isPublished: false,
   sendPush: false,
 };
@@ -150,9 +156,24 @@ function NotifPreview({ form }: { form: NotifForm }) {
           {detail}
         </p>
         {form.ctaArticleSlug ? (
-          <div className="mt-4 flex items-center justify-center gap-2 bg-primary-600 text-white rounded-xl py-2.5 text-sm font-bold">
-            <PlayCircle className="w-4 h-4" />
-            {ctaLabel}
+          <div className="mt-4">
+            {form.ctaThumbUrl ? (
+              <div className="relative rounded-xl overflow-hidden mb-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.ctaThumbUrl} alt="" className="w-full h-36 object-cover" />
+                {form.ctaIsVideo ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                    <div className="w-12 h-12 rounded-full bg-black/55 flex items-center justify-center">
+                      <PlayCircle className="w-7 h-7 text-white" />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="flex items-center justify-center gap-2 bg-primary-600 text-white rounded-xl py-2.5 text-sm font-bold">
+              <PlayCircle className="w-4 h-4" />
+              {ctaLabel}
+            </div>
           </div>
         ) : null}
       </div>
@@ -280,6 +301,8 @@ export default function AdminNotificationsPage() {
       imageUrl: row.imageUrl ?? '',
       ctaLabel: row.ctaLabel ?? '',
       ctaArticleSlug: row.ctaArticleSlug ?? '',
+      ctaThumbUrl: (row as any).ctaThumbUrl ?? '',
+      ctaIsVideo: !!(row as any).ctaIsVideo,
       isPublished: !!row.isPublished,
       sendPush: !!row.sendPush,
     });
@@ -615,7 +638,16 @@ export default function AdminNotificationsPage() {
               <Select
                 label="Tutoriel lié"
                 value={form.ctaArticleSlug}
-                onChange={(e) => set('ctaArticleSlug', e.target.value)}
+                onChange={(e) => {
+                  const slug = e.target.value;
+                  const tuto = tutorials.find((t) => t.slug === slug);
+                  setForm((f) => ({
+                    ...f,
+                    ctaArticleSlug: slug,
+                    ctaThumbUrl: tuto?.thumbUrl ?? '',
+                    ctaIsVideo: !!tuto?.isVideo,
+                  }));
+                }}
                 options={tutorialOptions}
               />
             </div>

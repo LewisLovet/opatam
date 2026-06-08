@@ -255,18 +255,43 @@ export function NotificationsDrawer({
               </Text>
 
               {selected.ctaArticleSlug ? (
-                <Pressable
-                  onPress={() => openCta(selected.ctaArticleSlug!)}
-                  style={({ pressed }) => [
-                    styles.ctaBtn,
-                    { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 },
-                  ]}
-                >
-                  <Ionicons name="play-circle" size={20} color="#fff" />
-                  <Text variant="body" style={{ color: '#fff', fontWeight: '700' }}>
-                    {selected.ctaLabel || 'Voir le tutoriel'}
-                  </Text>
-                </Pressable>
+                <>
+                  {selected.ctaThumbUrl ? (
+                    <Pressable
+                      onPress={() => openCta(selected.ctaArticleSlug!)}
+                      style={({ pressed }) => [styles.thumbWrap, { opacity: pressed ? 0.92 : 1 }]}
+                    >
+                      <Image
+                        source={{ uri: selected.ctaThumbUrl }}
+                        style={styles.thumbImg}
+                        resizeMode="cover"
+                      />
+                      {selected.ctaIsVideo ? (
+                        <View style={styles.playOverlay}>
+                          <View style={styles.playCircle}>
+                            <Ionicons name="play" size={26} color="#fff" style={{ marginLeft: 3 }} />
+                          </View>
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    onPress={() => openCta(selected.ctaArticleSlug!)}
+                    style={({ pressed }) => [
+                      styles.ctaBtn,
+                      { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 },
+                    ]}
+                  >
+                    <Ionicons
+                      name={selected.ctaIsVideo ? 'play-circle' : 'book'}
+                      size={20}
+                      color="#fff"
+                    />
+                    <Text variant="body" style={{ color: '#fff', fontWeight: '700' }}>
+                      {selected.ctaLabel || (selected.ctaIsVideo ? 'Voir la vidéo' : 'Voir le tutoriel')}
+                    </Text>
+                  </Pressable>
+                </>
               ) : null}
             </ScrollView>
           ) : notifications.length === 0 ? (
@@ -450,6 +475,30 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 16,
   },
+  thumbWrap: {
+    marginTop: 24,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+  },
+  thumbImg: {
+    width: '100%',
+    height: 180,
+  },
+  playOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.18)',
+  },
+  playCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   ctaBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -457,6 +506,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderRadius: 14,
-    marginTop: 24,
+    marginTop: 12,
   },
 });

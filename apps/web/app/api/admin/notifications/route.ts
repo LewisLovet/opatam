@@ -23,6 +23,13 @@ const str = (v: unknown): string | null =>
 const ALLOWED_AUDIENCES = ['pros', 'clients', 'all', 'admins', 'specific'];
 const ALLOWED_TYPES = ['announcement', 'feature', 'tutorial'];
 
+/** Derive a YouTube thumbnail from a watch / share / embed URL. */
+function ytThumb(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/);
+  return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : null;
+}
+
 function buildDoc(body: any) {
   const audience = ALLOWED_AUDIENCES.includes(body.audience) ? body.audience : 'pros';
   const type = ALLOWED_TYPES.includes(body.type) ? body.type : 'announcement';
@@ -38,6 +45,8 @@ function buildDoc(body: any) {
     imageUrl: str(body.imageUrl),
     ctaLabel: str(body.ctaLabel),
     ctaArticleSlug: str(body.ctaArticleSlug),
+    ctaThumbUrl: str(body.ctaArticleSlug) ? str(body.ctaThumbUrl) : null,
+    ctaIsVideo: str(body.ctaArticleSlug) ? !!body.ctaIsVideo : false,
     isPublished: !!body.isPublished,
     sendPush: !!body.sendPush,
   };
@@ -58,7 +67,20 @@ export async function GET() {
 
     const notifications = notifsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     const tutorials = tutosSnap.docs
-      .map((d) => ({ slug: d.data().slug as string, title: d.data().title as string }))
+      .map((d) => {
+        const a = d.data();
+        const thumbUrl =
+          (a.videoCoverURL as string | null) ||
+          ytThumb(a.videoUrl as string | null) ||
+          (a.coverImageURL as string | null) ||
+          null;
+        return {
+          slug: a.slug as string,
+          title: a.title as string,
+          thumbUrl,
+          isVideo: !!a.videoUrl,
+        };
+      })
       .filter((t) => t.slug);
 
     return NextResponse.json({ notifications, tutorials });

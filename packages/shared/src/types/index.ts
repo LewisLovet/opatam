@@ -1275,6 +1275,11 @@ export interface AppNotification {
    */
   ctaLabel?: string | null;
   ctaArticleSlug?: string | null;
+  /** Thumbnail of the linked tutorial (video poster / cover) shown in
+   *  the notification so users see the video without opening it. */
+  ctaThumbUrl?: string | null;
+  /** True when the linked tutorial has a video (renders a play badge). */
+  ctaIsVideo?: boolean;
   /** Visibility switch — only published items reach the app. */
   isPublished: boolean;
   publishedAt?: Date | null;

@@ -55,6 +55,8 @@ export async function PUT(
       imageUrl: str(body.imageUrl),
       ctaLabel: str(body.ctaLabel),
       ctaArticleSlug: str(body.ctaArticleSlug),
+      ctaThumbUrl: str(body.ctaArticleSlug) ? str(body.ctaThumbUrl) : null,
+      ctaIsVideo: str(body.ctaArticleSlug) ? !!body.ctaIsVideo : false,
       isPublished: willPublish,
       sendPush: !!body.sendPush,
       updatedAt: new Date(),
