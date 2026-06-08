@@ -1241,7 +1241,12 @@ export interface MobileAppConfig {
  * clickable logo + right-side drawer + detail modal). Stored in the
  * top-level Firestore `appNotifications` collection.
  */
-export type AppNotificationAudience = 'pros' | 'clients' | 'all';
+export type AppNotificationAudience =
+  | 'pros'
+  | 'clients'
+  | 'all'
+  | 'admins'
+  | 'specific';
 
 export type AppNotificationType = 'announcement' | 'feature' | 'tutorial';
 
@@ -1253,8 +1258,12 @@ export interface AppNotification {
   /** Longer rich text shown in the detail modal (falls back to body). */
   modalBody?: string | null;
   type: AppNotificationType;
-  /** Who sees it. v1 targets 'pros'. */
+  /** Who sees it. 'specific' targets a single user via targetUserId. */
   audience: AppNotificationAudience;
+  /** Target user id when audience === 'specific' (= provider id). */
+  targetUserId?: string | null;
+  /** Human label for the target (business name) — admin display only. */
+  targetLabel?: string | null;
   /** Optional Ionicons name shown on the row / modal header. */
   iconName?: string | null;
   /** Optional banner image shown in the detail modal. */

@@ -53,14 +53,19 @@ export interface UseProviderNotificationsResult {
 }
 
 export function useProviderNotifications(): UseProviderNotificationsResult {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const uid = user?.uid ?? null;
+  const isAdmin = !!userData?.isAdmin;
 
   const [items, setItems] = useState<WithId<AppNotification>[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
-  // Published announcements for pros.
+  // Published announcements relevant to this pro. The Firestore rule
+  // allows reading any published doc; visibility is decided here:
+  //   - broadcast: 'pros' / 'all'
+  //   - 'admins'  : only if this user is an admin
+  //   - 'specific': only if it targets this user
   useEffect(() => {
     const q = query(
       collection(db, 'appNotifications'),
@@ -71,14 +76,19 @@ export function useProviderNotifications(): UseProviderNotificationsResult {
       (snap) => {
         const list = snap.docs
           .map((d) => ({ id: d.id, ...(d.data() as AppNotification) }))
-          .filter((n) => n.audience === 'pros' || n.audience === 'all');
+          .filter((n) => {
+            if (n.audience === 'pros' || n.audience === 'all') return true;
+            if (n.audience === 'admins') return isAdmin;
+            if (n.audience === 'specific') return !!uid && n.targetUserId === uid;
+            return false;
+          });
         setItems(list);
         setLoading(false);
       },
       () => setLoading(false),
     );
     return unsub;
-  }, []);
+  }, [uid, isAdmin]);
 
   // This user's read receipts.
   useEffect(() => {

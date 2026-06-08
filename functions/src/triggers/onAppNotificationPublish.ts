@@ -8,9 +8,11 @@
  * the guard short-circuits).
  *
  * Audience → recipients:
- *   - 'pros'    : users with role 'provider'
- *   - 'clients' : users with role 'client'
- *   - 'all'     : every user that has push tokens
+ *   - 'pros'     : users with role 'provider'
+ *   - 'clients'  : users with role 'client'
+ *   - 'admins'   : users with isAdmin === true
+ *   - 'all'      : every user that has push tokens
+ *   - 'specific' : the single user in `targetUserId`
  *
  * Tap routing is handled mobile-side (useNotifications) via
  * data.type === 'app_notification'.
@@ -37,21 +39,30 @@ export const onAppNotificationPublish = onDocumentWritten(
     const audience: string = after.audience || 'pros';
 
     try {
-      // Resolve recipient user docs by audience.
-      let usersSnap;
-      if (audience === 'all') {
-        usersSnap = await db.collection('users').get();
+      // Collect + dedupe push tokens for the audience.
+      const tokenSet = new Set<string>();
+      const collect = (snap: FirebaseFirestore.QuerySnapshot | FirebaseFirestore.DocumentSnapshot) => {
+        const docs = 'docs' in snap ? snap.docs : [snap];
+        docs.forEach((doc) => {
+          const tokens: string[] = doc.data()?.pushTokens || [];
+          tokens.forEach((t) => t && tokenSet.add(t));
+        });
+      };
+
+      if (audience === 'specific') {
+        const targetUserId: string | undefined = after.targetUserId || undefined;
+        if (targetUserId) {
+          collect(await db.collection('users').doc(targetUserId).get());
+        }
+      } else if (audience === 'all') {
+        collect(await db.collection('users').get());
+      } else if (audience === 'admins') {
+        collect(await db.collection('users').where('isAdmin', '==', true).get());
       } else {
         const role = audience === 'clients' ? 'client' : 'provider';
-        usersSnap = await db.collection('users').where('role', '==', role).get();
+        collect(await db.collection('users').where('role', '==', role).get());
       }
 
-      // Collect + dedupe push tokens.
-      const tokenSet = new Set<string>();
-      usersSnap.forEach((doc) => {
-        const tokens: string[] = doc.data()?.pushTokens || [];
-        tokens.forEach((t) => t && tokenSet.add(t));
-      });
       const tokens = Array.from(tokenSet);
 
       if (tokens.length > 0) {

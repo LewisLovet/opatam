@@ -3,7 +3,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, Textarea, Select, Switch, Loader, useToast } from '@/components/ui';
-import { Bell, BellOff, Plus, Pencil, Trash2, Send, Megaphone, BookOpen } from 'lucide-react';
+import {
+  Bell,
+  BellOff,
+  Plus,
+  Pencil,
+  Trash2,
+  Send,
+  Megaphone,
+  BookOpen,
+  Rocket,
+  Gift,
+  PlayCircle,
+  Lightbulb,
+  CheckCircle2,
+  Search,
+  X,
+  Loader2,
+  type LucideIcon,
+} from 'lucide-react';
 
 interface NotifForm {
   title: string;
@@ -11,6 +29,8 @@ interface NotifForm {
   modalBody: string;
   type: string;
   audience: string;
+  targetUserId: string;
+  targetLabel: string;
   iconName: string;
   imageUrl: string;
   ctaLabel: string;
@@ -35,6 +55,8 @@ const EMPTY: NotifForm = {
   modalBody: '',
   type: 'announcement',
   audience: 'pros',
+  targetUserId: '',
+  targetLabel: '',
   iconName: 'megaphone',
   imageUrl: '',
   ctaLabel: '',
@@ -53,19 +75,29 @@ const AUDIENCE_OPTIONS = [
   { value: 'pros', label: 'Professionnels' },
   { value: 'clients', label: 'Clients' },
   { value: 'all', label: 'Tout le monde' },
+  { value: 'admins', label: 'Administrateurs' },
+  { value: 'specific', label: 'Un prestataire en particulier' },
 ];
 
-// Ionicons names (rendered on mobile). No "sparkles" per design rule.
-const ICON_OPTIONS = [
-  { value: 'megaphone', label: '📣 Mégaphone (annonce)' },
-  { value: 'rocket', label: '🚀 Fusée (nouveauté)' },
-  { value: 'gift', label: '🎁 Cadeau' },
-  { value: 'star', label: '⭐ Étoile' },
-  { value: 'play-circle', label: '▶️ Lecture (vidéo)' },
-  { value: 'book', label: '📖 Livre (guide)' },
-  { value: 'bulb', label: '💡 Ampoule (astuce)' },
-  { value: 'checkmark-circle', label: '✅ Validé' },
+// Icon picker — `value` is the Ionicons name stored & rendered on
+// mobile; `Icon` is the lucide glyph shown here (concrete icons, no
+// emojis). Keep the two visually consistent.
+const ICON_OPTIONS: { value: string; label: string; Icon: LucideIcon }[] = [
+  { value: 'megaphone', label: 'Annonce', Icon: Megaphone },
+  { value: 'rocket', label: 'Nouveauté', Icon: Rocket },
+  { value: 'gift', label: 'Cadeau', Icon: Gift },
+  { value: 'play-circle', label: 'Vidéo', Icon: PlayCircle },
+  { value: 'book', label: 'Guide', Icon: BookOpen },
+  { value: 'bulb', label: 'Astuce', Icon: Lightbulb },
+  { value: 'checkmark-circle', label: 'Validé', Icon: CheckCircle2 },
+  { value: 'notifications', label: 'Alerte', Icon: Bell },
 ];
+
+interface ProviderResult {
+  id: string;
+  businessName: string;
+  photoURL?: string | null;
+}
 
 export default function AdminNotificationsPage() {
   const { user } = useAuth();
@@ -79,6 +111,40 @@ export default function AdminNotificationsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<NotifForm>(EMPTY);
+
+  // Provider search (audience === 'specific')
+  const [providerQuery, setProviderQuery] = useState('');
+  const [providerResults, setProviderResults] = useState<ProviderResult[]>([]);
+  const [searchingProviders, setSearchingProviders] = useState(false);
+
+  const searchProviders = useCallback(
+    async (q: string) => {
+      if (!user || !q.trim()) {
+        setProviderResults([]);
+        return;
+      }
+      setSearchingProviders(true);
+      try {
+        const res = await fetch(
+          `/api/admin/providers/search?q=${encodeURIComponent(q.trim())}`,
+          { headers: { 'x-admin-uid': user.id } },
+        );
+        const json = await res.json();
+        // Map to { id: userId, businessName } — userId owns the push tokens.
+        const results = (json.results ?? []).map((r: any) => ({
+          id: r.userId,
+          businessName: r.businessName,
+          photoURL: r.photoURL,
+        }));
+        setProviderResults(results);
+      } catch {
+        setProviderResults([]);
+      } finally {
+        setSearchingProviders(false);
+      }
+    },
+    [user],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,6 +182,8 @@ export default function AdminNotificationsPage() {
       modalBody: row.modalBody ?? '',
       type: row.type ?? 'announcement',
       audience: row.audience ?? 'pros',
+      targetUserId: (row as any).targetUserId ?? '',
+      targetLabel: (row as any).targetLabel ?? '',
       iconName: row.iconName ?? 'megaphone',
       imageUrl: row.imageUrl ?? '',
       ctaLabel: row.ctaLabel ?? '',
@@ -227,10 +295,82 @@ export default function AdminNotificationsPage() {
             <Select
               label="Audience"
               value={form.audience}
-              onChange={(e) => set('audience', e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm((f) => ({
+                  ...f,
+                  audience: v,
+                  ...(v !== 'specific' ? { targetUserId: '', targetLabel: '' } : {}),
+                }));
+                if (v !== 'specific') {
+                  setProviderQuery('');
+                  setProviderResults([]);
+                }
+              }}
               options={AUDIENCE_OPTIONS}
             />
           </div>
+
+          {/* Specific provider picker */}
+          {form.audience === 'specific' && (
+            <div className="rounded-xl border border-gray-100 dark:border-gray-700 p-4 space-y-3">
+              {form.targetUserId ? (
+                <div className="flex items-center justify-between gap-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg px-3 py-2">
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                    {form.targetLabel || form.targetUserId}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, targetUserId: '', targetLabel: '' }))}
+                    className="text-gray-400 hover:text-red-500"
+                    aria-label="Retirer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      value={providerQuery}
+                      onChange={(e) => {
+                        setProviderQuery(e.target.value);
+                        void searchProviders(e.target.value);
+                      }}
+                      placeholder="Rechercher un prestataire…"
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    {searchingProviders && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+                    )}
+                  </div>
+                  {providerResults.length > 0 && (
+                    <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-56 overflow-y-auto">
+                      {providerResults.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setForm((f) => ({
+                              ...f,
+                              targetUserId: p.id,
+                              targetLabel: p.businessName,
+                            }));
+                            setProviderResults([]);
+                            setProviderQuery('');
+                          }}
+                          className="w-full text-left px-2 py-2 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
+                        >
+                          {p.businessName}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -268,23 +408,42 @@ export default function AdminNotificationsPage() {
             />
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Select
-              label="Icône"
-              value={form.iconName}
-              onChange={(e) => set('iconName', e.target.value)}
-              options={ICON_OPTIONS}
-            />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Image (URL, optionnel)
-              </label>
-              <Input
-                value={form.imageUrl}
-                onChange={(e) => set('imageUrl', e.target.value)}
-                placeholder="https://…"
-              />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Icône
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ICON_OPTIONS.map(({ value, label, Icon }) => {
+                const selected = form.iconName === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    title={label}
+                    onClick={() => set('iconName', value)}
+                    className={`flex flex-col items-center justify-center gap-1 w-[72px] h-[64px] rounded-xl border transition-colors ${
+                      selected
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="text-[11px] font-medium">{label}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Image (URL, optionnel)
+            </label>
+            <Input
+              value={form.imageUrl}
+              onChange={(e) => set('imageUrl', e.target.value)}
+              placeholder="https://…"
+            />
           </div>
 
           {/* CTA */}

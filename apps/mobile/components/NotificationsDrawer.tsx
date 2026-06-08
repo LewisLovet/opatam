@@ -163,18 +163,40 @@ export function NotificationsDrawer({
             ]}
           >
             {selected ? (
-              <Pressable onPress={() => setSelectedId(null)} hitSlop={8}>
-                <Ionicons name="chevron-back" size={22} color={colors.text} />
+              <Pressable
+                onPress={() => setSelectedId(null)}
+                hitSlop={8}
+                style={[styles.headerIcon, { backgroundColor: colors.surfaceSecondary }]}
+              >
+                <Ionicons name="chevron-back" size={20} color={colors.text} />
               </Pressable>
             ) : (
-              <Ionicons name="notifications" size={20} color={colors.primary} />
+              <View style={[styles.headerIcon, { backgroundColor: colors.primary + '1A' }]}>
+                <Ionicons name="notifications" size={18} color={colors.primary} />
+              </View>
             )}
-            <Text variant="body" style={{ flex: 1, fontWeight: '700' }}>
-              {selected ? 'Notification' : 'Notifications'}
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text variant="body" style={{ fontWeight: '800' }}>
+                {selected ? 'Notification' : 'Notifications'}
+              </Text>
+              {!selected && (
+                <Text variant="caption" color="textMuted">
+                  {unreadCount > 0
+                    ? `${unreadCount} non lue${unreadCount > 1 ? 's' : ''}`
+                    : 'À jour'}
+                </Text>
+              )}
+            </View>
             {!selected && unreadCount > 0 && (
-              <Pressable onPress={onMarkAllRead} hitSlop={8}>
-                <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+              <Pressable
+                onPress={onMarkAllRead}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.markAllPill,
+                  { backgroundColor: colors.primary + '14', opacity: pressed ? 0.6 : 1 },
+                ]}
+              >
+                <Text variant="caption" style={{ color: colors.primary, fontWeight: '700' }}>
                   Tout lire
                 </Text>
               </Pressable>
@@ -240,9 +262,19 @@ export function NotificationsDrawer({
             </ScrollView>
           ) : notifications.length === 0 ? (
             <View style={styles.empty}>
-              <Ionicons name="notifications-off-outline" size={40} color={colors.textMuted} />
-              <Text variant="caption" color="textMuted" align="center" style={{ marginTop: 10 }}>
-                Aucune notification pour le moment.
+              <View style={[styles.emptyCircle, { backgroundColor: colors.primary + '12' }]}>
+                <Ionicons name="notifications-outline" size={34} color={colors.primary} />
+              </View>
+              <Text variant="body" style={{ fontWeight: '700', marginTop: 16 }}>
+                Vous êtes à jour
+              </Text>
+              <Text
+                variant="caption"
+                color="textMuted"
+                align="center"
+                style={{ marginTop: 6, maxWidth: 240, lineHeight: 18 }}
+              >
+                Les nouveautés et annonces d'Opatam s'afficheront ici.
               </Text>
             </View>
           ) : (
@@ -334,6 +366,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markAllPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  emptyCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   closeBtn: {
     width: 32,

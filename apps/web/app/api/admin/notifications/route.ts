@@ -20,7 +20,7 @@ async function verifyAdmin(uid: string): Promise<boolean> {
 const str = (v: unknown): string | null =>
   typeof v === 'string' && v.trim() ? v.trim() : null;
 
-const ALLOWED_AUDIENCES = ['pros', 'clients', 'all'];
+const ALLOWED_AUDIENCES = ['pros', 'clients', 'all', 'admins', 'specific'];
 const ALLOWED_TYPES = ['announcement', 'feature', 'tutorial'];
 
 function buildDoc(body: any) {
@@ -32,6 +32,8 @@ function buildDoc(body: any) {
     modalBody: str(body.modalBody),
     type,
     audience,
+    targetUserId: audience === 'specific' ? str(body.targetUserId) : null,
+    targetLabel: audience === 'specific' ? str(body.targetLabel) : null,
     iconName: str(body.iconName),
     imageUrl: str(body.imageUrl),
     ctaLabel: str(body.ctaLabel),
