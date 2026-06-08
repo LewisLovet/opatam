@@ -505,11 +505,15 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                     {showNewPill && (
                       <View
                         style={{
-                          marginLeft: 4,
+                          position: 'absolute',
+                          top: -8,
+                          right: -6,
                           paddingHorizontal: 6,
                           paddingVertical: 2,
                           borderRadius: 999,
                           backgroundColor: '#E1306C',
+                          borderWidth: 1.5,
+                          borderColor: colors.surface,
                         }}
                       >
                         <Text

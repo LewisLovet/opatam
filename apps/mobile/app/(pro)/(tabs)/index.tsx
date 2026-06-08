@@ -1020,7 +1020,7 @@ export default function ProDashboardScreen() {
               hitSlop={8}
               style={{ position: 'relative' }}
               accessibilityRole="button"
-              accessibilityLabel="Notifications"
+              accessibilityLabel="Nouveautés"
             >
               <View style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderRadius: radius.full }}>
                 <Avatar
@@ -1059,6 +1059,27 @@ export default function ProDashboardScreen() {
                   >
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </Text>
+                </View>
+              )}
+              {/* No unread → a small bell affordance signals the avatar
+                  is tappable to open the notification center. */}
+              {unreadCount === 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: -3,
+                    right: -3,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: '#FFFFFF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1.5,
+                    borderColor: colors.primary,
+                  }}
+                >
+                  <Ionicons name="notifications" size={12} color={colors.primary} />
                 </View>
               )}
             </Pressable>
