@@ -105,3 +105,9 @@ export {
   isArticleNew,
   NEW_ARTICLE_DAYS,
 } from './useNewArticles';
+
+export { useProviderNotifications } from './useProviderNotifications';
+export type {
+  ProviderNotificationItem,
+  UseProviderNotificationsResult,
+} from './useProviderNotifications';

@@ -35,6 +35,7 @@ import {
   Card,
   EmptyState,
   Loader,
+  NotificationsDrawer,
   Text,
   TrialReminderBanner,
 } from '../../../components';
@@ -74,6 +75,7 @@ import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
 import {
   useDepositsSummary,
   useProviderDashboard,
+  useProviderNotifications,
   useProviderStats,
   useReviews,
 } from '../../../hooks';
@@ -730,6 +732,16 @@ export default function ProDashboardScreen() {
   }, []);
   const { user } = useAuth();
   const sub = useSubscriptionStatus();
+
+  // In-app notification center — opened from the header avatar.
+  const [notifDrawerOpen, setNotifDrawerOpen] = useState(false);
+  const {
+    notifications: appNotifications,
+    unreadCount,
+    markRead: markNotifRead,
+    markAllRead: markAllNotifsRead,
+  } = useProviderNotifications();
+
   const { data, isLoading, refresh } = useProviderDashboard(providerId, provider?.rating?.average);
   // Default 30-day window — gives us enough trend depth to derive
   // both the 7-day and 30-day cards from one fetch (sliced
@@ -1072,15 +1084,65 @@ export default function ProDashboardScreen() {
                 {formatFrenchDate(today)}
               </Text>
             </View>
-            {provider?.photoURL && (
+            {/* Header avatar doubles as the notification-center entry:
+                tap opens the drawer; a bell glyph signals it's clickable
+                and a red badge shows the unread count. */}
+            <Pressable
+              onPress={() => setNotifDrawerOpen(true)}
+              hitSlop={8}
+              style={{ position: 'relative' }}
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
+            >
               <View style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderRadius: radius.full }}>
                 <Avatar
-                  imageUrl={provider.photoURL}
-                  name={provider.businessName || ''}
+                  imageUrl={provider?.photoURL || undefined}
+                  name={provider?.businessName || firstName || 'O'}
                   size="lg"
                 />
               </View>
-            )}
+              {/* Bell affordance (bottom-right) */}
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  right: -2,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  backgroundColor: '#FFFFFF',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1.5,
+                  borderColor: colors.primary,
+                }}
+              >
+                <Ionicons name="notifications" size={12} color={colors.primary} />
+              </View>
+              {/* Unread count (top-right) */}
+              {unreadCount > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -4,
+                    minWidth: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    paddingHorizontal: 5,
+                    backgroundColor: '#EF4444',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1.5,
+                    borderColor: '#FFFFFF',
+                  }}
+                >
+                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
           </View>
 
           {/* Stat chips */}
@@ -1701,6 +1763,16 @@ export default function ProDashboardScreen() {
         visible={showWelcome}
         onDismiss={() => setShowWelcome(false)}
         businessName={provider?.businessName}
+      />
+
+      {/* ── Notification center (opened from the header avatar) ── */}
+      <NotificationsDrawer
+        visible={notifDrawerOpen}
+        notifications={appNotifications}
+        unreadCount={unreadCount}
+        onClose={() => setNotifDrawerOpen(false)}
+        onMarkRead={markNotifRead}
+        onMarkAllRead={markAllNotifsRead}
       />
 
       {/* ── QR Code Modal ── */}

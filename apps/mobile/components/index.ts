@@ -97,3 +97,6 @@ export { TrialReminderBanner } from './TrialReminderBanner';
 
 // Update / maintenance gate (driven by Firestore config/mobile)
 export { UpdateGate } from './UpdateGate';
+
+// In-app notification center (pro)
+export { NotificationsDrawer } from './NotificationsDrawer';
