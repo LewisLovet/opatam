@@ -71,6 +71,17 @@ export function useNotifications() {
    */
   const handleNotificationResponse = useCallback((response: NotificationResponse) => {
     const data = response.notification.request.content.data;
+
+    // In-app announcement (centre de notifications) → open the linked
+    // tutorial if one is attached; otherwise just let the app open
+    // (the bell badge surfaces the new item). Handled before the
+    // bookingId guard since announcements carry no bookingId.
+    if (data?.type === 'app_notification') {
+      const slug = data.articleSlug as string | undefined;
+      if (slug) router.push(`/(pro)/help/${slug}` as any);
+      return;
+    }
+
     if (!data?.bookingId) return;
 
     const bookingId = data.bookingId as string;
