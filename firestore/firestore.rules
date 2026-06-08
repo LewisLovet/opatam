@@ -30,6 +30,12 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
+
+      // Accusés de lecture des notifications in-app (centre de notifs).
+      // Chaque user gère uniquement ses propres reçus.
+      match /notificationReads/{notificationId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // === PROVIDERS ===
@@ -181,6 +187,15 @@ service cloud.firestore {
     // (admin API route), never from the client.
     match /config/{configId} {
       allow read: if true;
+      allow write: if false;
+    }
+
+    // === IN-APP NOTIFICATIONS (annonces / what's new) ===
+    // Public read of PUBLISHED items only (the app filters by audience
+    // client-side). Drafts stay invisible to the client SDK. All writes
+    // go through the admin API / Cloud Functions (Admin SDK).
+    match /appNotifications/{notificationId} {
+      allow read: if resource.data.isPublished == true;
       allow write: if false;
     }
 

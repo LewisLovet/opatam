@@ -1,0 +1,98 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAdminFirestore } from '@/lib/firebase-admin';
+
+/**
+ * In-app notifications (announcements / what's new) authored from the
+ * admin back-office and shown in the mobile notification center.
+ * Stored in the top-level `appNotifications` collection.
+ *
+ * GET  — list all notifications (admin UI) + published tutorials for
+ *        the CTA picker.
+ * POST — create a notification (admin-gated via x-admin-uid).
+ */
+
+async function verifyAdmin(uid: string): Promise<boolean> {
+  const db = getAdminFirestore();
+  const userDoc = await db.collection('users').doc(uid).get();
+  return userDoc.exists && userDoc.data()?.isAdmin === true;
+}
+
+const str = (v: unknown): string | null =>
+  typeof v === 'string' && v.trim() ? v.trim() : null;
+
+const ALLOWED_AUDIENCES = ['pros', 'clients', 'all'];
+const ALLOWED_TYPES = ['announcement', 'feature', 'tutorial'];
+
+function buildDoc(body: any) {
+  const audience = ALLOWED_AUDIENCES.includes(body.audience) ? body.audience : 'pros';
+  const type = ALLOWED_TYPES.includes(body.type) ? body.type : 'announcement';
+  return {
+    title: str(body.title) ?? '',
+    body: str(body.body) ?? '',
+    modalBody: str(body.modalBody),
+    type,
+    audience,
+    iconName: str(body.iconName),
+    imageUrl: str(body.imageUrl),
+    ctaLabel: str(body.ctaLabel),
+    ctaArticleSlug: str(body.ctaArticleSlug),
+    isPublished: !!body.isPublished,
+    sendPush: !!body.sendPush,
+  };
+}
+
+// GET — list notifications + tutorials for the CTA dropdown.
+export async function GET() {
+  try {
+    const db = getAdminFirestore();
+    const [notifsSnap, tutosSnap] = await Promise.all([
+      db.collection('appNotifications').orderBy('createdAt', 'desc').get(),
+      db
+        .collection('articles')
+        .where('status', '==', 'published')
+        .where('category', '==', 'tutoriels')
+        .get(),
+    ]);
+
+    const notifications = notifsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const tutorials = tutosSnap.docs
+      .map((d) => ({ slug: d.data().slug as string, title: d.data().title as string }))
+      .filter((t) => t.slug);
+
+    return NextResponse.json({ notifications, tutorials });
+  } catch (err: any) {
+    console.error('[admin/notifications] GET error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// POST — create a notification.
+export async function POST(request: NextRequest) {
+  try {
+    const adminUid = request.headers.get('x-admin-uid');
+    if (!adminUid || !(await verifyAdmin(adminUid))) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const data = buildDoc(body);
+    if (!data.title || !data.body) {
+      return NextResponse.json({ error: 'Titre et message requis' }, { status: 400 });
+    }
+
+    const now = new Date();
+    const db = getAdminFirestore();
+    const ref = await db.collection('appNotifications').add({
+      ...data,
+      publishedAt: data.isPublished ? now : null,
+      pushedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return NextResponse.json({ ok: true, id: ref.id });
+  } catch (err: any) {
+    console.error('[admin/notifications] POST error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

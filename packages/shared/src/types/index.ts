@@ -1234,3 +1234,52 @@ export interface MobileAppConfig {
   androidStoreUrl?: string | null;
   updatedAt?: Date;
 }
+
+/**
+ * In-app announcement / "what's new" item, authored from the admin
+ * back-office and shown in the mobile notification center (the
+ * clickable logo + right-side drawer + detail modal). Stored in the
+ * top-level Firestore `appNotifications` collection.
+ */
+export type AppNotificationAudience = 'pros' | 'clients' | 'all';
+
+export type AppNotificationType = 'announcement' | 'feature' | 'tutorial';
+
+export interface AppNotification {
+  /** Short headline shown in the drawer row + push title. */
+  title: string;
+  /** One-line teaser shown under the title in the drawer + push body. */
+  body: string;
+  /** Longer rich text shown in the detail modal (falls back to body). */
+  modalBody?: string | null;
+  type: AppNotificationType;
+  /** Who sees it. v1 targets 'pros'. */
+  audience: AppNotificationAudience;
+  /** Optional Ionicons name shown on the row / modal header. */
+  iconName?: string | null;
+  /** Optional banner image shown in the detail modal. */
+  imageUrl?: string | null;
+  /**
+   * Optional CTA. `ctaArticleSlug` deep-links to the in-app
+   * Tutoriels & guides article (/(pro)/help/{slug}); `ctaLabel` is
+   * the button text. When no slug, the modal shows info only.
+   */
+  ctaLabel?: string | null;
+  ctaArticleSlug?: string | null;
+  /** Visibility switch — only published items reach the app. */
+  isPublished: boolean;
+  publishedAt?: Date | null;
+  /** Whether a system push was requested for this item. */
+  sendPush?: boolean;
+  /** Set by the Cloud Function once the push has been dispatched
+   *  (idempotency guard so re-publishing doesn't re-notify). */
+  pushedAt?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+/** Per-user read receipt for an AppNotification.
+ *  Stored at `users/{uid}/notificationReads/{notificationId}`. */
+export interface NotificationRead {
+  readAt: Date;
+}
