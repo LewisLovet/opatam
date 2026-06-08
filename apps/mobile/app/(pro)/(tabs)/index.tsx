@@ -88,73 +88,6 @@ import { useTheme } from '../../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// ── Share Suggestion Banner (swipe to dismiss) ─────────────────────────────
-
-function ShareSuggestionBanner({
-  onShare,
-  onDismiss,
-  spacing,
-  radius,
-}: {
-  onShare: () => void;
-  onDismiss: () => void;
-  spacing: any;
-  radius: any;
-}) {
-  return (
-    <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#EFF6FF',
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: '#BFDBFE',
-        padding: spacing.md,
-        gap: spacing.sm,
-      }}>
-        <View style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          backgroundColor: '#DBEAFE',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <Ionicons name="share-social-outline" size={20} color="#2563EB" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text variant="bodySmall" style={{ fontWeight: '600', color: '#1E40AF' }}>
-            Gagnez en visibilite !
-          </Text>
-          <Text variant="caption" style={{ color: '#3B82F6', marginTop: 2 }}>
-            Partagez votre page pour attirer vos clients du jour.
-          </Text>
-        </View>
-        <View style={{ alignItems: 'center', gap: 6 }}>
-          <Pressable
-            onPress={onShare}
-            style={{
-              backgroundColor: '#2563EB',
-              paddingHorizontal: spacing.md,
-              paddingVertical: spacing.xs,
-              borderRadius: radius.md,
-            }}
-          >
-            <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-              Partager
-            </Text>
-          </Pressable>
-          <Pressable onPress={onDismiss} hitSlop={12}>
-            <Text variant="caption" style={{ color: '#93C5FD', fontSize: 11 }}>
-              Masquer
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    </View>
-  );
-}
 const STAT_CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const STAT_CARD_MARGIN = 12;
 
@@ -840,11 +773,6 @@ export default function ProDashboardScreen() {
     router.push(`/(pro)/booking-detail/${bookingId}`);
   }, [router]);
 
-  // -- Share suggestion banner (< 10 views today, published only, local state) --
-  const [sharebannerDismissed, setShareBannerDismissed] = useState(false);
-  const todayViews = liveViews?.today ?? pageViews?.today ?? 0;
-  const showShareBanner = !sharebannerDismissed && todayViews < 10 && provider?.isPublished === true;
-
   // -- Share establishment ---------------------------------------------------
 
   const [showQRModal, setShowQRModal] = useState(false);
@@ -1256,15 +1184,6 @@ export default function ProDashboardScreen() {
           </Pressable>
         )}
 
-        {/* ── Share suggestion banner (< 10 views today, swipe to dismiss) ── */}
-        {showShareBanner && (
-          <ShareSuggestionBanner
-            onShare={() => setShowStoryModal(true)}
-            onDismiss={() => setShareBannerDismissed(true)}
-            spacing={spacing}
-            radius={radius}
-          />
-        )}
 
         {/* ── Setup Alerts ── */}
         {setupAlerts.length > 0 && (

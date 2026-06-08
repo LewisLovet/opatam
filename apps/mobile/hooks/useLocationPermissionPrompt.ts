@@ -35,10 +35,18 @@ export interface UseLocationPermissionPromptResult {
   declineLocation: () => void;
 }
 
-export function useLocationPermissionPrompt(): UseLocationPermissionPromptResult {
+export function useLocationPermissionPrompt(
+  enabled: boolean = true,
+): UseLocationPermissionPromptResult {
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
 
   useEffect(() => {
+    // Only prime once the caller allows it (e.g. user logged in) — never
+    // at cold app start before the user has even signed in.
+    if (!enabled) {
+      setShowPermissionPrompt(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -54,7 +62,7 @@ export function useLocationPermissionPrompt(): UseLocationPermissionPromptResult
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   const acceptLocation = useCallback(async () => {
     setShowPermissionPrompt(false);
