@@ -197,7 +197,7 @@ export function NotificationsDrawer({
             ) : null}
             <View style={{ flex: 1 }}>
               <Text variant="h3" style={styles.headerTitle}>
-                {selected ? 'Nouveauté' : 'Nouveautés'}
+                Nouveau
               </Text>
               {!selected ? (
                 <Text variant="caption" style={styles.headerSub}>

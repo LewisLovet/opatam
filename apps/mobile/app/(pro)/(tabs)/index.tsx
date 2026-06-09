@@ -1020,7 +1020,7 @@ export default function ProDashboardScreen() {
               hitSlop={8}
               style={{ position: 'relative' }}
               accessibilityRole="button"
-              accessibilityLabel="Nouveautés"
+              accessibilityLabel="Nouveau"
             >
               <View style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderRadius: radius.full }}>
                 <Avatar

@@ -95,7 +95,7 @@ export function NotificationsBell({ variant = 'dark' }: { variant?: 'light' | 'd
       <button
         onClick={() => setOpen((v) => !v)}
         className={`relative p-2 rounded-lg transition-colors ${btnColor}`}
-        aria-label="Nouveautés"
+        aria-label="Nouveau"
       >
         <Bell className="w-6 h-6" />
         {unreadCount > 0 && (
@@ -124,7 +124,7 @@ export function NotificationsBell({ variant = 'dark' }: { variant?: 'light' | 'd
             )}
             <div className="flex-1 min-w-0">
               <p className="font-bold text-gray-900 dark:text-white leading-tight">
-                {selected ? 'Nouveauté' : 'Nouveautés'}
+                Nouveau
               </p>
               {!selected && (
                 <p className="text-xs text-gray-400">
