@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import path from 'path';
+import bcrypt from 'bcryptjs';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 
 /**
@@ -15,6 +16,24 @@ async function verifyAdmin(uid: string): Promise<boolean> {
   const db = getAdminFirestore();
   const userDoc = await db.collection('users').doc(uid).get();
   return userDoc.exists && userDoc.data()?.isAdmin === true;
+}
+
+/** Confirmation gate for sensitive actions — verifies the admin's own
+ *  personal code (the bcrypt `adminCodeHash`, set via "Modifier le code"). */
+async function verifyAdminActionCode(
+  uid: string,
+  code: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  if (typeof code !== 'string' || !code) return { ok: false, error: 'Code requis' };
+  const db = getAdminFirestore();
+  const snap = await db.collection('users').doc(uid).get();
+  const data = snap.data();
+  if (!snap.exists || data?.isAdmin !== true) return { ok: false, error: 'Non autorisé' };
+  if (!data?.adminCodeHash) {
+    return { ok: false, error: 'Aucun code admin défini (configure-le via « Modifier le code »)' };
+  }
+  const ok = await bcrypt.compare(code, data.adminCodeHash);
+  return ok ? { ok: true } : { ok: false, error: 'Code incorrect' };
 }
 
 /** Descending semver compare (b vs a) so the newest version sorts first. */
@@ -112,6 +131,15 @@ export async function POST(request: NextRequest) {
       features: cleanList(body.releaseNotes?.features),
       fixes: cleanList(body.releaseNotes?.fixes),
     };
+
+    // Sensitive: blocking users (force-update) or shutting the app
+    // (maintenance) requires the confirmation code.
+    if (!!body.forceUpdate || !!body.maintenance) {
+      const check = await verifyAdminActionCode(adminUid, body.actionCode);
+      if (!check.ok) {
+        return NextResponse.json({ error: check.error }, { status: 403 });
+      }
+    }
 
     const data = {
       minSupportedVersion,

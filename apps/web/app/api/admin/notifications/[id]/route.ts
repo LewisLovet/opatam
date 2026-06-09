@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 
 async function verifyAdmin(uid: string): Promise<boolean> {
@@ -12,6 +13,24 @@ const str = (v: unknown): string | null =>
 
 const ALLOWED_AUDIENCES = ['pros', 'clients', 'all', 'admins', 'specific'];
 const ALLOWED_TYPES = ['announcement', 'feature', 'tutorial'];
+const BROADCAST_AUDIENCES = ['pros', 'clients', 'all'];
+
+/** Verifies the admin's own personal code (bcrypt adminCodeHash). */
+async function verifyAdminActionCode(
+  uid: string,
+  code: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  if (typeof code !== 'string' || !code) return { ok: false, error: 'Code requis' };
+  const db = getAdminFirestore();
+  const snap = await db.collection('users').doc(uid).get();
+  const data = snap.data();
+  if (!snap.exists || data?.isAdmin !== true) return { ok: false, error: 'Non autorisé' };
+  if (!data?.adminCodeHash) {
+    return { ok: false, error: 'Aucun code admin défini (configure-le via « Modifier le code »)' };
+  }
+  const ok = await bcrypt.compare(code, data.adminCodeHash);
+  return ok ? { ok: true } : { ok: false, error: 'Code incorrect' };
+}
 
 // PUT — update a notification (and flip publish state).
 export async function PUT(
@@ -43,6 +62,15 @@ export async function PUT(
     }
 
     const willPublish = !!body.isPublished;
+
+    // Broadcasting to a wide audience requires the confirmation code.
+    if (willPublish && BROADCAST_AUDIENCES.includes(audience)) {
+      const check = await verifyAdminActionCode(adminUid, body.actionCode);
+      if (!check.ok) {
+        return NextResponse.json({ error: check.error }, { status: 403 });
+      }
+    }
+
     const update: Record<string, unknown> = {
       title,
       body: text,

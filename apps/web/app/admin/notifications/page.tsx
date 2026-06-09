@@ -5,6 +5,7 @@ import { storage } from '@booking-app/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, Textarea, Select, Switch, Loader, useToast } from '@/components/ui';
+import { ActionCodeModal } from '../components/ActionCodeModal';
 import {
   Bell,
   BellOff,
@@ -203,6 +204,9 @@ export default function AdminNotificationsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Broadcast confirmation
+  const [codeModalOpen, setCodeModalOpen] = useState(false);
+
   const searchProviders = useCallback(
     async (q: string) => {
       if (!user || !q.trim()) {
@@ -313,12 +317,12 @@ export default function AdminNotificationsPage() {
     setShowForm(true);
   };
 
-  const save = async () => {
+  // Sending a published notification to a wide audience is sensitive.
+  const isBroadcast =
+    form.isPublished && ['pros', 'clients', 'all'].includes(form.audience);
+
+  const doSave = async (actionCode?: string) => {
     if (!user) return;
-    if (!form.title.trim() || !form.body.trim()) {
-      toast.error('Titre et message requis');
-      return;
-    }
     setSaving(true);
     try {
       const res = await fetch(
@@ -326,7 +330,7 @@ export default function AdminNotificationsPage() {
         {
           method: editingId ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json', 'x-admin-uid': user.id },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ ...form, actionCode }),
         },
       );
       if (!res.ok) {
@@ -336,6 +340,7 @@ export default function AdminNotificationsPage() {
       toast.success(editingId ? 'Notification mise à jour' : 'Notification créée');
       setShowForm(false);
       setEditingId(null);
+      setCodeModalOpen(false);
       void load();
     } catch (e: any) {
       console.error(e);
@@ -343,6 +348,24 @@ export default function AdminNotificationsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = () => {
+    if (!user) return;
+    if (!form.title.trim() || !form.body.trim()) {
+      toast.error('Titre et message requis');
+      return;
+    }
+    if (form.audience === 'specific' && !form.targetUserId) {
+      toast.error('Sélectionne un prestataire');
+      return;
+    }
+    // Broadcast to a wide audience → confirm with a code first.
+    if (isBroadcast) {
+      setCodeModalOpen(true);
+      return;
+    }
+    void doSave();
   };
 
   const remove = async (id: string) => {
@@ -700,7 +723,7 @@ export default function AdminNotificationsPage() {
             >
               Annuler
             </Button>
-            <Button onClick={save} loading={saving}>
+            <Button onClick={handleSave} loading={saving}>
               {editingId ? 'Enregistrer' : 'Créer'}
             </Button>
           </div>
@@ -764,6 +787,25 @@ export default function AdminNotificationsPage() {
           ))
         )}
       </section>
+
+      <ActionCodeModal
+        open={codeModalOpen}
+        title="Confirmer l'envoi"
+        intro="Cette notification va être diffusée à une large audience. Vérifie et saisis le code."
+        recap={[
+          {
+            label: 'Audience',
+            value: AUDIENCE_OPTIONS.find((o) => o.value === form.audience)?.label ?? form.audience,
+            warn: true,
+          },
+          { label: 'Push', value: form.sendPush ? 'Oui' : 'Non', warn: form.sendPush },
+          { label: 'Titre', value: form.title || '—' },
+        ]}
+        confirmLabel="Diffuser"
+        loading={saving}
+        onConfirm={(code) => void doSave(code)}
+        onClose={() => setCodeModalOpen(false)}
+      />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   Rocket,
   Bug,
 } from 'lucide-react';
+import { ActionCodeModal } from '../components/ActionCodeModal';
 
 interface AppConfigForm {
   minSupportedVersion: string;
@@ -67,6 +68,7 @@ export default function AdminAppConfigPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [codeModalOpen, setCodeModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -150,12 +152,11 @@ export default function AdminAppConfigPage() {
       form[kind].filter((_, i) => i !== idx)
     );
 
-  const save = async () => {
+  // Sensitive when a block is active — gated by a confirmation code.
+  const isSensitive = form.forceUpdate || form.maintenance;
+
+  const doSave = async (actionCode?: string) => {
     if (!user) return;
-    if (form.forceUpdate && !SEMVER_RE.test(form.minSupportedVersion)) {
-      toast.error('Choisis une version minimale avant de forcer la mise à jour');
-      return;
-    }
     setSaving(true);
     try {
       const payload = {
@@ -163,6 +164,7 @@ export default function AdminAppConfigPage() {
         // Default the threshold to 0.0.0 (blocks nobody) when left empty.
         minSupportedVersion: form.minSupportedVersion || '0.0.0',
         releaseNotes: { features: form.features, fixes: form.fixes },
+        actionCode,
       };
       const res = await fetch('/api/admin/app-config', {
         method: 'POST',
@@ -174,6 +176,7 @@ export default function AdminAppConfigPage() {
         throw new Error(j.error || 'Erreur serveur');
       }
       toast.success('Configuration enregistrée');
+      setCodeModalOpen(false);
       void load();
     } catch (e: any) {
       console.error(e);
@@ -181,6 +184,20 @@ export default function AdminAppConfigPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = () => {
+    if (!user) return;
+    if (form.forceUpdate && !SEMVER_RE.test(form.minSupportedVersion)) {
+      toast.error('Choisis une version minimale avant de forcer la mise à jour');
+      return;
+    }
+    // Blocking users / maintenance → confirm with a code first.
+    if (isSensitive) {
+      setCodeModalOpen(true);
+      return;
+    }
+    void doSave();
   };
 
   if (loading) {
@@ -518,10 +535,33 @@ export default function AdminAppConfigPage() {
         <p className="text-xs text-gray-400">
           {updatedAt ? `Dernière modification : ${updatedAt}` : 'Jamais configuré'}
         </p>
-        <Button onClick={save} loading={saving} leftIcon={<Save className="w-4 h-4" />}>
+        <Button onClick={handleSave} loading={saving} leftIcon={<Save className="w-4 h-4" />}>
           Enregistrer
         </Button>
       </div>
+
+      <ActionCodeModal
+        open={codeModalOpen}
+        title="Confirmer le blocage de l'app"
+        intro="Cette action impacte tous les utilisateurs. Vérifie les infos et saisis le code."
+        recap={[
+          { label: 'Version minimale', value: form.minSupportedVersion || '0.0.0' },
+          {
+            label: 'Forcer la mise à jour',
+            value: form.forceUpdate ? 'Oui' : 'Non',
+            warn: form.forceUpdate,
+          },
+          {
+            label: 'Mode maintenance',
+            value: form.maintenance ? 'Oui' : 'Non',
+            warn: form.maintenance,
+          },
+        ]}
+        confirmLabel="Bloquer & enregistrer"
+        loading={saving}
+        onConfirm={(code) => void doSave(code)}
+        onClose={() => setCodeModalOpen(false)}
+      />
     </div>
   );
 }

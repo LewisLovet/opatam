@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 
 /**
@@ -15,6 +16,29 @@ async function verifyAdmin(uid: string): Promise<boolean> {
   const db = getAdminFirestore();
   const userDoc = await db.collection('users').doc(uid).get();
   return userDoc.exists && userDoc.data()?.isAdmin === true;
+}
+
+/** Broadcasting a published notification to a wide audience requires the
+ *  confirmation code. Targeted (specific / admins) sends do not. */
+const BROADCAST_AUDIENCES = ['pros', 'clients', 'all'];
+function requiresActionCode(audience: string, isPublished: boolean): boolean {
+  return isPublished && BROADCAST_AUDIENCES.includes(audience);
+}
+/** Verifies the admin's own personal code (bcrypt adminCodeHash). */
+async function verifyAdminActionCode(
+  uid: string,
+  code: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  if (typeof code !== 'string' || !code) return { ok: false, error: 'Code requis' };
+  const db = getAdminFirestore();
+  const snap = await db.collection('users').doc(uid).get();
+  const data = snap.data();
+  if (!snap.exists || data?.isAdmin !== true) return { ok: false, error: 'Non autorisé' };
+  if (!data?.adminCodeHash) {
+    return { ok: false, error: 'Aucun code admin défini (configure-le via « Modifier le code »)' };
+  }
+  const ok = await bcrypt.compare(code, data.adminCodeHash);
+  return ok ? { ok: true } : { ok: false, error: 'Code incorrect' };
 }
 
 const str = (v: unknown): string | null =>
@@ -102,6 +126,13 @@ export async function POST(request: NextRequest) {
     const data = buildDoc(body);
     if (!data.title || !data.body) {
       return NextResponse.json({ error: 'Titre et message requis' }, { status: 400 });
+    }
+
+    if (requiresActionCode(data.audience, data.isPublished)) {
+      const check = await verifyAdminActionCode(adminUid, body.actionCode);
+      if (!check.ok) {
+        return NextResponse.json({ error: check.error }, { status: 403 });
+      }
     }
 
     const now = new Date();
