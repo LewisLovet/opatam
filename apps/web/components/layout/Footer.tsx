@@ -31,6 +31,12 @@ const footerSections: FooterSection[] = [
     ],
   },
   {
+    title: 'Explorer',
+    links: [
+      { href: '/recherche', label: 'Tous les prestataires' },
+    ],
+  },
+  {
     title: 'Pour qui',
     links: [
       { href: '/nail-artist', label: 'Nail artists' },

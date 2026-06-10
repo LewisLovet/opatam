@@ -127,7 +127,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const pageUrl = `https://opatam.com/p/${slug}`;
 
   return {
-    title: `${provider.businessName}${city ? ` — ${city}` : ''} | ${provider.category} | Opatam`,
+    // Note: the root layout title template already appends " | OPATAM",
+    // so we must NOT add it here (avoids the duplicated suffix).
+    title: `${provider.businessName}${city ? ` — ${city}` : ''} · ${provider.category}`,
     description,
     alternates: {
       canonical: pageUrl,

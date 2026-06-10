@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { providerRepository, articleRepository } from '@booking-app/firebase';
-import { ARTICLE_CATEGORIES } from '@booking-app/shared';
+import { ARTICLE_CATEGORIES, CATEGORIES } from '@booking-app/shared';
 
 const BASE_URL = 'https://opatam.com';
 
@@ -53,10 +53,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly' as const,
       priority: 0.5,
     })),
+    // Search directory — the crawlable entry point to all providers,
+    // plus one indexable landing page per trade category.
+    {
+      url: `${BASE_URL}/recherche`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.7,
+    },
   ];
 
-  // Dynamic provider pages — the most important for SEO
+  // Dynamic provider pages — the most important for SEO.
+  // Also emit a category landing page ONLY for categories that actually
+  // have at least one published provider (no empty/thin pages in the index).
   let providerPages: MetadataRoute.Sitemap = [];
+  let categoryPages: MetadataRoute.Sitemap = [];
   try {
     const providers = await providerRepository.getPublished();
     providerPages = providers
@@ -67,6 +78,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'weekly' as const,
         priority: 0.8,
       }));
+
+    const populated = new Set(providers.map((p) => p.category).filter(Boolean));
+    categoryPages = CATEGORIES.filter((cat) => populated.has(cat.id)).map((cat) => ({
+      url: `${BASE_URL}/recherche/${cat.id}`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.7,
+    }));
   } catch (error) {
     console.error('[Sitemap] Error fetching providers:', error);
   }
@@ -87,5 +106,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('[Sitemap] Error fetching articles:', error);
   }
 
-  return [...staticPages, ...providerPages, ...articlePages];
+  return [...staticPages, ...categoryPages, ...providerPages, ...articlePages];
 }

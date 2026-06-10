@@ -1,313 +1,127 @@
-'use client';
+import type { Metadata } from 'next';
+import { providerRepository, type WithId } from '@booking-app/firebase';
+import { CATEGORIES, capitalizeWords, type Provider } from '@booking-app/shared';
+import type { SortOption } from './components';
+import { SearchPageClient } from './SearchPageClient';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { providerRepository, type ProviderSearchFilters, type WithId } from '@booking-app/firebase';
-import { CATEGORIES, SUPPORTED_COUNTRIES, type Provider } from '@booking-app/shared';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
-import {
-  SearchBar,
-  CategoryPills,
-  CityFilter,
-  SortSelect,
-  ResultsGrid,
-  SearchEmptyState,
-  type SortOption,
-} from './components';
+const BASE_URL = 'https://opatam.com';
 
-interface SearchPageProps {
-  params: Promise<{ filters?: string[] }>;
+async function getProviders(
+  category?: string,
+  city?: string,
+  query?: string,
+): Promise<WithId<Provider>[]> {
+  try {
+    return await providerRepository.searchProviders({ category, city, query });
+  } catch (error) {
+    console.error('[recherche] provider fetch failed:', error);
+    return [];
+  }
 }
 
-/**
- * Parse URL filters from catch-all route
- * /recherche -> {}
- * /recherche/beauty -> { category: 'beauty' }
- * /recherche/beauty/paris -> { category: 'beauty', city: 'paris' }
- */
+interface PageProps {
+  params: Promise<{ filters?: string[] }>;
+  searchParams: Promise<{ q?: string; sort?: string }>;
+}
+
+/** /recherche/beauty/paris → { category: 'beauty', city: 'paris' } */
 function parseUrlFilters(filters?: string[]): { category?: string; city?: string } {
-  if (!filters || filters.length === 0) {
-    return {};
-  }
-
   const result: { category?: string; city?: string } = {};
-
-  // First segment is category
-  if (filters[0]) {
-    const validCategory = CATEGORIES.find((c) => c.id === filters[0]);
-    if (validCategory) {
-      result.category = filters[0];
-    }
-  }
-
-  // Second segment is city
-  if (filters[1]) {
-    result.city = decodeURIComponent(filters[1]);
-  }
-
+  if (!filters || filters.length === 0) return result;
+  if (filters[0] && CATEGORIES.find((c) => c.id === filters[0])) result.category = filters[0];
+  if (filters[1]) result.city = decodeURIComponent(filters[1]);
   return result;
 }
 
-/**
- * Build URL path from filters
- */
-function buildUrlPath(category?: string, city?: string): string {
+function categoryLabel(id?: string): string | undefined {
+  if (!id) return undefined;
+  return CATEGORIES.find((c) => c.id === id)?.label;
+}
+
+function buildPath(category?: string, city?: string): string {
   let path = '/recherche';
   if (category) {
     path += `/${category}`;
-    if (city) {
-      path += `/${encodeURIComponent(city.toLowerCase())}`;
-    }
+    if (city) path += `/${encodeURIComponent(city.toLowerCase())}`;
   }
   return path;
 }
 
-/**
- * Get category label from id
- */
-function getCategoryLabel(categoryId?: string): string | undefined {
-  if (!categoryId) return undefined;
-  const category = CATEGORIES.find((c) => c.id === categoryId);
-  return category?.label;
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const { filters } = await params;
+  const { q } = await searchParams;
+  const { category, city } = parseUrlFilters(filters);
+  const label = categoryLabel(category);
+  const cityLabel = city ? capitalizeWords(city) : undefined;
+
+  let title = 'Rechercher un prestataire';
+  let description =
+    'Trouvez et réservez en ligne un prestataire près de chez vous : beauté, bien-être, sport, coaching… Réservation en ligne sur Opatam.';
+
+  if (label && cityLabel) {
+    title = `${label} à ${cityLabel}`;
+    description = `Réservez un professionnel « ${label} » à ${cityLabel} en ligne. Avis, prix et disponibilités sur Opatam.`;
+  } else if (label) {
+    title = label;
+    description = `Trouvez et réservez un professionnel « ${label} » près de chez vous. Avis, prix et disponibilités sur Opatam.`;
+  } else if (cityLabel) {
+    title = `Prestataires à ${cityLabel}`;
+    description = `Découvrez et réservez les prestataires à ${cityLabel} sur Opatam.`;
+  }
+
+  const canonical = `${BASE_URL}${buildPath(category, city)}`;
+
+  // Don't index thin/empty pages: a free-text query, OR a category/city
+  // filter that currently returns no provider. Links are still followed,
+  // so crawlers reach the providers that DO exist. As the catalogue grows,
+  // a once-empty category page becomes indexable automatically.
+  const isFiltered = !!category || !!city;
+  let indexable = true;
+  if (q) {
+    indexable = false;
+  } else if (isFiltered) {
+    const results = await getProviders(category, city, undefined);
+    indexable = results.length > 0;
+  }
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    robots: indexable ? { index: true, follow: true } : { index: false, follow: true },
+    openGraph: {
+      title: `${title} | Opatam`,
+      description,
+      url: canonical,
+      siteName: 'Opatam',
+      type: 'website',
+      locale: 'fr_FR',
+    },
+  };
 }
 
-export default function SearchPage({ params }: SearchPageProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export default async function SearchPage({ params, searchParams }: PageProps) {
+  const { filters } = await params;
+  const { q, sort } = await searchParams;
+  const { category, city } = parseUrlFilters(filters);
 
-  // State
-  const [urlFilters, setUrlFilters] = useState<{ category?: string; city?: string }>({});
-  const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SortOption>('rating');
-  const [selectedCountry, setSelectedCountry] = useState<string | undefined>(undefined);
-  const [providers, setProviders] = useState<WithId<Provider>[]>([]);
-  const [availableCities, setAvailableCities] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const providers = await getProviders(category, city, q || undefined);
 
-  // Parse params on mount
-  useEffect(() => {
-    params.then((resolved) => {
-      const parsed = parseUrlFilters(resolved.filters);
-      setUrlFilters(parsed);
+  // Plain-serialise for the client boundary (Dates/Timestamps → strings).
+  const initialProviders = JSON.parse(JSON.stringify(providers)) as WithId<Provider>[];
 
-      // Get query from URL search params
-      const urlQuery = searchParams.get('q') || '';
-      setQuery(urlQuery);
-
-      // Get sort from URL search params
-      const urlSort = searchParams.get('sort') as SortOption | null;
-      if (urlSort && ['rating', 'price_asc', 'price_desc', 'newest'].includes(urlSort)) {
-        setSort(urlSort);
-      }
-    });
-  }, [params, searchParams]);
-
-  // Fetch providers when filters change
-  useEffect(() => {
-    async function fetchProviders() {
-      setIsLoading(true);
-      try {
-        const filters: ProviderSearchFilters = {
-          category: urlFilters.category,
-          city: urlFilters.city,
-          query: query || undefined,
-        };
-
-        const results = await providerRepository.searchProviders(filters);
-        setProviders(results);
-
-        // Extract unique cities for filter dropdown
-        const cities = new Set<string>();
-        results.forEach((p) => {
-          p.cities?.forEach((c) => cities.add(c));
-        });
-        setAvailableCities(Array.from(cities).sort());
-      } catch (error) {
-        console.error('Error fetching providers:', error);
-        setProviders([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchProviders();
-  }, [urlFilters, query]);
-
-  // Filter by country client-side, then sort
-  const sortedProviders = useMemo(() => {
-    let filtered = providers;
-    if (selectedCountry) {
-      filtered = providers.filter((p) => (p.countryCode || 'FR') === selectedCountry);
-    }
-    const sorted = [...filtered];
-    switch (sort) {
-      case 'rating':
-        sorted.sort((a, b) => (b.rating?.average || 0) - (a.rating?.average || 0));
-        break;
-      case 'price_asc':
-        sorted.sort((a, b) => (a.minPrice || Infinity) - (b.minPrice || Infinity));
-        break;
-      case 'price_desc':
-        sorted.sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
-        break;
-      case 'newest':
-        // Already sorted by createdAt in repository if no rating filter
-        break;
-    }
-    return sorted;
-  }, [providers, sort, selectedCountry]);
-
-  // Update URL when filters change
-  const updateUrl = useCallback(
-    (newCategory?: string, newCity?: string, newQuery?: string, newSort?: SortOption) => {
-      const path = buildUrlPath(newCategory, newCity);
-      const params = new URLSearchParams();
-
-      if (newQuery) {
-        params.set('q', newQuery);
-      }
-      if (newSort && newSort !== 'rating') {
-        params.set('sort', newSort);
-      }
-
-      const queryString = params.toString();
-      const fullPath = queryString ? `${path}?${queryString}` : path;
-
-      router.push(fullPath, { scroll: false });
-    },
-    [router]
-  );
-
-  // Handlers
-  const handleSearch = useCallback(
-    (newQuery: string) => {
-      setQuery(newQuery);
-      updateUrl(urlFilters.category, urlFilters.city, newQuery, sort);
-    },
-    [urlFilters, sort, updateUrl]
-  );
-
-  const handleCategoryChange = useCallback(
-    (category: string | undefined) => {
-      setUrlFilters((prev) => ({ ...prev, category }));
-      updateUrl(category, urlFilters.city, query, sort);
-    },
-    [urlFilters.city, query, sort, updateUrl]
-  );
-
-  const handleCityChange = useCallback(
-    (city: string | undefined) => {
-      setUrlFilters((prev) => ({ ...prev, city }));
-      updateUrl(urlFilters.category, city, query, sort);
-    },
-    [urlFilters.category, query, sort, updateUrl]
-  );
-
-  const handleSortChange = useCallback(
-    (newSort: SortOption) => {
-      setSort(newSort);
-      updateUrl(urlFilters.category, urlFilters.city, query, newSort);
-    },
-    [urlFilters, query, updateUrl]
-  );
-
-  const handleClearFilters = useCallback(() => {
-    setUrlFilters({});
-    setQuery('');
-    setSort('rating');
-    setSelectedCountry(undefined);
-    router.push('/recherche', { scroll: false });
-  }, [router]);
-
-  // Page title based on filters
-  const pageTitle = useMemo(() => {
-    const categoryLabel = getCategoryLabel(urlFilters.category);
-    if (categoryLabel && urlFilters.city) {
-      return `${categoryLabel} à ${urlFilters.city}`;
-    }
-    if (categoryLabel) {
-      return categoryLabel;
-    }
-    if (urlFilters.city) {
-      return `Prestataires à ${urlFilters.city}`;
-    }
-    return 'Rechercher un prestataire';
-  }, [urlFilters]);
+  const validSort: SortOption =
+    sort && ['rating', 'price_asc', 'price_desc', 'newest'].includes(sort)
+      ? (sort as SortOption)
+      : 'rating';
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <Header />
-
-      <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Page Title */}
-          <div className="mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              {pageTitle}
-            </h1>
-
-            {/* Search Bar */}
-            <SearchBar initialValue={query} onSearch={handleSearch} />
-          </div>
-
-          {/* Filters Row */}
-          <div className="mb-6 space-y-4">
-            {/* Category Pills */}
-            <CategoryPills
-              selectedCategory={urlFilters.category}
-              onSelect={handleCategoryChange}
-            />
-
-            {/* Country + City Filter + Sort */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Country filter */}
-                <select
-                  value={selectedCountry || ''}
-                  onChange={(e) => setSelectedCountry(e.target.value || undefined)}
-                  className="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">Tous les pays</option>
-                  {SUPPORTED_COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>{c.label}</option>
-                  ))}
-                </select>
-
-                <CityFilter
-                  selectedCity={urlFilters.city}
-                  availableCities={availableCities}
-                  onSelect={handleCityChange}
-                />
-              </div>
-
-              <SortSelect value={sort} onChange={handleSortChange} />
-            </div>
-          </div>
-
-          {/* Results Count */}
-          {!isLoading && sortedProviders.length > 0 && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {sortedProviders.length} prestataire{sortedProviders.length > 1 ? 's' : ''} trouvé
-              {sortedProviders.length > 1 ? 's' : ''}
-            </p>
-          )}
-
-          {/* Results */}
-          {!isLoading && sortedProviders.length === 0 ? (
-            <SearchEmptyState
-              query={query}
-              category={getCategoryLabel(urlFilters.category)}
-              city={urlFilters.city}
-              onClearFilters={handleClearFilters}
-            />
-          ) : (
-            <ResultsGrid providers={sortedProviders} isLoading={isLoading} />
-          )}
-        </div>
-      </main>
-
-      <Footer variant="simple" />
-    </div>
+    <SearchPageClient
+      initialProviders={initialProviders}
+      initialCategory={category}
+      initialCity={city}
+      initialQuery={q || ''}
+      initialSort={validSort}
+    />
   );
 }
