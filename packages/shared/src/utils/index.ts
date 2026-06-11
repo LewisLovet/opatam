@@ -312,6 +312,10 @@ export function resolveDeposit(
       service.deposit.type === 'fixed'
         ? value
         : Math.round((service.price * value) / 100);
+    // A 0€ deposit is no deposit: it would show a pointless opt-in in
+    // the booking UIs and, server-side, put the booking in
+    // pending_payment behind a 0-amount Stripe Checkout.
+    if (amount <= 0) return null;
     return {
       amount,
       refundDeadlineHours: service.deposit.refundDeadlineHours ?? 24,
@@ -319,10 +323,12 @@ export function resolveDeposit(
     };
   }
   if (providerSettings.depositDefault) {
+    const amount = Math.round(
+      (service.price * providerSettings.depositDefault.percent) / 100
+    );
+    if (amount <= 0) return null;
     return {
-      amount: Math.round(
-        (service.price * providerSettings.depositDefault.percent) / 100
-      ),
+      amount,
       refundDeadlineHours: providerSettings.depositDefault.refundDeadlineHours,
       source: 'default',
     };
