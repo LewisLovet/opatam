@@ -91,8 +91,12 @@ function parseTime(time: string): number {
   return hours * 60 + minutes;
 }
 
-/** Convert hex color to light tint (20% opacity equivalent) */
+/** Convert hex color to light tint (20% opacity equivalent).
+ *  Defensive: non-#rrggbb input (empty/named/malformed color) falls back
+ *  to a neutral grey — rgb(NaN,…) hard-crashes the native style parser
+ *  in release builds. */
 function getLightTint(hex: string): string {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return '#F3F4F6';
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -274,7 +278,10 @@ export function DaySchedule({
 
   const startMinutes = effectiveStart;
   const endMinutes = effectiveEnd;
-  const totalMinutes = endMinutes - startMinutes;
+  // Clamp to ≥1h: a degenerate range (end ≤ start) would make every
+  // top/height computation below divide by zero → NaN layout values,
+  // which hard-crash the native renderer in release builds.
+  const totalMinutes = Math.max(60, endMinutes - startMinutes);
   const totalHeight = (totalMinutes / 60) * HOUR_HEIGHT;
 
   // Generate hour labels

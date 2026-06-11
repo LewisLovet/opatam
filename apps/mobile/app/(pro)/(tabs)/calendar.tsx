@@ -539,8 +539,13 @@ function WeekView({
     return { top, dayIdx: todayIdx };
   }, [weekDays, totalHeight, startHour, endHour]);
 
-  /** Convert hex color to light tint (20% opacity equivalent) */
+  /** Convert hex color to light tint (20% opacity equivalent).
+   *  Defensive: anything that isn't a #rrggbb string (empty string,
+   *  named color, malformed value from a denormalised doc) falls back
+   *  to a neutral surface instead of producing rgb(NaN,…) — invalid
+   *  color strings hard-crash the native style parser in release. */
   function getLightTint(hex: string): string {
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return colors.surfaceSecondary;
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
@@ -1414,7 +1419,7 @@ export default function CalendarScreen() {
         id: b.id,
         startTime: formatTime(dt),
         endTime: formatTime(endDt),
-        clientName: b.clientInfo.name,
+        clientName: b.clientInfo?.name ?? 'Client',
         serviceName: b.serviceName,
         status: b.status,
         memberName: (b.memberId && memberNameMap[b.memberId]) || undefined,
@@ -1442,7 +1447,7 @@ export default function CalendarScreen() {
         id: b.id,
         datetime: dt,
         duration: b.duration,
-        clientName: b.clientInfo.name,
+        clientName: b.clientInfo?.name ?? 'Client',
         serviceName: b.serviceName,
         status: b.status,
         memberId: b.memberId ?? null,
