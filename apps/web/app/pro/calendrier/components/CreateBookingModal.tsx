@@ -176,7 +176,8 @@ export function CreateBookingModal({
   const [clients, setClients] = useState<WithId<ProviderClient>[]>([]);
   const [availableSlots, setAvailableSlots] = useState<SlotWithMembers[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [askDeposit, setAskDeposit] = useState(true);
+  // Off by default — the pro explicitly opts in to send the payment link.
+  const [askDeposit, setAskDeposit] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     locationId: '',
@@ -244,7 +245,7 @@ export function CreateBookingModal({
       });
       setErrors({});
       setAvailableSlots([]);
-      setAskDeposit(true);
+      setAskDeposit(false);
       setCart([]);
       setDraftServiceId('');
       setDraftSelections(emptyServiceSelections());

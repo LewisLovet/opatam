@@ -115,7 +115,8 @@ export function NewBookingDrawer({
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotWithDate | null>(null);
   const [clientInfo, setClientInfo] = useState({ name: '', email: '', phone: '' });
-  const [askDeposit, setAskDeposit] = useState(true);
+  // Off by default — the pro explicitly opts in to send the payment link.
+  const [askDeposit, setAskDeposit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [paymentRequested, setPaymentRequested] = useState(false);
@@ -157,7 +158,7 @@ export function NewBookingDrawer({
       setSelectedSlot(null);
       setClientInfo({ name: '', email: '', phone: '' });
       setSubmitError(null);
-      setAskDeposit(true);
+      setAskDeposit(false);
       setPaymentRequested(false);
     }, 200);
   };

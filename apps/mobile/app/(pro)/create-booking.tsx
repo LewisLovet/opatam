@@ -43,6 +43,7 @@ import {
   Divider,
   TimeSlotSection,
   SubscriptionRequiredModal,
+  Switch,
 } from '../../components';
 import { useProvider, useAuth, useSubscriptionStatus } from '../../contexts';
 import {
@@ -56,6 +57,7 @@ import {
   computeServiceTotal,
   emptyServiceSelections,
   serviceHasChoices,
+  resolveDeposit,
 } from '@booking-app/shared';
 import type { Service, Member, Location, ProviderClient, ServiceSelections } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
@@ -477,7 +479,7 @@ const stepperStyles = StyleSheet.create({
 export default function CreateBookingScreen() {
   const { colors, spacing, radius, shadows } = useTheme();
   const router = useRouter();
-  const { providerId } = useProvider();
+  const { providerId, provider } = useProvider();
   const { user } = useAuth();
   const sub = useSubscriptionStatus();
   // Pre-fill identity step when launched from /pro/client-detail
@@ -584,6 +586,21 @@ export default function CreateBookingScreen() {
     const lastBuffer = selectedServices[selectedServices.length - 1].bufferTime || 0;
     return totalServiceDuration + lastBuffer;
   }, [selectedServices, totalServiceDuration]);
+
+  // -- Deposit (acompte) ------------------------------------------------------
+  // Mirrors the web CreateBookingModal: resolve the deposit from the primary
+  // service's config (or the provider default) over the cart total. null when
+  // no deposit applies or the deposits add-on isn't active. The server
+  // recomputes the authoritative amount at creation time.
+  const resolvedDeposit = useMemo(() => {
+    if (!provider?.depositsAddonActive || !selectedService) return null;
+    return resolveDeposit(
+      { price: totalServicePrice, deposit: selectedService.deposit },
+      { depositDefault: provider.settings?.depositDefault },
+    );
+  }, [provider, selectedService, totalServicePrice]);
+  // Off by default — the pro explicitly opts in to send the payment link.
+  const [askDeposit, setAskDeposit] = useState(false);
 
   // -- Step 2 -----------------------------------------------------------------
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -1001,10 +1018,9 @@ export default function CreateBookingScreen() {
     try {
       setSubmitting(true);
 
-      // Route through /api/bookings (source:'pro' + askDeposit:true) so
-      // the deposit flow is honored: if the service has an active
-      // deposit configured, the server creates the booking as
-      // pending_payment and emails the client a Stripe Checkout link.
+      // Route through /api/bookings (source:'pro') so the deposit flow is
+      // honored when the pro opted in: the server then creates the booking
+      // as pending_payment and emails the client a Stripe Checkout link.
       // Otherwise the booking is confirmed immediately.
       const apiUrl = process.env.EXPO_PUBLIC_APP_URL ?? 'https://opatam.com';
       const res = await fetch(`${apiUrl}/api/bookings`, {
@@ -1029,7 +1045,7 @@ export default function CreateBookingScreen() {
           },
           notes: notes.trim() || undefined,
           source: 'pro',
-          askDeposit: true,
+          askDeposit: !!resolvedDeposit && askDeposit,
         }),
       });
       const data = await res.json();
@@ -1064,6 +1080,8 @@ export default function CreateBookingScreen() {
     clientEmail,
     clientPhone,
     notes,
+    resolvedDeposit,
+    askDeposit,
     router,
   ]);
 
@@ -1776,6 +1794,31 @@ export default function CreateBookingScreen() {
                 </View>
               ) : null}
             </Card>
+
+            {/* Deposit (acompte) opt-in — only when a deposit resolves for
+                this service (add-on active + config). Same behaviour as the
+                web modal: off by default, the pro explicitly chooses to
+                send the payment link. */}
+            {resolvedDeposit && (
+              <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.lg }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
+                  <View style={[styles.detailIconCircle, { backgroundColor: colors.primaryLight }]}>
+                    <Ionicons name="card-outline" size={16} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body" style={{ fontWeight: '600' }}>
+                      Demander l'acompte au client
+                    </Text>
+                    <Text variant="caption" color="textSecondary" style={{ marginTop: 4, lineHeight: 18 }}>
+                      {askDeposit
+                        ? `Un email avec un lien de paiement de ${formatPrice(resolvedDeposit.amount)} sera envoyé. La réservation reste en attente jusqu'au paiement (30 min max).`
+                        : "Aucune demande d'acompte. Vous encaisserez en personne."}
+                    </Text>
+                  </View>
+                  <Switch value={askDeposit} onValueChange={setAskDeposit} />
+                </View>
+              </Card>
+            )}
 
             {/* Confirm button */}
             <Button
