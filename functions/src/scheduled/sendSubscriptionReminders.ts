@@ -207,6 +207,70 @@ export const sendSubscriptionReminders = onSchedule(
         console.log(`Sent unpublished reminder to ${provider.businessName} (${providerId})`);
       }
 
+      // ─── 3. Activation reminder (published but 0 booking) ─────────────
+      // Trial providers who published their page but haven't received a
+      // single booking yet, between ~3 and ~20 days of account age. Goal:
+      // nudge them to SHARE the page so they get their first booking — the
+      // activation milestone that drives conversion. Sent once (flag
+      // `activationReminderSent`).
+      const activationSnap = await db
+        .collection('providers')
+        .where('subscription.status', '==', 'trialing')
+        .where('isPublished', '==', true)
+        .get();
+
+      for (const doc of activationSnap.docs) {
+        const provider = doc.data();
+        const providerId = doc.id;
+
+        if (provider.activationReminderSent) continue;
+
+        const createdAt: Date | undefined = provider.createdAt?.toDate?.();
+        if (!createdAt) continue;
+        const ageDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+        if (ageDays < 3 || ageDays > 20) continue;
+
+        // Only nudge those with ZERO bookings so far (limit 1 = cheap).
+        const bookingsSnap = await db
+          .collection('bookings')
+          .where('providerId', '==', providerId)
+          .limit(1)
+          .get();
+        if (!bookingsSnap.empty) {
+          // Has at least one booking → activated, no nudge. Flag so we
+          // never re-check this provider.
+          await doc.ref.update({ activationReminderSent: true });
+          continue;
+        }
+
+        const userDoc = await db.collection('users').doc(providerId).get();
+        const pushTokens: string[] = userDoc.data()?.pushTokens || [];
+        const email = userDoc.data()?.email;
+
+        if (pushTokens.length > 0) {
+          await sendPushNotifications(pushTokens, {
+            title: 'Décrochez votre première réservation',
+            body: 'Partagez votre page pour attirer vos premiers clients.',
+            data: { type: 'activation', providerId },
+          });
+        }
+
+        if (email) {
+          try {
+            await sendTemplateEmail({
+              to: email,
+              template: 'activation_no_booking',
+              data: { businessName: provider.businessName },
+            });
+          } catch (emailErr) {
+            console.warn(`Activation email failed for ${providerId}:`, emailErr);
+          }
+        }
+
+        await doc.ref.update({ activationReminderSent: true });
+        console.log(`Sent activation reminder to ${provider.businessName} (${providerId})`);
+      }
+
       console.log('=== sendSubscriptionReminders completed ===');
     } catch (error) {
       console.error('sendSubscriptionReminders failed:', error);

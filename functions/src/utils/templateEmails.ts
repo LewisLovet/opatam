@@ -24,6 +24,7 @@ interface TemplateEmailOptions {
   template:
     | 'subscription_expiry'
     | 'unpublished_reminder'
+    | 'activation_no_booking'
     | 'new_review'
     | 'affiliate_onboarding_reminder';
   data: Record<string, any>;
@@ -146,6 +147,28 @@ function getTemplate(template: string, data: Record<string, any>): { subject: st
             <a href="${APP_URL}/pro/profil" class="btn">Publier ma page</a>
           </p>
           <p style="font-size: 13px; color: #6B7280;">Astuce : partagez votre page sur vos réseaux sociaux pour attirer vos premiers clients !</p>
+        `),
+      };
+    }
+
+    case 'activation_no_booking': {
+      const { businessName } = data;
+      return {
+        subject: `${businessName} — Décrochez votre première réservation`,
+        html: wrapHtml(`
+          <h1>Prêt·e pour vos premières réservations ?</h1>
+          <p>Bonjour,</p>
+          <p>Votre page <strong>${businessName}</strong> est en ligne 🎉 — mais elle n'a pas encore reçu de réservation. La meilleure façon de démarrer : la <strong>partager</strong> autour de vous.</p>
+          <p style="margin: 16px 0 8px; font-weight: 600;">3 actions qui marchent :</p>
+          <ul style="margin: 0 0 16px; padding-left: 20px; color: #374151;">
+            <li style="margin-bottom: 6px;">Publiez une <strong>story</strong> avec vos disponibilités du jour (depuis l'app).</li>
+            <li style="margin-bottom: 6px;">Mettez le <strong>lien de votre page</strong> dans votre bio Instagram / TikTok.</li>
+            <li style="margin-bottom: 6px;">Affichez votre <strong>QR code</strong> sur place pour que vos clients réservent en un scan.</li>
+          </ul>
+          <p style="text-align: center; margin: 24px 0;">
+            <a href="${APP_URL}/pro" class="btn">Partager ma page</a>
+          </p>
+          <p style="font-size: 13px; color: #6B7280;">Vos clients réservent en ligne 24h/24, sans appel ni va-et-vient de messages.</p>
         `),
       };
     }
