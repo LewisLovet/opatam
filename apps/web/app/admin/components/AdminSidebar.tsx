@@ -13,6 +13,7 @@ import {
   BarChart3,
   Activity,
   Handshake,
+  Megaphone,
   LogOut,
   Menu,
   X,
@@ -56,6 +57,7 @@ const navGroups: NavGroup[] = [
       { label: 'Avis', href: '/admin/reviews', icon: <Star className="w-5 h-5" /> },
       { label: 'Revenue', href: '/admin/revenue', icon: <Euro className="w-5 h-5" /> },
       { label: 'Affiliés', href: '/admin/affiliates', icon: <Handshake className="w-5 h-5" /> },
+      { label: 'Marketing', href: '/admin/marketing', icon: <Megaphone className="w-5 h-5" /> },
     ],
   },
   {
