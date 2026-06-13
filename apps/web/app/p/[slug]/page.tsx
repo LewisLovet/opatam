@@ -126,6 +126,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const pageUrl = `https://opatam.com/p/${slug}`;
 
+  // Social/preview image = the PROVIDER's own identity: cover photo
+  // first, then their logo. We deliberately do NOT fall back to the
+  // Opatam default — a provider's share card should show THEM, not the
+  // platform. (The small favicon in Google results is domain-level and
+  // stays Opatam — that's expected and fine.)
+  const ogImage = provider.coverPhotoURL || provider.photoURL;
+  const ogImages = ogImage ? [ogImage] : [];
+
   return {
     // Note: the root layout title template already appends " | OPATAM",
     // so we must NOT add it here (avoids the duplicated suffix).
@@ -139,15 +147,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url: pageUrl,
       siteName: 'Opatam',
-      images: provider.coverPhotoURL ? [provider.coverPhotoURL] : [],
+      images: ogImages,
       type: 'website',
       locale: 'fr_FR',
     },
     twitter: {
-      card: 'summary_large_image',
+      card: ogImage ? 'summary_large_image' : 'summary',
       title: `${provider.businessName}${city ? ` — ${city}` : ''}`,
       description,
-      images: provider.coverPhotoURL ? [provider.coverPhotoURL] : [],
+      images: ogImages,
     },
   };
 }
