@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
     '@booking-app/ui',
   ],
   images: {
+    // Serve images straight from their source (Firebase Storage — already
+    // a CDN) instead of routing them through Vercel's Image Optimization.
+    // That optimizer is metered/billed: once its quota is hit it returns
+    // 402 on /_next/image and every <Image> breaks (the search results
+    // cover photos went blank for exactly this reason). We don't need
+    // per-request resizing here, so opting out removes the failure mode
+    // and the cost entirely.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
