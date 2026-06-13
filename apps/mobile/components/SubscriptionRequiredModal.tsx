@@ -56,13 +56,15 @@ export function SubscriptionRequiredModal({ visible, onClose, context }: Subscri
             {context || 'Votre période d\'essai est terminée. Abonnez-vous pour débloquer toutes les fonctionnalités.'}
           </Text>
 
-          {/* Price highlight */}
+          {/* Reassurance — no hardcoded price here. The exact amount is
+              shown on the paywall, read live from the store (App Store /
+              Play), so the two screens can never display divergent prices. */}
           <View style={[styles.priceCard, { backgroundColor: colors.primary + '08', borderColor: colors.primary + '20' }]}>
             <Text style={[styles.priceText, { color: colors.primary }]}>
-              À partir de {(SUBSCRIPTION_PLANS.solo.yearlyPrice / 100 / 12).toFixed(2).replace('.', ',')} €/mois
+              Sans engagement
             </Text>
             <Text variant="caption" color="textSecondary">
-              Soit {(SUBSCRIPTION_PLANS.solo.yearlyPrice / 100).toFixed(0)} €/an — sans engagement
+              Résiliable à tout moment
             </Text>
           </View>
 

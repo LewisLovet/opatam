@@ -212,6 +212,8 @@ function TimelineBookingItem({
   isPast,
   timeChip,
   memberColor,
+  price,
+  depositPaid,
   onPress,
   onConfirm,
   onCancel,
@@ -224,6 +226,12 @@ function TimelineBookingItem({
   isPast: boolean;
   timeChip: string | null;
   memberColor?: string | null;
+  /** Total price of the visit (cents). */
+  price: number;
+  /** Deposit already paid online (cents), when the booking carries a paid
+   *  deposit — null/0 otherwise. The amount still to collect in person is
+   *  `price - depositPaid`. */
+  depositPaid?: number | null;
   onPress: () => void;
   onConfirm?: () => void;
   onCancel?: () => void;
@@ -232,6 +240,9 @@ function TimelineBookingItem({
 
   const statusColor = status === 'confirmed' ? colors.success : status === 'pending' ? colors.warning : colors.error;
   const barColor = memberColor || statusColor;
+
+  const hasDeposit = !!depositPaid && depositPaid > 0;
+  const remaining = hasDeposit ? Math.max(0, price - (depositPaid as number)) : price;
 
   const formatDuration = (min: number) => {
     if (min < 60) return `${min} min`;
@@ -267,9 +278,28 @@ function TimelineBookingItem({
               <Text variant="caption" color="textMuted" numberOfLines={1}>{serviceName} · {formatDuration(duration)}</Text>
             </View>
           </View>
-          {timeChip && (
-            <View style={[styles.timeChip, { backgroundColor: colors.primaryLight, borderRadius: radius.full }]}>
-              <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 11 }}>{timeChip}</Text>
+          {/* Right cluster: optional "next" chip + amount to collect */}
+          {(timeChip || price > 0) && (
+            <View style={{ alignItems: 'flex-end', gap: 4, marginLeft: spacing.sm }}>
+              {timeChip && (
+                <View style={[styles.timeChip, { backgroundColor: colors.primaryLight, borderRadius: radius.full }]}>
+                  <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 11 }}>{timeChip}</Text>
+                </View>
+              )}
+              {price > 0 && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text variant="body" style={{ fontWeight: '700' }}>{formatPrice(remaining)}</Text>
+                  {hasDeposit ? (
+                    <Text variant="caption" style={{ color: colors.success, fontSize: 10, fontWeight: '600' }} numberOfLines={1}>
+                      acompte {formatPrice(depositPaid as number)} ✓
+                    </Text>
+                  ) : (
+                    <Text variant="caption" color="textMuted" style={{ fontSize: 10 }} numberOfLines={1}>
+                      à encaisser
+                    </Text>
+                  )}
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -1106,27 +1136,43 @@ export default function ProDashboardScreen() {
           <RefreshControl refreshing={isLoading} onRefresh={handleRefresh} tintColor={colors.primary} />
         }
       >
-        {/* ── Subscription expired banner ── */}
+        {/* ── Subscription expired banner — premium incitation card ── */}
         {sub.needsSubscription && (
           <Pressable
             onPress={() => router.push('/(pro)/paywall')}
-            style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}
+            style={({ pressed }) => ({ paddingHorizontal: spacing.lg, marginTop: spacing.md, opacity: pressed ? 0.92 : 1 })}
           >
-            <View style={{ backgroundColor: '#FEF2F2', borderRadius: radius.lg, borderWidth: 1, borderColor: '#FECACA', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Ionicons name="alert-circle" size={22} color="#DC2626" />
-              <View style={{ flex: 1 }}>
-                <Text variant="body" style={{ fontWeight: '600', color: '#991B1B' }}>Abonnement requis</Text>
-                <Text variant="caption" style={{ color: '#B91C1C', marginTop: 2 }}>
-                  Abonnez-vous pour continuer à utiliser toutes les fonctionnalités.
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#DC2626" />
+            <View style={{ borderRadius: radius.lg, overflow: 'hidden' }}>
+              <LinearGradient
+                colors={['#EF4444', '#E11D48']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ padding: spacing.md }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body" style={{ fontWeight: '800', color: '#FFFFFF' }}>
+                      Votre essai est terminé
+                    </Text>
+                    <Text variant="caption" style={{ color: 'rgba(255,255,255,0.9)', marginTop: 2 }}>
+                      Réactivez votre page pour continuer à recevoir des réservations.
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFFFFF', borderRadius: 12, paddingVertical: 11 }}>
+                  <Text style={{ color: '#DC2626', fontWeight: '800', fontSize: 14 }}>Réactiver ma page</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#DC2626" />
+                </View>
+              </LinearGradient>
             </View>
           </Pressable>
         )}
 
-        {/* ── Trial reminder banner (≤7 days) ── */}
-        {!sub.needsSubscription && sub.daysRemaining != null && sub.daysRemaining <= 7 && (
+        {/* ── Trial reminder banner (≤14 days) ── */}
+        {!sub.needsSubscription && sub.daysRemaining != null && sub.daysRemaining <= 14 && (
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
             <TrialReminderBanner daysRemaining={sub.daysRemaining} />
           </View>
@@ -1536,26 +1582,60 @@ export default function ProDashboardScreen() {
             <Text variant="h3" style={{ marginBottom: spacing.md }}>Vues de votre page</Text>
             <Card padding="lg" shadow="sm">
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-                <View style={[styles.viewsIconBadge, { backgroundColor: colors.primaryLight, borderRadius: radius.full }]}>
-                  <Ionicons name="eye-outline" size={22} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
-                    <Text variant="h2" style={{ fontWeight: '800' }}>{liveViews.today}</Text>
-                    <Text variant="caption" color="textMuted">aujourd'hui</Text>
+                <LinearGradient
+                  colors={[colors.primary, '#3B82F6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.viewsIconBadge, { borderRadius: radius.full }]}
+                >
+                  <Ionicons name="eye" size={22} color="#FFFFFF" />
+                </LinearGradient>
+                {/* Three equal columns — each number sits directly above its
+                    own label, so the grouping is unambiguous. Today is
+                    emphasised in the primary colour. */}
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text variant="h2" color="primary" style={{ fontWeight: '800' }}>{liveViews.today}</Text>
+                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>Aujourd'hui</Text>
+                  </View>
+                  <View style={[styles.viewsDivider, { backgroundColor: colors.border }]} />
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text variant="h2" style={{ fontWeight: '800' }}>{liveViews.last7Days}</Text>
+                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>7 derniers jours</Text>
+                  </View>
+                  <View style={[styles.viewsDivider, { backgroundColor: colors.border }]} />
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text variant="h2" style={{ fontWeight: '800' }}>{liveViews.last30Days}</Text>
+                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>30 derniers jours</Text>
                   </View>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text variant="bodySmall" style={{ fontWeight: '600' }}>{liveViews.last7Days}</Text>
-                  <Text variant="caption" color="textMuted">7 jours</Text>
-                </View>
-                <View style={[styles.viewsDivider, { backgroundColor: colors.border }]} />
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text variant="bodySmall" style={{ fontWeight: '600' }}>{liveViews.last30Days}</Text>
-                  <Text variant="caption" color="textMuted">30 jours</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </View>
+
+              {/* Incentive footer — tapping opens the story creation flow
+                  (the most engaging way to drive new page views), without
+                  navigating to the stats screen. */}
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  setShowStoryModal(true);
+                }}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: spacing.md,
+                  paddingTop: spacing.md,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: colors.border,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Ionicons name="camera-outline" size={15} color={colors.primary} />
+                <Text variant="caption" color="primary" style={{ fontWeight: '600', flex: 1 }}>
+                  Créez une story pour attirer plus de clients
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+              </Pressable>
             </Card>
           </Pressable>
         )}
@@ -1601,6 +1681,8 @@ export default function ProDashboardScreen() {
                     isPast={isPast}
                     timeChip={timeChip}
                     memberColor={booking.memberColor}
+                    price={booking.price}
+                    depositPaid={booking.deposit?.status === 'paid' ? booking.deposit.amount : null}
                     onPress={() => navigateToBooking(booking.id)}
                     onConfirm={booking.status === 'pending' ? () => handleConfirm(booking.id) : undefined}
                     onCancel={booking.status === 'pending' ? () => handleCancel(booking.id) : undefined}
@@ -1644,6 +1726,8 @@ export default function ProDashboardScreen() {
                   status={booking.status}
                   isPast={false}
                   timeChip={null}
+                  price={booking.price}
+                  depositPaid={booking.deposit?.status === 'paid' ? booking.deposit.amount : null}
                   onPress={() => navigateToBooking(booking.id)}
                   onConfirm={() => handleConfirm(booking.id)}
                   onCancel={() => handleCancel(booking.id)}
