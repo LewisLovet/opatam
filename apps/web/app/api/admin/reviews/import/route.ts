@@ -187,6 +187,27 @@ export async function POST(request: NextRequest) {
           reportSent = !mailErr;
           if (mailErr) console.error('[admin/reviews/import] report email error:', mailErr);
         }
+
+        // In-app notification (shown in the bell) + ONE grouped push, via the
+        // existing onAppNotificationPublish trigger (audience 'specific').
+        // The trigger respects the provider's centerPushEnabled preference.
+        try {
+          await db.collection('appNotifications').add({
+            title: 'Vos avis ont été importés',
+            body: `${created} avis ajouté${created > 1 ? 's' : ''} · note ${avgStr}/5 sur ${newCount} avis`,
+            type: 'announcement',
+            audience: 'specific',
+            targetUserId: providerId,
+            targetLabel: businessName,
+            iconName: 'star',
+            isPublished: true,
+            sendPush: true,
+            createdAt: now,
+            publishedAt: now,
+          });
+        } catch (notifErr) {
+          console.error('[admin/reviews/import] in-app notification failed:', notifErr);
+        }
       } catch (mailError) {
         console.error('[admin/reviews/import] report email failed:', mailError);
       }

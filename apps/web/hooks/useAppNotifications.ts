@@ -44,6 +44,7 @@ export function useAppNotifications() {
 
   const [items, setItems] = useState<WithId<AppNotification>[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -80,16 +81,30 @@ export function useAppNotifications() {
     return unsub;
   }, [uid]);
 
+  useEffect(() => {
+    if (!uid) {
+      setDismissedIds(new Set());
+      return;
+    }
+    const unsub = onSnapshot(
+      collection(db, 'users', uid, 'notificationDismissals'),
+      (snap) => setDismissedIds(new Set(snap.docs.map((d) => d.id))),
+      () => setDismissedIds(new Set()),
+    );
+    return unsub;
+  }, [uid]);
+
   const notifications = useMemo<AppNotificationItem[]>(
     () =>
       items
+        .filter((n) => !dismissedIds.has(n.id))
         .map((n) => ({
           ...n,
           isRead: readIds.has(n.id),
           publishedAtMs: toMillis(n.publishedAt) || toMillis(n.createdAt),
         }))
         .sort((a, b) => b.publishedAtMs - a.publishedAtMs),
-    [items, readIds],
+    [items, readIds, dismissedIds],
   );
 
   const unreadCount = useMemo(
@@ -128,5 +143,23 @@ export function useAppNotifications() {
     );
   }, [uid, notifications]);
 
-  return { notifications, unreadCount, loading, markRead, markAllRead };
+  const dismiss = useCallback(
+    async (id: string) => {
+      if (!uid) return;
+      // Optimistic: hide immediately, then persist the dismissal.
+      setDismissedIds((prev) => new Set(prev).add(id));
+      try {
+        await setDoc(
+          doc(db, 'users', uid, 'notificationDismissals', id),
+          { dismissedAt: serverTimestamp() },
+          { merge: true },
+        );
+      } catch (e) {
+        console.warn('[useAppNotifications] dismiss failed', e);
+      }
+    },
+    [uid],
+  );
+
+  return { notifications, unreadCount, loading, markRead, markAllRead, dismiss };
 }

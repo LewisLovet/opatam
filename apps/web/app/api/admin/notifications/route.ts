@@ -54,9 +54,21 @@ function ytThumb(url: string | null | undefined): string | null {
   return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : null;
 }
 
+/** Parse a datetime-local string into a FUTURE Date, else null. A past/now
+ *  or invalid value means "no scheduling" → publish per the isPublished flag. */
+function parseScheduledAt(v: unknown): Date | null {
+  if (typeof v !== 'string' || !v.trim()) return null;
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return null;
+  return d.getTime() > Date.now() ? d : null;
+}
+
 function buildDoc(body: any) {
   const audience = ALLOWED_AUDIENCES.includes(body.audience) ? body.audience : 'pros';
   const type = ALLOWED_TYPES.includes(body.type) ? body.type : 'announcement';
+  // A future schedule keeps the notif UNPUBLISHED — the
+  // publishScheduledNotifications cron flips it live at the scheduled time.
+  const scheduledAt = parseScheduledAt(body.scheduledAt);
   return {
     title: str(body.title) ?? '',
     body: str(body.body) ?? '',
@@ -71,8 +83,9 @@ function buildDoc(body: any) {
     ctaArticleSlug: str(body.ctaArticleSlug),
     ctaThumbUrl: str(body.ctaArticleSlug) ? str(body.ctaThumbUrl) : null,
     ctaIsVideo: str(body.ctaArticleSlug) ? !!body.ctaIsVideo : false,
-    isPublished: !!body.isPublished,
+    isPublished: !!body.isPublished && !scheduledAt,
     sendPush: !!body.sendPush,
+    scheduledAt,
   };
 }
 
@@ -128,7 +141,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Titre et message requis' }, { status: 400 });
     }
 
-    if (requiresActionCode(data.audience, data.isPublished)) {
+    // Broadcasting requires the action code whether it goes out now OR is
+    // scheduled to go out later.
+    if (requiresActionCode(data.audience, data.isPublished || !!data.scheduledAt)) {
       const check = await verifyAdminActionCode(adminUid, body.actionCode);
       if (!check.ok) {
         return NextResponse.json({ error: check.error }, { status: 403 });

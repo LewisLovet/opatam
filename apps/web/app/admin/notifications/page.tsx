@@ -14,6 +14,7 @@ import {
   Trash2,
   Send,
   Megaphone,
+  CalendarClock,
   BookOpen,
   Rocket,
   Gift,
@@ -44,11 +45,14 @@ interface NotifForm {
   ctaIsVideo: boolean;
   isPublished: boolean;
   sendPush: boolean;
+  /** datetime-local string ('' = envoi immédiat, sinon programmé). */
+  scheduledAt: string;
 }
 
-interface NotifRow extends NotifForm {
+interface NotifRow extends Omit<NotifForm, 'scheduledAt'> {
   id: string;
   pushedAt?: { _seconds: number } | string | null;
+  scheduledAt?: { _seconds: number } | string | null;
 }
 
 interface Tutorial {
@@ -74,6 +78,7 @@ const EMPTY: NotifForm = {
   ctaIsVideo: false,
   isPublished: false,
   sendPush: false,
+  scheduledAt: '',
 };
 
 const TYPE_OPTIONS = [
@@ -81,6 +86,27 @@ const TYPE_OPTIONS = [
   { value: 'feature', label: 'Nouvelle fonctionnalité' },
   { value: 'tutorial', label: 'Tutoriel' },
 ];
+
+/** Convert a stored scheduledAt (Firestore Timestamp JSON / ISO) into the
+ *  `YYYY-MM-DDTHH:mm` local string for <input type="datetime-local">. Returns
+ *  '' for past/empty (so an already-sent notif doesn't look "scheduled"). */
+function toDatetimeLocal(v: { _seconds: number } | string | null | undefined): string {
+  if (!v) return '';
+  let ms: number;
+  if (typeof v === 'string') {
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return '';
+    ms = d.getTime();
+  } else if (typeof v === 'object' && typeof v._seconds === 'number') {
+    ms = v._seconds * 1000;
+  } else {
+    return '';
+  }
+  if (ms <= Date.now()) return '';
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 const AUDIENCE_OPTIONS = [
   { value: 'pros', label: 'Professionnels' },
@@ -313,13 +339,16 @@ export default function AdminNotificationsPage() {
       ctaIsVideo: !!(row as any).ctaIsVideo || !!linkedTuto?.isVideo,
       isPublished: !!row.isPublished,
       sendPush: !!row.sendPush,
+      scheduledAt: toDatetimeLocal(row.scheduledAt),
     });
     setShowForm(true);
   };
 
-  // Sending a published notification to a wide audience is sensitive.
+  // Sending a published notification to a wide audience is sensitive —
+  // whether it goes out now (isPublished) or is scheduled for later.
   const isBroadcast =
-    form.isPublished && ['pros', 'clients', 'all'].includes(form.audience);
+    (form.isPublished || !!form.scheduledAt) &&
+    ['pros', 'clients', 'all'].includes(form.audience);
 
   const doSave = async (actionCode?: string) => {
     if (!user) return;
@@ -712,6 +741,37 @@ export default function AdminNotificationsPage() {
               onChange={(e) => set('isPublished', e.target.checked)}
             />
           </div>
+
+          {/* Scheduling */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <CalendarClock className="w-5 h-5 text-violet-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Programmer l&apos;envoi</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Vide = envoi immédiat. Sinon la notif part automatiquement à l&apos;heure choisie (précision ~30 min).
+                </p>
+              </div>
+            </div>
+            <input
+              type="datetime-local"
+              value={form.scheduledAt}
+              onChange={(e) => set('scheduledAt', e.target.value)}
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            />
+          </div>
+          {form.scheduledAt && (
+            <p className="text-xs text-violet-600 dark:text-violet-400 -mt-2">
+              Programmée — sera publiée automatiquement vers le{' '}
+              {(() => {
+                const d = new Date(form.scheduledAt);
+                return isNaN(d.getTime())
+                  ? form.scheduledAt
+                  : d.toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' });
+              })()}{' '}
+              (le toggle « Publiée » est ignoré).
+            </p>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button

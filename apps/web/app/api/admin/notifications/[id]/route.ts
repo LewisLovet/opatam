@@ -61,10 +61,17 @@ export async function PUT(
       return NextResponse.json({ error: 'Titre et message requis' }, { status: 400 });
     }
 
-    const willPublish = !!body.isPublished;
+    // A future schedule keeps the notif unpublished (the cron publishes it).
+    const scheduledAt = (() => {
+      if (typeof body.scheduledAt !== 'string' || !body.scheduledAt.trim()) return null;
+      const d = new Date(body.scheduledAt);
+      return !isNaN(d.getTime()) && d.getTime() > Date.now() ? d : null;
+    })();
+    const willPublish = !!body.isPublished && !scheduledAt;
 
-    // Broadcasting to a wide audience requires the confirmation code.
-    if (willPublish && BROADCAST_AUDIENCES.includes(audience)) {
+    // Broadcasting to a wide audience requires the confirmation code, whether
+    // it publishes now or is scheduled to publish later.
+    if ((willPublish || !!scheduledAt) && BROADCAST_AUDIENCES.includes(audience)) {
       const check = await verifyAdminActionCode(adminUid, body.actionCode);
       if (!check.ok) {
         return NextResponse.json({ error: check.error }, { status: 403 });
@@ -87,6 +94,7 @@ export async function PUT(
       ctaIsVideo: str(body.ctaArticleSlug) ? !!body.ctaIsVideo : false,
       isPublished: willPublish,
       sendPush: !!body.sendPush,
+      scheduledAt,
       updatedAt: new Date(),
     };
 
@@ -99,6 +107,12 @@ export async function PUT(
     // Unpublish — keep history but hide from the app.
     if (!willPublish && current.isPublished) {
       update.publishedAt = null;
+    }
+    // Scheduled for later — hidden now, and reset the push guard so the
+    // cron's future publish dispatches the push.
+    if (scheduledAt) {
+      update.publishedAt = null;
+      update.pushedAt = null;
     }
 
     await ref.set(update, { merge: true });

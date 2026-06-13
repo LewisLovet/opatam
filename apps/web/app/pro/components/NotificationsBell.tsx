@@ -25,6 +25,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAppNotifications, type AppNotificationItem } from '@/hooks/useAppNotifications';
+import { useAuth } from '@/contexts/AuthContext';
+import { db, doc, updateDoc } from '@booking-app/firebase';
 
 const ICONS: Record<string, LucideIcon> = {
   megaphone: Megaphone,
@@ -52,11 +54,33 @@ function formatDate(ms: number): string {
 
 export function NotificationsBell({ variant = 'dark' }: { variant?: 'light' | 'dark' }) {
   const router = useRouter();
-  const { notifications, unreadCount, markRead, markAllRead } = useAppNotifications();
+  const { notifications, unreadCount, markRead, markAllRead, dismiss } = useAppNotifications();
+  const { provider, user } = useAuth();
 
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Push for notification-center events — a dedicated preference, independent
+  // from booking/review pushes. Undefined = enabled (backward-compatible).
+  const providerId = (provider as { id?: string } | null)?.id || user?.providerId;
+  const centerPushEnabled =
+    provider?.settings?.notificationPreferences?.centerPushEnabled !== false;
+  const [pushSaving, setPushSaving] = useState(false);
+
+  const toggleCenterPush = async () => {
+    if (!providerId || pushSaving) return;
+    setPushSaving(true);
+    try {
+      await updateDoc(doc(db, 'providers', providerId), {
+        'settings.notificationPreferences.centerPushEnabled': !centerPushEnabled,
+      });
+    } catch (e) {
+      console.warn('[NotificationsBell] toggle push failed', e);
+    } finally {
+      setPushSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -171,12 +195,15 @@ export function NotificationsBell({ variant = 'dark' }: { variant?: 'light' | 'd
                 {notifications.map((n) => {
                   const Icon = iconFor(n.iconName);
                   return (
-                    <li key={n.id}>
+                    <li
+                      key={n.id}
+                      className={`group relative flex items-stretch hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                        n.isRead ? '' : 'bg-primary-50/40 dark:bg-primary-900/10'
+                      }`}
+                    >
                       <button
                         onClick={() => openDetail(n)}
-                        className={`w-full text-left px-4 py-3 flex gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
-                          n.isRead ? '' : 'bg-primary-50/40 dark:bg-primary-900/10'
-                        }`}
+                        className="flex-1 min-w-0 text-left pl-4 pr-2 py-3 flex gap-3"
                       >
                         <div className="w-9 h-9 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
                           <Icon className="w-[18px] h-[18px] text-primary-600 dark:text-primary-400" />
@@ -218,12 +245,51 @@ export function NotificationsBell({ variant = 'dark' }: { variant?: 'light' | 'd
                           <ChevronRight className="w-4 h-4 text-gray-300 self-center flex-shrink-0" />
                         )}
                       </button>
+                      <button
+                        onClick={() => void dismiss(n.id)}
+                        aria-label="Supprimer cette notification"
+                        title="Supprimer"
+                        className="px-2 flex items-center text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </li>
                   );
                 })}
               </ul>
             )}
           </div>
+
+          {/* Footer: dedicated push toggle for the notification center */}
+          {!selected && (
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Notifications push
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  Recevoir un push pour les nouveautés affichées ici
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={centerPushEnabled}
+                aria-label="Activer les notifications push"
+                onClick={toggleCenterPush}
+                disabled={pushSaving || !providerId}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                  centerPushEnabled ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    centerPushEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

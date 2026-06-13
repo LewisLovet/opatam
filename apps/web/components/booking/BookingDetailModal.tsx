@@ -47,6 +47,7 @@ import {
   Sun,
   Sunset,
   Moon,
+  Wallet,
 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -633,6 +634,25 @@ export function BookingDetailModal({
               {formatBookingPrice(booking.price)}
             </span>
           </div>
+          {/* Paid deposit → show the acompte + the balance still to collect */}
+          {booking.deposit && booking.deposit.amount > 0 && booking.deposit.status === 'paid' && (
+            <>
+              <div className="flex items-center gap-3 text-sm">
+                <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <span className="text-gray-700 dark:text-gray-300">Acompte payé</span>
+                <span className="ml-auto font-medium text-green-600 dark:text-green-400">
+                  {formatBookingPrice(booking.deposit.amount)}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <Wallet className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                <span className="text-gray-700 dark:text-gray-300">Reste à payer</span>
+                <span className="ml-auto font-bold text-base text-gray-900 dark:text-white">
+                  {formatBookingPrice(Math.max(0, booking.price - booking.deposit.amount))}
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Cancel confirmation */}
