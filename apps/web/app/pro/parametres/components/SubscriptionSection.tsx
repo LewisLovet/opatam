@@ -260,6 +260,11 @@ function ChoosePlanSection({
   const { provider, user } = useAuth();
   const providerId = (provider as any)?.id || user?.providerId;
 
+  // Free-trial info for the "you'll only be charged at trial end" reassurance.
+  const trialValidUntil = (provider as any)?.subscription?.validUntil as Date | undefined;
+  const trialDaysLeft = trialValidUntil ? getDaysRemaining(trialValidUntil) : 0;
+  const inFreeTrial = mode === 'subscribe' && !!trialValidUntil && trialDaysLeft > 0;
+
   const [prices, setPrices] = useState<StripePrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -546,6 +551,21 @@ function ChoosePlanSection({
               </button>
             </div>
           </div>
+
+          {/* Free-trial reassurance: subscribing now captures the card but
+              charges only at the trial end (validUntil) — see the checkout
+              route's trial_end handling. */}
+          {inFreeTrial && (
+            <div className="mb-5 flex items-start gap-2.5 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 px-4 py-3">
+              <CreditCard className="w-4 h-4 text-primary-600 dark:text-primary-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-primary-900 dark:text-primary-200">
+                Activez votre abonnement dès maintenant : vous ne serez{' '}
+                <strong>débité que le {formatDate(trialValidUntil)}</strong>, à la fin de
+                votre essai. Vous gardez vos {trialDaysLeft} jour
+                {trialDaysLeft > 1 ? 's' : ''} gratuits restants.
+              </p>
+            </div>
+          )}
 
           {/* Plan cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

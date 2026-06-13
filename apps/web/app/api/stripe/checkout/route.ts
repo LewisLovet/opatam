@@ -37,10 +37,12 @@ export async function POST(request: NextRequest) {
     const stripe = getStripe();
     const db = getAdminFirestore();
 
-    // Check if provider has an affiliate code
+    // Check if provider has an affiliate code + capture the remaining
+    // free-trial end so we can honor it (see trial_end below).
     let affiliateCode: string | null = null;
     let affiliateId: string | null = null;
     let stripeCouponId: string | null = null;
+    let trialValidUntil: Date | null = null;
 
     try {
       const providerDoc = await db.collection('providers').doc(providerId).get();
@@ -48,6 +50,7 @@ export async function POST(request: NextRequest) {
         const providerData = providerDoc.data();
         affiliateCode = providerData?.affiliateCode || null;
         affiliateId = providerData?.affiliateId || null;
+        trialValidUntil = providerData?.subscription?.validUntil?.toDate?.() ?? null;
 
         // If affiliate exists, get the coupon
         if (affiliateId) {
@@ -68,6 +71,26 @@ export async function POST(request: NextRequest) {
       ...(affiliateId ? { affiliateId } : {}),
     };
 
+    // Trial handling: subscribing DURING the free trial must capture the
+    // card now but charge only at the existing trial end (validUntil) —
+    // the pro keeps their full free trial, no early charge.
+    //   - explicit `trialDays` param wins (legacy/override),
+    //   - else, if validUntil is far enough in the future (Stripe needs
+    //     trial_end ≥ ~48h), charge exactly at validUntil,
+    //   - else (trial over / almost over) → no trial, charge now.
+    const nowSec = Math.floor(Date.now() / 1000);
+    let trialEndUnix: number | null = null;
+    if (trialValidUntil) {
+      const vuSec = Math.floor(trialValidUntil.getTime() / 1000);
+      if (vuSec > nowSec + 48 * 60 * 60) trialEndUnix = vuSec;
+    }
+    const subscriptionData: Record<string, unknown> = { metadata };
+    if (typeof trialDays === 'number' && trialDays > 0) {
+      subscriptionData.trial_period_days = trialDays;
+    } else if (trialEndUnix) {
+      subscriptionData.trial_end = trialEndUnix;
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       allow_promotion_codes: stripeCouponId ? undefined : true, // Disable promo codes if affiliate coupon applied
@@ -78,10 +101,7 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      subscription_data: {
-        trial_period_days: trialDays,
-        metadata,
-      },
+      subscription_data: subscriptionData as any,
       metadata,
       success_url: successUrl
         ? `${process.env.NEXT_PUBLIC_APP_URL}${successUrl}${successUrl.includes('?') ? '&' : '?'}success=true&session_id={CHECKOUT_SESSION_ID}`
