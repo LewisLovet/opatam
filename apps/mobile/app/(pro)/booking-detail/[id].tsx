@@ -12,6 +12,7 @@ import {
   ScrollView,
   SafeAreaView,
   Pressable,
+  TextInput,
   Alert,
   Linking,
   Modal,
@@ -19,6 +20,8 @@ import {
   Platform,
   UIManager,
   ActivityIndicator,
+  Keyboard,
+  InputAccessoryView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -514,6 +517,10 @@ export default function ProBookingDetailScreen() {
     );
   }, [booking, user, loadBooking]);
 
+  // -- Adjust-duration state (shorten/lengthen this booking only) --
+  const [showDurationModal, setShowDurationModal] = useState(false);
+  const [durationDraft, setDurationDraft] = useState<number>(0);
+
   // -- Reschedule state (slot-based flow) --
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState<Date>(() => {
@@ -888,6 +895,48 @@ export default function ProBookingDetailScreen() {
       ],
     );
   }, [booking, user, selectedRescheduleSlot, loadBooking]);
+
+  // -- Adjust duration (this booking's time block only, not the service) --
+  const handleOpenDuration = useCallback(() => {
+    if (!booking) return;
+    setDurationDraft(booking.duration);
+    setShowDurationModal(true);
+  }, [booking]);
+
+  const bumpDuration = useCallback((delta: number) => {
+    setDurationDraft((d) => Math.max(5, Math.min(24 * 60, d + delta)));
+  }, []);
+
+  const handleAdjustDurationConfirm = useCallback(async () => {
+    if (!booking || !user?.uid) return;
+    setShowDurationModal(false);
+    setActionLoading(true);
+    try {
+      await bookingService.adjustBookingDuration(booking.id, durationDraft, user.uid);
+      await loadBooking();
+      Alert.alert('Succès', 'La durée du rendez-vous a été mise à jour.');
+    } catch (err: any) {
+      Alert.alert('Erreur', err.message || 'Impossible de modifier la durée');
+    } finally {
+      setActionLoading(false);
+    }
+  }, [booking, user, durationDraft, loadBooking]);
+
+  // Final recap confirmation before applying the new duration.
+  const handleSaveDuration = useCallback(() => {
+    if (!booking) return;
+    const orig = booking.duration;
+    const delta = durationDraft - orig;
+    const end = formatEndTime(booking.datetime, durationDraft);
+    Alert.alert(
+      'Confirmer la durée',
+      `Vous passez ce rendez-vous de ${orig} min à ${durationDraft} min (${delta < 0 ? `−${-delta}` : `+${delta}`} min).\nNouvelle fin : ${end}.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Confirmer', onPress: handleAdjustDurationConfirm },
+      ],
+    );
+  }, [booking, durationDraft, handleAdjustDurationConfirm]);
 
   const handleCallClient = useCallback((phone: string) => {
     Linking.openURL(`tel:${phone}`).catch(() => {
@@ -1390,6 +1439,16 @@ export default function ProBookingDetailScreen() {
                 <Ionicons name="calendar-outline" size={18} color={colors.primary} />
               }
             />
+            <Button
+              title="Ajuster la durée"
+              variant="outline"
+              onPress={handleOpenDuration}
+              disabled={actionLoading}
+              fullWidth
+              leftIcon={
+                <Ionicons name="hourglass-outline" size={18} color={colors.primary} />
+              }
+            />
           </View>
         )}
 
@@ -1429,6 +1488,18 @@ export default function ProBookingDetailScreen() {
                 <Ionicons name="calendar-outline" size={18} color={colors.primary} />
               }
             />
+            {!isPast && (
+              <Button
+                title="Ajuster la durée"
+                variant="outline"
+                onPress={handleOpenDuration}
+                disabled={actionLoading}
+                fullWidth
+                leftIcon={
+                  <Ionicons name="hourglass-outline" size={18} color={colors.primary} />
+                }
+              />
+            )}
             {isPast && (
               <Button
                 title="Marquer absent"
@@ -1579,6 +1650,134 @@ export default function ProBookingDetailScreen() {
             </View>
           )}
         </SafeAreaView>
+      </Modal>
+
+      {/* ===== Adjust duration Modal (this booking's time block only) ===== */}
+      <Modal
+        visible={showDurationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDurationModal(false)}
+      >
+        <Pressable
+          onPress={() => setShowDurationModal(false)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: spacing.lg }}
+        >
+          <Pressable
+            onPress={() => Keyboard.dismiss()}
+            style={{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg }}
+          >
+            <Text variant="h3" align="center">Ajuster la durée</Text>
+            <Text variant="caption" color="textSecondary" align="center" style={{ marginTop: 4 }}>
+              Modifie uniquement ce rendez-vous, pas la prestation.
+            </Text>
+
+            {/* Direct editor: − / editable value / + */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.lg, marginTop: spacing.lg }}>
+              <Pressable
+                onPress={() => bumpDuration(-5)}
+                disabled={durationDraft <= 5}
+                style={({ pressed }) => ({
+                  width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: colors.border,
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: durationDraft <= 5 ? 0.4 : pressed ? 0.6 : 1,
+                })}
+              >
+                <Ionicons name="remove" size={22} color={colors.text} />
+              </Pressable>
+
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                <TextInput
+                  value={String(durationDraft)}
+                  onChangeText={(t) => setDurationDraft(Math.min(24 * 60, Math.max(0, parseInt(t.replace(/[^0-9]/g, '') || '0', 10))))}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  selectTextOnFocus
+                  inputAccessoryViewID={Platform.OS === 'ios' ? 'durationAccessory' : undefined}
+                  style={{ minWidth: 70, textAlign: 'center', fontSize: 40, fontWeight: '800', color: colors.primary, padding: 0 }}
+                />
+                <Text variant="body" color="textSecondary">min</Text>
+              </View>
+
+              <Pressable
+                onPress={() => bumpDuration(5)}
+                disabled={durationDraft >= 24 * 60}
+                style={({ pressed }) => ({
+                  width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: colors.border,
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: durationDraft >= 24 * 60 ? 0.4 : pressed ? 0.6 : 1,
+                })}
+              >
+                <Ionicons name="add" size={22} color={colors.text} />
+              </Pressable>
+            </View>
+
+            {/* Real-time recap */}
+            <View
+              style={{
+                marginTop: spacing.lg,
+                borderRadius: radius.lg,
+                paddingVertical: spacing.sm,
+                paddingHorizontal: spacing.md,
+                backgroundColor:
+                  durationDraft === booking.duration
+                    ? colors.surfaceSecondary
+                    : durationDraft < booking.duration
+                      ? '#16A34A15'
+                      : '#D9770615',
+              }}
+            >
+              <Text
+                variant="caption"
+                align="center"
+                style={{
+                  lineHeight: 18,
+                  color:
+                    durationDraft === booking.duration
+                      ? colors.textMuted
+                      : durationDraft < booking.duration
+                        ? '#16A34A'
+                        : '#D97706',
+                }}
+              >
+                {durationDraft === booking.duration
+                  ? `Durée inchangée (${booking.duration} min)`
+                  : `${booking.duration} min → ${durationDraft} min  ·  ${
+                      durationDraft < booking.duration
+                        ? `−${booking.duration - durationDraft}`
+                        : `+${durationDraft - booking.duration}`
+                    } min  ·  fin ${formatEndTime(booking.datetime, durationDraft)}`}
+              </Text>
+            </View>
+
+            <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.md, lineHeight: 18 }}>
+              Raccourcir libère du temps pour un autre rendez-vous. Rallonger est refusé si ça chevauche le rendez-vous suivant.
+            </Text>
+
+            <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
+              <Button
+                title="Enregistrer"
+                onPress={handleSaveDuration}
+                disabled={actionLoading || durationDraft === booking.duration || durationDraft < 5}
+                fullWidth
+              />
+              <Pressable onPress={() => setShowDurationModal(false)} style={{ paddingVertical: 10 }}>
+                <Text variant="body" color="textSecondary" align="center">Annuler</Text>
+              </Pressable>
+            </View>
+
+            {/* iOS number-pad has no return key — provide an OK bar to dismiss it. */}
+            {Platform.OS === 'ios' && (
+              <InputAccessoryView nativeID="durationAccessory">
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', backgroundColor: colors.surfaceSecondary, paddingHorizontal: 12, paddingVertical: 8 }}>
+                  <Pressable onPress={() => Keyboard.dismiss()} hitSlop={8} style={{ paddingHorizontal: 16, paddingVertical: 4 }}>
+                    <Text variant="body" style={{ color: colors.primary, fontWeight: '700' }}>OK</Text>
+                  </Pressable>
+                </View>
+              </InputAccessoryView>
+            )}
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* ===== Add a prestation Modal ===== */}

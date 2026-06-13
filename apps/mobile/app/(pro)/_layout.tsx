@@ -9,13 +9,16 @@
  */
 
 import React from 'react';
+import { View } from 'react-native';
 import { Stack, Redirect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme';
 import { useAuth, ProviderProvider, RevenueCatProvider } from '../../contexts';
 
 export default function ProLayout() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { isAuthenticated, isLoading } = useAuth();
 
   // If not authenticated → redirect to auth flow
@@ -50,6 +53,22 @@ export default function ProLayout() {
           <Stack.Screen name="booking-settings" options={{ headerShown: false }} />
           <Stack.Screen name="reviews" options={{ headerShown: false }} />
         </Stack>
+        {/* Brand-blue strip behind the status bar — applied globally to every
+            pro screen so the top safe area is consistently coloured (the
+            StatusBar is "light", so a white inset would hide its icons).
+            pointerEvents="none" so it never intercepts taps. */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top,
+            backgroundColor: colors.primary,
+            zIndex: 100,
+          }}
+        />
       </RevenueCatProvider>
     </ProviderProvider>
   );
