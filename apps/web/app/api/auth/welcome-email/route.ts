@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
               <tr>
                 <td style="padding: 6px 0; font-size: 14px; color: #18181b;">
                   <span style="color: #16a34a; font-weight: bold; margin-right: 8px;">2.</span>
-                  Activez votre essai gratuit de 14 jours
+                  Profitez de votre essai gratuit de 30 jours
                 </td>
               </tr>
               <tr>
@@ -104,7 +104,7 @@ Bienvenue sur ${appConfig.name} ! Votre compte pour ${businessName} a bien été
 
 Prochaines étapes :
 1. Connectez-vous à votre espace professionnel
-2. Activez votre essai gratuit de 14 jours
+2. Profitez de votre essai gratuit de 30 jours
 3. Partagez votre page de réservation à vos clients
 
 Vos disponibilités et votre première prestation sont déjà configurées. Vous pouvez les modifier à tout moment depuis votre espace.

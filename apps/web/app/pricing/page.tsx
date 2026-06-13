@@ -106,7 +106,7 @@ const PLAN_META: Record<
 const FAQ_ITEMS = [
   {
     q: "Que se passe-t-il à la fin de l'essai gratuit ?",
-    a: "À la fin des 30 jours d'essai, votre abonnement commence automatiquement. Vous ne serez débité qu'après la période d'essai. Vous pouvez annuler à tout moment avant la fin de l'essai sans être facturé.",
+    a: "L'essai dure 30 jours, sans carte bancaire demandée — donc aucun prélèvement automatique, jamais. À la fin de l'essai, votre page se met en pause tant que vous n'avez pas choisi un abonnement ; vous l'activez quand vous le souhaitez pour rester visible et continuer à recevoir des réservations. Vos données restent conservées.",
   },
   {
     q: 'Puis-je changer de plan à tout moment ?',
