@@ -616,10 +616,11 @@ export default function ProviderDetailScreen() {
                   {reviews.map((review) => (
                     <ReviewCard
                       key={review.id}
-                      authorName={review.clientName}
+                      authorName={review.imported ? 'Client' : (review.clientName || 'Client')}
                       rating={review.rating}
                       comment={review.comment}
                       date={review.createdAt}
+                      imported={review.imported}
                     />
                   ))}
                 </View>

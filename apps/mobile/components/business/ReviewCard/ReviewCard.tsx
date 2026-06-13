@@ -23,6 +23,9 @@ export interface ReviewCardProps {
   comment: string | null;
   /** Review date */
   date: Date;
+  /** Admin-imported external review → shows a neutral "Avis importé" badge.
+   *  The source (Planity, etc.) is NEVER exposed publicly. */
+  imported?: boolean;
   /** Provider reply (optional) */
   reply?: {
     text: string;
@@ -36,6 +39,7 @@ export function ReviewCard({
   rating,
   comment,
   date,
+  imported,
   reply,
 }: ReviewCardProps) {
   const { colors, spacing, radius } = useTheme();
@@ -46,9 +50,18 @@ export function ReviewCard({
       <View style={[styles.header, { marginBottom: spacing.sm }]}>
         <Avatar size="md" name={authorName} />
         <View style={[styles.headerInfo, { marginLeft: spacing.sm }]}>
-          <Text variant="body" style={styles.authorName}>
-            {authorName}
-          </Text>
+          <View style={styles.nameRow}>
+            <Text variant="body" style={styles.authorName} numberOfLines={1}>
+              {authorName}
+            </Text>
+            {imported && (
+              <View style={[styles.importedBadge, { backgroundColor: colors.surfaceSecondary }]}>
+                <Text variant="caption" color="textMuted" style={styles.importedBadgeText}>
+                  Avis importé
+                </Text>
+              </View>
+            )}
+          </View>
           <Text variant="caption" color="textMuted">
             {formatRelativeDate(date)}
           </Text>
@@ -105,8 +118,24 @@ const styles = StyleSheet.create({
   headerInfo: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   authorName: {
     fontWeight: '600',
+    flexShrink: 1,
+  },
+  importedBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  importedBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   replyContainer: {
     // Styles applied dynamically
