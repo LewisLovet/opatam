@@ -1091,6 +1091,18 @@ export default function ProBookingDetailScreen() {
       valueColor: statusColor[status],
       valueWeight: '700' as const,
     });
+
+    // When the deposit is paid, show the balance still to collect in person
+    // (price − acompte) so the pro doesn't have to compute it.
+    if (status === 'paid') {
+      detailRows.push({
+        icon: 'wallet-outline',
+        label: 'Reste à payer',
+        value: formatPrice(Math.max(0, booking.price - booking.deposit.amount)),
+        valueColor: colors.text,
+        valueWeight: '700' as const,
+      });
+    }
   }
 
   if ((booking as any).notes) {

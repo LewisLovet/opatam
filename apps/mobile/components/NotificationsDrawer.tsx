@@ -22,6 +22,7 @@ import {
   Animated,
   Easing,
   Image,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,6 +47,10 @@ interface Props {
   onClose: () => void;
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
+  onDismiss: (id: string) => void;
+  /** Dedicated push preference for the notification center. */
+  centerPushEnabled: boolean;
+  onToggleCenterPush: (value: boolean) => void;
 }
 
 function formatDate(ms: number): string {
@@ -98,6 +103,9 @@ export function NotificationsDrawer({
   onClose,
   onMarkRead,
   onMarkAllRead,
+  onDismiss,
+  centerPushEnabled,
+  onToggleCenterPush,
 }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -219,6 +227,22 @@ export function NotificationsDrawer({
             </Pressable>
           </View>
 
+          {/* Dedicated push toggle for the notification center */}
+          {!selected ? (
+            <View style={styles.pushRow}>
+              <Ionicons name="notifications-outline" size={18} color="#fff" />
+              <Text variant="bodySmall" style={{ color: '#fff', flex: 1, fontWeight: '600' }}>
+                Notifications push
+              </Text>
+              <Switch
+                value={centerPushEnabled}
+                onValueChange={onToggleCenterPush}
+                trackColor={{ false: 'rgba(255,255,255,0.25)', true: colors.primary }}
+                thumbColor="#fff"
+              />
+            </View>
+          ) : null}
+
           {/* Body */}
           {selected ? (
             <ScrollView
@@ -338,6 +362,14 @@ export function NotificationsDrawer({
                         {n.body}
                       </Text>
                     </View>
+                    <Pressable
+                      onPress={() => onDismiss(n.id)}
+                      hitSlop={10}
+                      style={{ padding: 2, marginTop: 1 }}
+                      accessibilityLabel="Supprimer cette notification"
+                    >
+                      <Ionicons name="close" size={18} color={colors.textMuted} />
+                    </Pressable>
                   </View>
                   {n.ctaThumbUrl ? (
                     <View style={{ marginTop: 12 }}>
@@ -383,6 +415,17 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  pushRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   card: {
     borderRadius: 18,

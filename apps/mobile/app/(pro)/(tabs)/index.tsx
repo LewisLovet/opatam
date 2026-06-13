@@ -4,7 +4,7 @@
  * quick actions, and recent reviews.
  */
 
-import { analyticsService, bookingService } from '@booking-app/firebase';
+import { analyticsService, bookingService, providerService } from '@booking-app/firebase';
 import { deltaPercent, type PageViewStats, type TrendPoint } from '@booking-app/shared';
 import { Sparkline } from '../../../components/stats/Sparkline';
 import { WelcomeOverlay } from '../../../components/WelcomeOverlay';
@@ -703,7 +703,26 @@ export default function ProDashboardScreen() {
     unreadCount,
     markRead: markNotifRead,
     markAllRead: markAllNotifsRead,
+    dismiss: dismissNotif,
   } = useProviderNotifications();
+
+  // Dedicated push preference for the notification center (default on).
+  const centerPushEnabled =
+    provider?.settings?.notificationPreferences?.centerPushEnabled !== false;
+  const handleToggleCenterPush = useCallback(
+    async (value: boolean) => {
+      if (!providerId) return;
+      try {
+        await providerService.updateNotificationPreferences(providerId, {
+          centerPushEnabled: value,
+        });
+        await refreshProvider();
+      } catch (e) {
+        console.warn('[home] toggle center push failed', e);
+      }
+    },
+    [providerId, refreshProvider],
+  );
 
   const { data, isLoading, refresh } = useProviderDashboard(providerId, provider?.rating?.average);
   // Default 30-day window — gives us enough trend depth to derive
@@ -1788,6 +1807,9 @@ export default function ProDashboardScreen() {
         onClose={() => setNotifDrawerOpen(false)}
         onMarkRead={markNotifRead}
         onMarkAllRead={markAllNotifsRead}
+        onDismiss={dismissNotif}
+        centerPushEnabled={centerPushEnabled}
+        onToggleCenterPush={handleToggleCenterPush}
       />
 
       {/* ── QR Code Modal ── */}
