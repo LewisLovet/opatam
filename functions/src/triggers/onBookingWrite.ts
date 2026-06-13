@@ -49,13 +49,18 @@ export const onBookingWrite = onDocumentWritten(
       return;
     }
 
-    // Check if we need to recalculate the next available slot
-    // Only recalculate if status or datetime changed
+    // Check if we need to recalculate the next available slot.
+    // Recalculate if status, datetime, OR the occupied time window changed
+    // (duration/endDatetime) — adjusting a booking's duration frees or blocks
+    // time, so the cached nextAvailableSlot must be refreshed too.
     if (beforeData && afterData) {
       const statusChanged = beforeData.status !== afterData.status;
       const dateChanged = beforeData.datetime?.toMillis?.() !== afterData.datetime?.toMillis?.();
+      const durationChanged =
+        beforeData.duration !== afterData.duration ||
+        beforeData.endDatetime?.toMillis?.() !== afterData.endDatetime?.toMillis?.();
 
-      if (!statusChanged && !dateChanged) {
+      if (!statusChanged && !dateChanged && !durationChanged) {
         console.log('No relevant changes for slot recalculation, skipping');
         return;
       }

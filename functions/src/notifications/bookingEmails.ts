@@ -536,15 +536,20 @@ export async function handleBookingEmails(
     // confirmation so the client sees the current prestations + total. Only
     // for confirmed bookings — a "confirmée" email would be wrong on a
     // pending one.
+    // An empty/absent items array means a single-service booking (= 1).
+    const beforeCount = Array.isArray(beforeData.items) && beforeData.items.length > 0
+      ? beforeData.items.length
+      : beforeData.serviceId ? 1 : 0;
+    const afterCount = Array.isArray(afterData.items) && afterData.items.length > 0
+      ? afterData.items.length
+      : afterData.serviceId ? 1 : 0;
     if (
       oldStatus === newStatus &&
       newStatus === 'confirmed' &&
       oldDatetime === newDatetime &&
-      typeof beforeData.duration === 'number' &&
-      typeof afterData.duration === 'number' &&
-      afterData.duration !== beforeData.duration
+      afterCount !== beforeCount
     ) {
-      const added = afterData.duration > beforeData.duration;
+      const added = afterCount > beforeCount;
       const beforeItems = Array.isArray(beforeData.items) ? beforeData.items : [];
       const afterItems = Array.isArray(afterData.items) ? afterData.items : [];
       const changedName: string = added

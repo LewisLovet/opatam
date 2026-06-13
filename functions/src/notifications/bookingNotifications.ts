@@ -591,17 +591,23 @@ export async function handleBookingNotifications(
       return;
     }
 
-    // Prestation added to / removed from an existing booking (multi-
-    // prestation): status & datetime unchanged, but the total duration
-    // changed. Notify the provider.
+    // Prestation added to / removed from an existing booking: detect via the
+    // PRESTATION COUNT (items), NOT raw duration. Adjusting a booking's
+    // duration rewrites `duration`/`endDatetime` without touching the
+    // prestation list, so it must not fire an "ajoutée/retirée" notification.
+    // An empty/absent items array means a single-service booking (= 1).
+    const beforeCount = Array.isArray(beforeData.items) && beforeData.items.length > 0
+      ? beforeData.items.length
+      : beforeData.serviceId ? 1 : 0;
+    const afterCount = Array.isArray(afterData.items) && afterData.items.length > 0
+      ? afterData.items.length
+      : afterData.serviceId ? 1 : 0;
     if (
       oldStatus === newStatus &&
       oldDatetime === newDatetime &&
-      typeof beforeData.duration === 'number' &&
-      typeof afterData.duration === 'number' &&
-      afterData.duration !== beforeData.duration
+      afterCount !== beforeCount
     ) {
-      const added = afterData.duration > beforeData.duration;
+      const added = afterCount > beforeCount;
       console.log(`Service ${added ? 'added to' : 'removed from'} booking, notifying provider`);
       await notifyProviderServiceChange(booking, bookingId, added);
     }
