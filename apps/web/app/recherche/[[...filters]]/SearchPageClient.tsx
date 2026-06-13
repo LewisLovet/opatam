@@ -3,13 +3,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { providerRepository, type ProviderSearchFilters, type WithId } from '@booking-app/firebase';
-import { CATEGORIES, SUPPORTED_COUNTRIES, type Provider } from '@booking-app/shared';
+import { CATEGORIES, type Provider } from '@booking-app/shared';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import {
   SearchBar,
   CategoryPills,
-  CityFilter,
   SortSelect,
   ResultsGrid,
   SearchEmptyState,
@@ -57,13 +56,7 @@ export function SearchPageClient({
   });
   const [query, setQuery] = useState(initialQuery);
   const [sort, setSort] = useState<SortOption>(initialSort);
-  const [selectedCountry, setSelectedCountry] = useState<string | undefined>(undefined);
   const [providers, setProviders] = useState<WithId<Provider>[]>(initialProviders);
-  const [availableCities, setAvailableCities] = useState<string[]>(() => {
-    const cities = new Set<string>();
-    initialProviders.forEach((p) => p.cities?.forEach((c) => cities.add(c)));
-    return Array.from(cities).sort();
-  });
   const [isLoading, setIsLoading] = useState(false);
 
   // Skip the very first fetch — the server already provided fresh results.
@@ -85,9 +78,6 @@ export function SearchPageClient({
         const results = await providerRepository.searchProviders(filters);
         if (cancelled) return;
         setProviders(results);
-        const cities = new Set<string>();
-        results.forEach((p) => p.cities?.forEach((c) => cities.add(c)));
-        setAvailableCities(Array.from(cities).sort());
       } catch (error) {
         console.error('Error fetching providers:', error);
         if (!cancelled) setProviders([]);
@@ -102,11 +92,7 @@ export function SearchPageClient({
   }, [urlFilters, query]);
 
   const sortedProviders = useMemo(() => {
-    let filtered = providers;
-    if (selectedCountry) {
-      filtered = providers.filter((p) => (p.countryCode || 'FR') === selectedCountry);
-    }
-    const sorted = [...filtered];
+    const sorted = [...providers];
     switch (sort) {
       case 'rating':
         sorted.sort((a, b) => (b.rating?.average || 0) - (a.rating?.average || 0));
@@ -121,7 +107,7 @@ export function SearchPageClient({
         break;
     }
     return sorted;
-  }, [providers, sort, selectedCountry]);
+  }, [providers, sort]);
 
   const updateUrl = useCallback(
     (newCategory?: string, newCity?: string, newQuery?: string, newSort?: SortOption) => {
@@ -151,14 +137,6 @@ export function SearchPageClient({
     [urlFilters.city, query, sort, updateUrl],
   );
 
-  const handleCityChange = useCallback(
-    (city: string | undefined) => {
-      setUrlFilters((prev) => ({ ...prev, city }));
-      updateUrl(urlFilters.category, city, query, sort);
-    },
-    [urlFilters.category, query, sort, updateUrl],
-  );
-
   const handleSortChange = useCallback(
     (newSort: SortOption) => {
       setSort(newSort);
@@ -171,7 +149,6 @@ export function SearchPageClient({
     setUrlFilters({});
     setQuery('');
     setSort('rating');
-    setSelectedCountry(undefined);
     router.push('/recherche', { scroll: false });
   }, [router]);
 
@@ -202,28 +179,7 @@ export function SearchPageClient({
               onSelect={handleCategoryChange}
             />
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <select
-                  value={selectedCountry || ''}
-                  onChange={(e) => setSelectedCountry(e.target.value || undefined)}
-                  className="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">Tous les pays</option>
-                  {SUPPORTED_COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-
-                <CityFilter
-                  selectedCity={urlFilters.city}
-                  availableCities={availableCities}
-                  onSelect={handleCityChange}
-                />
-              </div>
-
+            <div className="flex items-center justify-end">
               <SortSelect value={sort} onChange={handleSortChange} />
             </div>
           </div>
