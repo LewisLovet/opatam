@@ -49,9 +49,25 @@ export const onAppNotificationPublish = onDocumentWritten(
         });
       };
 
+      // Providers who turned OFF push for the notification center (explicit
+      // `false`). Only relevant for provider-targeted audiences. We exclude
+      // their tokens so the per-user toggle is honoured.
+      const centerPushOff = new Set<string>();
+      if (audience === 'specific' || audience === 'pros') {
+        try {
+          const offSnap = await db
+            .collection('providers')
+            .where('settings.notificationPreferences.centerPushEnabled', '==', false)
+            .get();
+          offSnap.forEach((d) => centerPushOff.add(d.id));
+        } catch (e) {
+          console.warn('[onAppNotificationPublish] centerPush pref query failed:', e);
+        }
+      }
+
       if (audience === 'specific') {
         const targetUserId: string | undefined = after.targetUserId || undefined;
-        if (targetUserId) {
+        if (targetUserId && !centerPushOff.has(targetUserId)) {
           collect(await db.collection('users').doc(targetUserId).get());
         }
       } else if (audience === 'all') {
@@ -60,7 +76,14 @@ export const onAppNotificationPublish = onDocumentWritten(
         collect(await db.collection('users').where('isAdmin', '==', true).get());
       } else {
         const role = audience === 'clients' ? 'client' : 'provider';
-        collect(await db.collection('users').where('role', '==', role).get());
+        const snap = await db.collection('users').where('role', '==', role).get();
+        if (role === 'provider' && centerPushOff.size > 0) {
+          snap.docs.forEach((doc) => {
+            if (!centerPushOff.has(doc.id)) collect(doc);
+          });
+        } else {
+          collect(snap);
+        }
       }
 
       const tokens = Array.from(tokenSet);

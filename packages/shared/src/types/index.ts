@@ -16,6 +16,12 @@ export interface ProviderNotificationPreferences {
   confirmationNotifications: boolean;
   cancellationNotifications: boolean;
   reminderNotifications: boolean;
+  /**
+   * Push for the in-app notification center events (announcements, import
+   * reports, etc.) — independent from `pushEnabled` (which governs
+   * booking/review pushes). Undefined = enabled (backward-compatible).
+   */
+  centerPushEnabled?: boolean;
 }
 
 // User types
@@ -1283,6 +1289,13 @@ export interface AppNotification {
   /** Visibility switch — only published items reach the app. */
   isPublished: boolean;
   publishedAt?: Date | null;
+  /**
+   * Scheduled send time. When set on a NOT-yet-published notification, the
+   * `publishScheduledNotifications` cron flips `isPublished: true` once
+   * `scheduledAt <= now` (which then triggers the push, if `sendPush`).
+   * Null/undefined = immediate publication (no scheduling).
+   */
+  scheduledAt?: Date | null;
   /** Whether a system push was requested for this item. */
   sendPush?: boolean;
   /** Set by the Cloud Function once the push has been dispatched

@@ -36,6 +36,12 @@ service cloud.firestore {
       match /notificationReads/{notificationId} {
         allow read, write: if isOwner(userId);
       }
+
+      // Notifications supprimées par l'utilisateur (masquées de son centre).
+      // Chaque user gère uniquement ses propres suppressions.
+      match /notificationDismissals/{notificationId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // === PROVIDERS ===

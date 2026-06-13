@@ -1,6 +1,15 @@
 {
   "indexes": [
     {
+      "collectionGroup": "appNotifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isPublished", "order": "ASCENDING" },
+        { "fieldPath": "scheduledAt", "order": "ASCENDING" }
+      ]
+    },
+
+    {
       "collectionGroup": "pageViewsDaily",
       "queryScope": "COLLECTION",
       "fields": [

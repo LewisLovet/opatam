@@ -43,6 +43,7 @@ export { checkExpiredTrials } from './scheduled/checkExpiredTrials';
 export { sendSubscriptionReminders } from './scheduled/sendSubscriptionReminders';
 export { sendAffiliateOnboardingReminders } from './scheduled/sendAffiliateOnboardingReminders';
 export { purgePendingPaymentBookings } from './scheduled/purgePendingPaymentBookings';
+export { publishScheduledNotifications } from './scheduled/publishScheduledNotifications';
 export { recomputeProviderStats } from './scheduled/recomputeProviderStats';
 
 // ─── Notification test functions (prod-safe, admin-only) ───────────────────
