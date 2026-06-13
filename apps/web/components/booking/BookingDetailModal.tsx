@@ -151,6 +151,11 @@ export function BookingDetailModal({
   const [cancelReasonType, setCancelReasonType] = useState('');
   const [cancelReasonCustom, setCancelReasonCustom] = useState('');
 
+  // Adjust-duration state (shorten/lengthen this booking only)
+  const [showDuration, setShowDuration] = useState(false);
+  const [durationDraft, setDurationDraft] = useState(0);
+  const [durationLoading, setDurationLoading] = useState(false);
+
   // Reschedule state
   const [showReschedule, setShowReschedule] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState<string>('');
@@ -252,6 +257,7 @@ export function BookingDetailModal({
       setRescheduleDate('');
       setRescheduleTime('');
       setAvailableSlots([]);
+      setShowDuration(false);
     }
   }, [isOpen]);
 
@@ -344,6 +350,7 @@ export function BookingDetailModal({
     setShowCancelConfirm(false);
     setShowNoShowConfirm(false);
     setShowReschedule(false);
+    setShowDuration(false);
     setCancelReasonType('');
     setCancelReasonCustom('');
     setRescheduleDate('');
@@ -420,6 +427,32 @@ export function BookingDetailModal({
     setShowNoShowConfirm(false);
   };
 
+  const handleStartDuration = () => {
+    setDurationDraft(booking.duration);
+    setShowDuration(true);
+    setShowCancelConfirm(false);
+    setShowNoShowConfirm(false);
+    setShowReschedule(false);
+  };
+
+  const bumpDuration = (delta: number) =>
+    setDurationDraft((d) => Math.max(5, Math.min(24 * 60, d + delta)));
+
+  const handleAdjustDuration = async () => {
+    if (!user) return;
+    setDurationLoading(true);
+    try {
+      await bookingService.adjustBookingDuration(booking.id, durationDraft, user.id);
+      toast.success('Durée du rendez-vous mise à jour');
+      resetConfirmations();
+      onUpdate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la modification de la durée');
+    } finally {
+      setDurationLoading(false);
+    }
+  };
+
   const handleReviewRequest = async () => {
     if (!user) return;
     setReviewRequestLoading(true);
@@ -461,7 +494,7 @@ export function BookingDetailModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="max-w-md">
+    <Modal isOpen={isOpen} onClose={onClose} className="max-w-xl">
       <ModalHeader title="Détails du rendez-vous" onClose={onClose} />
 
       <ModalBody className="space-y-4">
@@ -901,6 +934,104 @@ export function BookingDetailModal({
           </div>
         )}
 
+        {/* Adjust-duration panel — rewrites this booking's time block only */}
+        {showDuration && (
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-4 border border-primary-200 dark:border-primary-700/50">
+            <div className="flex items-center gap-2 text-primary-700 dark:text-primary-300">
+              <Clock className="w-5 h-5" />
+              <span className="font-medium">Ajuster la durée</span>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+              Modifie uniquement ce rendez-vous, pas la prestation.
+            </p>
+
+            {/* Redefine the duration directly — free value, 5-min steppers */}
+            <div className="flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => bumpDuration(-5)}
+                disabled={durationDraft <= 5}
+                aria-label="Réduire de 5 minutes"
+                className="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xl font-bold flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                −
+              </button>
+              <div className="flex items-baseline gap-1">
+                <input
+                  type="number"
+                  min={5}
+                  max={1440}
+                  step={5}
+                  value={durationDraft}
+                  onChange={(e) => setDurationDraft(Math.min(1440, Math.max(0, parseInt(e.target.value || '0', 10))))}
+                  className="w-24 text-center text-4xl font-extrabold bg-transparent text-gray-900 dark:text-white border-b-2 border-primary-300 dark:border-primary-700 focus:outline-none focus:border-primary-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">min</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => bumpDuration(5)}
+                disabled={durationDraft >= 1440}
+                aria-label="Augmenter de 5 minutes"
+                className="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xl font-bold flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Real-time recap of the change */}
+            <div
+              className={`rounded-lg px-3 py-2 text-sm text-center ${
+                durationDraft === booking.duration
+                  ? 'bg-gray-100 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400'
+                  : durationDraft < booking.duration
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
+              }`}
+            >
+              {durationDraft === booking.duration ? (
+                'Durée inchangée'
+              ) : (
+                <>
+                  Vous passez ce rendez-vous de <strong>{booking.duration} min</strong> à{' '}
+                  <strong>{durationDraft} min</strong>{' '}
+                  ({durationDraft < booking.duration ? `−${booking.duration - durationDraft}` : `+${durationDraft - booking.duration}`} min)
+                  {' · '}fin à{' '}
+                  <strong>
+                    {new Date(new Date(booking.datetime).getTime() + durationDraft * 60000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </strong>
+                </>
+              )}
+            </div>
+
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center leading-relaxed">
+              Raccourcir libère du temps pour un autre rendez-vous. Rallonger est refusé si ça chevauche le rendez-vous suivant.
+            </p>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={resetConfirmations} disabled={durationLoading} className="flex-1">
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Retour
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAdjustDuration}
+                disabled={durationLoading || durationDraft === booking.duration || durationDraft < 5}
+                className="flex-1"
+              >
+                {durationLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 mr-1" />
+                    Enregistrer
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Review request section - only for past confirmed bookings */}
         {canRequestReview && !showCancelConfirm && !showNoShowConfirm && !showReschedule && (
           <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl space-y-3 border border-primary-200 dark:border-primary-800">
@@ -946,7 +1077,7 @@ export function BookingDetailModal({
 
       <ModalFooter>
         {/* Actions based on status */}
-        {booking.status === 'pending' && !showCancelConfirm && !showNoShowConfirm && !showReschedule && (
+        {booking.status === 'pending' && !showCancelConfirm && !showNoShowConfirm && !showReschedule && !showDuration && (
           <>
             <Button
               variant="outline"
@@ -964,6 +1095,14 @@ export function BookingDetailModal({
             >
               <CalendarClock className="w-4 h-4 mr-2" />
               Modifier
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleStartDuration}
+              disabled={loading}
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              Durée
             </Button>
             <Button onClick={handleConfirm} disabled={loading}>
               {loading ? (
@@ -976,7 +1115,7 @@ export function BookingDetailModal({
           </>
         )}
 
-        {booking.status === 'confirmed' && !showCancelConfirm && !showNoShowConfirm && !showReschedule && !isPastBooking && (
+        {booking.status === 'confirmed' && !showCancelConfirm && !showNoShowConfirm && !showReschedule && !showDuration && !isPastBooking && (
           <>
             <Button
               variant="outline"
@@ -994,6 +1133,14 @@ export function BookingDetailModal({
             >
               <CalendarClock className="w-4 h-4 mr-2" />
               Modifier
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleStartDuration}
+              disabled={loading}
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              Durée
             </Button>
             <Button
               variant="outline"

@@ -654,6 +654,81 @@ export class BookingService {
   }
 
   /**
+   * Adjust ONLY this booking's effective duration (its time block), without
+   * touching the Service's configured duration. Use case: the pro realises a
+   * visit will be shorter (free up time to fit another behind) or longer
+   * (avoid making the next client wait).
+   *
+   * Mechanics: we rewrite the booking's `duration` + `endDatetime`. Since the
+   * whole availability engine (slot generation AND isSlotAvailable) derives
+   * busy ranges from each booking's `datetime`→`endDatetime`, shortening
+   * immediately frees the released window and lengthening blocks it.
+   *
+   * Lengthening is REJECTED if the new end overlaps another active booking of
+   * the same member (no silent double-booking). Shortening is always allowed.
+   * `items` and the Service stay untouched.
+   */
+  async adjustBookingDuration(
+    bookingId: string,
+    newDurationMin: number,
+    adminUserId: string
+  ): Promise<WithId<Booking>> {
+    const booking = await bookingRepository.getById(bookingId);
+    if (!booking) {
+      throw new Error('Réservation non trouvée');
+    }
+
+    await this.verifyProviderAccess(booking.providerId, adminUserId);
+
+    if (booking.status === 'cancelled' || booking.status === 'noshow') {
+      throw new Error('Impossible de modifier la durée de ce rendez-vous');
+    }
+
+    const MIN_DURATION = 5;
+    const MAX_DURATION = 24 * 60;
+    if (!Number.isFinite(newDurationMin) || newDurationMin < MIN_DURATION || newDurationMin > MAX_DURATION) {
+      throw new Error(`La durée doit être comprise entre ${MIN_DURATION} minutes et 24 heures`);
+    }
+
+    const newEndDatetime = new Date(booking.datetime.getTime() + newDurationMin * 60 * 1000);
+    const isLengthening = newEndDatetime.getTime() > booking.endDatetime.getTime();
+
+    // Block lengthening into another active booking of the same member.
+    if (isLengthening) {
+      const overlapping = await bookingRepository.getUpcomingByProvider(
+        booking.providerId,
+        booking.datetime,
+        newEndDatetime
+      );
+      const hasConflict = overlapping.some(
+        (b) =>
+          b.id !== bookingId &&
+          b.memberId === booking.memberId &&
+          (b.status === 'confirmed' || b.status === 'pending' || b.status === 'pending_payment') &&
+          // Strict time overlap with [booking.datetime, newEndDatetime).
+          b.datetime.getTime() < newEndDatetime.getTime() &&
+          b.endDatetime.getTime() > booking.datetime.getTime()
+      );
+      if (hasConflict) {
+        throw new Error(
+          'La nouvelle durée chevaucherait le rendez-vous suivant. Raccourcissez-la ou décalez l’autre rendez-vous.'
+        );
+      }
+    }
+
+    await bookingRepository.update(bookingId, {
+      duration: newDurationMin,
+      endDatetime: newEndDatetime,
+    });
+
+    const updatedBooking = await bookingRepository.getById(bookingId);
+    if (!updatedBooking) {
+      throw new Error('Erreur lors de la mise à jour de la réservation');
+    }
+    return updatedBooking;
+  }
+
+  /**
    * Append a prestation to an EXISTING booking (same client, back-to-back).
    * The booking becomes multi-service: `items` grows, `duration`/`price`
    * aggregate, and `endDatetime` extends. Availability of the WHOLE extended
