@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { importReviewsSchema } from '@booking-app/shared';
+import { resend, emailConfig, appConfig, getEmailWrapperHtml, isValidEmail } from '@/lib/resend';
 
 async function verifyAdmin(uid: string) {
   const db = getAdminFirestore();
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
     let created = 0;
+    let createdSum = 0; // sum of clamped ratings actually created (for the report)
     let skipped = 0;
     const errors: string[] = [];
 
@@ -94,6 +96,7 @@ export async function POST(request: NextRequest) {
       }
       if (sourceRef) seenRefs.add(sourceRef);
 
+      const ratingValue = clampRating(item.rating);
       const docRef = db.collection('reviews').doc();
       batch.set(docRef, {
         providerId,
@@ -103,7 +106,7 @@ export async function POST(request: NextRequest) {
         memberId: null,
         clientName: '',
         clientPhoto: null,
-        rating: clampRating(item.rating),
+        rating: ratingValue,
         comment: item.comment && item.comment.length > 0 ? item.comment : null,
         isPublic: true,
         imported: true,
@@ -114,6 +117,7 @@ export async function POST(request: NextRequest) {
         updatedAt: now,
       });
       created++;
+      createdSum += ratingValue;
       opsInBatch++;
 
       if (opsInBatch >= 450) {
@@ -126,9 +130,72 @@ export async function POST(request: NextRequest) {
     if (opsInBatch > 0) commits.push(batch.commit());
     await Promise.all(commits);
 
+    // Optional: email the provider a summary of the import. Best-effort —
+    // a mail failure must never fail the import itself.
+    let reportSent = false;
+    if (parsed.data.notifyProvider && created > 0) {
+      try {
+        const providerData = providerDoc.data() || {};
+        const businessName: string = providerData.businessName || 'votre établissement';
+        const slug: string | undefined = providerData.slug;
+        const oldRating = providerData.rating || {};
+        const oldCount = typeof oldRating.count === 'number' ? oldRating.count : 0;
+        const oldAvg = typeof oldRating.average === 'number' ? oldRating.average : 0;
+        const newCount = oldCount + created;
+        const newAvg = newCount > 0 ? (oldAvg * oldCount + createdSum) / newCount : 0;
+        const avgStr = newAvg.toFixed(1).replace('.', ',');
+
+        const userDoc = await db.collection('users').doc(providerId).get();
+        const email = userDoc.data()?.email as string | undefined;
+
+        if (email && isValidEmail(email)) {
+          const pageUrl = slug ? `${appConfig.url}/p/${slug}` : appConfig.url;
+          const plural = created > 1;
+          const html = getEmailWrapperHtml(`
+            <tr>
+              <td style="padding: 0 32px 24px;">
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
+                  Bonjour ${businessName},
+                </p>
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
+                  Bonne nouvelle : <strong>${created} avis</strong> ${plural ? 'ont' : 'a'} été ajouté${plural ? 's' : ''} à votre page ${appConfig.name}.
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 8px 0 24px;">
+                  <tr>
+                    <td style="background:#f4f4f5;border-radius:12px;padding:18px 20px;text-align:center;">
+                      <div style="font-size:28px;font-weight:800;color:#18181b;">${avgStr} / 5</div>
+                      <div style="font-size:13px;color:#71717a;margin-top:2px;">Note moyenne · ${newCount} avis au total</div>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #71717a;">
+                  Ces avis ont été importés depuis votre historique et apparaissent désormais sur votre page publique avec la mention « Avis importé ».
+                </p>
+                <a href="${pageUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:10px;">
+                  Voir ma page
+                </a>
+              </td>
+            </tr>
+          `);
+          const { error: mailErr } = await resend.emails.send({
+            from: emailConfig.from,
+            to: email,
+            replyTo: emailConfig.replyTo,
+            subject: `${created} avis ajoutés à votre page ${appConfig.name}`,
+            html,
+          });
+          reportSent = !mailErr;
+          if (mailErr) console.error('[admin/reviews/import] report email error:', mailErr);
+        }
+      } catch (mailError) {
+        console.error('[admin/reviews/import] report email failed:', mailError);
+      }
+    }
+
     return NextResponse.json({
       created,
       skipped,
+      reportSent,
       ...(errors.length > 0 ? { errors } : {}),
     });
   } catch (error) {

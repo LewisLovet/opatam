@@ -75,6 +75,7 @@ export const adminReviewService = {
     payload: {
       providerId: string;
       source: string;
+      notifyProvider?: boolean;
       reviews: {
         rating: number;
         createdAt: string; // ISO
@@ -83,7 +84,7 @@ export const adminReviewService = {
         sourceRef?: string | null;
       }[];
     }
-  ): Promise<{ created: number; skipped: number; errors?: string[] }> {
+  ): Promise<{ created: number; skipped: number; reportSent?: boolean; errors?: string[] }> {
     const res = await fetch(`${BASE_URL}/import`, {
       method: 'POST',
       headers: headers(adminUid),

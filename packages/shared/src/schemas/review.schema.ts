@@ -84,6 +84,8 @@ export const importReviewsSchema = z.object({
     .array(importReviewItemSchema)
     .min(1, { message: 'Au moins un avis est requis' })
     .max(2000, { message: 'Maximum 2000 avis par import' }),
+  /** When true, email the provider a summary of the import (count + new rating). */
+  notifyProvider: z.boolean().optional(),
 });
 
 // Review filter schema

@@ -46,6 +46,9 @@ export default function ImportReviewsPage() {
   // Source
   const [source, setSource] = useState('planity');
 
+  // Email the provider a summary of the import (count + new rating)
+  const [notifyProvider, setNotifyProvider] = useState(true);
+
   // Parsed items + per-row skip report (from CSV)
   const [rows, setRows] = useState<ParsedReviewRow[]>([]);
   const [skipped, setSkipped] = useState<{ line: number; reason: string }[]>([]);
@@ -171,6 +174,7 @@ export default function ImportReviewsPage() {
       const res = await adminReviewService.importReviews(user.id, {
         providerId: provider.id,
         source: source.trim() || 'planity',
+        notifyProvider,
         reviews: rows.map((r) => ({
           rating: r.rating,
           createdAt: r.createdAt.toISOString(),
@@ -180,7 +184,13 @@ export default function ImportReviewsPage() {
         })),
       });
       setResultMsg({ created: res.created, skipped: res.skipped });
-      toast.success(`${res.created} avis importés, ${res.skipped} ignorés (doublons)`);
+      const reportNote =
+        notifyProvider && res.created > 0
+          ? res.reportSent
+            ? ' · rapport envoyé au prestataire'
+            : ' · ⚠️ rapport non envoyé (email manquant ?)'
+          : '';
+      toast.success(`${res.created} avis importés, ${res.skipped} ignorés (doublons)${reportNote}`);
       setRows([]);
       setSkipped([]);
     } catch (e) {
@@ -188,7 +198,7 @@ export default function ImportReviewsPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [user?.id, provider, rows, source, toast]);
+  }, [user?.id, provider, rows, source, notifyProvider, toast]);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -460,6 +470,21 @@ export default function ImportReviewsPage() {
               </tbody>
             </table>
           </div>
+
+          <label className="mt-4 flex items-start gap-2.5 cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3">
+            <input
+              type="checkbox"
+              checked={notifyProvider}
+              onChange={(e) => setNotifyProvider(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Envoyer un rapport par email au prestataire
+              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                Il recevra le nombre d&apos;avis importés et sa nouvelle note moyenne.
+              </span>
+            </span>
+          </label>
 
           <div className="mt-4 flex items-center justify-end gap-3">
             <Button variant="ghost" onClick={() => setRows([])}>
