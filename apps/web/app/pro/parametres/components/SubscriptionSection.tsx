@@ -7,7 +7,6 @@ import { getDaysRemaining } from '@/lib/date-utils';
 import { APP_CONFIG, PLAN_LIMITS } from '@booking-app/shared';
 import { memberService, locationService } from '@booking-app/firebase';
 import {
-  Sparkles,
   Clock,
   Zap,
   Users,
@@ -23,6 +22,7 @@ import {
   Calendar,
   TrendingDown,
   TrendingUp,
+  Crown,
 } from 'lucide-react';
 import { ChangePlanModal, type ChangePlanPreview } from './ChangePlanModal';
 
@@ -141,11 +141,13 @@ function CurrentStatusCard() {
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-primary-500/10 via-primary-600/5 to-transparent dark:from-primary-500/20 dark:via-primary-600/10 dark:to-transparent rounded-xl border border-primary-200 dark:border-primary-800">
+    <div className="relative overflow-hidden p-6 rounded-2xl border border-primary-200/70 dark:border-primary-800/70 bg-gradient-to-br from-primary-500/10 via-primary-600/5 to-transparent dark:from-primary-500/20 dark:via-primary-600/10 dark:to-transparent shadow-sm animate-fade-in-up">
+      <div className="pointer-events-none absolute -top-12 -right-10 h-44 w-44 rounded-full bg-primary-400/20 blur-3xl animate-soft-glow" />
+      <div className="relative">
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+            <CreditCard className="w-5 h-5 text-primary-600 dark:text-primary-400" />
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Votre abonnement actuel
             </span>
@@ -238,6 +240,7 @@ function CurrentStatusCard() {
           </p>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -443,7 +446,7 @@ function ChoosePlanSection({
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-6">
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-6 animate-fade-in-up animation-delay-150">
       <div className="flex items-center gap-2 mb-1">
         {mode === 'change' ? (
           <ArrowRightLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -528,7 +531,7 @@ function ChoosePlanSection({
                 className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${
                   billingInterval === 'month'
                     ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white'
                 }`}
               >
                 Mensuel
@@ -539,12 +542,12 @@ function ChoosePlanSection({
                 className={`relative px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${
                   billingInterval === 'year'
                     ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white'
                 }`}
               >
                 Annuel
                 {saving > 0 && (
-                  <span className="absolute -top-2.5 -right-3 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-sm">
+                  <span className="absolute -top-2.5 -right-3 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 shadow-sm">
                     -{saving}%
                   </span>
                 )}
@@ -569,12 +572,16 @@ function ChoosePlanSection({
 
           {/* Plan cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {visiblePrices.map((price) => {
+            {visiblePrices.map((price, index) => {
               const plan = price.plan ?? 'solo';
               const meta = PLAN_META[plan] ?? PLAN_META.solo;
               const Icon = meta.icon;
               const isThisLoading = loadingPriceId === price.id;
               const isCurrentPlan = mode === 'change' && plan === currentPlan;
+              // Highlight the Pro plan as the popular pick when subscribing —
+              // the conventional anchor that lifts conversion. Never on the
+              // current plan or in change-plan mode.
+              const isRecommended = mode === 'subscribe' && plan === 'solo' && !isCurrentPlan;
 
               // Disable plan if member or location count exceeds its limit
               const planLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS];
@@ -615,12 +622,22 @@ function ChoosePlanSection({
               return (
                 <div
                   key={price.id}
-                  className={`rounded-xl border p-5 flex flex-col transition-shadow hover:shadow-md ${
+                  style={{ animationDelay: `${index * 120}ms` }}
+                  className={`group relative rounded-2xl border p-5 flex flex-col animate-fade-in-up transition-all duration-300 hover:-translate-y-1 ${
                     isCurrentPlan
                       ? 'border-primary-300 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-900/10'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
+                      : isRecommended
+                        ? 'border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 shadow-lg shadow-blue-500/10 ring-1 ring-blue-200/70 dark:ring-blue-700/50 hover:shadow-xl hover:shadow-blue-500/20'
+                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:shadow-md'
                   }`}
                 >
+                  {isRecommended && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1 text-[11px] font-bold text-white shadow-md shadow-blue-500/30">
+                      <Crown className="h-3 w-3" />
+                      Le plus populaire
+                    </span>
+                  )}
+
                   {/* Plan header */}
                   <div className="flex items-center gap-3 mb-1">
                     <div
@@ -657,7 +674,7 @@ function ChoosePlanSection({
                     </div>
                     {savingPercent > 0 && (
                       <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-                        <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                        <TrendingDown className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                         <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                           -{savingPercent}%
                         </span>
@@ -711,16 +728,21 @@ function ChoosePlanSection({
                       type="button"
                       onClick={handleCta}
                       disabled={checkoutLoading || !providerId}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${meta.gradient}`}
+                      className={`relative overflow-hidden w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${meta.gradient}`}
                     >
-                      {isThisLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          {mode === 'change' ? 'Changement...' : 'Redirection...'}
-                        </>
-                      ) : (
-                        ctaLabel
+                      {isRecommended && !isThisLoading && (
+                        <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shine-sweep" />
                       )}
+                      <span className="relative flex items-center gap-2">
+                        {isThisLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {mode === 'change' ? 'Changement...' : 'Redirection...'}
+                          </>
+                        ) : (
+                          ctaLabel
+                        )}
+                      </span>
                     </button>
                   )}
                 </div>
@@ -801,7 +823,7 @@ function ManageSubscriptionSection({ onChangePlan }: { onChangePlan?: () => void
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-6">
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-6 animate-fade-in-up animation-delay-300">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         Gérer mon abonnement
       </h3>

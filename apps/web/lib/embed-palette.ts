@@ -62,6 +62,25 @@ export function normalizeHex(input: string | null | undefined): string | null {
   return hex.toLowerCase();
 }
 
+/**
+ * Convert a hex color into space-separated RGB channels (e.g. "239 246 255").
+ *
+ * This is the format the `--color-primary-*` CSS variables MUST hold so that
+ * Tailwind's opacity modifiers work: the palette is declared as
+ * `rgb(var(--color-primary-500) / <alpha-value>)`, and utilities like
+ * `bg-primary-500/20` then resolve to `rgb(239 246 255 / 0.2)`. Storing a full
+ * hex/`rgb()` here instead would make every primary opacity utility emit
+ * invalid CSS (silently dropped) — the dark-mode readability bug this fixes.
+ */
+export function hexToRgbChannels(input: string | null | undefined): string | null {
+  const hex = normalizeHex(input);
+  if (!hex) return null;
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return `${r} ${g} ${b}`;
+}
+
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const r = parseInt(hex.substring(0, 2), 16) / 255;
   const g = parseInt(hex.substring(2, 4), 16) / 255;
@@ -146,7 +165,7 @@ export function generatePrimaryPalette(input: string | null | undefined): Primar
  */
 export function paletteToCss(palette: PrimaryPalette): string {
   const lines = (Object.keys(palette) as PrimaryShade[])
-    .map((shade) => `  --color-primary-${shade}: ${palette[shade]};`)
+    .map((shade) => `  --color-primary-${shade}: ${hexToRgbChannels(palette[shade]) ?? palette[shade]};`)
     .join('\n');
   return `:root {\n${lines}\n}`;
 }

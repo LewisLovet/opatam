@@ -116,7 +116,7 @@ export function TrendChart({
               />
               <Bar
                 dataKey={valueKey}
-                fill="var(--color-primary-500, #8b5cf6)"
+                fill="rgb(var(--color-primary-500, 139 92 246))"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={32}
               />
@@ -127,8 +127,8 @@ export function TrendChart({
             <AreaChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
               <defs>
                 <linearGradient id={`grad-${valueKey}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-primary-500, #8b5cf6)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="var(--color-primary-500, #8b5cf6)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="rgb(var(--color-primary-500, 139 92 246))" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="rgb(var(--color-primary-500, 139 92 246))" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
@@ -148,7 +148,7 @@ export function TrendChart({
                 width={56}
               />
               <Tooltip
-                cursor={{ stroke: 'var(--color-primary-500, #8b5cf6)', strokeWidth: 1, strokeDasharray: '3 3' }}
+                cursor={{ stroke: 'rgb(var(--color-primary-500, 139 92 246))', strokeWidth: 1, strokeDasharray: '3 3' }}
                 contentStyle={tooltipStyle}
                 labelStyle={labelStyle}
                 formatter={(value) => {
@@ -159,7 +159,7 @@ export function TrendChart({
               <Area
                 type="monotone"
                 dataKey={valueKey}
-                stroke="var(--color-primary-500, #8b5cf6)"
+                stroke="rgb(var(--color-primary-500, 139 92 246))"
                 strokeWidth={2}
                 fill={`url(#grad-${valueKey})`}
                 dot={false}

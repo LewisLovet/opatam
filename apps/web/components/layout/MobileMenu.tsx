@@ -130,8 +130,8 @@ export function MobileMenu({ isOpen, onClose, navLinks, showAuthButtons = true }
                   relative block w-full px-4 py-3 text-center text-sm font-semibold
                   text-white rounded-full overflow-hidden
                   bg-gradient-to-b from-primary-500 to-primary-600
-                  shadow-[0_2px_8px_var(--color-primary-600)/25]
-                  active:shadow-[0_1px_4px_var(--color-primary-600)/20]
+                  shadow-[0_2px_8px_rgb(var(--color-primary-600)/0.25)]
+                  active:shadow-[0_1px_4px_rgb(var(--color-primary-600)/0.2)]
                   transition-all duration-200
                 "
               >

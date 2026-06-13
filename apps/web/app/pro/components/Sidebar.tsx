@@ -20,6 +20,8 @@ import {
   UserCircle,
   Clock,
   ArrowRight,
+  AlertTriangle,
+  Zap,
   Users,
   Sparkles,
   X as XIcon,
@@ -122,18 +124,45 @@ function TrialBanner({ collapsed, provider }: { collapsed?: boolean; provider: a
   const isWarning = daysLeft <= 7;
   const isExpired = daysLeft === 0;
 
-  // Color based on urgency
+  // Progress-bar color based on urgency
   const barColor = isExpired ? 'bg-red-500' : isUrgent ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500';
-  const textColor = isExpired ? 'text-red-400' : isUrgent ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-emerald-400';
+
+  const Icon = isExpired ? AlertTriangle : Clock;
+  const accentText = isExpired || isUrgent ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-emerald-400';
+
+  // Gradient theme per urgency — card tint, glow and the CTA button.
+  const cardGradient = isExpired
+    ? 'from-red-500/20 via-rose-500/10 to-transparent ring-red-500/30'
+    : isUrgent
+      ? 'from-red-500/15 via-orange-500/8 to-transparent ring-red-500/25'
+      : isWarning
+        ? 'from-amber-500/15 via-yellow-500/8 to-transparent ring-amber-500/25'
+        : 'from-emerald-500/12 via-teal-500/6 to-transparent ring-emerald-500/20';
+  const glowColor = isExpired || isUrgent ? 'bg-red-500/25' : isWarning ? 'bg-amber-500/20' : 'bg-emerald-500/15';
+  const ctaGradient = isExpired
+    ? 'from-red-500 to-rose-600 shadow-red-500/30'
+    : isUrgent
+      ? 'from-red-500 to-orange-500 shadow-red-500/25'
+      : isWarning
+        ? 'from-amber-500 to-orange-500 shadow-amber-500/25'
+        : 'from-primary-500 to-primary-600 shadow-primary-500/25';
+  const ctaLabel = isExpired
+    ? 'Réactiver ma page'
+    : isWarning
+      ? 'Passer au plan Pro'
+      : 'Choisir un plan';
 
   if (collapsed) {
     return (
       <Link
         href="/pro/abonnement"
-        className={`flex items-center justify-center p-2 mx-1 rounded-xl ${isExpired || isUrgent ? 'bg-red-500/10' : isWarning ? 'bg-amber-500/10' : 'bg-emerald-500/10'}`}
-        title={isExpired ? 'Essai expire' : `${daysLeft}j restants`}
+        className={`relative flex items-center justify-center p-2 mx-1 rounded-xl bg-gradient-to-br ring-1 ${cardGradient}`}
+        title={isExpired ? 'Essai expiré — réactiver' : `${daysLeft}j restants`}
       >
-        <div className={`text-sm font-bold ${textColor}`}>
+        {(isExpired || isUrgent) && (
+          <span className={`pointer-events-none absolute inset-0 rounded-xl ${glowColor} blur-md animate-soft-glow`} />
+        )}
+        <div className={`relative text-sm font-extrabold ${accentText}`}>
           {isExpired ? '!' : `${daysLeft}j`}
         </div>
       </Link>
@@ -143,33 +172,57 @@ function TrialBanner({ collapsed, provider }: { collapsed?: boolean; provider: a
   return (
     <Link
       href="/pro/abonnement"
-      className={`block p-3 mx-1 rounded-xl transition-colors ${isExpired || isUrgent ? 'bg-red-500/10 hover:bg-red-500/15' : isWarning ? 'bg-amber-500/10 hover:bg-amber-500/15' : 'bg-emerald-500/10 hover:bg-emerald-500/15'}`}
+      className={`group relative block overflow-hidden p-3 mx-1 rounded-2xl bg-gradient-to-br ring-1 ${cardGradient} transition-all duration-300 hover:-translate-y-0.5`}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5">
-          <Clock className={`w-3.5 h-3.5 ${textColor}`} />
-          <span className={`text-xs font-semibold ${textColor}`}>
-            {isExpired ? 'Essai terminé' : 'Essai gratuit'}
-          </span>
+      {/* Breathing glow accent — only when it matters (urgent / expired) */}
+      <span
+        className={`pointer-events-none absolute -top-6 -right-6 h-20 w-20 rounded-full blur-2xl ${glowColor} ${
+          isExpired || isUrgent ? 'animate-soft-glow' : ''
+        }`}
+      />
+
+      <div className="relative">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <Icon className={`w-4 h-4 ${accentText}`} />
+            <span className="text-xs font-bold text-white">
+              {isExpired ? 'Essai terminé' : 'Essai gratuit'}
+            </span>
+          </div>
+          {!isExpired && (
+            <span className={`text-xs font-extrabold ${accentText}`}>
+              {daysLeft}j
+            </span>
+          )}
         </div>
-        <span className={`text-xs font-bold ${textColor}`}>
-          {isExpired ? 'Expiré' : `${daysLeft}j`}
-        </span>
-      </div>
 
-      {/* Progress bar */}
-      <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden mb-2">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+        {isExpired ? (
+          <p className="text-[11px] leading-snug text-gray-300/90 mb-3">
+            Votre page est dépubliée. Réactivez-la pour continuer à recevoir
+            des réservations.
+          </p>
+        ) : (
+          <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden mb-3">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
 
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] text-gray-400">
-          {isExpired ? 'Souscrivez un plan' : 'Choisir un plan'}
+        {/* CTA — styled like a real button (span, since we're inside a Link) */}
+        <span
+          className={`relative overflow-hidden flex items-center justify-center gap-1.5 w-full rounded-lg bg-gradient-to-r ${ctaGradient} px-3 py-2 text-xs font-bold text-white shadow-md transition-shadow group-hover:shadow-lg`}
+        >
+          {(isExpired || isUrgent) && (
+            <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shine-sweep" />
+          )}
+          <span className="relative flex items-center gap-1.5">
+            {!isExpired && isWarning && <Zap className="w-3.5 h-3.5" />}
+            {ctaLabel}
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+          </span>
         </span>
-        <ArrowRight className="w-3 h-3 text-gray-500" />
       </div>
     </Link>
   );
@@ -260,7 +313,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                           replaced by a small accent dot when collapsed
                           so it still draws the eye on a narrow rail. */}
                       {showNew && !collapsed && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-500 text-white shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-600 text-white shadow-sm">
                           <Sparkles className="w-3 h-3" />
                           Nouveau
                         </span>
@@ -434,7 +487,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                         {item.icon}
                         <span className="flex-1">{item.label}</span>
                         {showNew && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-500 text-white shadow-sm">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-600 text-white shadow-sm">
                             <Sparkles className="w-3 h-3" />
                             Nouveau
                           </span>

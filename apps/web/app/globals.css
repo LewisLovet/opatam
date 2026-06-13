@@ -6,18 +6,21 @@
   --background: #ffffff;
   --foreground: #111827;
 
-  /* Default primary palette - Blue Ocean */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
-  --color-primary-950: #172554;
+  /* Default primary palette - Blue Ocean.
+     Stored as space-separated RGB channels (not hex) so Tailwind's opacity
+     modifiers work: colors are declared `rgb(var(--color-primary-N) / <alpha-value>)`
+     in tailwind.config.ts, so `bg-primary-900/20` → `rgb(30 58 138 / 0.2)`. */
+  --color-primary-50: 239 246 255;
+  --color-primary-100: 219 234 254;
+  --color-primary-200: 191 219 254;
+  --color-primary-300: 147 197 253;
+  --color-primary-400: 96 165 250;
+  --color-primary-500: 59 130 246;
+  --color-primary-600: 37 99 235;
+  --color-primary-700: 29 78 216;
+  --color-primary-800: 30 64 175;
+  --color-primary-900: 30 58 138;
+  --color-primary-950: 23 37 84;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -166,6 +169,51 @@ textarea {
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
+}
+
+/* ─── Premium surfaces (subscription / conversion page) ──────────
+   A light sweep (`shine-sweep`), a slowly panning gradient
+   (`gradient-pan`) and a breathing glow (`soft-glow`). Used to give
+   the abonnement page a premium, alive feel without any extra deps.
+   All three are disabled under prefers-reduced-motion below. */
+@keyframes shine-sweep {
+  0% { transform: translateX(-150%) skewX(-14deg); }
+  /* Travel fully across (off-left → off-right) by 70%, then rest
+     off-screen until 100% — the pause happens out of view, so the
+     reflet always completes its sweep instead of freezing mid-button. */
+  70%, 100% { transform: translateX(450%) skewX(-14deg); }
+}
+
+.animate-shine-sweep {
+  animation: shine-sweep 3.2s ease-in-out infinite;
+}
+
+@keyframes gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-gradient-pan {
+  background-size: 220% 220%;
+  animation: gradient-pan 7s ease-in-out infinite;
+}
+
+@keyframes soft-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.06); }
+}
+
+.animate-soft-glow {
+  animation: soft-glow 4.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shine-sweep,
+  .animate-gradient-pan,
+  .animate-soft-glow,
+  .animate-float {
+    animation: none;
+  }
 }
 
 /* ─── Marquee (infinite horizontal scroll) ───────────────────────

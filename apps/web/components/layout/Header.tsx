@@ -133,10 +133,10 @@ export function Header({
                       relative px-5 py-2 text-sm font-semibold text-white rounded-full
                       bg-gradient-to-b from-primary-500 to-primary-600
                       hover:from-primary-400 hover:to-primary-600
-                      shadow-[0_1px_2px_rgba(0,0,0,0.1),0_4px_12px_var(--color-primary-600)/20]
-                      hover:shadow-[0_1px_2px_rgba(0,0,0,0.1),0_6px_20px_var(--color-primary-600)/30]
+                      shadow-[0_1px_2px_rgba(0,0,0,0.1),0_4px_12px_rgb(var(--color-primary-600)/0.2)]
+                      hover:shadow-[0_1px_2px_rgba(0,0,0,0.1),0_6px_20px_rgb(var(--color-primary-600)/0.3)]
                       transition-all duration-200 hover:-translate-y-[1px]
-                      active:translate-y-0 active:shadow-[0_1px_2px_rgba(0,0,0,0.1),0_2px_6px_var(--color-primary-600)/20]
+                      active:translate-y-0 active:shadow-[0_1px_2px_rgba(0,0,0,0.1),0_2px_6px_rgb(var(--color-primary-600)/0.2)]
                     "
                   >
                     <span className="relative z-10">Creer ma page</span>

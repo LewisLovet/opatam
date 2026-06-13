@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { hexToRgbChannels } from '@/lib/embed-palette';
 
 interface ColorPalette {
   id: string;
@@ -180,7 +181,8 @@ export function ThemeSwitcher({ className = '' }: ThemeSwitcherProps) {
   const applyPaletteColors = (palette: ColorPalette) => {
     const root = document.documentElement;
     Object.entries(palette.colors).forEach(([shade, value]) => {
-      root.style.setProperty(`--color-primary-${shade}`, value);
+      // Vars hold RGB channels so Tailwind opacity modifiers work (see embed-palette).
+      root.style.setProperty(`--color-primary-${shade}`, hexToRgbChannels(value) ?? value);
     });
   };
 

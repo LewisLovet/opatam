@@ -46,13 +46,19 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
           {/* Mobile header */}
           <MobileHeader onMenuClick={() => setMobileMenuOpen(true)} />
 
-          {/* Desktop top bar — notification center, right-aligned */}
-          <div className="hidden lg:flex items-center justify-end h-14 px-8 border-b border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-30">
-            <NotificationsBell variant="dark" />
-          </div>
-
-          {/* Page content */}
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">{children}</main>
+          {/* Page content. The notification bell floats in the top-right of
+              the content area — same line as each page's title, with no
+              separator bar (the old bordered top bar split the page in two). */}
+          <main className="relative flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+            <div className="hidden lg:block absolute top-5 right-6 lg:top-6 lg:right-8 z-30">
+              {/* Frosted chip so the bell stays legible on any page — over the
+                  blue hero here, or on the plain gray dashboard elsewhere. */}
+              <div className="rounded-full bg-white/80 dark:bg-gray-800/70 shadow-sm ring-1 ring-black/5 dark:ring-white/10 backdrop-blur">
+                <NotificationsBell variant="dark" />
+              </div>
+            </div>
+            {children}
+          </main>
         </div>
 
         {isAccessBlocked && <TrialExpiredBanner />}

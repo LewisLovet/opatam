@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Palette, X, Sun, Moon } from 'lucide-react';
+import { hexToRgbChannels } from '@/lib/embed-palette';
 
 interface ColorTheme {
   name: string;
@@ -159,7 +160,8 @@ export function ThemeColorPicker() {
   const applyTheme = (theme: ColorTheme) => {
     const root = document.documentElement;
     Object.entries(theme.primary).forEach(([key, value]) => {
-      root.style.setProperty(`--color-primary-${key}`, value);
+      // Vars hold RGB channels so Tailwind opacity modifiers work (see embed-palette).
+      root.style.setProperty(`--color-primary-${key}`, hexToRgbChannels(value) ?? value);
     });
     localStorage.setItem('theme-color', theme.name);
     setCurrentTheme(theme.name);
