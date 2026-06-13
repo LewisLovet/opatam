@@ -18,6 +18,11 @@ export const onReviewCreate = onDocumentCreated(
     const review = event.data?.data();
     if (!review) return;
 
+    // Imported reviews are bulk-created by an admin and the provider is
+    // notified separately via a SINGLE import-report email. Skip the
+    // per-review push here, otherwise an import of N avis = N notifications.
+    if (review.imported === true) return;
+
     const { providerId, rating, clientName, comment } = review;
     if (!providerId) return;
 
