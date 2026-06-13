@@ -62,19 +62,38 @@ export const sendSubscriptionReminders = onSchedule(
         let reminderKey: string | null = null;
         let title = '';
         let body = '';
+        // 'upcoming' (J-7/J-3/J-1) · 'expired' (J0) · 'winback' (J+3/J+7)
+        let emailVariant: 'upcoming' | 'expired' | 'winback' = 'upcoming';
 
-        if (daysUntilExpiry <= 0 && !remindersSent.includes('expired')) {
+        // Ordered by exclusive day windows. Beyond ~14 days post-expiry we
+        // stop entirely (no key matches) so we never spam dormant accounts.
+        if (daysUntilExpiry <= -7 && daysUntilExpiry > -14 && !remindersSent.includes('winback-7')) {
+          reminderKey = 'winback-7';
+          emailVariant = 'winback';
+          title = 'Votre page Opatam vous attend';
+          body = 'Réactivez votre abonnement pour redevenir visible et recevoir des réservations.';
+        } else if (daysUntilExpiry <= -3 && daysUntilExpiry > -7 && !remindersSent.includes('winback-3')) {
+          reminderKey = 'winback-3';
+          emailVariant = 'winback';
+          title = 'Vos clients ne vous trouvent plus';
+          body = 'Votre page est en pause. Réactivez votre abonnement en 1 minute.';
+        } else if (daysUntilExpiry <= 0 && daysUntilExpiry > -3 && !remindersSent.includes('expired')) {
           reminderKey = 'expired';
+          emailVariant = 'expired';
           title = 'Votre page a été dépubliée';
-          body = 'Votre abonnement a expiré. Renouvelez pour rester visible et recevoir des réservations.';
+          body = 'Votre essai est terminé. Activez votre abonnement pour rester visible.';
         } else if (daysUntilExpiry === 1 && !remindersSent.includes('j-1')) {
           reminderKey = 'j-1';
-          title = 'Votre abonnement expire demain';
-          body = 'Renouvelez votre abonnement pour continuer à recevoir des réservations.';
-        } else if (daysUntilExpiry <= 7 && daysUntilExpiry > 1 && !remindersSent.includes('j-7')) {
+          title = 'Votre essai se termine demain';
+          body = 'Activez votre abonnement pour continuer à recevoir des réservations.';
+        } else if (daysUntilExpiry === 3 && !remindersSent.includes('j-3')) {
+          reminderKey = 'j-3';
+          title = "Plus que 3 jours d'essai";
+          body = 'Activez votre abonnement pour rester visible sans interruption.';
+        } else if (daysUntilExpiry <= 7 && daysUntilExpiry > 3 && !remindersSent.includes('j-7')) {
           reminderKey = 'j-7';
-          title = `Votre abonnement expire dans ${daysUntilExpiry} jours`;
-          body = 'Pensez à renouveler pour rester visible sur Opatam.';
+          title = `Votre essai se termine dans ${daysUntilExpiry} jours`;
+          body = 'Pensez à activer votre abonnement pour rester visible sur Opatam.';
         }
 
         if (reminderKey) {
@@ -102,6 +121,7 @@ export const sendSubscriptionReminders = onSchedule(
                   businessName: provider.businessName,
                   daysUntilExpiry,
                   isExpired: daysUntilExpiry <= 0,
+                  variant: emailVariant,
                 },
               });
             } catch (emailErr) {

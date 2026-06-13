@@ -71,7 +71,29 @@ function wrapHtml(content: string): string {
 function getTemplate(template: string, data: Record<string, any>): { subject: string; html: string } {
   switch (template) {
     case 'subscription_expiry': {
-      const { businessName, daysUntilExpiry, isExpired } = data;
+      const { businessName, daysUntilExpiry, isExpired, variant } = data;
+
+      // Annual nudge — our standard conversion lever (no discount coupon,
+      // so it never undercuts the affiliate program's better offer).
+      const annualTip = `<p style="font-size: 13px; color: #6B7280;">💡 Astuce : l'abonnement <strong>annuel</strong> revient à environ <strong>2 mois offerts</strong> par rapport au mensuel.</p>`;
+
+      // Win-back — sent a few days AFTER expiry, warmer tone, page already
+      // paused. Goal: bring the pro back.
+      if (variant === 'winback') {
+        return {
+          subject: `${businessName} — Votre page vous attend`,
+          html: wrapHtml(`
+            <h1>Vos clients ne vous trouvent plus</h1>
+            <p>Bonjour,</p>
+            <p>Votre page <strong>${businessName}</strong> est en pause : elle n'apparaît plus dans les recherches et vous ne recevez plus de réservations.</p>
+            <p>Réactivez votre abonnement en moins d'une minute pour retrouver votre visibilité — vos données (prestations, avis, clients) sont intactes.</p>
+            <p style="text-align: center; margin: 24px 0;">
+              <a href="${APP_URL}/pro/parametres" class="btn">Réactiver ma page</a>
+            </p>
+            ${annualTip}
+          `),
+        };
+      }
 
       if (isExpired) {
         return {
@@ -79,32 +101,34 @@ function getTemplate(template: string, data: Record<string, any>): { subject: st
           html: wrapHtml(`
             <h1>Votre page n'est plus visible</h1>
             <div class="highlight-red">
-              <p style="margin:0; color: #991B1B; font-weight: 600;">Votre abonnement a expiré</p>
+              <p style="margin:0; color: #991B1B; font-weight: 600;">Votre essai est terminé</p>
             </div>
             <p>Bonjour,</p>
-            <p>Votre abonnement Opatam pour <strong>${businessName}</strong> a expiré. Votre page n'est plus visible par les clients et vous ne recevez plus de réservations.</p>
-            <p>Renouvelez votre abonnement pour retrouver votre visibilité :</p>
+            <p>Votre essai Opatam pour <strong>${businessName}</strong> est terminé. Votre page n'est plus visible par les clients et vous ne recevez plus de réservations.</p>
+            <p>Activez votre abonnement pour retrouver votre visibilité :</p>
             <p style="text-align: center; margin: 24px 0;">
-              <a href="${APP_URL}/pro/parametres" class="btn">Renouveler mon abonnement</a>
+              <a href="${APP_URL}/pro/parametres" class="btn">Activer mon abonnement</a>
             </p>
-            <p style="font-size: 13px; color: #9CA3AF;">Vos données (prestations, avis, clients) sont conservées et seront restaurées dès le renouvellement.</p>
+            ${annualTip}
+            <p style="font-size: 13px; color: #9CA3AF;">Vos données (prestations, avis, clients) sont conservées et seront restaurées dès l'activation.</p>
           `),
         };
       }
 
       return {
-        subject: `${businessName} — Votre abonnement expire dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}`,
+        subject: `${businessName} — Votre essai se termine dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}`,
         html: wrapHtml(`
-          <h1>Votre abonnement expire bientôt</h1>
+          <h1>Votre essai se termine bientôt</h1>
           <div class="highlight">
-            <p style="margin:0; color: #92400E; font-weight: 600;">Il reste ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''} avant l'expiration</p>
+            <p style="margin:0; color: #92400E; font-weight: 600;">Il reste ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''} d'essai</p>
           </div>
           <p>Bonjour,</p>
-          <p>L'abonnement de <strong>${businessName}</strong> sur Opatam expire dans <strong>${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}</strong>.</p>
-          <p>Si vous ne renouvelez pas, votre page sera automatiquement dépubliée et vos clients ne pourront plus vous trouver.</p>
+          <p>L'essai gratuit de <strong>${businessName}</strong> sur Opatam se termine dans <strong>${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}</strong>.</p>
+          <p>Activez votre abonnement dès maintenant pour rester visible — sans interruption, et sans perdre vos réservations à venir.</p>
           <p style="text-align: center; margin: 24px 0;">
-            <a href="${APP_URL}/pro/parametres" class="btn">Renouveler maintenant</a>
+            <a href="${APP_URL}/pro/parametres" class="btn">Activer mon abonnement</a>
           </p>
+          ${annualTip}
         `),
       };
     }
