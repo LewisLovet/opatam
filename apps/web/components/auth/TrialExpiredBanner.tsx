@@ -123,12 +123,15 @@ export function TrialExpiredBanner() {
           </Link>
 
           <div className="mt-3 text-center">
-            <a
-              href="mailto:contact@opatam.com"
-              className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
-            >
-              Une question ? Contactez-nous
-            </a>
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              Une question ?{' '}
+              <Link
+                href="/contact"
+                className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                Contactez-nous
+              </Link>
+            </span>
           </div>
         </div>
       </div>

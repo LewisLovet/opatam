@@ -15,12 +15,16 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
 
   const { provider } = useAuth();
 
-  // Block access when validUntil is in the past (except on settings page)
+  // Block access when validUntil is in the past — EXCEPT on the pages the
+  // pro needs to reactivate: settings and the subscription page itself.
+  // (Without /pro/abonnement here, the banner's "Voir les plans" CTA led
+  // to a page that was still blocked → the modal looped.)
   const subscription = provider?.subscription;
   const isExpired =
     !!subscription?.validUntil && new Date(subscription.validUntil) < new Date();
-  const isOnSettingsPage = pathname?.startsWith('/pro/parametres');
-  const isAccessBlocked = isExpired && !isOnSettingsPage;
+  const isOnAllowedPage =
+    pathname?.startsWith('/pro/parametres') || pathname?.startsWith('/pro/abonnement');
+  const isAccessBlocked = isExpired && !isOnAllowedPage;
 
   return (
     <AuthGuard requireProvider={true}>
