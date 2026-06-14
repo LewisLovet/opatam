@@ -31,6 +31,11 @@ export const appConfig = {
   url: process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com',
 } as const;
 
+// Logo shown in the header of every email (hosted on Firebase Storage so it's
+// reachable from email clients without auth).
+export const EMAIL_LOGO_URL =
+  'https://firebasestorage.googleapis.com/v0/b/opatam-da04b.firebasestorage.app/o/assets%2Flogos%2Flogo-email.png?alt=media';
+
 // Helper to format date in French
 export function formatDateFr(date: Date | string): string {
   const dateObj = new Date(date);
@@ -94,9 +99,7 @@ export function getEmailWrapperHtml(content: string): string {
               <!-- Header -->
               <tr>
                 <td style="padding: 32px 32px 24px; text-align: center;">
-                  <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #18181b;">
-                    ${appConfig.name}
-                  </h1>
+                  <img src="${EMAIL_LOGO_URL}" alt="${appConfig.name}" width="140" style="display: inline-block; max-height: 48px; max-width: 180px; height: auto; width: auto;" />
                 </td>
               </tr>
               ${content}

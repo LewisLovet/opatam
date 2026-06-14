@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAffiliateWelcomeEmail } from '@/lib/emails/affiliateWelcome';
 import { generatePlanChangeEmail } from '@/lib/emails/planChange';
+import { getEmailWrapperHtml } from '@/lib/resend';
 
 // ---------------------------------------------------------------------------
 // Sample data used across all email previews
@@ -462,6 +463,96 @@ function generateWelcomeHtml(planName: 'Pro' | 'Studio'): string {
   `;
 }
 
+// --- New emails (replicate production) -------------------------------------
+
+// Functions-side wrapper (templateEmails.ts) — used by the relance email.
+function wrapFnHtml(content: string): string {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+  .container { max-width: 560px; margin: 0 auto; padding: 40px 20px; }
+  .card { background: #ffffff; border-radius: 16px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .logo { text-align: center; margin-bottom: 24px; }
+  .logo img { height: 40px; width: auto; max-width: 180px; }
+  h1 { font-size: 22px; color: #111827; margin: 0 0 12px; }
+  p { font-size: 15px; color: #4B5563; line-height: 1.6; margin: 0 0 16px; }
+  .btn { display: inline-block; background: #3B82F6; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 600; font-size: 15px; }
+  .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #9CA3AF; }
+  .highlight { background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 12px 16px; border-radius: 8px; margin: 16px 0; }
+</style></head>
+<body><div class="container"><div class="card">
+  <div class="logo"><img src="${LOGO_URL}" alt="Opatam" /></div>
+  ${content}
+</div>
+<div class="footer"><p>Opatam — La plateforme de reservation sans commission</p><p><a href="${APP_URL}" style="color: #3B82F6;">opatam.com</a></p></div>
+</div></body></html>`;
+}
+
+// Relance d'expiration (J-7) avec le bloc offre parrainage.
+function generateRelanceHtml(): string {
+  const offerBlock = `<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px 16px;margin:16px 0;">
+    <p style="margin:0 0 4px; color:#065F46; font-weight:700;">🎁 Votre réduction : -50% sur les 3 premiers mois</p>
+    <p style="margin:0; font-size:13px; color:#047857;">Grâce au code <strong>MARIE</strong>. Pour en bénéficier, activez votre abonnement <strong>depuis le web</strong> sur <a href="${APP_URL}/pro/abonnement" style="color:#047857;font-weight:600;">opatam.com</a> — la réduction s'applique automatiquement au paiement.</p>
+  </div>`;
+  const annualTip = `<p style="font-size: 13px; color: #6B7280;">💡 Astuce : l'abonnement <strong>annuel</strong> revient à environ <strong>2 mois offerts</strong> par rapport au mensuel.</p>`;
+  return wrapFnHtml(`
+    <h1>Votre essai se termine bientôt</h1>
+    <div class="highlight"><p style="margin:0; color: #92400E; font-weight: 600;">Il reste 5 jours d'essai</p></div>
+    <p>Bonjour,</p>
+    <p>L'essai gratuit de <strong>Salon Élégance</strong> sur Opatam se termine dans <strong>5 jours</strong>.</p>
+    <p>Activez votre abonnement dès maintenant pour rester visible — sans interruption, et sans perdre vos réservations à venir.</p>
+    ${offerBlock}
+    <p style="text-align: center; margin: 24px 0;"><a href="${APP_URL}/pro/parametres" class="btn">Activer mon abonnement</a></p>
+    ${annualTip}
+  `);
+}
+
+// Rapport d'import d'avis envoyé au prestataire.
+function generateImportReportHtml(): string {
+  return getEmailWrapperHtml(`
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour Salon Élégance,</p>
+        <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
+          Bonne nouvelle : <strong>12 avis</strong> ont été ajoutés à votre page ${APP_NAME}.
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 8px 0 24px;">
+          <tr><td style="background:#f4f4f5;border-radius:12px;padding:18px 20px;text-align:center;">
+            <div style="font-size:28px;font-weight:800;color:#18181b;">4,8 / 5</div>
+            <div style="font-size:13px;color:#71717a;margin-top:2px;">Note moyenne · 37 avis au total</div>
+          </td></tr>
+        </table>
+        <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #71717a;">
+          Ces avis ont été importés depuis votre historique et apparaissent désormais sur votre page publique avec la mention « Avis importé ».
+        </p>
+        <a href="${APP_URL}/p/${SAMPLE.providerSlug}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:10px;">Voir ma page</a>
+      </td>
+    </tr>
+  `);
+}
+
+// Demande d'avis sur l'application (Marketing).
+function generateAppReviewHtml(): string {
+  const appStoreUrl = 'https://apps.apple.com/app/id6759246218?action=write-review';
+  return getEmailWrapperHtml(`
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour Salon Élégance,</p>
+        <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
+          Vous utilisez ${APP_NAME} au quotidien — votre avis compte énormément pour nous&nbsp;!
+          Si l'application vous facilite la vie, prendre 30&nbsp;secondes pour la noter sur l'App Store
+          nous aide à la faire connaître à d'autres professionnels.
+        </p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${appStoreUrl}" style="display:inline-block;background:#0a0a0a;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 26px;border-radius:10px;">Noter sur l’App Store</a>
+        </div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #71717a;">Merci infiniment pour votre soutien. 💙<br />L'équipe ${APP_NAME}</p>
+      </td>
+    </tr>
+  `);
+}
+
 // ---------------------------------------------------------------------------
 // Preview dispatcher
 // ---------------------------------------------------------------------------
@@ -531,6 +622,12 @@ function generatePreview(type: string): string {
         currency: 'eur',
       }).html;
     }
+    case 'relance-offre':
+      return generateRelanceHtml();
+    case 'import-report':
+      return generateImportReportHtml();
+    case 'app-review':
+      return generateAppReviewHtml();
     default:
       return '<p>Type de mail inconnu</p>';
   }
@@ -574,6 +671,9 @@ export async function POST(request: NextRequest) {
       'affiliate-welcome-existing': 'Vous êtes maintenant affilié Opatam !',
       'plan-change-upgrade': 'Votre plan Opatam est passé à Studio',
       'plan-change-downgrade': 'Votre plan Opatam est passé à Pro',
+      'relance-offre': 'Salon Élégance — Votre essai se termine dans 5 jours',
+      'import-report': '12 avis ajoutés à votre page Opatam',
+      'app-review': 'Donnez votre avis sur Opatam ⭐',
     };
 
     try {

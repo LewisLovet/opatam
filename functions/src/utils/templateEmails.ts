@@ -18,6 +18,10 @@ function getResend(): Resend {
 
 const FROM = 'Opatam <noreply@kamerleontech.com>';
 const APP_URL = 'https://opatam.com';
+// Logo shown in the header of every email (hosted on Firebase Storage so it's
+// reachable from email clients without auth).
+const EMAIL_LOGO_URL =
+  'https://firebasestorage.googleapis.com/v0/b/opatam-da04b.firebasestorage.app/o/assets%2Flogos%2Flogo-email.png?alt=media';
 
 interface TemplateEmailOptions {
   to: string;
@@ -41,7 +45,7 @@ function wrapHtml(content: string): string {
     .container { max-width: 560px; margin: 0 auto; padding: 40px 20px; }
     .card { background: #ffffff; border-radius: 16px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     .logo { text-align: center; margin-bottom: 24px; }
-    .logo img { height: 32px; }
+    .logo img { height: 40px; width: auto; max-width: 180px; }
     h1 { font-size: 22px; color: #111827; margin: 0 0 12px; }
     p { font-size: 15px; color: #4B5563; line-height: 1.6; margin: 0 0 16px; }
     .btn { display: inline-block; background: #3B82F6; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 600; font-size: 15px; }
@@ -56,7 +60,7 @@ function wrapHtml(content: string): string {
   <div class="container">
     <div class="card">
       <div class="logo">
-        <strong style="font-size: 20px; color: #3B82F6;">OPATAM</strong>
+        <img src="${EMAIL_LOGO_URL}" alt="Opatam" />
       </div>
       ${content}
     </div>
