@@ -39,8 +39,7 @@ import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useDepositsSummary, useServices } from '../../hooks';
 import { formatPrice } from '@booking-app/shared';
-
-const BASE_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://opatam.com';
+import { API_URL as BASE_URL } from '../../lib/config';
 
 /** Preset chips for the default deposit percentage — 90% of pros
  *  will pick one of these, the custom input remains for the rest. */

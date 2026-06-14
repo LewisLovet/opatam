@@ -29,9 +29,6 @@ import { useTheme } from '../../../theme';
 import { Text, Card, Button, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
 
-// Get API URL from environment
-const API_URL = process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:3000';
-
 // Helper to convert booking datetime to Date
 function toDate(datetime: Date | any): Date {
   if (datetime instanceof Date) return datetime;

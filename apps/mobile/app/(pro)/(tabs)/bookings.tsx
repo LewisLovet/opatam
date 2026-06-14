@@ -55,6 +55,7 @@ import {
   Text,
 } from '../../../components';
 import { useAuth, useProvider } from '../../../contexts';
+import { API_URL } from '../../../lib/config';
 import {
   useProviderBookings,
   useProviderActivities,
@@ -69,9 +70,6 @@ if (
 ) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const API_URL = process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:3000';
-const PRODUCTION_URL = 'https://opatam.com';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -538,7 +536,7 @@ export default function ProBookingsScreen() {
       setReviewRequestLoadingId(bookingId);
       try {
         // Always call the production API to send the review request email
-        const response = await fetch(`${PRODUCTION_URL}/api/bookings/review-request-email`, {
+        const response = await fetch(`${API_URL}/api/bookings/review-request-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bookingId }),

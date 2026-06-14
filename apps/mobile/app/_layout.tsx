@@ -16,8 +16,8 @@ import {
 import { DevFAB } from '../components/DevFAB';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
 import { useAppReady, useDeepLinks } from '../hooks';
+import { STRIPE_PUBLISHABLE_KEY } from '../lib/config';
 
-const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 // Same merchant ID configured in app.json under the @stripe/stripe-react-native plugin.
 // Required for the Apple Pay button in PaymentSheet to render on iOS.
 const APPLE_PAY_MERCHANT_ID = 'merchant.com.kamerleontech.opatam';

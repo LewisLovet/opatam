@@ -46,6 +46,7 @@ import {
   Switch,
 } from '../../components';
 import { useProvider, useAuth, useSubscriptionStatus } from '../../contexts';
+import { API_URL } from '../../lib/config';
 import {
   catalogService,
   schedulingService,
@@ -1022,8 +1023,7 @@ export default function CreateBookingScreen() {
       // honored when the pro opted in: the server then creates the booking
       // as pending_payment and emails the client a Stripe Checkout link.
       // Otherwise the booking is confirmed immediately.
-      const apiUrl = process.env.EXPO_PUBLIC_APP_URL ?? 'https://opatam.com';
-      const res = await fetch(`${apiUrl}/api/bookings`, {
+      const res = await fetch(`${API_URL}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

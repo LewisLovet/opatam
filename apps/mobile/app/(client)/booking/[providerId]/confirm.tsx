@@ -24,8 +24,7 @@ import { useBooking } from '../../../../contexts';
 import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
 import { computeServiceTotal } from '@booking-app/shared';
-
-const API_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://opatam.com';
+import { API_URL } from '../../../../lib/config';
 
 /** App Store / Play Store URLs for the "update" CTA. iOS app id +
  *  Android package come from app.json. The `itms-apps://` /
