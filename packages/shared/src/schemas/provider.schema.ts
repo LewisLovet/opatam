@@ -107,6 +107,11 @@ export const updateProviderSchema = z.object({
   portfolioPhotos: z.array(z.string().url()).optional(),
   socialLinks: socialLinksSchema.optional(),
   settings: providerSettingsSchema.partial().optional(),
+  // Referral link captured at signup. Without these here, the schema stripped
+  // them and the code was never persisted → the affiliate coupon never applied
+  // at checkout. Kept nullable so it can be cleared.
+  affiliateCode: z.string().max(50).nullable().optional(),
+  affiliateId: z.string().nullable().optional(),
 });
 
 // Export types

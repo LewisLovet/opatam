@@ -20,6 +20,7 @@ import {
   Modal,
   Switch as RNSwitch,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +36,12 @@ import {
   serviceRepository,
   serviceCategoryRepository,
   schedulingService,
+  db,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
 } from '@booking-app/firebase';
 import { CATEGORIES, DAYS_OF_WEEK, SERVICE_CATEGORY_SUGGESTIONS } from '@booking-app/shared/constants';
 import {
@@ -88,6 +95,11 @@ interface WizardData {
   businessName: string;
   category: string;
   description: string;
+  // Referral / affiliate code (optional) — stored on the provider so the
+  // discount applies later at the WEB checkout (IAP can't apply it).
+  referralCode: string;
+  referralAffiliateId: string | null;
+  referralLabel: string | null;
   // Step 2 — Location
   locationName: string;
   countryCode: string;
@@ -123,6 +135,9 @@ const DEFAULT_DATA: WizardData = {
   businessName: '',
   category: '',
   description: '',
+  referralCode: '',
+  referralAffiliateId: null,
+  referralLabel: null,
   locationName: 'Mon salon',
   countryCode: 'FR',
   locationType: 'fixed',
@@ -150,6 +165,18 @@ const STEPS = [
 ];
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 75, 90, 120, 150, 180, 240];
+
+// Same labels as /api/affiliates/verify (web) so the message matches.
+const REFERRAL_DURATION_LABELS: Record<string, string> = {
+  once: 'le 1er mois',
+  repeating_3: 'les 3 premiers mois',
+  repeating_12: 'la 1ère année',
+  forever: 'tous les mois',
+};
+function buildReferralLabel(discount: number, duration?: string | null): string {
+  const span = duration && REFERRAL_DURATION_LABELS[duration] ? REFERRAL_DURATION_LABELS[duration] : 'votre abonnement';
+  return `-${discount}% sur ${span}`;
+}
 
 // Map Lucide icon names to Ionicons equivalents
 const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -451,6 +478,42 @@ export default function ProRegisterScreen() {
     setData((prev) => ({ ...prev, ...fields }));
   };
 
+  // Referral code: validate against the public `affiliates` collection. We only
+  // STORE the link on the provider — the discount applies later at the WEB
+  // checkout (we never tell the user to pay on the web inside the app).
+  const [referralChecking, setReferralChecking] = useState(false);
+  const verifyReferral = useCallback(async () => {
+    const code = data.referralCode.trim().toUpperCase();
+    if (!code) return;
+    setReferralChecking(true);
+    try {
+      const snap = await getDocs(
+        query(
+          collection(db, 'affiliates'),
+          where('code', '==', code),
+          where('isActive', '==', true),
+          limit(1),
+        ),
+      );
+      if (snap.empty) {
+        updateFields({ referralAffiliateId: null, referralLabel: null });
+        Alert.alert('Code invalide', "Ce code parrain n'existe pas ou n'est plus actif.");
+        return;
+      }
+      const docSnap = snap.docs[0];
+      const a = docSnap.data() as { discount?: number; discountDuration?: string | null };
+      const label =
+        typeof a.discount === 'number' && a.discount > 0
+          ? buildReferralLabel(a.discount, a.discountDuration)
+          : 'Réduction appliquée';
+      updateFields({ referralAffiliateId: docSnap.id, referralLabel: label, referralCode: code });
+    } catch {
+      Alert.alert('Erreur', 'Impossible de vérifier le code pour le moment.');
+    } finally {
+      setReferralChecking(false);
+    }
+  }, [data.referralCode]);
+
   // Address handlers (Google Places + BAN fallback for FR)
   const handleAddressSearch = useCallback((query: string) => {
     setAddressQuery(query);
@@ -691,6 +754,19 @@ export default function ProRegisterScreen() {
         category: data.category,
         description: data.description.trim() || undefined,
       });
+
+      // Link the referral code if one was validated (discount applies at the
+      // web checkout). Best-effort — never block registration.
+      if (data.referralAffiliateId) {
+        try {
+          await providerService.updateProvider(provider.id, {
+            affiliateCode: data.referralCode.trim().toUpperCase(),
+            affiliateId: data.referralAffiliateId,
+          });
+        } catch (affErr) {
+          console.warn('[register] affiliate link failed', affErr);
+        }
+      }
 
       const location = await locationService.createLocation(provider.id, {
         name: data.locationName.trim(),
@@ -933,6 +1009,49 @@ export default function ProRegisterScreen() {
         multiline
         numberOfLines={3}
       />
+
+      {/* Referral / affiliate code (optional) */}
+      <View style={{ gap: spacing.xs }}>
+        <Text variant="bodySmall" style={{ fontWeight: '500', color: colors.text }}>
+          Code parrain (facultatif)
+        </Text>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+          <View style={{ flex: 1 }}>
+            <Input
+              placeholder="Ex : MARIE"
+              value={data.referralCode}
+              onChangeText={(t) =>
+                updateFields({ referralCode: t.toUpperCase(), referralAffiliateId: null, referralLabel: null })
+              }
+            />
+          </View>
+          <Pressable
+            onPress={verifyReferral}
+            disabled={referralChecking || !data.referralCode.trim()}
+            style={({ pressed }) => ({
+              paddingHorizontal: spacing.md,
+              height: 48,
+              borderRadius: radius.lg,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: referralChecking || !data.referralCode.trim() ? 0.5 : pressed ? 0.85 : 1,
+            })}
+          >
+            <Text variant="bodySmall" style={{ color: '#fff', fontWeight: '700' }}>
+              {referralChecking ? '…' : 'Vérifier'}
+            </Text>
+          </Pressable>
+        </View>
+        {data.referralLabel ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+            <Text variant="caption" style={{ color: '#16A34A', flex: 1 }}>
+              Code validé : {data.referralLabel}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 
