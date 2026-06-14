@@ -9,6 +9,9 @@ interface CheckoutRequest {
   trialDays?: number;
   successUrl?: string;
   cancelUrl?: string;
+  // Referral code typed on the Abonnement page (for pros who did NOT enter a
+  // code at signup). Validated server-side below.
+  promoCode?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -23,7 +26,7 @@ export async function POST(request: NextRequest) {
       trialDays: body.trialDays ?? 'NOT PROVIDED',
     });
 
-    const { priceId, providerId, plan, trialDays, successUrl, cancelUrl } = body;
+    const { priceId, providerId, plan, trialDays, successUrl, cancelUrl, promoCode } = body;
 
     // Validate required fields
     if (!priceId || !providerId) {
@@ -60,6 +63,35 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+
+      // A code typed on the Abonnement page (pro who didn't enter one at
+      // signup). Resolve it server-side — never trust a client-passed id — and
+      // let it take precedence so the discount applies. We persist the link on
+      // the provider doc so the webhook attributes the commission on BOTH the
+      // first payment (metadata) AND every recurring invoice (provider doc).
+      const typedCode = promoCode?.toUpperCase().trim();
+      if (typedCode) {
+        const affSnap = await db
+          .collection('affiliates')
+          .where('code', '==', typedCode)
+          .where('isActive', '==', true)
+          .limit(1)
+          .get();
+        if (!affSnap.empty) {
+          const affDoc = affSnap.docs[0];
+          const aff = affDoc.data();
+          // Attribute the referral regardless of discount (commission still
+          // applies); apply the coupon only when the affiliate has one.
+          affiliateId = affDoc.id;
+          affiliateCode = aff.code || typedCode;
+          stripeCouponId = aff?.stripeCouponId || null;
+          await db
+            .collection('providers')
+            .doc(providerId)
+            .update({ affiliateCode, affiliateId, updatedAt: new Date() })
+            .catch((e) => console.warn('[STRIPE-CHECKOUT] persist affiliate failed:', e));
+        }
+      }
     } catch (err) {
       console.warn('[STRIPE-CHECKOUT] Could not fetch affiliate info:', err);
     }
@@ -93,7 +125,12 @@ export async function POST(request: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      allow_promotion_codes: stripeCouponId ? undefined : true, // Disable promo codes if affiliate coupon applied
+      // Codes are handled by our own validated field on the Abonnement page
+      // (which also attributes the affiliate commission), then applied here via
+      // `discounts`. Stripe's native promo field is intentionally disabled: it
+      // only matches Promotion Code objects (which we don't create) and would
+      // never attribute the commission.
+      allow_promotion_codes: stripeCouponId ? undefined : false,
       ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
       line_items: [
         {

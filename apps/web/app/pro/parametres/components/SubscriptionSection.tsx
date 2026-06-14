@@ -273,7 +273,11 @@ function ChoosePlanSection({
   // discount auto-applies at checkout. Surface it here so they SEE the deal
   // before paying (web only — the Stripe coupon is applied on the web checkout).
   const affiliateCode = (provider as any)?.affiliateCode as string | undefined;
-  const [affiliateOffer, setAffiliateOffer] = useState<{ discountLabel: string } | null>(null);
+  const [affiliateOffer, setAffiliateOffer] = useState<{
+    discountLabel: string;
+    discount: number | null;
+    discountDuration: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (mode !== 'subscribe' || !affiliateCode) {
@@ -285,7 +289,11 @@ function ChoosePlanSection({
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!cancelled && d?.valid && d?.discountLabel) {
-          setAffiliateOffer({ discountLabel: d.discountLabel });
+          setAffiliateOffer({
+            discountLabel: d.discountLabel,
+            discount: d.discount ?? null,
+            discountDuration: d.discountDuration ?? null,
+          });
         }
       })
       .catch(() => {});
@@ -293,6 +301,54 @@ function ChoosePlanSection({
       cancelled = true;
     };
   }, [mode, affiliateCode]);
+
+  // Discreet "I have a code" field — for pros who did NOT enter a referral code
+  // at signup. Kept collapsed by default so its absence never feels like a
+  // missing step. Validated via /api/affiliates/verify; the resolved code is
+  // sent to the checkout route which applies the coupon + attributes the
+  // affiliate commission.
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'checking' | 'invalid'>('idle');
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountLabel: string;
+    discount: number | null;
+    discountDuration: string | null;
+  } | null>(null);
+
+  const verifyPromo = async () => {
+    const code = promoInput.toUpperCase().trim();
+    if (!code) return;
+    setPromoStatus('checking');
+    try {
+      const r = await fetch(`/api/affiliates/verify?code=${encodeURIComponent(code)}`);
+      const d = r.ok ? await r.json() : null;
+      if (d?.valid && d?.discountLabel) {
+        setAppliedPromo({
+          code,
+          discountLabel: d.discountLabel,
+          discount: d.discount ?? null,
+          discountDuration: d.discountDuration ?? null,
+        });
+        setPromoStatus('idle');
+        setPromoOpen(false);
+      } else {
+        setPromoStatus('invalid');
+      }
+    } catch {
+      setPromoStatus('invalid');
+    }
+  };
+
+  // The discount currently in effect (typed code takes precedence over the
+  // signup one), used to show the discounted price on each plan card.
+  const activeDiscount =
+    appliedPromo?.discount && appliedPromo.discount > 0
+      ? { percent: appliedPromo.discount, duration: appliedPromo.discountDuration }
+      : affiliateOffer?.discount && affiliateOffer.discount > 0
+        ? { percent: affiliateOffer.discount, duration: affiliateOffer.discountDuration }
+        : null;
 
   const [prices, setPrices] = useState<StripePrice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -399,6 +455,7 @@ function ChoosePlanSection({
           priceId,
           providerId,
           plan: selectedPrice?.plan ?? undefined,
+          promoCode: appliedPromo?.code,
           successUrl: '/pro/abonnement',
           cancelUrl: '/pro/abonnement',
         }),
@@ -644,6 +701,22 @@ function ChoosePlanSection({
               const intervalLabel =
                 price.interval === 'year' ? '/an' : '/mois';
 
+              // Promo discount preview on the card (when a code is applied).
+              const promoPercent = activeDiscount?.percent ?? 0;
+              const hasPromo = mode === 'subscribe' && promoPercent > 0;
+              const discountedDisplay = hasPromo
+                ? formatPrice(Math.round(price.unitAmount * (1 - promoPercent / 100)))
+                : displayPrice;
+              const promoPeriodLabel = (() => {
+                if (!hasPromo) return null;
+                const d = activeDiscount?.duration;
+                if (d === 'forever') return null; // applies permanently
+                if (d === 'repeating_3') return 'les 3 premiers mois';
+                if (d === 'repeating_12')
+                  return price.interval === 'year' ? 'la 1ère année' : 'les 12 premiers mois';
+                return price.interval === 'year' ? 'la 1ère année' : 'le 1er mois'; // 'once'
+              })();
+
               // CTA label
               const ctaLabel = isCurrentPlan
                 ? 'Plan actuel'
@@ -704,15 +777,29 @@ function ChoosePlanSection({
 
                   {/* Price */}
                   <div className="mb-4">
-                    <div className="flex items-baseline gap-1">
+                    <div className="flex items-baseline gap-1.5">
                       <span className="text-3xl font-extrabold text-gray-900 dark:text-white">
-                        {displayPrice}&euro;
+                        {discountedDisplay}&euro;
                       </span>
+                      {hasPromo && (
+                        <span className="text-base font-medium text-gray-400 dark:text-gray-500 line-through">
+                          {displayPrice}&euro;
+                        </span>
+                      )}
                       <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
                         {intervalLabel}
                       </span>
                     </div>
-                    {savingPercent > 0 && (
+                    {/* Promo applied: show the discount + when the full price kicks in */}
+                    {hasPromo && (
+                      <p className="mt-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                        -{promoPercent}%{' '}
+                        {promoPeriodLabel
+                          ? `sur ${promoPeriodLabel}, puis ${displayPrice}€${intervalLabel}`
+                          : 'à vie'}
+                      </p>
+                    )}
+                    {savingPercent > 0 && !hasPromo && (
                       <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
                         <TrendingDown className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                         <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
@@ -789,6 +876,71 @@ function ChoosePlanSection({
               );
             })}
           </div>
+
+          {/* Applied promo code (typed here by a pro who didn't use one at
+              signup). Placed below the plans so the entry is unobtrusive. */}
+          {appliedPromo && !affiliateOffer && (
+            <div className="mt-5 flex items-start gap-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-4 py-3">
+              <Gift className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-emerald-900 dark:text-emerald-200 flex-1">
+                Code <strong>{appliedPromo.code}</strong> :{' '}
+                <strong>{appliedPromo.discountLabel}</strong>, appliqué à votre paiement.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setAppliedPromo(null);
+                  setPromoInput('');
+                }}
+                className="text-xs text-emerald-700/70 dark:text-emerald-300/70 hover:text-emerald-900 dark:hover:text-emerald-100 underline shrink-0"
+              >
+                Retirer
+              </button>
+            </div>
+          )}
+
+          {/* Discreet "I have a code" entry, under the plans — a muted link
+              that expands an input, so its absence never reads as a missing
+              step. */}
+          {!affiliateOffer && !appliedPromo && (
+            <div className="mt-5 text-center">
+              {!promoOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setPromoOpen(true)}
+                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  Vous avez un code promo ?
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 max-w-sm mx-auto">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => {
+                      setPromoInput(e.target.value);
+                      if (promoStatus === 'invalid') setPromoStatus('idle');
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && verifyPromo()}
+                    placeholder="Code promo"
+                    autoFocus
+                    className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm uppercase placeholder:normal-case placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={verifyPromo}
+                    disabled={promoStatus === 'checking' || !promoInput.trim()}
+                    className="rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-4 py-2 text-sm font-medium disabled:opacity-40"
+                  >
+                    {promoStatus === 'checking' ? '…' : 'Appliquer'}
+                  </button>
+                </div>
+              )}
+              {promoStatus === 'invalid' && (
+                <p className="mt-1.5 text-xs text-red-500">Ce code n'est pas valide.</p>
+              )}
+            </div>
+          )}
         </>
       )}
 
