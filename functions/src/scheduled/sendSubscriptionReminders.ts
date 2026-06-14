@@ -26,6 +26,19 @@ import { sendTemplateEmail } from '../utils/templateEmails';
 
 const BATCH_SIZE = 10;
 
+// Mirrors the labels used by /api/affiliates/verify so the email shows the
+// same wording as the signup page.
+const DURATION_LABELS: Record<string, string> = {
+  once: 'le 1er mois',
+  repeating_3: 'les 3 premiers mois',
+  repeating_12: 'la 1ère année',
+  forever: 'tous les mois',
+};
+function buildDiscountLabel(discount: number, duration?: string | null): string {
+  const span = duration && DURATION_LABELS[duration] ? DURATION_LABELS[duration] : 'votre abonnement';
+  return `-${discount}% sur ${span}`;
+}
+
 export const sendSubscriptionReminders = onSchedule(
   {
     schedule: '0 9 * * *', // Every day at 9:00 AM
@@ -114,6 +127,25 @@ export const sendSubscriptionReminders = onSchedule(
           // Send email
           if (email) {
             try {
+              // Affiliate offer (the pro signed up with a referral code) —
+              // surfaced ONLY in this email, with the "activate from web" note,
+              // since the Stripe coupon can't apply on the in-app purchase.
+              let affiliateOffer: { code: string; discountLabel: string } | null = null;
+              if (provider.affiliateId) {
+                try {
+                  const affSnap = await db.collection('affiliates').doc(provider.affiliateId).get();
+                  const aff = affSnap.data();
+                  if (aff?.isActive && typeof aff.discount === 'number' && aff.discount > 0) {
+                    affiliateOffer = {
+                      code: provider.affiliateCode || aff.code || '',
+                      discountLabel: buildDiscountLabel(aff.discount, aff.discountDuration),
+                    };
+                  }
+                } catch (affErr) {
+                  console.warn(`Affiliate lookup failed for ${providerId}:`, affErr);
+                }
+              }
+
               await sendTemplateEmail({
                 to: email,
                 template: 'subscription_expiry',
@@ -122,6 +154,7 @@ export const sendSubscriptionReminders = onSchedule(
                   daysUntilExpiry,
                   isExpired: daysUntilExpiry <= 0,
                   variant: emailVariant,
+                  affiliateOffer,
                 },
               });
             } catch (emailErr) {

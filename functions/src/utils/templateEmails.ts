@@ -72,11 +72,22 @@ function wrapHtml(content: string): string {
 function getTemplate(template: string, data: Record<string, any>): { subject: string; html: string } {
   switch (template) {
     case 'subscription_expiry': {
-      const { businessName, daysUntilExpiry, isExpired, variant } = data;
+      const { businessName, daysUntilExpiry, isExpired, variant, affiliateOffer } = data;
 
       // Annual nudge — our standard conversion lever (no discount coupon,
       // so it never undercuts the affiliate program's better offer).
       const annualTip = `<p style="font-size: 13px; color: #6B7280;">💡 Astuce : l'abonnement <strong>annuel</strong> revient à environ <strong>2 mois offerts</strong> par rapport au mensuel.</p>`;
+
+      // Affiliate offer reminder — ONLY shown here, in the email, and the ONLY
+      // place we tell them to activate from the web (the Stripe coupon can't
+      // apply on the in-app Apple purchase). We never steer to web inside the
+      // app itself.
+      const offerBlock = affiliateOffer?.discountLabel
+        ? `<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px 16px;margin:16px 0;">
+             <p style="margin:0 0 4px; color:#065F46; font-weight:700;">🎁 Votre réduction : ${affiliateOffer.discountLabel}</p>
+             <p style="margin:0; font-size:13px; color:#047857;">Grâce au code <strong>${affiliateOffer.code}</strong>. Pour en bénéficier, activez votre abonnement <strong>depuis le web</strong> sur <a href="${APP_URL}/pro/abonnement" style="color:#047857;font-weight:600;">opatam.com</a> — la réduction s'applique automatiquement au paiement.</p>
+           </div>`
+        : '';
 
       // Win-back — sent a few days AFTER expiry, warmer tone, page already
       // paused. Goal: bring the pro back.
@@ -88,6 +99,7 @@ function getTemplate(template: string, data: Record<string, any>): { subject: st
             <p>Bonjour,</p>
             <p>Votre page <strong>${businessName}</strong> est en pause : elle n'apparaît plus dans les recherches et vous ne recevez plus de réservations.</p>
             <p>Réactivez votre abonnement en moins d'une minute pour retrouver votre visibilité — vos données (prestations, avis, clients) sont intactes.</p>
+            ${offerBlock}
             <p style="text-align: center; margin: 24px 0;">
               <a href="${APP_URL}/pro/parametres" class="btn">Réactiver ma page</a>
             </p>
@@ -107,6 +119,7 @@ function getTemplate(template: string, data: Record<string, any>): { subject: st
             <p>Bonjour,</p>
             <p>Votre essai Opatam pour <strong>${businessName}</strong> est terminé. Votre page n'est plus visible par les clients et vous ne recevez plus de réservations.</p>
             <p>Activez votre abonnement pour retrouver votre visibilité :</p>
+            ${offerBlock}
             <p style="text-align: center; margin: 24px 0;">
               <a href="${APP_URL}/pro/parametres" class="btn">Activer mon abonnement</a>
             </p>
@@ -126,6 +139,7 @@ function getTemplate(template: string, data: Record<string, any>): { subject: st
           <p>Bonjour,</p>
           <p>L'essai gratuit de <strong>${businessName}</strong> sur Opatam se termine dans <strong>${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}</strong>.</p>
           <p>Activez votre abonnement dès maintenant pour rester visible — sans interruption, et sans perdre vos réservations à venir.</p>
+          ${offerBlock}
           <p style="text-align: center; margin: 24px 0;">
             <a href="${APP_URL}/pro/parametres" class="btn">Activer mon abonnement</a>
           </p>

@@ -23,6 +23,7 @@ import {
   TrendingDown,
   TrendingUp,
   Crown,
+  Gift,
 } from 'lucide-react';
 import { ChangePlanModal, type ChangePlanPreview } from './ChangePlanModal';
 
@@ -267,6 +268,31 @@ function ChoosePlanSection({
   const trialValidUntil = (provider as any)?.subscription?.validUntil as Date | undefined;
   const trialDaysLeft = trialValidUntil ? getDaysRemaining(trialValidUntil) : 0;
   const inFreeTrial = mode === 'subscribe' && !!trialValidUntil && trialDaysLeft > 0;
+
+  // Affiliate offer reminder: the provider used a referral code at signup, so a
+  // discount auto-applies at checkout. Surface it here so they SEE the deal
+  // before paying (web only — the Stripe coupon is applied on the web checkout).
+  const affiliateCode = (provider as any)?.affiliateCode as string | undefined;
+  const [affiliateOffer, setAffiliateOffer] = useState<{ discountLabel: string } | null>(null);
+
+  useEffect(() => {
+    if (mode !== 'subscribe' || !affiliateCode) {
+      setAffiliateOffer(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/affiliates/verify?code=${encodeURIComponent(affiliateCode)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d?.valid && d?.discountLabel) {
+          setAffiliateOffer({ discountLabel: d.discountLabel });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, affiliateCode]);
 
   const [prices, setPrices] = useState<StripePrice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -554,6 +580,20 @@ function ChoosePlanSection({
               </button>
             </div>
           </div>
+
+          {/* Affiliate offer: the referral code used at signup gives a
+              discount that auto-applies at checkout — show it so the deal is
+              visible before paying. */}
+          {affiliateOffer && (
+            <div className="mb-5 flex items-start gap-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-4 py-3">
+              <Gift className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-emerald-900 dark:text-emerald-200">
+                Code <strong>{affiliateCode}</strong> :{' '}
+                <strong>{affiliateOffer.discountLabel}</strong>, appliqué
+                automatiquement à votre paiement.
+              </p>
+            </div>
+          )}
 
           {/* Free-trial reassurance: subscribing now captures the card but
               charges only at the trial end (validUntil) — see the checkout
