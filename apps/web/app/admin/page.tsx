@@ -100,15 +100,15 @@ export default function AdminDashboardPage() {
           icon={<Briefcase className="w-5 h-5 text-red-500" />}
         />
         <AdminStatCard
-          label="Réservations"
-          value={stats.totalBookings}
-          icon={<Calendar className="w-5 h-5 text-red-500" />}
-          trend={{ value: stats.bookingsToday, label: "aujourd'hui" }}
+          label="Encaissé (ce mois)"
+          value={stats.collectedThisMonth}
+          icon={<DollarSign className="w-5 h-5 text-emerald-500" />}
+          format="currency"
         />
         <AdminStatCard
-          label="MRR"
+          label="MRR net"
           value={stats.mrr}
-          icon={<DollarSign className="w-5 h-5 text-red-500" />}
+          icon={<TrendingUp className="w-5 h-5 text-red-500" />}
           format="currency"
         />
       </div>

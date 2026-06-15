@@ -14,7 +14,10 @@ export interface DashboardStats {
   bookingsToday: number;
   bookingsWeek: number;
   bookingsMonth: number;
+  /** Net recurring revenue (cents/month), all products, after discounts. */
   mrr: number;
+  /** Real cash collected this month (sum of paid Stripe invoices, cents). */
+  collectedThisMonth: number;
   cancellationRate: number;
   noshowRate: number;
   averageRating: number;
@@ -115,7 +118,16 @@ export interface ReviewItem {
 // ── Revenue ──
 
 export interface RevenueStats {
+  /** Net MRR (cents/month), all products combined. */
   mrr: number;
+  /** Net MRR from the core plans (Pro + Studio). */
+  mrrPlans: number;
+  /** Net MRR from the Sérénité (deposits) add-on. */
+  mrrSerenity: number;
+  /** Real cash collected (paid invoices), cents — the source of truth. */
+  collectedThisMonth: number;
+  collectedLast30d: number;
+  collectedAllTime: number;
   activeSubscriptions: number;
   trialSubscriptions: number;
   cancelledThisMonth: number;

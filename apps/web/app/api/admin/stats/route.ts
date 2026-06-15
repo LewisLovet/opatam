@@ -82,6 +82,117 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Revenue helpers — Stripe is the source of truth.
+//
+// MRR = recurring revenue normalized to cents/month, NET of the currently
+// active coupon (so an affiliate -50% code counts for half, not full price),
+// accounting for quantity, split between the core plans (Pro/Studio) and the
+// Sérénité add-on (a separate subscription, metadata.productType === 'serenity').
+//
+// "Encaissé" (collected) = sum of PAID invoice amounts — the real cash that hit
+// the account, i.e. the irrefutable "what we actually earned".
+// ────────────────────────────────────────────────────────────────────────
+
+/** Gross recurring amount of a subscription, normalized to cents / month. */
+function subMonthlyGrossCents(sub: Stripe.Subscription): number {
+  let cents = 0;
+  for (const item of sub.items.data) {
+    const amt = (item.price?.unit_amount || 0) * (item.quantity || 1);
+    cents += item.price?.recurring?.interval === 'year' ? amt / 12 : amt;
+  }
+  return cents;
+}
+
+/** Subscription's monthly amount NET of its currently-active coupon(s). */
+function subMonthlyNetCents(sub: Stripe.Subscription): number {
+  const gross = subMonthlyGrossCents(sub);
+  const isYearly = sub.items.data.some((i) => i.price?.recurring?.interval === 'year');
+  // `discounts` (plural) is the current field; keep `discount` (legacy) as a
+  // fallback. Each Discount carries its Coupon inline.
+  const raw = [
+    ...(((sub as unknown as { discounts?: unknown[] }).discounts) || []),
+    ...((sub as unknown as { discount?: unknown }).discount ? [(sub as unknown as { discount: unknown }).discount] : []),
+  ] as Array<{ coupon?: Stripe.Coupon; percent_off?: number; amount_off?: number }>;
+  let net = gross;
+  for (const d of raw) {
+    const coupon = d && typeof d === 'object' ? (d.coupon ?? (d.percent_off || d.amount_off ? d : null)) : null;
+    if (!coupon) continue;
+    if (coupon.percent_off) net -= gross * (coupon.percent_off / 100);
+    else if (coupon.amount_off) net -= isYearly ? coupon.amount_off / 12 : coupon.amount_off;
+  }
+  return Math.max(0, net);
+}
+
+const isSerenitySub = (sub: Stripe.Subscription): boolean =>
+  sub.metadata?.productType === 'serenity';
+
+function planLabel(sub: Stripe.Subscription): string {
+  const p = sub.metadata?.plan;
+  if (p === 'team') return 'Studio';
+  if (p === 'solo') return 'Pro';
+  return sub.items.data[0]?.price?.nickname || 'Plan';
+}
+
+interface SubscriptionRevenue {
+  mrrTotal: number;
+  mrrPlans: number;
+  mrrSerenity: number;
+  activeCount: number;
+  byPlan: { plan: string; count: number; mrr: number }[];
+}
+
+/** Net MRR + per-product breakdown from all ACTIVE subscriptions. */
+async function computeSubscriptionRevenue(stripe: Stripe): Promise<SubscriptionRevenue> {
+  let mrrTotal = 0, mrrPlans = 0, mrrSerenity = 0, activeCount = 0;
+  const byPlan: Record<string, { count: number; mrr: number }> = {};
+  for await (const sub of stripe.subscriptions.list({
+    status: 'active',
+    limit: 100,
+    expand: ['data.discounts'],
+  })) {
+    activeCount++;
+    const net = Math.round(subMonthlyNetCents(sub));
+    mrrTotal += net;
+    const serenity = isSerenitySub(sub);
+    const label = serenity ? 'Sérénité (acomptes)' : planLabel(sub);
+    if (serenity) mrrSerenity += net; else mrrPlans += net;
+    if (!byPlan[label]) byPlan[label] = { count: 0, mrr: 0 };
+    byPlan[label].count++;
+    byPlan[label].mrr += net;
+  }
+  const byPlanArr = Object.entries(byPlan)
+    .map(([plan, d]) => ({ plan, count: d.count, mrr: d.mrr }))
+    .sort((a, b) => b.mrr - a.mrr);
+  return { mrrTotal, mrrPlans, mrrSerenity, activeCount, byPlan: byPlanArr };
+}
+
+/** Sum of PAID invoice amounts since `sinceUnix` (cents). Server-side filter. */
+async function sumPaidInvoicesSince(stripe: Stripe, sinceUnix: number): Promise<number> {
+  let total = 0;
+  for await (const inv of stripe.invoices.list({ status: 'paid', limit: 100, created: { gte: sinceUnix } })) {
+    total += inv.amount_paid || 0;
+  }
+  return total;
+}
+
+/** Single pass over all PAID invoices, bucketed by period (cents). */
+async function getCollectedRevenue(
+  stripe: Stripe,
+  startOfMonthUnix: number,
+  thirtyDaysAgoUnix: number,
+): Promise<{ allTime: number; thisMonth: number; last30d: number }> {
+  let allTime = 0, thisMonth = 0, last30d = 0;
+  for await (const inv of stripe.invoices.list({ status: 'paid', limit: 100 })) {
+    const amt = inv.amount_paid || 0;
+    const created = inv.created || 0;
+    allTime += amt;
+    if (created >= startOfMonthUnix) thisMonth += amt;
+    if (created >= thirtyDaysAgoUnix) last30d += amt;
+  }
+  return { allTime, thisMonth, last30d };
+}
+
 async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<DashboardStats> {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -124,38 +235,20 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
       ? (convertedProv / (trialProv + convertedProv)) * 100
       : 0;
 
-  // MRR from Stripe (external API, not Firestore reads)
+  // Revenue from Stripe (source of truth): NET MRR (after discounts, all
+  // products) + the real cash collected this month (paid invoices).
   let mrr = 0;
+  let collectedThisMonth = 0;
   try {
     const stripe = getStripe();
-    let hasMore = true;
-    let startingAfter: string | undefined;
-
-    while (hasMore) {
-      const params: any = { status: 'active', limit: 100 };
-      if (startingAfter) params.starting_after = startingAfter;
-
-      const subscriptions = await stripe.subscriptions.list(params);
-
-      for (const sub of subscriptions.data) {
-        for (const item of sub.items.data) {
-          const amount = (item.price?.unit_amount || 0);
-          const interval = item.price?.recurring?.interval;
-          if (interval === 'year') {
-            mrr += Math.round(amount / 12);
-          } else {
-            mrr += amount;
-          }
-        }
-      }
-
-      hasMore = subscriptions.has_more;
-      if (hasMore && subscriptions.data.length > 0) {
-        startingAfter = subscriptions.data[subscriptions.data.length - 1].id;
-      }
-    }
+    const [subRev, collected] = await Promise.all([
+      computeSubscriptionRevenue(stripe),
+      sumPaidInvoicesSince(stripe, Math.floor(startOfMonth.getTime() / 1000)),
+    ]);
+    mrr = subRev.mrrTotal;
+    collectedThisMonth = collected;
   } catch (err) {
-    console.error('[admin/stats] Stripe MRR error:', err);
+    console.error('[admin/stats] Stripe revenue error:', err);
   }
 
   return {
@@ -171,6 +264,7 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     bookingsWeek: bookingsWeekSnap.size,
     bookingsMonth: bookingsMonthSnap.size,
     mrr,
+    collectedThisMonth,
     cancellationRate: Math.round(cancellationRate * 10) / 10,
     noshowRate: Math.round(noshowRate * 10) / 10,
     averageRating: Math.round(averageRating * 10) / 10,
@@ -560,66 +654,19 @@ async function getRevenueStats(): Promise<RevenueStats> {
   const stripe = getStripe();
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const startOfMonthUnix = Math.floor(startOfMonth.getTime() / 1000);
+  const thirtyDaysAgoUnix = Math.floor(thirtyDaysAgo.getTime() / 1000);
 
-  let mrr = 0;
-  let activeCount = 0;
-  let trialCount = 0;
-  const planCounts: Record<string, { count: number; mrr: number }> = {};
-  const productNameCache: Record<string, string> = {};
-
-  // Page through active subscriptions to compute MRR + plan breakdown
-  for await (const sub of stripe.subscriptions.list({ status: 'active', limit: 100 })) {
-    activeCount++;
-    for (const item of sub.items.data) {
-      const amount = item.price?.unit_amount || 0;
-      const interval = item.price?.recurring?.interval;
-      const monthlyAmount = interval === 'year' ? Math.round(amount / 12) : amount;
-      mrr += monthlyAmount;
-
-      // Collect product ID for later name resolution
-      const productId = typeof item.price?.product === 'string'
-        ? item.price.product
-        : (item.price?.product as Stripe.Product)?.id;
-      const key = item.price?.nickname || productId || 'autre';
-      if (!planCounts[key]) planCounts[key] = { count: 0, mrr: 0 };
-      planCounts[key].count++;
-      planCounts[key].mrr += monthlyAmount;
-
-      // Track product IDs that need name resolution
-      if (productId && !productNameCache[productId]) {
-        productNameCache[productId] = productId; // placeholder
-      }
-    }
-  }
-
-  // Resolve product IDs to human-readable names
-  const productIds = Object.keys(productNameCache);
-  if (productIds.length > 0) {
-    await Promise.all(
-      productIds.map(async (id) => {
-        try {
-          const product = await stripe.products.retrieve(id);
-          productNameCache[id] = product.name || id;
-        } catch {
-          // keep the ID as fallback
-        }
-      })
-    );
-
-    // Rebuild planCounts with resolved names
-    const resolved: Record<string, { count: number; mrr: number }> = {};
-    for (const [key, data] of Object.entries(planCounts)) {
-      const name = productNameCache[key] || key;
-      if (!resolved[name]) resolved[name] = { count: 0, mrr: 0 };
-      resolved[name].count += data.count;
-      resolved[name].mrr += data.mrr;
-    }
-    // Replace planCounts contents
-    for (const k of Object.keys(planCounts)) delete planCounts[k];
-    Object.assign(planCounts, resolved);
-  }
+  // NET MRR + per-product breakdown (Pro/Studio vs Sérénité), and the real
+  // cash collected (paid invoices) — computed in parallel.
+  const [subRev, collected] = await Promise.all([
+    computeSubscriptionRevenue(stripe),
+    getCollectedRevenue(stripe, startOfMonthUnix, thirtyDaysAgoUnix),
+  ]);
 
   // Count trialing subscriptions
+  let trialCount = 0;
   for await (const _sub of stripe.subscriptions.list({ status: 'trialing', limit: 100 })) {
     trialCount++;
   }
@@ -629,7 +676,7 @@ async function getRevenueStats(): Promise<RevenueStats> {
   for await (const _sub of stripe.subscriptions.list({
     status: 'canceled',
     limit: 100,
-    created: { gte: Math.floor(startOfMonth.getTime() / 1000) },
+    created: { gte: startOfMonthUnix },
   })) {
     cancelledThisMonth++;
   }
@@ -655,20 +702,17 @@ async function getRevenueStats(): Promise<RevenueStats> {
     created: new Date((inv.created || 0) * 1000).toISOString(),
   }));
 
-  const subscriptionsByPlan = Object.entries(planCounts)
-    .map(([plan, data]) => ({
-      plan,
-      count: data.count,
-      mrr: data.mrr,
-    }))
-    .sort((a, b) => b.mrr - a.mrr);
-
   return {
-    mrr,
-    activeSubscriptions: activeCount,
+    mrr: subRev.mrrTotal,
+    mrrPlans: subRev.mrrPlans,
+    mrrSerenity: subRev.mrrSerenity,
+    collectedThisMonth: collected.thisMonth,
+    collectedLast30d: collected.last30d,
+    collectedAllTime: collected.allTime,
+    activeSubscriptions: subRev.activeCount,
     trialSubscriptions: trialCount,
     cancelledThisMonth,
-    subscriptionsByPlan,
+    subscriptionsByPlan: subRev.byPlan,
     recentPayments,
   };
 }

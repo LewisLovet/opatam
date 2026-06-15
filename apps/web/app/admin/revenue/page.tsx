@@ -6,7 +6,7 @@ import { adminStatsService } from '@/services/admin';
 import type { RevenueStats } from '@/services/admin/types';
 import { AdminStatCard } from '@/app/admin/components';
 import { Loader } from '@/components/ui';
-import { Euro, CreditCard, Clock, XCircle } from 'lucide-react';
+import { Euro, CreditCard, XCircle, Wallet, TrendingUp, Layers, Sprout } from 'lucide-react';
 
 function formatCurrency(amountInCents: number): string {
   return (amountInCents / 100).toLocaleString('fr-FR', {
@@ -107,28 +107,58 @@ export default function AdminRevenuePage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Revenue</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Suivi des revenus et abonnements Stripe
+          Source de vérité : Stripe. <strong>Encaissé</strong> = argent réellement
+          perçu (factures payées). <strong>MRR net</strong> = récurrent mensuel après
+          réductions (codes affiliés inclus).
         </p>
       </div>
 
-      {/* KPI Cards */}
+      {/* Row 1 — Cash réellement encaissé (la vérité) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <AdminStatCard
-          label="MRR"
+          label="Encaissé (ce mois)"
+          value={data.collectedThisMonth}
+          icon={<Wallet className="w-5 h-5 text-emerald-500" />}
+          format="currency"
+        />
+        <AdminStatCard
+          label="Encaissé (30 derniers jours)"
+          value={data.collectedLast30d}
+          icon={<Euro className="w-5 h-5 text-emerald-500" />}
+          format="currency"
+        />
+        <AdminStatCard
+          label="Encaissé (total)"
+          value={data.collectedAllTime}
+          icon={<Euro className="w-5 h-5 text-emerald-500" />}
+          format="currency"
+        />
+        <AdminStatCard
+          label="MRR net (total)"
           value={data.mrr}
-          icon={<Euro className="w-5 h-5 text-red-500" />}
+          icon={<TrendingUp className="w-5 h-5 text-red-500" />}
+          format="currency"
+        />
+      </div>
+
+      {/* Row 2 — Détail MRR + abonnements */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <AdminStatCard
+          label="MRR Plans (Pro/Studio)"
+          value={data.mrrPlans}
+          icon={<Layers className="w-5 h-5 text-red-500" />}
+          format="currency"
+        />
+        <AdminStatCard
+          label="MRR Sérénité"
+          value={data.mrrSerenity}
+          icon={<Sprout className="w-5 h-5 text-red-500" />}
           format="currency"
         />
         <AdminStatCard
           label="Abonnements actifs"
           value={data.activeSubscriptions}
           icon={<CreditCard className="w-5 h-5 text-red-500" />}
-          format="number"
-        />
-        <AdminStatCard
-          label="Essais en cours"
-          value={data.trialSubscriptions}
-          icon={<Clock className="w-5 h-5 text-red-500" />}
           format="number"
         />
         <AdminStatCard
