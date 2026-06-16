@@ -204,36 +204,59 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
   // Using select() instead of count() for compatibility with current firebase-admin version
   const [statsDoc, signupsTodaySnap, signupsWeekSnap, signupsMonthSnap, bookingsTodaySnap, bookingsWeekSnap, bookingsMonthSnap] = await Promise.all([
     db.doc('stats/dashboard').get(),
-    db.collection('users').where('createdAt', '>=', startOfToday).select().get(),
-    db.collection('users').where('createdAt', '>=', startOfWeek).select().get(),
-    db.collection('users').where('createdAt', '>=', startOfMonth).select().get(),
-    db.collection('bookings').where('createdAt', '>=', startOfToday).select().get(),
-    db.collection('bookings').where('createdAt', '>=', startOfWeek).select().get(),
-    db.collection('bookings').where('createdAt', '>=', startOfMonth).select().get(),
+    db.collection('users').where('createdAt', '>=', startOfToday).select('email', 'isAdmin', 'isTest').get(),
+    db.collection('users').where('createdAt', '>=', startOfWeek).select('email', 'isAdmin', 'isTest').get(),
+    db.collection('users').where('createdAt', '>=', startOfMonth).select('email', 'isAdmin', 'isTest').get(),
+    db.collection('bookings').where('createdAt', '>=', startOfToday).select('status').get(),
+    db.collection('bookings').where('createdAt', '>=', startOfWeek).select('status').get(),
+    db.collection('bookings').where('createdAt', '>=', startOfMonth).select('status').get(),
   ]);
+
+  // Light filters for the LIVE delta counts (the authoritative totals + rates
+  // come from the recomputed stats/dashboard doc). Exclude internal/test users
+  // and abandoned pending_payment bookings.
+  const isInternalUser = (d: FirebaseFirestore.DocumentData): boolean =>
+    d.isTest === true ||
+    d.isAdmin === true ||
+    (typeof d.email === 'string' && d.email.toLowerCase().endsWith('@yopmail.com'));
+  const countNewUsers = (snap: FirebaseFirestore.QuerySnapshot): number =>
+    snap.docs.filter((doc) => !isInternalUser(doc.data())).length;
+  const countNewBookings = (snap: FirebaseFirestore.QuerySnapshot): number =>
+    snap.docs.filter((doc) => doc.data().status !== 'pending_payment').length;
 
   const s = statsDoc.data() || {};
 
   const totalUsers = s.totalUsers || 0;
   const totalClients = s.totalClients || 0;
   const totalProviders = s.totalProviders || 0;
-  const activeProviders = s.activeProviders || 0;
+  const activeProviders = s.activeProviders || 0; // paying (recompute definition)
   const totalBookings = s.totalBookings || 0;
   const cancelledBookings = s.cancelledBookings || 0;
   const noshowBookings = s.noshowBookings || 0;
   const totalReviews = s.totalReviews || 0;
   const ratingSum = s.ratingSum || 0;
-  const trialProv = s.trialProviders || 0;
-  const convertedProv = s.convertedProviders || 0;
 
-  // Derived stats
-  const cancellationRate = totalBookings > 0 ? (cancelledBookings / totalBookings) * 100 : 0;
-  const noshowRate = totalBookings > 0 ? (noshowBookings / totalBookings) * 100 : 0;
-  const averageRating = totalReviews > 0 ? ratingSum / totalReviews : 0;
+  // Derived rates: prefer the values stored by the source-of-truth recompute
+  // (correct definitions, test accounts excluded). Fall back to deriving from
+  // raw counts for the window before the first recompute has run.
+  const cancellationRate =
+    typeof s.cancellationRate === 'number'
+      ? s.cancellationRate
+      : totalBookings > 0 ? (cancelledBookings / totalBookings) * 100 : 0;
+  const noshowRate =
+    typeof s.noshowRate === 'number'
+      ? s.noshowRate
+      : totalBookings > 0 ? (noshowBookings / totalBookings) * 100 : 0;
+  const averageRating =
+    typeof s.averageRating === 'number'
+      ? s.averageRating
+      : totalReviews > 0 ? ratingSum / totalReviews : 0;
   const trialConversionRate =
-    trialProv + convertedProv > 0
-      ? (convertedProv / (trialProv + convertedProv)) * 100
-      : 0;
+    typeof s.trialConversionRate === 'number'
+      ? s.trialConversionRate
+      : (s.trialProviders || 0) + (s.convertedProviders || 0) > 0
+        ? ((s.convertedProviders || 0) / ((s.trialProviders || 0) + (s.convertedProviders || 0))) * 100
+        : 0;
 
   // Revenue from Stripe (source of truth): NET MRR (after discounts, all
   // products) + the real cash collected this month (paid invoices).
@@ -255,14 +278,14 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     totalUsers,
     totalClients,
     totalProviders,
-    newSignupsToday: signupsTodaySnap.size,
-    newSignupsWeek: signupsWeekSnap.size,
-    newSignupsMonth: signupsMonthSnap.size,
+    newSignupsToday: countNewUsers(signupsTodaySnap),
+    newSignupsWeek: countNewUsers(signupsWeekSnap),
+    newSignupsMonth: countNewUsers(signupsMonthSnap),
     activeProviders,
     totalBookings,
-    bookingsToday: bookingsTodaySnap.size,
-    bookingsWeek: bookingsWeekSnap.size,
-    bookingsMonth: bookingsMonthSnap.size,
+    bookingsToday: countNewBookings(bookingsTodaySnap),
+    bookingsWeek: countNewBookings(bookingsWeekSnap),
+    bookingsMonth: countNewBookings(bookingsMonthSnap),
     mrr,
     collectedThisMonth,
     cancellationRate: Math.round(cancellationRate * 10) / 10,

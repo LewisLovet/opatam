@@ -45,6 +45,10 @@ export { sendAffiliateOnboardingReminders } from './scheduled/sendAffiliateOnboa
 export { purgePendingPaymentBookings } from './scheduled/purgePendingPaymentBookings';
 export { publishScheduledNotifications } from './scheduled/publishScheduledNotifications';
 export { recomputeProviderStats } from './scheduled/recomputeProviderStats';
+export { recomputeDashboardStatsCron } from './scheduled/recomputeDashboardStats';
+
+// ─── Admin-only callables ──────────────────────────────────────────────────
+export { recomputeDashboardStatsNow } from './callable/recomputeDashboardStatsNow';
 
 // ─── Notification test functions (prod-safe, admin-only) ───────────────────
 // These are deployed to production but require an authenticated admin user.

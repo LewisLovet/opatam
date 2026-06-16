@@ -83,20 +83,30 @@ export const onProviderWrite = onDocumentWritten(
     const statsRef = db.doc(STATS_DOC);
     const updates: Record<string, FieldValue | Date> = {};
 
+    // activeProviders = PAYING providers (subscription active + paid plan).
+    // Kept consistent with the daily recompute (lib/dashboardStats.ts) so the
+    // field doesn't mix "published" and "paying" semantics between recomputes.
+    const isPaid = (p: unknown) => p === 'solo' || p === 'team';
+    const wasPaying = before?.subscription?.status === 'active' && isPaid(before?.subscription?.plan);
+    const isPaying = after?.subscription?.status === 'active' && isPaid(after?.subscription?.plan);
+
+    if (!wasPaying && isPaying) {
+      updates.activeProviders = FieldValue.increment(1);
+    } else if (wasPaying && !isPaying) {
+      updates.activeProviders = FieldValue.increment(-1);
+    }
+
+    // Provider deleted (was paying)
+    if (before && !after && wasPaying) {
+      updates.activeProviders = FieldValue.increment(-1);
+    }
+
+    // Published-page counter (separate from paying).
     const wasPub = before?.isPublished === true;
     const isPub = after?.isPublished === true;
-
-    // Published status changed
-    if (!wasPub && isPub) {
-      updates.activeProviders = FieldValue.increment(1);
-    } else if (wasPub && !isPub) {
-      updates.activeProviders = FieldValue.increment(-1);
-    }
-
-    // Provider deleted (was published)
-    if (before && !after && wasPub) {
-      updates.activeProviders = FieldValue.increment(-1);
-    }
+    if (!wasPub && isPub) updates.publishedProviders = FieldValue.increment(1);
+    else if (wasPub && !isPub) updates.publishedProviders = FieldValue.increment(-1);
+    if (before && !after && wasPub) updates.publishedProviders = FieldValue.increment(-1);
 
     // Subscription changes for trial conversion tracking
     const beforePlan = before?.subscription?.plan;

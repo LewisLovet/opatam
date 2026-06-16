@@ -10,8 +10,11 @@ import {
   DollarSign,
   UserPlus,
   XCircle,
+  RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@booking-app/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminStatsService } from '@/services/admin';
 import type { DashboardStats, TrendData, CategoryData, RecentSignups } from '@/services/admin/types';
@@ -30,6 +33,23 @@ export default function AdminDashboardPage() {
   const [recentSignups, setRecentSignups] = useState<RecentSignups | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [recomputing, setRecomputing] = useState(false);
+
+  const handleRecompute = async () => {
+    if (!user?.id || recomputing) return;
+    setRecomputing(true);
+    try {
+      const fn = httpsCallable(getFunctions(app, 'europe-west1'), 'recomputeDashboardStatsNow');
+      await fn();
+      const fresh = await adminStatsService.getDashboardStats(user.id, true);
+      setStats(fresh);
+    } catch (err) {
+      console.error('Recompute failed:', err);
+      setError('Échec du recalcul des statistiques');
+    } finally {
+      setRecomputing(false);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -79,11 +99,23 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Vue d&apos;ensemble de la plateforme
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Vue d&apos;ensemble de la plateforme
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleRecompute}
+          disabled={recomputing}
+          title="Recompte les stats depuis la source (exclut les comptes de test) — corrige toute dérive"
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 shrink-0"
+        >
+          <RefreshCw className={`w-4 h-4 ${recomputing ? 'animate-spin' : ''}`} />
+          {recomputing ? 'Recalcul…' : 'Recalculer'}
+        </button>
       </div>
 
       {/* KPI Grid */}
@@ -95,7 +127,7 @@ export default function AdminDashboardPage() {
           trend={{ value: stats.newSignupsToday, label: "aujourd'hui" }}
         />
         <AdminStatCard
-          label="Prestataires actifs"
+          label="Prestataires payants"
           value={stats.activeProviders}
           icon={<Briefcase className="w-5 h-5 text-red-500" />}
         />

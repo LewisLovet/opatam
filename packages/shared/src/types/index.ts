@@ -53,6 +53,7 @@ export interface User {
   affiliateId: string | null; // Lien vers doc affiliates (si cet user est affilié)
   isAdmin?: boolean; // Admin dashboard access (only set for platform admins)
   isDisabled?: boolean; // Disabled by admin
+  isTest?: boolean; // Internal/test account — excluded from admin dashboard analytics
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,6 +77,7 @@ export interface Provider {
   subscription: Subscription;
   isPublished: boolean;
   isVerified: boolean;
+  isTest?: boolean; // Internal/test provider — excluded from admin dashboard analytics
   // Denormalized fields for search optimization
   cities: string[];              // Normalized cities from active locations
   region: string | null;         // Region from primary location (e.g., "Île-de-France")

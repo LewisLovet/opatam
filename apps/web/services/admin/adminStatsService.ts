@@ -10,8 +10,12 @@ function headers(adminUid: string) {
 }
 
 export const adminStatsService = {
-  async getDashboardStats(adminUid: string): Promise<DashboardStats> {
-    const res = await fetch(BASE_URL, { headers: headers(adminUid) });
+  async getDashboardStats(adminUid: string, fresh = false): Promise<DashboardStats> {
+    // `fresh` bypasses the 5-min browser cache (used right after a manual recompute).
+    const res = await fetch(fresh ? `${BASE_URL}?t=${Date.now()}` : BASE_URL, {
+      headers: headers(adminUid),
+      ...(fresh ? { cache: 'no-store' as RequestCache } : {}),
+    });
     if (!res.ok) throw new Error('Erreur lors du chargement des statistiques');
     return res.json();
   },
