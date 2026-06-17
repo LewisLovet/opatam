@@ -1,4 +1,5 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { initializeFirestore, getFirestore, type Firestore } from 'firebase/firestore';
 
 /**
  * Firebase configuration from environment variables
@@ -27,3 +28,27 @@ export function getFirebaseApp(): FirebaseApp {
  * Firebase app instance (singleton)
  */
 export const app = getFirebaseApp();
+
+/**
+ * Firestore instance (singleton), initialized with auto-detect long-polling.
+ *
+ * WHY: the default WebChannel streaming transport for real-time listeners
+ * (`onSnapshot` → `Listen/channel`) fails under Safari's stricter network /
+ * ITP rules ("Fetch API cannot load … due to access control checks"), which
+ * makes Safari slow and flaky. `experimentalAutoDetectLongPolling` detects
+ * those environments (Safari, restrictive proxies) and falls back to
+ * long-polling there, while keeping fast streaming where it works (Chrome…).
+ *
+ * Must run BEFORE any `getFirestore(app)` call — this module is the base
+ * import of every repository, so it does. The try/catch reuses the instance
+ * if Firestore was already started (HMR / double import).
+ */
+function initDb(): Firestore {
+  try {
+    return initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+  } catch {
+    return getFirestore(app);
+  }
+}
+
+export const db = initDb();
