@@ -35,6 +35,7 @@ export * from './StickyConfirmButton';
 
 // Lot 2 - Calendar & Time
 export * from './CalendarStrip';
+export * from './MonthCalendar';
 export * from './TimeSlotGrid';
 export * from './TimeSlotSection';
 

@@ -19,7 +19,7 @@ import {
   Text,
   Card,
   EmptyState,
-  CalendarStrip,
+  MonthCalendar,
   BookingSummary,
   TimeSlotSection,
   StickyConfirmButton,
@@ -300,13 +300,15 @@ export default function DateSelectionScreen() {
           </View>
         )}
 
-        {/* Calendar Strip */}
+        {/* Month calendar — collapsible: full month to pick, collapses to the
+            selected week to leave room for the time slots. */}
         <View style={{ marginTop: spacing.lg }}>
-          <CalendarStrip
+          <MonthCalendar
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
-            maxDate={summaryRange.end}
             dayStatus={summary}
+            minDate={summaryRange.start}
+            maxDate={summaryRange.end}
           />
         </View>
 
