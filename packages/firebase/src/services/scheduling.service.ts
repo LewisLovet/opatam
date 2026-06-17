@@ -51,6 +51,36 @@ interface TimeSlotWithDate {
   endDatetime: Date;
 }
 
+/** Per-day availability for the booking calendar (computed in one batched pass). */
+export interface DayAvailability {
+  /** Local calendar date, YYYY-MM-DD. */
+  date: string;
+  /**
+   * - `closed`    : member not open that day
+   * - `full`      : open but no slot of the chosen duration fits (capacity 0)
+   * - `almost_full`: capacity ≤ ALMOST_FULL_THRESHOLD
+   * - `available` : plenty of room
+   */
+  status: 'available' | 'almost_full' | 'full' | 'closed';
+  /** Realistic remaining capacity = max non-overlapping bookings that still fit. */
+  capacity: number;
+  /** Selectable start-times (overlapping, every slotInterval) for instant display. */
+  slots: TimeSlotWithDate[];
+}
+
+interface AvailabilitySummaryParams {
+  providerId: string;
+  serviceId: string;
+  memberId: string;
+  startDate: Date;
+  endDate: Date;
+  /** Effective total slot length (service + variations/options + buffer). */
+  durationOverride?: number;
+}
+
+/** A day has only 2 (or fewer) bookings of room left → flag as "almost full". */
+const ALMOST_FULL_THRESHOLD = 2;
+
 export class SchedulingService {
   /**
    * Set availability for a specific day/member
@@ -478,6 +508,112 @@ export class SchedulingService {
     availableSlots.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
 
     return availableSlots;
+  }
+
+  /**
+   * Per-day availability summary for the booking calendar, computed in ONE
+   * batched pass: 3 reads (weekly schedule + bookings in range + blocks in
+   * range), then each day is derived in memory — instead of 2 reads × N days.
+   * Returns each day's status + realistic capacity + the selectable slots, so
+   * the UI shows day states BEFORE any click and opens a day instantly.
+   * Same slot engine as getAvailableSlots → identical rules; the final booking
+   * still re-validates live (isSlotAvailable), so a stale slot can never
+   * double-book.
+   */
+  async getAvailabilitySummary(params: AvailabilitySummaryParams): Promise<DayAvailability[]> {
+    const { providerId, serviceId, memberId, startDate, endDate, durationOverride } = params;
+
+    const service = await serviceRepository.getById(providerId, serviceId);
+    if (!service) throw new Error('Prestation non trouvée');
+    const provider = await providerRepository.getById(providerId);
+    const bufferTime = service.bufferTime || provider?.settings.defaultBufferTime || 0;
+    const totalDuration = durationOverride ?? service.duration + bufferTime;
+    const slotInterval = provider?.settings.slotInterval ?? 15;
+    const minBookingNoticeHours = provider?.settings.minBookingNotice ?? 2;
+    const now = new Date();
+    const earliestBookable = new Date(now.getTime() + minBookingNoticeHours * 60 * 60 * 1000);
+
+    const rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+
+    // 3 batched reads for the whole range (instead of 2 per day).
+    const [weekly, allBookings, allBlocked] = await Promise.all([
+      availabilityRepository.getWeeklySchedule(providerId, memberId),
+      bookingRepository.getUpcomingByProvider(providerId, rangeStart, rangeEnd),
+      blockedSlotRepository.getInRange(providerId, rangeStart, rangeEnd),
+    ]);
+
+    const availabilityByDow = new Map<number, WithId<Availability>>();
+    for (const a of weekly) availabilityByDow.set(a.dayOfWeek, a);
+
+    const relevantBlocked = allBlocked.filter((bs) => bs.memberId === memberId);
+    const relevantBookings = allBookings.filter(
+      (b) =>
+        b.memberId === memberId &&
+        (b.status === 'confirmed' || b.status === 'pending' || b.status === 'pending_payment'),
+    );
+
+    const result: DayAvailability[] = [];
+    const cursor = new Date(rangeStart);
+
+    while (cursor <= rangeEnd) {
+      const dateKey = this.toDateKey(cursor);
+      const availability = availabilityByDow.get(cursor.getDay());
+
+      if (!availability || !availability.isOpen || !availability.slots.length) {
+        result.push({ date: dateKey, status: 'closed', capacity: 0, slots: [] });
+      } else {
+        const daySlots: TimeSlotWithDate[] = [];
+        for (const window of availability.slots) {
+          const generated = this.generateTimeSlots(cursor, window.start, window.end, totalDuration, slotInterval);
+          for (const g of generated) {
+            const blocked = this.isTimeBlockedBySlots(g.datetime, g.endDatetime, relevantBlocked);
+            const booked = this.isTimeBookedByBookings(g.datetime, g.endDatetime, relevantBookings);
+            const tooSoon = g.datetime <= earliestBookable;
+            if (!blocked && !booked && !tooSoon) daySlots.push(g);
+          }
+        }
+        daySlots.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+        const capacity = this.countNonOverlapping(daySlots);
+        const status: DayAvailability['status'] =
+          capacity === 0 ? 'full' : capacity <= ALMOST_FULL_THRESHOLD ? 'almost_full' : 'available';
+        result.push({ date: dateKey, status, capacity, slots: daySlots });
+      }
+
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return result;
+  }
+
+  /**
+   * Realistic capacity = how many bookings of the chosen duration can still be
+   * placed back-to-back. The generated slots overlap (one every slotInterval),
+   * so a naive count wildly overstates reality (3h free + 2h service + 10-min
+   * interval → ~7 overlapping starts but only 1 real booking). Greedily pick
+   * the earliest slot, then the next that starts at/after the previous end.
+   * Expects `slots` sorted ascending by datetime.
+   */
+  private countNonOverlapping(slots: TimeSlotWithDate[]): number {
+    let count = 0;
+    let lastEnd = -Infinity;
+    for (const s of slots) {
+      if (s.datetime.getTime() >= lastEnd) {
+        count++;
+        lastEnd = s.endDatetime.getTime();
+      }
+    }
+    return count;
+  }
+
+  /** Local YYYY-MM-DD (timezone-safe — toISOString would shift to UTC). */
+  private toDateKey(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
   /**

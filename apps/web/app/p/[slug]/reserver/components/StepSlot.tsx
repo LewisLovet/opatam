@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Check } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Check, Flame, ArrowRight, CalendarX } from 'lucide-react';
 import { generateDemoSlots } from '../../demoData';
 
 interface TimeSlotWithDate {
@@ -10,6 +10,14 @@ interface TimeSlotWithDate {
   end: string;
   datetime: string;
   endDatetime: string;
+}
+
+type DayStatus = 'available' | 'almost_full' | 'full' | 'closed';
+
+interface DayInfo {
+  status: DayStatus;
+  capacity: number;
+  slots: TimeSlotWithDate[];
 }
 
 interface StepSlotProps {
@@ -31,6 +39,14 @@ const MONTHS_FR = [
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
 
+// Local YYYY-MM-DD — must match the server's key (toISOString would shift to UTC).
+function dateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function StepSlot({
   providerId,
   serviceId,
@@ -43,173 +59,157 @@ export function StepSlot({
   openDays,
   isDemo = false,
 }: StepSlotProps) {
-  // Find the first selectable date to auto-scroll to
-  const firstAvailableDate = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const maxDate = new Date(today);
-    maxDate.setDate(maxDate.getDate() + maxAdvanceDays);
+  const today = useMemo(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }, []);
 
-    for (let i = 0; i < maxAdvanceDays; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(checkDate.getDate() + i);
-      if (openDays.includes(checkDate.getDay()) && checkDate <= maxDate) {
-        return checkDate;
-      }
-    }
-    return null;
-  }, [openDays, maxAdvanceDays]);
-
-  const [selectedDate, setSelectedDate] = useState<Date | null>(firstAvailableDate);
-  const [currentMonth, setCurrentMonth] = useState(firstAvailableDate || new Date());
-  const [slots, setSlots] = useState<TimeSlotWithDate[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Calculate date range (from today to maxAdvanceDays)
   const dateRange = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const maxDate = new Date(today);
-    maxDate.setDate(maxDate.getDate() + maxAdvanceDays);
-    return { min: today, max: maxDate };
-  }, [maxAdvanceDays]);
+    const max = new Date(today);
+    max.setDate(max.getDate() + maxAdvanceDays);
+    return { min: today, max };
+  }, [today, maxAdvanceDays]);
 
-  // Generate calendar days for current month
+  const [summary, setSummary] = useState<Record<string, DayInfo>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(today);
+  const autoSelectedRef = useRef(false);
+
+  // ── Fetch the whole range in ONE batched call ───────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    autoSelectedRef.current = false;
+    setLoading(true);
+    setError(null);
+
+    const buildAndSet = (entries: Record<string, DayInfo>) => {
+      if (cancelled) return;
+      setSummary(entries);
+      // Auto-select the first day with real capacity (once).
+      if (!autoSelectedRef.current) {
+        const firstKey = Object.keys(entries)
+          .filter((k) => entries[k].capacity > 0)
+          .sort()[0];
+        if (firstKey) {
+          const [y, m, d] = firstKey.split('-').map(Number);
+          const first = new Date(y, m - 1, d);
+          setSelectedDate(first);
+          setCurrentMonth(first);
+          autoSelectedRef.current = true;
+        }
+      }
+      setLoading(false);
+    };
+
+    // Demo mode — synthesize a summary locally so the marketing/demo page works.
+    if (isDemo) {
+      const entries: Record<string, DayInfo> = {};
+      const cur = new Date(dateRange.min);
+      while (cur <= dateRange.max) {
+        if (openDays.includes(cur.getDay())) {
+          const slots = generateDemoSlots(new Date(cur), serviceDuration);
+          entries[dateKey(cur)] = {
+            status: slots.length === 0 ? 'full' : slots.length <= 2 ? 'almost_full' : 'available',
+            capacity: Math.min(slots.length, 5),
+            slots,
+          };
+        } else {
+          entries[dateKey(cur)] = { status: 'closed', capacity: 0, slots: [] };
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      const timer = setTimeout(() => buildAndSet(entries), 250);
+      return () => { cancelled = true; clearTimeout(timer); };
+    }
+
+    const params = new URLSearchParams({
+      providerId,
+      serviceId,
+      memberId,
+      from: dateKey(dateRange.min),
+      to: dateKey(dateRange.max),
+      duration: String(serviceDuration),
+    });
+
+    fetch(`/api/slots/summary?${params}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Erreur lors du chargement des disponibilités'))))
+      .then((data: { days: Array<DayInfo & { date: string }> }) => {
+        const entries: Record<string, DayInfo> = {};
+        for (const d of data.days || []) {
+          entries[d.date] = { status: d.status, capacity: d.capacity, slots: d.slots };
+        }
+        buildAndSet(entries);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+        setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [providerId, serviceId, memberId, serviceDuration, isDemo, openDays, dateRange.min, dateRange.max]);
+
+  // ── Derived ─────────────────────────────────────────────────────────────
+  const selectedInfo = selectedDate ? summary[dateKey(selectedDate)] : undefined;
+
+  const nextAvailableAfter = useCallback(
+    (from: Date | null): Date | null => {
+      const fromKey = from ? dateKey(from) : '';
+      const key = Object.keys(summary)
+        .filter((k) => summary[k].capacity > 0 && (!fromKey || k > fromKey))
+        .sort()[0];
+      if (!key) return null;
+      const [y, m, d] = key.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    },
+    [summary],
+  );
+
+  const hasAnyAvailability = useMemo(
+    () => Object.values(summary).some((d) => d.capacity > 0),
+    [summary],
+  );
+
+  // Calendar grid for the current month
   const calendarDays = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
-
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-
     const days: (Date | null)[] = [];
-
-    // Add empty slots for days before first of month
-    const startDayOfWeek = firstDay.getDay();
-    for (let i = 0; i < startDayOfWeek; i++) {
-      days.push(null);
-    }
-
-    // Add days of month
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      days.push(new Date(year, month, i));
-    }
-
+    for (let i = 0; i < firstDay.getDay(); i++) days.push(null);
+    for (let i = 1; i <= lastDay.getDate(); i++) days.push(new Date(year, month, i));
     return days;
   }, [currentMonth]);
 
-  // Check if a date is selectable (in range AND on an open day)
-  const isDateSelectable = (date: Date): boolean => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    const inRange = d >= dateRange.min && d <= dateRange.max;
-    const isOpenDay = openDays.includes(d.getDay());
-    return inRange && isOpenDay;
-  };
-
-  // Fetch available slots when date changes
-  useEffect(() => {
-    if (!selectedDate) return;
-
-    // Demo mode — generate mock slots locally
-    if (isDemo) {
-      setLoading(true);
-      // Small delay for realism
-      const timer = setTimeout(() => {
-        setSlots(generateDemoSlots(selectedDate, serviceDuration));
-        setLoading(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-
-    const fetchSlots = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Send the calendar date string (YYYY-MM-DD) to avoid timezone shift.
-        // Previously, toISOString() converted local midnight to UTC which could
-        // shift to the previous day (e.g. 8 mars 00:00 CET → 7 mars 23:00 UTC).
-        const year = selectedDate.getFullYear();
-        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-        const day = String(selectedDate.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
-
-        const params = new URLSearchParams({
-          providerId,
-          serviceId,
-          memberId,
-          date: dateStr,
-          // Effective total length (incl. chosen variations/options + buffer)
-          // so the generated slots match the real prestation duration.
-          duration: String(serviceDuration),
-        });
-
-        const response = await fetch(`/api/slots?${params}`);
-
-        if (!response.ok) {
-          throw new Error('Erreur lors du chargement des créneaux');
-        }
-
-        const data = await response.json();
-        setSlots(data.slots || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-        setSlots([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSlots();
-  }, [selectedDate, providerId, serviceId, memberId, isDemo, serviceDuration]);
-
-  // Navigate months
   const goToPreviousMonth = () => {
     const prev = new Date(currentMonth);
     prev.setMonth(prev.getMonth() - 1);
-    if (prev >= new Date(dateRange.min.getFullYear(), dateRange.min.getMonth(), 1)) {
-      setCurrentMonth(prev);
-    }
+    if (prev >= new Date(dateRange.min.getFullYear(), dateRange.min.getMonth(), 1)) setCurrentMonth(prev);
   };
-
   const goToNextMonth = () => {
-    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-    const maxMonth = new Date(dateRange.max.getFullYear(), dateRange.max.getMonth(), 1);
-    if (nextMonth <= maxMonth) {
-      setCurrentMonth(nextMonth);
-    }
+    const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    if (next <= new Date(dateRange.max.getFullYear(), dateRange.max.getMonth(), 1)) setCurrentMonth(next);
   };
-
-  // Check if previous/next month buttons should be disabled
   const canGoPrevious = useMemo(() => {
     const prev = new Date(currentMonth);
     prev.setMonth(prev.getMonth() - 1);
     return prev >= new Date(dateRange.min.getFullYear(), dateRange.min.getMonth(), 1);
   }, [currentMonth, dateRange.min]);
-
   const canGoNext = useMemo(() => {
-    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-    const maxMonth = new Date(dateRange.max.getFullYear(), dateRange.max.getMonth(), 1);
-    return nextMonth <= maxMonth;
+    const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    return next <= new Date(dateRange.max.getFullYear(), dateRange.max.getMonth(), 1);
   }, [currentMonth, dateRange.max]);
 
-  // Format date for comparison
-  const formatDateKey = (date: Date): string => {
-    return date.toISOString().split('T')[0];
-  };
-
-  // Check if a date is selected
-  const isDateSelected = (date: Date): boolean => {
-    if (!selectedDate) return false;
-    return formatDateKey(date) === formatDateKey(selectedDate);
-  };
-
-  // Check if a slot is selected
-  const isSlotSelected = (slot: TimeSlotWithDate): boolean => {
-    if (!selectedSlot) return false;
-    return slot.datetime === selectedSlot.datetime;
+  const jumpToNextAvailable = () => {
+    const next = nextAvailableAfter(selectedDate && summary[dateKey(selectedDate)]?.capacity ? selectedDate : null);
+    if (next) {
+      setSelectedDate(next);
+      setCurrentMonth(next);
+    }
   };
 
   return (
@@ -218,151 +218,190 @@ export function StepSlot({
         <button
           onClick={onBack}
           className="p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          aria-label="Retour"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           Choisissez une date et un horaire
         </h2>
+        {!loading && !error && hasAnyAvailability && nextAvailableAfter(selectedDate) && (
+          <button
+            onClick={jumpToNextAvailable}
+            className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline whitespace-nowrap"
+          >
+            Prochaine dispo <ArrowRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {/* Calendar */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
-        {/* Month Navigation */}
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={goToPreviousMonth}
-            disabled={!canGoPrevious}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <h3 className="font-semibold text-gray-900 dark:text-white">
-            {MONTHS_FR[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-          </h3>
-          <button
-            onClick={goToNextMonth}
-            disabled={!canGoNext}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
         </div>
-
-        {/* Days header */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {DAYS_FR.map((day) => (
-            <div
-              key={day}
-              className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2"
-            >
-              {day}
-            </div>
-          ))}
+      ) : error ? (
+        <div className="text-center py-8 text-red-500 dark:text-red-400">{error}</div>
+      ) : !hasAnyAvailability ? (
+        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl px-6">
+          <CalendarX className="w-10 h-10 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+          <p className="font-semibold text-gray-900 dark:text-white">Aucune disponibilité pour cette prestation</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            dans les {maxAdvanceDays} prochains jours. Revenez plus tard ou contactez directement le professionnel.
+          </p>
         </div>
-
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1">
-          {calendarDays.map((date, index) => {
-            if (!date) {
-              return <div key={`empty-${index}`} className="aspect-square" />;
-            }
-
-            const inRange = isDateSelectable(date);
-            const isToday = formatDateKey(date) === formatDateKey(new Date());
-            const selected = isDateSelected(date);
-
-            return (
+      ) : (
+        <>
+          {/* Calendar */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-5">
+            <div className="flex items-center justify-between mb-4">
               <button
-                key={date.toISOString()}
-                onClick={() => inRange && setSelectedDate(date)}
-                disabled={!inRange}
-                className={`aspect-square flex items-center justify-center text-sm rounded-lg transition-colors ${
-                  selected
-                    ? 'bg-primary-600 text-white font-semibold'
-                    : inRange
-                    ? isToday
-                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-semibold hover:bg-primary-200 dark:hover:bg-primary-900/50'
-                      : 'text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                    : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                }`}
+                onClick={goToPreviousMonth}
+                disabled={!canGoPrevious}
+                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label="Mois précédent"
               >
-                {date.getDate()}
+                <ChevronLeft className="w-5 h-5" />
               </button>
-            );
-          })}
-        </div>
-      </div>
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                {MONTHS_FR[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              </h3>
+              <button
+                onClick={goToNextMonth}
+                disabled={!canGoNext}
+                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label="Mois suivant"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
 
-      {/* Time slots */}
-      {selectedDate && (
-        <div>
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
-            Horaires disponibles le{' '}
-            {selectedDate.toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-            })}
-          </h3>
+            <div className="grid grid-cols-7 gap-1 mb-1">
+              {DAYS_FR.map((day) => (
+                <div key={day} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2">
+                  {day}
+                </div>
+              ))}
+            </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-8 text-red-500 dark:text-red-400">
-              {error}
-            </div>
-          ) : slots.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-              <p className="text-gray-500 dark:text-gray-400">
-                Aucun créneau disponible pour cette date.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              {slots.map((slot) => {
-                const selected = isSlotSelected(slot);
+            <div className="grid grid-cols-7 gap-1">
+              {calendarDays.map((date, index) => {
+                if (!date) return <div key={`empty-${index}`} className="aspect-square" />;
+
+                const key = dateKey(date);
+                const info = summary[key];
+                const isPast = date < dateRange.min;
+                const isToday = key === dateKey(today);
+                const selected = !!selectedDate && key === dateKey(selectedDate);
+                const status: DayStatus | 'past' = isPast ? 'past' : info?.status ?? 'closed';
+                const clickable = status === 'available' || status === 'almost_full';
+
+                let cls = '';
+                let label: string | null = null;
+                let dot = false;
+                if (selected) {
+                  cls = 'bg-primary-600 text-white font-semibold';
+                } else if (status === 'available') {
+                  cls = `text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 ${isToday ? 'ring-1 ring-primary-300 dark:ring-primary-700' : ''}`;
+                  dot = true;
+                } else if (status === 'almost_full') {
+                  cls = 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30';
+                  label = `${info!.capacity} pl.`;
+                } else if (status === 'full') {
+                  cls = 'text-gray-400 dark:text-gray-600 line-through cursor-not-allowed';
+                  label = 'Complet';
+                } else {
+                  cls = 'text-gray-300 dark:text-gray-600 cursor-not-allowed';
+                  if (status === 'closed' && !isPast) label = 'Fermé';
+                }
 
                 return (
                   <button
-                    key={slot.datetime}
-                    onClick={() => onSelect(slot)}
-                    className={`relative py-3 px-4 rounded-lg border-2 transition-all ${
-                      selected
-                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-700'
-                    }`}
+                    key={key}
+                    onClick={() => clickable && setSelectedDate(date)}
+                    disabled={!clickable}
+                    className={`aspect-square flex flex-col items-center justify-center gap-0.5 text-sm rounded-lg transition-colors ${cls}`}
                   >
-                    {/* Check badge */}
-                    {selected && (
-                      <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center shadow-sm">
-                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                      </span>
+                    <span>{date.getDate()}</span>
+                    {dot && !selected && (
+                      <span className="w-1 h-1 rounded-full bg-emerald-500" />
                     )}
-                    <div className="flex flex-col items-center">
-                      <span className={`text-sm font-semibold ${
-                        selected
-                          ? 'text-primary-600 dark:text-primary-400'
-                          : 'text-gray-900 dark:text-white'
-                      }`}>
-                        {slot.start}
-                      </span>
-                      <span className={`text-xs ${
-                        selected
-                          ? 'text-primary-500/70 dark:text-primary-400/70'
-                          : 'text-gray-400 dark:text-gray-500'
-                      }`}>
-                        → {slot.end}
-                      </span>
-                    </div>
+                    {label && <span className="text-[11px] leading-none">{label}</span>}
                   </button>
                 );
               })}
             </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-xs text-gray-500 dark:text-gray-400">
+              <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Disponible</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Bientôt complet</span>
+              <span className="inline-flex items-center gap-1.5"><span className="line-through">Complet</span></span>
+              <span className="inline-flex items-center gap-1.5"><span className="opacity-60">Fermé</span></span>
+            </div>
+          </div>
+
+          {/* Time slots */}
+          {selectedDate && (
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  {selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </h3>
+                {selectedInfo?.status === 'almost_full' && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+                    <Flame className="w-3.5 h-3.5" />
+                    Bientôt complet · {selectedInfo.capacity} créneau{selectedInfo.capacity > 1 ? 'x' : ''}
+                  </span>
+                )}
+              </div>
+
+              {!selectedInfo || selectedInfo.slots.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl px-4">
+                  <p className="text-gray-500 dark:text-gray-400">Complet ce jour-là pour cette prestation.</p>
+                  {nextAvailableAfter(null) && (
+                    <button
+                      onClick={jumpToNextAvailable}
+                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                    >
+                      Voir la prochaine disponibilité <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {selectedInfo.slots.map((slot) => {
+                    const selected = selectedSlot?.datetime === slot.datetime;
+                    return (
+                      <button
+                        key={slot.datetime}
+                        onClick={() => onSelect(slot)}
+                        className={`relative py-3 px-4 rounded-lg border-2 transition-all ${
+                          selected
+                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-700'
+                        }`}
+                      >
+                        {selected && (
+                          <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center shadow-sm">
+                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                          </span>
+                        )}
+                        <div className="flex flex-col items-center">
+                          <span className={`text-sm font-semibold ${selected ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-white'}`}>
+                            {slot.start}
+                          </span>
+                          <span className={`text-xs ${selected ? 'text-primary-500/70 dark:text-primary-400/70' : 'text-gray-400 dark:text-gray-500'}`}>
+                            → {slot.end}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
