@@ -23,7 +23,7 @@ import {
   AlertTriangle,
   Zap,
   Users,
-  Sparkles,
+  Bell,
   X as XIcon,
   CreditCard,
   Wallet,
@@ -314,7 +314,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                           so it still draws the eye on a narrow rail. */}
                       {showNew && !collapsed && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-600 text-white shadow-sm">
-                          <Sparkles className="w-3 h-3" />
+                          <Bell className="w-3 h-3" />
                           Nouveau
                         </span>
                       )}
@@ -488,7 +488,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                         <span className="flex-1">{item.label}</span>
                         {showNew && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-600 text-white shadow-sm">
-                            <Sparkles className="w-3 h-3" />
+                            <Bell className="w-3 h-3" />
                             Nouveau
                           </span>
                         )}
