@@ -3,7 +3,7 @@
  * Uses CalendarStrip for date selection and TimeSlotSection for grouped time slots
  */
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -145,27 +145,9 @@ export default function DateSelectionScreen() {
     durationOverride,
   });
 
-  // Selected date — defaults to today, auto-moved to first available below.
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
-  });
-  const [hasAutoSelected, setHasAutoSelected] = useState(false);
+  // No day pre-selected — the client picks one from the full month calendar.
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
-
-  // Auto-select the first day with real capacity, once the summary loads.
-  useEffect(() => {
-    if (hasAutoSelected) return;
-    const firstKey = Object.keys(summary)
-      .filter((k) => summary[k].capacity > 0)
-      .sort()[0];
-    if (firstKey) {
-      const [y, m, d] = firstKey.split('-').map(Number);
-      setSelectedDate(new Date(y, m - 1, d));
-      setHasAutoSelected(true);
-    }
-  }, [summary, hasAutoSelected]);
 
   // Expanded sections state - all collapsed by default
   const [expandedSections, setExpandedSections] = useState<Record<Period, boolean>>({
@@ -174,7 +156,7 @@ export default function DateSelectionScreen() {
     evening: false,
   });
 
-  const selectedInfo = summary[dateKeyLocal(selectedDate)];
+  const selectedInfo = selectedDate ? summary[dateKeyLocal(selectedDate)] : undefined;
   const slots = selectedInfo?.slots ?? [];
 
   const hasAnyAvailability = useMemo(
@@ -362,6 +344,14 @@ export default function DateSelectionScreen() {
                 icon="calendar-outline"
                 title="Aucune disponibilité"
                 description={`Aucune disponibilité pour cette prestation dans les ${maxAdvanceDays} prochains jours.`}
+              />
+            </Card>
+          ) : !selectedDate ? (
+            <Card padding="lg" shadow="sm">
+              <EmptyState
+                icon="calendar-outline"
+                title="Choisissez un jour"
+                description="Sélectionnez une date disponible dans le calendrier ci-dessus pour voir les horaires."
               />
             </Card>
           ) : !hasSlots ? (

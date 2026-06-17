@@ -1,10 +1,10 @@
 /**
  * MonthCalendar — collapsible month grid for the booking flow.
  *
- * Expanded: full month grid (like the web), each day showing its availability
- * state (available / almost_full / full / closed) before any tap. Picking a day
- * collapses the grid to that day's week, leaving room for the time slots below
- * (the user's "no-scroll for the time" goal, kept). A chevron re-expands it.
+ * No day pre-selected → the FULL month is shown (browse with the ‹ › arrows,
+ * each day shows its availability state). Tapping a day selects it and collapses
+ * the grid to that day's week, leaving room for the time slots below. Tapping
+ * the month header re-expands. Clearing the selection re-expands the full month.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -23,7 +23,8 @@ export interface DayState {
 }
 
 export interface MonthCalendarProps {
-  selectedDate: Date;
+  /** null = nothing chosen yet → full month shown. */
+  selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
   /** Per-day state keyed by local YYYY-MM-DD. */
   dayStatus: Record<string, DayState>;
@@ -36,6 +37,7 @@ const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet'
 
 const AMBER = '#D97706';
 const GREEN = '#10B981';
+const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
 
 function dateKeyLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -62,13 +64,18 @@ function buildWeeks(viewMonth: Date): (Date | null)[][] {
 
 export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, maxDate }: MonthCalendarProps) {
   const { colors, spacing, radius } = useTheme();
-  const [collapsed, setCollapsed] = useState(true);
-  const [viewMonth, setViewMonth] = useState(() => startOfMonth(selectedDate));
+  const [collapsed, setCollapsed] = useState(!!selectedDate);
+  const [viewMonth, setViewMonth] = useState(() => startOfMonth(selectedDate ?? minDate));
 
-  // Keep the displayed month in sync with the selected day.
+  // Collapse when a day gets selected (incl. external set, e.g. "Prochaine
+  // dispo"), expand when the selection is cleared. Also follow the month.
+  const selKey = selectedDate ? dateKeyLocal(selectedDate) : null;
   useEffect(() => {
-    setViewMonth(startOfMonth(selectedDate));
-  }, [selectedDate.getFullYear(), selectedDate.getMonth()]);
+    setCollapsed(!!selectedDate);
+    if (selectedDate) setViewMonth(startOfMonth(selectedDate));
+  }, [selKey]);
+
+  const showCollapsed = !!selectedDate && collapsed;
 
   const minMonth = startOfMonth(minDate);
   const maxMonth = startOfMonth(maxDate);
@@ -83,6 +90,7 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
     setCollapsed(true);
   };
   const toggleCollapsed = () => {
+    if (!selectedDate) return; // nothing to collapse to
     animate();
     setCollapsed((c) => !c);
   };
@@ -92,9 +100,10 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
   };
 
   const allWeeks = buildWeeks(viewMonth);
-  const weeks = collapsed
-    ? [allWeeks.find((w) => w.some((d) => d && isSameDay(d, selectedDate))) ?? allWeeks[0]]
-    : allWeeks;
+  const weeks =
+    showCollapsed && selectedDate
+      ? [allWeeks.find((w) => w.some((d) => d && isSameDay(d, selectedDate))) ?? allWeeks[0]]
+      : allWeeks;
 
   const renderCell = (day: Date | null, idx: number) => {
     if (!day) return <View key={`e${idx}`} style={styles.cell} />;
@@ -103,7 +112,7 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
     const info = dayStatus[key];
     const isPast = day < minDate || day > maxDate;
     const status = isPast ? 'past' : info?.status ?? 'closed';
-    const selected = isSameDay(day, selectedDate);
+    const selected = !!selectedDate && isSameDay(day, selectedDate);
     const clickable = !isPast && (status === 'available' || status === 'almost_full');
 
     let numberColor: string = colors.text;
@@ -114,7 +123,7 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
     let struck = false;
 
     if (selected) {
-      // handled by background below
+      // background handles it
     } else if (status === 'available') {
       showGreenDot = true;
     } else if (status === 'almost_full') {
@@ -124,10 +133,8 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
       numberColor = colors.textMuted;
       struck = true;
       bottomLabel = 'Complet';
-      bottomColor = colors.textMuted;
       opacity = 0.7;
     } else {
-      // closed / past
       numberColor = colors.textMuted;
       opacity = 0.4;
     }
@@ -137,14 +144,7 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
         key={key}
         onPress={() => clickable && handleSelect(day)}
         disabled={!clickable}
-        style={[
-          styles.cell,
-          {
-            borderRadius: radius.md,
-            backgroundColor: selected ? colors.primary : 'transparent',
-            opacity,
-          },
-        ]}
+        style={[styles.cell, { borderRadius: radius.md, backgroundColor: selected ? colors.primary : 'transparent', opacity }]}
       >
         <Text
           variant="body"
@@ -161,7 +161,7 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
           <Text variant="caption" style={{ fontSize: 9, lineHeight: 11, color: selected ? colors.textInverse : bottomColor }}>
             {bottomLabel}
           </Text>
-        ) : showGreenDot && !selected ? (
+        ) : showGreenDot ? (
           <View style={[styles.dot, { backgroundColor: GREEN }]} />
         ) : (
           <View style={styles.dotPlaceholder} />
@@ -184,19 +184,31 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
       >
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => changeMonth(-1)} disabled={collapsed || !canPrev} style={styles.navBtn}>
-            <Ionicons name="chevron-back" size={20} color={collapsed || !canPrev ? colors.textMuted : colors.text} />
+          <Pressable
+            onPress={() => changeMonth(-1)}
+            disabled={showCollapsed || !canPrev}
+            hitSlop={HIT_SLOP}
+            style={styles.navBtn}
+          >
+            <Ionicons name="chevron-back" size={22} color={showCollapsed || !canPrev ? colors.textMuted : colors.text} />
           </Pressable>
 
-          <Pressable onPress={toggleCollapsed} style={styles.monthToggle}>
+          <Pressable onPress={toggleCollapsed} hitSlop={HIT_SLOP} style={styles.monthToggle}>
             <Text variant="body" style={{ fontWeight: '700' }}>
               {MONTHS[viewMonth.getMonth()]} {viewMonth.getFullYear()}
             </Text>
-            <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={16} color={colors.textSecondary} />
+            {selectedDate && (
+              <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={18} color={colors.textSecondary} />
+            )}
           </Pressable>
 
-          <Pressable onPress={() => changeMonth(1)} disabled={collapsed || !canNext} style={styles.navBtn}>
-            <Ionicons name="chevron-forward" size={20} color={collapsed || !canNext ? colors.textMuted : colors.text} />
+          <Pressable
+            onPress={() => changeMonth(1)}
+            disabled={showCollapsed || !canNext}
+            hitSlop={HIT_SLOP}
+            style={styles.navBtn}
+          >
+            <Ionicons name="chevron-forward" size={22} color={showCollapsed || !canNext ? colors.textMuted : colors.text} />
           </Pressable>
         </View>
 
@@ -216,12 +228,22 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
           </View>
         ))}
 
-        {/* Legend */}
-        <View style={styles.legend}>
-          <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: GREEN }]} /><Text variant="caption" style={styles.legendText}>Dispo</Text></View>
-          <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: AMBER }]} /><Text variant="caption" style={styles.legendText}>Bientôt complet</Text></View>
-          <View style={styles.legendItem}><Text variant="caption" style={[styles.legendText, { textDecorationLine: 'line-through' }]}>Complet</Text></View>
-        </View>
+        {/* "Voir tout le mois" hint when collapsed */}
+        {showCollapsed && (
+          <Pressable onPress={toggleCollapsed} hitSlop={HIT_SLOP} style={styles.expandHint}>
+            <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>Voir tout le mois</Text>
+            <Ionicons name="chevron-down" size={14} color={colors.primary} />
+          </Pressable>
+        )}
+
+        {/* Legend (only when full month is shown) */}
+        {!showCollapsed && (
+          <View style={styles.legend}>
+            <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: GREEN }]} /><Text variant="caption" style={styles.legendText}>Dispo</Text></View>
+            <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: AMBER }]} /><Text variant="caption" style={styles.legendText}>Bientôt complet</Text></View>
+            <View style={styles.legendItem}><Text variant="caption" style={[styles.legendText, { textDecorationLine: 'line-through' }]}>Complet</Text></View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -235,8 +257,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   navBtn: {
-    width: 32,
-    height: 32,
+    width: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -244,6 +266,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
   },
   weekRow: {
     flexDirection: 'row',
@@ -265,6 +289,16 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     marginTop: 2,
+  },
+  expandHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.06)',
   },
   legend: {
     flexDirection: 'row',
