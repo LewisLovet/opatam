@@ -538,6 +538,15 @@ export class SchedulingService {
     const rangeEnd = new Date(endDate);
     rangeEnd.setHours(23, 59, 59, 999);
 
+    // Never expose days beyond the provider's max booking advance — this is a
+    // client-facing limit (the pro books via getAvailableSlots, not this).
+    const maxAdvanceDays = provider?.settings.maxBookingAdvance ?? 60;
+    const latestBookable = new Date(now);
+    latestBookable.setHours(0, 0, 0, 0);
+    latestBookable.setDate(latestBookable.getDate() + maxAdvanceDays);
+    latestBookable.setHours(23, 59, 59, 999);
+    if (rangeEnd > latestBookable) rangeEnd.setTime(latestBookable.getTime());
+
     // 3 batched reads for the whole range (instead of 2 per day).
     const [weekly, allBookings, allBlocked] = await Promise.all([
       availabilityRepository.getWeeklySchedule(providerId, memberId),

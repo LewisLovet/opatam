@@ -82,6 +82,23 @@ export async function POST(request: NextRequest) {
     const proAsksDeposit = isProSource && body.askDeposit === true;
     const skipDeposit = isProSource && !proAsksDeposit;
 
+    // Client bookings must respect the provider's max booking advance window.
+    // Pro manual bookings are exempt — the pro can schedule further ahead for
+    // their own agenda. (UI already caps the calendar; this is the server guard.)
+    if (!isProSource) {
+      const maxAdvanceDays = providerData.settings?.maxBookingAdvance ?? 60;
+      const latest = new Date();
+      latest.setHours(0, 0, 0, 0);
+      latest.setDate(latest.getDate() + maxAdvanceDays);
+      latest.setHours(23, 59, 59, 999);
+      if (validated.datetime > latest) {
+        return NextResponse.json(
+          { error: `Les réservations ne sont possibles que jusqu'à ${maxAdvanceDays} jours à l'avance.` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Mobile clients use Stripe PaymentSheet (native UI) instead of the
     // hosted Checkout web page. We detect this via an explicit flag and
     // create a PaymentIntent + ephemeral key the SDK can consume.
