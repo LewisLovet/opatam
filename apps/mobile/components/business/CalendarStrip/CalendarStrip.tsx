@@ -21,7 +21,23 @@ export interface CalendarStripProps {
   disabledDates?: Date[];
   /** Days of the week that are always closed (0=Sun, 1=Mon, ..., 6=Sat) */
   closedDays?: number[];
+  /**
+   * Per-day availability state, keyed by local YYYY-MM-DD. When provided it
+   * drives the visual state (available / almost_full / full / closed) and
+   * disables `full` + `closed` days — takes precedence over closedDays.
+   */
+  dayStatus?: Record<string, { status: 'available' | 'almost_full' | 'full' | 'closed'; capacity: number }>;
 }
+
+/** Local YYYY-MM-DD (matches the server key; toISOString would shift to UTC). */
+function dateKeyLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+const STATUS_AMBER = '#D97706';
 
 const DAY_WIDTH = 56;
 const DAY_GAP = 8;
@@ -61,6 +77,7 @@ export function CalendarStrip({
   maxDate,
   disabledDates = [],
   closedDays = [],
+  dayStatus,
 }: CalendarStripProps) {
   const { colors, spacing, radius } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
@@ -94,7 +111,27 @@ export function CalendarStrip({
       {days.map((day) => {
         const isSelected = isSameDay(day, selectedDate);
         const isToday = isSameDay(day, today);
-        const isDisabled = isDateDisabled(day, disabledDates) || closedDays.includes(day.getDay());
+
+        // When dayStatus is provided it's the source of truth; otherwise fall
+        // back to the legacy closedDays / disabledDates behaviour.
+        const info = dayStatus?.[dateKeyLocal(day)];
+        const status = info?.status;
+        const legacyDisabled = isDateDisabled(day, disabledDates) || closedDays.includes(day.getDay());
+        const isFull = status === 'full';
+        const isClosed = status === 'closed' || (!dayStatus && legacyDisabled);
+        const isAlmostFull = status === 'almost_full';
+        const isDisabled = isFull || isClosed || (!dayStatus && legacyDisabled);
+
+        // Bottom line: month by default, status when full/almost-full.
+        let bottomLabel = SHORT_MONTHS[day.getMonth()];
+        let bottomColor: 'textInverse' | 'textMuted' = isSelected ? 'textInverse' : 'textMuted';
+        let bottomStyleColor: string | undefined;
+        if (!isSelected && isFull) {
+          bottomLabel = 'Complet';
+        } else if (!isSelected && isAlmostFull) {
+          bottomLabel = `${info!.capacity} pl.`;
+          bottomStyleColor = STATUS_AMBER;
+        }
 
         return (
           <Pressable
@@ -109,7 +146,7 @@ export function CalendarStrip({
                 paddingVertical: spacing.sm,
                 backgroundColor: isSelected ? colors.primary : colors.surface,
                 borderWidth: 1,
-                borderColor: isSelected ? colors.primary : colors.border,
+                borderColor: isSelected ? colors.primary : isAlmostFull ? STATUS_AMBER : colors.border,
                 opacity: isDisabled ? 0.4 : 1,
               },
             ]}
@@ -124,26 +161,24 @@ export function CalendarStrip({
             <Text
               variant="h3"
               color={isSelected ? 'textInverse' : 'text'}
-              style={styles.dayNumber}
+              style={[styles.dayNumber, isFull && !isSelected ? styles.struck : null]}
             >
               {day.getDate()}
             </Text>
             <Text
               variant="caption"
-              color={isSelected ? 'textInverse' : 'textMuted'}
-              style={styles.monthName}
+              color={bottomColor}
+              style={[styles.monthName, bottomStyleColor ? { color: bottomStyleColor } : null]}
             >
-              {SHORT_MONTHS[day.getMonth()]}
+              {bottomLabel}
             </Text>
 
-            {/* Today indicator dot */}
-            {isToday && !isSelected && (
-              <View
-                style={[
-                  styles.todayDot,
-                  { backgroundColor: colors.primary },
-                ]}
-              />
+            {/* Available green dot / today indicator */}
+            {!isSelected && status === 'available' && (
+              <View style={[styles.todayDot, { backgroundColor: '#10B981' }]} />
+            )}
+            {isToday && !isSelected && status !== 'available' && !isAlmostFull && !isFull && (
+              <View style={[styles.todayDot, { backgroundColor: colors.primary }]} />
             )}
           </Pressable>
         );
@@ -167,6 +202,9 @@ const styles = StyleSheet.create({
   },
   dayNumber: {
     marginVertical: 2,
+  },
+  struck: {
+    textDecorationLine: 'line-through',
   },
   monthName: {
     fontSize: 10,

@@ -3,7 +3,7 @@
  * Uses CalendarStrip for date selection and TimeSlotSection for grouped time slots
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -26,8 +26,15 @@ import {
 } from '../../../../components';
 import { useBooking } from '../../../../contexts';
 import { computeServiceTotal } from '@booking-app/shared';
-import { availabilityRepository } from '@booking-app/firebase';
-import { useAvailableSlots, useNextAvailableDate, type TimeSlot } from '../../../../hooks';
+import { useAvailabilitySummary, type TimeSlot } from '../../../../hooks';
+
+// Local YYYY-MM-DD — must match the server/summary key (not toISOString → UTC).
+function dateKeyLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 // Period configuration
 type Period = 'morning' | 'afternoon' | 'evening';
@@ -116,10 +123,29 @@ export default function DateSelectionScreen() {
       ? cartDuration + (cart[cart.length - 1].service.bufferTime || 0)
       : undefined;
 
-  // Get next available date to auto-scroll calendar
-  const { nextAvailableDate } = useNextAvailableDate(providerId, memberId ?? undefined);
+  // How far ahead clients can book (provider setting).
+  const maxAdvanceDays = (provider as any)?.settings?.maxBookingAdvance ?? 60;
 
-  // Selected date state - default to next available date, fallback to today
+  const summaryRange = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + maxAdvanceDays);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }, [maxAdvanceDays]);
+
+  // ONE batched call for the whole range: per-day status + capacity + slots.
+  const { summary, loading, error } = useAvailabilitySummary({
+    providerId,
+    serviceId: service?.id ?? undefined,
+    memberId: memberId ?? undefined,
+    startDate: summaryRange.start,
+    endDate: summaryRange.end,
+    durationOverride,
+  });
+
+  // Selected date — defaults to today, auto-moved to first available below.
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -128,24 +154,18 @@ export default function DateSelectionScreen() {
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
 
-  // Auto-select next available date once loaded
-  if (nextAvailableDate && !hasAutoSelected) {
-    const nextDate = new Date(nextAvailableDate);
-    nextDate.setHours(0, 0, 0, 0);
-    setSelectedDate(nextDate);
-    setHasAutoSelected(true);
-  }
-
-  // Load closed days from member's availability schedule
-  const [closedDays, setClosedDays] = useState<number[]>([]);
+  // Auto-select the first day with real capacity, once the summary loads.
   useEffect(() => {
-    if (!providerId || !memberId) return;
-    availabilityRepository.getByMember(providerId, memberId).then((avails) => {
-      const openDays = avails.filter((a) => a.isOpen && a.slots.length > 0).map((a) => a.dayOfWeek);
-      const allDays = [0, 1, 2, 3, 4, 5, 6];
-      setClosedDays(allDays.filter((d) => !openDays.includes(d)));
-    }).catch(() => {});
-  }, [providerId, memberId]);
+    if (hasAutoSelected) return;
+    const firstKey = Object.keys(summary)
+      .filter((k) => summary[k].capacity > 0)
+      .sort()[0];
+    if (firstKey) {
+      const [y, m, d] = firstKey.split('-').map(Number);
+      setSelectedDate(new Date(y, m - 1, d));
+      setHasAutoSelected(true);
+    }
+  }, [summary, hasAutoSelected]);
 
   // Expanded sections state - all collapsed by default
   const [expandedSections, setExpandedSections] = useState<Record<Period, boolean>>({
@@ -154,24 +174,34 @@ export default function DateSelectionScreen() {
     evening: false,
   });
 
-  // Date range for fetching slots - only fetch for selected date
-  const dateRange = useMemo(() => {
-    const startDate = new Date(selectedDate);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(selectedDate);
-    endDate.setHours(23, 59, 59, 999);
-    return { startDate, endDate };
-  }, [selectedDate.toDateString()]);
+  const selectedInfo = summary[dateKeyLocal(selectedDate)];
+  const slots = selectedInfo?.slots ?? [];
 
-  // Fetch available slots for selected date only
-  const { slots, loading, error } = useAvailableSlots({
-    providerId,
-    serviceId: service?.id,
-    memberId,
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
-    durationOverride,
-  });
+  const hasAnyAvailability = useMemo(
+    () => Object.values(summary).some((d) => d.capacity > 0),
+    [summary],
+  );
+
+  const nextAvailableAfter = useCallback(
+    (from: Date | null): Date | null => {
+      const fromKey = from ? dateKeyLocal(from) : '';
+      const key = Object.keys(summary)
+        .filter((k) => summary[k].capacity > 0 && (!fromKey || k > fromKey))
+        .sort()[0];
+      if (!key) return null;
+      const [y, m, d] = key.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    },
+    [summary],
+  );
+
+  const jumpToNextAvailable = () => {
+    const next = nextAvailableAfter(selectedInfo?.capacity ? selectedDate : null);
+    if (next) {
+      setSelectedDate(next);
+      setSelectedSlot(null);
+    }
+  };
 
   // Group slots by period
   const groupedSlots = useMemo(() => groupSlotsByPeriod(slots), [slots]);
@@ -275,18 +305,40 @@ export default function DateSelectionScreen() {
           <CalendarStrip
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
-            closedDays={closedDays}
+            maxDate={summaryRange.end}
+            dayStatus={summary}
           />
         </View>
 
+        {/* Prochaine dispo shortcut */}
+        {!loading && hasAnyAvailability && nextAvailableAfter(selectedDate) && (
+          <Pressable
+            onPress={jumpToNextAvailable}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: spacing.sm }}
+          >
+            <Text variant="body" style={{ color: colors.primary, fontWeight: '600' }}>
+              Prochaine dispo
+            </Text>
+            <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+          </Pressable>
+        )}
+
         {/* Time Slots Section */}
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
-          <Text variant="h3" style={{ marginBottom: spacing.md }}>
-            Horaires disponibles
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+            <Text variant="h3">Horaires disponibles</Text>
+            {selectedInfo?.status === 'almost_full' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.full }}>
+                <Ionicons name="flame" size={13} color="#D97706" />
+                <Text variant="caption" style={{ color: '#B45309', fontWeight: '600' }}>
+                  Bientôt complet · {selectedInfo.capacity}
+                </Text>
+              </View>
+            )}
+          </View>
 
           {loading ? (
-            <Card padding="xl" shadow="sm">
+            <Card padding="lg" shadow="sm">
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text variant="body" color="textSecondary" style={{ marginTop: spacing.md }}>
@@ -302,12 +354,23 @@ export default function DateSelectionScreen() {
                 description={error}
               />
             </Card>
+          ) : !hasAnyAvailability ? (
+            <Card padding="lg" shadow="sm">
+              <EmptyState
+                icon="calendar-outline"
+                title="Aucune disponibilité"
+                description={`Aucune disponibilité pour cette prestation dans les ${maxAdvanceDays} prochains jours.`}
+              />
+            </Card>
           ) : !hasSlots ? (
             <Card padding="lg" shadow="sm">
               <EmptyState
                 icon="time-outline"
-                title="Aucun créneau"
-                description="Aucun créneau disponible pour cette date. Essayez une autre date."
+                title="Complet ce jour-là"
+                description="Aucun créneau pour cette prestation à cette date."
+                {...(nextAvailableAfter(null)
+                  ? { actionLabel: 'Voir la prochaine disponibilité', onAction: jumpToNextAvailable }
+                  : {})}
               />
             </Card>
           ) : (

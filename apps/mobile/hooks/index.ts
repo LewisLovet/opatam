@@ -37,6 +37,8 @@ export type { UseMembersResult } from './useMembers';
 
 export { useAvailableSlots } from './useAvailableSlots';
 export type { UseAvailableSlotsResult, UseAvailableSlotsParams, TimeSlot, DaySlots } from './useAvailableSlots';
+export { useAvailabilitySummary } from './useAvailabilitySummary';
+export type { UseAvailabilitySummaryResult, UseAvailabilitySummaryParams, DayInfo, DayStatus } from './useAvailabilitySummary';
 
 export { useProviderById } from './useProviderById';
 export type { UseProviderByIdResult } from './useProviderById';
