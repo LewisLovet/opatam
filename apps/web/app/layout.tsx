@@ -10,6 +10,7 @@ import { APP_CONFIG } from '@booking-app/shared';
 import { ClarityScript } from '@/components/analytics/ClarityScript';
 import { MetaPixel } from '@/components/analytics/MetaPixel';
 import { ConsentBanner } from '@/components/analytics/ConsentBanner';
+import { ChunkReloadGuard } from '@/components/ChunkReloadGuard';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -98,6 +99,7 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <ClarityScript />
+        <ChunkReloadGuard />
       </body>
     </html>
   );

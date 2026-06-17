@@ -22,12 +22,24 @@
  *    PostHog / GA instead.
  */
 
+'use client';
+
 import Script from 'next/script';
+import { usePathname } from 'next/navigation';
 
 const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
 export function ClarityScript() {
+  const pathname = usePathname();
   if (!CLARITY_PROJECT_ID) return null;
+
+  // Skip Clarity on the authenticated app surfaces (pro + admin). Its session
+  // recording (DOM mutation observers) adds noticeable CPU overhead on
+  // data-dense pages like the calendar/planning, and Clarity is only useful
+  // for the public/marketing funnel anyway.
+  if (pathname?.startsWith('/pro') || pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <Script

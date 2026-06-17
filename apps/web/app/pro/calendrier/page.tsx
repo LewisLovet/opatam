@@ -107,12 +107,13 @@ export default function CalendarPage() {
     const loadInitialData = async () => {
       setLoading(true);
       try {
-        // First load members, locations, and blocked slots
+        // Load members + locations. Blocked slots/activities are loaded
+        // separately, scoped to the visible date range (see loadBlockedSlots)
+        // — fetching the whole collection slowed heavy providers (100s of blocks).
         // Note: même les plans solo ont un membre créé automatiquement — il faut toujours les charger
-        const [membersData, locationsData, blockedData] = await Promise.all([
+        const [membersData, locationsData] = await Promise.all([
           memberService.getByProvider(provider.id),
           locationService.getByProvider(provider.id),
-          schedulingService.getBlockedSlots(provider.id),
         ]);
 
         // NOUVEAU MODÈLE: Availability est centré sur le membre (1 membre = 1 lieu = 1 agenda)
@@ -133,7 +134,6 @@ export default function CalendarPage() {
         setMembers(membersData.filter((m) => m.isActive));
         setLocations(activeLocations);
         setAvailabilities(availabilitiesData);
-        setBlockedSlots(blockedData);
 
         // Set default location if only one
         if (activeLocations.length === 1) {
@@ -201,6 +201,27 @@ export default function CalendarPage() {
     loadBookings();
   }, [loadBookings]);
 
+  // Load blocked slots/activities for the visible range only. Heavy providers
+  // have hundreds of blocks; fetching the whole collection on every load was a
+  // real slowdown. getInRange does a proper overlap query (catches multi-day).
+  const loadBlockedSlots = useCallback(async () => {
+    if (!provider) return;
+    try {
+      const data = await schedulingService.getBlockedSlotsInRange(
+        provider.id,
+        dateRange.start,
+        dateRange.end,
+      );
+      setBlockedSlots(data);
+    } catch (error) {
+      console.error('[Calendar] Error loading blocked slots:', error);
+    }
+  }, [provider, dateRange]);
+
+  useEffect(() => {
+    loadBlockedSlots();
+  }, [loadBlockedSlots]);
+
   // Navigation handlers
   const handlePrevious = () => {
     const newDate = new Date(selectedDate);
@@ -262,9 +283,9 @@ export default function CalendarPage() {
   // Reload blocked slots after a save / delete so the calendar
   // reflects the change without a full page refresh.
   const reloadBlockedSlots = async () => {
-    if (!provider) return;
-    const data = await schedulingService.getBlockedSlots(provider.id);
-    setBlockedSlots(data);
+    // Range-scoped (same as the main loader) — avoid refetching the whole
+    // collection after every block save.
+    await loadBlockedSlots();
   };
 
   const handleBlockSlot = (date?: Date, startTime?: string, endTime?: string) => {
