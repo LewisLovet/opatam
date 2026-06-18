@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@booking-app/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { auth, db, app } from '@booking-app/firebase';
 import { Handshake, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function AffiliateLoginPage() {
@@ -12,6 +13,28 @@ export default function AffiliateLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMsg, setResetMsg] = useState('');
+
+  const handleForgot = async () => {
+    if (!email) {
+      setError('Entrez votre email ci-dessus, puis cliquez à nouveau.');
+      return;
+    }
+    setResetLoading(true);
+    setError('');
+    setResetMsg('');
+    try {
+      const functions = getFunctions(app, 'europe-west1');
+      await httpsCallable(functions, 'requestPasswordReset')({ email: email.trim().toLowerCase() });
+    } catch {
+      // Intentionally ignore — never leak whether the account exists.
+    } finally {
+      // Same generic message in all cases (no account enumeration).
+      setResetMsg('Si un compte existe pour cet email, un lien de réinitialisation vient d\'être envoyé. Pensez à vérifier vos spams.');
+      setResetLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,8 +120,22 @@ export default function AffiliateLoginPage() {
             </div>
           </div>
 
+          <div className="flex justify-end -mt-1">
+            <button
+              type="button"
+              onClick={handleForgot}
+              disabled={resetLoading}
+              className="text-xs font-medium text-primary-600 hover:text-primary-700 disabled:opacity-50"
+            >
+              {resetLoading ? 'Envoi…' : 'Mot de passe oublié ?'}
+            </button>
+          </div>
+
           {error && (
             <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+          )}
+          {resetMsg && (
+            <p className="text-sm text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg">{resetMsg}</p>
           )}
 
           <button
