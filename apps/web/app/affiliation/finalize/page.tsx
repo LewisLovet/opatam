@@ -15,10 +15,10 @@
  *   - token missing/expired/unknown     → message d'erreur générique
  */
 
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { getStripe } from '@/lib/stripe';
+import { StripeRedirect } from './StripeRedirect';
 
 interface PageProps {
   searchParams: Promise<{ token?: string }>;
@@ -51,17 +51,24 @@ async function resolveToken(token: string | undefined): Promise<Outcome> {
     return { kind: 'already_active', affiliateName: data.name || '' };
   }
 
-  // Generate the AccountLink right now and redirect.
-  const stripe = getStripe();
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
-  const accountLink = await stripe.accountLinks.create({
-    account: data.stripeAccountId,
-    refresh_url: `${baseUrl}/affiliation/finalize?token=${token}`,
-    return_url: `${baseUrl}/affiliation/dashboard?stripe=success`,
-    type: 'account_onboarding',
-  });
-
-  return { kind: 'redirect', url: accountLink.url };
+  // Generate the AccountLink right now and redirect. Guarded so a Stripe
+  // failure (missing/rejected account, etc.) shows a friendly message instead
+  // of crashing the page.
+  try {
+    if (!data.stripeAccountId) return { kind: 'invalid' };
+    const stripe = getStripe();
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
+    const accountLink = await stripe.accountLinks.create({
+      account: data.stripeAccountId,
+      refresh_url: `${baseUrl}/affiliation/finalize?token=${token}`,
+      return_url: `${baseUrl}/affiliation/dashboard?stripe=success`,
+      type: 'account_onboarding',
+    });
+    return { kind: 'redirect', url: accountLink.url };
+  } catch (err) {
+    console.error('[finalize] accountLinks.create failed:', err);
+    return { kind: 'invalid' };
+  }
 }
 
 export default async function FinalizePage({ searchParams }: PageProps) {
@@ -69,7 +76,7 @@ export default async function FinalizePage({ searchParams }: PageProps) {
   const outcome = await resolveToken(token);
 
   if (outcome.kind === 'redirect') {
-    redirect(outcome.url);
+    return <StripeRedirect url={outcome.url} />;
   }
 
   return (
