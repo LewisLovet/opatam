@@ -64,29 +64,47 @@ export default function AdminProviderDetailPage() {
   const [showAllBookings, setShowAllBookings] = useState(false);
   const [compLoading, setCompLoading] = useState(false);
   const [compPlan, setCompPlan] = useState<'solo' | 'team'>('team');
+  const [compUntil, setCompUntil] = useState('');
+  const [compReason, setCompReason] = useState('');
+  const [compCode, setCompCode] = useState('');
 
   const handleComp = async (action: 'grant' | 'revoke') => {
     if (!authUser?.id || !detail) return;
+    if (!compCode.trim()) {
+      alert('Entre ton code admin pour valider cette action.');
+      return;
+    }
     if (action === 'revoke' && !confirm("Révoquer l'accès offert ? Le prestataire repassera sous le contrôle de son abonnement Stripe.")) return;
     setCompLoading(true);
     try {
       const res = await fetch('/api/admin/providers/access-override', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-uid': authUser.id },
-        body: JSON.stringify({ providerId, action, plan: compPlan }),
+        body: JSON.stringify({
+          providerId,
+          action,
+          plan: compPlan,
+          until: compUntil ? new Date(compUntil).toISOString() : null,
+          reason: compReason.trim() || null,
+          code: compCode,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         alert(data.error || "Erreur lors de l'opération");
         return;
       }
+      setCompCode('');
       setDetail((d) =>
         d
           ? {
               ...d,
               provider: {
                 ...d.provider,
-                accessOverride: action === 'grant' ? { active: true, plan: compPlan, until: null } : null,
+                accessOverride:
+                  action === 'grant'
+                    ? { active: true, plan: compPlan, until: compUntil ? new Date(compUntil).toISOString() : null, reason: compReason.trim() || null }
+                    : null,
                 ...(action === 'grant' ? { isPublished: true, plan: compPlan } : {}),
               } as typeof d.provider,
             }
@@ -574,43 +592,69 @@ export default function AdminProviderDetailPage() {
 
             {/* Comp access — manual grant, independent of Stripe (survives webhooks) */}
             {(() => {
-              const ao = (provider as unknown as { accessOverride?: { active?: boolean; plan?: string } | null }).accessOverride;
+              const ao = (provider as unknown as { accessOverride?: { active?: boolean; plan?: string; until?: string | null; reason?: string | null } | null }).accessOverride;
               const active = !!ao?.active;
+              const inputCls = 'w-full text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-2.5 py-1.5 text-gray-900 dark:text-white';
               return (
-                <div className="pt-3 mt-1 border-t border-gray-100 dark:border-gray-700">
+                <div className="pt-3 mt-1 border-t border-gray-100 dark:border-gray-700 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500 dark:text-gray-400">Accès offert (comp)</span>
                     <Badge variant={active ? 'success' : 'warning'} size="sm">
                       {active ? `Actif · ${planLabels[ao!.plan as string] || ao!.plan}` : 'Non'}
                     </Badge>
                   </div>
+
+                  {active && (ao?.until || ao?.reason) && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                      {ao?.until && <p>Jusqu&apos;au {new Date(ao.until).toLocaleDateString('fr-FR')}</p>}
+                      {ao?.reason && <p>Motif : {ao.reason}</p>}
+                    </div>
+                  )}
+
+                  {!active && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={compPlan}
+                          onChange={(e) => setCompPlan(e.target.value as 'solo' | 'team')}
+                          className="text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-gray-900 dark:text-white"
+                        >
+                          <option value="solo">Solo</option>
+                          <option value="team">Studio</option>
+                        </select>
+                        <input type="date" value={compUntil} onChange={(e) => setCompUntil(e.target.value)} className={inputCls} title="Date de fin (vide = illimité)" />
+                      </div>
+                      <input type="text" value={compReason} onChange={(e) => setCompReason(e.target.value)} placeholder="Motif (ex : geste commercial)" className={inputCls} />
+                    </div>
+                  )}
+
+                  <input
+                    type="password"
+                    value={compCode}
+                    onChange={(e) => setCompCode(e.target.value)}
+                    placeholder="Ton code admin"
+                    autoComplete="off"
+                    className={inputCls}
+                  />
+
                   {active ? (
                     <Button
                       variant="outline"
                       size="sm"
                       loading={compLoading}
                       onClick={() => handleComp('revoke')}
-                      className="mt-2 w-full !border-red-300 !text-red-600 hover:!bg-red-50 dark:!border-red-700 dark:!text-red-400 dark:hover:!bg-red-900/20"
+                      className="w-full !border-red-300 !text-red-600 hover:!bg-red-50 dark:!border-red-700 dark:!text-red-400 dark:hover:!bg-red-900/20"
                     >
                       Révoquer l&apos;accès offert
                     </Button>
                   ) : (
-                    <div className="mt-2 flex items-center gap-2">
-                      <select
-                        value={compPlan}
-                        onChange={(e) => setCompPlan(e.target.value as 'solo' | 'team')}
-                        className="text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-gray-900 dark:text-white"
-                      >
-                        <option value="solo">Solo</option>
-                        <option value="team">Studio</option>
-                      </select>
-                      <Button variant="primary" size="sm" loading={compLoading} onClick={() => handleComp('grant')} className="flex-1">
-                        Donner accès gratuit
-                      </Button>
-                    </div>
+                    <Button variant="primary" size="sm" loading={compLoading} onClick={() => handleComp('grant')} className="w-full">
+                      Donner accès gratuit
+                    </Button>
                   )}
-                  <p className="text-[11px] text-gray-400 mt-1.5">
-                    Accès complet sans paiement, illimité. Survit aux webhooks Stripe.
+
+                  <p className="text-[11px] text-gray-400">
+                    Accès complet sans paiement. Date de fin vide = illimité. Survit aux webhooks Stripe. Action protégée par ton code admin.
                   </p>
                 </div>
               );

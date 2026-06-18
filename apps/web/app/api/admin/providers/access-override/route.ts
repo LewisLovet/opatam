@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 
-async function verifyAdmin(uid: string) {
+/**
+ * Verifies the admin AND their personal action code (bcrypt `adminCodeHash`).
+ * Granting/revoking free access is a critical action → always code-gated.
+ */
+async function verifyAdminWithCode(
+  uid: string,
+  code: unknown,
+): Promise<{ ok: boolean; error?: string }> {
   const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
+  const snap = await db.collection('users').doc(uid).get();
+  const data = snap.data();
+  if (!snap.exists || data?.isAdmin !== true) return { ok: false, error: 'Non autorisé' };
+  if (typeof code !== 'string' || !code) return { ok: false, error: 'Code admin requis' };
+  if (!data?.adminCodeHash) {
+    return { ok: false, error: 'Aucun code admin défini (configure-le via « Modifier le code »)' };
+  }
+  const ok = await bcrypt.compare(code, data.adminCodeHash);
+  return ok ? { ok: true } : { ok: false, error: 'Code incorrect' };
 }
 
 /**
@@ -21,13 +36,19 @@ async function verifyAdmin(uid: string) {
 export async function POST(request: NextRequest) {
   try {
     const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid || !(await verifyAdmin(adminUid))) {
+    if (!adminUid) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const { providerId, action, plan, until, reason } = await request.json();
+    const { providerId, action, plan, until, reason, code } = await request.json();
     if (!providerId || (action !== 'grant' && action !== 'revoke')) {
       return NextResponse.json({ error: 'providerId + action (grant|revoke) requis' }, { status: 400 });
+    }
+
+    // Critical action → require the admin's personal code.
+    const auth = await verifyAdminWithCode(adminUid, code);
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: 403 });
     }
 
     const db = getAdminFirestore();
