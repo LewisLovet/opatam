@@ -7,7 +7,7 @@ import { CheckCircle, AlertCircle, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button, Input, Logo } from '@/components/ui';
 import { confirmResetPassword, applyAuthActionCode, signOutUser } from '@booking-app/firebase';
 
-function ResetPasswordForm({ oobCode }: { oobCode: string }) {
+function ResetPasswordForm({ oobCode, nextPath }: { oobCode: string; nextPath: string }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -62,7 +62,7 @@ function ResetPasswordForm({ oobCode }: { oobCode: string }) {
           Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter.
         </p>
         <Link
-          href="/login"
+          href={nextPath}
           className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors"
         >
           Se connecter
@@ -260,7 +260,15 @@ function ActionContent() {
   }
 
   if (mode === 'resetPassword') {
-    return <ResetPasswordForm oobCode={oobCode} />;
+    // After a reset, send the user back to the right login. `next` is honored
+    // only when it's a safe relative path (defends against open-redirect);
+    // defaults to the PRO /login so the existing flow is unchanged.
+    const rawNext = searchParams.get('next');
+    const nextPath =
+      rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//')
+        ? rawNext
+        : '/login';
+    return <ResetPasswordForm oobCode={oobCode} nextPath={nextPath} />;
   }
 
   // Email confirmation links (change / verify / recover) just apply the code.

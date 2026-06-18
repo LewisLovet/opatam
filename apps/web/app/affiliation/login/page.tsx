@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { auth, db, app } from '@booking-app/firebase';
+import { auth, db } from '@booking-app/firebase';
 import { Handshake, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function AffiliateLoginPage() {
@@ -25,8 +24,14 @@ export default function AffiliateLoginPage() {
     setError('');
     setResetMsg('');
     try {
-      const functions = getFunctions(app, 'europe-west1');
-      await httpsCallable(functions, 'requestPasswordReset')({ email: email.trim().toLowerCase() });
+      // Affiliate-specific reset: lands back on /affiliation/login after the
+      // user sets a new password (the shared pro reset would dump them on the
+      // pro /login, a dead-end for affiliates).
+      await fetch('/api/affiliation/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
     } catch {
       // Intentionally ignore — never leak whether the account exists.
     } finally {
