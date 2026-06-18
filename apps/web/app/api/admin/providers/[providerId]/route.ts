@@ -69,9 +69,22 @@ export async function GET(
       },
       isPublished: providerData.isPublished || false,
       isVerified: providerData.isVerified || false,
+      plan: providerData.plan || null,
       cities: providerData.cities || [],
       region: providerData.region || null,
       countryCode: providerData.countryCode || 'FR',
+      // Manual "comp" access grant — surfaced so the admin UI reflects its real
+      // state (was missing → the badge always showed "Non").
+      accessOverride: providerData.accessOverride
+        ? {
+            active: !!providerData.accessOverride.active,
+            plan: providerData.accessOverride.plan ?? null,
+            until: providerData.accessOverride.until?.toDate?.()?.toISOString() ?? providerData.accessOverride.until ?? null,
+            reason: providerData.accessOverride.reason ?? null,
+            grantedBy: providerData.accessOverride.grantedBy ?? null,
+            grantedAt: providerData.accessOverride.grantedAt?.toDate?.()?.toISOString() ?? null,
+          }
+        : null,
       createdAt: providerData.createdAt?.toDate?.()?.toISOString() || null,
       updatedAt: providerData.updatedAt?.toDate?.()?.toISOString() || null,
     };
