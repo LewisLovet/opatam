@@ -3,7 +3,7 @@ process.env.TZ = 'Europe/Paris';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingService, providerService } from '@booking-app/firebase';
-import { createBookingSchema } from '@booking-app/shared';
+import { createBookingSchema, isAccessOverrideActive } from '@booking-app/shared';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
 import { getAdminFirestore } from '@/lib/firebase-admin';
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     const isSubscriptionValid =
+      isAccessOverrideActive(providerData.accessOverride) ||
       (providerData.plan !== 'trial' && providerData.subscription.status !== 'cancelled' && providerData.subscription.status !== 'incomplete') ||
       (providerData.plan === 'trial' && new Date() <= providerData.subscription.validUntil);
 

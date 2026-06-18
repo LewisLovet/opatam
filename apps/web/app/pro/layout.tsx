@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { isAccessOverrideActive } from '@booking-app/shared';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { TrialExpiredBanner } from '@/components/auth/TrialExpiredBanner';
 import { Sidebar, MobileSidebar, MobileHeader } from './components/Sidebar';
@@ -20,7 +21,11 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   // (Without /pro/abonnement here, the banner's "Voir les plans" CTA led
   // to a page that was still blocked → the modal looped.)
   const subscription = provider?.subscription;
+  // A manual "comp" access grant (admin-given, independent of Stripe) overrides
+  // any expiry → the pro is never blocked while it's active.
+  const overrideActive = isAccessOverrideActive(provider?.accessOverride);
   const isExpired =
+    !overrideActive &&
     !!subscription?.validUntil && new Date(subscription.validUntil) < new Date();
   const isOnAllowedPage =
     pathname?.startsWith('/pro/parametres') || pathname?.startsWith('/pro/abonnement');

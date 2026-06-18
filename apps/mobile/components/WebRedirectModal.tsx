@@ -21,6 +21,7 @@ import { Text } from './Text';
 import { Button } from './Button';
 import { useTheme } from '../theme';
 import { useAuth, useProvider } from '../contexts';
+import { isAccessOverrideActive } from '@booking-app/shared';
 
 interface WebRedirectModalProps {
   visible: boolean;
@@ -40,6 +41,7 @@ export function WebRedirectModal({ visible }: WebRedirectModalProps) {
   const isNowActive = (() => {
     if (!provider) return false;
     const { plan, subscription } = provider;
+    if (isAccessOverrideActive(provider.accessOverride)) return true;
     if (subscription?.status === 'active') return true;
     if ((plan === 'solo' || plan === 'team') && subscription?.status === 'trialing') return true;
     if (plan === 'trial') {

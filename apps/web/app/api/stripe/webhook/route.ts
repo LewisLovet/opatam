@@ -10,6 +10,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
 import { generatePlanChangeEmail } from '@/lib/emails/planChange';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
+import { isAccessOverrideActive } from '@booking-app/shared';
 
 // ---------------------------------------------------------------------------
 // Stripe Webhook Handler
@@ -910,14 +911,23 @@ async function handleSubscriptionDeleted(
     return;
   }
 
-  await providerRef.update({
+  // A comped provider (manual access grant, independent of Stripe) must NOT be
+  // unpublished when their Stripe sub ends — their access doesn't depend on it.
+  const overrideActive = isAccessOverrideActive(providerDoc.data()?.accessOverride);
+
+  const update: Record<string, unknown> = {
     'subscription.status': 'cancelled',
     'subscription.cancelAtPeriodEnd': false,
-    isPublished: false, // Unpublish the provider profile
     updatedAt: FieldValue.serverTimestamp(),
-  });
+  };
+  if (!overrideActive) {
+    update.isPublished = false; // Unpublish the provider profile
+  }
+  await providerRef.update(update);
 
-  console.log(`[STRIPE-WEBHOOK] Provider ${providerId} subscription deleted - profile unpublished`);
+  console.log(
+    `[STRIPE-WEBHOOK] Provider ${providerId} subscription deleted${overrideActive ? ' (comped → kept published)' : ' - profile unpublished'}`,
+  );
 }
 
 /**

@@ -61,6 +61,18 @@ export interface User {
 // Provider types
 export type ProviderPlan = 'trial' | 'solo' | 'team' | 'test';
 
+export interface AccessOverride {
+  active: boolean;
+  /** Feature tier the comp grants ('solo' or 'team'). */
+  plan: 'solo' | 'team';
+  /** Grant end date; null = indefinite (until an admin revokes it). */
+  until: Date | null;
+  reason: string | null;
+  /** Admin uid who granted it. */
+  grantedBy: string | null;
+  grantedAt: Date | null;
+}
+
 export interface Provider {
   userId: string;
   plan: ProviderPlan;
@@ -90,6 +102,15 @@ export interface Provider {
   // Affiliation
   affiliateCode: string | null;  // Code parrain utilisé à l'inscription
   affiliateId: string | null;    // ID du doc affilié
+  /**
+   * Manual "comp" access grant, INDEPENDENT of Stripe. When active, every
+   * access gate treats the provider as a paying subscriber on
+   * `accessOverride.plan` regardless of `subscription.status`, and the
+   * cancellation webhook does NOT unpublish them. Lives OUTSIDE `subscription`
+   * so Stripe webhooks (which only write `subscription.*`) can never overwrite
+   * it. Set/revoked by an admin. See isAccessOverrideActive().
+   */
+  accessOverride?: AccessOverride | null;
 
   // Stripe Connect (acomptes add-on) — nullable until the pro starts onboarding.
   // Fields are mirrored from Stripe via the account.updated webhook.

@@ -62,6 +62,42 @@ export default function AdminProviderDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<ProviderDetail['recentBookings'][number] | null>(null);
   const [showAllBookings, setShowAllBookings] = useState(false);
+  const [compLoading, setCompLoading] = useState(false);
+  const [compPlan, setCompPlan] = useState<'solo' | 'team'>('team');
+
+  const handleComp = async (action: 'grant' | 'revoke') => {
+    if (!authUser?.id || !detail) return;
+    if (action === 'revoke' && !confirm("Révoquer l'accès offert ? Le prestataire repassera sous le contrôle de son abonnement Stripe.")) return;
+    setCompLoading(true);
+    try {
+      const res = await fetch('/api/admin/providers/access-override', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-uid': authUser.id },
+        body: JSON.stringify({ providerId, action, plan: compPlan }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Erreur lors de l'opération");
+        return;
+      }
+      setDetail((d) =>
+        d
+          ? {
+              ...d,
+              provider: {
+                ...d.provider,
+                accessOverride: action === 'grant' ? { active: true, plan: compPlan, until: null } : null,
+                ...(action === 'grant' ? { isPublished: true, plan: compPlan } : {}),
+              } as typeof d.provider,
+            }
+          : d,
+      );
+    } catch {
+      alert('Erreur réseau');
+    } finally {
+      setCompLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!authUser?.id) return;
@@ -535,6 +571,50 @@ export default function AdminProviderDetailPage() {
                 </span>
               </div>
             )}
+
+            {/* Comp access — manual grant, independent of Stripe (survives webhooks) */}
+            {(() => {
+              const ao = (provider as unknown as { accessOverride?: { active?: boolean; plan?: string } | null }).accessOverride;
+              const active = !!ao?.active;
+              return (
+                <div className="pt-3 mt-1 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Accès offert (comp)</span>
+                    <Badge variant={active ? 'success' : 'warning'} size="sm">
+                      {active ? `Actif · ${planLabels[ao!.plan as string] || ao!.plan}` : 'Non'}
+                    </Badge>
+                  </div>
+                  {active ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      loading={compLoading}
+                      onClick={() => handleComp('revoke')}
+                      className="mt-2 w-full !border-red-300 !text-red-600 hover:!bg-red-50 dark:!border-red-700 dark:!text-red-400 dark:hover:!bg-red-900/20"
+                    >
+                      Révoquer l&apos;accès offert
+                    </Button>
+                  ) : (
+                    <div className="mt-2 flex items-center gap-2">
+                      <select
+                        value={compPlan}
+                        onChange={(e) => setCompPlan(e.target.value as 'solo' | 'team')}
+                        className="text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-gray-900 dark:text-white"
+                      >
+                        <option value="solo">Solo</option>
+                        <option value="team">Studio</option>
+                      </select>
+                      <Button variant="primary" size="sm" loading={compLoading} onClick={() => handleComp('grant')} className="flex-1">
+                        Donner accès gratuit
+                      </Button>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    Accès complet sans paiement, illimité. Survit aux webhooks Stripe.
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

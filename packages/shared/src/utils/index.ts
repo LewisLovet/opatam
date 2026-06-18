@@ -1,6 +1,8 @@
 // Zod validation helpers — turn ZodError into a readable message so the
 // UI never shows a raw JSON array of issues.
 export * from './zod';
+// Manual "comp" access grant helper (admin-granted access without payment).
+export * from './access';
 // Service variation/option/info builders + sanitizers (shared web + mobile).
 export * from './serviceChoices';
 // Provider business stats — pure aggregation logic (daily + monthly

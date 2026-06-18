@@ -9,6 +9,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { providerService, collections, doc, onSnapshot } from '@booking-app/firebase';
 import type { Provider } from '@booking-app/shared';
+import { isAccessOverrideActive } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useAuth } from './AuthContext';
 
@@ -100,8 +101,10 @@ export function useSubscriptionStatus() {
   }
 
   const { plan, subscription } = provider;
+  // Manual "comp" grant (admin-given, independent of Stripe) → full access.
+  const overrideActive = isAccessOverrideActive(provider.accessOverride);
 
-  const isActive = subscription?.status === 'active';
+  const isActive = overrideActive || subscription?.status === 'active';
   const isTrialing = (plan === 'solo' || plan === 'team') && subscription?.status === 'trialing';
 
   let trialValid = false;
@@ -115,7 +118,7 @@ export function useSubscriptionStatus() {
   }
 
   const isTest = plan === 'test';
-  const needsSubscription = !isActive && !isTrialing && !trialValid && !isTest;
+  const needsSubscription = !overrideActive && !isActive && !isTrialing && !trialValid && !isTest;
 
   // Calculate days remaining for trial
   let daysRemaining: number | null = null;
@@ -136,7 +139,7 @@ export function useSubscriptionStatus() {
     isTrialing: isTrialing || trialValid,
     isExpired: needsSubscription,
     needsSubscription,
-    plan: plan || null,
+    plan: (overrideActive ? provider.accessOverride?.plan ?? plan : plan) || null,
     status: subscription?.status || null,
     daysRemaining,
     paymentSource: subscription?.paymentSource || null,
