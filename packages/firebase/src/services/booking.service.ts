@@ -22,6 +22,7 @@ import {
   buildBookingSelections,
   validateServiceSelections,
   emptyServiceSelections,
+  isAccessOverrideActive,
   type CreateBookingInput,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
@@ -59,6 +60,10 @@ export class BookingService {
           || (validUntilRaw ? new Date(validUntilRaw as any) : null);
 
       const isSubscriptionValid =
+        // Comp/offered access (admin grant) — immune to subscription status.
+        // Must mirror the /api/bookings route gate, otherwise a comped
+        // provider whose Stripe sub is cancelled gets blocked here.
+        isAccessOverrideActive(provider.accessOverride) ||
         (plan !== 'trial' && subscription.status !== 'cancelled' && subscription.status !== 'incomplete') ||
         (plan === 'trial' && validDate && new Date() <= validDate);
 
