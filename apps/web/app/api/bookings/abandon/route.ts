@@ -62,20 +62,60 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
-    // Best-effort: cancel the PaymentIntent so it doesn't sit forever in
-    // requires_payment_method. No charge was ever captured, so there's
-    // nothing to refund. Failures here are non-blocking — we still
-    // delete the booking and free the slot.
+    // CRITICAL: never delete a booking whose deposit was actually paid.
+    // The PaymentSheet can return "Canceled" even after the charge went
+    // through (3DS / redirect races), and the confirmation webhook
+    // (`payment_intent.succeeded`) may not have flipped the booking to
+    // `confirmed` yet. Blindly deleting here would capture the money and
+    // ghost the booking — invisible to client and provider. So we inspect
+    // the PaymentIntent first.
     const paymentIntentId = booking.deposit?.paymentIntentId as
       | string
       | undefined;
+
     if (paymentIntentId) {
+      const stripe = getStripeDev();
+      let piStatus: string | null = null;
+      let piId: string | null = null;
       try {
-        const stripe = getStripeDev();
+        const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+        piStatus = pi.status;
+        piId = pi.id;
+      } catch (err) {
+        console.warn(
+          '[BOOKINGS/ABANDON] PI retrieve failed:',
+          err instanceof Error ? err.message : err,
+        );
+        // Can't verify → refuse to delete (losing a paid booking is far
+        // worse than leaving an unpaid slot locked; the purge cron will
+        // reconcile it later).
+        return NextResponse.json({ abandoned: false, unverified: true });
+      }
+
+      // Paid (or mid-capture) → keep the booking. Confirm it directly so we
+      // don't depend on a possibly-delayed/lost webhook.
+      if (
+        piStatus === 'succeeded' ||
+        piStatus === 'processing' ||
+        piStatus === 'requires_capture'
+      ) {
+        if (piStatus === 'succeeded' && booking.status === 'pending_payment') {
+          await ref.update({
+            status: 'confirmed',
+            'deposit.status': 'paid',
+            'deposit.paidAt': new Date(),
+            'deposit.paymentIntentId': piId,
+            updatedAt: new Date(),
+          });
+        }
+        return NextResponse.json({ abandoned: false, paid: true });
+      }
+
+      // Genuinely unpaid → cancel the intent so it doesn't linger in
+      // requires_payment_method, then delete below.
+      try {
         await stripe.paymentIntents.cancel(paymentIntentId);
       } catch (err) {
-        // Ignore — the intent may already be canceled, succeeded, or
-        // gone. The slot release is what matters.
         console.warn(
           '[BOOKINGS/ABANDON] PI cancel failed (non-blocking):',
           err instanceof Error ? err.message : err,
