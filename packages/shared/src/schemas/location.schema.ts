@@ -118,6 +118,20 @@ export const createLocationSchema = z.object({
     .nullable()
     .optional()
     .default(null),
+  // Address privacy (opt-in) — see Location type. Optional in input; the
+  // service applies defaults (?? false / ?? null) so existing callers that
+  // don't pass these still compile.
+  protectAddress: z.boolean().optional(),
+  approxArea: z
+    .string()
+    .max(100, { message: 'La zone ne peut pas dépasser 100 caractères' })
+    .nullable()
+    .optional(),
+  accessInstructions: z
+    .string()
+    .max(1000, { message: 'Les infos d\'accès ne peuvent pas dépasser 1000 caractères' })
+    .nullable()
+    .optional(),
 }).refine(
   (data) => {
     // If type is mobile, travelRadius must be set
@@ -184,6 +198,17 @@ export const updateLocationSchema = z.object({
     .number()
     .min(1, { message: 'Le rayon doit être d\'au moins 1 km' })
     .max(100, { message: 'Le rayon ne peut pas dépasser 100 km' })
+    .nullable()
+    .optional(),
+  protectAddress: z.boolean().optional(),
+  approxArea: z
+    .string()
+    .max(100, { message: 'La zone ne peut pas dépasser 100 caractères' })
+    .nullable()
+    .optional(),
+  accessInstructions: z
+    .string()
+    .max(1000, { message: 'Les infos d\'accès ne peuvent pas dépasser 1000 caractères' })
     .nullable()
     .optional(),
 });

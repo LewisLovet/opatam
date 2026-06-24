@@ -587,6 +587,17 @@ export interface Location {
   description: string | null;
   type: LocationType;
   travelRadius: number | null;
+  /**
+   * Address-privacy (opt-in, default false). When true, the exact `address` +
+   * `accessInstructions` are hidden from clients until ~48h before the
+   * appointment (revealed by email + a gated endpoint). When false, behaviour
+   * is unchanged — address shown everywhere as before.
+   */
+  protectAddress: boolean;
+  /** Public approximate area shown before reveal (e.g. "Batignolles, Paris 17e"). Falls back to city when empty. */
+  approxArea: string | null;
+  /** Access details (interphone, floor, door code…) revealed together with the exact address. */
+  accessInstructions: string | null;
   isDefault: boolean;
   isActive: boolean;
   createdAt: Date;

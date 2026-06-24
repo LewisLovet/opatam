@@ -14,6 +14,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -131,6 +132,9 @@ interface LocationFormData {
   type: 'fixed' | 'mobile';
   travelRadius: string;
   cityOnly: boolean;
+  protectAddress: boolean;
+  approxArea: string;
+  accessInstructions: string;
 }
 
 const DEFAULT_FORM: LocationFormData = {
@@ -144,6 +148,9 @@ const DEFAULT_FORM: LocationFormData = {
   type: 'fixed',
   travelRadius: '20',
   cityOnly: false,
+  protectAddress: false,
+  approxArea: '',
+  accessInstructions: '',
 };
 
 // ---------------------------------------------------------------------------
@@ -317,10 +324,14 @@ export default function LocationsScreen() {
       address: loc.address || '',
       postalCode: loc.postalCode,
       city: loc.city,
+      region: '',
       description: loc.description || '',
       type: loc.type || 'fixed',
       travelRadius: loc.travelRadius ? String(loc.travelRadius) : '20',
       cityOnly: isCityOnly,
+      protectAddress: loc.protectAddress ?? false,
+      approxArea: loc.approxArea ?? '',
+      accessInstructions: loc.accessInstructions ?? '',
     });
     setAddressQuery(loc.address || '');
     setCityQuery(loc.city || '');
@@ -348,6 +359,9 @@ export default function LocationsScreen() {
         description: form.description.trim() || null,
         type: form.type,
         travelRadius: form.type === 'mobile' ? Number(form.travelRadius) || 20 : null,
+        protectAddress: form.type === 'fixed' && !form.cityOnly ? form.protectAddress : false,
+        approxArea: form.approxArea.trim() || null,
+        accessInstructions: form.accessInstructions.trim() || null,
         photoURLs: [],
       };
 
@@ -863,6 +877,43 @@ export default function LocationsScreen() {
 
                   {form.type === 'mobile' && (
                     <Input label="Rayon de déplacement (km)" placeholder="20" value={form.travelRadius} onChangeText={(t) => setForm((p) => ({ ...p, travelRadius: t }))} keyboardType="number-pad" />
+                  )}
+
+                  {/* Address privacy — only for a fixed location with a precise address */}
+                  {form.type === 'fixed' && !form.cityOnly && (
+                    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                        <View style={{ flex: 1, marginRight: spacing.md }}>
+                          <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>Protéger mon adresse</Text>
+                          <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                            Communiquée à la cliente ~48h avant le rendez-vous (email + app), une fois la réservation confirmée. Avant, elle ne voit que la zone.
+                          </Text>
+                        </View>
+                        <Switch
+                          value={form.protectAddress}
+                          onValueChange={(v) => setForm((p) => ({ ...p, protectAddress: v }))}
+                          trackColor={{ false: colors.border, true: colors.primary }}
+                        />
+                      </View>
+                      {form.protectAddress && (
+                        <>
+                          <Input
+                            label="Zone affichée avant révélation"
+                            placeholder="Ex: Batignolles, Paris 17e"
+                            value={form.approxArea}
+                            onChangeText={(t) => setForm((p) => ({ ...p, approxArea: t }))}
+                          />
+                          <Input
+                            label="Infos d'accès (révélées avec l'adresse)"
+                            placeholder="Ex: Interphone 1346, 2e étage, sonner à 203…"
+                            value={form.accessInstructions}
+                            onChangeText={(t) => setForm((p) => ({ ...p, accessInstructions: t }))}
+                            multiline
+                            numberOfLines={3}
+                          />
+                        </>
+                      )}
+                    </View>
                   )}
 
                   <Input label="Description (optionnel)" placeholder="Informations complémentaires" value={form.description} onChangeText={(t) => setForm((p) => ({ ...p, description: t }))} multiline numberOfLines={3} />

@@ -49,6 +49,9 @@ export class LocationService {
       description: validated.description || null,
       type: validated.type,
       travelRadius: validated.travelRadius ?? null,
+      protectAddress: validated.protectAddress ?? false,
+      approxArea: validated.approxArea ?? null,
+      accessInstructions: validated.accessInstructions ?? null,
       isDefault,
       isActive: true,
     });

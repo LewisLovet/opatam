@@ -15,7 +15,7 @@ import {
   ConfirmDialog,
   type GoogleAddressSuggestion,
 } from '@/components/ui';
-import { Loader2, Trash2, Building2, Car } from 'lucide-react';
+import { Loader2, Trash2, Building2, Car, Lock } from 'lucide-react';
 import type { Location, LocationType } from '@booking-app/shared';
 import { isValidPostalCode } from '@booking-app/shared/schemas';
 
@@ -39,6 +39,9 @@ export interface LocationFormData {
   isDefault: boolean;
   type: LocationType;
   travelRadius: number | null;
+  protectAddress: boolean;
+  approxArea: string | null;
+  accessInstructions: string | null;
   geopoint?: { latitude: number; longitude: number } | null;
   region?: string | null;
 }
@@ -67,6 +70,9 @@ export function LocationModal({
     isDefault: false,
     type: 'fixed',
     travelRadius: null,
+    protectAddress: false,
+    approxArea: null,
+    accessInstructions: null,
   });
 
   // Initialize form when modal opens or location changes
@@ -83,6 +89,9 @@ export function LocationModal({
           isDefault: location.isDefault,
           type: location.type || 'fixed',
           travelRadius: location.travelRadius,
+          protectAddress: location.protectAddress ?? false,
+          approxArea: location.approxArea ?? null,
+          accessInstructions: location.accessInstructions ?? null,
         });
         setCityOnly(location.type === 'fixed' && !location.address);
       } else {
@@ -96,6 +105,9 @@ export function LocationModal({
           isDefault: false,
           type: 'fixed',
           travelRadius: null,
+          protectAddress: false,
+          approxArea: null,
+          accessInstructions: null,
         });
         setCityOnly(false);
       }
@@ -524,6 +536,45 @@ export function LocationModal({
             rows={3}
             hint="Optionnel - informations complementaires"
           />
+
+          {/* Address privacy — only for a fixed location with a precise address */}
+          {formData.type === 'fixed' && !cityOnly && (
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+              <Checkbox
+                name="protectAddress"
+                checked={formData.protectAddress}
+                onChange={handleCheckboxChange}
+                label="Protéger mon adresse"
+                description="L'adresse exacte n'est communiquée à la cliente que ~48h avant le rendez-vous (par email et dans l'app), une fois la réservation confirmée. Avant, elle ne voit que la zone."
+              />
+
+              {formData.protectAddress && (
+                <div className="space-y-4 pl-1">
+                  <Input
+                    label="Zone affichée avant révélation"
+                    name="approxArea"
+                    value={formData.approxArea || ''}
+                    onChange={handleChange}
+                    placeholder="Ex: Batignolles, Paris 17e"
+                    hint="Ce que voit la cliente avant la révélation. Par défaut : la ville."
+                  />
+                  <Textarea
+                    label="Infos d'accès (révélées avec l'adresse)"
+                    name="accessInstructions"
+                    value={formData.accessInstructions || ''}
+                    onChange={handleChange}
+                    placeholder="Ex: Interphone 1346, 2e étage, sonner à 203. Parking visiteurs au sous-sol."
+                    rows={3}
+                    hint="Communiquées en même temps que l'adresse. Ne les mettez plus dans « Information libre »."
+                  />
+                  <p className="flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <Lock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                    Adresse et infos d'accès restent masquées tant que la réservation n'est pas confirmée et qu'on n'est pas à moins de 48h du rendez-vous.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Default checkbox */}
           <Checkbox

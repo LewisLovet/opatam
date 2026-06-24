@@ -27,6 +27,9 @@ function normalizeLocation(data: Record<string, unknown>): Location {
     ...location,
     type: (location.type as LocationType) || 'fixed',
     travelRadius: location.travelRadius ?? null,
+    protectAddress: location.protectAddress ?? false,
+    approxArea: location.approxArea ?? null,
+    accessInstructions: location.accessInstructions ?? null,
   };
 }
 

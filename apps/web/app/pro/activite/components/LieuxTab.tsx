@@ -132,6 +132,9 @@ export function LieuxTab() {
         description: data.description,
         type: data.type,
         travelRadius: data.travelRadius,
+        protectAddress: data.protectAddress,
+        approxArea: data.approxArea,
+        accessInstructions: data.accessInstructions,
         geopoint: data.geopoint ?? null,
         region: data.region,
       });
@@ -155,6 +158,9 @@ export function LieuxTab() {
         photoURLs: [],
         type: data.type,
         travelRadius: data.travelRadius,
+        protectAddress: data.protectAddress,
+        approxArea: data.approxArea,
+        accessInstructions: data.accessInstructions,
         geopoint: data.geopoint ?? null,
         region: data.region,
       });
