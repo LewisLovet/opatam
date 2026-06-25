@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
     const providerId = searchParams.get('providerId') || '';
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
+    // Which date the range targets: appointment date (`datetime`, default) or
+    // when the booking was made (`createdAt`).
+    const dateField: 'datetime' | 'createdAt' =
+      searchParams.get('dateField') === 'createdAt' ? 'createdAt' : 'datetime';
 
     // Build query — apply status filter in Firestore, dates in memory
     let query: FirebaseFirestore.Query = db.collection('bookings');
@@ -78,10 +82,11 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // In-memory date filters
+    // In-memory date filters — applied to the chosen field (appointment date
+    // or booking-creation date).
     if (dateFrom) {
       const from = new Date(dateFrom);
-      items = items.filter((b) => b.datetime && new Date(b.datetime) >= from);
+      items = items.filter((b) => b[dateField] && new Date(b[dateField]!) >= from);
     }
 
     if (dateTo) {
@@ -89,10 +94,10 @@ export async function GET(request: NextRequest) {
       // Date-only value (no time component) → include the whole day. A
       // datetime-local value (has "T") is used as an exact upper bound.
       if (dateTo.includes('T')) {
-        items = items.filter((b) => b.datetime && new Date(b.datetime) <= to);
+        items = items.filter((b) => b[dateField] && new Date(b[dateField]!) <= to);
       } else {
         to.setDate(to.getDate() + 1);
-        items = items.filter((b) => b.datetime && new Date(b.datetime) < to);
+        items = items.filter((b) => b[dateField] && new Date(b[dateField]!) < to);
       }
     }
 

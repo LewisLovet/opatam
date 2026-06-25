@@ -959,15 +959,16 @@ async function handleSerenitySubscriptionEvent(
     return;
   }
 
+  // An admin can comp Sérénité (accessOverride.serenity) — that grant lives
+  // outside Stripe, so neither a cancelled nor a failing real subscription may
+  // turn the deposits add-on off for such a provider. Honored in both branches.
+  const compAo = providerDoc.data()?.accessOverride;
+  const serenityComped = isAccessOverrideActive(compAo) && compAo?.serenity === true;
+
   // Hard-end case: sub was deleted (period ended after a
   // cancel-at-period-end, or hard cancellation). Strip access
   // and stamp the tombstone.
   if (kind === 'deleted') {
-    // If an admin has comped Sérénité (accessOverride.serenity), keep the
-    // deposits add-on on — the comp lives outside Stripe and survives the
-    // loss of any real paid subscription.
-    const ao = providerDoc.data()?.accessOverride;
-    const serenityComped = isAccessOverrideActive(ao) && ao?.serenity === true;
     await providerRef.update({
       ...(serenityComped ? {} : { depositsAddonActive: false }),
       'serenity.status': 'cancelled',
@@ -1008,7 +1009,8 @@ async function handleSerenitySubscriptionEvent(
   const mappedStatus: OurStatus = statusMap[status] ?? 'active';
 
   const updateData: Record<string, any> = {
-    depositsAddonActive: isAccessGranted,
+    // Comped Sérénité keeps deposits on even if the real sub is failing.
+    depositsAddonActive: isAccessGranted || serenityComped,
     'serenity.status': mappedStatus,
     'serenity.cancelAtPeriodEnd': fullSub.cancel_at_period_end,
     'serenity.stripeSubscriptionId': fullSub.id,

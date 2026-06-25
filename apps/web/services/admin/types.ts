@@ -86,6 +86,9 @@ export interface BookingFilters {
   providerId?: string;
   dateFrom?: string;
   dateTo?: string;
+  /** Which date the Du/Au range applies to: the appointment date (`datetime`,
+   *  default) or when the booking was made (`createdAt`). */
+  dateField?: 'datetime' | 'createdAt';
 }
 
 export interface ReviewFilters {

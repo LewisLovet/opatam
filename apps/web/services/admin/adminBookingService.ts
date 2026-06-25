@@ -25,6 +25,7 @@ export const adminBookingService = {
     if (filters.providerId) params.set('providerId', filters.providerId);
     if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
     if (filters.dateTo) params.set('dateTo', filters.dateTo);
+    if (filters.dateField) params.set('dateField', filters.dateField);
 
     const res = await fetch(`${BASE_URL}?${params}`, { headers: headers(adminUid) });
     if (!res.ok) throw new Error('Erreur lors du chargement des r\u00e9servations');

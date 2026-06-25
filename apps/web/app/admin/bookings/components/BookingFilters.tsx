@@ -41,6 +41,16 @@ export function BookingFilters({ filters, onChange }: BookingFiltersProps) {
 
       {/* Row 2: Date range */}
       <div className="flex flex-col sm:flex-row gap-3">
+        {/* Which date the range targets */}
+        <select
+          value={filters.dateField || 'datetime'}
+          onChange={(e) => onChange({ ...filters, dateField: e.target.value as 'datetime' | 'createdAt' })}
+          className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+          title="Sur quelle date filtrer"
+        >
+          <option value="datetime">Date du RDV</option>
+          <option value="createdAt">Date de prise</option>
+        </select>
         <div className="flex items-center gap-2 flex-1">
           <label className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Du</label>
           <input
