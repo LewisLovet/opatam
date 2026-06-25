@@ -37,7 +37,7 @@ export async function GET(
       db.collection('providers').doc(providerId).collection('services').get(),
       db.collection('providers').doc(providerId).collection('members').get(),
       db.collection('providers').doc(providerId).collection('locations').get(),
-      db.collection('bookings').where('providerId', '==', providerId).select('status', 'clientInfo', 'serviceName', 'memberName', 'datetime', 'createdAt', 'price').orderBy('datetime', 'desc').limit(50).get(),
+      db.collection('bookings').where('providerId', '==', providerId).select('status', 'clientInfo', 'serviceName', 'memberName', 'datetime', 'createdAt', 'price').orderBy('datetime', 'desc').limit(500).get(),
     ]);
 
     const userData = userDoc.exists ? userDoc.data()! : null;
@@ -73,6 +73,15 @@ export async function GET(
       cities: providerData.cities || [],
       region: providerData.region || null,
       countryCode: providerData.countryCode || 'FR',
+      // Page views (for the admin debug/analytics view).
+      pageViews: providerData.stats?.pageViews
+        ? {
+            today: providerData.stats.pageViews.today || 0,
+            total: providerData.stats.pageViews.total || 0,
+            last7Days: providerData.stats.pageViews.last7Days || 0,
+            last30Days: providerData.stats.pageViews.last30Days || 0,
+          }
+        : null,
       // Manual "comp" access grant — surfaced so the admin UI reflects its real
       // state (was missing → the badge always showed "Non").
       accessOverride: providerData.accessOverride
@@ -154,26 +163,26 @@ export async function GET(
 
     const recentBookings: any[] = [];
 
-    bookingsSnap.docs.forEach((doc, index) => {
+    // Serialize ALL fetched bookings (up to the query limit) so the admin can
+    // search through the provider's full history, not just the last 10.
+    bookingsSnap.docs.forEach((doc) => {
       const d = doc.data();
       const status = d.status;
       if (status in bookingStats) {
         (bookingStats as any)[status]++;
       }
-      // Take first 10 as recent bookings (already sorted by datetime desc)
-      if (index < 10) {
-        recentBookings.push({
-          id: doc.id,
-          clientName: d.clientInfo?.name || 'Client inconnu',
-          clientEmail: d.clientInfo?.email || null,
-          serviceName: d.serviceName || '—',
-          memberName: d.memberName || null,
-          status: d.status,
-          datetime: d.datetime?.toDate?.()?.toISOString() || null,
-          createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
-          price: d.price || 0,
-        });
-      }
+      recentBookings.push({
+        id: doc.id,
+        clientName: d.clientInfo?.name || 'Client inconnu',
+        clientEmail: d.clientInfo?.email || null,
+        clientPhone: d.clientInfo?.phone || null,
+        serviceName: d.serviceName || '—',
+        memberName: d.memberName || null,
+        status: d.status,
+        datetime: d.datetime?.toDate?.()?.toISOString() || null,
+        createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+        price: d.price || 0,
+      });
     });
 
     return NextResponse.json({

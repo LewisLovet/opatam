@@ -22,6 +22,9 @@ import {
   AlertTriangle,
   RefreshCw,
   Trash2,
+  Copy,
+  Eye,
+  Search,
 } from 'lucide-react';
 
 const categoryLabels: Record<string, string> = {
@@ -62,6 +65,7 @@ export default function AdminProviderDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<ProviderDetail['recentBookings'][number] | null>(null);
   const [showAllBookings, setShowAllBookings] = useState(false);
+  const [bookingSearch, setBookingSearch] = useState('');
   const [compLoading, setCompLoading] = useState(false);
   const [compPlan, setCompPlan] = useState<'solo' | 'team'>('team');
   const [compUntil, setCompUntil] = useState('');
@@ -233,6 +237,8 @@ export default function AdminProviderDetailPage() {
   }
 
   const { provider, user, services, members, locations, bookingStats } = detail;
+  const pageViews = (provider as unknown as { pageViews?: { today: number; total: number; last7Days: number; last30Days: number } | null }).pageViews;
+  const copyToClipboard = (text: string) => { navigator.clipboard?.writeText(text); };
 
   return (
     <div className="space-y-6">
@@ -342,6 +348,31 @@ export default function AdminProviderDetailPage() {
                 )}
               </div>
             )}
+
+            {/* Provider ID — for debug / cross-referencing */}
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-mono text-gray-400 dark:text-gray-500">
+              <span>ID : {provider.id}</span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(provider.id)}
+                title="Copier l'ID"
+                className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              >
+                <Copy className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Page views */}
+            {pageViews && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                <Eye className="w-3.5 h-3.5 text-violet-500" />
+                <span>
+                  Vues : <strong className="text-gray-700 dark:text-gray-200">{pageViews.today}</strong> auj. ·{' '}
+                  {pageViews.last7Days} (7&nbsp;j) · {pageViews.last30Days} (30&nbsp;j) ·{' '}
+                  <strong className="text-gray-700 dark:text-gray-200">{pageViews.total}</strong> total
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -442,14 +473,34 @@ export default function AdminProviderDetailPage() {
             cancelled: 'Annulé',
             noshow: 'Absent',
           };
-          const visibleBookings = showAllBookings ? detail.recentBookings : detail.recentBookings.slice(0, 5);
+          const q = bookingSearch.trim().toLowerCase();
+          const filtered = q
+            ? detail.recentBookings.filter((b) =>
+                [b.clientName, b.clientEmail, b.clientPhone, b.serviceName, b.memberName, b.id].some(
+                  (v) => typeof v === 'string' && v.toLowerCase().includes(q),
+                ),
+              )
+            : detail.recentBookings;
+          const visibleBookings = showAllBookings || q ? filtered : filtered.slice(0, 5);
 
           return (
             <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 md:col-span-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                Dernières réservations ({detail.recentBookings.length})
+                Réservations ({detail.recentBookings.length})
               </h3>
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  value={bookingSearch}
+                  onChange={(e) => setBookingSearch(e.target.value)}
+                  placeholder="Rechercher (client, email, tél, prestation, ID…)"
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              {filtered.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">Aucune réservation ne correspond.</p>
+              )}
               <div className="space-y-1">
                 {visibleBookings.map((b) => (
                   <div
@@ -464,6 +515,7 @@ export default function AdminProviderDetailPage() {
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {b.serviceName} {b.memberName ? `· ${b.memberName}` : ''}
                       </p>
+                      <p className="text-[10px] font-mono text-gray-400 dark:text-gray-500 truncate">{b.id}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-3">
                       <span className="text-xs text-gray-500">
@@ -479,12 +531,12 @@ export default function AdminProviderDetailPage() {
                   </div>
                 ))}
               </div>
-              {detail.recentBookings.length > 5 && !showAllBookings && (
+              {filtered.length > 5 && !showAllBookings && !q && (
                 <button
                   onClick={() => setShowAllBookings(true)}
                   className="mt-3 w-full text-center text-sm font-medium text-primary-600 hover:text-primary-700 py-2"
                 >
-                  Voir les {detail.recentBookings.length - 5} autres →
+                  Voir les {filtered.length - 5} autres →
                 </button>
               )}
             </div>
@@ -502,6 +554,27 @@ export default function AdminProviderDetailPage() {
                 </button>
               </div>
               <div className="space-y-3 text-sm">
+                {/* IDs for debug */}
+                <div className="flex items-center justify-between gap-2 pb-2 mb-1 border-b border-gray-100 dark:border-gray-700">
+                  <span className="text-[11px] font-mono text-gray-400 truncate" title={selectedBooking.id}>RDV {selectedBooking.id}</span>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <button onClick={() => copyToClipboard(selectedBooking.id)} title="Copier l'ID du RDV" className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    <Link href={`/admin/bookings/${selectedBooking.id}`} className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1 whitespace-nowrap">
+                      Fiche complète <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Prestataire (ID)</span>
+                  <span className="font-mono text-[11px] text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                    {provider.id}
+                    <button onClick={() => copyToClipboard(provider.id)} title="Copier l'ID prestataire" className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Client</span>
                   <span className="font-medium text-gray-900 dark:text-white">{selectedBooking.clientName}</span>
@@ -546,7 +619,7 @@ export default function AdminProviderDetailPage() {
                     cancelled: 'text-red-600 bg-red-50',
                     noshow: 'text-gray-600 bg-gray-100',
                   }[selectedBooking.status] || 'text-gray-500 bg-gray-100'}`}>
-                    ${{ confirmed: 'Confirmé', pending: 'En attente', cancelled: 'Annulé', noshow: 'Absent' }[selectedBooking.status] || selectedBooking.status}
+                    {{ confirmed: 'Confirmé', pending: 'En attente', cancelled: 'Annulé', noshow: 'Absent' }[selectedBooking.status] || selectedBooking.status}
                   </span>
                 </div>
               </div>

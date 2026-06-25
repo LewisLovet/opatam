@@ -214,6 +214,7 @@ export interface ProviderDetail {
     id: string;
     clientName: string;
     clientEmail: string | null;
+    clientPhone?: string | null;
     serviceName: string;
     memberName: string | null;
     status: string;

@@ -1,3 +1,7 @@
+// Force Paris timezone so `datetime-local` filter values (entered in local
+// time, without an offset) are parsed as Paris time, not server UTC.
+process.env.TZ = 'Europe/Paris';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 
@@ -82,8 +86,14 @@ export async function GET(request: NextRequest) {
 
     if (dateTo) {
       const to = new Date(dateTo);
-      to.setDate(to.getDate() + 1);
-      items = items.filter((b) => b.datetime && new Date(b.datetime) < to);
+      // Date-only value (no time component) → include the whole day. A
+      // datetime-local value (has "T") is used as an exact upper bound.
+      if (dateTo.includes('T')) {
+        items = items.filter((b) => b.datetime && new Date(b.datetime) <= to);
+      } else {
+        to.setDate(to.getDate() + 1);
+        items = items.filter((b) => b.datetime && new Date(b.datetime) < to);
+      }
     }
 
     // In-memory search filter

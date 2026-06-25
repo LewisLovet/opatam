@@ -44,7 +44,7 @@ export function BookingFilters({ filters, onChange }: BookingFiltersProps) {
         <div className="flex items-center gap-2 flex-1">
           <label className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Du</label>
           <input
-            type="date"
+            type="datetime-local"
             value={filters.dateFrom || ''}
             onChange={(e) => onChange({ ...filters, dateFrom: e.target.value || undefined })}
             className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -53,7 +53,7 @@ export function BookingFilters({ filters, onChange }: BookingFiltersProps) {
         <div className="flex items-center gap-2 flex-1">
           <label className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Au</label>
           <input
-            type="date"
+            type="datetime-local"
             value={filters.dateTo || ''}
             onChange={(e) => onChange({ ...filters, dateTo: e.target.value || undefined })}
             className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
