@@ -33,6 +33,10 @@ interface AvailableSlotsParams {
    *  service.duration computation — used for services with variations so
    *  the slots match what's checked at booking time. */
   durationOverride?: number;
+  /** Reschedule: exclude the booking being moved from the conflict check so
+   *  it doesn't block its own (overlapping) slots — e.g. moving an 18h–20h
+   *  booking to 17h. Mirrors SlotCheckParams.excludeBookingId. */
+  excludeBookingId?: string;
 }
 
 interface SlotCheckParams {
@@ -394,7 +398,7 @@ export class SchedulingService {
    * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
    */
   async getAvailableSlots(params: AvailableSlotsParams): Promise<TimeSlotWithDate[]> {
-    const { providerId, serviceId, memberId, startDate, endDate, durationOverride } = params;
+    const { providerId, serviceId, memberId, startDate, endDate, durationOverride, excludeBookingId } = params;
 
     // Get service duration
     const service = await serviceRepository.getById(providerId, serviceId);
@@ -455,6 +459,7 @@ export class SchedulingService {
         const relevantBookings = existingBookings.filter(
           (b) =>
             b.memberId === memberId &&
+            b.id !== excludeBookingId && // reschedule: don't let a booking block its own slots
             (b.status === 'confirmed' || b.status === 'pending' || b.status === 'pending_payment')
         );
 

@@ -777,6 +777,8 @@ export default function ProBookingDetailScreen() {
               memberId: member.id,
               startDate: rescheduleDate,
               endDate: rescheduleDate,
+              // Reschedule: don't let this booking block its own overlapping slots.
+              excludeBookingId: booking.id,
             });
             return memberSlots.map((slot) => ({ ...slot, memberId: member.id }));
           } catch {

@@ -221,6 +221,8 @@ export function BookingDetailModal({
           // Use the booking's stored total duration so multi-prestation
           // appointments are offered slots that fit the whole visit.
           durationOverride: booking.duration,
+          // Reschedule: don't let this booking block its own overlapping slots.
+          excludeBookingId: booking.id,
         });
 
         // Convert to TimeSlot format
