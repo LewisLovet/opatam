@@ -963,13 +963,21 @@ async function handleSerenitySubscriptionEvent(
   // cancel-at-period-end, or hard cancellation). Strip access
   // and stamp the tombstone.
   if (kind === 'deleted') {
+    // If an admin has comped Sérénité (accessOverride.serenity), keep the
+    // deposits add-on on — the comp lives outside Stripe and survives the
+    // loss of any real paid subscription.
+    const ao = providerDoc.data()?.accessOverride;
+    const serenityComped = isAccessOverrideActive(ao) && ao?.serenity === true;
     await providerRef.update({
-      depositsAddonActive: false,
+      ...(serenityComped ? {} : { depositsAddonActive: false }),
       'serenity.status': 'cancelled',
       'serenity.cancelAtPeriodEnd': false,
       updatedAt: FieldValue.serverTimestamp(),
     });
-    console.log(`[STRIPE-WEBHOOK/SERENITY] Provider ${providerId} Sérénité ended`);
+    console.log(
+      `[STRIPE-WEBHOOK/SERENITY] Provider ${providerId} Sérénité ended` +
+        (serenityComped ? ' (deposits kept — comped)' : ''),
+    );
     return;
   }
 

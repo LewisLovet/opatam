@@ -66,6 +66,7 @@ export default function AdminProviderDetailPage() {
   const [compPlan, setCompPlan] = useState<'solo' | 'team'>('team');
   const [compUntil, setCompUntil] = useState('');
   const [compReason, setCompReason] = useState('');
+  const [compSerenity, setCompSerenity] = useState(false);
   const [compCode, setCompCode] = useState('');
 
   const handleComp = async (action: 'grant' | 'revoke') => {
@@ -86,6 +87,7 @@ export default function AdminProviderDetailPage() {
           plan: compPlan,
           until: compUntil ? new Date(compUntil).toISOString() : null,
           reason: compReason.trim() || null,
+          serenity: compSerenity,
           code: compCode,
         }),
       });
@@ -103,7 +105,7 @@ export default function AdminProviderDetailPage() {
                 ...d.provider,
                 accessOverride:
                   action === 'grant'
-                    ? { active: true, plan: compPlan, until: compUntil ? new Date(compUntil).toISOString() : null, reason: compReason.trim() || null }
+                    ? { active: true, plan: compPlan, until: compUntil ? new Date(compUntil).toISOString() : null, reason: compReason.trim() || null, serenity: compSerenity }
                     : null,
                 ...(action === 'grant' ? { isPublished: true, plan: compPlan } : {}),
               } as typeof d.provider,
@@ -592,7 +594,7 @@ export default function AdminProviderDetailPage() {
 
             {/* Comp access — manual grant, independent of Stripe (survives webhooks) */}
             {(() => {
-              const ao = (provider as unknown as { accessOverride?: { active?: boolean; plan?: string; until?: string | null; reason?: string | null } | null }).accessOverride;
+              const ao = (provider as unknown as { accessOverride?: { active?: boolean; plan?: string; until?: string | null; reason?: string | null; serenity?: boolean } | null }).accessOverride;
               const active = !!ao?.active;
               const inputCls = 'w-full text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-2.5 py-1.5 text-gray-900 dark:text-white';
               return (
@@ -604,10 +606,11 @@ export default function AdminProviderDetailPage() {
                     </Badge>
                   </div>
 
-                  {active && (ao?.until || ao?.reason) && (
+                  {active && (ao?.until || ao?.reason || ao?.serenity) && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                       {ao?.until && <p>Jusqu&apos;au {new Date(ao.until).toLocaleDateString('fr-FR')}</p>}
                       {ao?.reason && <p>Motif : {ao.reason}</p>}
+                      {ao?.serenity && <p>Sérénité : offert ✓</p>}
                     </div>
                   )}
 
@@ -625,6 +628,15 @@ export default function AdminProviderDetailPage() {
                         <input type="date" value={compUntil} onChange={(e) => setCompUntil(e.target.value)} className={inputCls} title="Date de fin (vide = illimité)" />
                       </div>
                       <input type="text" value={compReason} onChange={(e) => setCompReason(e.target.value)} placeholder="Motif (ex : geste commercial)" className={inputCls} />
+                      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={compSerenity}
+                          onChange={(e) => setCompSerenity(e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                        />
+                        Offrir aussi <strong>Sérénité</strong> (acomptes)
+                      </label>
                     </div>
                   )}
 

@@ -71,6 +71,10 @@ export interface AccessOverride {
   /** Admin uid who granted it. */
   grantedBy: string | null;
   grantedAt: Date | null;
+  /** Comp the Sérénité add-on (deposits) too. Immune to Stripe webhooks like
+   *  the rest of the override. Collecting deposits still requires an ACTIVE
+   *  Stripe Connect account — that guardrail is never bypassed. */
+  serenity?: boolean;
 }
 
 export interface Provider {

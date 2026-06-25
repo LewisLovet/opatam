@@ -83,6 +83,7 @@ export async function GET(
             reason: providerData.accessOverride.reason ?? null,
             grantedBy: providerData.accessOverride.grantedBy ?? null,
             grantedAt: providerData.accessOverride.grantedAt?.toDate?.()?.toISOString() ?? null,
+            serenity: !!providerData.accessOverride.serenity,
           }
         : null,
       createdAt: providerData.createdAt?.toDate?.()?.toISOString() || null,

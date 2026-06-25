@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { sendCompAccessGrantedEmail } from '@/lib/emails/compAccessGranted';
 
 /**
  * Verifies the admin AND their personal action code (bcrypt `adminCodeHash`).
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const { providerId, action, plan, until, reason, code } = await request.json();
+    const { providerId, action, plan, until, reason, code, serenity } = await request.json();
     if (!providerId || (action !== 'grant' && action !== 'revoke')) {
       return NextResponse.json({ error: 'providerId + action (grant|revoke) requis' }, { status: 400 });
     }
@@ -59,7 +60,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'revoke') {
-      await ref.update({ accessOverride: null, updatedAt: FieldValue.serverTimestamp() });
+      // If Sérénité was comped (no genuine paid add-on), revoking access also
+      // turns the deposits add-on back off. A provider who actually pays for
+      // Sérénité keeps it.
+      const prev = snap.data()?.accessOverride;
+      const realSerenity =
+        snap.data()?.serenity?.status === 'active' ||
+        snap.data()?.serenity?.status === 'trialing';
+      const revokeUpdate: Record<string, unknown> = {
+        accessOverride: null,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      if (prev?.serenity === true && !realSerenity) {
+        revokeUpdate.depositsAddonActive = false;
+      }
+      await ref.update(revokeUpdate);
       return NextResponse.json({ success: true, action: 'revoke' });
     }
 
@@ -70,7 +85,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Date invalide' }, { status: 400 });
     }
 
-    await ref.update({
+    const grantSerenity = serenity === true;
+    const grantUpdate: Record<string, unknown> = {
       accessOverride: {
         active: true,
         plan: grantPlan,
@@ -78,17 +94,46 @@ export async function POST(request: NextRequest) {
         reason: reason || null,
         grantedBy: adminUid,
         grantedAt: Timestamp.now(),
+        serenity: grantSerenity,
       },
       // Align the feature tier + make sure the page is visible.
       plan: grantPlan,
       isPublished: true,
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    };
+    // Comping Sérénité flips the operational flag every gate already reads.
+    // Collecting deposits STILL requires an active Stripe Connect account —
+    // that guardrail lives in the booking service and is never bypassed.
+    if (grantSerenity) grantUpdate.depositsAddonActive = true;
+    await ref.update(grantUpdate);
+
+    // Notify the provider with a branded email (best-effort, non-blocking).
+    try {
+      const providerData = snap.data()!;
+      const ownerSnap = providerData.userId
+        ? await db.collection('users').doc(providerData.userId).get()
+        : null;
+      const to = ownerSnap?.data()?.email as string | undefined;
+      if (to) {
+        await sendCompAccessGrantedEmail({
+          to,
+          businessName: providerData.businessName || 'votre établissement',
+          plan: grantPlan,
+          serenity: grantSerenity,
+          until: untilDate,
+        });
+      } else {
+        console.warn(`[admin/access-override] no owner email for ${providerId} — email skipped`);
+      }
+    } catch (emailErr) {
+      console.error('[admin/access-override] email send failed (non-blocking):', emailErr);
+    }
 
     return NextResponse.json({
       success: true,
       action: 'grant',
       plan: grantPlan,
+      serenity: grantSerenity,
       until: untilDate?.toISOString() ?? null,
     });
   } catch (err: any) {
