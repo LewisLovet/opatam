@@ -14,6 +14,11 @@ export interface DashboardStats {
   bookingsToday: number;
   bookingsWeek: number;
   bookingsMonth: number;
+  /** Global provider page views (test providers excluded). */
+  pageViewsToday: number;
+  pageViews7Days: number;
+  pageViews30Days: number;
+  pageViewsTotal: number;
   /** Net recurring revenue (cents/month), all products, after discounts. */
   mrr: number;
   /** Real cash collected this month (sum of paid Stripe invoices, cents). */

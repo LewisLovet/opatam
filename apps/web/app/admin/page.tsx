@@ -11,6 +11,8 @@ import {
   UserPlus,
   XCircle,
   RefreshCw,
+  Eye,
+  CalendarCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -22,6 +24,7 @@ import { AdminStatCard } from './components/AdminStatCard';
 import { SignupsChart } from './components/SignupsChart';
 import { BookingsTrendChart } from './components/BookingsTrendChart';
 import { BookingsByCategoryChart } from './components/BookingsByCategoryChart';
+import { PageViewsTrendChart } from './components/PageViewsTrendChart';
 import { Loader } from '@/components/ui';
 
 export default function AdminDashboardPage() {
@@ -29,6 +32,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [signupsTrend, setSignupsTrend] = useState<TrendData[]>([]);
   const [bookingsTrend, setBookingsTrend] = useState<TrendData[]>([]);
+  const [pageViewsTrend, setPageViewsTrend] = useState<TrendData[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [recentSignups, setRecentSignups] = useState<RecentSignups | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,10 +60,11 @@ export default function AdminDashboardPage() {
 
     const loadData = async () => {
       try {
-        const [statsData, signups, bookings, categories, recent] = await Promise.all([
+        const [statsData, signups, bookings, pageViews, categories, recent] = await Promise.all([
           adminStatsService.getDashboardStats(user.id),
           adminStatsService.getSignupsTrend(user.id, 30),
           adminStatsService.getBookingsTrend(user.id, 30),
+          adminStatsService.getPageViewsTrend(user.id, 30),
           adminStatsService.getBookingsByCategory(user.id),
           adminStatsService.getRecentSignups(user.id),
         ]);
@@ -67,6 +72,7 @@ export default function AdminDashboardPage() {
         setStats(statsData);
         setSignupsTrend(signups);
         setBookingsTrend(bookings);
+        setPageViewsTrend(pageViews);
         setCategoryData(categories);
         setRecentSignups(recent);
       } catch (err) {
@@ -156,6 +162,7 @@ export default function AdminDashboardPage() {
           label="Réservations (mois)"
           value={stats.bookingsMonth}
           icon={<TrendingUp className="w-5 h-5 text-red-500" />}
+          trend={{ value: stats.bookingsToday, label: "aujourd'hui" }}
         />
         <AdminStatCard
           label="Note moyenne"
@@ -170,10 +177,35 @@ export default function AdminDashboardPage() {
         />
       </div>
 
+      {/* Third row — total bookings + page views */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <AdminStatCard
+          label="Réservations (total)"
+          value={stats.totalBookings}
+          icon={<CalendarCheck className="w-5 h-5 text-red-500" />}
+        />
+        <AdminStatCard
+          label="Vues des pages (aujourd'hui)"
+          value={stats.pageViewsToday}
+          icon={<Eye className="w-5 h-5 text-violet-500" />}
+        />
+        <AdminStatCard
+          label="Vues (30 jours)"
+          value={stats.pageViews30Days}
+          icon={<Eye className="w-5 h-5 text-violet-500" />}
+        />
+        <AdminStatCard
+          label="Vues (total)"
+          value={stats.pageViewsTotal}
+          icon={<Eye className="w-5 h-5 text-violet-500" />}
+        />
+      </div>
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SignupsChart data={signupsTrend} />
         <BookingsTrendChart data={bookingsTrend} />
+        <PageViewsTrendChart data={pageViewsTrend} />
       </div>
 
       {/* Recent signups */}

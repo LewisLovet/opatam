@@ -44,6 +44,12 @@ export async function GET(request: NextRequest) {
       return jsonWithCache(data, 120);
     }
 
+    if (type === 'pageviews-trend') {
+      const days = parseInt(request.nextUrl.searchParams.get('days') || '30');
+      const data = await getPageViewsTrend(db, days);
+      return jsonWithCache(data, 120);
+    }
+
     if (type === 'by-category') {
       const data = await getBookingsByCategory(db);
       return jsonWithCache(data, 120);
@@ -202,7 +208,7 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
 
   // Read pre-computed stats + lightweight time-based queries in parallel
   // Using select() instead of count() for compatibility with current firebase-admin version
-  const [statsDoc, signupsTodaySnap, signupsWeekSnap, signupsMonthSnap, bookingsTodaySnap, bookingsWeekSnap, bookingsMonthSnap] = await Promise.all([
+  const [statsDoc, signupsTodaySnap, signupsWeekSnap, signupsMonthSnap, bookingsTodaySnap, bookingsWeekSnap, bookingsMonthSnap, providersPvSnap] = await Promise.all([
     db.doc('stats/dashboard').get(),
     db.collection('users').where('createdAt', '>=', startOfToday).select('email', 'isAdmin', 'isTest').get(),
     db.collection('users').where('createdAt', '>=', startOfWeek).select('email', 'isAdmin', 'isTest').get(),
@@ -210,7 +216,22 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     db.collection('bookings').where('createdAt', '>=', startOfToday).select('status').get(),
     db.collection('bookings').where('createdAt', '>=', startOfWeek).select('status').get(),
     db.collection('bookings').where('createdAt', '>=', startOfMonth).select('status').get(),
+    db.collection('providers').select('stats', 'isTest').get(),
   ]);
+
+  // Global page views — sum the per-provider aggregated counters (test
+  // providers excluded). `today` is live; 7/30-day are recomputed nightly.
+  let pageViewsToday = 0, pageViews7Days = 0, pageViews30Days = 0, pageViewsTotal = 0;
+  providersPvSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    if (d.isTest === true) return;
+    const pv = d.stats?.pageViews;
+    if (!pv) return;
+    pageViewsToday += pv.today || 0;
+    pageViews7Days += pv.last7Days || 0;
+    pageViews30Days += pv.last30Days || 0;
+    pageViewsTotal += pv.total || 0;
+  });
 
   // Light filters for the LIVE delta counts (the authoritative totals + rates
   // come from the recomputed stats/dashboard doc). Exclude internal/test users
@@ -286,6 +307,10 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     bookingsToday: countNewBookings(bookingsTodaySnap),
     bookingsWeek: countNewBookings(bookingsWeekSnap),
     bookingsMonth: countNewBookings(bookingsMonthSnap),
+    pageViewsToday,
+    pageViews7Days,
+    pageViews30Days,
+    pageViewsTotal,
     mrr,
     collectedThisMonth,
     cancellationRate: Math.round(cancellationRate * 10) / 10,
@@ -348,6 +373,39 @@ async function getBookingsTrend(db: FirebaseFirestore.Firestore, days: number): 
     const dateStr = created.toISOString().split('T')[0];
     if (countByDate[dateStr] !== undefined) {
       countByDate[dateStr]++;
+    }
+  });
+
+  return Object.entries(countByDate).map(([date, count]) => ({ date, count }));
+}
+
+/** Global daily page views over the last N days, summed across providers from
+ *  the `pageViewsDaily` collection. Note: today's views live on the provider
+ *  doc until the nightly rollup, so the final point may read low (the live
+ *  total is shown in the KPI card). */
+async function getPageViewsTrend(db: FirebaseFirestore.Firestore, days: number): Promise<TrendData[]> {
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setDate(startDate.getDate() - days);
+  const startStr = startDate.toISOString().split('T')[0];
+
+  const snap = await db
+    .collection('pageViewsDaily')
+    .where('date', '>=', startStr)
+    .get();
+
+  const countByDate: Record<string, number> = {};
+  for (let i = 0; i <= days; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    countByDate[d.toISOString().split('T')[0]] = 0;
+  }
+
+  snap.docs.forEach((doc) => {
+    const data = doc.data();
+    const dateStr = data.date as string;
+    if (countByDate[dateStr] !== undefined) {
+      countByDate[dateStr] += data.count || 0;
     }
   });
 

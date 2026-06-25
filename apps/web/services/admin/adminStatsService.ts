@@ -36,6 +36,14 @@ export const adminStatsService = {
     return res.json();
   },
 
+  async getPageViewsTrend(adminUid: string, days = 30): Promise<TrendData[]> {
+    const res = await fetch(`${BASE_URL}?type=pageviews-trend&days=${days}`, {
+      headers: headers(adminUid),
+    });
+    if (!res.ok) throw new Error('Erreur lors du chargement des tendances');
+    return res.json();
+  },
+
   async getBookingsByCategory(adminUid: string): Promise<CategoryData[]> {
     const res = await fetch(`${BASE_URL}?type=by-category`, {
       headers: headers(adminUid),
