@@ -69,7 +69,7 @@ export default function AdminProviderDetailPage() {
   const [compSerenity, setCompSerenity] = useState(false);
   const [compCode, setCompCode] = useState('');
 
-  const handleComp = async (action: 'grant' | 'revoke') => {
+  const handleComp = async (action: 'grant' | 'revoke' | 'set-serenity') => {
     if (!authUser?.id || !detail) return;
     if (!compCode.trim()) {
       alert('Entre ton code admin pour valider cette action.');
@@ -97,21 +97,26 @@ export default function AdminProviderDetailPage() {
         return;
       }
       setCompCode('');
-      setDetail((d) =>
-        d
-          ? {
-              ...d,
-              provider: {
-                ...d.provider,
-                accessOverride:
-                  action === 'grant'
-                    ? { active: true, plan: compPlan, until: compUntil ? new Date(compUntil).toISOString() : null, reason: compReason.trim() || null, serenity: compSerenity }
-                    : null,
-                ...(action === 'grant' ? { isPublished: true, plan: compPlan } : {}),
-              } as typeof d.provider,
-            }
-          : d,
-      );
+      setDetail((d) => {
+        if (!d) return d;
+        const cur = (d.provider as unknown as { accessOverride?: Record<string, unknown> | null }).accessOverride;
+        let newAO: Record<string, unknown> | null;
+        if (action === 'grant') {
+          newAO = { active: true, plan: compPlan, until: compUntil ? new Date(compUntil).toISOString() : null, reason: compReason.trim() || null, serenity: compSerenity };
+        } else if (action === 'set-serenity') {
+          newAO = cur ? { ...cur, serenity: compSerenity } : cur ?? null;
+        } else {
+          newAO = null; // revoke
+        }
+        return {
+          ...d,
+          provider: {
+            ...d.provider,
+            accessOverride: newAO,
+            ...(action === 'grant' ? { isPublished: true, plan: compPlan } : {}),
+          } as typeof d.provider,
+        };
+      });
     } catch {
       alert('Erreur réseau');
     } finally {
@@ -135,6 +140,13 @@ export default function AdminProviderDetailPage() {
 
     load();
   }, [authUser?.id, providerId]);
+
+  // Keep the Sérénité toggle in sync with the loaded comp state, so an
+  // already-active grant shows its real Sérénité status.
+  useEffect(() => {
+    const ao = (detail?.provider as unknown as { accessOverride?: { active?: boolean; serenity?: boolean } | null })?.accessOverride;
+    if (ao?.active) setCompSerenity(!!ao.serenity);
+  }, [detail]);
 
   const handleToggleVerified = async () => {
     if (!authUser?.id || !detail) return;
@@ -611,6 +623,24 @@ export default function AdminProviderDetailPage() {
                       {ao?.until && <p>Jusqu&apos;au {new Date(ao.until).toLocaleDateString('fr-FR')}</p>}
                       {ao?.reason && <p>Motif : {ao.reason}</p>}
                       {ao?.serenity && <p>Sérénité : offert ✓</p>}
+                    </div>
+                  )}
+
+                  {/* Dissocié : ajouter / retirer Sérénité sur un accès déjà actif */}
+                  {active && (
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-gray-700 px-3 py-2">
+                      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={compSerenity}
+                          onChange={(e) => setCompSerenity(e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                        />
+                        Sérénité offerte (acomptes)
+                      </label>
+                      <Button size="sm" variant="outline" loading={compLoading} onClick={() => handleComp('set-serenity')}>
+                        Appliquer
+                      </Button>
                     </div>
                   )}
 

@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { providerId, action, plan, until, reason, code, serenity } = await request.json();
-    if (!providerId || (action !== 'grant' && action !== 'revoke')) {
-      return NextResponse.json({ error: 'providerId + action (grant|revoke) requis' }, { status: 400 });
+    if (!providerId || (action !== 'grant' && action !== 'revoke' && action !== 'set-serenity')) {
+      return NextResponse.json({ error: 'providerId + action (grant|revoke|set-serenity) requis' }, { status: 400 });
     }
 
     // Critical action → require the admin's personal code.
@@ -57,6 +57,58 @@ export async function POST(request: NextRequest) {
     const snap = await ref.get();
     if (!snap.exists) {
       return NextResponse.json({ error: 'Prestataire introuvable' }, { status: 404 });
+    }
+
+    // Toggle Sérénité on an ALREADY-active comp, without touching the rest of
+    // the grant — so an admin can add/remove the deposits add-on independently
+    // (the two are dissociated).
+    if (action === 'set-serenity') {
+      const prev = snap.data()?.accessOverride;
+      if (!prev?.active) {
+        return NextResponse.json(
+          { error: "Donne d'abord l'accès offert avant d'activer Sérénité." },
+          { status: 400 },
+        );
+      }
+      const enable = serenity === true;
+      const realSerenity =
+        snap.data()?.serenity?.status === 'active' ||
+        snap.data()?.serenity?.status === 'trialing';
+      const update: Record<string, unknown> = {
+        'accessOverride.serenity': enable,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      if (enable) update.depositsAddonActive = true;
+      else if (!realSerenity) update.depositsAddonActive = false;
+      await ref.update(update);
+
+      // When newly enabling, email the provider the Sérénité info (incl. the
+      // "activate Stripe to get paid" step) — they may have been comped before
+      // this feature existed and never received it. Best-effort.
+      if (enable) {
+        try {
+          const providerData = snap.data()!;
+          const ownerSnap = providerData.userId
+            ? await db.collection('users').doc(providerData.userId).get()
+            : null;
+          const to = ownerSnap?.data()?.email as string | undefined;
+          if (to) {
+            const untilVal =
+              prev.until?.toDate?.() ?? (prev.until ? new Date(prev.until) : null);
+            await sendCompAccessGrantedEmail({
+              to,
+              businessName: providerData.businessName || 'votre établissement',
+              plan: prev.plan === 'team' ? 'team' : 'solo',
+              serenity: true,
+              until: untilVal,
+            });
+          }
+        } catch (emailErr) {
+          console.error('[admin/access-override] set-serenity email failed (non-blocking):', emailErr);
+        }
+      }
+
+      return NextResponse.json({ success: true, action: 'set-serenity', serenity: enable });
     }
 
     if (action === 'revoke') {
