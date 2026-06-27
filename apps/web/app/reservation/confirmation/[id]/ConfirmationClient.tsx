@@ -157,6 +157,15 @@ function downloadIcs(booking: Booking) {
 
 export function ConfirmationClient({ booking }: ConfirmationClientProps) {
   const [mounted, setMounted] = useState(false);
+  // Address-privacy: resolve the displayable address server-side (exact only
+  // when revealed). Falls back to the booking snapshot (already masked).
+  const [addr, setAddr] = useState<{
+    protected: boolean;
+    revealed: boolean;
+    address: string;
+    accessInstructions: string | null;
+    revealAt: string | null;
+  } | null>(null);
   const isPending = booking.status === 'pending';
   // While the deposit hasn't landed (webhook race or client closed Stripe
   // mid-checkout), the booking is still `pending_payment` server-side.
@@ -175,6 +184,16 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
     const timer = setTimeout(() => setMounted(true), 100);
     return () => clearTimeout(timer);
   }, []);
+
+  // Resolve the (reveal-gated) address from the server.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/bookings/${booking.id}/address`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d && !d.error) setAddr(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [booking.id]);
 
   // Meta Pixel — Purchase event when the deposit has actually been
   // paid (real money landed). We piggyback on `sessionStorage` to
@@ -402,8 +421,18 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
                     {booking.locationName}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {booking.locationAddress}
+                    {addr?.address || booking.locationAddress}
                   </p>
+                  {addr?.revealed && addr.accessInstructions && (
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-line">
+                      {addr.accessInstructions}
+                    </p>
+                  )}
+                  {addr?.protected && !addr.revealed && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      Adresse exacte communiquée ~48h avant le rendez-vous.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
