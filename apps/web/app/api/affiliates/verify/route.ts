@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getStripe } from '@/lib/stripe';
 
 /**
  * GET /api/affiliates/verify?code=MARIE
@@ -8,9 +9,10 @@ import { FieldValue } from 'firebase-admin/firestore';
  */
 export async function GET(request: NextRequest) {
   try {
-    const code = request.nextUrl.searchParams.get('code')?.toUpperCase().trim();
+    const raw = request.nextUrl.searchParams.get('code')?.trim();
+    const code = raw?.toUpperCase();
 
-    if (!code) {
+    if (!raw || !code) {
       return NextResponse.json({ valid: false });
     }
 
@@ -23,7 +25,9 @@ export async function GET(request: NextRequest) {
       .get();
 
     if (snapshot.empty) {
-      return NextResponse.json({ valid: false });
+      // Not an affiliate code → fall back to a native Stripe promotion code
+      // (one created directly in the Stripe dashboard). No commission.
+      return await verifyStripePromotionCode(raw);
     }
 
     const affiliate = snapshot.docs[0].data();
@@ -48,6 +52,72 @@ export async function GET(request: NextRequest) {
     console.error('[affiliates/verify] error:', err);
     return NextResponse.json({ valid: false });
   }
+}
+
+/**
+ * Fallback for the GET verify: resolve a native Stripe Promotion Code (created
+ * directly in the Stripe dashboard, not tied to an affiliate). Returns the same
+ * shape as an affiliate so the Abonnement page renders the discount and applies
+ * it at checkout. Case-insensitive lookup (Stripe's `code` filter is exact).
+ */
+async function verifyStripePromotionCode(raw: string): Promise<NextResponse> {
+  try {
+    const stripe = getStripe();
+    const candidates = [...new Set([raw, raw.toUpperCase()])];
+    for (const c of candidates) {
+      const promos = await stripe.promotionCodes.list({ code: c, active: true, limit: 1 });
+      const promo = promos.data[0] as unknown as
+        | { coupon?: string | { id?: string }; promotion?: { coupon?: string } }
+        | undefined;
+      if (!promo) continue;
+      // The coupon reference moved across API versions: top-level `coupon`
+      // (object or id) on older ones, `promotion.coupon` (id) on newer ones.
+      const couponId =
+        (typeof promo.coupon === 'string' && promo.coupon) ||
+        (promo.coupon && typeof promo.coupon === 'object' ? promo.coupon.id : undefined) ||
+        promo.promotion?.coupon ||
+        undefined;
+      if (!couponId) continue;
+      const coupon = await stripe.coupons.retrieve(couponId);
+      if (!coupon.valid) continue;
+
+      const amountTxt = coupon.percent_off
+        ? `-${coupon.percent_off}%`
+        : coupon.amount_off
+          ? `-${(coupon.amount_off / 100).toFixed(2)} ${(coupon.currency || 'eur').toUpperCase()}`
+          : 'Réduction';
+      const durationTxt =
+        coupon.duration === 'forever'
+          ? 'tous les mois'
+          : coupon.duration === 'repeating'
+            ? `les ${coupon.duration_in_months} premiers mois`
+            : 'le 1er mois';
+
+      // Map to the affiliate-style duration keys the plan cards understand
+      // (so the strikethrough price preview works for percent coupons).
+      let discountDuration: string | null = null;
+      if (coupon.duration === 'once') discountDuration = 'once';
+      else if (coupon.duration === 'forever') discountDuration = 'forever';
+      else if (coupon.duration === 'repeating')
+        discountDuration =
+          coupon.duration_in_months === 3
+            ? 'repeating_3'
+            : coupon.duration_in_months === 12
+              ? 'repeating_12'
+              : null;
+
+      return NextResponse.json({
+        valid: true,
+        kind: 'stripe',
+        discount: coupon.percent_off ?? null,
+        discountDuration,
+        discountLabel: `${amountTxt} sur ${durationTxt}`,
+      });
+    }
+  } catch (err) {
+    console.error('[affiliates/verify] Stripe promo lookup error:', err);
+  }
+  return NextResponse.json({ valid: false });
 }
 
 /**

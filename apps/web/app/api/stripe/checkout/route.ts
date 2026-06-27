@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
     let affiliateCode: string | null = null;
     let affiliateId: string | null = null;
     let stripeCouponId: string | null = null;
+    let stripePromotionCodeId: string | null = null;
     let trialValidUntil: Date | null = null;
 
     try {
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
       // the provider doc so the webhook attributes the commission on BOTH the
       // first payment (metadata) AND every recurring invoice (provider doc).
       const typedCode = promoCode?.toUpperCase().trim();
+      let typedMatchedAffiliate = false;
       if (typedCode) {
         const affSnap = await db
           .collection('affiliates')
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest) {
           .limit(1)
           .get();
         if (!affSnap.empty) {
+          typedMatchedAffiliate = true;
           const affDoc = affSnap.docs[0];
           const aff = affDoc.data();
           // Attribute the referral regardless of discount (commission still
@@ -90,6 +93,23 @@ export async function POST(request: NextRequest) {
             .doc(providerId)
             .update({ affiliateCode, affiliateId, updatedAt: new Date() })
             .catch((e) => console.warn('[STRIPE-CHECKOUT] persist affiliate failed:', e));
+        }
+      }
+
+      // Native Stripe promotion code (created directly in the Stripe dashboard,
+      // not an affiliate). Only when the typed code isn't an affiliate code.
+      // Takes precedence over any pre-existing affiliate coupon (it's what the
+      // pro just typed). No commission is attributed for these.
+      if (promoCode && !typedMatchedAffiliate) {
+        const candidates = [...new Set([promoCode.trim(), promoCode.trim().toUpperCase()])];
+        for (const c of candidates) {
+          // active:true already filters out expired/maxed-out codes; Stripe
+          // re-validates the promotion_code at checkout, so existence is enough.
+          const promos = await stripe.promotionCodes.list({ code: c, active: true, limit: 1 });
+          if (promos.data[0]) {
+            stripePromotionCodeId = promos.data[0].id;
+            break;
+          }
         }
       }
     } catch (err) {
@@ -125,13 +145,17 @@ export async function POST(request: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      // Codes are handled by our own validated field on the Abonnement page
-      // (which also attributes the affiliate commission), then applied here via
-      // `discounts`. Stripe's native promo field is intentionally disabled: it
-      // only matches Promotion Code objects (which we don't create) and would
-      // never attribute the commission.
-      allow_promotion_codes: stripeCouponId ? undefined : false,
-      ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
+      // Codes are handled by our own validated field on the Abonnement page,
+      // resolved server-side above and applied here via `discounts`:
+      //   - affiliate code  → its coupon (+ commission attribution),
+      //   - native Stripe promotion code → its promotion_code (no commission).
+      // Stripe's native checkout promo field stays disabled when no code applies.
+      allow_promotion_codes: stripeCouponId || stripePromotionCodeId ? undefined : false,
+      ...(stripePromotionCodeId
+        ? { discounts: [{ promotion_code: stripePromotionCodeId }] }
+        : stripeCouponId
+          ? { discounts: [{ coupon: stripeCouponId }] }
+          : {}),
       line_items: [
         {
           price: priceId,
