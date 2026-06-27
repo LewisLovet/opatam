@@ -19,6 +19,9 @@ interface BookingData {
   };
   providerName: string;
   status: string;
+  /** Address-privacy: true when the location hides its exact address until
+   *  the appointment nears — lets the reminder push announce availability. */
+  locationProtected?: boolean | null;
   cancelledBy?: 'client' | 'provider' | null;
   /** Optional — present only on bookings that required a deposit.
    *  Used to flag the new-booking push when the deposit was actually
@@ -448,7 +451,8 @@ export async function notifyProviderServiceChange(
 export async function notifyClientBookingReminder(
   booking: BookingData,
   reminderType: '2h' | '24h',
-  minutesUntil?: number
+  minutesUntil?: number,
+  bookingId?: string
 ): Promise<void> {
   console.log('notifyClientBookingReminder:', booking.clientId, reminderType);
 
@@ -492,15 +496,21 @@ export async function notifyClientBookingReminder(
     timeLabel = 'dans 2 heures';
   }
 
-  const body = reminderType === '24h'
+  const baseBody = reminderType === '24h'
     ? `Rappel : votre RDV ${booking.serviceName} est demain, le ${dateStr}`
     : `Rappel : votre RDV ${booking.serviceName} est ${timeLabel} (${dateStr})`;
+  // For a protected location, make it explicit that the exact address is now
+  // available (without putting the address itself on the lock screen).
+  const body = booking.locationProtected
+    ? `${baseBody}. 📍 L'adresse exacte est maintenant disponible, appuyez pour la voir.`
+    : baseBody;
 
   const result = await sendPushNotifications(pushTokens, {
     title: 'Rappel de rendez-vous',
     body,
     data: {
       type: 'booking_reminder',
+      ...(bookingId ? { bookingId } : {}),
     },
   });
 

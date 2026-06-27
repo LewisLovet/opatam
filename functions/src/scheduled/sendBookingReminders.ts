@@ -138,9 +138,11 @@ export const sendBookingReminders = onSchedule(
                 clientInfo: data.clientInfo,
                 providerName: data.providerName,
                 status: data.status,
+                locationProtected: data.locationProtected,
               },
               reminderType,
-              minutesUntil
+              minutesUntil,
+              id
             );
             pushSent = true;
           } catch (pushError) {
