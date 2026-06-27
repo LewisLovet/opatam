@@ -129,15 +129,27 @@ function listReports() {
 function publicRunState() {
   if (!currentRun) return { running: false };
   const test = tests.find((t) => t.id === currentRun.testId);
+  const endMs = currentRun.running ? Date.now() : (currentRun.finishedAtMs || Date.now());
+  const elapsedSeconds = Math.max(0, Math.round((endMs - currentRun.startedAtMs) / 1000));
+  const phase = currentRun.running ? 'running' : (currentRun.exitCode === 0 ? 'done' : 'failed');
+  // Heartbeat: keep signalling life even when the command prints nothing.
+  const message = currentRun.running && !currentRun.hasOutput
+    ? 'Le test est en cours, certaines commandes peuvent rester silencieuses.'
+    : '';
   return {
     running: currentRun.running,
     runId: currentRun.id,
     testId: currentRun.testId,
     label: test ? test.label : currentRun.testId,
     report: test ? test.report : null,
+    destructive: test ? !!test.destructive : false,
     startedAt: currentRun.startedAt,
     finishedAt: currentRun.finishedAt,
     exitCode: currentRun.exitCode,
+    elapsedSeconds,
+    phase,
+    hasOutput: currentRun.hasOutput,
+    message,
     log: currentRun.log,
   };
 }
@@ -150,7 +162,8 @@ function startRun(test, confirmed) {
     return { error: 'Ce test crée de vraies données. Coche la confirmation avant de le lancer.' };
   }
 
-  const runId = `${Date.now()}-${test.id}`;
+  const startedAtMs = Date.now();
+  const runId = `${startedAtMs}-${test.id}`;
   const child = spawn(test.command[0], test.command[1], {
     cwd: rootDir,
     env: { ...process.env, ...(test.env || {}) },
@@ -163,22 +176,29 @@ function startRun(test, confirmed) {
     running: true,
     exitCode: null,
     log: '',
-    startedAt: new Date().toISOString(),
+    hasOutput: false,
+    startedAt: new Date(startedAtMs).toISOString(),
+    startedAtMs,
     finishedAt: null,
+    finishedAtMs: null,
   };
 
-  child.stdout.on('data', (chunk) => { currentRun.log += chunk.toString(); });
-  child.stderr.on('data', (chunk) => { currentRun.log += chunk.toString(); });
+  const onChunk = (chunk) => { currentRun.log += chunk.toString(); currentRun.hasOutput = true; };
+  child.stdout.on('data', onChunk);
+  child.stderr.on('data', onChunk);
   child.on('error', (err) => {
     currentRun.log += `\n[erreur de lancement] ${err.message}\n`;
+    currentRun.hasOutput = true;
     currentRun.running = false;
     currentRun.exitCode = -1;
     currentRun.finishedAt = new Date().toISOString();
+    currentRun.finishedAtMs = Date.now();
   });
   child.on('close', (code) => {
     currentRun.running = false;
     currentRun.exitCode = code;
     currentRun.finishedAt = new Date().toISOString();
+    currentRun.finishedAtMs = Date.now();
     history.unshift({ ...currentRun });
     history.splice(20);
   });
@@ -225,6 +245,23 @@ function renderHome() {
     .spinner { width:14px; height:14px; border:2px solid #d4d4d8; border-top-color:#2563eb; border-radius:50%; animation:spin .8s linear infinite; display:inline-block; }
     @keyframes spin { to { transform:rotate(360deg); } }
     pre { background:#18181b; color:#fafafa; border-radius:8px; padding:14px; overflow:auto; max-height:360px; white-space:pre-wrap; margin:12px 0 0; font-size:12px; line-height:1.5; }
+    .banner { position:sticky; top:0; z-index:50; display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:11px 20px; background:#fffbeb; border-bottom:1px solid #fde68a; color:#92400e; font-size:14px; }
+    .banner strong { color:#78350f; }
+    .banner .banner-meta { color:#b45309; }
+    .banner .banner-link { margin-left:auto; color:#1d4ed8; font-weight:800; text-decoration:none; font-size:13px; }
+    .timeline { list-style:none; padding:0; margin:14px 0 0; display:flex; flex-wrap:wrap; gap:8px; }
+    .timeline li { font-size:12px; padding:5px 10px; border-radius:999px; background:#f4f4f5; color:#71717a; border:1px solid var(--line); display:flex; align-items:center; gap:6px; }
+    .timeline li::before { content:'○'; font-size:11px; }
+    .timeline li.done { background:#d1fae5; color:#065f46; border-color:#a7f3d0; }
+    .timeline li.done::before { content:'✓'; }
+    .timeline li.active { background:#dbeafe; color:#1e40af; border-color:#bfdbfe; font-weight:700; }
+    .timeline li.active::before { content:'●'; }
+    .timeline li.fail { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
+    .timeline li.fail::before { content:'✕'; }
+    .run-status { font-size:13px; font-weight:800; }
+    .run-status.go { color:#1d4ed8; }
+    .run-status.ok { color:#047857; }
+    .run-status.ko { color:#b91c1c; }
     .reports { display:grid; gap:10px; }
     .report-row { display:flex; justify-content:space-between; gap:12px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px; }
     .report-row .meta small { color:var(--muted); }
@@ -238,6 +275,12 @@ function renderHome() {
   </style>
 </head>
 <body>
+  <div id="banner" class="banner" style="display:none">
+    <span class="spinner"></span>
+    <strong id="banner-label"></strong>
+    <span class="banner-meta" id="banner-meta"></span>
+    <a class="banner-link" href="#current">Voir le log ↓</a>
+  </div>
   <main>
     <header class="top">
       <div>
@@ -265,6 +308,7 @@ function renderHome() {
           <div class="actions">
             <button class="run-btn ${test.destructive ? 'danger' : ''}" data-id="${test.id}" onclick="run('${test.id}')">Lancer</button>
             <a class="link secondary" href="/reports/${escapeHtml(test.report)}">Voir le rapport</a>
+            <span class="run-status" id="status-${test.id}"></span>
           </div>
         </article>
       `).join('')}
@@ -279,6 +323,8 @@ function renderHome() {
           <strong id="current-label"></strong>
           <span class="muted" id="current-state"></span>
         </div>
+        <ol class="timeline" id="timeline"></ol>
+        <p class="muted" id="current-msg"></p>
         <pre id="log"></pre>
       </div>
     </section>
@@ -312,68 +358,156 @@ function renderHome() {
       } catch { box.innerHTML = '<p class="muted">Impossible de charger les rapports.</p>'; }
     }
 
+    let isRunning = false;
+    let launchingId = null;
+
+    function fmtElapsed(sec) {
+      sec = Math.max(0, Math.floor(sec));
+      if (sec < 60) return sec + ' s';
+      const m = Math.floor(sec / 60), s = sec % 60;
+      return m + ' min ' + String(s).padStart(2, '0') + ' s';
+    }
+
     function setButtonsDisabled(disabled) {
       document.querySelectorAll('.run-btn').forEach((btn) => {
         const id = btn.dataset.id;
         const confirmBox = document.getElementById('confirm-' + id);
-        // A real test stays disabled until its confirmation box is checked.
         btn.disabled = disabled || (confirmBox ? !confirmBox.checked : false);
       });
     }
 
+    function setButtonLabels(runningId) {
+      document.querySelectorAll('.run-btn').forEach((btn) => {
+        btn.textContent = (runningId && btn.dataset.id === runningId) ? 'En cours…' : 'Lancer';
+      });
+    }
+
+    function clearStatuses() {
+      document.querySelectorAll('.run-status').forEach((el) => { el.textContent = ''; el.className = 'run-status'; });
+    }
+
+    function setStatus(id, text, kind) {
+      const el = document.getElementById('status-' + id);
+      if (el) { el.textContent = text; el.className = 'run-status' + (kind ? ' ' + kind : ''); }
+    }
+
     function onConfirmChange() { if (!isRunning) setButtonsDisabled(false); }
 
-    let isRunning = false;
+    function renderTimeline(run) {
+      const finished = run.running === false;
+      const failed = run.phase === 'failed';
+      const steps = [
+        ['Commande préparée', 'done'],
+        ['Processus lancé', 'done'],
+        ['En attente de sortie', run.running ? (run.hasOutput ? 'done' : 'active') : 'done'],
+        ['Rapport généré', finished ? 'done' : ''],
+        ['Terminé', finished ? (failed ? 'fail' : 'done') : ''],
+      ];
+      document.getElementById('timeline').innerHTML = steps
+        .map(([label, state]) => '<li class="' + state + '">' + esc(label) + '</li>')
+        .join('');
+    }
+
+    function elapsedFrom(run) {
+      if (run.startedAt) {
+        const ms = Date.now() - new Date(run.startedAt).getTime();
+        return run.running ? ms / 1000 : (run.elapsedSeconds != null ? run.elapsedSeconds : ms / 1000);
+      }
+      return run.elapsedSeconds || 0;
+    }
+
     async function refreshState() {
-      const run = await fetch('/api/run/current').then((r) => r.json()).catch(() => ({ running: false }));
+      let run;
+      try { run = await fetch('/api/run/current').then((r) => r.json()); }
+      catch { run = { running: false }; }
+
+      const banner = document.getElementById('banner');
       const empty = document.getElementById('current-empty');
       const active = document.getElementById('current-active');
       const spinner = document.getElementById('current-spinner');
-      const label = document.getElementById('current-label');
-      const state = document.getElementById('current-state');
-      const log = document.getElementById('log');
 
-      if (!run.testId) { empty.style.display = ''; active.style.display = 'none'; isRunning = false; setButtonsDisabled(false); return run; }
+      if (!run.testId && !launchingId) {
+        banner.style.display = 'none';
+        empty.style.display = '';
+        active.style.display = 'none';
+        isRunning = false;
+        setButtonLabels(null);
+        setButtonsDisabled(false);
+        return run;
+      }
 
       empty.style.display = 'none';
       active.style.display = '';
-      label.textContent = run.label || run.testId;
-      log.textContent = run.log || '';
       isRunning = run.running === true;
+      const id = run.testId || launchingId;
+      const elapsed = run.testId ? fmtElapsed(elapsedFrom(run)) : '0 s';
+      document.getElementById('current-label').textContent = run.label || id;
+      if (run.testId) renderTimeline(run);
+
+      const log = document.getElementById('log');
+      const msg = document.getElementById('current-msg');
 
       if (run.running) {
         spinner.style.display = '';
-        state.textContent = 'En cours — démarré à ' + new Date(run.startedAt).toLocaleTimeString('fr-FR');
+        document.getElementById('current-state').textContent = 'En cours · ' + elapsed;
+        log.textContent = (run.log && run.log.trim()) ? run.log : 'Aucune sortie pour l\\'instant, le test tourne toujours.';
+        msg.textContent = run.message || '';
+        banner.style.display = '';
+        document.getElementById('banner-label').textContent = 'Test en cours : ' + (run.label || id);
+        document.getElementById('banner-meta').textContent = 'démarré à ' + new Date(run.startedAt).toLocaleTimeString('fr-FR') + ' · ' + elapsed;
+        setButtonLabels(id);
         setButtonsDisabled(true);
-      } else {
+        setStatus(id, 'En cours · ' + elapsed, 'go');
+      } else if (run.testId) {
         spinner.style.display = 'none';
-        state.textContent = 'Terminé (code ' + run.exitCode + ')' + (run.report ? '' : '');
+        const ok = run.exitCode === 0;
+        document.getElementById('current-state').textContent = 'Terminé en ' + elapsed + ' (code ' + run.exitCode + ')';
+        log.textContent = (run.log && run.log.trim()) ? run.log : '(aucune sortie)';
+        msg.textContent = '';
+        banner.style.display = 'none';
+        setButtonLabels(null);
         setButtonsDisabled(false);
+        setStatus(run.testId, ok ? 'Terminé : réussi' : 'Terminé : échec', ok ? 'ok' : 'ko');
       }
       return run;
     }
 
     async function poll() {
       const run = await refreshState();
-      if (!run.running) {
-        clearInterval(polling); polling = null;
-        loadReports();
-      }
+      if (run.testId && !run.running) { clearInterval(polling); polling = null; launchingId = null; loadReports(); }
     }
 
     async function run(id) {
       const confirmBox = document.getElementById('confirm-' + id);
       const confirmed = confirmBox ? confirmBox.checked : false;
+      // Immediate visible feedback, before the server even answers.
+      launchingId = id;
+      clearStatuses();
+      setStatus(id, 'Lancement…', 'go');
+      setButtonLabels(id);
       setButtonsDisabled(true);
-      const response = await fetch('/api/run', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id, confirmed }),
-      });
-      const payload = await response.json().catch(() => ({}));
+      const banner = document.getElementById('banner');
+      banner.style.display = '';
+      document.getElementById('banner-label').textContent = 'Test en cours : ' + id;
+      document.getElementById('banner-meta').textContent = 'démarrage…';
+      document.getElementById('current-empty').style.display = 'none';
+      const active = document.getElementById('current-active');
+      active.style.display = '';
+      active.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      let response, payload;
+      try {
+        response = await fetch('/api/run', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, confirmed }) });
+        payload = await response.json().catch(() => ({}));
+      } catch { response = { ok: false }; payload = { error: 'Serveur injoignable.' }; }
+
       if (!response.ok) {
-        alert(payload.error || 'Erreur au lancement.');
+        launchingId = null;
+        banner.style.display = 'none';
+        setStatus(id, payload.error || 'Erreur', 'ko');
+        setButtonLabels(null);
         setButtonsDisabled(false);
+        alert(payload.error || 'Erreur au lancement.');
         return;
       }
       await refreshState();
