@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { API_URL } from '../../../lib/config';
 import {
   View,
   StyleSheet,
@@ -341,6 +342,14 @@ export default function BookingDetailScreen() {
   const [booking, setBooking] = useState<WithId<Booking> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Address-privacy: the exact address (+ access) is fetched from the gated
+  // endpoint and only revealed when allowed (confirmed + ≤48h).
+  const [addr, setAddr] = useState<{
+    protected: boolean;
+    revealed: boolean;
+    address: string;
+    accessInstructions: string | null;
+  } | null>(null);
 
   // Review state
   const [reviewStatus, setReviewStatus] = useState<'can_review' | 'can_update' | false | null>(null);
@@ -379,6 +388,21 @@ export default function BookingDetailScreen() {
   useEffect(() => {
     loadBooking();
   }, [loadBooking]);
+
+  // Resolve the (reveal-gated) address from the server.
+  useEffect(() => {
+    if (!bookingId) return;
+    let cancelled = false;
+    fetch(`${API_URL}/api/bookings/${bookingId}/address`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && !d.error) setAddr(d);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingId]);
 
   // Check review status after booking loads
   useEffect(() => {
@@ -537,6 +561,14 @@ export default function BookingDetailScreen() {
   const canCancel = canCancelBooking(booking);
   const hasAddress = !!(booking.locationAddress || booking.locationName);
   const hasStreetAddress = !!(booking.locationAddress && booking.locationAddress.includes(','));
+  // Reveal-aware address (the gated endpoint overrides the masked snapshot).
+  const addrText = addr?.address || booking.locationAddress || booking.locationName || '';
+  const addrRevealed = addr ? !addr.protected || addr.revealed : hasStreetAddress;
+  const addrValue =
+    addr?.protected && !addr.revealed
+      ? `${addrText}\nAdresse exacte communiquée ~48h avant le rendez-vous`
+      : addrText;
+  const addrHasMaps = addrRevealed && addrText.includes(',');
   const hasPhone = !!(booking as any).providerPhone; // Assuming providerPhone might exist
   const isPast = visualStatus === 'past';
 
@@ -675,12 +707,20 @@ export default function BookingDetailScreen() {
               <InfoRow
                 icon="location-outline"
                 label="Lieu"
-                value={booking.locationAddress || booking.locationName || ''}
+                value={addrValue}
                 colors={colors}
-                onPress={hasStreetAddress ? () => openMaps(booking.locationAddress || '') : undefined}
-                linkText={hasStreetAddress ? 'Voir sur le plan' : undefined}
+                onPress={addrHasMaps ? () => openMaps(addrText) : undefined}
+                linkText={addrHasMaps ? 'Voir sur le plan' : undefined}
               />
             )}
+            {addr?.revealed && addr.accessInstructions ? (
+              <InfoRow
+                icon="key-outline"
+                label="Accès"
+                value={addr.accessInstructions}
+                colors={colors}
+              />
+            ) : null}
           </View>
         </Card>
 
@@ -708,11 +748,11 @@ export default function BookingDetailScreen() {
               colors={colors}
             />
           )}
-          {hasStreetAddress && (
+          {addrHasMaps && (
             <ActionRow
               icon="navigate-outline"
               label="Itineraire"
-              onPress={() => openMaps(booking.locationAddress || '')}
+              onPress={() => openMaps(addrText)}
               colors={colors}
             />
           )}
