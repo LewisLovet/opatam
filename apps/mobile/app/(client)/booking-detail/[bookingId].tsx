@@ -564,10 +564,7 @@ export default function BookingDetailScreen() {
   // Reveal-aware address (the gated endpoint overrides the masked snapshot).
   const addrText = addr?.address || booking.locationAddress || booking.locationName || '';
   const addrRevealed = addr ? !addr.protected || addr.revealed : hasStreetAddress;
-  const addrValue =
-    addr?.protected && !addr.revealed
-      ? `${addrText}\nAdresse exacte communiquée ~48h avant le rendez-vous`
-      : addrText;
+  const addrPending = !!(addr?.protected && !addr.revealed);
   const addrHasMaps = addrRevealed && addrText.includes(',');
   const hasPhone = !!(booking as any).providerPhone; // Assuming providerPhone might exist
   const isPast = visualStatus === 'past';
@@ -707,11 +704,35 @@ export default function BookingDetailScreen() {
               <InfoRow
                 icon="location-outline"
                 label="Lieu"
-                value={addrValue}
+                value={addrText}
                 colors={colors}
                 onPress={addrHasMaps ? () => openMaps(addrText) : undefined}
                 linkText={addrHasMaps ? 'Voir sur le plan' : undefined}
               />
+            )}
+            {addrPending && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  gap: spacing.sm,
+                  backgroundColor: colors.primaryLight || '#e4effa',
+                  borderRadius: radius.md,
+                  paddingVertical: spacing.sm,
+                  paddingHorizontal: spacing.md,
+                  marginTop: spacing.sm,
+                }}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={18}
+                  color={colors.primary}
+                  style={{ marginTop: 1 }}
+                />
+                <Text variant="caption" style={{ flex: 1, color: colors.primary, lineHeight: 18 }}>
+                  L'adresse exacte vous sera communiquée environ 48h avant le rendez-vous.
+                </Text>
+              </View>
             )}
             {addr?.revealed && addr.accessInstructions ? (
               <InfoRow
