@@ -73,6 +73,8 @@ interface Location {
   city: string;
   postalCode: string;
   type: 'fixed' | 'mobile';
+  protectAddress?: boolean;
+  approxArea?: string | null;
 }
 
 interface Member {

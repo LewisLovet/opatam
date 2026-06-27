@@ -142,6 +142,8 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     postalCode: l.postalCode,
     countryCode: l.countryCode || 'FR',
     type: l.type,
+    protectAddress: l.protectAddress ?? false,
+    approxArea: l.approxArea ?? null,
   }));
 
   const serializedMembers = members.map((m) => ({
