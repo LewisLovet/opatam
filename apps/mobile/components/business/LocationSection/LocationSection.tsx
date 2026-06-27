@@ -73,12 +73,18 @@ function LocationCard({ location }: LocationCardProps) {
       : `${location.address}, ${[location.postalCode, location.city].filter(Boolean).join(' ')}${countryLabel}`
     : `${[location.postalCode, location.city].filter(Boolean).join(' ')}${countryLabel}`;
 
+  // Address-privacy: a protected fixed location never shows its exact street
+  // publicly — only the approximate area (no map link).
+  const isProtected = isFixed && !!location.protectAddress;
+  const approxLabel = `${location.approxArea?.trim() || [location.postalCode, location.city].filter(Boolean).join(' ')}${countryLabel}`;
+  const displayAddress = isProtected ? approxLabel : fullAddress;
+
   const handleAddressPress = () => {
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
     Linking.openURL(mapsUrl);
   };
 
-  const isTappable = isFixed && hasStreetAddress;
+  const isTappable = isFixed && hasStreetAddress && !isProtected;
 
   return (
     <View
@@ -117,7 +123,7 @@ function LocationCard({ location }: LocationCardProps) {
               ]}
             >
               <Text variant="bodySmall" color="primary">
-                {fullAddress}
+                {displayAddress}
               </Text>
               <Ionicons
                 name="open-outline"
@@ -128,7 +134,14 @@ function LocationCard({ location }: LocationCardProps) {
             </Pressable>
           ) : (
             <Text variant="bodySmall" color="textSecondary">
-              {fullAddress}
+              {displayAddress}
+            </Text>
+          )}
+
+          {/* Address-privacy note */}
+          {isProtected && (
+            <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
+              Adresse exacte communiqu{'é'}e apr{'è'}s confirmation
             </Text>
           )}
 

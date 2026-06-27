@@ -526,24 +526,35 @@ export default function ConfirmBookingScreen() {
               <View style={styles.detailContent}>
                 <Text variant="caption" color="textSecondary">Lieu</Text>
                 <Text variant="body" style={{ fontWeight: '600' }}>{location.name}</Text>
-                <Pressable
-                  onPress={() => {
-                    const fullAddress = location.address?.trim()
-                      ? `${location.address}, ${location.postalCode} ${location.city}`
-                      : `${location.postalCode} ${location.city}`;
-                    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`);
-                  }}
-                  style={({ pressed }) => [pressed && { opacity: 0.7 }]}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text variant="caption" color="primary">
-                      {location.address?.trim()
-                        ? `${location.address}, ${location.postalCode} ${location.city}`
-                        : `${location.postalCode} ${location.city}`}
+                {location.protectAddress ? (
+                  <>
+                    <Text variant="caption" color="textSecondary">
+                      {location.approxArea?.trim() || `${location.postalCode} ${location.city}`}
                     </Text>
-                    <Ionicons name="open-outline" size={12} color={colors.primary} style={{ marginLeft: 4 }} />
-                  </View>
-                </Pressable>
+                    <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                      Adresse exacte communiqu{'é'}e apr{'è'}s confirmation
+                    </Text>
+                  </>
+                ) : (
+                  <Pressable
+                    onPress={() => {
+                      const fullAddress = location.address?.trim()
+                        ? `${location.address}, ${location.postalCode} ${location.city}`
+                        : `${location.postalCode} ${location.city}`;
+                      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`);
+                    }}
+                    style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text variant="caption" color="primary">
+                        {location.address?.trim()
+                          ? `${location.address}, ${location.postalCode} ${location.city}`
+                          : `${location.postalCode} ${location.city}`}
+                      </Text>
+                      <Ionicons name="open-outline" size={12} color={colors.primary} style={{ marginLeft: 4 }} />
+                    </View>
+                  </Pressable>
+                )}
               </View>
             </View>
           )}
