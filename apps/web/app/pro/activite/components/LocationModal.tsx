@@ -89,6 +89,9 @@ export function LocationModal({
           isDefault: location.isDefault,
           type: location.type || 'fixed',
           travelRadius: location.travelRadius,
+          // Keep the existing coordinates so editing (without re-picking the
+          // address) doesn't trip the "select an address from the list" check.
+          geopoint: location.geopoint ?? null,
           protectAddress: location.protectAddress ?? false,
           approxArea: location.approxArea ?? null,
           accessInstructions: location.accessInstructions ?? null,
@@ -187,7 +190,10 @@ export function LocationModal({
         // Full address: must select from autocomplete
         if (!formData.address?.trim()) {
           newErrors.address = "L'adresse est requise";
-        } else if (!formData.geopoint) {
+        } else if (!formData.geopoint && formData.address !== location?.address) {
+          // Require a fresh autocomplete pick only when the address was actually
+          // changed (or it's a new location). Editing an existing one without
+          // touching the address — even a legacy one missing coordinates — passes.
           newErrors.address = 'Veuillez sélectionner une adresse dans la liste';
         }
       }
