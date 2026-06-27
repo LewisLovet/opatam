@@ -1,5 +1,19 @@
 import * as admin from 'firebase-admin';
-import { isAddressRevealed } from '@booking-app/shared';
+
+// Local mirror of @booking-app/shared's isAddressRevealed (functions avoid
+// runtime imports from the shared package — keep in sync).
+const ADDRESS_REVEAL_LEAD_HOURS = 48;
+function isAddressRevealed(
+  booking: { status: string; datetime: Date | string | number },
+  now: Date = new Date(),
+  leadHours: number = ADDRESS_REVEAL_LEAD_HOURS,
+): boolean {
+  if (booking.status !== 'confirmed') return false;
+  const dt =
+    booking.datetime instanceof Date ? booking.datetime : new Date(booking.datetime);
+  if (Number.isNaN(dt.getTime())) return false;
+  return now.getTime() >= dt.getTime() - leadHours * 60 * 60 * 1000;
+}
 
 /**
  * Resolve the address to put in a client email for a booking, honoring
