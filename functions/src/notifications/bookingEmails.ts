@@ -187,7 +187,7 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
 
   // Address privacy: reveal the exact street only when allowed; otherwise the
   // masked approx area already on the booking is used.
-  const locationAddress = await resolveRevealedAddress({
+  const resolvedAddress = await resolveRevealedAddress({
     locationProtected: booking.locationProtected,
     locationAddress: booking.locationAddress,
     status: booking.status,
@@ -218,7 +218,8 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
     providerName: booking.providerName,
     providerSlug,
     locationName: booking.locationName,
-    locationAddress,
+    locationAddress: resolvedAddress.address,
+    addressPending: resolvedAddress.pending,
     memberName: booking.memberName,
     cancelToken: booking.cancelToken,
     bookingId,

@@ -219,6 +219,10 @@ export interface BookingEmailData {
   providerSlug?: string;
   locationName?: string;
   locationAddress?: string;
+  /** True when the location is address-protected and not yet revealed: the
+   *  `locationAddress` holds only the approximate area, and the email must say
+   *  the exact address comes later. */
+  addressPending?: boolean;
   memberName?: string;
   cancelToken?: string;
   bookingId?: string;
@@ -258,6 +262,40 @@ export interface BookingEmailData {
 /**
  * Send confirmation email to client
  */
+/** Address-privacy aware location rows. Protected-but-not-revealed → "Secteur"
+ *  with only the approximate area and no map link. Otherwise the usual address. */
+function locationAddressRowsHtml(data: { locationAddress?: string; addressPending?: boolean }): string {
+  if (!data.locationAddress) return '';
+  const cell = (label: string) =>
+    `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${label}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>`;
+  if (data.addressPending) return cell('Secteur');
+  const maps = data.locationAddress.includes(',')
+    ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>`
+    : '';
+  return cell('Adresse') + maps;
+}
+
+/** Prominent notice telling the client when the exact address will arrive. */
+function addressPendingNoticeHtml(data: { addressPending?: boolean }): string {
+  if (!data.addressPending) return '';
+  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5;">&#x1F4CD; <strong>L&#39;adresse exacte vous sera communiqu&#233;e par email la veille de votre rendez-vous.</strong></p></div>`;
+}
+
+function addressPendingNoticeText(data: { addressPending?: boolean }): string {
+  return data.addressPending
+    ? "\n\nL'adresse exacte vous sera communiquée par email la veille de votre rendez-vous."
+    : '';
+}
+
+function locationAddressLineText(data: { locationAddress?: string; addressPending?: boolean }): string {
+  if (!data.locationAddress) return '';
+  if (data.addressPending) return `- Secteur : ${data.locationAddress}`;
+  const itin = data.locationAddress.includes(',')
+    ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}`
+    : '';
+  return `- Adresse : ${data.locationAddress}${itin}`;
+}
+
 export async function sendConfirmationEmail(data: BookingEmailData): Promise<EmailResult> {
   console.log('[EMAIL] Sending confirmation email to:', data.clientEmail);
 
@@ -1211,13 +1249,14 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>${data.locationAddress.includes(',') ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}` : ''}
+                      ${locationAddressRowsHtml(data)}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte payé</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Reste à régler</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} sur place</td></tr>` : ''}
                     </table>
                   </div>
+                  ${addressPendingNoticeHtml(data)}
                   ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; Information de ${data.businessName}</p>
                     <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;">${data.bookingNotice}</p>
@@ -1267,7 +1306,7 @@ ${data.items && data.items.length >= 2
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.locationAddress ? `- Adresse : ${data.locationAddress}${data.locationAddress.includes(',') ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}` : ''}
+${locationAddressLineText(data)}${addressPendingNoticeText(data)}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 ${data.depositPaid ? `- Acompte payé : ${formatPriceFr(data.depositPaid.amount)}` : ''}
@@ -1429,7 +1468,7 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedNewTime} - ${data.formattedNewEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>${data.locationAddress.includes(',') ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}` : ''}
+                      ${locationAddressRowsHtml(data)}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                     </table>
@@ -1476,7 +1515,7 @@ Nouveau créneau :
 - Heure : ${data.formattedNewTime} - ${data.formattedNewEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.locationAddress ? `- Adresse : ${data.locationAddress}${data.locationAddress.includes(',') ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}` : ''}
+${locationAddressLineText(data)}${addressPendingNoticeText(data)}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
@@ -1536,13 +1575,14 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.locationAddress ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>${data.locationAddress.includes(',') ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>` : ''}` : ''}
+                      ${locationAddressRowsHtml(data)}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte payé</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Reste à régler</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} sur place</td></tr>` : ''}
                     </table>
                   </div>
+                  ${addressPendingNoticeHtml(data)}
                   ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; Information de ${data.businessName}</p>
                     <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;">${data.bookingNotice}</p>
@@ -1588,7 +1628,7 @@ Détails de votre rendez-vous :
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.locationAddress ? `- Adresse : ${data.locationAddress}${data.locationAddress.includes(',') ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}` : ''}` : ''}
+${locationAddressLineText(data)}${addressPendingNoticeText(data)}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
