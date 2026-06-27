@@ -33,3 +33,19 @@ export function isAddressRevealed(
   const revealFromMs = dt.getTime() - leadHours * 60 * 60 * 1000;
   return now.getTime() >= revealFromMs;
 }
+
+/**
+ * Public, non-revealing label for a location — what a client may see BEFORE the
+ * exact address is disclosed. Uses the explicit approximate area, falling back
+ * to the city (then postal code). Never includes the street.
+ */
+export function getPublicAreaLabel(loc: {
+  approxArea?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+}): string {
+  const area = loc.approxArea?.trim();
+  if (area) return area;
+  if (loc.city?.trim()) return loc.city.trim();
+  return loc.postalCode?.trim() || '';
+}

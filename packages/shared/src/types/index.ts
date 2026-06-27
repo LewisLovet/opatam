@@ -894,7 +894,13 @@ export interface Booking {
   memberColor: string | null;
   locationId: string;
   locationName: string;
+  /** Display address. For a protected location this is the APPROX area only —
+   *  the exact street is never snapshotted here (booking docs are public). */
   locationAddress: string;
+  /** True when the location has address-privacy on (exact address withheld). */
+  locationProtected?: boolean;
+  /** Public approximate area for a protected location (e.g. "Paris 17e"). */
+  locationApproxArea?: string | null;
   serviceId: string;
   serviceName: string;
   /** Denormalised from Service.color at booking creation so the

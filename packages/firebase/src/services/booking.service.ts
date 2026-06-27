@@ -23,6 +23,7 @@ import {
   validateServiceSelections,
   emptyServiceSelections,
   isAccessOverrideActive,
+  getPublicAreaLabel,
   type CreateBookingInput,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
@@ -258,9 +259,16 @@ export class BookingService {
       memberColor: member?.color || null,
       locationId: validated.locationId,
       locationName: location.name,
-      locationAddress: location.address
-        ? `${location.address}, ${location.postalCode} ${location.city}`
-        : `${location.postalCode} ${location.city}`,
+      // Address privacy: booking docs are publicly readable, so for a protected
+      // location we snapshot only the approximate area — never the exact street.
+      // The exact address is disclosed later per isAddressRevealed (UI + emails).
+      locationProtected: !!location.protectAddress,
+      locationApproxArea: location.protectAddress ? getPublicAreaLabel(location) : null,
+      locationAddress: location.protectAddress
+        ? getPublicAreaLabel(location)
+        : location.address
+          ? `${location.address}, ${location.postalCode} ${location.city}`
+          : `${location.postalCode} ${location.city}`,
       // Top-level = first prestation; aggregate name when multi.
       serviceId: firstService.id,
       serviceName: aggregateServiceName,
