@@ -19,6 +19,7 @@ import type {
   BookingSelectedOption,
   BookingSelectedInfo,
 } from '@booking-app/shared';
+import { resolveRevealedAddress } from '../utils/addressReveal';
 
 // Types for booking data from Firestore
 interface BookingData {
@@ -53,6 +54,8 @@ interface BookingData {
   cancelToken?: string;
   locationName?: string;
   locationAddress?: string;
+  locationId?: string;
+  locationProtected?: boolean;
   memberName?: string;
   deposit?: {
     amount: number;
@@ -182,6 +185,17 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
         }
       : null;
 
+  // Address privacy: reveal the exact street only when allowed; otherwise the
+  // masked approx area already on the booking is used.
+  const locationAddress = await resolveRevealedAddress({
+    locationProtected: booking.locationProtected,
+    locationAddress: booking.locationAddress,
+    status: booking.status,
+    datetime: booking.datetime.toDate(),
+    providerId: booking.providerId,
+    locationId: booking.locationId || '',
+  });
+
   return {
     clientEmail: booking.clientInfo.email,
     clientName: booking.clientInfo.name,
@@ -204,7 +218,7 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
     providerName: booking.providerName,
     providerSlug,
     locationName: booking.locationName,
-    locationAddress: booking.locationAddress,
+    locationAddress,
     memberName: booking.memberName,
     cancelToken: booking.cancelToken,
     bookingId,

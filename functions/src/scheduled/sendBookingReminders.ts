@@ -163,6 +163,8 @@ export const sendBookingReminders = onSchedule(
                 cancelToken: data.cancelToken,
                 locationName: data.locationName,
                 locationAddress: data.locationAddress,
+                locationId: data.locationId,
+                locationProtected: data.locationProtected,
                 memberName: data.memberName,
               },
               id,
