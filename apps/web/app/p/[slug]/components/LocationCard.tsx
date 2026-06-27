@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, Car, Building2, Navigation, ExternalLink } from 'lucide-react';
+import { MapPin, Car, Building2, Navigation, ExternalLink, Lock } from 'lucide-react';
 import { getCountryLabel } from '@booking-app/shared/constants';
 
 interface Location {
@@ -12,6 +12,8 @@ interface Location {
   countryCode?: string;
   type: 'fixed' | 'mobile';
   travelRadius: number | null;
+  protectAddress?: boolean;
+  approxArea?: string | null;
 }
 
 interface LocationCardProps {
@@ -20,6 +22,11 @@ interface LocationCardProps {
 
 export function LocationCard({ location }: LocationCardProps) {
   const isFixed = location.type === 'fixed';
+  // Address-privacy: a protected fixed location never shows its exact street
+  // publicly — only the approximate area, until the booking is confirmed & near.
+  const masked = isFixed && !!location.protectAddress;
+  const approxLabel =
+    location.approxArea?.trim() || [location.postalCode, location.city].filter(Boolean).join(' ');
   const hasStreetAddress = !!location.address?.trim();
   const addressContainsCity = hasStreetAddress && location.city && location.address.includes(location.city);
   const fullAddress = hasStreetAddress
@@ -68,7 +75,20 @@ export function LocationCard({ location }: LocationCardProps) {
               </span>
             </div>
 
-            {isFixed ? (
+            {isFixed && masked ? (
+              <>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  {approxLabel}
+                  {location.countryCode && location.countryCode !== 'FR' && (
+                    <>, {getCountryLabel(location.countryCode)}</>
+                  )}
+                </p>
+                <p className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                  <Lock className="w-3.5 h-3.5" />
+                  Adresse exacte communiquée après confirmation
+                </p>
+              </>
+            ) : isFixed ? (
               <>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                   {addressContainsCity ? (

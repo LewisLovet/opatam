@@ -292,7 +292,8 @@ export default async function ProviderPage({ params }: PageProps) {
         ...(location && {
           address: {
             '@type': 'PostalAddress',
-            ...(location.address && { streetAddress: location.address }),
+            // Never expose the street of a protected location in SEO markup.
+            ...(location.address && !location.protectAddress && { streetAddress: location.address }),
             addressLocality: location.city,
             postalCode: location.postalCode,
             addressCountry: location.countryCode || 'FR',

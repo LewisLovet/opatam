@@ -38,6 +38,8 @@ interface Location {
   city: string;
   postalCode: string;
   type: 'fixed' | 'mobile';
+  protectAddress?: boolean;
+  approxArea?: string | null;
 }
 
 interface Provider {
@@ -235,11 +237,22 @@ export function BookingRecap({
                 <p className="font-medium text-gray-900 dark:text-white">
                   {location.name}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {location.address
-                    ? `${location.address}, ${location.postalCode} ${location.city}`
-                    : `${location.postalCode} ${location.city}`}
-                </p>
+                {location.protectAddress ? (
+                  <>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {location.approxArea?.trim() || `${location.postalCode} ${location.city}`.trim()}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                      Adresse exacte communiquée après confirmation
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {location.address
+                      ? `${location.address}, ${location.postalCode} ${location.city}`
+                      : `${location.postalCode} ${location.city}`}
+                  </p>
+                )}
               </div>
             </div>
           </div>
