@@ -223,6 +223,9 @@ export interface BookingEmailData {
    *  `locationAddress` holds only the approximate area, and the email must say
    *  the exact address comes later. */
   addressPending?: boolean;
+  /** Access details (interphone, floor, door code…) — only set when the exact
+   *  address is revealed (reminder, or confirmation ≤48h). */
+  accessInstructions?: string | null;
   memberName?: string;
   cancelToken?: string;
   bookingId?: string;
@@ -264,36 +267,40 @@ export interface BookingEmailData {
  */
 /** Address-privacy aware location rows. Protected-but-not-revealed → "Secteur"
  *  with only the approximate area and no map link. Otherwise the usual address. */
-function locationAddressRowsHtml(data: { locationAddress?: string; addressPending?: boolean }): string {
+function locationAddressRowsHtml(data: { locationAddress?: string; addressPending?: boolean; accessInstructions?: string | null }): string {
   if (!data.locationAddress) return '';
-  const cell = (label: string) =>
-    `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${label}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;">${data.locationAddress}</td></tr>`;
-  if (data.addressPending) return cell('Secteur');
+  const row = (label: string, value: string, extra = '') =>
+    `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; vertical-align: top;">${label}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;${extra}">${value}</td></tr>`;
+  if (data.addressPending) return row('Secteur', data.locationAddress);
   const maps = data.locationAddress.includes(',')
     ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>`
     : '';
-  return cell('Adresse') + maps;
+  const access = data.accessInstructions
+    ? row('Accès', data.accessInstructions, ' white-space: pre-line;')
+    : '';
+  return row('Adresse', data.locationAddress) + maps + access;
 }
 
 /** Prominent notice telling the client when the exact address will arrive. */
 function addressPendingNoticeHtml(data: { addressPending?: boolean }): string {
   if (!data.addressPending) return '';
-  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5;">&#x1F4CD; <strong>L&#39;adresse exacte vous sera communiqu&#233;e par email la veille de votre rendez-vous.</strong></p></div>`;
+  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5;">&#x1F4CD; <strong>L&#39;adresse exacte et les informations d&#39;acc&#232;s vous seront communiqu&#233;es avec votre rappel, avant le rendez-vous.</strong></p></div>`;
 }
 
 function addressPendingNoticeText(data: { addressPending?: boolean }): string {
   return data.addressPending
-    ? "\n\nL'adresse exacte vous sera communiquée par email la veille de votre rendez-vous."
+    ? "\n\nL'adresse exacte et les informations d'accès vous seront communiquées avec votre rappel, avant le rendez-vous."
     : '';
 }
 
-function locationAddressLineText(data: { locationAddress?: string; addressPending?: boolean }): string {
+function locationAddressLineText(data: { locationAddress?: string; addressPending?: boolean; accessInstructions?: string | null }): string {
   if (!data.locationAddress) return '';
   if (data.addressPending) return `- Secteur : ${data.locationAddress}`;
   const itin = data.locationAddress.includes(',')
     ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}`
     : '';
-  return `- Adresse : ${data.locationAddress}${itin}`;
+  const access = data.accessInstructions ? `\n- Accès : ${data.accessInstructions}` : '';
+  return `- Adresse : ${data.locationAddress}${itin}${access}`;
 }
 
 export async function sendConfirmationEmail(data: BookingEmailData): Promise<EmailResult> {

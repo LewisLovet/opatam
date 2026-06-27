@@ -158,7 +158,11 @@ async function getProviderSlug(providerId: string): Promise<string | undefined> 
 /**
  * Convert booking data to email data format
  */
-async function toEmailData(booking: BookingData, bookingId: string): Promise<BookingEmailData | null> {
+async function toEmailData(
+  booking: BookingData,
+  bookingId: string,
+  opts?: { forceRevealAddress?: boolean },
+): Promise<BookingEmailData | null> {
   if (!booking.clientInfo?.email) {
     console.log('[EMAIL] No client email, skipping');
     return null;
@@ -187,14 +191,17 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
 
   // Address privacy: reveal the exact street only when allowed; otherwise the
   // masked approx area already on the booking is used.
-  const resolvedAddress = await resolveRevealedAddress({
-    locationProtected: booking.locationProtected,
-    locationAddress: booking.locationAddress,
-    status: booking.status,
-    datetime: booking.datetime.toDate(),
-    providerId: booking.providerId,
-    locationId: booking.locationId || '',
-  });
+  const resolvedAddress = await resolveRevealedAddress(
+    {
+      locationProtected: booking.locationProtected,
+      locationAddress: booking.locationAddress,
+      status: booking.status,
+      datetime: booking.datetime.toDate(),
+      providerId: booking.providerId,
+      locationId: booking.locationId || '',
+    },
+    { forceReveal: opts?.forceRevealAddress },
+  );
 
   return {
     clientEmail: booking.clientInfo.email,
@@ -220,6 +227,7 @@ async function toEmailData(booking: BookingData, bookingId: string): Promise<Boo
     locationName: booking.locationName,
     locationAddress: resolvedAddress.address,
     addressPending: resolvedAddress.pending,
+    accessInstructions: resolvedAddress.accessInstructions,
     memberName: booking.memberName,
     cancelToken: booking.cancelToken,
     bookingId,
@@ -452,7 +460,8 @@ export async function emailClientBookingReminder(
     return;
   }
 
-  const emailData = await toEmailData(booking, bookingId);
+  // Reminder always reveals the exact address + access instructions.
+  const emailData = await toEmailData(booking, bookingId, { forceRevealAddress: true });
   if (!emailData) return;
 
   const result = await sendReminderEmail(emailData, reminderType, minutesUntil);
