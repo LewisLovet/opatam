@@ -565,6 +565,7 @@ export default function BookingDetailScreen() {
   const addrText = addr?.address || booking.locationAddress || booking.locationName || '';
   const addrRevealed = addr ? !addr.protected || addr.revealed : hasStreetAddress;
   const addrPending = !!(addr?.protected && !addr.revealed);
+  const addrRevealedProtected = !!(addr?.protected && addr.revealed);
   const addrHasMaps = addrRevealed && addrText.includes(',');
   const hasPhone = !!(booking as any).providerPhone; // Assuming providerPhone might exist
   const isPast = visualStatus === 'past';
@@ -709,6 +710,21 @@ export default function BookingDetailScreen() {
                 onPress={addrHasMaps ? () => openMaps(addrText) : undefined}
                 linkText={addrHasMaps ? 'Voir sur le plan' : undefined}
               />
+            )}
+            {addrRevealedProtected && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.xs,
+                  marginTop: spacing.xs,
+                }}
+              >
+                <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
+                <Text variant="caption" style={{ color: '#16a34a', fontWeight: '600' }}>
+                  Adresse exacte disponible
+                </Text>
+              </View>
             )}
             {addrPending && (
               <View
