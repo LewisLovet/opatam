@@ -275,10 +275,20 @@ function locationAddressRowsHtml(data: { locationAddress?: string; addressPendin
   const maps = data.locationAddress.includes(',')
     ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>`
     : '';
-  const access = data.accessInstructions
-    ? row('Accès', data.accessInstructions, ' white-space: pre-line;')
+  return row('Adresse', data.locationAddress) + maps;
+}
+
+/** Separate, highlighted block for the access details — shown only once the
+ *  address is revealed. Kept out of the recap table so it stands out. */
+function accessInstructionsBlockHtml(data: { accessInstructions?: string | null }): string {
+  if (!data.accessInstructions) return '';
+  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #1e3a8a;">&#x1F511; Informations d&#39;acc&#232;s</p><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5; white-space: pre-line;">${data.accessInstructions}</p></div>`;
+}
+
+function accessInstructionsBlockText(data: { accessInstructions?: string | null }): string {
+  return data.accessInstructions
+    ? `\n\nInformations d'accès :\n${data.accessInstructions}`
     : '';
-  return row('Adresse', data.locationAddress) + maps + access;
 }
 
 /** Prominent notice telling the client when the exact address will arrive. */
@@ -299,8 +309,7 @@ function locationAddressLineText(data: { locationAddress?: string; addressPendin
   const itin = data.locationAddress.includes(',')
     ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}`
     : '';
-  const access = data.accessInstructions ? `\n- Accès : ${data.accessInstructions}` : '';
-  return `- Adresse : ${data.locationAddress}${itin}${access}`;
+  return `- Adresse : ${data.locationAddress}${itin}`;
 }
 
 export async function sendConfirmationEmail(data: BookingEmailData): Promise<EmailResult> {
@@ -1264,6 +1273,7 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                     </table>
                   </div>
                   ${addressPendingNoticeHtml(data)}
+                  ${accessInstructionsBlockHtml(data)}
                   ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; Information de ${data.businessName}</p>
                     <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;">${data.bookingNotice}</p>
@@ -1313,7 +1323,7 @@ ${data.items && data.items.length >= 2
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${locationAddressLineText(data)}${addressPendingNoticeText(data)}
+${locationAddressLineText(data)}${addressPendingNoticeText(data)}${accessInstructionsBlockText(data)}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 ${data.depositPaid ? `- Acompte payé : ${formatPriceFr(data.depositPaid.amount)}` : ''}
@@ -1522,7 +1532,7 @@ Nouveau créneau :
 - Heure : ${data.formattedNewTime} - ${data.formattedNewEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${locationAddressLineText(data)}${addressPendingNoticeText(data)}
+${locationAddressLineText(data)}${addressPendingNoticeText(data)}${accessInstructionsBlockText(data)}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
@@ -1590,6 +1600,7 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                     </table>
                   </div>
                   ${addressPendingNoticeHtml(data)}
+                  ${accessInstructionsBlockHtml(data)}
                   ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; Information de ${data.businessName}</p>
                     <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;">${data.bookingNotice}</p>
@@ -1635,7 +1646,7 @@ Détails de votre rendez-vous :
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
 - Durée : ${data.duration} min
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${locationAddressLineText(data)}${addressPendingNoticeText(data)}
+${locationAddressLineText(data)}${addressPendingNoticeText(data)}${accessInstructionsBlockText(data)}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}
 
