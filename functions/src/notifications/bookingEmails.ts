@@ -450,7 +450,7 @@ export async function emailClientBookingRescheduled(
 export async function emailClientBookingReminder(
   booking: BookingData,
   bookingId: string,
-  reminderType: '2h' | '24h',
+  reminderType: '2h' | '24h' | '48h',
   minutesUntil?: number
 ): Promise<void> {
   console.log('[EMAIL] emailClientBookingReminder:', booking.clientInfo?.email, reminderType);

@@ -450,7 +450,7 @@ export async function notifyProviderServiceChange(
  */
 export async function notifyClientBookingReminder(
   booking: BookingData,
-  reminderType: '2h' | '24h',
+  reminderType: '2h' | '24h' | '48h',
   minutesUntil?: number,
   bookingId?: string
 ): Promise<void> {
@@ -479,6 +479,8 @@ export async function notifyClientBookingReminder(
   let timeLabel: string;
   if (reminderType === '24h') {
     timeLabel = 'demain';
+  } else if (reminderType === '48h') {
+    timeLabel = 'dans 2 jours';
   } else if (minutesUntil != null) {
     if (minutesUntil < 60) {
       const mins = Math.round(minutesUntil);
@@ -498,7 +500,9 @@ export async function notifyClientBookingReminder(
 
   const baseBody = reminderType === '24h'
     ? `Rappel : votre RDV ${booking.serviceName} est demain, le ${dateStr}`
-    : `Rappel : votre RDV ${booking.serviceName} est ${timeLabel} (${dateStr})`;
+    : reminderType === '48h'
+      ? `Rappel : votre RDV ${booking.serviceName} est dans 2 jours, le ${dateStr}`
+      : `Rappel : votre RDV ${booking.serviceName} est ${timeLabel} (${dateStr})`;
   // For a protected location, make it explicit that the exact address is now
   // available (without putting the address itself on the lock screen).
   const body = booking.locationProtected

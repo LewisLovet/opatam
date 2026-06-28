@@ -1093,7 +1093,7 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
  */
 export async function sendReminderEmail(
   data: BookingEmailData,
-  reminderType: '2h' | '24h',
+  reminderType: '2h' | '24h' | '48h',
   minutesUntil?: number
 ): Promise<EmailResult> {
   console.log('[EMAIL] Sending reminder email to:', data.clientEmail);
@@ -1158,10 +1158,14 @@ export async function sendReminderEmail(
     // 2h reminder = dynamic "dans X heures/minutes"
     const timeLabel = reminderType === '24h'
       ? 'demain'
-      : (minutesUntil != null ? formatTimeUntilFr(minutesUntil) : 'dans 2 heures');
+      : reminderType === '48h'
+        ? 'dans 2 jours'
+        : (minutesUntil != null ? formatTimeUntilFr(minutesUntil) : 'dans 2 heures');
     const subject = reminderType === '24h'
       ? `Rappel : votre rendez-vous demain - ${data.serviceName}`
-      : `Rappel : votre rendez-vous ${timeLabel} - ${data.serviceName}`;
+      : reminderType === '48h'
+        ? `Rappel : votre rendez-vous dans 2 jours - ${data.serviceName}`
+        : `Rappel : votre rendez-vous ${timeLabel} - ${data.serviceName}`;
 
     const { error } = await getResend().emails.send({
       from: emailConfig.from,
@@ -1567,7 +1571,7 @@ interface ReminderTemplateData extends BookingEmailData {
   cancelUrl: string | null;
   icsUrl: string | null;
   googleCalendarUrl: string;
-  reminderType: '2h' | '24h';
+  reminderType: '2h' | '24h' | '48h';
   timeLabel: string;
 }
 

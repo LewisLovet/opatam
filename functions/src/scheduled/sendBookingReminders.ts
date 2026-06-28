@@ -17,7 +17,7 @@ import { serverTracker } from '../utils/serverTracker';
 interface ReminderResult {
   bookingId: string;
   clientName: string;
-  reminderType: '2h' | '24h';
+  reminderType: '2h' | '24h' | '48h';
   pushSent: boolean;
   emailSent: boolean;
   error: string | null;
@@ -48,7 +48,7 @@ export const sendBookingReminders = onSchedule(
 
     const db = admin.firestore();
     const now = new Date();
-    const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000); // now + 25 hours
+    const windowEnd = new Date(now.getTime() + 49 * 60 * 60 * 1000); // now + 49h (couvre le rappel 48h de révélation d'adresse)
 
     try {
       // 1. Query confirmed bookings in the reminder window
@@ -67,8 +67,11 @@ export const sendBookingReminders = onSchedule(
       const bookingsToRemind: Array<{
         id: string;
         data: FirebaseFirestore.DocumentData;
-        reminderType: '2h' | '24h';
+        reminderType: '2h' | '24h' | '48h';
         minutesUntil: number;
+        // 'near' = rappel habituel (24h/2h, 1 par résa). 'reveal' = rappel 48h
+        // qui révèle l'adresse (lieux protégés uniquement), dédupliqué à part.
+        kind: 'near' | 'reveal';
       }> = [];
 
       for (const doc of snapshot.docs) {
@@ -89,25 +92,39 @@ export const sendBookingReminders = onSchedule(
         const isToday = todayStr === bookingStr;
         const isTomorrow = tomorrowStr === bookingStr;
 
-        // Determine reminder type based on actual calendar day
-        let reminderType: '2h' | '24h' | null = null;
+        // Rappel proche (24h / 2h) — comportement inchangé : 1 par résa.
+        let nearType: '2h' | '24h' | null = null;
         if (hoursUntil <= 3) {
-          reminderType = '2h'; // Imminent — "dans X heures"
+          nearType = '2h'; // Imminent — "dans X heures"
         } else if (isToday) {
-          reminderType = '2h'; // Still today — use dynamic timing, NOT "demain"
+          nearType = '2h'; // Still today — use dynamic timing, NOT "demain"
         } else if (isTomorrow && hoursUntil <= 25) {
-          reminderType = '24h'; // Actually tomorrow — safe to say "demain"
-        } else {
-          continue; // Not yet time
+          nearType = '24h'; // Actually tomorrow — safe to say "demain"
         }
 
-        // Check deduplication: skip if any reminder already sent
-        const remindersSent = data.remindersSent || [];
-        if (remindersSent.length > 0) {
+        const nearAlreadySent = (data.remindersSent || []).length > 0;
+        if (nearType && !nearAlreadySent) {
+          bookingsToRemind.push({ id: doc.id, data, reminderType: nearType, minutesUntil, kind: 'near' });
           continue;
         }
 
-        bookingsToRemind.push({ id: doc.id, data, reminderType, minutesUntil });
+        // Rappel 48h de révélation d'adresse — uniquement pour un lieu protégé,
+        // une seule fois, dans la fenêtre (25h, 49h]. Exclu si la résa a été
+        // réservée <48h à l'avance (l'adresse a alors déjà été révélée à la
+        // confirmation ≤48h) → évite un doublon avec l'email de confirmation.
+        const createdAt = data.createdAt?.toDate?.();
+        const bookedWellInAdvance = createdAt
+          ? bookingDatetime.getTime() - createdAt.getTime() > 48 * 60 * 60 * 1000
+          : true;
+        if (
+          data.locationProtected &&
+          bookedWellInAdvance &&
+          hoursUntil > 25 &&
+          hoursUntil <= 49 &&
+          !data.addressRevealReminderSentAt
+        ) {
+          bookingsToRemind.push({ id: doc.id, data, reminderType: '48h', minutesUntil, kind: 'reveal' });
+        }
       }
 
       const skipped = snapshot.size - bookingsToRemind.length;
@@ -117,10 +134,11 @@ export const sendBookingReminders = onSchedule(
       async function processReminder(booking: {
         id: string;
         data: FirebaseFirestore.DocumentData;
-        reminderType: '2h' | '24h';
+        reminderType: '2h' | '24h' | '48h';
         minutesUntil: number;
+        kind: 'near' | 'reveal';
       }): Promise<ReminderResult> {
-        const { id, data, reminderType, minutesUntil } = booking;
+        const { id, data, reminderType, minutesUntil, kind } = booking;
         const clientName = data.clientInfo?.name || 'Client';
 
         let pushSent = false;
@@ -178,10 +196,17 @@ export const sendBookingReminders = onSchedule(
             console.error(`[EMAIL] Error for booking ${id}:`, emailError);
           }
 
-          // Update booking with remindersSent
-          await db.collection('bookings').doc(id).update({
-            remindersSent: FieldValue.arrayUnion(Timestamp.fromDate(now)),
-          });
+          // Dédup : le rappel 48h de révélation a son propre marqueur pour ne pas
+          // bloquer le rappel proche (24h/2h) qui suivra.
+          if (kind === 'reveal') {
+            await db.collection('bookings').doc(id).update({
+              addressRevealReminderSentAt: Timestamp.fromDate(now),
+            });
+          } else {
+            await db.collection('bookings').doc(id).update({
+              remindersSent: FieldValue.arrayUnion(Timestamp.fromDate(now)),
+            });
+          }
           serverTracker.trackWrite('bookings', 1);
 
           console.log(`[${clientName}] ${reminderType} reminder sent (push: ${pushSent}, email: ${emailSent})`);
