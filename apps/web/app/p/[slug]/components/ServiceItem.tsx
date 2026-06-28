@@ -10,6 +10,7 @@ import {
   resolveServiceDiscount,
   getDiscountDaysLeft,
   formatPromoCountdown,
+  PROMO_URGENCY_DAYS,
   type ServiceVariation,
   type ServiceOption,
   type ServiceDiscount,
@@ -76,7 +77,7 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
   const promoDaysLeft = hasPromo
     ? getDiscountDaysLeft(resolveServiceDiscount(service, globalDiscount))
     : null;
-  const showCountdown = promoDaysLeft != null && promoDaysLeft <= 7;
+  const showCountdown = promoDaysLeft != null && promoDaysLeft <= PROMO_URGENCY_DAYS;
 
   useEffect(() => {
     // Small delay to let the layout settle before measuring

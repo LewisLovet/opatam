@@ -2,7 +2,7 @@
 
 import { Clock, MapPin, User, Calendar } from 'lucide-react';
 import Image from 'next/image';
-import { formatPromoCountdown } from '@booking-app/shared';
+import { formatPromoCountdown, PROMO_URGENCY_DAYS } from '@booking-app/shared';
 
 interface TimeSlotWithDate {
   date: string;
@@ -146,13 +146,21 @@ export function BookingRecap({
   // Active promo → show the crossed-out original + a "−X%" badge.
   const hasPromo =
     discountPercent != null && originalPrice != null && originalPrice > displayPrice;
-  // Urgency line — "Plus que N jours · jusqu'au 5 juil."
-  const promoCountdownText =
-    hasPromo && promoDaysLeft != null
-      ? `${formatPromoCountdown(promoDaysLeft)}${
-          promoEndsAt ? ` · jusqu'au ${formatPromoDate(promoEndsAt)}` : ''
-        }`
-      : null;
+  // Promo deadline line. Urgency wording ("Plus que N jours") only kicks in
+  // within PROMO_URGENCY_DAYS of the end; before that we just state the
+  // validity date so it reads informative, not pushy.
+  let promoCountdownText: string | null = null;
+  if (hasPromo) {
+    const datePart = promoEndsAt ? `jusqu'au ${formatPromoDate(promoEndsAt)}` : null;
+    const urgent = promoDaysLeft != null && promoDaysLeft <= PROMO_URGENCY_DAYS;
+    if (urgent) {
+      promoCountdownText = datePart
+        ? `${formatPromoCountdown(promoDaysLeft!)} · ${datePart}`
+        : formatPromoCountdown(promoDaysLeft!);
+    } else if (datePart) {
+      promoCountdownText = `Offre valable ${datePart}`;
+    }
+  }
 
   if (compact) {
     // Mobile compact version

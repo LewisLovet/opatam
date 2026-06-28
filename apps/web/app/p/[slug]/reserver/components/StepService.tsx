@@ -8,6 +8,7 @@ import {
   resolveServiceDiscount,
   getDiscountDaysLeft,
   formatPromoCountdown,
+  PROMO_URGENCY_DAYS,
   type ServiceVariation,
   type ServiceOption,
   type ServiceInfoField,
@@ -108,7 +109,7 @@ function ServiceButton({
   const promoDaysLeft = hasPromo
     ? getDiscountDaysLeft(resolveServiceDiscount(service, globalDiscount))
     : null;
-  const showCountdown = promoDaysLeft != null && promoDaysLeft <= 7;
+  const showCountdown = promoDaysLeft != null && promoDaysLeft <= PROMO_URGENCY_DAYS;
 
   const inCart = cartCount > 0;
 
