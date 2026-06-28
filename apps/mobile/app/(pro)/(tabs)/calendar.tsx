@@ -18,13 +18,14 @@ import {
   UIManager,
   Modal,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { memberService, schedulingService } from '@booking-app/firebase';
-import type { Member, BlockedSlot } from '@booking-app/shared';
+import type { Member, BlockedSlot, Service } from '@booking-app/shared';
 import { ACTIVITY_CATEGORY_META } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
@@ -53,7 +54,7 @@ if (
 // Types
 // ---------------------------------------------------------------------------
 
-type ViewMode = 'day' | 'week';
+type ViewMode = 'day' | 'week' | 'month';
 
 // Status filter kept outside component to avoid new array on every render
 const CALENDAR_STATUS_FILTER: ('pending' | 'confirmed')[] = ['pending', 'confirmed'];
@@ -308,25 +309,42 @@ interface ViewToggleProps {
 }
 
 function ViewToggle({ mode, onChange }: ViewToggleProps) {
-  const { colors, spacing, radius, shadows: themeShadows } = useTheme();
-  const slideAnim = useRef(new Animated.Value(mode === 'day' ? 0 : 1)).current;
+  const { colors, radius, shadows: themeShadows } = useTheme();
+  const idx = mode === 'day' ? 0 : mode === 'week' ? 1 : 2;
+  const slideAnim = useRef(new Animated.Value(idx)).current;
 
   useEffect(() => {
     Animated.spring(slideAnim, {
-      toValue: mode === 'day' ? 0 : 1,
+      toValue: idx,
       useNativeDriver: false,
       tension: 300,
       friction: 25,
     }).start();
-  }, [mode, slideAnim]);
+  }, [idx, slideAnim]);
 
-  const toggleWidth = 200;
-  const pillWidth = toggleWidth / 2;
+  const toggleWidth = 246;
+  const pillWidth = toggleWidth / 3;
 
   const translateX = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [2, pillWidth - 2],
+    inputRange: [0, 1, 2],
+    outputRange: [2, pillWidth + 2, 2 * pillWidth + 2],
   });
+
+  const item = (m: ViewMode, label: string) => (
+    <Pressable
+      onPress={() => onChange(m)}
+      style={[styles.toggleButton, { width: pillWidth }]}
+      hitSlop={4}
+    >
+      <Text
+        variant="label"
+        color={mode === m ? 'text' : 'textSecondary'}
+        style={mode === m ? styles.toggleTextActive : undefined}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
 
   return (
     <View
@@ -354,36 +372,288 @@ function ViewToggle({ mode, onChange }: ViewToggleProps) {
         ]}
       />
 
-      {/* Day button */}
-      <Pressable
-        onPress={() => onChange('day')}
-        style={[styles.toggleButton, { width: pillWidth }]}
-        hitSlop={4}
-      >
-        <Text
-          variant="label"
-          color={mode === 'day' ? 'text' : 'textSecondary'}
-          style={mode === 'day' ? styles.toggleTextActive : undefined}
-        >
-          Jour
-        </Text>
-      </Pressable>
-
-      {/* Week button */}
-      <Pressable
-        onPress={() => onChange('week')}
-        style={[styles.toggleButton, { width: pillWidth }]}
-        hitSlop={4}
-      >
-        <Text
-          variant="label"
-          color={mode === 'week' ? 'text' : 'textSecondary'}
-          style={mode === 'week' ? styles.toggleTextActive : undefined}
-        >
-          Semaine
-        </Text>
-      </Pressable>
+      {item('day', 'Jour')}
+      {item('week', 'Semaine')}
+      {item('month', 'Mois')}
     </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Month View Component (availability overview — mirrors the client calendar)
+// ---------------------------------------------------------------------------
+
+type MonthDayStatus = 'available' | 'almost_full' | 'full' | 'closed';
+
+function monthDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+interface MonthCalendarProps {
+  providerId: string;
+  selectedDate: Date;
+  services: WithId<Service>[];
+  /** Resolved member whose schedule drives the grid (member-centric model). */
+  memberId: string | null;
+  maxBookingAdvance: number;
+  onDayPress: (date: Date) => void;
+}
+
+function MonthCalendar({
+  providerId,
+  selectedDate,
+  services,
+  memberId,
+  maxBookingAdvance,
+  onDayPress,
+}: MonthCalendarProps) {
+  const { colors, spacing, radius } = useTheme();
+  // null = service-agnostic occupancy mode (just statuses).
+  const [serviceId, setServiceId] = useState<string | null>(null);
+  const [summary, setSummary] = useState<
+    Record<string, { status: MonthDayStatus; capacity?: number }>
+  >({});
+  const [loading, setLoading] = useState(false);
+
+  const { gridStart, gridEnd, days } = useMemo(() => {
+    const first = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    const dow = first.getDay();
+    const offset = dow === 0 ? 6 : dow - 1; // back to Monday
+    const start = new Date(first);
+    start.setDate(first.getDate() - offset);
+    start.setHours(0, 0, 0, 0);
+    const arr = Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+    const end = new Date(arr[41]);
+    end.setHours(23, 59, 59, 999);
+    return { gridStart: start, gridEnd: end, days: arr };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!providerId || !memberId) {
+      setSummary({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const map: Record<string, { status: MonthDayStatus; capacity?: number }> = {};
+        if (serviceId) {
+          const ds = await schedulingService.getAvailabilitySummary({
+            providerId,
+            serviceId,
+            memberId,
+            startDate: gridStart,
+            endDate: gridEnd,
+          });
+          for (const d of ds) map[d.date] = { status: d.status, capacity: d.capacity };
+        } else {
+          const ds = await schedulingService.getOccupancySummary({
+            providerId,
+            memberId,
+            startDate: gridStart,
+            endDate: gridEnd,
+          });
+          for (const d of ds) map[d.date] = { status: d.status };
+        }
+        if (!cancelled) setSummary(map);
+      } catch (e) {
+        if (!cancelled) console.error('[MonthCalendar]', e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerId, memberId, serviceId, gridStart.getTime(), gridEnd.getTime()]);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const horizon = new Date(today);
+  horizon.setDate(horizon.getDate() + maxBookingAdvance);
+  horizon.setHours(23, 59, 59, 999);
+  const horizonLabel = horizon.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const gridBeyond = days[41] > horizon;
+  const month = selectedDate.getMonth();
+  const serviceMode = serviceId !== null;
+
+  const DOT: Record<MonthDayStatus, string> = {
+    available: '#10b981',
+    almost_full: '#f59e0b',
+    full: '#f43f5e',
+    closed: colors.border,
+  };
+  const WEEK = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const chips: { id: string | null; name: string }[] = [
+    { id: null, name: 'Vue générale' },
+    ...services.map((s) => ({ id: s.id, name: s.name })),
+  ];
+
+  return (
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing['5xl'] }}
+    >
+      {/* Service chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginVertical: spacing.md }}
+        contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
+      >
+        {chips.map((c) => {
+          const active = (c.id ?? null) === serviceId;
+          return (
+            <Pressable
+              key={c.id ?? 'gen'}
+              onPress={() => setServiceId(c.id)}
+              style={{
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.xs,
+                borderRadius: radius.full,
+                backgroundColor: active ? colors.primary : colors.surfaceSecondary,
+              }}
+            >
+              <Text
+                variant="caption"
+                style={{ color: active ? '#FFFFFF' : colors.textSecondary, fontWeight: active ? '600' : '400' }}
+              >
+                {c.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Weekday headers */}
+      <View style={{ flexDirection: 'row' }}>
+        {WEEK.map((w, i) => (
+          <View key={i} style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}>
+            <Text variant="caption" color="textSecondary">
+              {w}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Day grid */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        {days.map((d, i) => {
+          const s = summary[monthDateKey(d)];
+          const status: MonthDayStatus = s?.status ?? 'closed';
+          const inMonth = d.getMonth() === month;
+          const isPast = d < today;
+          const isBeyond = d > horizon;
+          const isToday = d.getTime() === today.getTime();
+          const pressable =
+            !isPast && !isBeyond && (status === 'available' || status === 'almost_full');
+          return (
+            <Pressable
+              key={i}
+              disabled={!pressable}
+              onPress={() => pressable && onDayPress(d)}
+              style={{
+                width: `${100 / 7}%`,
+                aspectRatio: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: !inMonth || isPast || isBeyond ? 0.4 : 1,
+              }}
+            >
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isToday ? colors.primary : 'transparent',
+                }}
+              >
+                <Text
+                  variant="caption"
+                  style={{ fontWeight: isToday ? '700' : '500', color: isToday ? '#FFFFFF' : colors.text }}
+                >
+                  {d.getDate()}
+                </Text>
+              </View>
+              {isBeyond ? (
+                <Ionicons name="lock-closed" size={9} color={colors.border} style={{ marginTop: 2 }} />
+              ) : s && !isPast ? (
+                <View
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2, height: 10 }}
+                >
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: DOT[status] }} />
+                  {serviceMode &&
+                    typeof s.capacity === 'number' &&
+                    (status === 'available' || status === 'almost_full') && (
+                      <Text style={{ fontSize: 9, color: colors.textSecondary }}>{s.capacity}</Text>
+                    )}
+                </View>
+              ) : (
+                <View style={{ height: 10, marginTop: 2 }} />
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Booking-horizon notice */}
+      {gridBeyond && (
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: spacing.sm,
+            marginTop: spacing.md,
+            padding: spacing.md,
+            borderRadius: radius.md,
+            backgroundColor: colors.surfaceSecondary,
+          }}
+        >
+          <Ionicons name="lock-closed" size={14} color={colors.textSecondary} style={{ marginTop: 1 }} />
+          <Text variant="caption" color="textSecondary" style={{ flex: 1 }}>
+            Vos clients ne peuvent réserver que jusqu&apos;au {horizonLabel} (J+{maxBookingAdvance}),
+            selon vos paramètres de réservation. Au-delà, aucun créneau ne leur est proposé.
+          </Text>
+        </View>
+      )}
+
+      {/* Legend */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.md }}>
+        {([
+          ['#10b981', 'Disponible'],
+          ['#f59e0b', serviceMode ? 'Bientôt complet' : 'Chargé'],
+          ['#f43f5e', 'Complet'],
+          [colors.border, 'Fermé'],
+        ] as [string, string][]).map(([c, l], i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c }} />
+            <Text variant="caption" color="textSecondary">
+              {l}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {loading && (
+        <View style={{ marginTop: spacing.md, alignItems: 'center' }}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -1684,6 +1954,8 @@ export default function CalendarScreen() {
         const next = new Date(prev);
         if (viewMode === 'week') {
           next.setDate(next.getDate() + direction * 7);
+        } else if (viewMode === 'month') {
+          next.setMonth(next.getMonth() + direction);
         } else {
           next.setDate(next.getDate() + direction);
         }
@@ -1759,6 +2031,9 @@ export default function CalendarScreen() {
 
   // ---- Header date display ----
   const headerDateText = useMemo(() => {
+    if (viewMode === 'month') {
+      return `${FULL_MONTH_NAMES[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+    }
     if (viewMode === 'week') {
       const endDate = weekDays[weekDays.length - 1];
       const startDay = weekDays[0].getDate();
@@ -2016,6 +2291,16 @@ export default function CalendarScreen() {
             )}
           </ScrollView>
         </View>
+      ) : viewMode === 'month' ? (
+        /* ---- Month View ---- */
+        <MonthCalendar
+          providerId={providerId ?? ''}
+          selectedDate={selectedDate}
+          services={services}
+          memberId={selectedMemberId ?? members[0]?.id ?? null}
+          maxBookingAdvance={provider?.settings?.maxBookingAdvance ?? 60}
+          onDayPress={handleWeekDayPress}
+        />
       ) : (
         /* ---- Week View ---- */
         <WeekView
