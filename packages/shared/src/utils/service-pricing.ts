@@ -417,7 +417,7 @@ export function getDiscountDaysLeft(
  * surfaced on cards and emphasised in the recap. Above it, surfaces show only
  * the plain validity date. Single knob — bump it to make promos shout earlier.
  */
-export const PROMO_URGENCY_DAYS = 7;
+export const PROMO_URGENCY_DAYS = 15;
 
 /** Short French urgency label from a day count (see getDiscountDaysLeft). */
 export function formatPromoCountdown(daysLeft: number): string {
