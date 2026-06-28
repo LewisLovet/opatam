@@ -265,24 +265,35 @@ export interface BookingEmailData {
 /**
  * Send confirmation email to client
  */
+/** Escape user-provided text before injecting it into email HTML, so a value
+ *  containing `<`, `>`, `&`, `"` or `'` can't break the layout or inject markup. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /** Address-privacy aware location rows. Protected-but-not-revealed → "Secteur"
  *  with only the approximate area and no map link. Otherwise the usual address. */
 function locationAddressRowsHtml(data: { locationAddress?: string; addressPending?: boolean; accessInstructions?: string | null }): string {
   if (!data.locationAddress) return '';
   const row = (label: string, value: string, extra = '') =>
     `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; vertical-align: top;">${label}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;${extra}">${value}</td></tr>`;
-  if (data.addressPending) return row('Secteur', data.locationAddress);
+  if (data.addressPending) return row('Secteur', escapeHtml(data.locationAddress));
   const maps = data.locationAddress.includes(',')
     ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>`
     : '';
-  return row('Adresse', data.locationAddress) + maps;
+  return row('Adresse', escapeHtml(data.locationAddress)) + maps;
 }
 
 /** Separate, highlighted block for the access details — shown only once the
  *  address is revealed. Kept out of the recap table so it stands out. */
 function accessInstructionsBlockHtml(data: { accessInstructions?: string | null }): string {
   if (!data.accessInstructions) return '';
-  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #1e3a8a;">&#x1F511; Informations d&#39;acc&#232;s</p><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5; white-space: pre-line;">${data.accessInstructions}</p></div>`;
+  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #1e3a8a;">&#x1F511; Informations d&#39;acc&#232;s</p><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5; white-space: pre-line;">${escapeHtml(data.accessInstructions)}</p></div>`;
 }
 
 function accessInstructionsBlockText(data: { accessInstructions?: string | null }): string {

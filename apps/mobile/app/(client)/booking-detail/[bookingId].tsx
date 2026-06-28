@@ -444,12 +444,19 @@ export default function BookingDetailScreen() {
       const startDate = toDate(booking.datetime);
       const endDate = toDate(booking.endDatetime);
 
+      // Use the revealed exact address when available (protected + revealed,
+      // or non-protected), else fall back to the masked snapshot.
+      const calendarLocation =
+        addr && (!addr.protected || addr.revealed) && addr.address
+          ? addr.address
+          : booking.locationAddress || booking.locationName || '';
+
       // Create event
       await Calendar.createEventAsync(defaultCalendar.id, {
         title: booking.serviceName,
         startDate,
         endDate,
-        location: booking.locationAddress || booking.locationName || '',
+        location: calendarLocation,
         notes: `Prestataire: ${booking.providerName}${booking.memberName ? `\nAvec: ${booking.memberName}` : ''}`,
         timeZone: 'Europe/Paris',
       });

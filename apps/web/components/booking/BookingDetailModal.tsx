@@ -372,37 +372,15 @@ export function BookingDetailModal({
 
     setRescheduleLoading(true);
     try {
-      const result = await bookingService.rescheduleBooking(
+      await bookingService.rescheduleBooking(
         booking.id,
         selectedSlot.datetime,
         user.id
       );
 
-      // Send reschedule email via API route
-      try {
-        await fetch('/api/bookings/reschedule-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            clientEmail: booking.clientInfo.email,
-            clientName: booking.clientInfo.name,
-            serviceName: booking.serviceName,
-            oldDatetime: result.oldDatetime,
-            newDatetime: result.newDatetime,
-            duration: booking.duration,
-            price: booking.price,
-            providerName: booking.providerName,
-            providerSlug: providerSlug || provider?.slug,
-            locationName: booking.locationName,
-            locationAddress: booking.locationAddress,
-            memberName: booking.memberName,
-            cancelToken: booking.cancelToken,
-            bookingId: booking.id,
-          }),
-        });
-      } catch (emailError) {
-        console.error('Error sending reschedule email:', emailError);
-      }
+      // L'email de replanification est envoyé par le trigger onBookingWrite
+      // (emailClientBookingRescheduled), qui gère le masquage/révélation
+      // d'adresse. Ne PAS renvoyer un email ici (sinon double envoi).
 
       toast.success('Rendez-vous reprogrammé');
       resetConfirmations();
