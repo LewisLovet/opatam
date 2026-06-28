@@ -401,6 +401,7 @@ interface ServicePickerModalProps {
   visible: boolean;
   onClose: () => void;
   services: WithId<Service>[];
+  categories: { id: string; name: string }[];
   currentServiceId: string | null;
   onApply: (serviceId: string | null, durationOverride: number | undefined, label: string) => void;
 }
@@ -409,6 +410,7 @@ function ServicePickerModal({
   visible,
   onClose,
   services,
+  categories,
   currentServiceId,
   onApply,
 }: ServicePickerModalProps) {
@@ -457,6 +459,26 @@ function ServicePickerModal({
     const dur = duration + (detail.bufferTime || 0);
     onApply(detail.id, dur > 0 ? dur : undefined, detail.name);
   };
+
+  // Group prestations by category for easier navigation when there are many.
+  const grouped = (() => {
+    const map = new Map<string, { id: string; name: string; services: WithId<Service>[] }>();
+    const order: string[] = [];
+    for (const svc of services) {
+      const catId = svc.categoryId ?? '__none__';
+      if (!map.has(catId)) {
+        map.set(catId, {
+          id: catId,
+          name: catId === '__none__' ? 'Autres' : categories.find((c) => c.id === catId)?.name ?? 'Autres',
+          services: [],
+        });
+        order.push(catId);
+      }
+      map.get(catId)!.services.push(svc);
+    }
+    return order.map((id) => map.get(id)!);
+  })();
+  const showHeaders = grouped.length > 1 || (grouped.length === 1 && grouped[0].id !== '__none__');
 
   const rowStyle = {
     flexDirection: 'row' as const,
@@ -581,31 +603,102 @@ function ServicePickerModal({
               <Text variant="h3" style={{ marginBottom: spacing.md }}>
                 Choisir une prestation
               </Text>
-              <ScrollView style={{ maxHeight: 460 }}>
-                <Pressable onPress={() => onApply(null, undefined, 'Vue générale')} style={rowStyle}>
-                  <Text variant="body" style={{ flex: 1 }}>
-                    Vue générale (sans prestation)
-                  </Text>
+              <ScrollView style={{ maxHeight: 480 }} showsVerticalScrollIndicator={false}>
+                {/* Vue générale — carte mise en avant */}
+                <Pressable
+                  onPress={() => onApply(null, undefined, 'Vue générale')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.md,
+                    padding: spacing.md,
+                    borderRadius: radius.lg,
+                    borderWidth: 1.5,
+                    borderColor: currentServiceId === null ? colors.primary : colors.border,
+                    backgroundColor: currentServiceId === null ? colors.primaryLight : colors.surface,
+                    marginBottom: spacing.lg,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: colors.primaryLight,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="apps-outline" size={20} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body" style={{ fontWeight: '600' }}>
+                      Vue générale
+                    </Text>
+                    <Text variant="caption" color="textSecondary">
+                      Occupation, toutes prestations confondues
+                    </Text>
+                  </View>
                   {currentServiceId === null && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                   )}
                 </Pressable>
-                {services.map((svc) => (
-                  <Pressable key={svc.id} onPress={() => pickService(svc)} style={rowStyle}>
-                    <View style={{ flex: 1 }}>
-                      <Text variant="body">{svc.name}</Text>
-                      {hasChoices(svc) && (
-                        <Text variant="caption" color="textSecondary">
-                          Variations / options
-                        </Text>
-                      )}
+
+                {/* Prestations groupées par catégorie */}
+                {grouped.map((group) => (
+                  <View key={group.id} style={{ marginBottom: spacing.lg }}>
+                    {showHeaders && (
+                      <Text
+                        variant="label"
+                        color="textSecondary"
+                        style={{ marginBottom: spacing.xs, marginLeft: spacing.xs, textTransform: 'uppercase' }}
+                      >
+                        {group.name}
+                      </Text>
+                    )}
+                    <View
+                      style={{
+                        borderRadius: radius.lg,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {group.services.map((svc, idx) => {
+                        const selected = currentServiceId === svc.id;
+                        return (
+                          <Pressable
+                            key={svc.id}
+                            onPress={() => pickService(svc)}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              padding: spacing.md,
+                              backgroundColor: selected ? colors.primaryLight : colors.surface,
+                              borderTopWidth: idx === 0 ? 0 : 1,
+                              borderTopColor: colors.divider,
+                            }}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text variant="body" style={selected ? { fontWeight: '600' } : undefined}>
+                                {svc.name}
+                              </Text>
+                              {hasChoices(svc) && (
+                                <Text variant="caption" color="textSecondary">
+                                  Variations / options
+                                </Text>
+                              )}
+                            </View>
+                            {hasChoices(svc) ? (
+                              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                            ) : selected ? (
+                              <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                            ) : null}
+                          </Pressable>
+                        );
+                      })}
                     </View>
-                    {hasChoices(svc) ? (
-                      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-                    ) : currentServiceId === svc.id ? (
-                      <Ionicons name="checkmark" size={20} color={colors.primary} />
-                    ) : null}
-                  </Pressable>
+                  </View>
                 ))}
               </ScrollView>
             </>
@@ -620,6 +713,7 @@ interface MonthCalendarProps {
   providerId: string;
   selectedDate: Date;
   services: WithId<Service>[];
+  categories: { id: string; name: string }[];
   /** Resolved member whose schedule drives the grid (member-centric model). */
   memberId: string | null;
   maxBookingAdvance: number;
@@ -630,6 +724,7 @@ function MonthCalendar({
   providerId,
   selectedDate,
   services,
+  categories,
   memberId,
   maxBookingAdvance,
   onDayPress,
@@ -758,6 +853,7 @@ function MonthCalendar({
         visible={pickerOpen}
         onClose={() => setPickerOpen(false)}
         services={services}
+        categories={categories}
         currentServiceId={serviceId}
         onApply={(sid, dur, label) => {
           setServiceId(sid);
@@ -2456,7 +2552,9 @@ export default function CalendarScreen() {
       </View>
 
       {/* ===== Filters row (member + category dropdowns) ===== */}
-      {(showMemberFilter || categories.length > 0) && (
+      {/* Category filter is irrelevant in month view (it filters day/week
+          bookings, not the availability grid) → hidden there. */}
+      {(showMemberFilter || (categories.length > 0 && viewMode !== 'month')) && (
         <View
           style={{
             flexDirection: 'row',
@@ -2476,7 +2574,7 @@ export default function CalendarScreen() {
               />
             </View>
           )}
-          {categories.length > 0 && (
+          {categories.length > 0 && viewMode !== 'month' && (
             <View style={{ flex: 1 }}>
               <CategorySelect
                 value={selectedCategoryId}
@@ -2553,6 +2651,7 @@ export default function CalendarScreen() {
           providerId={providerId ?? ''}
           selectedDate={selectedDate}
           services={services}
+          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
           memberId={selectedMemberId ?? members[0]?.id ?? null}
           maxBookingAdvance={provider?.settings?.maxBookingAdvance ?? 60}
           onDayPress={handleWeekDayPress}
