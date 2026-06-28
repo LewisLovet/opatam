@@ -37,6 +37,36 @@ export const serviceDepositSchema = z
   .nullable();
 
 /**
+ * Per-service promotion (percentage). `includeExtras` decides whether
+ * variations/options are discounted too. Optional inclusive date window as
+ * local YYYY-MM-DD strings. `null` = no promo on this service.
+ */
+export const serviceDiscountSchema = z
+  .object({
+    percent: z
+      .number({ required_error: 'Le pourcentage de réduction est requis' })
+      .int({ message: 'Le pourcentage doit être un nombre entier' })
+      .min(1, { message: 'La réduction doit être d\'au moins 1 %' })
+      .max(100, { message: 'La réduction ne peut pas dépasser 100 %' }),
+    includeExtras: z.boolean().default(true),
+    startsAt: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Date de début invalide' })
+      .nullable()
+      .optional(),
+    endsAt: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Date de fin invalide' })
+      .nullable()
+      .optional(),
+  })
+  .refine((d) => !d.startsAt || !d.endsAt || d.startsAt <= d.endsAt, {
+    message: 'La date de fin doit être postérieure à la date de début',
+    path: ['endsAt'],
+  })
+  .nullable();
+
+/**
  * Client-facing choices (variations / options / info fields) attached to
  * a service. All absolute pricing (cents) and duration (minutes). These
  * mirror the `Service*` interfaces in ../types and are validated the same
@@ -181,6 +211,9 @@ export const createServiceSchema = z.object({
   // Per-service deposit override. See serviceDepositSchema above.
   deposit: serviceDepositSchema.optional(),
 
+  // Per-service promotion (percentage). See serviceDiscountSchema above.
+  discount: serviceDiscountSchema.optional(),
+
   // Client-facing choices — all optional, default empty so a service
   // without them validates exactly as before.
   variations: z.array(serviceVariationSchema).optional(),
@@ -276,6 +309,8 @@ export const updateServiceSchema = z.object({
   // the merged record server-side if both `price` and `deposit.value`
   // change in the same payload.
   deposit: serviceDepositSchema.optional(),
+  // Per-service promotion (percentage). See serviceDiscountSchema above.
+  discount: serviceDiscountSchema.optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
 

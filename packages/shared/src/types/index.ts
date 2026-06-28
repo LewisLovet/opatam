@@ -501,6 +501,10 @@ export interface ProviderSettings {
     percent: number;             // 1-100
     refundDeadlineHours: number; // hours before booking — 0 = never refund, default 24
   } | null;
+
+  /** Shop-wide promotion applied to every service that doesn't have its own
+   *  `discount`. null/absent = no global promo. */
+  globalDiscount?: ServiceDiscount | null;
 }
 
 /** Resolved deposit amount + refund policy for a specific (service, provider) pair. */
@@ -684,6 +688,23 @@ export interface ServiceOption {
 }
 
 // Service types
+/**
+ * A percentage promotion on a prestation (per-service) or on the whole shop
+ * (provider.settings.globalDiscount). Time-bounded by an optional inclusive
+ * date window (local YYYY-MM-DD strings — no nested Firestore Timestamp to
+ * convert). When `includeExtras` is false, only the base service price is
+ * reduced (variations & options keep their full price).
+ */
+export interface ServiceDiscount {
+  /** Percent off, 1-100. */
+  percent: number;
+  /** Reduce variations & options too. false = only the base service price. */
+  includeExtras: boolean;
+  /** Active window, local YYYY-MM-DD inclusive. null/absent = unbounded. */
+  startsAt?: string | null;
+  endsAt?: string | null;
+}
+
 export interface Service {
   name: string;
   description: string | null;
@@ -732,6 +753,11 @@ export interface Service {
     value?: number;                  // unused when type === 'none'
     refundDeadlineHours?: number;    // unused when type === 'none'
   } | null;
+
+  /** Per-service promotion. null/undefined = no promo on this service (the
+   *  provider's global promo, if any, still applies). Takes precedence over
+   *  the global promo. */
+  discount?: ServiceDiscount | null;
 
   createdAt: Date;
   updatedAt: Date;
@@ -908,6 +934,9 @@ export interface Booking {
   serviceColor?: string | null;
   duration: number;
   price: number;
+  /** Pre-discount total in cents, snapshotted when a promotion was applied at
+   *  booking time (so emails / récap can show "économie"). null = no promo. */
+  originalPrice?: number | null;
   priceMax: number | null;
   clientInfo: ClientInfo;
   datetime: Date;
@@ -992,6 +1021,7 @@ export interface BookingServiceItem {
   serviceColor?: string | null;
   duration: number;                 // effective minutes for this prestation
   price: number;                    // effective price in cents
+  originalPrice?: number | null;    // pre-discount price in cents (promo); null = none
   selectedVariations: BookingSelectedVariation[];
   selectedOptions: BookingSelectedOption[];
   selectedInfoValues: Record<string, string>;

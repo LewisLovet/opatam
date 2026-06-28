@@ -19,6 +19,7 @@ import {
   createBookingSchema,
   resolveDeposit,
   computeServiceTotal,
+  computeDiscountedTotal,
   buildBookingSelections,
   validateServiceSelections,
   emptyServiceSelections,
@@ -129,9 +130,14 @@ export class BookingService {
           `Cette prestation (« ${svc.name} ») nécessite des choix (${validation.missing.join(', ')}). Réservez-la depuis le site web.`,
         );
       }
-      const effective = computeServiceTotal(svc, sel);
+      // Apply any active promotion (per-service or the provider's global one)
+      // at the effective-price layer → the discount propagates automatically to
+      // the deposit (resolveDeposit runs on effective.price), the Stripe charge,
+      // emails and revenue stats. `original` is snapshotted for "économie".
+      const eff = computeDiscountedTotal(svc, sel, provider.settings?.globalDiscount, new Date());
+      const effective = { price: eff.price, duration: eff.duration };
       const denorm = buildBookingSelections(svc, sel);
-      resolvedItems.push({ service: svc, effective, denorm });
+      resolvedItems.push({ service: svc, effective, denorm, originalPrice: eff.original });
     }
 
     const firstService = resolvedItems[0].service;
@@ -141,6 +147,7 @@ export class BookingService {
       0,
     );
     const totalPrice = resolvedItems.reduce((sum, r) => sum + r.effective.price, 0);
+    const totalOriginal = resolvedItems.reduce((sum, r) => sum + r.originalPrice, 0);
     // Buffer once, after the whole visit (use the last prestation's buffer).
     const lastBuffer = resolvedItems[resolvedItems.length - 1].service.bufferTime || 0;
     const totalDuration = totalServiceDuration + lastBuffer;
@@ -152,6 +159,7 @@ export class BookingService {
       serviceColor: r.service.color ?? null,
       duration: r.effective.duration,
       price: r.effective.price,
+      originalPrice: r.originalPrice > r.effective.price ? r.originalPrice : null,
       selectedVariations: r.denorm.selectedVariations,
       selectedOptions: r.denorm.selectedOptions,
       selectedInfoValues: r.denorm.selectedInfoValues,
@@ -276,6 +284,9 @@ export class BookingService {
       // Aggregate effective values (sum across all prestations).
       duration: totalServiceDuration,
       price: totalPrice,
+      // Pre-discount total when a promo applied — lets emails/récap show the
+      // crossed-out price + savings. null when no promo.
+      ...(totalOriginal > totalPrice ? { originalPrice: totalOriginal } : {}),
       priceMax: isMulti ? null : firstService.priceMax ?? null,
       // Denormalised choices of the first prestation (back-compat); the
       // full per-prestation detail lives in `items` for multi bookings.

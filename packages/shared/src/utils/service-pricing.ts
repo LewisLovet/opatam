@@ -33,6 +33,7 @@ import type {
   Service,
   ServiceVariation,
   ServiceOption,
+  ServiceDiscount,
   BookingSelectedVariation,
   BookingSelectedOption,
   BookingSelectedInfo,
@@ -289,7 +290,102 @@ export function serviceHasChoices(
   );
 }
 
+// ─── Promotions / discounts ──────────────────────────────────────────────
+//
+// A percentage promo can live on a service (`service.discount`) or shop-wide
+// (`provider.settings.globalDiscount`). The per-service one wins. A promo is
+// only active within its optional date window. Applying it at the
+// effective-price layer makes the discount propagate automatically to the
+// deposit (resolveDeposit runs on the effective price), Stripe charge, emails
+// and revenue stats — none of those need to know about promos.
+
+/** Local YYYY-MM-DD (timezone-safe — matches the window strings). */
+function discountDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** The discount if it's currently active (valid percent + inside its window),
+ *  else null. */
+export function getActiveDiscount(
+  discount: ServiceDiscount | null | undefined,
+  now: Date = new Date(),
+): ServiceDiscount | null {
+  if (!discount) return null;
+  const pct = discount.percent;
+  if (!(typeof pct === 'number' && pct > 0 && pct <= 100)) return null;
+  const today = discountDateKey(now);
+  if (discount.startsAt && today < discount.startsAt) return null;
+  if (discount.endsAt && today > discount.endsAt) return null;
+  return discount;
+}
+
+/** Effective discount for a service: its own active promo wins; otherwise the
+ *  provider's global promo (if active) applies. */
+export function resolveServiceDiscount(
+  service: Pick<Service, 'discount'>,
+  globalDiscount: ServiceDiscount | null | undefined,
+  now: Date = new Date(),
+): ServiceDiscount | null {
+  return getActiveDiscount(service.discount, now) ?? getActiveDiscount(globalDiscount, now);
+}
+
+/**
+ * Apply an (already-resolved, active) discount to a gross total.
+ * `basePrice` = the flat service.price — the discountable amount when
+ * `includeExtras` is false (variations/options keep their full price).
+ */
+export function applyDiscount(
+  grossTotal: number,
+  basePrice: number,
+  discount: ServiceDiscount | null,
+): { price: number; original: number; discountPercent: number | null } {
+  if (!discount) return { price: grossTotal, original: grossTotal, discountPercent: null };
+  const discountable = discount.includeExtras ? grossTotal : Math.min(basePrice, grossTotal);
+  const reduction = Math.round((discountable * discount.percent) / 100);
+  return {
+    price: Math.max(0, grossTotal - reduction),
+    original: grossTotal,
+    discountPercent: discount.percent,
+  };
+}
+
+/**
+ * Effective (discounted) price + duration for a service given the client's
+ * selections + the promo context. THE entry point for the booking flow recap
+ * and the server snapshot. `discountPercent` is null when no promo is active.
+ */
+export function computeDiscountedTotal(
+  service: Pick<Service, 'price' | 'duration' | 'variations' | 'options' | 'discount'>,
+  selections: ServiceSelections,
+  globalDiscount: ServiceDiscount | null | undefined = null,
+  now: Date = new Date(),
+): { price: number; original: number; duration: number; discountPercent: number | null } {
+  const gross = computeServiceTotal(service, selections);
+  const discount = resolveServiceDiscount(service, globalDiscount, now);
+  const applied = applyDiscount(gross.price, service.price, discount);
+  return {
+    price: applied.price,
+    original: applied.original,
+    duration: gross.duration,
+    discountPercent: applied.discountPercent,
+  };
+}
+
+/** Discounted "à partir de" minimum price for the public fiche. */
+export function getDiscountedMinPrice(
+  service: Pick<Service, 'price' | 'variations' | 'discount'>,
+  globalDiscount: ServiceDiscount | null | undefined = null,
+  now: Date = new Date(),
+): { price: number; original: number; discountPercent: number | null } {
+  const original = getServiceMinPrice(service);
+  const discount = resolveServiceDiscount(service, globalDiscount, now);
+  return applyDiscount(original, service.price, discount);
+}
+
 // Re-export the variation / option shapes by reference so callers
 // only need one import. (Pure convenience — they're already typed
 // in '../types'.)
-export type { ServiceVariation, ServiceOption };
+export type { ServiceVariation, ServiceOption, ServiceDiscount };
