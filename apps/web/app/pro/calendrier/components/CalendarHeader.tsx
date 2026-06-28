@@ -244,8 +244,9 @@ export function CalendarHeader({
 
       {/* Line 2: Filters and actions */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        {/* View toggle - hidden on mobile since week view doesn't fit */}
-        <div className="hidden md:flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800">
+        {/* View toggle. Week stays desktop-only (doesn't fit on mobile); Day +
+            Month fit, so they're available on mobile too. */}
+        <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800">
           <button
             onClick={() => onViewModeChange('day')}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
@@ -258,7 +259,7 @@ export function CalendarHeader({
           </button>
           <button
             onClick={() => onViewModeChange('week')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            className={`hidden md:block px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
               viewMode === 'week'
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'

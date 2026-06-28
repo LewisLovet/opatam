@@ -545,6 +545,7 @@ export default function CalendarPage() {
             members={activeMembers}
             memberId={selectedMemberId !== 'all' ? selectedMemberId : activeMembers[0]?.id ?? null}
             isTeamPlan={isTeamPlan}
+            maxBookingAdvance={provider?.settings?.maxBookingAdvance ?? 60}
             onDayClick={(date) => {
               setSelectedDate(date);
               setViewMode('day');
