@@ -24,11 +24,20 @@ export interface ServiceCardProps {
   price: number;
   /** Price max in euros (null = fixed price) */
   priceMax?: number | null;
+  /** Pre-discount price in euros — when set and > price, shows a crossed-out
+   *  original + a "−X%" badge (active promotion). */
+  originalPrice?: number | null;
+  /** Active promo percentage (for the "−X%" badge). */
+  discountPercent?: number | null;
+  /** Pre-formatted urgency line ("Plus que N jours"); null = hide. */
+  promoCountdown?: string | null;
   /** Whether this service is selected */
   selected?: boolean;
   /** Press handler */
   onPress?: () => void;
 }
+
+const PROMO_COLOR = '#E11D48';
 
 const LEFT_BORDER_WIDTH = 4;
 
@@ -58,10 +67,15 @@ export function ServiceCard({
   duration,
   price,
   priceMax,
+  originalPrice,
+  discountPercent,
+  promoCountdown,
   selected = false,
   onPress,
 }: ServiceCardProps) {
   const { colors, spacing, radius, shadows } = useTheme();
+  const hasPromo =
+    discountPercent != null && originalPrice != null && originalPrice > price;
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
@@ -114,26 +128,74 @@ export function ServiceCard({
               <Text variant="body" style={styles.name} numberOfLines={1}>
                 {name}
               </Text>
-          <View
-            style={[
-              styles.priceBadge,
-              {
-                backgroundColor: selected ? colors.primary : colors.primaryLight,
-                paddingHorizontal: spacing.sm,
-                paddingVertical: spacing.xs,
-                borderRadius: radius.md,
-              },
-            ]}
-          >
-            <Text
-              variant="bodySmall"
-              style={[
-                styles.priceText,
-                { color: selected ? colors.textInverse : colors.primary },
-              ]}
-            >
-              {formatPrice(price, priceMax)}
-            </Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            {hasPromo && (
+              <Text
+                variant="caption"
+                style={{
+                  color: colors.textMuted,
+                  textDecorationLine: 'line-through',
+                  fontSize: 11,
+                }}
+              >
+                {formatPrice(originalPrice!)}
+              </Text>
+            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View
+                style={[
+                  styles.priceBadge,
+                  {
+                    backgroundColor: hasPromo
+                      ? 'rgba(225,29,72,0.12)'
+                      : selected
+                        ? colors.primary
+                        : colors.primaryLight,
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: spacing.xs,
+                    borderRadius: radius.md,
+                  },
+                ]}
+              >
+                <Text
+                  variant="bodySmall"
+                  style={[
+                    styles.priceText,
+                    {
+                      color: hasPromo
+                        ? PROMO_COLOR
+                        : selected
+                          ? colors.textInverse
+                          : colors.primary,
+                    },
+                  ]}
+                >
+                  {formatPrice(price, priceMax)}
+                </Text>
+              </View>
+              {hasPromo && (
+                <View
+                  style={{
+                    backgroundColor: PROMO_COLOR,
+                    borderRadius: 4,
+                    paddingHorizontal: 4,
+                    paddingVertical: 1,
+                  }}
+                >
+                  <Text variant="caption" style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>
+                    −{discountPercent}%
+                  </Text>
+                </View>
+              )}
+            </View>
+            {hasPromo && promoCountdown && (
+              <Text
+                variant="caption"
+                style={{ color: PROMO_COLOR, fontSize: 10, fontWeight: '600', marginTop: 2 }}
+              >
+                {promoCountdown}
+              </Text>
+            )}
           </View>
         </View>
 

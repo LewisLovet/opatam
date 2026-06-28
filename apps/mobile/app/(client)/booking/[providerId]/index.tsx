@@ -20,7 +20,15 @@ import { useTheme } from '../../../../theme';
 import { Text, Card, EmptyState, ServiceCategory, useToast } from '../../../../components';
 import { useBooking } from '../../../../contexts';
 import { useProviderById, useServices, useServiceCategories, useMembers, useLocations } from '../../../../hooks';
-import { computeServiceTotal, serviceHasChoices } from '@booking-app/shared';
+import {
+  computeDiscountedTotal,
+  applyDiscount,
+  resolveServiceDiscount,
+  getDiscountDaysLeft,
+  formatPromoCountdown,
+  PROMO_URGENCY_DAYS,
+  serviceHasChoices,
+} from '@booking-app/shared';
 import type { Member, Service } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { ServiceChoicesPreview } from '../../../../components/business/ServiceChoicesPreview';
@@ -80,10 +88,26 @@ export default function MemberSelectionScreen() {
   const isLoading = loadingProvider || loadingServices || loadingMembers;
 
   // Cart total price (effective, in cents).
+  // Shop-wide promo applied to services without their own discount.
+  const globalDiscount = provider?.settings?.globalDiscount ?? null;
+
   const cartTotalPrice = useMemo(
-    () => cart.reduce((sum, c) => sum + computeServiceTotal(c.service, c.selections).price, 0),
-    [cart],
+    () =>
+      cart.reduce(
+        (sum, c) => sum + computeDiscountedTotal(c.service, c.selections, globalDiscount).price,
+        0,
+      ),
+    [cart, globalDiscount],
   );
+  const cartTotalOriginal = useMemo(
+    () =>
+      cart.reduce(
+        (sum, c) => sum + computeDiscountedTotal(c.service, c.selections, globalDiscount).original,
+        0,
+      ),
+    [cart, globalDiscount],
+  );
+  const cartHasPromo = cartTotalOriginal > cartTotalPrice;
 
   // Proceed to date for the chosen member.
   const handleSelectMember = (member: WithId<Member>) => {
@@ -221,7 +245,8 @@ export default function MemberSelectionScreen() {
           ) : (
             <View style={{ gap: spacing.sm }}>
               {cart.map((item, idx) => {
-                const eff = computeServiceTotal(item.service, item.selections);
+                const eff = computeDiscountedTotal(item.service, item.selections, globalDiscount);
+                const itemHasPromo = eff.discountPercent != null && eff.original > eff.price;
                 return (
                   <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                     <View style={{ flex: 1 }}>
@@ -229,7 +254,23 @@ export default function MemberSelectionScreen() {
                         {item.service.name}
                       </Text>
                       <Text variant="caption" color="textSecondary">
-                        {eff.duration} min · {(eff.price / 100).toFixed(2)} €
+                        {eff.duration} min ·{' '}
+                        {itemHasPromo ? (
+                          <Text variant="caption">
+                            <Text
+                              variant="caption"
+                              style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
+                            >
+                              {(eff.original / 100).toFixed(2)} €
+                            </Text>
+                            <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
+                              {'  '}
+                              {(eff.price / 100).toFixed(2)} €
+                            </Text>
+                          </Text>
+                        ) : (
+                          `${(eff.price / 100).toFixed(2)} €`
+                        )}
                       </Text>
                     </View>
                     <Pressable onPress={() => removeFromCart(idx)} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
@@ -275,9 +316,22 @@ export default function MemberSelectionScreen() {
               }}
             >
               <Text variant="body" style={{ fontWeight: '700' }}>Total</Text>
-              <Text variant="body" color="primary" style={{ fontWeight: '700' }}>
-                {(cartTotalPrice / 100).toFixed(2)} €
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                {cartHasPromo && (
+                  <Text
+                    variant="bodySmall"
+                    style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
+                  >
+                    {(cartTotalOriginal / 100).toFixed(2)} €
+                  </Text>
+                )}
+                <Text
+                  variant="body"
+                  style={{ fontWeight: '700', color: cartHasPromo ? '#E11D48' : colors.primary }}
+                >
+                  {(cartTotalPrice / 100).toFixed(2)} €
+                </Text>
+              </View>
             </View>
           )}
         </Card>
@@ -406,15 +460,30 @@ export default function MemberSelectionScreen() {
                 <ServiceCategory
                   key={g.id}
                   title={g.title}
-                  services={g.items.map((s) => ({
-                    id: s.id,
-                    name: s.name,
-                    description: s.description,
-                    photoURL: s.photoURL,
-                    duration: s.duration,
-                    price: s.price / 100,
-                    priceMax: s.priceMax ? s.priceMax / 100 : null,
-                  }))}
+                  services={g.items.map((s) => {
+                    const active = resolveServiceDiscount(s, globalDiscount);
+                    const applied = applyDiscount(s.price, s.price, active);
+                    const hasPromo =
+                      applied.discountPercent != null && applied.price < applied.original;
+                    const daysLeft = getDiscountDaysLeft(active);
+                    return {
+                      id: s.id,
+                      name: s.name,
+                      description: s.description,
+                      photoURL: s.photoURL,
+                      duration: s.duration,
+                      price: applied.price / 100,
+                      // Drop the range when a promo applies — show a single
+                      // discounted price + crossed-out original instead.
+                      priceMax: hasPromo ? null : s.priceMax ? s.priceMax / 100 : null,
+                      originalPrice: hasPromo ? applied.original / 100 : null,
+                      discountPercent: hasPromo ? applied.discountPercent : null,
+                      promoCountdown:
+                        hasPromo && daysLeft != null && daysLeft <= PROMO_URGENCY_DAYS
+                          ? formatPromoCountdown(daysLeft)
+                          : null,
+                    };
+                  })}
                   onSelectService={(id) => {
                     const svc = services.find((s) => s.id === id);
                     if (svc) handleAddService(svc);
