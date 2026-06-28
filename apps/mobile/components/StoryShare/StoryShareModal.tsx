@@ -36,7 +36,7 @@ try {
 }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { catalogService, memberService, schedulingService } from '@booking-app/firebase';
-import type { Service } from '@booking-app/shared';
+import type { Service, Member } from '@booking-app/shared';
 import { APP_CONFIG } from '@booking-app/shared';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
@@ -219,7 +219,10 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const [monthDurationOverride, setMonthDurationOverride] = useState<number | undefined>(undefined);
   const [monthServiceLabel, setMonthServiceLabel] = useState('Vue générale');
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
-  const [memberId, setMemberId] = useState<string | null>(null);
+  // Team member selection for the availability story. null = all members
+  // (availability is the union / best status across the team).
+  const [members, setMembers] = useState<WithId<Member>[]>([]);
+  const [storyMemberId, setStoryMemberId] = useState<string | null>(null);
   const [monthGrid, setMonthGrid] = useState<MonthAvailabilityGrid | undefined>(undefined);
   const [loadingMonth, setLoadingMonth] = useState(false);
 
@@ -247,6 +250,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     days: availabilityScope === 'day' ? 1 : 7,
     weekOffset: availabilityScope === 'day' ? undefined : weekOffset,
     dayOffset: availabilityScope === 'day' ? dayOffset : undefined,
+    memberId: storyMemberId,
     enabled: visible && displayMode === 'availabilities' && availabilityScope !== 'month',
   });
 
@@ -266,9 +270,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           setServices(data);
           // Pre-select first 5
           setSelectedServiceIds(new Set(data.slice(0, 5).map((s) => s.id)));
-          // Resolve a member for the month grid (member-centric schedule).
-          const active = membersData.find((m) => m.isActive !== false) ?? membersData[0];
-          setMemberId(active?.id ?? null);
+          setMembers(membersData);
         }
       } catch (err) {
         console.error('[StoryShare] Error loading services:', err);
@@ -288,7 +290,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
       displayMode !== 'availabilities' ||
       availabilityScope !== 'month' ||
       !provider ||
-      !memberId
+      members.length === 0
     ) {
       return;
     }
@@ -312,25 +314,35 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
         const gridEnd = new Date(days42[41]);
         gridEnd.setHours(23, 59, 59, 999);
 
+        // A specific member → just them; otherwise merge across the whole team
+        // — best status per day (available > almost_full > full > closed).
+        const activeMembers = members.filter((m) => m.isActive !== false);
+        const pool = activeMembers.length > 0 ? activeMembers : members;
+        const targetMembers = storyMemberId ? pool.filter((m) => m.id === storyMemberId) : pool;
+        const effective = targetMembers.length > 0 ? targetMembers : [pool[0]];
+        const rank: Record<string, number> = { closed: 0, full: 1, almost_full: 2, available: 3 };
+
         const map: Record<string, string> = {};
-        if (monthServiceId) {
-          const ds = await schedulingService.getAvailabilitySummary({
-            providerId: provider.id,
-            serviceId: monthServiceId,
-            memberId,
-            startDate: gridStart,
-            endDate: gridEnd,
-            durationOverride: monthDurationOverride,
-          });
-          for (const d of ds) map[d.date] = d.status;
-        } else {
-          const ds = await schedulingService.getOccupancySummary({
-            providerId: provider.id,
-            memberId,
-            startDate: gridStart,
-            endDate: gridEnd,
-          });
-          for (const d of ds) map[d.date] = d.status;
+        for (const mem of effective) {
+          const ds = monthServiceId
+            ? await schedulingService.getAvailabilitySummary({
+                providerId: provider.id,
+                serviceId: monthServiceId,
+                memberId: mem.id,
+                startDate: gridStart,
+                endDate: gridEnd,
+                durationOverride: monthDurationOverride,
+              })
+            : await schedulingService.getOccupancySummary({
+                providerId: provider.id,
+                memberId: mem.id,
+                startDate: gridStart,
+                endDate: gridEnd,
+              });
+          for (const d of ds) {
+            const cur = map[d.date];
+            if (!cur || (rank[d.status] ?? 0) > (rank[cur] ?? 0)) map[d.date] = d.status;
+          }
         }
 
         const today = new Date();
@@ -383,7 +395,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     return () => {
       cancelled = true;
     };
-  }, [visible, displayMode, availabilityScope, monthOffset, monthServiceId, monthDurationOverride, memberId, provider, services]);
+  }, [visible, displayMode, availabilityScope, monthOffset, monthServiceId, monthDurationOverride, storyMemberId, members, provider, services]);
 
   const bookingUrl = provider?.slug
     ? `${APP_CONFIG.url}/p/${provider.slug}`
@@ -741,6 +753,51 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                   );
                 })}
               </View>
+            </View>
+          )}
+
+          {/* Member selector — Teams only. Applies to every Dispos scope
+              (week / day / month). "Tous les membres" = union availability. */}
+          {displayMode === 'availabilities' && members.length > 1 && (
+            <View style={styles.sectionSpacing}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                Membre
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+              >
+                {[
+                  { id: null as string | null, name: 'Tous les membres' },
+                  ...members
+                    .filter((m) => m.isActive !== false)
+                    .map((m) => ({ id: m.id as string | null, name: m.name })),
+                ].map((opt) => {
+                  const active = (opt.id ?? null) === storyMemberId;
+                  return (
+                    <Pressable
+                      key={opt.id ?? 'all'}
+                      onPress={() => setStoryMemberId(opt.id)}
+                      style={{
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 999,
+                        borderWidth: 1,
+                        backgroundColor: active ? colors.primary : colors.surface,
+                        borderColor: active ? colors.primary : colors.border,
+                      }}
+                    >
+                      <Text
+                        style={{ fontSize: 13, fontWeight: '600', color: active ? '#FFFFFF' : colors.text }}
+                        numberOfLines={1}
+                      >
+                        {opt.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
           )}
 

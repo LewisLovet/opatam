@@ -63,6 +63,9 @@ interface UseUpcomingAvailabilitiesParams {
    *  story to point at a specific date. Negative values clamped
    *  to 0 (no past dispos). */
   dayOffset?: number;
+  /** Restrict to a single member's schedule. `null`/undefined = ALL members
+   *  (a half-hour shows free if at least one member is free). */
+  memberId?: string | null;
   /** When false, the hook is idle (no fetch). Used to gate the heavy
    *  scheduling query to when the user actually opens the "Dispos" mode. */
   enabled?: boolean;
@@ -102,7 +105,7 @@ function dateKey(d: Date): string {
 export function useUpcomingAvailabilities(
   params: UseUpcomingAvailabilitiesParams,
 ): UseUpcomingAvailabilitiesResult {
-  const { providerId, days = 7, weekOffset = 0, dayOffset, enabled = true } = params;
+  const { providerId, days = 7, weekOffset = 0, dayOffset, memberId, enabled = true } = params;
   // dayOffset wins when provided — gives the day-scope story
   // direct day-level navigation without the week granularity. When
   // both are set, dayOffset is the authoritative one.
@@ -141,7 +144,12 @@ export function useUpcomingAvailabilities(
         setGrid(EMPTY_GRID);
         return;
       }
-      const anchorMember = members.find((m) => m.isDefault) || members[0];
+      const activeMembers = members.filter((m) => m.isActive !== false);
+      const pool = activeMembers.length > 0 ? activeMembers : members;
+      // A specific member → just them; otherwise ALL members (a half-hour
+      // shows free if at least one member is free → union across members).
+      const targetMembers = memberId ? pool.filter((m) => m.id === memberId) : pool;
+      const effectiveMembers = targetMembers.length > 0 ? targetMembers : [pool[0]];
 
       const startDate = new Date();
       startDate.setHours(0, 0, 0, 0);
@@ -150,26 +158,26 @@ export function useUpcomingAvailabilities(
       endDate.setDate(endDate.getDate() + days - 1);
       endDate.setHours(23, 59, 59, 999);
 
-      const slots = await schedulingService.getAvailableSlots({
-        providerId,
-        serviceId: anchorService.id,
-        memberId: anchorMember.id,
-        startDate,
-        endDate,
-      });
-
-      // Bucket slots by day → set of free half-hour bucket indices.
-      // Bucket index = hour*2 + (mins >= 30 ? 1 : 0) so 10:00 → 20,
-      // 10:15 → 20, 10:30 → 21, 10:45 → 21.
+      // Bucket slots by day → set of free half-hour bucket indices, unioned
+      // across the target members. Bucket = hour*2 + (mins >= 30 ? 1 : 0).
       const byDay = new Map<string, Set<number>>();
-      for (const s of slots) {
-        const k = dateKey(s.date);
-        if (!byDay.has(k)) byDay.set(k, new Set());
-        const [hStr, mStr] = s.start.split(':');
-        const hour = parseInt(hStr, 10);
-        const min = parseInt(mStr, 10);
-        const bucket = hour * 2 + (min >= 30 ? 1 : 0);
-        byDay.get(k)!.add(bucket);
+      for (const member of effectiveMembers) {
+        const slots = await schedulingService.getAvailableSlots({
+          providerId,
+          serviceId: anchorService.id,
+          memberId: member.id,
+          startDate,
+          endDate,
+        });
+        for (const s of slots) {
+          const k = dateKey(s.date);
+          if (!byDay.has(k)) byDay.set(k, new Set());
+          const [hStr, mStr] = s.start.split(':');
+          const hour = parseInt(hStr, 10);
+          const min = parseInt(mStr, 10);
+          const bucket = hour * 2 + (min >= 30 ? 1 : 0);
+          byDay.get(k)!.add(bucket);
+        }
       }
 
       // Build one row per day in the requested range — empty days
@@ -231,7 +239,7 @@ export function useUpcomingAvailabilities(
     } finally {
       setLoading(false);
     }
-  }, [providerId, days, offsetDays, enabled]);
+  }, [providerId, days, offsetDays, memberId, enabled]);
 
   useEffect(() => {
     fetchSchedule();
