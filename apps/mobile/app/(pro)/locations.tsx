@@ -528,6 +528,12 @@ export default function LocationsScreen() {
                             <Text variant="caption" style={{ color: '#DC2626', fontWeight: '600', fontSize: 10 }}>Inactif</Text>
                           </View>
                         )}
+                        {loc.protectAddress && (
+                          <View style={[styles.badge, { backgroundColor: '#EFF6FF', flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
+                            <Ionicons name="lock-closed" size={9} color="#1D4ED8" />
+                            <Text variant="caption" style={{ color: '#1D4ED8', fontWeight: '600', fontSize: 10 }}>Adresse masquée</Text>
+                          </View>
+                        )}
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
                         <Ionicons name={loc.type === 'mobile' ? 'car-outline' : 'business-outline'} size={14} color={colors.textMuted} />
