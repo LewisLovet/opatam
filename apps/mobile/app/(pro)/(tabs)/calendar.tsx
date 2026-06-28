@@ -779,7 +779,8 @@ function MonthCalendar({
       </View>
 
       {/* Day grid */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+      <View style={{ position: 'relative' }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {days.map((d, i) => {
           const s = summary[monthDateKey(d)];
           const status: MonthDayStatus = s?.status ?? 'closed';
@@ -840,6 +841,36 @@ function MonthCalendar({
             </Pressable>
           );
         })}
+        </View>
+        {loading && (
+          <>
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: colors.background,
+                opacity: 0.55,
+                borderRadius: radius.md,
+              }}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ActivityIndicator color={colors.primary} size="large" />
+            </View>
+          </>
+        )}
       </View>
 
       {/* Booking-horizon notice */}
@@ -878,12 +909,6 @@ function MonthCalendar({
           </View>
         ))}
       </View>
-
-      {loading && (
-        <View style={{ marginTop: spacing.md, alignItems: 'center' }}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
-      )}
     </ScrollView>
   );
 }
