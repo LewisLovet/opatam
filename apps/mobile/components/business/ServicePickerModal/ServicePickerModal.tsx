@@ -39,10 +39,25 @@ export function ServicePickerModal({
   const { colors, spacing, radius } = useTheme();
   const [detail, setDetail] = useState<WithId<Service> | null>(null);
   const [selections, setSelections] = useState<ServiceSelections>(emptyServiceSelections());
+  // Category accordion — collapsed by default to save space + speed up search.
+  // A lone category auto-expands (nothing to fold).
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (visible) setDetail(null);
-  }, [visible]);
+    if (visible) {
+      setDetail(null);
+      const catIds = new Set(services.map((s) => s.categoryId ?? '__none__'));
+      setExpanded(catIds.size <= 1 ? catIds : new Set());
+    }
+  }, [visible, services]);
+
+  const toggleCategory = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const hasChoices = (svc: WithId<Service>) =>
     (svc.variations?.length ?? 0) > 0 || (svc.options?.length ?? 0) > 0;
@@ -103,8 +118,6 @@ export function ServicePickerModal({
     }
     return order.map((id) => map.get(id)!);
   })();
-  const showHeaders =
-    grouped.length > 1 || (grouped.length === 1 && grouped[0].id !== '__none__');
 
   const rowStyle = {
     flexDirection: 'row' as const,
@@ -270,62 +283,106 @@ export function ServicePickerModal({
                   )}
                 </Pressable>
 
-                {/* Prestations groupées par catégorie */}
-                {grouped.map((group) => (
-                  <View key={group.id} style={{ marginBottom: spacing.lg }}>
-                    {showHeaders && (
-                      <Text
-                        variant="label"
-                        color="textSecondary"
-                        style={{ marginBottom: spacing.xs, marginLeft: spacing.xs, textTransform: 'uppercase' }}
-                      >
-                        {group.name}
-                      </Text>
-                    )}
+                {/* Prestations — catégories pliées par défaut (accordéon) */}
+                {grouped.map((group) => {
+                  const isOpen = expanded.has(group.id);
+                  const headerName =
+                    group.id === '__none__' && grouped.length === 1
+                      ? 'Toutes les prestations'
+                      : group.name;
+                  // Does this collapsed category hold the current selection?
+                  const holdsSelection =
+                    !isOpen && group.services.some((s) => s.id === currentServiceId);
+                  return (
                     <View
+                      key={group.id}
                       style={{
+                        marginBottom: spacing.sm,
                         borderRadius: radius.lg,
                         borderWidth: 1,
-                        borderColor: colors.border,
+                        borderColor: holdsSelection ? colors.primary : colors.border,
                         overflow: 'hidden',
                       }}
                     >
-                      {group.services.map((svc, idx) => {
-                        const selected = currentServiceId === svc.id;
-                        return (
-                          <Pressable
-                            key={svc.id}
-                            onPress={() => pickService(svc)}
+                      {/* Category header — tap to expand/collapse */}
+                      <Pressable
+                        onPress={() => toggleCategory(group.id)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          padding: spacing.md,
+                          backgroundColor: colors.surfaceSecondary,
+                        }}
+                      >
+                        <Text variant="body" style={{ flex: 1, fontWeight: '600' }}>
+                          {headerName}
+                        </Text>
+                        {holdsSelection && (
+                          <View
                             style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              padding: spacing.md,
-                              backgroundColor: selected ? colors.primaryLight : colors.surface,
-                              borderTopWidth: idx === 0 ? 0 : 1,
-                              borderTopColor: colors.divider,
+                              width: 7,
+                              height: 7,
+                              borderRadius: 4,
+                              backgroundColor: colors.primary,
+                              marginRight: spacing.sm,
                             }}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text variant="body" style={selected ? { fontWeight: '600' } : undefined}>
-                                {svc.name}
-                              </Text>
-                              {hasChoices(svc) && (
-                                <Text variant="caption" color="textSecondary">
-                                  Variations / options
+                          />
+                        )}
+                        <Text
+                          variant="caption"
+                          color="textSecondary"
+                          style={{ marginRight: spacing.sm }}
+                        >
+                          {group.services.length}
+                        </Text>
+                        <Ionicons
+                          name={isOpen ? 'chevron-up' : 'chevron-down'}
+                          size={18}
+                          color={colors.textSecondary}
+                        />
+                      </Pressable>
+
+                      {/* Services — only when the category is expanded */}
+                      {isOpen &&
+                        group.services.map((svc) => {
+                          const selected = currentServiceId === svc.id;
+                          return (
+                            <Pressable
+                              key={svc.id}
+                              onPress={() => pickService(svc)}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                padding: spacing.md,
+                                backgroundColor: selected ? colors.primaryLight : colors.surface,
+                                borderTopWidth: 1,
+                                borderTopColor: colors.divider,
+                              }}
+                            >
+                              <View style={{ flex: 1 }}>
+                                <Text
+                                  variant="body"
+                                  style={selected ? { fontWeight: '600' } : undefined}
+                                >
+                                  {svc.name}
                                 </Text>
-                              )}
-                            </View>
-                            {hasChoices(svc) ? (
-                              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-                            ) : selected ? (
-                              <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                            ) : null}
-                          </Pressable>
-                        );
-                      })}
+                                {hasChoices(svc) && (
+                                  <Text variant="caption" color="textSecondary">
+                                    Variations / options
+                                  </Text>
+                                )}
+                              </View>
+                              {hasChoices(svc) ? (
+                                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                              ) : selected ? (
+                                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                              ) : null}
+                            </Pressable>
+                          );
+                        })}
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </ScrollView>
             </>
           )}
