@@ -9,6 +9,8 @@ import { APP_CONFIG } from '@booking-app/shared/constants';
 import type { ServiceDiscount } from '@booking-app/shared';
 import {
   computeDiscountedTotal,
+  resolveServiceDiscount,
+  getDiscountDaysLeft,
   validateServiceSelections,
   emptyServiceSelections,
   serviceHasChoices,
@@ -315,6 +317,18 @@ export function BookingFlow({
         : null,
     [cartTotalOriginal, cartTotalPrice],
   );
+  // Soonest-ending active promo in the cart → drives the urgency line in the
+  // recap ("Plus que N jours · jusqu'au …").
+  const cartPromo = useMemo(() => {
+    let best: { daysLeft: number; endsAt: string } | null = null;
+    for (const l of cartLines) {
+      const active = resolveServiceDiscount(l.service, globalDiscount);
+      const daysLeft = getDiscountDaysLeft(active);
+      if (daysLeft == null || !active?.endsAt) continue;
+      if (!best || daysLeft < best.daysLeft) best = { daysLeft, endsAt: active.endsAt };
+    }
+    return best;
+  }, [cartLines, globalDiscount]);
   const cartTotalDuration = useMemo(
     () => cartLines.reduce((sum, l) => sum + l.duration, 0),
     [cartLines],
@@ -1089,6 +1103,8 @@ export function BookingFlow({
               effectiveDuration={cartTotalDuration}
               originalPrice={cartTotalOriginal}
               discountPercent={cartDiscountPercent}
+              promoEndsAt={cartPromo?.endsAt ?? null}
+              promoDaysLeft={cartPromo?.daysLeft ?? null}
               choiceLabels={choiceLabels}
             />
           </div>
@@ -1114,6 +1130,8 @@ export function BookingFlow({
             effectiveDuration={cartTotalDuration}
             originalPrice={cartTotalOriginal}
             discountPercent={cartDiscountPercent}
+            promoEndsAt={cartPromo?.endsAt ?? null}
+            promoDaysLeft={cartPromo?.daysLeft ?? null}
             choiceLabels={choiceLabels}
             compact
           />

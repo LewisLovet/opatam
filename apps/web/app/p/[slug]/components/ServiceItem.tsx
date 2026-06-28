@@ -7,6 +7,9 @@ import { Clock, ArrowRight, X } from 'lucide-react';
 import {
   getServiceMinDuration,
   getDiscountedMinPrice,
+  resolveServiceDiscount,
+  getDiscountDaysLeft,
+  formatPromoCountdown,
   type ServiceVariation,
   type ServiceOption,
   type ServiceDiscount,
@@ -68,6 +71,12 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
     globalDiscount,
   );
   const hasPromo = discountPercent != null && minPrice < minOriginal;
+  // Countdown — surfaced only when the promo is ending soon (≤ 7 days) to
+  // create urgency without cluttering every card.
+  const promoDaysLeft = hasPromo
+    ? getDiscountDaysLeft(resolveServiceDiscount(service, globalDiscount))
+    : null;
+  const showCountdown = promoDaysLeft != null && promoDaysLeft <= 7;
 
   useEffect(() => {
     // Small delay to let the layout settle before measuring
@@ -146,6 +155,11 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
                       </span>
                     )}
                   </span>
+                  {showCountdown && (
+                    <span className="block text-[10px] font-semibold text-rose-500 dark:text-rose-400 leading-tight mt-0.5">
+                      {formatPromoCountdown(promoDaysLeft)}
+                    </span>
+                  )}
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 text-white text-sm font-medium rounded-lg group-hover:bg-primary-700 transition-colors shadow-sm">
                   Reserver

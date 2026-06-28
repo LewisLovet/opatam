@@ -2,6 +2,7 @@
 
 import { Clock, MapPin, User, Calendar } from 'lucide-react';
 import Image from 'next/image';
+import { formatPromoCountdown } from '@booking-app/shared';
 
 interface TimeSlotWithDate {
   date: string;
@@ -69,6 +70,10 @@ interface BookingRecapProps {
    *  original price + a "−X%" badge. null/undefined = no promo. */
   originalPrice?: number | null;
   discountPercent?: number | null;
+  /** Soonest-ending active promo in the cart — drives the urgency line
+   *  ("Offre valable jusqu'au … · plus que N jours"). */
+  promoEndsAt?: string | null;
+  promoDaysLeft?: number | null;
   /** Labels of the chosen variations/options to list under the service. */
   choiceLabels?: string[];
 }
@@ -107,6 +112,15 @@ function formatDate(isoString: string): string {
   });
 }
 
+/** "2026-07-05" → "5 juil." (short, for the promo deadline). */
+function formatPromoDate(key: string): string {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
 export function BookingRecap({
   service,
   serviceLabel,
@@ -119,6 +133,8 @@ export function BookingRecap({
   effectiveDuration,
   originalPrice,
   discountPercent,
+  promoEndsAt,
+  promoDaysLeft,
   choiceLabels = [],
 }: BookingRecapProps) {
   const displayName = serviceLabel ?? service?.name ?? '';
@@ -130,6 +146,13 @@ export function BookingRecap({
   // Active promo → show the crossed-out original + a "−X%" badge.
   const hasPromo =
     discountPercent != null && originalPrice != null && originalPrice > displayPrice;
+  // Urgency line — "Plus que N jours · jusqu'au 5 juil."
+  const promoCountdownText =
+    hasPromo && promoDaysLeft != null
+      ? `${formatPromoCountdown(promoDaysLeft)}${
+          promoEndsAt ? ` · jusqu'au ${formatPromoDate(promoEndsAt)}` : ''
+        }`
+      : null;
 
   if (compact) {
     // Mobile compact version
@@ -144,6 +167,11 @@ export function BookingRecap({
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {formatDuration(displayDuration)} · {formatPrice(displayPrice, displayMax)}
               </p>
+              {promoCountdownText && (
+                <p className="text-[11px] font-semibold text-rose-500 dark:text-rose-400">
+                  {promoCountdownText}
+                </p>
+              )}
             </>
           ) : (
             <p className="text-gray-500 dark:text-gray-400">
@@ -348,6 +376,11 @@ export function BookingRecap({
             <p className="text-right text-xs font-semibold text-rose-600 dark:text-rose-400">
               Promotion −{discountPercent}% · vous économisez{' '}
               {formatPrice(originalPrice! - displayPrice)}
+            </p>
+          )}
+          {promoCountdownText && (
+            <p className="text-right text-[11px] font-medium text-rose-500 dark:text-rose-400">
+              {promoCountdownText}
             </p>
           )}
         </div>

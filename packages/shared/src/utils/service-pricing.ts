@@ -385,6 +385,40 @@ export function getDiscountedMinPrice(
   return applyDiscount(original, service.price, discount);
 }
 
+/** Whole days from `key` (YYYY-MM-DD) to the day given by a UTC instant —
+ *  used only for day-granular diffs (no DST drift since both go through UTC). */
+function dateKeyToUTC(key: string): number {
+  const [y, m, d] = key.split('-').map(Number);
+  return Date.UTC(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/**
+ * Days remaining on an ACTIVE promotion before its window closes.
+ *   - returns null when there's no active promo or no end date (open-ended)
+ *   - 0  → ends today (last day)
+ *   - 1  → ends tomorrow, etc.
+ * The window is day-granular (endsAt is inclusive), so this is a day count,
+ * not a live clock.
+ */
+export function getDiscountDaysLeft(
+  discount: ServiceDiscount | null | undefined,
+  now: Date = new Date(),
+): number | null {
+  const active = getActiveDiscount(discount, now);
+  if (!active?.endsAt) return null;
+  const diff = Math.round(
+    (dateKeyToUTC(active.endsAt) - dateKeyToUTC(discountDateKey(now))) / 86_400_000,
+  );
+  return diff < 0 ? null : diff;
+}
+
+/** Short French urgency label from a day count (see getDiscountDaysLeft). */
+export function formatPromoCountdown(daysLeft: number): string {
+  if (daysLeft <= 0) return 'Dernier jour';
+  if (daysLeft === 1) return 'Se termine demain';
+  return `Plus que ${daysLeft} jours`;
+}
+
 // Re-export the variation / option shapes by reference so callers
 // only need one import. (Pure convenience — they're already typed
 // in '../types'.)

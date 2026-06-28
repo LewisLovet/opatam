@@ -5,6 +5,9 @@ import { Clock, Check, ChevronRight, Plus } from 'lucide-react';
 import {
   getServiceMinDuration,
   getDiscountedMinPrice,
+  resolveServiceDiscount,
+  getDiscountDaysLeft,
+  formatPromoCountdown,
   type ServiceVariation,
   type ServiceOption,
   type ServiceInfoField,
@@ -102,6 +105,10 @@ function ServiceButton({
     globalDiscount,
   );
   const hasPromo = discountPercent != null && minPrice < minOriginal;
+  const promoDaysLeft = hasPromo
+    ? getDiscountDaysLeft(resolveServiceDiscount(service, globalDiscount))
+    : null;
+  const showCountdown = promoDaysLeft != null && promoDaysLeft <= 7;
 
   const inCart = cartCount > 0;
 
@@ -187,6 +194,11 @@ function ServiceButton({
                 </span>
               )}
             </span>
+            {showCountdown && (
+              <span className="block text-[10px] font-semibold text-rose-500 dark:text-rose-400 leading-tight mt-0.5">
+                {formatPromoCountdown(promoDaysLeft)}
+              </span>
+            )}
             {inCart && (
               <span className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-semibold text-primary-600 dark:text-primary-400">
                 <Check className="w-3 h-3" />
