@@ -89,6 +89,12 @@ export async function GET(request: NextRequest) {
         bufferTime: s.bufferTime,
         categoryId: s.categoryId ?? null,
         deposit: s.deposit ?? null,
+        // Variations / options / infos so the planning drawer can offer the
+        // same choices picker as the main booking tunnel. Omitted (undefined)
+        // when absent so the shape matches the shared Service type (no null).
+        variations: s.variations ?? undefined,
+        options: s.options ?? undefined,
+        infoFields: s.infoFields ?? undefined,
       })),
       serviceCategories: serviceCategories
         .filter((c) => c.isActive)

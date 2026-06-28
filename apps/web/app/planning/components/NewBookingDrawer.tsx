@@ -11,10 +11,23 @@ import {
   ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody } from '@/components/ui';
-import { resolveDeposit } from '@booking-app/shared';
+import {
+  resolveDeposit,
+  computeServiceTotal,
+  emptyServiceSelections,
+  serviceHasChoices,
+  validateServiceSelections,
+  getServiceMinPrice,
+  type ServiceSelections,
+  type ServiceVariation,
+  type ServiceOption,
+  type ServiceInfoField,
+} from '@booking-app/shared';
 // Phase A: reuse the redesigned tunnel slot picker (day states, capacity,
 // "Prochaine dispo", /api/slots/summary) instead of the legacy local SlotStep.
 import { StepSlot } from '@/app/p/[slug]/reserver/components/StepSlot';
+// Phase B: reuse the tunnel's variations/options picker.
+import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -31,6 +44,9 @@ interface Service {
     value: number;
     refundDeadlineHours: number;
   } | null;
+  variations?: ServiceVariation[];
+  options?: ServiceOption[];
+  infoFields?: ServiceInfoField[];
 }
 
 interface ServiceCategory {
@@ -86,7 +102,7 @@ interface TimeSlotWithDate {
   endDatetime: string;
 }
 
-type DrawerStep = 'service' | 'slot' | 'client' | 'success';
+type DrawerStep = 'service' | 'choices' | 'slot' | 'client' | 'success';
 
 interface NewBookingDrawerProps {
   isOpen: boolean;
@@ -115,6 +131,8 @@ export function NewBookingDrawer({
   const [step, setStep] = useState<DrawerStep>('service');
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotWithDate | null>(null);
+  const [selections, setSelections] = useState<ServiceSelections>(emptyServiceSelections());
+  const [choicesMissing, setChoicesMissing] = useState<Set<string>>(new Set());
   const [clientInfo, setClientInfo] = useState({ name: '', email: '', phone: '' });
   // Off by default — the pro explicitly opts in to send the payment link.
   const [askDeposit, setAskDeposit] = useState(false);
@@ -157,6 +175,8 @@ export function NewBookingDrawer({
       setStep('service');
       setSelectedServiceId(null);
       setSelectedSlot(null);
+      setSelections(emptyServiceSelections());
+      setChoicesMissing(new Set());
       setClientInfo({ name: '', email: '', phone: '' });
       setSubmitError(null);
       setAskDeposit(false);
@@ -167,6 +187,12 @@ export function NewBookingDrawer({
   const selectedService = useMemo(
     () => data?.services.find((s) => s.id === selectedServiceId) || null,
     [data, selectedServiceId]
+  );
+
+  // Effective price + duration including the chosen variations/options.
+  const total = useMemo(
+    () => (selectedService ? computeServiceTotal(selectedService, selections) : null),
+    [selectedService, selections],
   );
 
   // Resolved deposit for the selected service. null when no deposit
@@ -181,10 +207,10 @@ export function NewBookingDrawer({
       data.provider.stripeConnectStatus === 'active';
     if (!ready) return null;
     return resolveDeposit(
-      { price: selectedService.price, deposit: selectedService.deposit },
+      { price: total?.price ?? selectedService.price, deposit: selectedService.deposit },
       { depositDefault: data.provider.settings.depositDefault },
     );
-  }, [data, selectedService]);
+  }, [data, selectedService, total]);
 
   const openDays = useMemo(() => {
     if (!data) return [];
@@ -195,8 +221,24 @@ export function NewBookingDrawer({
 
   // Handlers
   const handleServiceSelect = (serviceId: string) => {
+    const svc = data?.services.find((s) => s.id === serviceId);
     setSelectedServiceId(serviceId);
     setSelectedSlot(null);
+    setSelections(emptyServiceSelections());
+    setChoicesMissing(new Set());
+    // A service with variations/options → configure it before the slot.
+    setStep(svc && serviceHasChoices(svc) ? 'choices' : 'slot');
+  };
+
+  // Validate required variations/options before moving to the slot picker.
+  const handleChoicesContinue = () => {
+    if (!selectedService) return;
+    const { valid, missing } = validateServiceSelections(selectedService, selections);
+    if (!valid) {
+      setChoicesMissing(new Set(missing));
+      return;
+    }
+    setChoicesMissing(new Set());
     setStep('slot');
   };
 
@@ -206,7 +248,9 @@ export function NewBookingDrawer({
   };
 
   const handleBack = () => {
-    if (step === 'slot') setStep('service');
+    if (step === 'choices') setStep('service');
+    else if (step === 'slot')
+      setStep(selectedService && serviceHasChoices(selectedService) ? 'choices' : 'service');
     else if (step === 'client') setStep('slot');
   };
 
@@ -228,6 +272,7 @@ export function NewBookingDrawer({
           locationId: data.member.locationId,
           datetime: selectedSlot.datetime,
           clientInfo,
+          selections,
           source: 'pro',
           askDeposit: willAskDeposit,
         }),
@@ -260,7 +305,8 @@ export function NewBookingDrawer({
     { id: 'slot' as const, label: 'Créneau' },
     { id: 'client' as const, label: 'Client' },
   ];
-  const currentStepIndex = steps.findIndex((s) => s.id === step);
+  // 'choices' is part of the "Prestation" stage in the stepper.
+  const currentStepIndex = step === 'choices' ? 0 : steps.findIndex((s) => s.id === step);
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl">
@@ -296,7 +342,7 @@ export function NewBookingDrawer({
                 <div className="flex items-center justify-between">
                   {steps.map((s, index) => {
                     const isCompleted = index < currentStepIndex;
-                    const isCurrent = s.id === step;
+                    const isCurrent = s.id === step || (step === 'choices' && s.id === 'service');
                     return (
                       <div key={s.id} className="flex items-center flex-1">
                         <div className="flex items-center gap-2">
@@ -353,12 +399,50 @@ export function NewBookingDrawer({
                 />
               )}
 
+              {step === 'choices' && selectedService && (
+                <div>
+                  <button
+                    onClick={handleBack}
+                    className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-3"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Retour
+                  </button>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {selectedService.name}
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">
+                    Composez la prestation
+                  </p>
+                  <ServiceChoicesPicker
+                    service={{
+                      variations: selectedService.variations,
+                      options: selectedService.options,
+                      infoFields: selectedService.infoFields,
+                    }}
+                    selections={selections}
+                    onChange={setSelections}
+                    missing={choicesMissing}
+                  />
+                  <div className="mt-6 flex items-center justify-between gap-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {total ? `${formatPrice(total.price)} · ${formatDuration(total.duration)}` : ''}
+                    </span>
+                    <button
+                      onClick={handleChoicesContinue}
+                      className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg text-sm transition-colors"
+                    >
+                      Continuer
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {step === 'slot' && selectedService && data && (
                 <StepSlot
                   providerId={providerId}
                   serviceId={selectedService.id}
                   memberId={memberId}
-                  serviceDuration={selectedService.duration + selectedService.bufferTime}
+                  serviceDuration={(total?.duration ?? selectedService.duration) + selectedService.bufferTime}
                   maxAdvanceDays={data.provider.settings.maxBookingAdvance}
                   openDays={openDays}
                   selectedSlot={selectedSlot}
@@ -492,9 +576,14 @@ function ServiceStep({
             <span>{formatDuration(service.duration)}</span>
           </div>
         </div>
-        <span className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">
-          {formatPrice(service.price)}
-        </span>
+        <div className="text-right flex-shrink-0">
+          {((service.variations?.length ?? 0) > 0 || (service.options?.length ?? 0) > 0) && (
+            <span className="block text-[10px] font-normal text-gray-400">à partir de</span>
+          )}
+          <span className="text-sm font-bold text-gray-900 dark:text-white">
+            {formatPrice(getServiceMinPrice(service))}
+          </span>
+        </div>
       </div>
     </button>
   );
