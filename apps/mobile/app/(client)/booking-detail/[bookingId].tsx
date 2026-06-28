@@ -639,6 +639,18 @@ export default function BookingDetailScreen() {
 
           {/* Price and duration */}
           <View style={styles.priceRow}>
+            {booking.originalPrice != null && booking.originalPrice > booking.price && (
+              <Text
+                variant="body"
+                style={{
+                  textDecorationLine: 'line-through',
+                  color: 'rgba(255,255,255,0.7)',
+                  marginRight: spacing.xs,
+                }}
+              >
+                {formatPrice(booking.originalPrice)}
+              </Text>
+            )}
             <Text variant="h3" style={{ fontWeight: '700', color: '#ffffff' }}>
               {formatPrice(booking.price, booking.priceMax)}
             </Text>

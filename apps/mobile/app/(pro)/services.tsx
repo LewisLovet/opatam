@@ -39,6 +39,7 @@ import type {
 } from '@booking-app/shared/types';
 import {
   resolveDeposit,
+  getActiveDiscount,
   SERVICE_COLORS,
   sanitizeVariations,
   sanitizeOptions,
@@ -630,6 +631,10 @@ export default function ServicesScreen() {
     const isAllMembers = !assignedMembers
       || (activeMembers.length > 0 && assignedMembers.length >= activeMembers.length);
 
+    // Promotion badge — visible at a glance, without opening the prestation.
+    const promo = service.discount ?? null;
+    const promoActive = getActiveDiscount(promo);
+
     return (
       <Pressable
         key={service.id}
@@ -663,6 +668,39 @@ export default function ServicesScreen() {
                 depositsEnabled={depositsEnabled}
                 defaultDeposit={defaultDepositSettings}
               />
+              {promo && (
+                <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                  <View
+                    style={[
+                      styles.badge,
+                      {
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 3,
+                        backgroundColor: promoActive ? 'rgba(225,29,72,0.12)' : '#F4F4F5',
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="pricetag"
+                      size={10}
+                      color={promoActive ? '#E11D48' : '#71717A'}
+                    />
+                    <Text
+                      variant="caption"
+                      style={{
+                        color: promoActive ? '#E11D48' : '#71717A',
+                        fontWeight: '600',
+                        fontSize: 10,
+                      }}
+                    >
+                      {promoActive
+                        ? `Promo −${promo.percent}%`
+                        : `Promo −${promo.percent}% · inactive`}
+                    </Text>
+                  </View>
+                </View>
+              )}
               {service.description && (
                 <Text variant="caption" color="textMuted" numberOfLines={1} style={{ marginTop: 4 }}>
                   {service.description}

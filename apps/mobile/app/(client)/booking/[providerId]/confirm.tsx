@@ -23,7 +23,7 @@ import { Text, Card, Button, EmptyState, Avatar, Input, useToast } from '../../.
 import { useBooking } from '../../../../contexts';
 import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
-import { computeServiceTotal } from '@booking-app/shared';
+import { computeDiscountedTotal } from '@booking-app/shared';
 import { API_URL } from '../../../../lib/config';
 
 /** App Store / Play Store URLs for the "update" CTA. iOS app id +
@@ -107,15 +107,23 @@ export default function ConfirmBookingScreen() {
     resetBooking,
   } = useBooking();
 
-  // Whole-visit totals across the cart.
+  // Shop-wide promo applied to services without their own discount.
+  const globalDiscount = provider?.settings?.globalDiscount ?? null;
+
+  // Whole-visit totals across the cart (discount applied).
   const cartPrice = cart.reduce(
-    (sum, c) => sum + computeServiceTotal(c.service, c.selections).price,
+    (sum, c) => sum + computeDiscountedTotal(c.service, c.selections, globalDiscount).price,
+    0,
+  );
+  const cartOriginal = cart.reduce(
+    (sum, c) => sum + computeDiscountedTotal(c.service, c.selections, globalDiscount).original,
     0,
   );
   const cartDuration = cart.reduce(
-    (sum, c) => sum + computeServiceTotal(c.service, c.selections).duration,
+    (sum, c) => sum + computeDiscountedTotal(c.service, c.selections, globalDiscount).duration,
     0,
   );
+  const cartHasPromo = cartOriginal > cartPrice;
   const isMulti = cart.length > 1;
 
   // Get locations to display location info
@@ -458,14 +466,27 @@ export default function ConfirmBookingScreen() {
               {isMulti ? (
                 <>
                   {cart.map((c, idx) => {
-                    const e = computeServiceTotal(c.service, c.selections);
+                    const e = computeDiscountedTotal(c.service, c.selections, globalDiscount);
+                    const ePromo = e.discountPercent != null && e.original > e.price;
                     return (
                       <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, marginTop: idx ? 2 : 0 }}>
                         <Text variant="body" style={{ fontWeight: '600', flex: 1 }} numberOfLines={1}>
                           {idx + 1}. {c.service.name}
                         </Text>
                         <Text variant="caption" color="textSecondary">
-                          {e.duration} min · {(e.price / 100).toFixed(2)} €
+                          {e.duration} min ·{' '}
+                          {ePromo ? (
+                            <Text variant="caption">
+                              <Text variant="caption" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
+                                {(e.original / 100).toFixed(2)} €
+                              </Text>
+                              <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
+                                {'  '}{(e.price / 100).toFixed(2)} €
+                              </Text>
+                            </Text>
+                          ) : (
+                            `${(e.price / 100).toFixed(2)} €`
+                          )}
                         </Text>
                       </View>
                     );
@@ -475,7 +496,19 @@ export default function ConfirmBookingScreen() {
                 <>
                   <Text variant="body" style={{ fontWeight: '600' }}>{service.name}</Text>
                   <Text variant="caption" color="textSecondary">
-                    {cartDuration} min - {(cartPrice / 100).toFixed(2)} €
+                    {cartDuration} min -{' '}
+                    {cartHasPromo ? (
+                      <Text variant="caption">
+                        <Text variant="caption" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
+                          {(cartOriginal / 100).toFixed(2)} €
+                        </Text>
+                        <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
+                          {'  '}{(cartPrice / 100).toFixed(2)} €
+                        </Text>
+                      </Text>
+                    ) : (
+                      `${(cartPrice / 100).toFixed(2)} €`
+                    )}
                   </Text>
                 </>
               )}
@@ -596,10 +629,25 @@ export default function ConfirmBookingScreen() {
         <Card padding="lg" shadow="sm" style={{ marginTop: spacing.lg }}>
           <View style={styles.priceRow}>
             <Text variant="body">Total</Text>
-            <Text variant="h2" color="primary">
-              {cartPrice === 0 ? 'Gratuit' : `${(cartPrice / 100).toFixed(2)} €`}
-            </Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              {cartHasPromo && (
+                <Text
+                  variant="bodySmall"
+                  style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
+                >
+                  {(cartOriginal / 100).toFixed(2)} €
+                </Text>
+              )}
+              <Text variant="h2" style={{ color: cartHasPromo ? '#E11D48' : colors.primary }}>
+                {cartPrice === 0 ? 'Gratuit' : `${(cartPrice / 100).toFixed(2)} €`}
+              </Text>
+            </View>
           </View>
+          {cartHasPromo && (
+            <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600', marginTop: spacing.xs }}>
+              Vous économisez {((cartOriginal - cartPrice) / 100).toFixed(2)} €
+            </Text>
+          )}
           <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
             Paiement sur place
           </Text>
