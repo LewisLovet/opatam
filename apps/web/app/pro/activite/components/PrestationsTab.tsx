@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
 import { catalogService, memberService } from '@booking-app/firebase';
-import { Plus, FolderPlus, Pencil, ChevronRight, Tag, Loader2 } from 'lucide-react';
+import { Plus, FolderPlus, Pencil, ChevronRight, Tag, Percent, Loader2 } from 'lucide-react';
 import { ServiceCard } from './ServiceCard';
 import { CategoryModal, type CategoryFormData } from './CategoryModal';
+import { GlobalPromoModal } from './GlobalPromoModal';
 import type { Service, ServiceCategory, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -24,6 +25,7 @@ export function PrestationsTab() {
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<WithId<ServiceCategory> | null>(null);
+  const [globalPromoOpen, setGlobalPromoOpen] = useState(false);
 
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
@@ -209,6 +211,7 @@ export function PrestationsTab() {
     !!provider?.depositsAddonActive &&
     provider?.stripeConnectStatus === 'active';
   const defaultDeposit = provider?.settings?.depositDefault ?? null;
+  const globalDiscount = provider?.settings?.globalDiscount ?? null;
 
   const renderServiceList = (list: WithId<Service>[]) => (
     <div className="space-y-3">
@@ -310,6 +313,45 @@ export function PrestationsTab() {
         </div>
       </div>
 
+      {/* Global promotion banner — a shop-wide % off, sitting naturally with
+          the prestations it applies to. */}
+      <div className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 px-4 py-3">
+        <div
+          className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+            globalDiscount
+              ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+          }`}
+        >
+          <Percent className="w-4 h-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          {globalDiscount ? (
+            <>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                Promotion globale : −{globalDiscount.percent}&nbsp;% sur vos prestations
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {globalPromoWindowText(globalDiscount)} ·{' '}
+                {globalDiscount.includeExtras ? 'variations/options incluses' : 'base uniquement'}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                Promotion globale
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Appliquez une réduction sur toutes vos prestations.
+              </p>
+            </>
+          )}
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setGlobalPromoOpen(true)}>
+          {globalDiscount ? 'Modifier' : 'Configurer'}
+        </Button>
+      </div>
+
       {/* Services list */}
       {services.length === 0 ? (
         <EmptyState onAdd={handleCreate} />
@@ -349,8 +391,25 @@ export function PrestationsTab() {
         onSave={editingCategory ? handleUpdateCategory : handleCreateCategory}
         onDelete={handleDeleteCategory}
       />
+
+      <GlobalPromoModal
+        isOpen={globalPromoOpen}
+        onClose={() => setGlobalPromoOpen(false)}
+      />
     </div>
   );
+}
+
+/** "Du 01/06/2026 au 30/06/2026" / "Jusqu'au …" / "Permanente". */
+function globalPromoWindowText(d: { startsAt?: string | null; endsAt?: string | null }): string {
+  const fmt = (s: string) => {
+    const [y, m, day] = s.split('-');
+    return `${day}/${m}/${y}`;
+  };
+  if (d.startsAt && d.endsAt) return `Du ${fmt(d.startsAt)} au ${fmt(d.endsAt)}`;
+  if (d.endsAt) return `Jusqu'au ${fmt(d.endsAt)}`;
+  if (d.startsAt) return `À partir du ${fmt(d.startsAt)}`;
+  return 'Permanente';
 }
 
 // Empty state component

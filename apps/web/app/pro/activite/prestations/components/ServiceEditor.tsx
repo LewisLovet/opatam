@@ -15,6 +15,7 @@ import type {
 import { EditorTopBar } from './EditorTopBar';
 import { SectionEssentiel } from './SectionEssentiel';
 import { SectionReglages } from './SectionReglages';
+import { SectionPromotion } from './SectionPromotion';
 import { SectionDisponibilite } from './SectionDisponibilite';
 import { SectionVariations } from './SectionVariations';
 import { ServicePreview } from './ServicePreview';
@@ -150,6 +151,16 @@ export function ServiceEditor({
         next.depositValue = 'Le pourcentage ne peut pas dépasser 100 %';
       }
     }
+    if (formData.discount) {
+      const p = formData.discount.percent;
+      if (!Number.isFinite(p) || p < 1 || p > 100) {
+        next.discountPercent = 'La réduction doit être comprise entre 1 et 100 %';
+      }
+      const { startsAt, endsAt } = formData.discount;
+      if (startsAt && endsAt && startsAt > endsAt) {
+        next.discountEnd = 'La date de fin doit être postérieure au début';
+      }
+    }
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -266,6 +277,8 @@ export function ServiceEditor({
           defaultDeposit={defaultDeposit}
           update={update}
         />
+
+        <SectionPromotion data={formData} errors={errors} update={update} />
 
         <SectionVariations data={formData} update={update} />
         {errors.variations && (

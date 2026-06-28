@@ -36,6 +36,13 @@ export interface ServiceFormData {
     | { type: 'fixed' | 'percent'; value: number; refundDeadlineHours: number }
     | { type: 'none' }
     | null;
+  /** Per-service promotion (percentage). null = no promo on this prestation. */
+  discount: {
+    percent: number;
+    includeExtras: boolean;
+    startsAt: string | null; // YYYY-MM-DD
+    endsAt: string | null;   // YYYY-MM-DD
+  } | null;
   /** Client-facing choices. Empty arrays for a plain prestation. */
   variations: ServiceVariation[];
   options: ServiceOption[];
@@ -71,6 +78,14 @@ export function serviceToFormData(service: WithId<Service>): ServiceFormData {
     memberIds: service.memberIds,
     color: service.color ?? null,
     deposit: normalizeDepositForForm(service.deposit),
+    discount: service.discount
+      ? {
+          percent: service.discount.percent,
+          includeExtras: service.discount.includeExtras ?? true,
+          startsAt: service.discount.startsAt ?? null,
+          endsAt: service.discount.endsAt ?? null,
+        }
+      : null,
     variations: service.variations ?? [],
     options: service.options ?? [],
     infoFields: service.infoFields ?? [],
@@ -95,6 +110,7 @@ export function emptyServiceFormData(
     memberIds: null,
     color: null,
     deposit: null,
+    discount: null,
     variations: [],
     options: [],
     infoFields: [],

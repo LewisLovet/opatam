@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { serviceDiscountSchema } from './service.schema';
 
 // Social links schema
 export const socialLinksSchema = z.object({
@@ -67,6 +68,10 @@ export const providerSettingsSchema = z.object({
     })
     .nullable()
     .optional(),
+
+  // Shop-wide promotion (percentage), applied to services without their own
+  // discount. Reuses the per-service discount shape.
+  globalDiscount: serviceDiscountSchema.optional(),
 });
 
 // Create provider schema - MINIMUM requis pour creer un provider
