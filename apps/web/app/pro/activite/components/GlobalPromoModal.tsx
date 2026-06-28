@@ -128,12 +128,14 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
               <Input
                 label="Début (optionnel)"
                 type="date"
+                className="appearance-none sm:[appearance:auto]"
                 value={startsAt ?? ''}
                 onChange={(e) => setStartsAt(e.target.value || null)}
               />
               <Input
                 label="Fin (optionnel)"
                 type="date"
+                className="appearance-none sm:[appearance:auto]"
                 value={endsAt ?? ''}
                 onChange={(e) => setEndsAt(e.target.value || null)}
               />

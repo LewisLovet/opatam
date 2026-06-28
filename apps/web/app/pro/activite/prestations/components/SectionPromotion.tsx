@@ -109,12 +109,14 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
             <Input
               label="Début (optionnel)"
               type="date"
+              className="appearance-none sm:[appearance:auto]"
               value={promo.startsAt ?? ''}
               onChange={(e) => setPromo({ startsAt: e.target.value || null })}
             />
             <Input
               label="Fin (optionnel)"
               type="date"
+              className="appearance-none sm:[appearance:auto]"
               value={promo.endsAt ?? ''}
               onChange={(e) => setPromo({ endsAt: e.target.value || null })}
               error={errors.discountEnd}
