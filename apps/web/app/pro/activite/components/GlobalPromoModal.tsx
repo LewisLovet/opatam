@@ -124,7 +124,7 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label="Début (optionnel)"
                 type="date"

@@ -105,7 +105,7 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
           </label>
 
           {/* Date window */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Début (optionnel)"
               type="date"
