@@ -543,7 +543,7 @@ export default function CalendarPage() {
             selectedDate={selectedDate}
             services={services}
             members={activeMembers}
-            memberId={selectedMemberId !== 'all' ? selectedMemberId : activeMembers[0]?.id ?? null}
+            memberId={selectedMemberId !== 'all' ? selectedMemberId : null}
             isTeamPlan={isTeamPlan}
             maxBookingAdvance={provider?.settings?.maxBookingAdvance ?? 60}
             onDayClick={(date) => {

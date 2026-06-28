@@ -2,7 +2,9 @@
 process.env.TZ = 'Europe/Paris';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { schedulingService } from '@booking-app/firebase';
+import { schedulingService, memberRepository } from '@booking-app/firebase';
+
+const STATUS_RANK: Record<string, number> = { closed: 0, full: 1, almost_full: 2, available: 3 };
 
 /**
  * GET /api/slots/summary
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
     const fromStr = searchParams.get('from');
     const toStr = searchParams.get('to');
 
-    if (!providerId || !serviceId || !memberId || !fromStr || !toStr) {
+    if (!providerId || !serviceId || !fromStr || !toStr) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
 
@@ -44,15 +46,49 @@ export async function GET(request: NextRequest) {
     const durationParam = searchParams.get('duration');
     const durationOverride = durationParam ? parseInt(durationParam, 10) : undefined;
 
-    const days = await schedulingService.getAvailabilitySummary({
-      providerId,
-      serviceId,
-      memberId,
-      startDate,
-      endDate,
-      durationOverride:
-        durationOverride && Number.isFinite(durationOverride) ? durationOverride : undefined,
-    });
+    const dur = durationOverride && Number.isFinite(durationOverride) ? durationOverride : undefined;
+
+    type Day = Awaited<ReturnType<typeof schedulingService.getAvailabilitySummary>>[number];
+
+    let days: Day[];
+    if (memberId) {
+      days = await schedulingService.getAvailabilitySummary({
+        providerId,
+        serviceId,
+        memberId,
+        startDate,
+        endDate,
+        durationOverride: dur,
+      });
+    } else {
+      // No member → aggregate across the team: best status per day, capacities
+      // summed (team-wide bookable count), slots concatenated.
+      const members = (await memberRepository.getByProvider(providerId)).filter(
+        (m) => m.isActive !== false,
+      );
+      const acc = new Map<string, Day>();
+      for (const m of members) {
+        const ds = await schedulingService.getAvailabilitySummary({
+          providerId,
+          serviceId,
+          memberId: m.id,
+          startDate,
+          endDate,
+          durationOverride: dur,
+        });
+        for (const d of ds) {
+          const cur = acc.get(d.date);
+          if (!cur) {
+            acc.set(d.date, { ...d, slots: [...d.slots] });
+          } else {
+            cur.capacity += d.capacity;
+            cur.slots.push(...d.slots);
+            if ((STATUS_RANK[d.status] ?? 0) > (STATUS_RANK[cur.status] ?? 0)) cur.status = d.status;
+          }
+        }
+      }
+      days = Array.from(acc.values());
+    }
 
     const serialized = days.map((d) => ({
       date: d.date,

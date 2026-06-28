@@ -107,14 +107,16 @@ export function MonthView({
   const toKeyStr = toKey(days[41]);
 
   useEffect(() => {
-    if (!providerId || !memberId) return;
+    if (!providerId) return;
     let cancelled = false;
     const run = async () => {
       setLoading(true);
       try {
+        // No member → omit the param; the endpoint aggregates across the team.
+        const memberParam = memberId ? `&memberId=${memberId}` : '';
         const url = serviceId
-          ? `/api/slots/summary?providerId=${providerId}&serviceId=${serviceId}&memberId=${memberId}&from=${fromKey}&to=${toKeyStr}`
-          : `/api/slots/occupancy?providerId=${providerId}&memberId=${memberId}&from=${fromKey}&to=${toKeyStr}`;
+          ? `/api/slots/summary?providerId=${providerId}&serviceId=${serviceId}${memberParam}&from=${fromKey}&to=${toKeyStr}`
+          : `/api/slots/occupancy?providerId=${providerId}${memberParam}&from=${fromKey}&to=${toKeyStr}`;
         const res = await fetch(url);
         const json = await res.json();
         if (cancelled) return;
