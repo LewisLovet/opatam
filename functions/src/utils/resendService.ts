@@ -84,6 +84,24 @@ export function formatPriceFr(priceInCentimes: number, priceMaxInCentimes?: numb
   return fmt(priceInCentimes);
 }
 
+/**
+ * Promotion note appended after the price when a discount was applied
+ * (originalPrice > price). HTML version: crossed-out original + "−X%".
+ * Returns '' when there's no promo.
+ */
+function promoNoteHtml(price: number, originalPrice?: number | null): string {
+  if (!originalPrice || originalPrice <= price) return '';
+  const pct = Math.round(((originalPrice - price) / originalPrice) * 100);
+  return ` <span style="color: #a1a1aa; text-decoration: line-through; font-weight: 400;">${formatPriceFr(originalPrice)}</span> <span style="color: #e11d48; font-weight: 700;">−${pct}%</span>`;
+}
+
+/** Plain-text version of the promo note: " (au lieu de 50 €, −20 %)". */
+function promoNoteText(price: number, originalPrice?: number | null): string {
+  if (!originalPrice || originalPrice <= price) return '';
+  const pct = Math.round(((originalPrice - price) / originalPrice) * 100);
+  return ` (au lieu de ${formatPriceFr(originalPrice)}, −${pct} %)`;
+}
+
 // Helper to format a duration in minutes ("45 min", "1h", "1h30")
 export function formatDurationFr(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
@@ -106,6 +124,8 @@ export interface EmailServiceItem extends EmailSelections {
   serviceName: string;
   duration: number;
   price: number;
+  /** Pre-discount price (cents) when a promo was applied to this line. */
+  originalPrice?: number | null;
 }
 
 /** True when the given selections carry at least one choice to render. */
@@ -215,6 +235,8 @@ export interface BookingEmailData {
   duration: number;
   price: number;
   priceMax?: number | null;
+  /** Pre-discount total (cents) when a promo was applied. null = no promo. */
+  originalPrice?: number | null;
   providerName: string;
   providerSlug?: string;
   locationName?: string;
@@ -568,6 +590,8 @@ export interface ProviderNewBookingEmailData {
   duration: number;
   price: number;
   priceMax?: number | null;
+  /** Pre-discount total (cents) when a promo was applied. null = no promo. */
+  originalPrice?: number | null;
   providerName: string;
   locationName?: string;
   locationAddress?: string;
@@ -679,7 +703,7 @@ function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): s
                             <div style="padding: 8px 0;${idx > 0 ? ' border-top: 1px solid #e4e4e7;' : ''}">
                               <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr>
                                 <td style="font-size: 14px; color: #18181b; font-weight: 600;">${idx + 1}. ${item.serviceName}</td>
-                                <td style="font-size: 14px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price)}</td>
+                                <td style="font-size: 14px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price)}${promoNoteHtml(item.price, item.originalPrice)}</td>
                               </tr></table>
                               <div style="font-size: 12px; color: #71717a; margin-top: 2px;">${formatDurationFr(item.duration)}</div>
                               ${hasSelections(item) ? renderSelectionsHtml(item) : ''}
@@ -689,7 +713,7 @@ function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): s
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Horaire</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Membre</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedPrice}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice)}</td></tr>
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte perçu</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
                     </table>
                   </div>
@@ -723,13 +747,13 @@ Détails :
 - Client : ${data.clientName}
 ${data.clientPhone ? `- Téléphone : ${data.clientPhone}` : ''}
 ${data.items && data.items.length >= 2
-  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
+  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${promoNoteText(item.price, item.originalPrice)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
   : `- Prestation : ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data)}` : ''}`}
 - Date : ${data.formattedDate}
 - Horaire : ${data.formattedTime} - ${data.formattedEndTime}
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${data.memberName ? `- Membre : ${data.memberName}` : ''}
-- Prix : ${data.formattedPrice}
+- Prix : ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice)}
 ${data.depositPaid ? `- Acompte perçu : ${formatPriceFr(data.depositPaid.amount)}` : ''}
 
 Voir mon calendrier : ${data.calendarUrl}
@@ -1266,7 +1290,7 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                           <div style="padding: 10px 0;${idx > 0 ? ' border-top: 1px solid #bbf7d0;' : ''}">
                             <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr>
                               <td style="font-size: 15px; color: #18181b; font-weight: 600;">${idx + 1}. ${item.serviceName}</td>
-                              <td style="font-size: 15px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price)}</td>
+                              <td style="font-size: 15px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price)}${promoNoteHtml(item.price, item.originalPrice)}</td>
                             </tr></table>
                             <div style="font-size: 13px; color: #71717a; margin-top: 2px;">${formatDurationFr(item.duration)}</div>
                             ${hasSelections(item) ? renderSelectionsHtml(item) : ''}
@@ -1282,7 +1306,7 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${locationAddressRowsHtml(data)}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice)}</td></tr>
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte payé</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Reste à régler</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} sur place</td></tr>` : ''}
                     </table>
@@ -1332,7 +1356,7 @@ ${data.updateContext
 
 Détails de votre rendez-vous :
 ${data.items && data.items.length >= 2
-  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
+  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${promoNoteText(item.price, item.originalPrice)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
   : `- Prestation : ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data)}` : ''}`}
 - Date : ${data.formattedDate}
 - Heure : ${data.formattedTime} - ${data.formattedEndTime}
@@ -1340,7 +1364,7 @@ ${data.items && data.items.length >= 2
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${locationAddressLineText(data)}${addressPendingNoticeText(data)}${accessInstructionsBlockText(data)}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
-- Prix : ${data.formattedPrice}
+- Prix : ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice)}
 ${data.depositPaid ? `- Acompte payé : ${formatPriceFr(data.depositPaid.amount)}` : ''}
 ${data.depositPaid ? `- Reste à régler sur place : ${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)}` : ''}
 
@@ -1502,7 +1526,7 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${locationAddressRowsHtml(data)}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice)}</td></tr>
                     </table>
                   </div>
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
@@ -1549,7 +1573,7 @@ Nouveau créneau :
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${locationAddressLineText(data)}${addressPendingNoticeText(data)}${accessInstructionsBlockText(data)}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
-- Prix : ${data.formattedPrice}
+- Prix : ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice)}
 
 Mettre à jour votre calendrier :
 - Google Calendar : ${data.googleCalendarUrl}
@@ -1609,7 +1633,7 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${locationAddressRowsHtml(data)}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}</td></tr>
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice)}</td></tr>
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte payé</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Reste à régler</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} sur place</td></tr>` : ''}
                     </table>
@@ -1663,7 +1687,7 @@ Détails de votre rendez-vous :
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
 ${locationAddressLineText(data)}${addressPendingNoticeText(data)}${accessInstructionsBlockText(data)}
 ${data.memberName ? `- Avec : ${data.memberName}` : ''}
-- Prix : ${data.formattedPrice}
+- Prix : ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice)}
 
 Ajouter à votre calendrier :
 - Google Calendar : ${data.googleCalendarUrl}

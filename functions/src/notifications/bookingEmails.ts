@@ -30,10 +30,12 @@ interface BookingData {
   duration?: number;
   price?: number;
   priceMax?: number | null;
+  originalPrice?: number | null;
   items?: {
     serviceName: string;
     duration: number;
     price: number;
+    originalPrice?: number | null;
     selectedVariations?: BookingSelectedVariation[];
     selectedOptions?: BookingSelectedOption[];
     selectedInfo?: BookingSelectedInfo[];
@@ -211,10 +213,12 @@ async function toEmailData(
     duration: booking.duration || 60,
     price: booking.price || 0,
     priceMax: booking.priceMax || null,
+    originalPrice: booking.originalPrice ?? null,
     items: booking.items?.map((i) => ({
       serviceName: i.serviceName,
       duration: i.duration,
       price: i.price,
+      originalPrice: i.originalPrice ?? null,
       selectedVariations: i.selectedVariations,
       selectedOptions: i.selectedOptions,
       selectedInfo: i.selectedInfo,
@@ -292,10 +296,12 @@ export async function emailProviderNewBooking(
     duration: booking.duration || 60,
     price: booking.price || 0,
     priceMax: booking.priceMax || null,
+    originalPrice: booking.originalPrice ?? null,
     items: booking.items?.map((i) => ({
       serviceName: i.serviceName,
       duration: i.duration,
       price: i.price,
+      originalPrice: i.originalPrice ?? null,
       selectedVariations: i.selectedVariations,
       selectedOptions: i.selectedOptions,
       selectedInfo: i.selectedInfo,
