@@ -15,6 +15,7 @@ export * from './CategoryCard';
 export * from './CitySelect';
 export * from './RegionSelect';
 export * from './CategorySelect';
+export * from './ServicePickerModal';
 export * from './EmptyState';
 export * from './ScreenHeader';
 export * from './BrandedHeader';

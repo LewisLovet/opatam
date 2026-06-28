@@ -43,6 +43,9 @@ import { Text } from '../Text';
 import { useNewFeatures } from '../../hooks/useNewFeatures';
 import { useProvider } from '../../contexts';
 import { useUpcomingAvailabilities } from '../../hooks/useUpcomingAvailabilities';
+import { useServiceCategories } from '../../hooks/useServiceCategories';
+import { ServicePickerModal } from '../business';
+import { StatusBar } from 'expo-status-bar';
 import { StoryCard, type MonthAvailabilityGrid, type MonthAvailabilityDay } from './StoryCard';
 
 // Try to import react-native-share (only available in dev client / production builds)
@@ -177,6 +180,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { provider } = useProvider();
+  const { categories } = useServiceCategories(provider?.id);
   const viewRef = useRef<View>(null);
   // "Nouveau" pill on the Dispos toggle — visible until the pro
   // taps it once. Mirrors the FAB indicator and is the canonical
@@ -212,6 +216,9 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const [monthOffset, setMonthOffset] = useState(0);
   const MAX_MONTH_OFFSET = 3;
   const [monthServiceId, setMonthServiceId] = useState<string | null>(null);
+  const [monthDurationOverride, setMonthDurationOverride] = useState<number | undefined>(undefined);
+  const [monthServiceLabel, setMonthServiceLabel] = useState('Vue générale');
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false);
   const [memberId, setMemberId] = useState<string | null>(null);
   const [monthGrid, setMonthGrid] = useState<MonthAvailabilityGrid | undefined>(undefined);
   const [loadingMonth, setLoadingMonth] = useState(false);
@@ -313,6 +320,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             memberId,
             startDate: gridStart,
             endDate: gridEnd,
+            durationOverride: monthDurationOverride,
           });
           for (const d of ds) map[d.date] = d.status;
         } else {
@@ -375,7 +383,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     return () => {
       cancelled = true;
     };
-  }, [visible, displayMode, availabilityScope, monthOffset, monthServiceId, memberId, provider, services]);
+  }, [visible, displayMode, availabilityScope, monthOffset, monthServiceId, monthDurationOverride, memberId, provider, services]);
 
   const bookingUrl = provider?.slug
     ? `${APP_CONFIG.url}/p/${provider.slug}`
@@ -555,12 +563,20 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
       onRequestClose={onClose}
     >
       <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        {/* Light status-bar content so the phone info stays visible over the
+            blue header band (matches the rest of the app). */}
+        <StatusBar style="light" />
+        {/* Header — blue band into the top safe area, like the other screens. */}
+        <View
+          style={[
+            styles.header,
+            { paddingTop: insets.top + 8, backgroundColor: colors.primary },
+          ]}
+        >
           <Pressable onPress={onClose} hitSlop={12} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>
             Créer une story
           </Text>
           <View style={{ width: 24 }} />
@@ -904,43 +920,28 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
                   Prestation
                 </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+                <Pressable
+                  onPress={() => setMonthPickerOpen(true)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                  }}
                 >
-                  {[
-                    { id: null as string | null, name: 'Vue générale' },
-                    ...services.map((s) => ({ id: s.id as string | null, name: s.name })),
-                  ].map((c) => {
-                    const active = (c.id ?? null) === monthServiceId;
-                    return (
-                      <Pressable
-                        key={c.id ?? 'gen'}
-                        onPress={() => setMonthServiceId(c.id)}
-                        style={{
-                          paddingHorizontal: 14,
-                          paddingVertical: 8,
-                          borderRadius: 999,
-                          borderWidth: 1,
-                          backgroundColor: active ? colors.primary : colors.surface,
-                          borderColor: active ? colors.primary : colors.border,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: '600',
-                            color: active ? '#FFFFFF' : colors.text,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {c.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
+                  <Text
+                    style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' }}
+                    numberOfLines={1}
+                  >
+                    {monthServiceLabel}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+                </Pressable>
               </View>
             </>
           )}
@@ -1073,6 +1074,22 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             </View>
           </View>
         </ScrollView>
+
+        {/* Prestation picker (shared with the agenda month view) — supports
+            variations/options so the story uses the right availability. */}
+        <ServicePickerModal
+          visible={monthPickerOpen}
+          onClose={() => setMonthPickerOpen(false)}
+          services={services}
+          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+          currentServiceId={monthServiceId}
+          onApply={(sid, dur, label) => {
+            setMonthServiceId(sid);
+            setMonthDurationOverride(dur);
+            setMonthServiceLabel(label);
+            setMonthPickerOpen(false);
+          }}
+        />
 
         {/* Link reminder modal for Instagram */}
         <Modal
