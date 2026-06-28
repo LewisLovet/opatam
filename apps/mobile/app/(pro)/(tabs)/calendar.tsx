@@ -591,20 +591,22 @@ function MonthCalendar({
                 </Text>
               </View>
               {isBeyond ? (
-                <Ionicons name="lock-closed" size={9} color={colors.border} style={{ marginTop: 2 }} />
+                <Ionicons name="lock-closed" size={10} color={colors.border} style={{ marginTop: 3 }} />
               ) : s && !isPast ? (
                 <View
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2, height: 10 }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3, minHeight: 14 }}
                 >
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: DOT[status] }} />
+                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: DOT[status] }} />
                   {serviceMode &&
                     typeof s.capacity === 'number' &&
                     (status === 'available' || status === 'almost_full') && (
-                      <Text style={{ fontSize: 9, color: colors.textSecondary }}>{s.capacity}</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: colors.text }}>
+                        {s.capacity}
+                      </Text>
                     )}
                 </View>
               ) : (
-                <View style={{ height: 10, marginTop: 2 }} />
+                <View style={{ minHeight: 14, marginTop: 3 }} />
               )}
             </Pressable>
           );
