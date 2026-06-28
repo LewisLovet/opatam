@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Sparkles, ChevronRight } from 'lucide-react';
+import type { ServiceDiscount } from '@booking-app/shared';
 import { ServiceItem } from './ServiceItem';
 
 interface Service {
@@ -24,10 +25,11 @@ interface ServicesSectionProps {
   services: Service[];
   categories?: ServiceCategory[];
   slug: string;
+  globalDiscount?: ServiceDiscount | null;
   onBookingClick?: (url: string) => void;
 }
 
-export function ServicesSection({ services, categories = [], slug, onBookingClick }: ServicesSectionProps) {
+export function ServicesSection({ services, categories = [], slug, globalDiscount, onBookingClick }: ServicesSectionProps) {
   const hasCategories = categories.length > 0;
 
   // When there are many categories (>3), collapse all except the first by default
@@ -102,7 +104,7 @@ export function ServicesSection({ services, categories = [], slug, onBookingClic
         </div>
         <div className="space-y-4">
           {services.map((service) => (
-            <ServiceItem key={service.id} service={service} slug={slug} onBookingClick={onBookingClick} />
+            <ServiceItem key={service.id} service={service} slug={slug} globalDiscount={globalDiscount} onBookingClick={onBookingClick} />
           ))}
         </div>
       </section>
@@ -144,7 +146,7 @@ export function ServicesSection({ services, categories = [], slug, onBookingClic
               {!isCollapsed && (
                 <div className="space-y-4">
                   {catServices.map((service) => (
-                    <ServiceItem key={service.id} service={service} slug={slug} onBookingClick={onBookingClick} />
+                    <ServiceItem key={service.id} service={service} slug={slug} globalDiscount={globalDiscount} onBookingClick={onBookingClick} />
                   ))}
                 </div>
               )}
@@ -173,7 +175,7 @@ export function ServicesSection({ services, categories = [], slug, onBookingClic
             {!collapsedCategories.has('__uncategorized__') && (
               <div className="space-y-4">
                 {grouped.uncategorized.map((service) => (
-                  <ServiceItem key={service.id} service={service} slug={slug} onBookingClick={onBookingClick} />
+                  <ServiceItem key={service.id} service={service} slug={slug} globalDiscount={globalDiscount} onBookingClick={onBookingClick} />
                 ))}
               </div>
             )}

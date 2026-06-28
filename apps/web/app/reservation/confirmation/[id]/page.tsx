@@ -34,10 +34,13 @@ export default async function ConfirmationPage({ params }: PageProps) {
     duration: booking.duration,
     price: booking.price,
     priceMax: booking.priceMax ?? null,
+    // Pre-discount total (only set when a promo was applied at booking time).
+    originalPrice: booking.originalPrice ?? null,
     items: booking.items?.map((i) => ({
       serviceName: i.serviceName,
       duration: i.duration,
       price: i.price,
+      originalPrice: i.originalPrice ?? null,
       selectedVariations: i.selectedVariations ?? [],
       selectedOptions: i.selectedOptions ?? [],
       selectedInfo: i.selectedInfo ?? [],

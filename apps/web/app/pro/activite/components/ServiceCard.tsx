@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Badge, Switch } from '@/components/ui';
-import { ChevronUp, ChevronDown, Clock, Euro } from 'lucide-react';
+import { ChevronUp, ChevronDown, Clock, Euro, Tag } from 'lucide-react';
 import type { Service, Member } from '@booking-app/shared';
 import {
   resolveDeposit,
   getServiceMinPrice,
   getServiceMinDuration,
+  getActiveDiscount,
 } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -115,6 +116,11 @@ export function ServiceCard({
   const [toggling, setToggling] = useState(false);
 
   const depositBadge = depositsEnabled ? depositBadgeProps(service, defaultDeposit) : null;
+
+  // Per-service promotion — surfaced on the card so the pro sees at a glance
+  // which prestations are discounted, without opening the editor.
+  const promo = service.discount ?? null;
+  const promoActive = getActiveDiscount(promo);
 
   // Price varies when the prestation has variations or optional add-ons.
   const priceVaries =
@@ -242,6 +248,19 @@ export function ServiceCard({
                     }`}
                   >
                     {depositBadge.label}
+                  </span>
+                )}
+                {promo && (
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                      promoActive
+                        ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                    }`}
+                    title={promoActive ? 'Promotion en cours' : 'Promotion configurée mais inactive (hors période)'}
+                  >
+                    <Tag className="w-3 h-3" />
+                    {promoActive ? `Promo −${promo.percent}%` : `Promo −${promo.percent}% · inactive`}
                   </span>
                 )}
               </div>

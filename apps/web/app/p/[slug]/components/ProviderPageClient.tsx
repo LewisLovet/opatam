@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
 import { Sparkles } from 'lucide-react';
+import type { ServiceDiscount } from '@booking-app/shared';
 import { ProviderHero } from './ProviderHero';
 import { ProviderNav } from './ProviderNav';
 import { SocialLinks } from './SocialLinks';
@@ -40,6 +41,7 @@ interface SerializedProvider {
   };
   settings?: {
     bookingNotice?: string | null;
+    globalDiscount?: ServiceDiscount | null;
   };
   isPublished: boolean;
   isVerified: boolean;
@@ -253,7 +255,7 @@ export function ProviderPageClient({
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {activeTab === 'prestations' && (
           <>
-            <ServicesSection services={services} categories={serviceCategories} slug={provider.slug} onBookingClick={bookingNotice ? handleBookingClick : undefined} />
+            <ServicesSection services={services} categories={serviceCategories} slug={provider.slug} globalDiscount={provider.settings?.globalDiscount ?? null} onBookingClick={bookingNotice ? handleBookingClick : undefined} />
             {/* Portfolio shown below services if available */}
             {hasPortfolio && (
               <PortfolioSection photos={provider.portfolioPhotos} />

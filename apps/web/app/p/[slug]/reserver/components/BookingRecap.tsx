@@ -61,9 +61,14 @@ interface BookingRecapProps {
   provider: Provider;
   compact?: boolean;
   /** Effective price/duration including the chosen variations/options.
-   *  When provided they override the service base values. */
+   *  When provided they override the service base values. `effectivePrice` is
+   *  the DISCOUNTED amount when a promo is active. */
   effectivePrice?: number;
   effectiveDuration?: number;
+  /** Pre-discount total (cents) + active promo % — to render the crossed-out
+   *  original price + a "−X%" badge. null/undefined = no promo. */
+  originalPrice?: number | null;
+  discountPercent?: number | null;
   /** Labels of the chosen variations/options to list under the service. */
   choiceLabels?: string[];
 }
@@ -112,6 +117,8 @@ export function BookingRecap({
   compact = false,
   effectivePrice,
   effectiveDuration,
+  originalPrice,
+  discountPercent,
   choiceLabels = [],
 }: BookingRecapProps) {
   const displayName = serviceLabel ?? service?.name ?? '';
@@ -120,6 +127,9 @@ export function BookingRecap({
   const displayPrice = effectivePrice ?? service?.price ?? 0;
   const displayMax = effectivePrice != null ? null : service?.priceMax;
   const displayDuration = effectiveDuration ?? service?.duration ?? 0;
+  // Active promo → show the crossed-out original + a "−X%" badge.
+  const hasPromo =
+    discountPercent != null && originalPrice != null && originalPrice > displayPrice;
 
   if (compact) {
     // Mobile compact version
@@ -142,9 +152,20 @@ export function BookingRecap({
           )}
         </div>
         {service && (
-          <span className="text-xl font-bold text-gray-900 dark:text-white">
-            {formatPrice(displayPrice, displayMax)}
-          </span>
+          <div className="text-right flex-shrink-0">
+            {hasPromo && (
+              <span className="block text-xs font-normal text-gray-400 line-through leading-none">
+                {formatPrice(originalPrice!)}
+              </span>
+            )}
+            <span
+              className={`text-xl font-bold ${
+                hasPromo ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'
+              }`}
+            >
+              {formatPrice(displayPrice, displayMax)}
+            </span>
+          </div>
         )}
       </div>
     );
@@ -312,10 +333,23 @@ export function BookingRecap({
             <span className="text-base font-semibold text-gray-900 dark:text-white">
               Total
             </span>
-            <span className="text-2xl font-extrabold text-primary-600 dark:text-primary-400">
-              {formatPrice(displayPrice, displayMax)}
+            <span className="text-right leading-tight">
+              {hasPromo && (
+                <span className="block text-sm font-normal text-gray-400 line-through">
+                  {formatPrice(originalPrice!)}
+                </span>
+              )}
+              <span className="text-2xl font-extrabold text-primary-600 dark:text-primary-400">
+                {formatPrice(displayPrice, displayMax)}
+              </span>
             </span>
           </div>
+          {hasPromo && (
+            <p className="text-right text-xs font-semibold text-rose-600 dark:text-rose-400">
+              Promotion −{discountPercent}% · vous économisez{' '}
+              {formatPrice(originalPrice! - displayPrice)}
+            </p>
+          )}
         </div>
       )}
     </div>

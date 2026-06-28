@@ -6,8 +6,9 @@ import { trackEvent } from '@/lib/meta-pixel';
 import { ArrowLeft, Check, CalendarCheck, Sparkles, ArrowRight, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { APP_CONFIG } from '@booking-app/shared/constants';
+import type { ServiceDiscount } from '@booking-app/shared';
 import {
-  computeServiceTotal,
+  computeDiscountedTotal,
   validateServiceSelections,
   emptyServiceSelections,
   serviceHasChoices,
@@ -42,6 +43,7 @@ interface Provider {
     allowClientCancellation: boolean;
     cancellationDeadline: number;
     bookingNotice?: string | null;
+    globalDiscount?: ServiceDiscount | null;
   };
 }
 
@@ -64,6 +66,7 @@ interface Service {
   variations?: ServiceVariation[];
   options?: ServiceOption[];
   infoFields?: ServiceInfoField[];
+  discount?: ServiceDiscount | null;
 }
 
 interface Location {
@@ -271,17 +274,26 @@ export function BookingFlow({
   // Cart prestations resolved to their Service docs + effective
   // price/duration (variations/options applied). Drives the cart list, the
   // running total, the slot duration, the recap.
+  // Shop-wide promo applied to services without their own discount.
+  const globalDiscount = provider.settings.globalDiscount ?? null;
+
   const cartLines = useMemo(
     () =>
       state.cart
         .map((item) => {
           const service = services.find((s) => s.id === item.serviceId);
           if (!service) return null;
-          const total = computeServiceTotal(service, item.selections);
-          return { item, service, price: total.price, duration: total.duration };
+          const total = computeDiscountedTotal(service, item.selections, globalDiscount);
+          return {
+            item,
+            service,
+            price: total.price,
+            duration: total.duration,
+            original: total.original,
+          };
         })
         .filter((l): l is NonNullable<typeof l> => l !== null),
-    [state.cart, services],
+    [state.cart, services, globalDiscount],
   );
 
   // Summed effective price/duration over the whole cart. The duration also
@@ -290,6 +302,18 @@ export function BookingFlow({
   const cartTotalPrice = useMemo(
     () => cartLines.reduce((sum, l) => sum + l.price, 0),
     [cartLines],
+  );
+  // Pre-discount total + aggregate % — drives the crossed-out price / badge.
+  const cartTotalOriginal = useMemo(
+    () => cartLines.reduce((sum, l) => sum + l.original, 0),
+    [cartLines],
+  );
+  const cartDiscountPercent = useMemo(
+    () =>
+      cartTotalOriginal > cartTotalPrice
+        ? Math.round(((cartTotalOriginal - cartTotalPrice) / cartTotalOriginal) * 100)
+        : null,
+    [cartTotalOriginal, cartTotalPrice],
   );
   const cartTotalDuration = useMemo(
     () => cartLines.reduce((sum, l) => sum + l.duration, 0),
@@ -486,10 +510,12 @@ export function BookingFlow({
   const draftEffective = useMemo(
     () =>
       configuringService
-        ? computeServiceTotal(configuringService, state.selections)
-        : { price: 0, duration: 0 },
-    [configuringService, state.selections],
+        ? computeDiscountedTotal(configuringService, state.selections, globalDiscount)
+        : { price: 0, duration: 0, original: 0, discountPercent: null },
+    [configuringService, state.selections, globalDiscount],
   );
+  const draftHasPromo =
+    draftEffective.discountPercent != null && draftEffective.original > draftEffective.price;
 
   // Confirm the chosen variations/options → push the draft to the cart and
   // return to the cart view (so the client can add more or continue).
@@ -812,6 +838,7 @@ export function BookingFlow({
                   selectedServiceId={null}
                   onSelect={handleServiceSelect}
                   cartCounts={cartCounts}
+                  globalDiscount={globalDiscount}
                 />
 
                 {/* Continue — sticky bar pinned to the bottom of the screen
@@ -874,8 +901,21 @@ export function BookingFlow({
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {formatDuration(draftEffective.duration)}
                     </p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">
-                      {formatPrice(draftEffective.price)}
+                    <p className="text-lg font-bold">
+                      {draftHasPromo && (
+                        <span className="mr-1.5 text-sm font-normal text-gray-400 line-through">
+                          {formatPrice(draftEffective.original)}
+                        </span>
+                      )}
+                      <span
+                        className={
+                          draftHasPromo
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : 'text-gray-900 dark:text-white'
+                        }
+                      >
+                        {formatPrice(draftEffective.price)}
+                      </span>
                     </p>
                   </div>
                   <button
@@ -1047,6 +1087,8 @@ export function BookingFlow({
               provider={provider}
               effectivePrice={cartTotalPrice}
               effectiveDuration={cartTotalDuration}
+              originalPrice={cartTotalOriginal}
+              discountPercent={cartDiscountPercent}
               choiceLabels={choiceLabels}
             />
           </div>
@@ -1070,6 +1112,8 @@ export function BookingFlow({
             provider={provider}
             effectivePrice={cartTotalPrice}
             effectiveDuration={cartTotalDuration}
+            originalPrice={cartTotalOriginal}
+            discountPercent={cartDiscountPercent}
             choiceLabels={choiceLabels}
             compact
           />

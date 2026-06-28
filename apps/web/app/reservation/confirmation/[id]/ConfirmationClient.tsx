@@ -23,10 +23,12 @@ interface Booking {
   duration: number;
   price: number;
   priceMax?: number | null;
+  originalPrice?: number | null;
   items?: {
     serviceName: string;
     duration: number;
     price: number;
+    originalPrice?: number | null;
     selectedVariations?: BookingSelectedVariation[];
     selectedOptions?: BookingSelectedOption[];
     selectedInfo?: BookingSelectedInfo[];
@@ -444,10 +446,22 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
               <span className="font-medium text-gray-900 dark:text-white">
                 Total
               </span>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatPrice(booking.price, booking.priceMax)}
+              <span className="text-right">
+                {booking.originalPrice != null && booking.originalPrice > booking.price && (
+                  <span className="block text-sm font-normal text-gray-400 line-through">
+                    {formatPrice(booking.originalPrice)}
+                  </span>
+                )}
+                <span className="text-xl font-bold text-gray-900 dark:text-white">
+                  {formatPrice(booking.price, booking.priceMax)}
+                </span>
               </span>
             </div>
+            {booking.originalPrice != null && booking.originalPrice > booking.price && (
+              <p className="mt-1 text-right text-xs font-semibold text-rose-600 dark:text-rose-400">
+                Vous avez économisé {formatPrice(booking.originalPrice - booking.price)}
+              </p>
+            )}
             {depositPaid && booking.deposit && (
               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1.5 text-sm">
                 <div className="flex items-center justify-between">

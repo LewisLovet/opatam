@@ -5,10 +5,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, ArrowRight, X } from 'lucide-react';
 import {
-  getServiceMinPrice,
   getServiceMinDuration,
+  getDiscountedMinPrice,
   type ServiceVariation,
   type ServiceOption,
+  type ServiceDiscount,
 } from '@booking-app/shared';
 
 interface ServiceItemProps {
@@ -22,8 +23,11 @@ interface ServiceItemProps {
     priceMax?: number | null;
     variations?: ServiceVariation[];
     options?: ServiceOption[];
+    discount?: ServiceDiscount | null;
   };
   slug: string;
+  /** Shop-wide promo, applied to services without their own. */
+  globalDiscount?: ServiceDiscount | null;
   /** If set, intercepts booking click to show a notice before navigating */
   onBookingClick?: (url: string) => void;
 }
@@ -48,7 +52,7 @@ function formatPrice(cents: number, centsMax?: number | null): string {
   return fmt(cents);
 }
 
-export function ServiceItem({ service, slug, onBookingClick }: ServiceItemProps) {
+export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: ServiceItemProps) {
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -57,6 +61,13 @@ export function ServiceItem({ service, slug, onBookingClick }: ServiceItemProps)
   // Price varies when the service has variations or optional add-ons.
   const priceVaries =
     (service.variations?.length ?? 0) > 0 || (service.options?.length ?? 0) > 0;
+
+  // Active promotion → crossed-out original + discounted "from" price + badge.
+  const { price: minPrice, original: minOriginal, discountPercent } = getDiscountedMinPrice(
+    service,
+    globalDiscount,
+  );
+  const hasPromo = discountPercent != null && minPrice < minOriginal;
 
   useEffect(() => {
     // Small delay to let the layout settle before measuring
@@ -108,14 +119,34 @@ export function ServiceItem({ service, slug, onBookingClick }: ServiceItemProps)
               </div>
 
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                <div className="text-right">
                   {priceVaries && (
                     <span className="block text-[11px] font-normal text-gray-400 leading-none mb-0.5">
                       à partir de
                     </span>
                   )}
-                  {formatPrice(getServiceMinPrice(service))}
-                </span>
+                  {hasPromo && (
+                    <span className="block text-xs font-normal text-gray-400 line-through leading-none">
+                      {formatPrice(minOriginal)}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className={`text-lg sm:text-xl font-bold ${
+                        hasPromo
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-gray-900 dark:text-white'
+                      }`}
+                    >
+                      {formatPrice(minPrice)}
+                    </span>
+                    {hasPromo && (
+                      <span className="text-[11px] font-bold text-white bg-rose-500 px-1.5 py-0.5 rounded">
+                        −{discountPercent}%
+                      </span>
+                    )}
+                  </span>
+                </div>
                 <span className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 text-white text-sm font-medium rounded-lg group-hover:bg-primary-700 transition-colors shadow-sm">
                   Reserver
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />

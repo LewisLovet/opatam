@@ -124,6 +124,8 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     variations: s.variations ?? [],
     options: s.options ?? [],
     infoFields: s.infoFields ?? [],
+    // Per-service promotion (null = none / inherit the global one).
+    discount: s.discount ?? null,
   }));
 
   const serializedCategories = serviceCategories

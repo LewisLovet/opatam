@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Clock, Check, ChevronRight, Plus } from 'lucide-react';
 import {
-  getServiceMinPrice,
   getServiceMinDuration,
+  getDiscountedMinPrice,
   type ServiceVariation,
   type ServiceOption,
   type ServiceInfoField,
+  type ServiceDiscount,
 } from '@booking-app/shared';
 
 interface Service {
@@ -23,6 +24,7 @@ interface Service {
   variations?: ServiceVariation[];
   options?: ServiceOption[];
   infoFields?: ServiceInfoField[];
+  discount?: ServiceDiscount | null;
 }
 
 interface ServiceCategory {
@@ -39,6 +41,8 @@ interface StepServiceProps {
   onSelect: (serviceId: string) => void;
   /** How many times each service is already in the cart, keyed by service id. */
   cartCounts?: Record<string, number>;
+  /** Shop-wide promo, applied to services without their own. */
+  globalDiscount?: ServiceDiscount | null;
 }
 
 function formatDuration(minutes: number): string {
@@ -69,11 +73,13 @@ function ServiceButton({
   isSelected,
   onSelect,
   cartCount = 0,
+  globalDiscount,
 }: {
   service: Service;
   isSelected: boolean;
   onSelect: (id: string) => void;
   cartCount?: number;
+  globalDiscount?: ServiceDiscount | null;
 }) {
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
@@ -89,6 +95,13 @@ function ServiceButton({
   // Price varies when the service has variations or optional add-ons.
   const priceVaries =
     (service.variations?.length ?? 0) > 0 || (service.options?.length ?? 0) > 0;
+
+  // Active promotion → crossed-out original + discounted "from" price + badge.
+  const { price: minPrice, original: minOriginal, discountPercent } = getDiscountedMinPrice(
+    service,
+    globalDiscount,
+  );
+  const hasPromo = discountPercent != null && minPrice < minOriginal;
 
   const inCart = cartCount > 0;
 
@@ -155,8 +168,24 @@ function ServiceButton({
                 à partir de
               </span>
             )}
-            <span className="text-lg font-bold text-gray-900 dark:text-white">
-              {formatPrice(getServiceMinPrice(service))}
+            {hasPromo && (
+              <span className="block text-[11px] font-normal text-gray-400 line-through leading-none">
+                {formatPrice(minOriginal)}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1">
+              <span
+                className={`text-lg font-bold ${
+                  hasPromo ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'
+                }`}
+              >
+                {formatPrice(minPrice)}
+              </span>
+              {hasPromo && (
+                <span className="text-[10px] font-bold text-white bg-rose-500 px-1 py-0.5 rounded leading-none">
+                  −{discountPercent}%
+                </span>
+              )}
             </span>
             {inCart && (
               <span className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-semibold text-primary-600 dark:text-primary-400">
@@ -182,7 +211,7 @@ function ServiceButton({
   );
 }
 
-export function StepService({ services, categories = [], selectedServiceId, onSelect, cartCounts = {} }: StepServiceProps) {
+export function StepService({ services, categories = [], selectedServiceId, onSelect, cartCounts = {}, globalDiscount }: StepServiceProps) {
   const hasCategories = categories.length > 0;
 
   // When there are many categories (>3), collapse all except the first by default
@@ -239,6 +268,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
               isSelected={service.id === selectedServiceId}
               onSelect={onSelect}
               cartCount={cartCounts[service.id] ?? 0}
+              globalDiscount={globalDiscount}
             />
           ))}
         </div>
@@ -280,6 +310,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
                       isSelected={service.id === selectedServiceId}
                       onSelect={onSelect}
                       cartCount={cartCounts[service.id] ?? 0}
+                      globalDiscount={globalDiscount}
                     />
                   ))}
                 </div>
@@ -315,6 +346,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
                     isSelected={service.id === selectedServiceId}
                     onSelect={onSelect}
                     cartCount={cartCounts[service.id] ?? 0}
+                    globalDiscount={globalDiscount}
                   />
                 ))}
               </div>
