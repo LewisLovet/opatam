@@ -82,8 +82,32 @@ interface AvailabilitySummaryParams {
   durationOverride?: number;
 }
 
+/** Per-day occupancy for the service-AGNOSTIC month view (no service picked).
+ *  Status is derived from how much of the open hours are taken (bookings ∪
+ *  blocks), not from any service duration. Same 3-read batched pass. */
+export interface DayOccupancy {
+  /** Local calendar date, YYYY-MM-DD. */
+  date: string;
+  status: 'available' | 'almost_full' | 'full' | 'closed';
+  /** Total open minutes that day (merged availability windows). */
+  openMinutes: number;
+  /** Open minutes still free (not taken by a booking or a block). */
+  freeMinutes: number;
+}
+
+interface OccupancySummaryParams {
+  providerId: string;
+  memberId: string;
+  startDate: Date;
+  endDate: Date;
+}
+
 /** A day has only 2 (or fewer) bookings of room left → flag as "almost full". */
 const ALMOST_FULL_THRESHOLD = 2;
+/** Service-agnostic occupancy thresholds (fraction of open hours taken). */
+const OCCUPANCY_ALMOST_FULL_RATIO = 0.75;
+/** Below this many free minutes a day is effectively full (no useful gap). */
+const OCCUPANCY_MIN_FREE_MINUTES = 15;
 
 export class SchedulingService {
   /**
@@ -600,6 +624,136 @@ export class SchedulingService {
     }
 
     return result;
+  }
+
+  /**
+   * Service-AGNOSTIC month occupancy (no service picked). For each day: how much
+   * of the member's open hours is taken by bookings ∪ blocks → a coarse status
+   * (open / busy / full / closed). Same efficient 3-read batched pass as
+   * getAvailabilitySummary; no slot/duration math, so it's a quick "how busy am
+   * I this month" overview rather than bookable slots.
+   */
+  async getOccupancySummary(params: OccupancySummaryParams): Promise<DayOccupancy[]> {
+    const { providerId, memberId, startDate, endDate } = params;
+
+    const rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+
+    const [weekly, allBookings, allBlocked] = await Promise.all([
+      availabilityRepository.getWeeklySchedule(providerId, memberId),
+      bookingRepository.getUpcomingByProvider(providerId, rangeStart, rangeEnd),
+      blockedSlotRepository.getInRange(providerId, rangeStart, rangeEnd),
+    ]);
+
+    const availabilityByDow = new Map<number, WithId<Availability>>();
+    for (const a of weekly) availabilityByDow.set(a.dayOfWeek, a);
+
+    const relevantBlocked = allBlocked.filter((bs) => bs.memberId === memberId);
+    const relevantBookings = allBookings.filter(
+      (b) =>
+        b.memberId === memberId &&
+        (b.status === 'confirmed' || b.status === 'pending' || b.status === 'pending_payment'),
+    );
+
+    const result: DayOccupancy[] = [];
+    const cursor = new Date(rangeStart);
+
+    while (cursor <= rangeEnd) {
+      const dateKey = this.toDateKey(cursor);
+      const availability = availabilityByDow.get(cursor.getDay());
+
+      if (!availability || !availability.isOpen || !availability.slots.length) {
+        result.push({ date: dateKey, status: 'closed', openMinutes: 0, freeMinutes: 0 });
+        cursor.setDate(cursor.getDate() + 1);
+        continue;
+      }
+
+      const dayStart = new Date(cursor);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayStartMs = dayStart.getTime();
+      const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+
+      // Open windows in minutes-of-day.
+      const openMerged = this.mergeIntervals(
+        availability.slots
+          .map((w) => [this.hhmmToMinutes(w.start), this.hhmmToMinutes(w.end)] as [number, number])
+          .filter(([s, e]) => e > s),
+      );
+      const openMinutes = openMerged.reduce((sum, [s, e]) => sum + (e - s), 0);
+
+      if (openMinutes === 0) {
+        result.push({ date: dateKey, status: 'closed', openMinutes: 0, freeMinutes: 0 });
+        cursor.setDate(cursor.getDate() + 1);
+        continue;
+      }
+
+      // Occupied = bookings ∪ blocks, clamped to this day, in minutes-of-day.
+      const clampToDay = (start: Date, end: Date): [number, number] | null => {
+        const sMs = Math.max(start.getTime(), dayStartMs);
+        const eMs = Math.min(end.getTime(), dayEndMs);
+        if (eMs <= sMs) return null;
+        return [Math.floor((sMs - dayStartMs) / 60000), Math.ceil((eMs - dayStartMs) / 60000)];
+      };
+      const occupied: Array<[number, number]> = [];
+      for (const b of relevantBookings) {
+        const iv = clampToDay(b.datetime, b.endDatetime);
+        if (iv) occupied.push(iv);
+      }
+      for (const bs of relevantBlocked) {
+        const iv = clampToDay(bs.startDate, bs.endDate);
+        if (iv) occupied.push(iv);
+      }
+      const occupiedWithinOpen = this.intersectSum(openMerged, this.mergeIntervals(occupied));
+      const freeMinutes = Math.max(0, openMinutes - occupiedWithinOpen);
+      const ratio = occupiedWithinOpen / openMinutes;
+
+      let status: DayOccupancy['status'];
+      if (freeMinutes < OCCUPANCY_MIN_FREE_MINUTES || ratio >= 1) status = 'full';
+      else if (ratio >= OCCUPANCY_ALMOST_FULL_RATIO) status = 'almost_full';
+      else status = 'available';
+
+      result.push({ date: dateKey, status, openMinutes, freeMinutes });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return result;
+  }
+
+  /** "HH:MM" → minutes since midnight. */
+  private hhmmToMinutes(hhmm: string): number {
+    const [h, m] = hhmm.split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  /** Sort + merge overlapping/adjacent [start,end] minute intervals. */
+  private mergeIntervals(intervals: Array<[number, number]>): Array<[number, number]> {
+    if (intervals.length === 0) return [];
+    const sorted = [...intervals].sort((a, b) => a[0] - b[0]);
+    const merged: Array<[number, number]> = [[sorted[0][0], sorted[0][1]]];
+    for (let i = 1; i < sorted.length; i++) {
+      const last = merged[merged.length - 1];
+      const [s, e] = sorted[i];
+      if (s <= last[1]) last[1] = Math.max(last[1], e);
+      else merged.push([s, e]);
+    }
+    return merged;
+  }
+
+  /** Total overlap length between two SORTED, merged interval sets. */
+  private intersectSum(a: Array<[number, number]>, b: Array<[number, number]>): number {
+    let i = 0;
+    let j = 0;
+    let sum = 0;
+    while (i < a.length && j < b.length) {
+      const start = Math.max(a[i][0], b[j][0]);
+      const end = Math.min(a[i][1], b[j][1]);
+      if (end > start) sum += end - start;
+      if (a[i][1] < b[j][1]) i++;
+      else j++;
+    }
+    return sum;
   }
 
   /**

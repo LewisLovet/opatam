@@ -7,7 +7,7 @@ import type { Member, Location } from '@booking-app/shared';
 import { FilterChip } from './FilterChip';
 
 type WithId<T> = { id: string } & T;
-type ViewMode = 'day' | 'week';
+type ViewMode = 'day' | 'week' | 'month';
 
 interface CalendarHeaderProps {
   viewMode: ViewMode;
@@ -72,6 +72,11 @@ export function CalendarHeader({
       return selectedDate.toLocaleDateString('fr-FR', {
         weekday: 'long',
         day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+    } else if (viewMode === 'month') {
+      return selectedDate.toLocaleDateString('fr-FR', {
         month: 'long',
         year: 'numeric',
       });
@@ -260,6 +265,16 @@ export function CalendarHeader({
             }`}
           >
             Semaine
+          </button>
+          <button
+            onClick={() => onViewModeChange('month')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              viewMode === 'month'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            Mois
           </button>
         </div>
 

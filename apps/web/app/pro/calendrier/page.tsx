@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingService, schedulingService, memberService, locationService } from '@booking-app/firebase';
-import type { Booking, Member, Location, Availability, BlockedSlot } from '@booking-app/shared';
+import { bookingService, schedulingService, memberService, locationService, serviceRepository } from '@booking-app/firebase';
+import type { Booking, Member, Location, Availability, BlockedSlot, Service } from '@booking-app/shared';
 import { CalendarHeader } from './components/CalendarHeader';
 import { DayView } from './components/DayView';
 import { WeekView } from './components/WeekView';
+import { MonthView } from './components/MonthView';
 import { BookingDetailModal } from '@/components/booking';
 import { CreateBookingModal } from './components/CreateBookingModal';
 import { ActivityModal } from './components/ActivityModal';
@@ -15,7 +16,7 @@ import { BlockPeriodModal } from './components/BlockPeriodModal';
 import { Loader2 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
-type ViewMode = 'day' | 'week';
+type ViewMode = 'day' | 'week' | 'month';
 
 export default function CalendarPage() {
   const { user, provider } = useAuth();
@@ -38,6 +39,7 @@ export default function CalendarPage() {
   const [bookings, setBookings] = useState<WithId<Booking>[]>([]);
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
+  const [services, setServices] = useState<WithId<Service>[]>([]);
   const [availabilities, setAvailabilities] = useState<WithId<Availability>[]>([]);
   const [blockedSlots, setBlockedSlots] = useState<WithId<BlockedSlot>[]>([]);
 
@@ -92,6 +94,12 @@ export default function CalendarPage() {
       end.setTime(start.getTime());
       end.setDate(end.getDate() + 6);
       end.setHours(23, 59, 59, 999);
+    } else if (viewMode === 'month') {
+      // Full calendar month (the MonthView fetches its own 6-week grid).
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      end.setMonth(end.getMonth() + 1, 0); // day 0 of next month = last day of this one
+      end.setHours(23, 59, 59, 999);
     } else {
       start.setHours(0, 0, 0, 0);
       end.setHours(23, 59, 59, 999);
@@ -111,10 +119,12 @@ export default function CalendarPage() {
         // separately, scoped to the visible date range (see loadBlockedSlots)
         // — fetching the whole collection slowed heavy providers (100s of blocks).
         // Note: même les plans solo ont un membre créé automatiquement — il faut toujours les charger
-        const [membersData, locationsData] = await Promise.all([
+        const [membersData, locationsData, servicesData] = await Promise.all([
           memberService.getByProvider(provider.id),
           locationService.getByProvider(provider.id),
+          serviceRepository.getActiveByProvider(provider.id),
         ]);
+        setServices(servicesData);
 
         // NOUVEAU MODÈLE: Availability est centré sur le membre (1 membre = 1 lieu = 1 agenda)
         const activeLocations = locationsData.filter((l) => l.isActive);
@@ -227,6 +237,8 @@ export default function CalendarPage() {
     const newDate = new Date(selectedDate);
     if (viewMode === 'week') {
       newDate.setDate(newDate.getDate() - 7);
+    } else if (viewMode === 'month') {
+      newDate.setMonth(newDate.getMonth() - 1);
     } else {
       newDate.setDate(newDate.getDate() - 1);
     }
@@ -237,6 +249,8 @@ export default function CalendarPage() {
     const newDate = new Date(selectedDate);
     if (viewMode === 'week') {
       newDate.setDate(newDate.getDate() + 7);
+    } else if (viewMode === 'month') {
+      newDate.setMonth(newDate.getMonth() + 1);
     } else {
       newDate.setDate(newDate.getDate() + 1);
     }
@@ -522,6 +536,19 @@ export default function CalendarPage() {
             onBlockedPeriodClick={handleBlockedSlotPress}
             getAvailabilityForDay={getAvailabilityForDay}
             getBlockedSlotsForDay={getBlockedSlotsForDay}
+          />
+        ) : viewMode === 'month' ? (
+          <MonthView
+            providerId={provider?.id ?? ''}
+            selectedDate={selectedDate}
+            services={services}
+            members={activeMembers}
+            memberId={selectedMemberId !== 'all' ? selectedMemberId : activeMembers[0]?.id ?? null}
+            isTeamPlan={isTeamPlan}
+            onDayClick={(date) => {
+              setSelectedDate(date);
+              setViewMode('day');
+            }}
           />
         ) : (
           <WeekView
