@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingRepository } from '@booking-app/firebase';
+import { isAddressRevealed } from '@booking-app/shared';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 import { appConfig } from '@/lib/resend';
 
 interface RouteParams {
@@ -62,6 +64,33 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     console.log('[CALENDAR-ICS] Generated cancel URL:', cancelUrl || 'NONE');
     console.log('[CALENDAR-ICS] Description (escaped):', description);
 
+    // Address-privacy: for a protected location only put the EXACT address in
+    // the calendar event once it's revealed (confirmed + ≤48h). Otherwise keep
+    // the masked area snapshot. Mirrors /api/bookings/[id]/address.
+    let calendarAddress = booking.locationAddress || '';
+    if (booking.locationProtected) {
+      const revealed = isAddressRevealed({
+        status: booking.status,
+        datetime: new Date(booking.datetime),
+      });
+      if (revealed && booking.providerId && booking.locationId) {
+        const locSnap = await getAdminFirestore()
+          .collection('providers')
+          .doc(booking.providerId)
+          .collection('locations')
+          .doc(booking.locationId)
+          .get();
+        const loc = locSnap.exists ? locSnap.data()! : null;
+        calendarAddress =
+          (loc?.address && String(loc.address).trim()) ||
+          (loc ? `${loc.postalCode ?? ''} ${loc.city ?? ''}`.trim() : '') ||
+          booking.locationAddress ||
+          '';
+      } else {
+        calendarAddress = booking.locationApproxArea || booking.locationAddress || '';
+      }
+    }
+
     // Build ICS content
     const icsContent = [
       'BEGIN:VCALENDAR',
@@ -76,7 +105,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       `DTEND:${formatIcsDate(endDate)}`,
       `SUMMARY:RDV - ${escapeIcs(booking.serviceName)} chez ${escapeIcs(booking.providerName)}`,
       `DESCRIPTION:${description}`,
-      `LOCATION:${escapeIcs(booking.locationAddress || '')}`,
+      `LOCATION:${escapeIcs(calendarAddress)}`,
       'STATUS:CONFIRMED',
       'END:VEVENT',
       'END:VCALENDAR',
