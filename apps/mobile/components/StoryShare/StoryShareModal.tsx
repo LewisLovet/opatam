@@ -35,7 +35,7 @@ try {
   // Native module not available
 }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { catalogService } from '@booking-app/firebase';
+import { catalogService, memberService, schedulingService } from '@booking-app/firebase';
 import type { Service } from '@booking-app/shared';
 import { APP_CONFIG } from '@booking-app/shared';
 import { useTheme } from '../../theme';
@@ -43,7 +43,7 @@ import { Text } from '../Text';
 import { useNewFeatures } from '../../hooks/useNewFeatures';
 import { useProvider } from '../../contexts';
 import { useUpcomingAvailabilities } from '../../hooks/useUpcomingAvailabilities';
-import { StoryCard } from './StoryCard';
+import { StoryCard, type MonthAvailabilityGrid, type MonthAvailabilityDay } from './StoryCard';
 
 // Try to import react-native-share (only available in dev client / production builds)
 let RNShare: typeof import('react-native-share').default | null = null;
@@ -135,7 +135,20 @@ type DisplayMode = 'services' | 'availabilities' | 'none';
  * as a sub-mode rather than a 4th top-level mode to keep the
  * primary toggle to 3 chips and avoid crowding.
  */
-type AvailabilityScope = 'week' | 'day';
+type AvailabilityScope = 'week' | 'day' | 'month';
+
+const FRENCH_MONTHS = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+];
+
+/** "Juin 2026" for `today + offset` months (1st of that month). */
+function monthLabelForOffset(offset: number): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setMonth(d.getMonth() + offset, 1);
+  return `${FRENCH_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 interface StoryShareModalProps {
   visible: boolean;
@@ -194,6 +207,15 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const [availabilityScope, setAvailabilityScope] =
     useState<AvailabilityScope>('week');
 
+  // Month scope state — month offset (0 = this month), an optional prestation
+  // (null = general view), the resolved member, and the computed grid.
+  const [monthOffset, setMonthOffset] = useState(0);
+  const MAX_MONTH_OFFSET = 3;
+  const [monthServiceId, setMonthServiceId] = useState<string | null>(null);
+  const [memberId, setMemberId] = useState<string | null>(null);
+  const [monthGrid, setMonthGrid] = useState<MonthAvailabilityGrid | undefined>(undefined);
+  const [loadingMonth, setLoadingMonth] = useState(false);
+
   // Day offset (0 = today, 1 = tomorrow, …) used by the day scope.
   // Capped to 90 days so the picker stays sane — providers rarely
   // accept bookings further out than that.
@@ -218,7 +240,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     days: availabilityScope === 'day' ? 1 : 7,
     weekOffset: availabilityScope === 'day' ? undefined : weekOffset,
     dayOffset: availabilityScope === 'day' ? dayOffset : undefined,
-    enabled: visible && displayMode === 'availabilities',
+    enabled: visible && displayMode === 'availabilities' && availabilityScope !== 'month',
   });
 
   // Fetch services when the modal opens
@@ -229,11 +251,17 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     (async () => {
       setLoadingServices(true);
       try {
-        const data = await catalogService.getActiveByProvider(provider.id);
+        const [data, membersData] = await Promise.all([
+          catalogService.getActiveByProvider(provider.id),
+          memberService.getByProvider(provider.id),
+        ]);
         if (!cancelled) {
           setServices(data);
           // Pre-select first 5
           setSelectedServiceIds(new Set(data.slice(0, 5).map((s) => s.id)));
+          // Resolve a member for the month grid (member-centric schedule).
+          const active = membersData.find((m) => m.isActive !== false) ?? membersData[0];
+          setMemberId(active?.id ?? null);
         }
       } catch (err) {
         console.error('[StoryShare] Error loading services:', err);
@@ -244,6 +272,110 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
 
     return () => { cancelled = true; };
   }, [visible, provider]);
+
+  // Build the month availability grid (per-day status) for the story. General
+  // view → occupancy; a picked prestation → its availability. Adapts the story.
+  useEffect(() => {
+    if (
+      !visible ||
+      displayMode !== 'availabilities' ||
+      availabilityScope !== 'month' ||
+      !provider ||
+      !memberId
+    ) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingMonth(true);
+      try {
+        const first = new Date();
+        first.setHours(0, 0, 0, 0);
+        first.setMonth(first.getMonth() + monthOffset, 1);
+        const dow = first.getDay();
+        const offset = dow === 0 ? 6 : dow - 1;
+        const gridStart = new Date(first);
+        gridStart.setDate(first.getDate() - offset);
+        gridStart.setHours(0, 0, 0, 0);
+        const days42 = Array.from({ length: 42 }, (_, i) => {
+          const d = new Date(gridStart);
+          d.setDate(gridStart.getDate() + i);
+          return d;
+        });
+        const gridEnd = new Date(days42[41]);
+        gridEnd.setHours(23, 59, 59, 999);
+
+        const map: Record<string, string> = {};
+        if (monthServiceId) {
+          const ds = await schedulingService.getAvailabilitySummary({
+            providerId: provider.id,
+            serviceId: monthServiceId,
+            memberId,
+            startDate: gridStart,
+            endDate: gridEnd,
+          });
+          for (const d of ds) map[d.date] = d.status;
+        } else {
+          const ds = await schedulingService.getOccupancySummary({
+            providerId: provider.id,
+            memberId,
+            startDate: gridStart,
+            endDate: gridEnd,
+          });
+          for (const d of ds) map[d.date] = d.status;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const horizon = new Date(today);
+        horizon.setDate(horizon.getDate() + (provider.settings?.maxBookingAdvance ?? 60));
+        horizon.setHours(23, 59, 59, 999);
+        const month = first.getMonth();
+        const key = (d: Date) =>
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+            d.getDate(),
+          ).padStart(2, '0')}`;
+
+        const gridDays: MonthAvailabilityDay[] = days42.map((d) => {
+          const past = d < today;
+          const beyond = d > horizon;
+          let status: MonthAvailabilityDay['status'] = 'none';
+          if (!past && !beyond) {
+            const s = map[key(d)];
+            status =
+              s === 'available' || s === 'almost_full' || s === 'full' || s === 'closed'
+                ? (s as MonthAvailabilityDay['status'])
+                : 'none';
+          }
+          return {
+            dateKey: key(d),
+            dayOfMonth: d.getDate(),
+            inMonth: d.getMonth() === month,
+            status,
+          };
+        });
+
+        const label = monthLabelForOffset(monthOffset);
+        const serviceLabel = monthServiceId
+          ? services.find((s) => s.id === monthServiceId)?.name ?? null
+          : null;
+        if (!cancelled) {
+          setMonthGrid({
+            monthLabel: label.charAt(0).toUpperCase() + label.slice(1),
+            serviceLabel,
+            days: gridDays,
+          });
+        }
+      } catch (e) {
+        if (!cancelled) console.error('[StoryShare] month grid error', e);
+      } finally {
+        if (!cancelled) setLoadingMonth(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, displayMode, availabilityScope, monthOffset, monthServiceId, memberId, provider, services]);
 
   const bookingUrl = provider?.slug
     ? `${APP_CONFIG.url}/p/${provider.slug}`
@@ -378,7 +510,10 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const isSharing = sharing !== null;
   const isLoading =
     loadingServices ||
-    (displayMode === 'availabilities' && loadingAvailabilities);
+    (displayMode === 'availabilities' &&
+      (availabilityScope === 'month'
+        ? loadingMonth || !monthGrid
+        : loadingAvailabilities));
 
   const toggleServiceId = useCallback((id: string) => {
     setSelectedServiceIds((prev) => {
@@ -407,6 +542,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     bookingUrl,
     displayMode,
     availabilityGrid,
+    monthGrid,
     availabilityScope,
     storyTheme,
   };
@@ -555,8 +691,9 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
               >
                 {(
                   [
-                    { key: 'week', label: 'Cette semaine', icon: 'calendar-outline' },
-                    { key: 'day', label: "Aujourd'hui", icon: 'sunny-outline' },
+                    { key: 'week', label: 'Semaine', icon: 'calendar-outline' },
+                    { key: 'day', label: 'Jour', icon: 'sunny-outline' },
+                    { key: 'month', label: 'Mois', icon: 'grid-outline' },
                   ] as const
                 ).map((opt) => {
                   const active = availabilityScope === opt.key;
@@ -715,6 +852,97 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                 Touchez la date pour choisir un autre jour
               </Text>
             </View>
+          )}
+
+          {/* Month + prestation selectors — only in "Dispos" mode AND month
+              scope. The story adapts: general view or the picked prestation. */}
+          {displayMode === 'availabilities' && availabilityScope === 'month' && (
+            <>
+              <View style={styles.sectionSpacing}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  Mois
+                </Text>
+                <View
+                  style={[
+                    styles.weekSelector,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                >
+                  <Pressable
+                    onPress={() => setMonthOffset((o) => Math.max(0, o - 1))}
+                    disabled={monthOffset === 0}
+                    hitSlop={8}
+                    style={[styles.weekArrow, monthOffset === 0 && { opacity: 0.3 }]}
+                  >
+                    <Ionicons name="chevron-back" size={20} color={colors.text} />
+                  </Pressable>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text
+                      style={[
+                        styles.weekLabel,
+                        { color: colors.text, textTransform: 'capitalize' },
+                      ]}
+                    >
+                      {monthLabelForOffset(monthOffset)}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setMonthOffset((o) => Math.min(MAX_MONTH_OFFSET, o + 1))}
+                    disabled={monthOffset === MAX_MONTH_OFFSET}
+                    hitSlop={8}
+                    style={[
+                      styles.weekArrow,
+                      monthOffset === MAX_MONTH_OFFSET && { opacity: 0.3 },
+                    ]}
+                  >
+                    <Ionicons name="chevron-forward" size={20} color={colors.text} />
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.sectionSpacing}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  Prestation
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+                >
+                  {[
+                    { id: null as string | null, name: 'Vue générale' },
+                    ...services.map((s) => ({ id: s.id as string | null, name: s.name })),
+                  ].map((c) => {
+                    const active = (c.id ?? null) === monthServiceId;
+                    return (
+                      <Pressable
+                        key={c.id ?? 'gen'}
+                        onPress={() => setMonthServiceId(c.id)}
+                        style={{
+                          paddingHorizontal: 14,
+                          paddingVertical: 8,
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          backgroundColor: active ? colors.primary : colors.surface,
+                          borderColor: active ? colors.primary : colors.border,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '600',
+                            color: active ? '#FFFFFF' : colors.text,
+                          }}
+                          numberOfLines={1}
+                        >
+                          {c.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </>
           )}
 
           {/* Theme selector — applies to every story mode (services /

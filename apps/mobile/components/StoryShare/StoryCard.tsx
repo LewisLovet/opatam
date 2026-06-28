@@ -58,13 +58,16 @@ export interface StoryCardProps {
   bookingUrl: string;
   displayMode?: 'services' | 'availabilities' | 'none';
   availabilityGrid?: AvailabilityGrid;
+  /** Month availability grid (per-day status) — used when availabilityScope
+   *  is 'month'. Adapts to the chosen prestation (or the general view). */
+  monthGrid?: MonthAvailabilityGrid;
   /**
    * Inside the "availabilities" mode, switch between the existing
-   * 7-day heatmap and a today-only layout that lists the actual
-   * free time slots grouped Matin / Après-midi / Soir.
+   * 7-day heatmap, a today-only list of free slots, and the month
+   * per-day status grid.
    * Defaults to 'week' to preserve the historical render.
    */
-  availabilityScope?: 'week' | 'day';
+  availabilityScope?: 'week' | 'day' | 'month';
   /** Theme for the standard layout (services / QR Code) AND the
    *  availability calendar. One toggle, applied everywhere. */
   storyTheme?: StoryTheme;
@@ -1055,6 +1058,179 @@ const availStoryStyles = StyleSheet.create({
   },
 });
 
+// ─── Month availability story (per-day status grid) ─────────────────────────
+
+export interface MonthAvailabilityDay {
+  dateKey: string;
+  dayOfMonth: number;
+  inMonth: boolean;
+  /** 'none' = past / outside the booking horizon → no dot. */
+  status: 'available' | 'almost_full' | 'full' | 'closed' | 'none';
+}
+
+export interface MonthAvailabilityGrid {
+  /** "Juin 2026". */
+  monthLabel: string;
+  /** Prestation name, or null for the general (service-agnostic) view. */
+  serviceLabel: string | null;
+  /** Exactly 42 cells (6 weeks, Monday-first). */
+  days: MonthAvailabilityDay[];
+}
+
+const MONTH_DOT: Record<string, string> = {
+  available: '#10b981',
+  almost_full: '#f59e0b',
+  full: '#f43f5e',
+};
+
+/** Full-canvas month availability story — a per-day status calendar that
+ *  mirrors the in-app month view, branded for sharing. */
+function MonthAvailabilityStoryLayout({
+  businessName,
+  category,
+  city,
+  photoURL,
+  grid,
+  theme,
+}: {
+  businessName: string;
+  category: string;
+  city?: string;
+  photoURL?: string | null;
+  grid: MonthAvailabilityGrid;
+  theme: AvailabilityTheme;
+}) {
+  const palette = theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE;
+  const initials =
+    businessName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? '')
+      .join('') || 'O';
+  const WEEK = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+  const inner = (
+    <>
+      <View style={[availStoryStyles.decorCircle, { backgroundColor: palette.decor }]} />
+
+      {/* Header */}
+      <View style={availStoryStyles.header}>
+        <View style={[availStoryStyles.avatar, { backgroundColor: palette.avatarBg }]}>
+          {photoURL ? (
+            <Image source={{ uri: photoURL }} style={availStoryStyles.avatarImg} />
+          ) : (
+            <Text style={[availStoryStyles.avatarInitials, { color: palette.avatarText }]}>
+              {initials}
+            </Text>
+          )}
+        </View>
+        <View style={{ marginLeft: 10, flex: 1 }}>
+          <Text style={[availStoryStyles.bizName, { color: palette.text }]} numberOfLines={1}>
+            {businessName.toUpperCase()}
+          </Text>
+          <Text style={[availStoryStyles.bizSubtitle, { color: palette.textMuted }]} numberOfLines={1}>
+            {[category, city].filter(Boolean).join(' · ')}
+          </Text>
+        </View>
+      </View>
+
+      {/* Title */}
+      <Text style={[availStoryStyles.bigTitle, { color: palette.text }]}>
+        Mes dispos{'\n'}du mois
+      </Text>
+      <Text style={[monthStoryStyles.subtitle, { color: palette.text }]} numberOfLines={1}>
+        {grid.monthLabel}
+        {grid.serviceLabel ? `  ·  ${grid.serviceLabel}` : ''}
+      </Text>
+
+      {/* Weekday headers */}
+      <View style={monthStoryStyles.weekRow}>
+        {WEEK.map((w, i) => (
+          <View key={i} style={monthStoryStyles.weekCell}>
+            <Text style={[monthStoryStyles.weekText, { color: palette.textMuted }]}>{w}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Grid */}
+      <View style={monthStoryStyles.grid}>
+        {grid.days.map((d, i) => {
+          const dot =
+            d.status === 'available' || d.status === 'almost_full' || d.status === 'full'
+              ? MONTH_DOT[d.status]
+              : null;
+          return (
+            <View key={i} style={[monthStoryStyles.cell, { opacity: d.inMonth ? 1 : 0.28 }]}>
+              <Text style={[monthStoryStyles.dayNum, { color: palette.text }]}>{d.dayOfMonth}</Text>
+              {dot ? (
+                <View style={[monthStoryStyles.dot, { backgroundColor: dot }]} />
+              ) : (
+                <View style={monthStoryStyles.dotPlaceholder} />
+              )}
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Legend */}
+      <View style={monthStoryStyles.legend}>
+        {([
+          ['#10b981', 'Dispo'],
+          ['#f59e0b', 'Bientôt complet'],
+          ['#f43f5e', 'Complet'],
+        ] as [string, string][]).map(([c, l], i) => (
+          <View key={i} style={monthStoryStyles.legendItem}>
+            <View style={[monthStoryStyles.legendDot, { backgroundColor: c }]} />
+            <Text style={[monthStoryStyles.legendText, { color: palette.text }]}>{l}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Footer */}
+      <View style={availStoryStyles.footer}>
+        <Text style={[availStoryStyles.footerText, { color: palette.footerText }]}>opatam.com</Text>
+      </View>
+    </>
+  );
+
+  if (palette.gradient) {
+    return (
+      <LinearGradient
+        colors={palette.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={availStoryStyles.canvas}
+      >
+        {inner}
+      </LinearGradient>
+    );
+  }
+  return <View style={[availStoryStyles.canvas, { backgroundColor: palette.bg }]}>{inner}</View>;
+}
+
+const monthStoryStyles = StyleSheet.create({
+  subtitle: { fontSize: 15, fontWeight: '700', marginTop: -8, marginBottom: 16 },
+  weekRow: { flexDirection: 'row', marginBottom: 6 },
+  weekCell: { flex: 1, alignItems: 'center' },
+  weekText: { fontSize: 11, fontWeight: '700' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  cell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  dayNum: { fontSize: 15, fontWeight: '600' },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  dotPlaceholder: { width: 8, height: 8 },
+  legend: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 14, marginTop: 16 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 9, height: 9, borderRadius: 4.5 },
+  legendText: { fontSize: 11, fontWeight: '600' },
+});
+
 // ─── Standard story palette (services / QR Code modes) ─────────────────
 
 interface StandardPalette {
@@ -1137,6 +1313,7 @@ export function StoryCard({
   bookingUrl,
   displayMode = 'services',
   availabilityGrid,
+  monthGrid,
   availabilityScope = 'week',
   storyTheme = 'light',
   gradientColors,
@@ -1157,6 +1334,21 @@ export function StoryCard({
   // story shell. Two layouts share the slot — the historical 7-day
   // heatmap and the new today-only list of free time slots. The
   // sub-toggle in the modal controls which one renders.
+  if (displayMode === 'availabilities' && availabilityScope === 'month' && monthGrid) {
+    return (
+      <View style={styles.container}>
+        <MonthAvailabilityStoryLayout
+          businessName={businessName}
+          category={category}
+          city={city}
+          photoURL={photoURL}
+          grid={monthGrid}
+          theme={storyTheme}
+        />
+      </View>
+    );
+  }
+
   if (displayMode === 'availabilities' && availabilityGrid && availabilityGrid.days.length > 0) {
     if (availabilityScope === 'day') {
       return (
