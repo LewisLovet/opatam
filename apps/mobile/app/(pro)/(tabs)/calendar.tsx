@@ -25,8 +25,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { memberService, schedulingService } from '@booking-app/firebase';
-import type { Member, BlockedSlot, Service } from '@booking-app/shared';
-import { ACTIVITY_CATEGORY_META } from '@booking-app/shared';
+import type { Member, BlockedSlot, Service, ServiceSelections } from '@booking-app/shared';
+import { ACTIVITY_CATEGORY_META, computeServiceTotal, emptyServiceSelections } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
@@ -392,6 +392,230 @@ function monthDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// ── Service picker modal ────────────────────────────────────────────────────
+// Replaces the cramped chip row: a bottom sheet listing every prestation, and
+// (when a prestation has variations/options) a second step to pick them so the
+// availability uses the right effective duration.
+
+interface ServicePickerModalProps {
+  visible: boolean;
+  onClose: () => void;
+  services: WithId<Service>[];
+  currentServiceId: string | null;
+  onApply: (serviceId: string | null, durationOverride: number | undefined, label: string) => void;
+}
+
+function ServicePickerModal({
+  visible,
+  onClose,
+  services,
+  currentServiceId,
+  onApply,
+}: ServicePickerModalProps) {
+  const { colors, spacing, radius } = useTheme();
+  const [detail, setDetail] = useState<WithId<Service> | null>(null);
+  const [selections, setSelections] = useState<ServiceSelections>(emptyServiceSelections());
+
+  useEffect(() => {
+    if (visible) setDetail(null);
+  }, [visible]);
+
+  const hasChoices = (svc: WithId<Service>) =>
+    (svc.variations?.length ?? 0) > 0 || (svc.options?.length ?? 0) > 0;
+
+  const openDetail = (svc: WithId<Service>) => {
+    const init = emptyServiceSelections();
+    for (const v of svc.variations ?? []) {
+      if (v.options?.length) init.variations[v.id] = v.options[0].id;
+    }
+    setSelections(init);
+    setDetail(svc);
+  };
+
+  const pickService = (svc: WithId<Service>) => {
+    if (hasChoices(svc)) openDetail(svc);
+    else onApply(svc.id, undefined, svc.name);
+  };
+
+  const setVariation = (variationId: string, optionId: string) =>
+    setSelections((prev) => ({
+      ...prev,
+      variations: { ...prev.variations, [variationId]: optionId },
+    }));
+
+  const toggleOption = (optionId: string) =>
+    setSelections((prev) => {
+      const options = { ...prev.options };
+      if (options[optionId]) delete options[optionId];
+      else options[optionId] = { nestedVariations: {}, infoValues: {} };
+      return { ...prev, options };
+    });
+
+  const applyDetail = () => {
+    if (!detail) return;
+    const { duration } = computeServiceTotal(detail, selections);
+    const dur = duration + (detail.bufferTime || 0);
+    onApply(detail.id, dur > 0 ? dur : undefined, detail.name);
+  };
+
+  const rowStyle = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.datePickerOverlay} onPress={onClose}>
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: colors.surface,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.md,
+            paddingBottom: spacing['2xl'],
+            maxHeight: '82%',
+          }}
+        >
+          <View
+            style={{
+              alignSelf: 'center',
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: colors.border,
+              marginBottom: spacing.md,
+            }}
+          />
+
+          {detail ? (
+            <>
+              <Pressable
+                onPress={() => setDetail(null)}
+                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}
+                hitSlop={8}
+              >
+                <Ionicons name="chevron-back" size={20} color={colors.primary} />
+                <Text variant="body" color="primary">
+                  Retour
+                </Text>
+              </Pressable>
+              <Text variant="h3" style={{ marginBottom: spacing.sm }}>
+                {detail.name}
+              </Text>
+              <ScrollView style={{ maxHeight: 360 }}>
+                {(detail.variations ?? []).map((v) => (
+                  <View key={v.id} style={{ marginBottom: spacing.md }}>
+                    <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.xs }}>
+                      {v.name}
+                    </Text>
+                    {v.options.map((o) => {
+                      const active = selections.variations[v.id] === o.id;
+                      return (
+                        <Pressable key={o.id} onPress={() => setVariation(v.id, o.id)} style={rowStyle}>
+                          <Ionicons
+                            name={active ? 'radio-button-on' : 'radio-button-off'}
+                            size={20}
+                            color={active ? colors.primary : colors.textSecondary}
+                          />
+                          <Text variant="body" style={{ flex: 1, marginLeft: spacing.sm }}>
+                            {o.name}
+                          </Text>
+                          <Text variant="caption" color="textSecondary">
+                            {o.duration} min
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ))}
+                {(detail.options ?? []).length > 0 && (
+                  <Text
+                    variant="label"
+                    color="textSecondary"
+                    style={{ marginTop: spacing.sm, marginBottom: spacing.xs }}
+                  >
+                    Options
+                  </Text>
+                )}
+                {(detail.options ?? []).map((opt) => {
+                  const checked = !!selections.options[opt.id];
+                  return (
+                    <Pressable key={opt.id} onPress={() => toggleOption(opt.id)} style={rowStyle}>
+                      <Ionicons
+                        name={checked ? 'checkbox' : 'square-outline'}
+                        size={20}
+                        color={checked ? colors.primary : colors.textSecondary}
+                      />
+                      <Text variant="body" style={{ flex: 1, marginLeft: spacing.sm }}>
+                        {opt.name}
+                      </Text>
+                      <Text variant="caption" color="textSecondary">
+                        +{opt.duration} min
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Pressable
+                onPress={applyDetail}
+                style={{
+                  marginTop: spacing.md,
+                  backgroundColor: colors.primary,
+                  borderRadius: radius.md,
+                  paddingVertical: spacing.md,
+                  alignItems: 'center',
+                }}
+              >
+                <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+                  Voir les disponibilités
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text variant="h3" style={{ marginBottom: spacing.md }}>
+                Choisir une prestation
+              </Text>
+              <ScrollView style={{ maxHeight: 460 }}>
+                <Pressable onPress={() => onApply(null, undefined, 'Vue générale')} style={rowStyle}>
+                  <Text variant="body" style={{ flex: 1 }}>
+                    Vue générale (sans prestation)
+                  </Text>
+                  {currentServiceId === null && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  )}
+                </Pressable>
+                {services.map((svc) => (
+                  <Pressable key={svc.id} onPress={() => pickService(svc)} style={rowStyle}>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="body">{svc.name}</Text>
+                      {hasChoices(svc) && (
+                        <Text variant="caption" color="textSecondary">
+                          Variations / options
+                        </Text>
+                      )}
+                    </View>
+                    {hasChoices(svc) ? (
+                      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                    ) : currentServiceId === svc.id ? (
+                      <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    ) : null}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 interface MonthCalendarProps {
   providerId: string;
   selectedDate: Date;
@@ -413,6 +637,9 @@ function MonthCalendar({
   const { colors, spacing, radius } = useTheme();
   // null = service-agnostic occupancy mode (just statuses).
   const [serviceId, setServiceId] = useState<string | null>(null);
+  const [durationOverride, setDurationOverride] = useState<number | undefined>(undefined);
+  const [selLabel, setSelLabel] = useState('Vue générale');
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [summary, setSummary] = useState<
     Record<string, { status: MonthDayStatus; capacity?: number }>
   >({});
@@ -452,6 +679,7 @@ function MonthCalendar({
             memberId,
             startDate: gridStart,
             endDate: gridEnd,
+            durationOverride,
           });
           for (const d of ds) map[d.date] = { status: d.status, capacity: d.capacity };
         } else {
@@ -474,7 +702,7 @@ function MonthCalendar({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [providerId, memberId, serviceId, gridStart.getTime(), gridEnd.getTime()]);
+  }, [providerId, memberId, serviceId, durationOverride, gridStart.getTime(), gridEnd.getTime()]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -497,46 +725,47 @@ function MonthCalendar({
     closed: colors.border,
   };
   const WEEK = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-  const chips: { id: string | null; name: string }[] = [
-    { id: null, name: 'Vue générale' },
-    ...services.map((s) => ({ id: s.id, name: s.name })),
-  ];
 
   return (
     <ScrollView
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing['5xl'] }}
     >
-      {/* Service chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginVertical: spacing.md }}
-        contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
+      {/* Service picker trigger (modal handles long prestation lists +
+          variations/options far better than a cramped chip row). */}
+      <Pressable
+        onPress={() => setPickerOpen(true)}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginVertical: spacing.md,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm + 2,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+        }}
       >
-        {chips.map((c) => {
-          const active = (c.id ?? null) === serviceId;
-          return (
-            <Pressable
-              key={c.id ?? 'gen'}
-              onPress={() => setServiceId(c.id)}
-              style={{
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.xs,
-                borderRadius: radius.full,
-                backgroundColor: active ? colors.primary : colors.surfaceSecondary,
-              }}
-            >
-              <Text
-                variant="caption"
-                style={{ color: active ? '#FFFFFF' : colors.textSecondary, fontWeight: active ? '600' : '400' }}
-              >
-                {c.name}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+        <Text variant="body" numberOfLines={1} style={{ flex: 1, color: colors.text }}>
+          {selLabel}
+        </Text>
+        <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+      </Pressable>
+
+      <ServicePickerModal
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        services={services}
+        currentServiceId={serviceId}
+        onApply={(sid, dur, label) => {
+          setServiceId(sid);
+          setDurationOverride(dur);
+          setSelLabel(label);
+          setPickerOpen(false);
+        }}
+      />
 
       {/* Weekday headers */}
       <View style={{ flexDirection: 'row' }}>
