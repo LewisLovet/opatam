@@ -398,7 +398,8 @@ interface MonthCalendarProps {
   selectedDate: Date;
   services: WithId<Service>[];
   categories: { id: string; name: string }[];
-  /** Resolved member whose schedule drives the grid (member-centric model). */
+  /** Team members. `memberId` picks one; null = aggregate across all of them. */
+  members: WithId<Member>[];
   memberId: string | null;
   maxBookingAdvance: number;
   onDayPress: (date: Date) => void;
@@ -409,6 +410,7 @@ function MonthCalendar({
   selectedDate,
   services,
   categories,
+  members,
   memberId,
   maxBookingAdvance,
   onDayPress,
@@ -442,33 +444,61 @@ function MonthCalendar({
   }, [selectedDate]);
 
   useEffect(() => {
-    if (!providerId || !memberId) {
+    if (!providerId) {
+      setSummary({});
+      return;
+    }
+    // A specific member → just them; null → aggregate across the whole team
+    // (best status per day; capacities summed in service mode).
+    const pool = members.filter((m) => m.isActive !== false);
+    const effective = memberId
+      ? pool.filter((m) => m.id === memberId)
+      : pool.length > 0
+        ? pool
+        : members;
+    if (effective.length === 0) {
       setSummary({});
       return;
     }
     let cancelled = false;
+    const rank: Record<string, number> = { closed: 0, full: 1, almost_full: 2, available: 3 };
     (async () => {
       setLoading(true);
       try {
         const map: Record<string, { status: MonthDayStatus; capacity?: number }> = {};
-        if (serviceId) {
-          const ds = await schedulingService.getAvailabilitySummary({
-            providerId,
-            serviceId,
-            memberId,
-            startDate: gridStart,
-            endDate: gridEnd,
-            durationOverride,
-          });
-          for (const d of ds) map[d.date] = { status: d.status, capacity: d.capacity };
-        } else {
-          const ds = await schedulingService.getOccupancySummary({
-            providerId,
-            memberId,
-            startDate: gridStart,
-            endDate: gridEnd,
-          });
-          for (const d of ds) map[d.date] = { status: d.status };
+        for (const mem of effective) {
+          if (serviceId) {
+            const ds = await schedulingService.getAvailabilitySummary({
+              providerId,
+              serviceId,
+              memberId: mem.id,
+              startDate: gridStart,
+              endDate: gridEnd,
+              durationOverride,
+            });
+            for (const d of ds) {
+              const cur = map[d.date];
+              if (!cur) {
+                map[d.date] = { status: d.status, capacity: d.capacity };
+              } else {
+                cur.capacity = (cur.capacity ?? 0) + d.capacity;
+                if ((rank[d.status] ?? 0) > (rank[cur.status] ?? 0)) cur.status = d.status;
+              }
+            }
+          } else {
+            const ds = await schedulingService.getOccupancySummary({
+              providerId,
+              memberId: mem.id,
+              startDate: gridStart,
+              endDate: gridEnd,
+            });
+            for (const d of ds) {
+              const cur = map[d.date];
+              if (!cur || (rank[d.status] ?? 0) > (rank[cur.status] ?? 0)) {
+                map[d.date] = { status: d.status };
+              }
+            }
+          }
         }
         if (!cancelled) setSummary(map);
       } catch (e) {
@@ -481,7 +511,7 @@ function MonthCalendar({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [providerId, memberId, serviceId, durationOverride, gridStart.getTime(), gridEnd.getTime()]);
+  }, [providerId, memberId, members, serviceId, durationOverride, gridStart.getTime(), gridEnd.getTime()]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -2336,7 +2366,8 @@ export default function CalendarScreen() {
           selectedDate={selectedDate}
           services={services}
           categories={categories.map((c) => ({ id: c.id, name: c.name }))}
-          memberId={selectedMemberId ?? members[0]?.id ?? null}
+          members={members}
+          memberId={selectedMemberId}
           maxBookingAdvance={provider?.settings?.maxBookingAdvance ?? 60}
           onDayPress={handleWeekDayPress}
         />
