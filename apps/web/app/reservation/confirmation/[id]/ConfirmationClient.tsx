@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download, Sparkles } from 'lucide-react';
+import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download, Store } from 'lucide-react';
 import { trackEvent } from '@/lib/meta-pixel';
 import { BookingChoices } from '@/components/booking';
 import type {
@@ -94,7 +94,7 @@ function formatTime(dateStr: string): string {
 }
 
 // Generate Google Calendar URL
-function generateGoogleCalendarUrl(booking: Booking): string {
+function generateGoogleCalendarUrl(booking: Booking, address: string): string {
   const startDate = new Date(booking.datetime);
   const endDate = new Date(booking.endDatetime);
 
@@ -104,7 +104,7 @@ function generateGoogleCalendarUrl(booking: Booking): string {
   };
 
   const title = encodeURIComponent(`RDV - ${booking.serviceName} chez ${booking.providerName}`);
-  const location = encodeURIComponent(booking.locationAddress);
+  const location = encodeURIComponent(address);
   const description = encodeURIComponent(
     booking.memberName ? `Avec ${booking.memberName}` : `Chez ${booking.providerName}`
   );
@@ -114,7 +114,7 @@ function generateGoogleCalendarUrl(booking: Booking): string {
 }
 
 // Generate ICS file content
-function generateIcsContent(booking: Booking): string {
+function generateIcsContent(booking: Booking, address: string): string {
   const startDate = new Date(booking.datetime);
   const endDate = new Date(booking.endDatetime);
 
@@ -136,14 +136,14 @@ DTSTART:${formatIcsDate(startDate)}
 DTEND:${formatIcsDate(endDate)}
 SUMMARY:${title}
 DESCRIPTION:${description}
-LOCATION:${booking.locationAddress}
+LOCATION:${address}
 END:VEVENT
 END:VCALENDAR`;
 }
 
 // Download ICS file
-function downloadIcs(booking: Booking) {
-  const icsContent = generateIcsContent(booking);
+function downloadIcs(booking: Booking, address: string) {
+  const icsContent = generateIcsContent(booking, address);
   const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -482,7 +482,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
           </p>
           <div className="grid grid-cols-2 gap-3">
             <a
-              href={generateGoogleCalendarUrl(booking)}
+              href={generateGoogleCalendarUrl(booking, addr?.address || booking.locationAddress)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
@@ -493,7 +493,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
               Google Calendar
             </a>
             <button
-              onClick={() => downloadIcs(booking)}
+              onClick={() => downloadIcs(booking, addr?.address || booking.locationAddress)}
               className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
             >
               <Download className="w-4 h-4" />
@@ -566,7 +566,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-5 h-5" style={{ color: '#2563eb' }} />
+            <Store className="w-5 h-5" style={{ color: '#2563eb' }} />
             <p className="text-sm font-semibold" style={{ color: '#1d4ed8' }}>
               Vous êtes aussi professionnel ?
             </p>
