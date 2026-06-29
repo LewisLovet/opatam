@@ -15,6 +15,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../../theme';
+import { BookingStepHeader } from '../../../../components/business/BookingStepHeader';
 import {
   Text,
   Card,
@@ -224,16 +225,7 @@ export default function DateSelectionScreen() {
   if (!memberId) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-          <Pressable
-            onPress={() => router.back()}
-            style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </Pressable>
-          <Text variant="h2" style={styles.headerTitle}>Choisir une date</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+        <BookingStepHeader title="Choisir une date" onBack={() => router.back()} />
         <View style={styles.errorContainer}>
           <EmptyState
             icon="alert-circle-outline"
@@ -250,16 +242,7 @@ export default function DateSelectionScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
-        >
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text variant="h2" style={styles.headerTitle}>Choisir une date</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <BookingStepHeader title="Choisir une date" onBack={() => router.back()} />
 
       <ScrollView
         contentContainerStyle={[

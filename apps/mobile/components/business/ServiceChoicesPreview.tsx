@@ -17,10 +17,13 @@ import {
   type ServiceOption,
   type ServiceInfoField,
   type ServiceSelections,
+  type ServiceDiscount,
   emptyServiceSelections,
   computeServiceTotal,
+  computeDiscountedTotal,
+  getDiscountedMinPrice,
+  resolveExcludedIds,
   validateServiceSelections,
-  getServiceMinPrice,
   getServiceMinDuration,
   formatPrice,
   formatDuration,
@@ -42,6 +45,7 @@ export interface PreviewService {
 
 export function ServiceChoicesPreview({
   service,
+  discount = null,
   mode = 'preview',
   onConfirm,
   confirmLabel = 'Ajouter',
@@ -49,6 +53,9 @@ export function ServiceChoicesPreview({
   safeAreaBottom = false,
 }: {
   service: PreviewService;
+  /** Active promo to reflect in the prices (effective = per-service or global).
+   *  null = no promo. */
+  discount?: ServiceDiscount | null;
   /** 'preview' = read-only illustration ; 'picker' = the bottom CTA confirms
    *  the current selections (used when adding a prestation to a booking). */
   mode?: 'preview' | 'picker';
@@ -69,10 +76,53 @@ export function ServiceChoicesPreview({
   const { missing } = validateServiceSelections(service, sel);
   const complete = missing.length === 0;
 
+  // Promo applied at display time. `discount` is the already-resolved effective
+  // promo; we pass it as the global discount to the shared helpers (the preview
+  // service carries no own discount field).
+  const svcForPricing = {
+    price: service.price,
+    duration: service.duration,
+    variations: service.variations,
+    options: service.options,
+    discount: null,
+  };
+  const excluded = resolveExcludedIds(service, discount);
+  const cut = (price: number, id?: string): number => {
+    if (!discount || (id && excluded.has(id))) return price;
+    return Math.max(0, price - Math.round((price * discount.percent) / 100));
+  };
+  const eff = computeDiscountedTotal(svcForPricing, sel, discount);
+  const minD = getDiscountedMinPrice(
+    { price: service.price, variations: service.variations, discount: null },
+    discount,
+  );
+
   // Before all required choices are made, show the reachable minimum
   // ("À partir de") rather than a misleading partial total.
-  const displayPrice = complete ? total.price : getServiceMinPrice(service);
+  const displayPrice = complete ? eff.price : minD.price;
+  const displayOriginal = complete ? eff.original : minD.original;
   const displayDuration = complete ? total.duration : getServiceMinDuration(service);
+
+  /** A "12 € → 9,60 €" inline price (struck original when reduced). */
+  const renderPrice = (original: number, discounted: number, prefix = '', suffix = '') =>
+    discounted < original ? (
+      <Text variant="caption" color="textSecondary">
+        {prefix}
+        <Text variant="caption" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
+          {formatPrice(original)}
+        </Text>{' '}
+        <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
+          {formatPrice(discounted)}
+        </Text>
+        {suffix}
+      </Text>
+    ) : (
+      <Text variant="caption" color="textSecondary">
+        {prefix}
+        {formatPrice(original)}
+        {suffix}
+      </Text>
+    );
 
   // ── selection setters ─────────────────────────────────────────────
   const pickVariation = (variationId: string, optionId: string) =>
@@ -185,10 +235,7 @@ export function ServiceChoicesPreview({
               <Text variant="bodySmall" style={{ flex: 1, color: colors.text }}>
                 {o.name || 'Choix'}
               </Text>
-              <Text variant="caption" color="textSecondary">
-                {formatPrice(o.price)}
-                {o.duration ? ` · ${formatDuration(o.duration)}` : ''}
-              </Text>
+              {renderPrice(o.price, cut(o.price, o.id), '', o.duration ? ` · ${formatDuration(o.duration)}` : '')}
             </Pressable>
           );
         })}
@@ -314,9 +361,16 @@ export function ServiceChoicesPreview({
             >
               <Ionicons name="pricetag" size={13} color={colors.primary} />
               <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.primary }}>
-                {hasChoices
-                  ? `À partir de ${formatPrice(getServiceMinPrice(service))}`
-                  : formatPrice(service.price)}
+                {hasChoices ? 'À partir de ' : ''}
+                {minD.price < minD.original && (
+                  <Text
+                    variant="bodySmall"
+                    style={{ color: colors.textMuted, textDecorationLine: 'line-through', fontWeight: '400' }}
+                  >
+                    {formatPrice(minD.original)}{' '}
+                  </Text>
+                )}
+                {formatPrice(minD.price)}
               </Text>
             </View>
             <View
@@ -400,10 +454,13 @@ export function ServiceChoicesPreview({
                     <Text variant="bodySmall" style={{ flex: 1, color: colors.text }}>
                       {o.name || 'Option'}
                     </Text>
-                    <Text variant="caption" color="textSecondary">
-                      {o.price ? `+${formatPrice(o.price)}` : 'Inclus'}
-                      {o.duration ? ` · +${formatDuration(o.duration)}` : ''}
-                    </Text>
+                    {o.price
+                      ? renderPrice(o.price, cut(o.price, o.id), '+', o.duration ? ` · +${formatDuration(o.duration)}` : '')
+                      : (
+                        <Text variant="caption" color="textSecondary">
+                          Inclus{o.duration ? ` · +${formatDuration(o.duration)}` : ''}
+                        </Text>
+                      )}
                   </Pressable>
 
                   {/* Nested choices revealed when the option is checked. */}
@@ -460,7 +517,14 @@ export function ServiceChoicesPreview({
             {complete ? 'Total' : 'À partir de'}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
-            <Text variant="h3">{formatPrice(displayPrice)}</Text>
+            {displayPrice < displayOriginal && (
+              <Text variant="bodySmall" style={{ color: colors.textMuted, textDecorationLine: 'line-through' }}>
+                {formatPrice(displayOriginal)}
+              </Text>
+            )}
+            <Text variant="h3" style={displayPrice < displayOriginal ? { color: '#E11D48' } : undefined}>
+              {formatPrice(displayPrice)}
+            </Text>
             <Text variant="caption" color="textMuted">
               · {formatDuration(displayDuration)}
             </Text>

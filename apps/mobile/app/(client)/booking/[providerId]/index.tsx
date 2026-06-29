@@ -32,6 +32,7 @@ import {
 import type { Member, Service } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { ServiceChoicesPreview } from '../../../../components/business/ServiceChoicesPreview';
+import { BookingStepHeader } from '../../../../components/business/BookingStepHeader';
 
 export default function MemberSelectionScreen() {
   const { colors, spacing, radius } = useTheme();
@@ -139,16 +140,7 @@ export default function MemberSelectionScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-          <Pressable
-            onPress={() => router.back()}
-            style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </Pressable>
-          <Text variant="h2" style={styles.headerTitle}>Choisir un membre</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+        <BookingStepHeader title="Choisir un membre" onBack={() => router.back()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -160,16 +152,7 @@ export default function MemberSelectionScreen() {
   if (providerError || membersError || !provider) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-          <Pressable
-            onPress={() => router.back()}
-            style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </Pressable>
-          <Text variant="h2" style={styles.headerTitle}>Choisir un membre</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+        <BookingStepHeader title="Choisir un membre" onBack={() => router.back()} />
         <View style={styles.errorContainer}>
           <EmptyState
             icon="alert-circle-outline"
@@ -187,22 +170,15 @@ export default function MemberSelectionScreen() {
   if (pendingChoiceService) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-          <Pressable
-            onPress={() => setPendingChoiceService(null)}
-            style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </Pressable>
-          <Text variant="h2" style={styles.headerTitle} numberOfLines={1}>
-            {pendingChoiceService.name}
-          </Text>
-          <View style={styles.headerSpacer} />
-        </View>
+        <BookingStepHeader
+          title={pendingChoiceService.name}
+          onBack={() => setPendingChoiceService(null)}
+        />
         <ServiceChoicesPreview
           mode="picker"
           confirmLabel="Ajouter"
           safeAreaBottom
+          discount={resolveServiceDiscount(pendingChoiceService, globalDiscount)}
           onConfirm={(sel) => {
             addToCart(pendingChoiceService, sel);
             setPendingChoiceService(null);
@@ -224,16 +200,7 @@ export default function MemberSelectionScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
-        >
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text variant="h2" style={styles.headerTitle}>Votre réservation</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <BookingStepHeader title="Votre réservation" onBack={() => router.back()} />
 
       {/* Cart — the prestations booked in this visit */}
       <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>

@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useTheme } from '../../../../theme';
 import { Text, Card, Button, EmptyState, Avatar, Input, useToast } from '../../../../components';
+import { BookingStepHeader } from '../../../../components/business/BookingStepHeader';
 import { useBooking } from '../../../../contexts';
 import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
@@ -396,16 +397,7 @@ export default function ConfirmBookingScreen() {
   if (!isReady || !selectedSlot || !selectedDate || !provider || !service) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-          <Pressable
-            onPress={() => router.back()}
-            style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </Pressable>
-          <Text variant="h2" style={styles.headerTitle}>Confirmation</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+        <BookingStepHeader title="Confirmation" onBack={() => router.back()} />
         <View style={styles.errorContainer}>
           <EmptyState
             icon="alert-circle-outline"
@@ -422,16 +414,7 @@ export default function ConfirmBookingScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={[styles.backButton, { backgroundColor: colors.surface, borderRadius: radius.full }]}
-        >
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text variant="h2" style={styles.headerTitle}>Confirmation</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <BookingStepHeader title="Confirmation" onBack={() => router.back()} />
 
       <ScrollView
         contentContainerStyle={[
