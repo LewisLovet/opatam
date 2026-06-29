@@ -172,14 +172,11 @@ async function toEmailData(
 
   const providerSlug = await getProviderSlug(booking.providerId);
 
-  // Fetch bookingNotice + reminder lead times from provider settings
+  // Fetch bookingNotice from provider settings
   let bookingNotice: string | null = null;
-  let reminderLeadHours: number[] = [];
   try {
     const providerDoc = await admin.firestore().collection('providers').doc(booking.providerId).get();
-    const settings = providerDoc.data()?.settings;
-    bookingNotice = settings?.bookingNotice || null;
-    reminderLeadHours = Array.isArray(settings?.reminderTimes) ? settings.reminderTimes : [];
+    bookingNotice = providerDoc.data()?.settings?.bookingNotice || null;
   } catch {
     // Non-blocking
   }
@@ -208,14 +205,15 @@ async function toEmailData(
     { forceReveal: opts?.forceRevealAddress },
   );
 
-  // When the address is still masked, tell the client WHEN it'll arrive — i.e.
-  // when their earliest reminder is sent (reminders force-reveal the address).
+  // When the address is still masked, tell the client WHEN it'll arrive: the
+  // dedicated "address reveal" reminder fires ~48h before the booking (see
+  // sendBookingReminders), so that's the disclosure date.
+  const ADDRESS_REVEAL_LEAD_HOURS = 48;
   let addressAvailableAt: Date | null = null;
   if (resolvedAddress.pending) {
-    const leadH = reminderLeadHours.length ? Math.max(...reminderLeadHours) : 24;
-    const candidate = booking.datetime.toDate().getTime() - leadH * 60 * 60 * 1000;
-    // Only show a date if it's still in the future; otherwise the notice falls
-    // back to the generic "with your reminder" wording.
+    const candidate =
+      booking.datetime.toDate().getTime() - ADDRESS_REVEAL_LEAD_HOURS * 60 * 60 * 1000;
+    // Pending implies >48h away, so this is normally in the future; guard anyway.
     addressAvailableAt = candidate > Date.now() ? new Date(candidate) : null;
   }
 
