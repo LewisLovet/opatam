@@ -296,7 +296,7 @@ export default function ProviderDetailScreen() {
               {/* Provider avatar from cache (instant) or Opatam logo fallback */}
               {(cachedProvider?.photoURL || provider?.photoURL) ? (
                 <Image
-                  source={{ uri: cachedProvider?.photoURL || provider?.photoURL }}
+                  source={{ uri: cachedProvider?.photoURL || provider?.photoURL || undefined }}
                   style={styles.splashAvatar}
                 />
               ) : (

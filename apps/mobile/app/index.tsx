@@ -40,7 +40,7 @@ export default function Index() {
   //   client until they upgrade their role by registering).
   if (isAuthenticated && userData) {
     if (userData.role === 'provider') {
-      return <Redirect href="/(pro)" />;
+      return <Redirect href={'/(pro)' as never} />;
     }
     return <Redirect href="/(client)/(tabs)" />;
   }

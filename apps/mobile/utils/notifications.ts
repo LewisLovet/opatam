@@ -10,7 +10,11 @@ import { Platform } from 'react-native';
 // Configure notification handler for foreground notifications
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    // shouldShowAlert is deprecated in expo-notifications; keep it for older
+    // runtimes, add the banner/list flags required by the current type.
     shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),

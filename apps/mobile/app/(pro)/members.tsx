@@ -245,6 +245,8 @@ export default function MembersScreen() {
           phone: form.phone.trim() || null,
           locationId: form.locationId,
           color: form.color,
+          serviceIds: [],
+          isDefault: false,
         });
         // Upload photo if one was selected during creation
         if (photoURL) {

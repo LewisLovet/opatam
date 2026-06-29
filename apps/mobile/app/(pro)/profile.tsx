@@ -1138,7 +1138,7 @@ export default function ProfileScreen() {
                       value={socialForm.instagram}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, instagram: v }))}
                       autoCapitalize="none"
-                      hint="Collez le lien de votre profil Instagram"
+                      helperText="Collez le lien de votre profil Instagram"
                     />
                   </View>
                 </View>
@@ -1154,7 +1154,7 @@ export default function ProfileScreen() {
                       value={socialForm.facebook}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, facebook: v }))}
                       autoCapitalize="none"
-                      hint="Collez le lien de votre page Facebook"
+                      helperText="Collez le lien de votre page Facebook"
                     />
                   </View>
                 </View>
@@ -1170,7 +1170,7 @@ export default function ProfileScreen() {
                       value={socialForm.tiktok}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, tiktok: v }))}
                       autoCapitalize="none"
-                      hint="Collez le lien de votre profil TikTok"
+                      helperText="Collez le lien de votre profil TikTok"
                     />
                   </View>
                 </View>

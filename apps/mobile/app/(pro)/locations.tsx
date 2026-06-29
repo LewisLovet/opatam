@@ -198,14 +198,14 @@ export default function LocationsScreen() {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [addressLoading, setAddressLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // City autocomplete (for cityOnly mode)
   const [cityQuery, setCityQuery] = useState('');
   const [citySuggestions, setCitySuggestions] = useState<AddressSuggestion[]>([]);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [cityLoading, setCityLoading] = useState(false);
-  const cityDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const cityDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const loadData = useCallback(async () => {
     if (!providerId) return;

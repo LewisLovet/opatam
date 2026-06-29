@@ -16,7 +16,7 @@ export default function AuthLayout() {
   // This handles the post-login redirect reactively (no race condition)
   if (!isLoading && isAuthenticated && userData) {
     if (userData.role === 'provider') {
-      return <Redirect href="/(pro)" />;
+      return <Redirect href={'/(pro)' as never} />;
     }
     return <Redirect href="/(client)/(tabs)" />;
   }

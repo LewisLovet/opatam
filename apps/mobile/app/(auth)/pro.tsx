@@ -432,14 +432,14 @@ export default function ProRegisterScreen() {
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [addressLoading, setAddressLoading] = useState(false);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
-  const addressDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // City autocomplete (for cityOnly mode)
   const [cityQuery, setCityQuery] = useState('');
   const [citySuggestions, setCitySuggestions] = useState<AddressSuggestion[]>([]);
   const [cityLoading, setCityLoading] = useState(false);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
-  const cityDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const cityDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -752,7 +752,7 @@ export default function ProRegisterScreen() {
       const provider = await providerService.createProvider(userId, {
         businessName: data.businessName.trim(),
         category: data.category,
-        description: data.description.trim() || undefined,
+        description: data.description.trim(),
       });
 
       // Link the referral code if one was validated (discount applies at the

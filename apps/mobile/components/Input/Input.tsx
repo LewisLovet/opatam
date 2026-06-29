@@ -14,6 +14,8 @@ import {
   InputAccessoryView,
   Keyboard,
   Platform,
+  type StyleProp,
+  type TextStyle,
 } from 'react-native';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
@@ -49,6 +51,8 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   multiline?: boolean;
   /** Number of lines for multiline */
   numberOfLines?: number;
+  /** Extra style merged onto the inner TextInput (after the base styles). */
+  style?: StyleProp<TextStyle>;
 }
 
 export function Input({
@@ -67,6 +71,7 @@ export function Input({
   disabled = false,
   multiline = false,
   numberOfLines = 1,
+  style,
   ...props
 }: InputProps) {
   const { colors, radius, spacing, typography } = useTheme();
@@ -149,6 +154,7 @@ export function Input({
             leftIcon ? { paddingLeft: spacing.xs } : undefined,
             rightIcon ? { paddingRight: spacing.xs } : undefined,
             multiline ? styles.multilineInput : undefined,
+            style,
           ]}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}

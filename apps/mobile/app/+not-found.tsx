@@ -20,7 +20,7 @@ export default function NotFoundScreen() {
 
     if (isAuthenticated && userData) {
       if (userData.role === 'provider') {
-        router.replace('/(pro)');
+        router.replace('/(pro)' as never);
       } else {
         router.replace('/(client)/(tabs)');
       }

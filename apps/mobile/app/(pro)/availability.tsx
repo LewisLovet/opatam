@@ -816,7 +816,7 @@ export default function AvailabilityScreen() {
                       {
                         backgroundColor: isChecked ? colors.primary : 'transparent',
                         borderColor: isChecked ? colors.primary : colors.border,
-                        borderRadius: radius.xs,
+                        borderRadius: radius.sm,
                       },
                     ]}
                   >

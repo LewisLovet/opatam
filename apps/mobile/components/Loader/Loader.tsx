@@ -11,6 +11,7 @@ import {
   ViewStyle,
   Animated,
   Easing,
+  type DimensionValue,
 } from 'react-native';
 import { useTheme } from '../../theme';
 
@@ -49,9 +50,9 @@ export function Loader({ size = 'md', color, style }: LoaderProps) {
  */
 export interface SkeletonProps {
   /** Width (number for pixels, string for percentage) */
-  width?: number | string;
-  /** Height in pixels */
-  height?: number;
+  width?: DimensionValue;
+  /** Height (number for pixels, string for percentage) */
+  height?: DimensionValue;
   /** Border radius */
   borderRadius?: number;
   /** Circle shape (ignores width, uses height for diameter) */
@@ -98,7 +99,7 @@ export function Skeleton({
 
   const dimension = circle ? height : undefined;
   const resolvedRadius = circle
-    ? height / 2
+    ? (typeof height === 'number' ? height / 2 : 0)
     : borderRadius ?? radius.sm;
 
   const resolvedWidth = circle ? dimension : width;

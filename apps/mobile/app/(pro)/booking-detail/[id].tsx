@@ -1173,8 +1173,8 @@ export default function ProBookingDetailScreen() {
                 <ContactPill
                   icon="call-outline"
                   text={booking.clientInfo.phone}
-                  onPress={() => handleCallClient(booking.clientInfo.phone)}
-                  onCopy={() => handleCopyToClipboard(booking.clientInfo.phone)}
+                  onPress={() => handleCallClient(booking.clientInfo.phone ?? "")}
+                  onCopy={() => handleCopyToClipboard(booking.clientInfo.phone ?? "")}
                   colors={colors}
                   radius={radius}
                   spacing={spacing}
