@@ -231,6 +231,7 @@ export function PrestationsTab() {
           orderNumber={index + 1}
           depositsEnabled={depositsEnabled}
           defaultDeposit={defaultDeposit}
+          globalDiscount={globalDiscount}
         />
       ))}
     </div>
@@ -333,7 +334,7 @@ export function PrestationsTab() {
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {globalPromoWindowText(globalDiscount)} ·{' '}
-                {globalDiscount.includeExtras ? 'variations/options incluses' : 'base uniquement'}
+                {globalDiscount.includeExtras === false ? 'options exclues' : 'options incluses'}
               </p>
             </>
           ) : (

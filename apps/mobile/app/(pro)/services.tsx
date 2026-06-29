@@ -848,9 +848,13 @@ export default function ServicesScreen() {
     const isAllMembers = !assignedMembers
       || (activeMembers.length > 0 && assignedMembers.length >= activeMembers.length);
 
-    // Promotion badge — visible at a glance, without opening the prestation.
-    const promo = service.discount ?? null;
-    const promoActive = getActiveDiscount(promo);
+    // Promotion badge — service's own promo wins, else the shop-wide one (so a
+    // global promo shows on every prestation too).
+    const ownActive = getActiveDiscount(service.discount);
+    const globalActive = getActiveDiscount(provider?.settings?.globalDiscount ?? null);
+    const effectiveActive = ownActive ?? globalActive;
+    const fromGlobal = !ownActive && !!globalActive;
+    const ownInactive = !!service.discount && !ownActive && !globalActive;
 
     return (
       <Pressable
@@ -885,7 +889,7 @@ export default function ServicesScreen() {
                 depositsEnabled={depositsEnabled}
                 defaultDeposit={defaultDepositSettings}
               />
-              {promo && (
+              {(effectiveActive || ownInactive) && (
                 <View style={{ flexDirection: 'row', marginTop: 4 }}>
                   <View
                     style={[
@@ -894,26 +898,26 @@ export default function ServicesScreen() {
                         flexDirection: 'row',
                         alignItems: 'center',
                         gap: 3,
-                        backgroundColor: promoActive ? 'rgba(225,29,72,0.12)' : '#F4F4F5',
+                        backgroundColor: effectiveActive ? 'rgba(225,29,72,0.12)' : '#F4F4F5',
                       },
                     ]}
                   >
                     <Ionicons
                       name="pricetag"
                       size={10}
-                      color={promoActive ? '#E11D48' : '#71717A'}
+                      color={effectiveActive ? '#E11D48' : '#71717A'}
                     />
                     <Text
                       variant="caption"
                       style={{
-                        color: promoActive ? '#E11D48' : '#71717A',
+                        color: effectiveActive ? '#E11D48' : '#71717A',
                         fontWeight: '600',
                         fontSize: 10,
                       }}
                     >
-                      {promoActive
-                        ? `Promo −${promo.percent}%`
-                        : `Promo −${promo.percent}% · inactive`}
+                      {effectiveActive
+                        ? `Promo −${effectiveActive.percent}%${fromGlobal ? ' · globale' : ''}`
+                        : `Promo −${service.discount!.percent}% · inactive`}
                     </Text>
                   </View>
                 </View>

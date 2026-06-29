@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Badge, Switch } from '@/components/ui';
 import { ChevronUp, ChevronDown, Clock, Euro, Tag } from 'lucide-react';
-import type { Service, Member } from '@booking-app/shared';
+import type { Service, Member, ServiceDiscount } from '@booking-app/shared';
 import {
   resolveDeposit,
   getServiceMinPrice,
@@ -39,6 +39,9 @@ interface ServiceCardProps {
    * deposit when `service.deposit === null` (inherit case).
    */
   defaultDeposit?: { percent: number; refundDeadlineHours: number } | null;
+  /** Shop-wide promo — surfaced on cards that don't carry their own, so the
+   *  pro sees the global promo applies everywhere. */
+  globalDiscount?: ServiceDiscount | null;
 }
 
 function formatDuration(minutes: number): string {
@@ -106,6 +109,7 @@ export function ServiceCard({
   orderNumber,
   depositsEnabled = false,
   defaultDeposit = null,
+  globalDiscount = null,
 }: ServiceCardProps) {
   // Determine which members perform this service
   const assignedMembers = service.memberIds
@@ -117,10 +121,16 @@ export function ServiceCard({
 
   const depositBadge = depositsEnabled ? depositBadgeProps(service, defaultDeposit) : null;
 
-  // Per-service promotion — surfaced on the card so the pro sees at a glance
-  // which prestations are discounted, without opening the editor.
-  const promo = service.discount ?? null;
-  const promoActive = getActiveDiscount(promo);
+  // Effective promo surfaced on the card so the pro sees at a glance which
+  // prestations are discounted — the service's own promo wins, otherwise the
+  // shop-wide one applies (so a global promo shows on every prestation too).
+  const ownActive = getActiveDiscount(service.discount);
+  const globalActive = getActiveDiscount(globalDiscount);
+  const effectiveActive = ownActive ?? globalActive;
+  const fromGlobal = !ownActive && !!globalActive;
+  // Grey "inactive" hint only for a service whose OWN promo is configured but
+  // out of its window (and no global promo is taking over).
+  const ownInactive = !!service.discount && !ownActive && !globalActive;
 
   // Price varies when the prestation has variations or optional add-ons.
   const priceVaries =
@@ -250,17 +260,25 @@ export function ServiceCard({
                     {depositBadge.label}
                   </span>
                 )}
-                {promo && (
+                {(effectiveActive || ownInactive) && (
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                      promoActive
+                      effectiveActive
                         ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                     }`}
-                    title={promoActive ? 'Promotion en cours' : 'Promotion configurée mais inactive (hors période)'}
+                    title={
+                      effectiveActive
+                        ? fromGlobal
+                          ? 'Promotion globale en cours'
+                          : 'Promotion en cours'
+                        : 'Promotion configurée mais inactive (hors période)'
+                    }
                   >
                     <Tag className="w-3 h-3" />
-                    {promoActive ? `Promo −${promo.percent}%` : `Promo −${promo.percent}% · inactive`}
+                    {effectiveActive
+                      ? `Promo −${effectiveActive.percent}%${fromGlobal ? ' · globale' : ''}`
+                      : `Promo −${service.discount!.percent}% · inactive`}
                   </span>
                 )}
               </div>
