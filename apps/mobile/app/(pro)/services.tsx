@@ -14,7 +14,9 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -86,6 +88,12 @@ interface ServiceFormData {
   depositType: DepositCustomType;
   depositValue: string; // % when percent, € when fixed
   depositRefundHours: string;
+  // Promotion (percentage). Empty/disabled = no promo on this service.
+  discountEnabled: boolean;
+  discountPercent: string;
+  discountIncludeExtras: boolean;
+  discountStartsAt: string | null; // YYYY-MM-DD inclusive
+  discountEndsAt: string | null;
   // Variations / options / info fields — same model as the web editor and
   // the registration wizard. Prices stored in cents.
   variations: ServiceVariation[];
@@ -110,10 +118,32 @@ const DEFAULT_FORM: ServiceFormData = {
   depositType: 'percent',
   depositValue: '30',
   depositRefundHours: '24',
+  discountEnabled: false,
+  discountPercent: '10',
+  discountIncludeExtras: true,
+  discountStartsAt: null,
+  discountEndsAt: null,
   variations: [],
   options: [],
   infoFields: [],
 };
+
+// Promo date helpers — store as YYYY-MM-DD (local), bridge to/from Date for the
+// native picker.
+function ymdToDate(ymd: string | null): Date {
+  if (!ymd) return new Date();
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+function dateToYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function formatPromoDateFr(ymd: string): string {
+  return ymdToDate(ymd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 function minutesToHoursMinutes(totalMinutes: number): { hours: string; minutes: string } {
   const h = Math.floor(totalMinutes / 60);
@@ -241,6 +271,8 @@ export default function ServicesScreen() {
 
   // Whether the "Variations & options" section of the form is expanded.
   const [choicesExpanded, setChoicesExpanded] = useState(false);
+  // Which promo date is being picked ('start' | 'end' | null).
+  const [promoDateField, setPromoDateField] = useState<'start' | 'end' | null>(null);
   // Client-view preview overlay (floating "Aperçu" button).
   const [showPreview, setShowPreview] = useState(false);
   // Service whose "Déplacer vers une catégorie" sheet is open (null = closed).
@@ -438,6 +470,11 @@ export default function ServicesScreen() {
       depositType,
       depositValue,
       depositRefundHours,
+      discountEnabled: !!service.discount,
+      discountPercent: service.discount ? String(service.discount.percent) : '10',
+      discountIncludeExtras: service.discount ? service.discount.includeExtras : true,
+      discountStartsAt: service.discount?.startsAt ?? null,
+      discountEndsAt: service.discount?.endsAt ?? null,
       variations: service.variations ?? [],
       options: service.options ?? [],
       infoFields: service.infoFields ?? [],
@@ -512,6 +549,32 @@ export default function ServicesScreen() {
         };
       }
 
+      // Build the promotion payload (percentage). null = no promo.
+      let discountPayload: Service['discount'] | null = null;
+      if (form.discountEnabled) {
+        const pct = Number(form.discountPercent);
+        if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
+          showToast({ variant: 'error', message: 'La réduction doit être entre 1 et 100 %' });
+          setIsSaving(false);
+          return;
+        }
+        if (
+          form.discountStartsAt &&
+          form.discountEndsAt &&
+          form.discountStartsAt > form.discountEndsAt
+        ) {
+          showToast({ variant: 'error', message: 'La date de fin doit être après le début' });
+          setIsSaving(false);
+          return;
+        }
+        discountPayload = {
+          percent: Math.round(pct),
+          includeExtras: form.discountIncludeExtras,
+          startsAt: form.discountStartsAt,
+          endsAt: form.discountEndsAt,
+        };
+      }
+
       const payload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
@@ -528,6 +591,7 @@ export default function ServicesScreen() {
         categoryId: form.categoryId,
         color: form.color,
         deposit: depositPayload,
+        discount: discountPayload,
         variations: sanitizeVariations(form.variations),
         options: sanitizeOptions(form.options),
         infoFields: sanitizeInfoFields(form.infoFields),
@@ -1472,6 +1536,92 @@ export default function ServicesScreen() {
 
                 </EditorSection>
 
+                <EditorSection
+                  title="Promotion"
+                  subtitle="Une réduction en % sur cette prestation"
+                  icon="pricetag-outline"
+                  defaultOpen={form.discountEnabled}
+                >
+                  {/* Enable toggle */}
+                  <Pressable
+                    onPress={() => setForm((p) => ({ ...p, discountEnabled: !p.discountEnabled }))}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}
+                  >
+                    <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text, flex: 1 }}>
+                      Activer une promotion
+                    </Text>
+                    <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: form.discountEnabled ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
+                      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: form.discountEnabled ? 'flex-end' : 'flex-start' }} />
+                    </View>
+                  </Pressable>
+
+                  {form.discountEnabled && (
+                    <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
+                      <Input
+                        label="Réduction (%)"
+                        placeholder="10"
+                        value={form.discountPercent}
+                        onChangeText={(t) => setForm((p) => ({ ...p, discountPercent: t.replace(/[^0-9]/g, '') }))}
+                        keyboardType="number-pad"
+                      />
+
+                      {/* Live preview for flat-price services */}
+                      {form.variations.length === 0 &&
+                        Number(form.price) > 0 &&
+                        Number(form.discountPercent) > 0 && (
+                          <Text variant="caption" color="textSecondary">
+                            Prix après réduction :{' '}
+                            <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
+                              {(Number(form.price) * (1 - Number(form.discountPercent) / 100))
+                                .toFixed(2)
+                                .replace('.', ',')} €
+                            </Text>
+                          </Text>
+                        )}
+
+                      {/* Include variations/options */}
+                      <Pressable
+                        onPress={() => setForm((p) => ({ ...p, discountIncludeExtras: !p.discountIncludeExtras }))}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}
+                      >
+                        <Text variant="bodySmall" style={{ color: colors.text, flex: 1, marginRight: spacing.sm }}>
+                          Appliquer aux variations et options
+                        </Text>
+                        <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: form.discountIncludeExtras ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
+                          <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: form.discountIncludeExtras ? 'flex-end' : 'flex-start' }} />
+                        </View>
+                      </Pressable>
+
+                      {/* Date window */}
+                      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                        {(['start', 'end'] as const).map((which) => {
+                          const ymd = which === 'start' ? form.discountStartsAt : form.discountEndsAt;
+                          return (
+                            <Pressable
+                              key={which}
+                              onPress={() => setPromoDateField(which)}
+                              style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                            >
+                              <View style={{ flex: 1 }}>
+                                <Text variant="caption" color="textSecondary">
+                                  {which === 'start' ? 'Début' : 'Fin'}
+                                </Text>
+                                <Text variant="bodySmall" style={{ color: ymd ? colors.text : colors.textMuted, marginTop: 1 }}>
+                                  {ymd ? formatPromoDateFr(ymd) : 'Optionnel'}
+                                </Text>
+                              </View>
+                              <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                      <Text variant="caption" color="textSecondary">
+                        Dates vides = promotion permanente. La fin est incluse.
+                      </Text>
+                    </View>
+                  )}
+                </EditorSection>
+
                 {(locations.length > 1 || members.length > 1) && (
                   <EditorSection
                     title="Disponibilité"
@@ -1682,6 +1832,60 @@ export default function ServicesScreen() {
               }}
             />
           </OverlaySheet>
+
+          {/* Promo date picker. iOS: inline picker in an overlay sheet (a 2nd
+              Modal wouldn't show over the editor Modal). Android: system dialog. */}
+          {Platform.OS === 'ios' && (
+            <OverlaySheet
+              visible={promoDateField !== null}
+              onClose={() => setPromoDateField(null)}
+              heightPct={0.55}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }}>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => {
+                    const key = promoDateField === 'start' ? 'discountStartsAt' : 'discountEndsAt';
+                    setForm((p) => ({ ...p, [key]: null }));
+                    setPromoDateField(null);
+                  }}
+                >
+                  <Text variant="body" color="textSecondary">Effacer</Text>
+                </Pressable>
+                <Text variant="body" style={{ fontWeight: '600' }}>
+                  {promoDateField === 'start' ? 'Début' : 'Fin'} de la promo
+                </Text>
+                <Pressable hitSlop={8} onPress={() => setPromoDateField(null)}>
+                  <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={ymdToDate(promoDateField === 'start' ? form.discountStartsAt : form.discountEndsAt)}
+                mode="date"
+                display="inline"
+                onChange={(_, date) => {
+                  if (!date || !promoDateField) return;
+                  const key = promoDateField === 'start' ? 'discountStartsAt' : 'discountEndsAt';
+                  setForm((p) => ({ ...p, [key]: dateToYmd(date) }));
+                }}
+                style={{ height: 320 }}
+              />
+            </OverlaySheet>
+          )}
+          {Platform.OS === 'android' && promoDateField !== null && (
+            <DateTimePicker
+              value={ymdToDate(promoDateField === 'start' ? form.discountStartsAt : form.discountEndsAt)}
+              mode="date"
+              onChange={(_, date) => {
+                const which = promoDateField;
+                setPromoDateField(null);
+                if (date && which) {
+                  const key = which === 'start' ? 'discountStartsAt' : 'discountEndsAt';
+                  setForm((p) => ({ ...p, [key]: dateToYmd(date) }));
+                }
+              }}
+            />
+          )}
         </View>
       </Modal>
 
