@@ -4,7 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { View, Image, StyleSheet, useColorScheme } from 'react-native';
+import { View, StyleSheet, useColorScheme } from 'react-native';
+import { Image } from 'expo-image';
 import { Text } from '../Text';
 import { ASSETS, APP_CONFIG } from '@booking-app/shared/constants';
 
@@ -19,13 +20,13 @@ interface LogoProps {
   style?: object;
 }
 
-const sizeConfig: Record<LogoSize, { logo: number; text: 'body' | 'h3' | 'h2' | 'h1'; subtitle: 'caption' | 'small' }> = {
+const sizeConfig: Record<LogoSize, { logo: number; text: 'body' | 'h3' | 'h2' | 'h1'; subtitle: 'caption' | 'bodySmall' }> = {
   sm: { logo: 24, text: 'body', subtitle: 'caption' },
   md: { logo: 32, text: 'h3', subtitle: 'caption' },
-  lg: { logo: 48, text: 'h2', subtitle: 'small' },
-  xl: { logo: 64, text: 'h1', subtitle: 'small' },
-  '2xl': { logo: 96, text: 'h1', subtitle: 'small' },
-  '3xl': { logo: 128, text: 'h1', subtitle: 'small' },
+  lg: { logo: 48, text: 'h2', subtitle: 'bodySmall' },
+  xl: { logo: 64, text: 'h1', subtitle: 'bodySmall' },
+  '2xl': { logo: 96, text: 'h1', subtitle: 'bodySmall' },
+  '3xl': { logo: 128, text: 'h1', subtitle: 'bodySmall' },
 };
 
 export function Logo({
@@ -54,7 +55,7 @@ export function Logo({
         </View>
         {showText && (
           <View style={styles.textContainer}>
-            <Text variant={config.text} weight="bold">{APP_CONFIG.name}</Text>
+            <Text variant={config.text} style={{ fontWeight: '700' }}>{APP_CONFIG.name}</Text>
             {subtitle && (
               <Text variant={config.subtitle} color="muted">{subtitle}</Text>
             )}
@@ -67,14 +68,16 @@ export function Logo({
   return (
     <View style={[styles.container, style]}>
       <Image
-        source={{ uri: logoUrl }}
+        source={logoUrl}
         style={{ width: config.logo, height: config.logo }}
-        resizeMode="contain"
+        contentFit="contain"
+        transition={300}
+        cachePolicy="memory-disk"
         onError={() => setImgError(true)}
       />
       {showText && (
         <View style={styles.textContainer}>
-          <Text variant={config.text} weight="bold">{APP_CONFIG.name}</Text>
+          <Text variant={config.text} style={{ fontWeight: '700' }}>{APP_CONFIG.name}</Text>
           {subtitle && (
             <Text variant={config.subtitle} color="muted">{subtitle}</Text>
           )}
@@ -105,7 +108,7 @@ export function LogoWhite({
         </View>
         {showText && (
           <View style={styles.textContainer}>
-            <Text variant={config.text} weight="bold" style={styles.whiteText}>{APP_CONFIG.name}</Text>
+            <Text variant={config.text} style={[styles.whiteText, { fontWeight: '700' }]}>{APP_CONFIG.name}</Text>
             {subtitle && (
               <Text variant={config.subtitle} style={styles.subtitleWhite}>{subtitle}</Text>
             )}
@@ -118,14 +121,16 @@ export function LogoWhite({
   return (
     <View style={[styles.container, style]}>
       <Image
-        source={{ uri: logoUrl }}
+        source={logoUrl}
         style={{ width: config.logo, height: config.logo }}
-        resizeMode="contain"
+        contentFit="contain"
+        transition={300}
+        cachePolicy="memory-disk"
         onError={() => setImgError(true)}
       />
       {showText && (
         <View style={styles.textContainer}>
-          <Text variant={config.text} weight="bold" style={styles.whiteText}>{APP_CONFIG.name}</Text>
+          <Text variant={config.text} style={[styles.whiteText, { fontWeight: '700' }]}>{APP_CONFIG.name}</Text>
           {subtitle && (
             <Text variant={config.subtitle} style={styles.subtitleWhite}>{subtitle}</Text>
           )}
