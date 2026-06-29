@@ -65,9 +65,10 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
       const globalDiscount: ServiceDiscount | null = enabled
         ? { percent, includeExtras, startsAt, endsAt }
         : null;
-      await providerService.updateProvider(provider.id, {
-        settings: { ...(provider.settings ?? {}), globalDiscount },
-      });
+      // updateSettings merges with the provider's current settings server-side
+      // (it never strips unknown keys the way updateProvider's Zod schema can),
+      // so the other settings — notamment notificationPreferences — sont préservés.
+      await providerService.updateSettings(provider.id, { globalDiscount });
       await refreshProvider();
       toast.success(enabled ? 'Promotion globale enregistrée' : 'Promotion globale désactivée');
       onClose();

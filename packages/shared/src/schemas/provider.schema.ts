@@ -50,6 +50,24 @@ export const providerSettingsSchema = z.object({
     .optional(),
   autoReviewReminder: z.boolean().optional(),
 
+  // Client/booking notification toggles. Must be in the schema so that a
+  // full-`settings` update via updateProvider (e.g. the reservation settings
+  // form or the global promo) does NOT strip it — otherwise Zod drops the
+  // unknown key and the subsequent write wipes the provider's notification
+  // preferences. `.partial()` keeps it lenient for legacy/partial docs.
+  notificationPreferences: z
+    .object({
+      pushEnabled: z.boolean(),
+      emailEnabled: z.boolean(),
+      newBookingNotifications: z.boolean(),
+      confirmationNotifications: z.boolean(),
+      cancellationNotifications: z.boolean(),
+      reminderNotifications: z.boolean(),
+      centerPushEnabled: z.boolean().optional(),
+    })
+    .partial()
+    .optional(),
+
   // Default deposit (acomptes add-on). Always a percentage so it scales
   // with each service price and can never exceed it.
   depositDefault: z
