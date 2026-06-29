@@ -70,6 +70,42 @@ async function getProviderSettings(
   }
 }
 
+/**
+ * One review per client per provider: don't re-ask a client who has ALREADY
+ * left a review for this provider (on any past booking). The per-booking
+ * `reviewRequestSentAt` dedup only covers the same booking — a returning
+ * client makes a NEW booking, so without this check they'd be asked again at
+ * every visit. Mirrors the submit-time dedup
+ * (reviewRepository.getByClientForProvider / getByEmailForProvider).
+ */
+async function hasAlreadyReviewed(
+  db: FirebaseFirestore.Firestore,
+  providerId: string,
+  clientId: string | null,
+  clientEmail: string,
+): Promise<boolean> {
+  // Authenticated client.
+  if (clientId) {
+    const byId = await db
+      .collection('reviews')
+      .where('providerId', '==', providerId)
+      .where('clientId', '==', clientId)
+      .limit(1)
+      .get();
+    serverTracker.trackRead('reviews', byId.size);
+    if (!byId.empty) return true;
+  }
+  // Anonymous / email-link reviews — match on the normalized email.
+  const byEmail = await db
+    .collection('reviews')
+    .where('providerId', '==', providerId)
+    .where('clientEmail', '==', clientEmail.toLowerCase().trim())
+    .limit(1)
+    .get();
+  serverTracker.trackRead('reviews', byEmail.size);
+  return !byEmail.empty;
+}
+
 export const sendReviewRequests = onSchedule(
   {
     schedule: 'every 6 hours',
@@ -155,6 +191,35 @@ export const sendReviewRequests = onSchedule(
             bookingId,
             success: false,
             reason: 'provider opted out',
+          });
+          continue;
+        }
+
+        // One review per client per provider — skip clients who already
+        // reviewed this provider. Stamp the booking as processed so we don't
+        // re-query reviews for it on every run while it stays in the window.
+        const alreadyReviewed = await hasAlreadyReviewed(
+          db,
+          providerId,
+          data.clientId ?? null,
+          clientEmail,
+        );
+        if (alreadyReviewed) {
+          try {
+            await db.collection('bookings').doc(bookingId).update({
+              reviewRequestSentAt: FieldValue.serverTimestamp(),
+            });
+            serverTracker.trackWrite('bookings', 1);
+          } catch (err) {
+            console.error(
+              `[review-requests] stamp (already-reviewed) failed for ${bookingId}:`,
+              err,
+            );
+          }
+          results.push({
+            bookingId,
+            success: false,
+            reason: 'client already reviewed',
           });
           continue;
         }
