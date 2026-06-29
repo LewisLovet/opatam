@@ -31,6 +31,9 @@ export interface ServiceCardProps {
   discountPercent?: number | null;
   /** Pre-formatted urgency line ("Plus que N jours"); null = hide. */
   promoCountdown?: string | null;
+  /** When the price is a "from" (service has variations/options), show the
+   *  "À partir de" hint above it. */
+  priceFrom?: boolean;
   /** Whether this service is selected */
   selected?: boolean;
   /** Press handler */
@@ -70,6 +73,7 @@ export function ServiceCard({
   originalPrice,
   discountPercent,
   promoCountdown,
+  priceFrom = false,
   selected = false,
   onPress,
 }: ServiceCardProps) {
@@ -129,6 +133,11 @@ export function ServiceCard({
                 {name}
               </Text>
           <View style={{ alignItems: 'flex-end' }}>
+            {priceFrom && (
+              <Text variant="caption" style={{ color: colors.textMuted, fontSize: 10 }}>
+                à partir de
+              </Text>
+            )}
             {hasPromo && (
               <Text
                 variant="caption"

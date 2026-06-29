@@ -54,7 +54,7 @@ import { useProvidersCache } from '../../../contexts';
 import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
 import { ASSETS } from '@booking-app/shared/constants';
 import {
-  applyDiscount,
+  getDiscountedMinPrice,
   resolveServiceDiscount,
   getDiscountDaysLeft,
   formatPromoCountdown,
@@ -560,25 +560,29 @@ export default function ProviderDetailScreen() {
                       key={group.id}
                       title={group.title}
                       services={group.services.map((s) => {
+                        const md = getDiscountedMinPrice(s, globalDiscount);
                         const active = resolveServiceDiscount(s, globalDiscount);
-                        const applied = applyDiscount(s.price, s.price, active);
-                        const hasPromo =
-                          applied.discountPercent != null && applied.price < applied.original;
+                        const hasPromo = md.discountPercent != null && md.price < md.original;
                         const daysLeft = getDiscountDaysLeft(active);
+                        const priceFrom =
+                          (s.variations?.length ?? 0) > 0 || (s.options?.length ?? 0) > 0;
                         return {
                           id: s.id,
                           name: s.name,
                           description: s.description,
                           photoURL: s.photoURL,
                           duration: s.duration,
-                          price: applied.price / 100, // Convert cents to euros
-                          priceMax: hasPromo ? null : s.priceMax ? s.priceMax / 100 : null,
-                          originalPrice: hasPromo ? applied.original / 100 : null,
-                          discountPercent: hasPromo ? applied.discountPercent : null,
+                          // Discounted "à partir de" (cheapest reachable combo) — correct
+                          // for variation/option services, not just the dropped base.
+                          price: md.price / 100,
+                          priceMax: hasPromo || priceFrom ? null : s.priceMax ? s.priceMax / 100 : null,
+                          originalPrice: hasPromo ? md.original / 100 : null,
+                          discountPercent: hasPromo ? md.discountPercent : null,
                           promoCountdown:
                             hasPromo && daysLeft != null && daysLeft <= PROMO_URGENCY_DAYS
                               ? formatPromoCountdown(daysLeft)
                               : null,
+                          priceFrom,
                         };
                       })}
                       selectedId={isPreview ? null : selectedServiceId}
@@ -681,21 +685,26 @@ export default function ProviderDetailScreen() {
                   {selectedService.name} - {selectedService.duration} min
                 </Text>
                 {(() => {
-                  if (selectedService.price === 0) {
+                  const md = getDiscountedMinPrice(selectedService, globalDiscount);
+                  if (md.original === 0) {
                     return <Text variant="h3" color="primary">Gratuit</Text>;
                   }
-                  const active = resolveServiceDiscount(selectedService, globalDiscount);
-                  const applied = applyDiscount(selectedService.price, selectedService.price, active);
-                  const promo = applied.discountPercent != null && applied.price < applied.original;
+                  const promo = md.discountPercent != null && md.price < md.original;
+                  const priceFrom =
+                    (selectedService.variations?.length ?? 0) > 0 ||
+                    (selectedService.options?.length ?? 0) > 0;
                   return (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {priceFrom && (
+                        <Text variant="caption" style={{ color: colors.textMuted }}>à partir de</Text>
+                      )}
                       {promo && (
                         <Text variant="body" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
-                          {(applied.original / 100).toFixed(2)} €
+                          {(md.original / 100).toFixed(2)} €
                         </Text>
                       )}
                       <Text variant="h3" style={{ color: promo ? '#E11D48' : colors.primary }}>
-                        {(applied.price / 100).toFixed(2)} €
+                        {(md.price / 100).toFixed(2)} €
                       </Text>
                     </View>
                   );

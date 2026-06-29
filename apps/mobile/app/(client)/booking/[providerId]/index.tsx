@@ -22,7 +22,7 @@ import { useBooking } from '../../../../contexts';
 import { useProviderById, useServices, useServiceCategories, useMembers, useLocations } from '../../../../hooks';
 import {
   computeDiscountedTotal,
-  applyDiscount,
+  getDiscountedMinPrice,
   resolveServiceDiscount,
   getDiscountDaysLeft,
   formatPromoCountdown,
@@ -461,27 +461,29 @@ export default function MemberSelectionScreen() {
                   key={g.id}
                   title={g.title}
                   services={g.items.map((s) => {
+                    const md = getDiscountedMinPrice(s, globalDiscount);
                     const active = resolveServiceDiscount(s, globalDiscount);
-                    const applied = applyDiscount(s.price, s.price, active);
-                    const hasPromo =
-                      applied.discountPercent != null && applied.price < applied.original;
+                    const hasPromo = md.discountPercent != null && md.price < md.original;
                     const daysLeft = getDiscountDaysLeft(active);
+                    const priceFrom =
+                      (s.variations?.length ?? 0) > 0 || (s.options?.length ?? 0) > 0;
                     return {
                       id: s.id,
                       name: s.name,
                       description: s.description,
                       photoURL: s.photoURL,
                       duration: s.duration,
-                      price: applied.price / 100,
-                      // Drop the range when a promo applies — show a single
-                      // discounted price + crossed-out original instead.
-                      priceMax: hasPromo ? null : s.priceMax ? s.priceMax / 100 : null,
-                      originalPrice: hasPromo ? applied.original / 100 : null,
-                      discountPercent: hasPromo ? applied.discountPercent : null,
+                      // Discounted "à partir de" (cheapest reachable combo) — correct
+                      // for variation/option services, not just the dropped base.
+                      price: md.price / 100,
+                      priceMax: hasPromo || priceFrom ? null : s.priceMax ? s.priceMax / 100 : null,
+                      originalPrice: hasPromo ? md.original / 100 : null,
+                      discountPercent: hasPromo ? md.discountPercent : null,
                       promoCountdown:
                         hasPromo && daysLeft != null && daysLeft <= PROMO_URGENCY_DAYS
                           ? formatPromoCountdown(daysLeft)
                           : null,
+                      priceFrom,
                     };
                   })}
                   onSelectService={(id) => {

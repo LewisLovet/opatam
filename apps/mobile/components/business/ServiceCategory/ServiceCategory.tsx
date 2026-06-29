@@ -40,6 +40,7 @@ export interface ServiceCategoryProps {
     originalPrice?: number | null;
     discountPercent?: number | null;
     promoCountdown?: string | null;
+    priceFrom?: boolean;
   }>;
   /** Currently selected service ID */
   selectedId?: string | null;
@@ -234,6 +235,7 @@ export function ServiceCategory({
               originalPrice={service.originalPrice}
               discountPercent={service.discountPercent}
               promoCountdown={service.promoCountdown}
+              priceFrom={service.priceFrom}
               selected={selectedId === service.id}
               onPress={onSelectService ? () => onSelectService(service.id) : undefined}
             />
