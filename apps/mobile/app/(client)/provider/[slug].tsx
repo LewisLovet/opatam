@@ -53,6 +53,13 @@ import {
 import { useProvidersCache } from '../../../contexts';
 import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
 import { ASSETS } from '@booking-app/shared/constants';
+import {
+  applyDiscount,
+  resolveServiceDiscount,
+  getDiscountDaysLeft,
+  formatPromoCountdown,
+  PROMO_URGENCY_DAYS,
+} from '@booking-app/shared';
 import { analyticsService, type WithId } from '@booking-app/firebase';
 
 type TabId = 'prestations' | 'avis' | 'infos';
@@ -114,6 +121,8 @@ export default function ProviderDetailScreen() {
 
   // Fetch provider data
   const { provider, loading: loadingProvider, error: providerError, refresh: refreshProvider } = useProvider(slug);
+  // Shop-wide promo applied to services without their own discount.
+  const globalDiscount = provider?.settings?.globalDiscount ?? null;
 
   // Fetch related data (only when provider is loaded)
   const { services, loading: loadingServices, refresh: refreshServices } = useServices(provider?.id);
@@ -550,15 +559,28 @@ export default function ProviderDetailScreen() {
                     <ServiceCategory
                       key={group.id}
                       title={group.title}
-                      services={group.services.map((s) => ({
-                        id: s.id,
-                        name: s.name,
-                        description: s.description,
-                        photoURL: s.photoURL,
-                        duration: s.duration,
-                        price: s.price / 100, // Convert cents to euros
-                        priceMax: s.priceMax ? s.priceMax / 100 : null,
-                      }))}
+                      services={group.services.map((s) => {
+                        const active = resolveServiceDiscount(s, globalDiscount);
+                        const applied = applyDiscount(s.price, s.price, active);
+                        const hasPromo =
+                          applied.discountPercent != null && applied.price < applied.original;
+                        const daysLeft = getDiscountDaysLeft(active);
+                        return {
+                          id: s.id,
+                          name: s.name,
+                          description: s.description,
+                          photoURL: s.photoURL,
+                          duration: s.duration,
+                          price: applied.price / 100, // Convert cents to euros
+                          priceMax: hasPromo ? null : s.priceMax ? s.priceMax / 100 : null,
+                          originalPrice: hasPromo ? applied.original / 100 : null,
+                          discountPercent: hasPromo ? applied.discountPercent : null,
+                          promoCountdown:
+                            hasPromo && daysLeft != null && daysLeft <= PROMO_URGENCY_DAYS
+                              ? formatPromoCountdown(daysLeft)
+                              : null,
+                        };
+                      })}
                       selectedId={isPreview ? null : selectedServiceId}
                       onSelectService={isPreview ? undefined : handleSelectService}
                       collapsible={serviceGroups.length > 1}
@@ -658,9 +680,26 @@ export default function ProviderDetailScreen() {
                 <Text variant="caption" color="textSecondary">
                   {selectedService.name} - {selectedService.duration} min
                 </Text>
-                <Text variant="h3" color="primary">
-                  {selectedService.price === 0 ? 'Gratuit' : `${(selectedService.price / 100).toFixed(2)} €`}
-                </Text>
+                {(() => {
+                  if (selectedService.price === 0) {
+                    return <Text variant="h3" color="primary">Gratuit</Text>;
+                  }
+                  const active = resolveServiceDiscount(selectedService, globalDiscount);
+                  const applied = applyDiscount(selectedService.price, selectedService.price, active);
+                  const promo = applied.discountPercent != null && applied.price < applied.original;
+                  return (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {promo && (
+                        <Text variant="body" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
+                          {(applied.original / 100).toFixed(2)} €
+                        </Text>
+                      )}
+                      <Text variant="h3" style={{ color: promo ? '#E11D48' : colors.primary }}>
+                        {(applied.price / 100).toFixed(2)} €
+                      </Text>
+                    </View>
+                  );
+                })()}
               </View>
             )}
             <Button
