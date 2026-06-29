@@ -27,7 +27,7 @@ import { bookingService, reviewService, providerService } from '@booking-app/fir
 import type { Booking } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
-import { Text, Card, Button, useToast } from '../../../components';
+import { Text, Card, Button, Avatar, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
 
 // Helper to convert booking datetime to Date
@@ -630,6 +630,14 @@ export default function BookingDetailScreen() {
                 {statusConfig.label}
               </Text>
             </View>
+          </View>
+
+          {/* Provider logo + name */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+            <Avatar size="md" name={booking.providerName} imageUrl={booking.providerPhoto} />
+            <Text variant="body" style={{ color: 'rgba(255,255,255,0.95)', fontWeight: '600', flex: 1 }} numberOfLines={1}>
+              {booking.providerName}
+            </Text>
           </View>
 
           {/* Service name */}

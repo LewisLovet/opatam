@@ -17,7 +17,7 @@ import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../theme';
-import { Text, Card, EmptyState } from '../../../components';
+import { Text, Card, EmptyState, Avatar } from '../../../components';
 import { useClientBookings } from '../../../hooks';
 import { useAuth } from '../../../contexts';
 import type { Booking, BookingStatus } from '@booking-app/shared';
@@ -87,9 +87,12 @@ function BookingCard({
     <Pressable onPress={onPress}>
       <Card padding="md" shadow="sm" style={{ marginBottom: 12 }}>
         <View style={styles.bookingCard}>
-          <View style={[styles.bookingIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
-            <Ionicons name="calendar" size={22} color={colors.primary} />
-          </View>
+          <Avatar
+            size="md"
+            name={booking.providerName}
+            imageUrl={booking.providerPhoto}
+            style={{ marginRight: 12 }}
+          />
           <View style={styles.bookingInfo}>
             <Text variant="body" style={{ fontWeight: '600' }}>
               {booking.serviceName}
