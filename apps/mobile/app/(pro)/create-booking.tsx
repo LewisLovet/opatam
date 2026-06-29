@@ -55,7 +55,7 @@ import {
   locationService,
 } from '@booking-app/firebase';
 import {
-  computeServiceTotal,
+  computeDiscountedTotal,
   emptyServiceSelections,
   serviceHasChoices,
   resolveDeposit,
@@ -566,11 +566,15 @@ export default function CreateBookingScreen() {
   const [pendingChoiceService, setPendingChoiceService] = useState<WithId<Service> | null>(null);
 
   const selectedService = selectedServices[0] ?? null;
-  // Effective price/duration of a service given its chosen variations/options.
+  // Shop-wide promo — applied server-side at creation, so the preview mirrors
+  // it (price/deposit shown = what the client is actually charged).
+  const globalDiscount = provider?.settings?.globalDiscount ?? null;
+  // Effective price/duration of a service given its chosen variations/options,
+  // discount applied.
   const effFor = useCallback(
     (s: WithId<Service>) =>
-      computeServiceTotal(s, selectionsByService[s.id] ?? emptyServiceSelections()),
-    [selectionsByService],
+      computeDiscountedTotal(s, selectionsByService[s.id] ?? emptyServiceSelections(), globalDiscount),
+    [selectionsByService, globalDiscount],
   );
   const totalServiceDuration = useMemo(
     () => selectedServices.reduce((sum, s) => sum + effFor(s).duration, 0),
@@ -580,6 +584,11 @@ export default function CreateBookingScreen() {
     () => selectedServices.reduce((sum, s) => sum + effFor(s).price, 0),
     [selectedServices, effFor],
   );
+  const totalServiceOriginal = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + effFor(s).original, 0),
+    [selectedServices, effFor],
+  );
+  const totalHasPromo = totalServiceOriginal > totalServicePrice;
   // Full visit length for the availability search (services back-to-back +
   // one buffer after the last). Mirrors booking.service aggregation.
   const totalVisitDuration = useMemo(() => {
@@ -1629,13 +1638,22 @@ export default function CreateBookingScreen() {
                     ? `${selectedServices.length} prestations`
                     : selectedService.name}
                 </Text>
-                <Text
-                  variant="h2"
-                  color="primary"
-                  style={{ fontWeight: '700' }}
-                >
-                  {formatPrice(totalServicePrice)}
-                </Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  {totalHasPromo && (
+                    <Text
+                      variant="bodySmall"
+                      style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
+                    >
+                      {formatPrice(totalServiceOriginal)}
+                    </Text>
+                  )}
+                  <Text
+                    variant="h2"
+                    style={{ fontWeight: '700', color: totalHasPromo ? '#E11D48' : colors.primary }}
+                  >
+                    {formatPrice(totalServicePrice)}
+                  </Text>
+                </View>
               </View>
 
               {/* Per-prestation breakdown (multi only) */}
@@ -1650,7 +1668,19 @@ export default function CreateBookingScreen() {
                         {idx + 1}. {s.name}
                       </Text>
                       <Text variant="bodySmall" color="textSecondary">
-                        {effFor(s).duration} min · {formatPrice(effFor(s).price)}
+                        {effFor(s).duration} min ·{' '}
+                        {effFor(s).original > effFor(s).price ? (
+                          <Text variant="bodySmall">
+                            <Text variant="bodySmall" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
+                              {formatPrice(effFor(s).original)}
+                            </Text>
+                            <Text variant="bodySmall" style={{ color: '#E11D48', fontWeight: '600' }}>
+                              {'  '}{formatPrice(effFor(s).price)}
+                            </Text>
+                          </Text>
+                        ) : (
+                          formatPrice(effFor(s).price)
+                        )}
                       </Text>
                     </View>
                   ))}
