@@ -4,11 +4,12 @@
  * re-book action, and dynamic city name in suggestions.
  */
 
-import { providerService } from '@booking-app/firebase';
+import { providerService, catalogService } from '@booking-app/firebase';
+import { getProviderActivePromoPercent } from '@booking-app/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -149,6 +150,37 @@ export default function HomeScreen() {
   const nextBooking = upcoming.length > 0 ? upcoming[0] : null;
   const recentPast = past.slice(0, 3);
   const firstName = userData?.displayName?.split(' ')[0] || '';
+
+  // Active-promo percentage per recent provider — drives the "Promotion en
+  // cours" badge that nudges past clients to rebook. Evaluated at read time
+  // (provider's globalDiscount + per-service discounts) so date windows are
+  // honoured without any denormalised flag.
+  const [promoByProvider, setPromoByProvider] = useState<Record<string, number>>({});
+  const recentProviderKey = recentPast.map((b) => b.providerId).filter(Boolean).join(',');
+  useEffect(() => {
+    const ids = Array.from(new Set(recentProviderKey ? recentProviderKey.split(',') : []));
+    if (ids.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        ids.map(async (pid) => {
+          try {
+            const [prov, svcs] = await Promise.all([
+              providerService.getById(pid),
+              catalogService.getActiveByProvider(pid),
+            ]);
+            return [pid, getProviderActivePromoPercent(prov?.settings?.globalDiscount, svcs ?? [])] as const;
+          } catch {
+            return [pid, 0] as const;
+          }
+        }),
+      );
+      if (!cancelled) setPromoByProvider(Object.fromEntries(entries));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recentProviderKey]);
 
   // Next booking derived values
   const nextBookingDate = nextBooking ? toDate(nextBooking.datetime) : null;
@@ -390,6 +422,14 @@ export default function HomeScreen() {
                         <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
                           {booking.providerName} — {dateStr}
                         </Text>
+                        {promoByProvider[booking.providerId] > 0 && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginTop: 4, backgroundColor: 'rgba(225,29,72,0.12)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, gap: 3 }}>
+                            <Ionicons name="pricetag" size={11} color="#E11D48" />
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#E11D48' }}>
+                              Promotion en cours
+                            </Text>
+                          </View>
+                        )}
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                         {isPast && (

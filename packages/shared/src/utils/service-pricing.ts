@@ -419,6 +419,28 @@ export function getDiscountDaysLeft(
  */
 export const PROMO_URGENCY_DAYS = 15;
 
+/**
+ * Highest currently-active promo percentage across a provider — the shop-wide
+ * discount and/or any per-service discount. Returns 0 when nothing is active.
+ * Lets list surfaces (recent providers, search…) flag "Promotion en cours"
+ * to entice returning clients. Evaluated at read time, so date windows stay
+ * correct without any denormalised flag.
+ */
+export function getProviderActivePromoPercent(
+  globalDiscount: ServiceDiscount | null | undefined,
+  services: Array<Pick<Service, 'discount'>>,
+  now: Date = new Date(),
+): number {
+  let max = 0;
+  const g = getActiveDiscount(globalDiscount, now);
+  if (g) max = g.percent;
+  for (const s of services) {
+    const d = getActiveDiscount(s.discount, now);
+    if (d && d.percent > max) max = d.percent;
+  }
+  return max;
+}
+
 /** Short French urgency label from a day count (see getDiscountDaysLeft). */
 export function formatPromoCountdown(daysLeft: number): string {
   if (daysLeft <= 0) return 'Dernier jour';

@@ -118,13 +118,28 @@ function BookingCard({
                 {booking.locationAddress || booking.locationName}
               </Text>
             </View>
-            <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
-              {booking.price === 0 && !booking.priceMax
-                ? 'Gratuit'
-                : booking.priceMax
-                  ? `De ${(booking.price / 100).toFixed(0)} à ${(booking.priceMax / 100).toFixed(0)} €`
-                  : `${(booking.price / 100).toFixed(0)} €`}
-            </Text>
+            {booking.price === 0 && !booking.priceMax ? (
+              <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
+                Gratuit
+              </Text>
+            ) : booking.priceMax ? (
+              <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
+                {`De ${(booking.price / 100).toFixed(0)} à ${(booking.priceMax / 100).toFixed(0)} €`}
+              </Text>
+            ) : booking.originalPrice != null && booking.originalPrice > booking.price ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 4 }}>
+                <Text variant="caption" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
+                  {(booking.originalPrice / 100).toFixed(0)} €
+                </Text>
+                <Text variant="caption" style={{ fontWeight: '700', color: '#E11D48' }}>
+                  {(booking.price / 100).toFixed(0)} €
+                </Text>
+              </View>
+            ) : (
+              <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
+                {`${(booking.price / 100).toFixed(0)} €`}
+              </Text>
+            )}
           </View>
         )}
       </Card>
