@@ -113,10 +113,11 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
             <label className="flex items-start justify-between gap-3 cursor-pointer">
               <span>
                 <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Appliquer aux variations et options
+                  Inclure les options et suppléments
                 </span>
                 <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Si désactivé, seul le prix de base de chaque prestation est réduit.
+                  Chaque prestation (et ses variations) est toujours réduite. Activez pour
+                  réduire aussi les options cochées.
                 </span>
               </span>
               <Switch

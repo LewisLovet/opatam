@@ -697,13 +697,19 @@ export interface ServiceOption {
  * A percentage promotion on a prestation (per-service) or on the whole shop
  * (provider.settings.globalDiscount). Time-bounded by an optional inclusive
  * date window (local YYYY-MM-DD strings — no nested Firestore Timestamp to
- * convert). When `includeExtras` is false, only the base service price is
- * reduced (variations & options keep their full price).
+ * convert).
+ *
+ * The promo ALWAYS reduces the prestation core — the base price for a
+ * variation-less service, or the chosen variation prices when variations exist
+ * (variations define the price, so the base is dropped). `includeExtras`
+ * controls only whether the add-on OPTIONS (checkable suppléments) are reduced
+ * too.
  */
 export interface ServiceDiscount {
   /** Percent off, 1-100. */
   percent: number;
-  /** Reduce variations & options too. false = only the base service price. */
+  /** Also reduce the add-on options/suppléments. false = core (base or
+   *  variations) only; options keep their full price. */
   includeExtras: boolean;
   /** Active window, local YYYY-MM-DD inclusive. null/absent = unbounded. */
   startsAt?: string | null;

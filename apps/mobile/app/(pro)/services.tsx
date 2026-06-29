@@ -43,10 +43,13 @@ import type {
 import {
   resolveDeposit,
   getActiveDiscount,
+  buildServiceDiscountPreview,
   SERVICE_COLORS,
   sanitizeVariations,
   sanitizeOptions,
   sanitizeInfoFields,
+  type DiscountPreviewRow,
+  type ServiceDiscountPreview,
 } from '@booking-app/shared';
 import {
   VariationsEditor,
@@ -144,6 +147,77 @@ function dateToYmd(d: Date): string {
 }
 function formatPromoDateFr(ymd: string): string {
   return ymdToDate(ymd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function euroCents(cents: number): string {
+  if (cents === 0) return 'Gratuit';
+  return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
+}
+
+/** A "12 € → 9,60 €" preview line (greyed + "non incluse" when undiscounted). */
+function PromoPriceRow({ row }: { row: DiscountPreviewRow }) {
+  const { colors } = useTheme();
+  const reduced = row.applies && row.discounted < row.original;
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+      <Text variant="bodySmall" color="textSecondary" style={{ flex: 1 }} numberOfLines={1}>
+        {row.name}
+      </Text>
+      {reduced ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text variant="bodySmall" style={{ color: colors.textMuted, textDecorationLine: 'line-through' }}>
+            {euroCents(row.original)}
+          </Text>
+          <Text variant="bodySmall" style={{ color: '#E11D48', fontWeight: '600' }}>
+            {euroCents(row.discounted)}
+          </Text>
+        </View>
+      ) : (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text variant="bodySmall" color="textSecondary">{euroCents(row.original)}</Text>
+          {!row.applies && (
+            <Text variant="caption" color="textMuted" style={{ fontSize: 10 }}>non incluse</Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** Provider-facing before/after breakdown of the promo (base, variations, options). */
+function PromoPreview({ preview }: { preview: ServiceDiscountPreview }) {
+  const { colors, spacing, radius } = useTheme();
+  return (
+    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface, padding: spacing.sm, gap: spacing.sm }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text variant="caption" color="textSecondary" style={{ fontWeight: '700', textTransform: 'uppercase' }}>
+          Aperçu des prix
+        </Text>
+        <View style={{ backgroundColor: '#E11D48', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+          <Text variant="caption" style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>−{preview.percent}%</Text>
+        </View>
+      </View>
+      {preview.base && (
+        <PromoPriceRow row={{ name: 'Prestation', original: preview.base.original, discounted: preview.base.discounted, applies: true }} />
+      )}
+      {preview.variations.map((g, gi) => (
+        <View key={gi} style={{ gap: 4 }}>
+          <Text variant="caption" color="textMuted" style={{ fontWeight: '500' }}>{g.name}</Text>
+          <View style={{ gap: 4, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border }}>
+            {g.rows.map((r, ri) => <PromoPriceRow key={ri} row={r} />)}
+          </View>
+        </View>
+      ))}
+      {preview.options.length > 0 && (
+        <View style={{ gap: 4 }}>
+          <Text variant="caption" color="textMuted" style={{ fontWeight: '500' }}>Options et suppléments</Text>
+          <View style={{ gap: 4, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border }}>
+            {preview.options.map((r, oi) => <PromoPriceRow key={oi} row={r} />)}
+          </View>
+        </View>
+      )}
+    </View>
+  );
 }
 
 function minutesToHoursMinutes(totalMinutes: number): { hours: string; minutes: string } {
@@ -1665,32 +1739,41 @@ export default function ServicesScreen() {
                         keyboardType="number-pad"
                       />
 
-                      {/* Live preview for flat-price services */}
-                      {form.variations.length === 0 &&
-                        Number(form.price) > 0 &&
-                        Number(form.discountPercent) > 0 && (
-                          <Text variant="caption" color="textSecondary">
-                            Prix après réduction :{' '}
-                            <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
-                              {(Number(form.price) * (1 - Number(form.discountPercent) / 100))
-                                .toFixed(2)
-                                .replace('.', ',')} €
+                      {/* Include add-on options — only when the service has any.
+                          The prestation core (base or variations) is always reduced. */}
+                      {form.options.length > 0 && (
+                        <Pressable
+                          onPress={() => setForm((p) => ({ ...p, discountIncludeExtras: !p.discountIncludeExtras }))}
+                          style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingVertical: spacing.xs }}
+                        >
+                          <View style={{ flex: 1, marginRight: spacing.sm }}>
+                            <Text variant="bodySmall" style={{ color: colors.text }}>
+                              Inclure les options et suppléments
                             </Text>
-                          </Text>
-                        )}
+                            <Text variant="caption" color="textSecondary" style={{ marginTop: 1 }}>
+                              {form.discountIncludeExtras
+                                ? 'Les options cochées sont réduites aussi.'
+                                : 'Les options cochées gardent leur prix plein.'}
+                            </Text>
+                          </View>
+                          <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: form.discountIncludeExtras ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
+                            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: form.discountIncludeExtras ? 'flex-end' : 'flex-start' }} />
+                          </View>
+                        </Pressable>
+                      )}
 
-                      {/* Include variations/options */}
-                      <Pressable
-                        onPress={() => setForm((p) => ({ ...p, discountIncludeExtras: !p.discountIncludeExtras }))}
-                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}
-                      >
-                        <Text variant="bodySmall" style={{ color: colors.text, flex: 1, marginRight: spacing.sm }}>
-                          Appliquer aux variations et options
-                        </Text>
-                        <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: form.discountIncludeExtras ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
-                          <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: form.discountIncludeExtras ? 'flex-end' : 'flex-start' }} />
-                        </View>
-                      </Pressable>
+                      {/* Live before/after preview — base, variations, options */}
+                      {(() => {
+                        const preview = buildServiceDiscountPreview(
+                          {
+                            price: Math.round((Number(form.price) || 0) * 100),
+                            variations: form.variations,
+                            options: form.options,
+                          },
+                          { percent: Number(form.discountPercent) || 0, includeExtras: form.discountIncludeExtras },
+                        );
+                        return preview ? <PromoPreview preview={preview} /> : null;
+                      })()}
 
                       {/* Date window */}
                       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
