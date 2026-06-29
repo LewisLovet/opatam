@@ -16,7 +16,7 @@ import { catalogService, schedulingService, providerClientRepository } from '@bo
 import type { Member, Location, Service, ServiceSelections, ProviderClient } from '@booking-app/shared';
 import {
   resolveDeposit,
-  computeServiceTotal,
+  computeDiscountedTotal,
   validateServiceSelections,
   emptyServiceSelections,
   serviceHasChoices,
@@ -168,6 +168,9 @@ export function CreateBookingModal({
 }: CreateBookingModalProps) {
   const { provider } = useAuth();
   const toast = useToast();
+  // Shop-wide promo — applied server-side at creation, so the preview must
+  // mirror it (price/deposit shown = what the client is actually charged).
+  const globalDiscount = provider?.settings?.globalDiscount ?? null;
 
   const [step, setStep] = useState<Step>('service');
   const [loading, setLoading] = useState(false);
@@ -343,7 +346,7 @@ export function CreateBookingModal({
       // bufferTime). durationOverride drives the whole booking length.
       const totalDuration =
         cartServices.reduce(
-          (sum, c) => sum + computeServiceTotal(c.service!, c.item.selections).duration,
+          (sum, c) => sum + computeDiscountedTotal(c.service!, c.item.selections, globalDiscount).duration,
           0,
         ) + (cartServices[cartServices.length - 1].service!.bufferTime ?? 0);
 
@@ -611,16 +614,27 @@ export function CreateBookingModal({
         .map((item) => {
           const service = services.find((s) => s.id === item.serviceId);
           if (!service) return null;
-          const total = computeServiceTotal(service, item.selections);
-          return { item, service, price: total.price, duration: total.duration };
+          const total = computeDiscountedTotal(service, item.selections, globalDiscount);
+          return {
+            item,
+            service,
+            price: total.price,
+            duration: total.duration,
+            original: total.original,
+          };
         })
         .filter((l): l is NonNullable<typeof l> => l !== null),
-    [cart, services],
+    [cart, services, globalDiscount],
   );
   const cartTotalPrice = useMemo(
     () => cartLines.reduce((sum, l) => sum + l.price, 0),
     [cartLines],
   );
+  const cartTotalOriginal = useMemo(
+    () => cartLines.reduce((sum, l) => sum + l.original, 0),
+    [cartLines],
+  );
+  const cartHasPromo = cartTotalOriginal > cartTotalPrice;
   const cartTotalDuration = useMemo(
     () => cartLines.reduce((sum, l) => sum + l.duration, 0),
     [cartLines],
@@ -729,7 +743,17 @@ export function CreateBookingModal({
                             {line.service.name}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {formatDuration(line.duration)} • {formatPrice(line.price)}
+                            {formatDuration(line.duration)} •{' '}
+                            {line.original > line.price ? (
+                              <>
+                                <span className="line-through">{formatPrice(line.original)}</span>{' '}
+                                <span className="text-rose-600 dark:text-rose-400 font-medium">
+                                  {formatPrice(line.price)}
+                                </span>
+                              </>
+                            ) : (
+                              formatPrice(line.price)
+                            )}
                           </p>
                         </div>
                         <button
@@ -747,7 +771,15 @@ export function CreateBookingModal({
                     <div className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/60 text-sm">
                       <span className="font-medium text-gray-700 dark:text-gray-300">Total</span>
                       <span className="font-semibold text-gray-900 dark:text-white">
-                        {formatDuration(cartTotalDuration)} • {formatPrice(cartTotalPrice)}
+                        {formatDuration(cartTotalDuration)} •{' '}
+                        {cartHasPromo && (
+                          <span className="line-through text-gray-400 font-normal mr-1">
+                            {formatPrice(cartTotalOriginal)}
+                          </span>
+                        )}
+                        <span className={cartHasPromo ? 'text-rose-600 dark:text-rose-400' : ''}>
+                          {formatPrice(cartTotalPrice)}
+                        </span>
                       </span>
                     </div>
                   </div>
@@ -780,7 +812,7 @@ export function CreateBookingModal({
                       draftService,
                       draftSelections,
                     );
-                    const draftTotal = computeServiceTotal(draftService, draftSelections);
+                    const draftTotal = computeDiscountedTotal(draftService, draftSelections, globalDiscount);
 
                     const addToCart = () => {
                       if (!valid) {
@@ -808,7 +840,17 @@ export function CreateBookingModal({
                         )}
                         <div className="flex items-center justify-between gap-2 pt-1">
                           <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {formatDuration(draftTotal.duration)} • {formatPrice(draftTotal.price)}
+                            {formatDuration(draftTotal.duration)} •{' '}
+                            {draftTotal.original > draftTotal.price ? (
+                              <>
+                                <span className="line-through">{formatPrice(draftTotal.original)}</span>{' '}
+                                <span className="text-rose-600 dark:text-rose-400 font-medium">
+                                  {formatPrice(draftTotal.price)}
+                                </span>
+                              </>
+                            ) : (
+                              formatPrice(draftTotal.price)
+                            )}
                           </span>
                           <Button
                             type="button"
@@ -1114,6 +1156,11 @@ export function CreateBookingModal({
                     {formatDuration(cartTotalDuration)}
                   </span>
                   <p className="text-lg font-semibold text-primary-900 dark:text-primary-100">
+                    {cartHasPromo && (
+                      <span className="line-through text-primary-400 dark:text-primary-500 text-sm font-normal mr-1.5">
+                        {formatPrice(cartTotalOriginal)}
+                      </span>
+                    )}
                     {formatPrice(cartTotalPrice)}
                   </p>
                 </div>
