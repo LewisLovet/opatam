@@ -208,6 +208,10 @@ export function ServiceChoicesPreview({
     v: ServiceVariation,
     chosenId: string | undefined,
     onPick: (optId: string) => void,
+    // Nested variations follow their parent option: when the parent is excluded
+    // from the promo, none of its nested choices are discounted (matches
+    // computeDiscountedTotal). Top-level variations are always discountable.
+    lineDiscountable = true,
   ) => (
     <View key={v.id} style={{ gap: spacing.xs }}>
       <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.text }}>
@@ -235,7 +239,7 @@ export function ServiceChoicesPreview({
               <Text variant="bodySmall" style={{ flex: 1, color: colors.text }}>
                 {o.name || 'Choix'}
               </Text>
-              {renderPrice(o.price, cut(o.price, o.id), '', o.duration ? ` · ${formatDuration(o.duration)}` : '')}
+              {renderPrice(o.price, lineDiscountable ? cut(o.price, o.id) : o.price, '', o.duration ? ` · ${formatDuration(o.duration)}` : '')}
             </Pressable>
           );
         })}
@@ -479,6 +483,8 @@ export function ServiceChoicesPreview({
                           nv,
                           sel.options[o.id]?.nestedVariations[nv.id],
                           (choiceId) => pickNestedVariation(o.id, nv.id, choiceId),
+                          // Parent option excluded → nested choices not discounted.
+                          !!discount && !excluded.has(o.id),
                         ),
                       )}
                       {o.nestedInfoFields.map((nf) =>
