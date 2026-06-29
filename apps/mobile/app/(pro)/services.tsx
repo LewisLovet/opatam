@@ -28,6 +28,7 @@ import {
   serviceCategoryRepository,
   locationRepository,
   memberRepository,
+  providerService,
   type WithId,
 } from '@booking-app/firebase';
 import type {
@@ -260,6 +261,65 @@ export default function ServicesScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ServiceFormData>(DEFAULT_FORM);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Global (shop-wide) promotion modal state.
+  const [globalPromoOpen, setGlobalPromoOpen] = useState(false);
+  const [gSaving, setGSaving] = useState(false);
+  const [gDateField, setGDateField] = useState<'start' | 'end' | null>(null);
+  const [gForm, setGForm] = useState({
+    enabled: false,
+    percent: '10',
+    includeExtras: true,
+    startsAt: null as string | null,
+    endsAt: null as string | null,
+  });
+
+  const openGlobalPromo = () => {
+    const g = provider?.settings?.globalDiscount ?? null;
+    setGForm({
+      enabled: !!g,
+      percent: g ? String(g.percent) : '10',
+      includeExtras: g ? g.includeExtras : true,
+      startsAt: g?.startsAt ?? null,
+      endsAt: g?.endsAt ?? null,
+    });
+    setGlobalPromoOpen(true);
+  };
+
+  const saveGlobalPromo = async () => {
+    if (!providerId) return;
+    let globalDiscount: Service['discount'] | null = null;
+    if (gForm.enabled) {
+      const pct = Number(gForm.percent);
+      if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
+        showToast({ variant: 'error', message: 'La réduction doit être entre 1 et 100 %' });
+        return;
+      }
+      if (gForm.startsAt && gForm.endsAt && gForm.startsAt > gForm.endsAt) {
+        showToast({ variant: 'error', message: 'La date de fin doit être après le début' });
+        return;
+      }
+      globalDiscount = {
+        percent: Math.round(pct),
+        includeExtras: gForm.includeExtras,
+        startsAt: gForm.startsAt,
+        endsAt: gForm.endsAt,
+      };
+    }
+    setGSaving(true);
+    try {
+      await providerService.updateSettings(providerId, { globalDiscount });
+      showToast({
+        variant: 'success',
+        message: gForm.enabled ? 'Promotion globale enregistrée' : 'Promotion globale désactivée',
+      });
+      setGlobalPromoOpen(false);
+    } catch {
+      showToast({ variant: 'error', message: 'Une erreur est survenue' });
+    } finally {
+      setGSaving(false);
+    }
+  };
 
   // Inline picker expanded state (inside the form modal)
   const [expandedPicker, setExpandedPicker] = useState<'category' | null>(null);
@@ -993,6 +1053,46 @@ export default function ServicesScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           showsVerticalScrollIndicator={false}
         >
+          {(() => {
+            const g = provider?.settings?.globalDiscount ?? null;
+            const gActive = getActiveDiscount(g);
+            return (
+              <Pressable
+                onPress={openGlobalPromo}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.sm,
+                  backgroundColor: gActive ? 'rgba(225,29,72,0.10)' : colors.surface,
+                  borderWidth: 1,
+                  borderColor: gActive ? 'rgba(225,29,72,0.35)' : colors.border,
+                  borderRadius: radius.lg,
+                  padding: spacing.md,
+                  marginTop: spacing.md,
+                  marginBottom: spacing.md,
+                }}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: gActive ? 'rgba(225,29,72,0.15)' : colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="pricetags" size={18} color={gActive ? '#E11D48' : colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                    Promotion globale
+                  </Text>
+                  <Text variant="caption" color="textSecondary" style={{ marginTop: 1 }}>
+                    {g
+                      ? gActive
+                        ? `−${g.percent}% sur toutes les prestations`
+                        : `−${g.percent}% · inactive (hors période)`
+                      : 'Appliquez une réduction sur toutes vos prestations'}
+                  </Text>
+                </View>
+                <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
+                  {g ? 'Modifier' : 'Configurer'}
+                </Text>
+              </Pressable>
+            );
+          })()}
           {categories.map((cat) => {
             const catServices = grouped[cat.id] || [];
             const collapsed = collapsedCategories.has(cat.id);
@@ -2008,6 +2108,139 @@ export default function ServicesScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Global (shop-wide) promotion modal */}
+      <Modal visible={globalPromoOpen} transparent animationType="slide" onRequestClose={() => setGlobalPromoOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={{ flex: 1 }} onPress={() => setGlobalPromoOpen(false)} />
+          <View style={{ backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text variant="h3">Promotion globale</Text>
+              <Pressable onPress={() => setGlobalPromoOpen(false)} hitSlop={8}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <Text variant="caption" color="textSecondary">
+              Une réduction appliquée à toutes vos prestations, sauf celles qui ont déjà leur propre promotion.
+            </Text>
+
+            <Pressable
+              onPress={() => setGForm((f) => ({ ...f, enabled: !f.enabled }))}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}
+            >
+              <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text, flex: 1 }}>
+                Activer la promotion globale
+              </Text>
+              <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: gForm.enabled ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
+                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: gForm.enabled ? 'flex-end' : 'flex-start' }} />
+              </View>
+            </Pressable>
+
+            {gForm.enabled && (
+              <View style={{ gap: spacing.sm }}>
+                <Input
+                  label="Réduction (%)"
+                  placeholder="10"
+                  value={gForm.percent}
+                  onChangeText={(t) => setGForm((f) => ({ ...f, percent: t.replace(/[^0-9]/g, '') }))}
+                  keyboardType="number-pad"
+                />
+                <Pressable
+                  onPress={() => setGForm((f) => ({ ...f, includeExtras: !f.includeExtras }))}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}
+                >
+                  <Text variant="bodySmall" style={{ color: colors.text, flex: 1, marginRight: spacing.sm }}>
+                    Appliquer aux variations et options
+                  </Text>
+                  <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: gForm.includeExtras ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
+                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: gForm.includeExtras ? 'flex-end' : 'flex-start' }} />
+                  </View>
+                </Pressable>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  {(['start', 'end'] as const).map((which) => {
+                    const ymd = which === 'start' ? gForm.startsAt : gForm.endsAt;
+                    return (
+                      <Pressable
+                        key={which}
+                        onPress={() => setGDateField(which)}
+                        style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text variant="caption" color="textSecondary">{which === 'start' ? 'Début' : 'Fin'}</Text>
+                          <Text variant="bodySmall" style={{ color: ymd ? colors.text : colors.textMuted, marginTop: 1 }}>
+                            {ymd ? formatPromoDateFr(ymd) : 'Optionnel'}
+                          </Text>
+                        </View>
+                        <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text variant="caption" color="textSecondary">
+                  Dates vides = promotion permanente. La fin est incluse.
+                </Text>
+              </View>
+            )}
+
+            <Button
+              variant="primary"
+              title={gSaving ? 'Enregistrement...' : 'Enregistrer'}
+              onPress={saveGlobalPromo}
+              disabled={gSaving}
+              fullWidth
+            />
+          </View>
+        </View>
+
+        {/* Global promo date picker */}
+        {Platform.OS === 'ios' && (
+          <OverlaySheet visible={gDateField !== null} onClose={() => setGDateField(null)} heightPct={0.55}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }}>
+              <Pressable
+                hitSlop={8}
+                onPress={() => {
+                  const key = gDateField === 'start' ? 'startsAt' : 'endsAt';
+                  setGForm((f) => ({ ...f, [key]: null }));
+                  setGDateField(null);
+                }}
+              >
+                <Text variant="body" color="textSecondary">Effacer</Text>
+              </Pressable>
+              <Text variant="body" style={{ fontWeight: '600' }}>
+                {gDateField === 'start' ? 'Début' : 'Fin'} de la promo
+              </Text>
+              <Pressable hitSlop={8} onPress={() => setGDateField(null)}>
+                <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={ymdToDate(gDateField === 'start' ? gForm.startsAt : gForm.endsAt)}
+              mode="date"
+              display="inline"
+              onChange={(_, date) => {
+                if (!date || !gDateField) return;
+                const key = gDateField === 'start' ? 'startsAt' : 'endsAt';
+                setGForm((f) => ({ ...f, [key]: dateToYmd(date) }));
+              }}
+              style={{ height: 320 }}
+            />
+          </OverlaySheet>
+        )}
+        {Platform.OS === 'android' && gDateField !== null && (
+          <DateTimePicker
+            value={ymdToDate(gDateField === 'start' ? gForm.startsAt : gForm.endsAt)}
+            mode="date"
+            onChange={(_, date) => {
+              const which = gDateField;
+              setGDateField(null);
+              if (date && which) {
+                const key = which === 'start' ? 'startsAt' : 'endsAt';
+                setGForm((f) => ({ ...f, [key]: dateToYmd(date) }));
+              }
+            }}
+          />
+        )}
       </Modal>
     </View>
   );
