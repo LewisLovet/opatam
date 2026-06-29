@@ -48,7 +48,10 @@ export const serviceDiscountSchema = z
       .int({ message: 'Le pourcentage doit être un nombre entier' })
       .min(1, { message: 'La réduction doit être d\'au moins 1 %' })
       .max(100, { message: 'La réduction ne peut pas dépasser 100 %' }),
-    includeExtras: z.boolean().default(true),
+    /** Variation-option / option ids excluded from the promo (per-line control). */
+    excludedIds: z.array(z.string()).optional(),
+    /** @deprecated Legacy single toggle, kept for back-compat reads. */
+    includeExtras: z.boolean().optional(),
     startsAt: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Date de début invalide' })

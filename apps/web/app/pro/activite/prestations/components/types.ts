@@ -4,6 +4,7 @@ import type {
   ServiceOption,
   ServiceVariation,
 } from '@booking-app/shared';
+import { resolveExcludedIds } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -39,7 +40,8 @@ export interface ServiceFormData {
   /** Per-service promotion (percentage). null = no promo on this prestation. */
   discount: {
     percent: number;
-    includeExtras: boolean;
+    /** Variation-option / option ids excluded from the promo (per-line). */
+    excludedIds: string[];
     startsAt: string | null; // YYYY-MM-DD
     endsAt: string | null;   // YYYY-MM-DD
   } | null;
@@ -81,7 +83,8 @@ export function serviceToFormData(service: WithId<Service>): ServiceFormData {
     discount: service.discount
       ? {
           percent: service.discount.percent,
-          includeExtras: service.discount.includeExtras ?? true,
+          // Migrate legacy includeExtras into the per-line excludedIds model.
+          excludedIds: Array.from(resolveExcludedIds(service, service.discount)),
           startsAt: service.discount.startsAt ?? null,
           endsAt: service.discount.endsAt ?? null,
         }

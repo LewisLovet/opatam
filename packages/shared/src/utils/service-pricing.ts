@@ -353,45 +353,26 @@ export function applyDiscount(
 }
 
 /**
- * Split a selection's effective total into its two discount-relevant parts:
- *   - `core`    : the prestation itself — the base price (variation-less
- *                 service) OR the chosen variation prices (variations DEFINE
- *                 the price, so the base is dropped). ALWAYS discounted.
- *   - `options` : the checked add-on options (+ their nested variations).
- *                 Discounted only when the promo's `includeExtras` is true.
+ * The set of line ids (variation options + add-on options) NOT reduced by the
+ * promo. Source of truth = `discount.excludedIds`; falls back to the legacy
+ * `includeExtras === false` (= exclude every add-on option) for old data that
+ * predates per-line control.
  */
-export function computeServiceBreakdown(
-  service: Pick<Service, 'price' | 'duration' | 'variations' | 'options'>,
-  selections: ServiceSelections,
-): { core: number; options: number; duration: number } {
-  const hasVariations = (service.variations?.length ?? 0) > 0;
-  let core = hasVariations ? 0 : service.price;
-  let duration = hasVariations ? 0 : service.duration;
-
-  for (const variation of service.variations ?? []) {
-    const chosen = variation.options.find((o) => o.id === selections.variations[variation.id]);
-    if (chosen) {
-      core += chosen.price;
-      duration += chosen.duration;
+export function resolveExcludedIds(
+  service: Pick<Service, 'options'>,
+  discount: Pick<ServiceDiscount, 'excludedIds' | 'includeExtras'> | null | undefined,
+): Set<string> {
+  if (!discount) return new Set();
+  if (discount.excludedIds) return new Set(discount.excludedIds);
+  if (discount.includeExtras === false) {
+    const ids: string[] = [];
+    for (const o of service.options ?? []) {
+      ids.push(o.id);
+      for (const v of o.nestedVariations) for (const opt of v.options) ids.push(opt.id);
     }
+    return new Set(ids);
   }
-
-  let options = 0;
-  for (const option of service.options ?? []) {
-    const selOpt = selections.options[option.id];
-    if (!selOpt) continue;
-    options += option.price;
-    duration += option.duration;
-    for (const variation of option.nestedVariations) {
-      const chosen = variation.options.find((o) => o.id === selOpt.nestedVariations[variation.id]);
-      if (chosen) {
-        options += chosen.price;
-        duration += chosen.duration;
-      }
-    }
-  }
-
-  return { core, options, duration };
+  return new Set();
 }
 
 /**
@@ -399,8 +380,9 @@ export function computeServiceBreakdown(
  * selections + the promo context. THE entry point for the booking flow recap
  * and the server snapshot. `discountPercent` is null when no promo is active.
  *
- * The promo always reduces the CORE (base price or chosen variations); the
- * add-on OPTIONS are reduced only when `discount.includeExtras` is true.
+ * The promo reduces the base price (variation-less services) plus every chosen
+ * variation option and every checked add-on option whose id is NOT in the
+ * discount's `excludedIds`.
  */
 export function computeDiscountedTotal(
   service: Pick<Service, 'price' | 'duration' | 'variations' | 'options' | 'discount'>,
@@ -408,11 +390,48 @@ export function computeDiscountedTotal(
   globalDiscount: ServiceDiscount | null | undefined = null,
   now: Date = new Date(),
 ): { price: number; original: number; duration: number; discountPercent: number | null } {
-  const { core, options, duration } = computeServiceBreakdown(service, selections);
-  const original = core + options;
   const discount = resolveServiceDiscount(service, globalDiscount, now);
+  const excluded = resolveExcludedIds(service, discount);
+  const hasVariations = (service.variations?.length ?? 0) > 0;
+
+  let original = 0;
+  let discountable = 0;
+  let duration = 0;
+
+  // Base — only when there are no variations (else the variations define it).
+  // Always discountable (it's the prestation itself).
+  if (!hasVariations) {
+    original += service.price;
+    duration += service.duration;
+    if (discount) discountable += service.price;
+  }
+
+  for (const variation of service.variations ?? []) {
+    const chosen = variation.options.find((o) => o.id === selections.variations[variation.id]);
+    if (!chosen) continue;
+    original += chosen.price;
+    duration += chosen.duration;
+    if (discount && !excluded.has(chosen.id)) discountable += chosen.price;
+  }
+
+  for (const option of service.options ?? []) {
+    const selOpt = selections.options[option.id];
+    if (!selOpt) continue;
+    original += option.price;
+    duration += option.duration;
+    const optIncluded = !!discount && !excluded.has(option.id);
+    if (optIncluded) discountable += option.price;
+    for (const variation of option.nestedVariations) {
+      const chosen = variation.options.find((o) => o.id === selOpt.nestedVariations[variation.id]);
+      if (!chosen) continue;
+      original += chosen.price;
+      duration += chosen.duration;
+      // Nested choices follow their parent option unless excluded on their own.
+      if (optIncluded && !excluded.has(chosen.id)) discountable += chosen.price;
+    }
+  }
+
   if (!discount) return { price: original, original, duration, discountPercent: null };
-  const discountable = core + (discount.includeExtras ? options : 0);
   const reduction = Math.round((discountable * discount.percent) / 100);
   return {
     price: Math.max(0, original - reduction),
@@ -422,80 +441,85 @@ export function computeDiscountedTotal(
   };
 }
 
-/** Discounted "à partir de" minimum price for the public fiche. The minimum is
- *  the cheapest CORE combination (no add-on options), which the promo always
- *  reduces — so the "from" price always reflects an active promo. */
+/** Discounted "à partir de" minimum price for the public fiche: the cheapest
+ *  reachable core combination, each line reduced unless it's excluded. */
 export function getDiscountedMinPrice(
   service: Pick<Service, 'price' | 'variations' | 'discount'>,
   globalDiscount: ServiceDiscount | null | undefined = null,
   now: Date = new Date(),
 ): { price: number; original: number; discountPercent: number | null } {
-  const original = getServiceMinPrice(service);
   const discount = resolveServiceDiscount(service, globalDiscount, now);
-  if (!discount) return { price: original, original, discountPercent: null };
-  const price = Math.max(0, original - Math.round((original * discount.percent) / 100));
-  return { price, original, discountPercent: discount.percent };
+  const cut = (v: number) =>
+    discount ? Math.max(0, v - Math.round((v * discount.percent) / 100)) : v;
+  const variations = service.variations ?? [];
+
+  if (variations.length === 0) {
+    const original = service.price;
+    return { price: cut(original), original, discountPercent: discount?.percent ?? null };
+  }
+
+  const excluded = new Set(discount?.excludedIds ?? []);
+  let original = 0;
+  let price = 0;
+  for (const variation of variations) {
+    if (variation.options.length === 0) continue;
+    const cheapest = variation.options.reduce((a, b) => (b.price < a.price ? b : a));
+    original += cheapest.price;
+    price += excluded.has(cheapest.id) ? cheapest.price : cut(cheapest.price);
+  }
+  return { price, original, discountPercent: discount?.percent ?? null };
 }
 
-/** One row of the promo preview: a line item with its before/after price and
- *  whether the discount actually applies to it. */
+/** One row of the promo preview: a togglable line with its before/after price.
+ *  `id` identifies the variation-option / add-on option (null for the base line,
+ *  which is never togglable). `applies` = the discount currently reduces it. */
 export interface DiscountPreviewRow {
+  id: string | null;
   name: string;
   original: number;
   discounted: number;
-  /** Whether the promo reduces this line (false = shown unchanged/greyed). */
   applies: boolean;
 }
 
 /** Structured before/after breakdown of a promo on a single service, for the
- *  provider-facing config preview. Lets the pro SEE exactly what changes. */
+ *  provider-facing config preview. Each variation/option row is individually
+ *  togglable (its `id` flips membership in `excludedIds`). */
 export interface ServiceDiscountPreview {
   percent: number;
-  /** Base price line — only for variation-less services (else the price comes
-   *  from the variations and `base` is null). Always discounted. */
+  /** Base price line — only for variation-less services (else null). */
   base: { original: number; discounted: number } | null;
-  /** Variation groups (each option always discounted — it's part of the core). */
   variations: { name: string; rows: DiscountPreviewRow[] }[];
-  /** Add-on options (discounted only when `includeExtras`). */
   options: DiscountPreviewRow[];
-  /** Whether the add-on options are included in the promo. */
-  includesOptions: boolean;
 }
 
 /**
  * Build the before/after preview of a discount applied to a service. Pure +
- * shared so web and mobile render an identical, correct breakdown. Returns null
- * when there's nothing to preview (no/invalid percent).
+ * shared so web and mobile render an identical breakdown. Returns null when
+ * there's nothing to preview (no/invalid percent).
  */
 export function buildServiceDiscountPreview(
   service: Pick<Service, 'price' | 'variations' | 'options'>,
-  discount: Pick<ServiceDiscount, 'percent' | 'includeExtras'> | null | undefined,
+  discount: Pick<ServiceDiscount, 'percent' | 'excludedIds' | 'includeExtras'> | null | undefined,
 ): ServiceDiscountPreview | null {
   const pct = discount?.percent ?? 0;
   if (!(pct > 0 && pct <= 100)) return null;
+  const excluded = resolveExcludedIds(service, discount);
   const cut = (v: number) => Math.max(0, v - Math.round((v * pct) / 100));
   const hasVariations = (service.variations?.length ?? 0) > 0;
-  const includesOptions = !!discount?.includeExtras;
+
+  const row = (id: string, name: string, price: number): DiscountPreviewRow => {
+    const applies = !excluded.has(id);
+    return { id, name, original: price, discounted: applies ? cut(price) : price, applies };
+  };
 
   return {
     percent: pct,
     base: hasVariations ? null : { original: service.price, discounted: cut(service.price) },
     variations: (service.variations ?? []).map((v) => ({
       name: v.name,
-      rows: v.options.map((o) => ({
-        name: o.name,
-        original: o.price,
-        discounted: cut(o.price),
-        applies: true,
-      })),
+      rows: v.options.map((o) => row(o.id, o.name, o.price)),
     })),
-    options: (service.options ?? []).map((o) => ({
-      name: o.name,
-      original: o.price,
-      discounted: includesOptions ? cut(o.price) : o.price,
-      applies: includesOptions,
-    })),
-    includesOptions,
+    options: (service.options ?? []).map((o) => row(o.id, o.name, o.price)),
   };
 }
 

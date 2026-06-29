@@ -1,7 +1,7 @@
 'use client';
 
 import { Input, Switch } from '@/components/ui';
-import { Tag } from 'lucide-react';
+import { Tag, Check } from 'lucide-react';
 import { buildServiceDiscountPreview, type DiscountPreviewRow } from '@booking-app/shared';
 import { EditorSection } from './EditorSection';
 import type { ServiceFormData } from './types';
@@ -14,7 +14,7 @@ interface SectionPromotionProps {
 
 const DEFAULT_PROMO = {
   percent: 10,
-  includeExtras: true,
+  excludedIds: [] as string[],
   startsAt: null,
   endsAt: null,
 } as const;
@@ -24,13 +24,32 @@ function euro(cents: number): string {
   return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
 }
 
-/** A "12 € → 9,60 €" line. When the discount doesn't apply, the price is shown
- *  once, greyed, with a hint — so the pro sees what is NOT discounted too. */
-function PriceLine({ row }: { row: DiscountPreviewRow }) {
+/** A "12 € → 9,60 €" line. When `onToggle` is given the whole row is a button
+ *  that includes/excludes the line from the promo (checkbox + greyed state). */
+function PriceLine({ row, onToggle }: { row: DiscountPreviewRow; onToggle?: () => void }) {
   const reduced = row.applies && row.discounted < row.original;
-  return (
+  const inner = (
     <div className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-gray-600 dark:text-gray-300 truncate">{row.name}</span>
+      <span className="flex items-center gap-2 min-w-0">
+        {onToggle && (
+          <span
+            className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+              row.applies
+                ? 'bg-rose-500 border-rose-500'
+                : 'border-gray-300 dark:border-gray-600'
+            }`}
+          >
+            {row.applies && <Check className="w-3 h-3 text-white" />}
+          </span>
+        )}
+        <span
+          className={`truncate ${
+            row.applies ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'
+          }`}
+        >
+          {row.name}
+        </span>
+      </span>
       {reduced ? (
         <span className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-gray-400 line-through">{euro(row.original)}</span>
@@ -39,28 +58,43 @@ function PriceLine({ row }: { row: DiscountPreviewRow }) {
       ) : (
         <span className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-gray-500 dark:text-gray-400">{euro(row.original)}</span>
-          {!row.applies && (
+          {onToggle && !row.applies && (
             <span className="text-[10px] text-gray-400 dark:text-gray-500">non incluse</span>
           )}
         </span>
       )}
     </div>
   );
+
+  if (!onToggle) return inner;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full text-left -mx-1 px-1 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
+    >
+      {inner}
+    </button>
+  );
 }
 
 /**
- * Per-service promotion: a % off, optionally bounded by a date window. The promo
- * always reduces the prestation core (base price or variations); a toggle adds
- * the add-on options. A live before/after preview shows the pro EXACTLY what
- * changes — base, each variation, each option.
+ * Per-service promotion: a % off, optionally date-bounded. The promo reduces the
+ * base price plus every variation/option — except the lines the pro excludes by
+ * tapping them in the live preview. The preview IS the control: the pro sees and
+ * picks exactly what goes on sale.
  */
 export function SectionPromotion({ data, errors, update }: SectionPromotionProps) {
   const promo = data.discount;
   const enabled = promo !== null;
-  const hasOptions = data.options.length > 0;
 
   const setPromo = (patch: Partial<NonNullable<ServiceFormData['discount']>>) =>
     update({ discount: { ...(promo ?? DEFAULT_PROMO), ...patch } });
+
+  const toggleLine = (id: string) => {
+    const ex = promo?.excludedIds ?? [];
+    setPromo({ excludedIds: ex.includes(id) ? ex.filter((x) => x !== id) : [...ex, id] });
+  };
 
   const preview =
     enabled && promo
@@ -69,6 +103,9 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
           promo,
         )
       : null;
+
+  const hasLines =
+    !!preview && (preview.variations.length > 0 || preview.options.length > 0);
 
   return (
     <EditorSection
@@ -104,29 +141,7 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
             error={errors.discountPercent}
           />
 
-          {/* Include add-on options — only relevant when the service has any.
-              The prestation core (base or variations) is always discounted. */}
-          {hasOptions && (
-            <label className="flex items-start justify-between gap-3 cursor-pointer">
-              <span>
-                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Inclure les options et suppléments
-                </span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  La prestation (et ses variations) est toujours réduite.{' '}
-                  {promo.includeExtras
-                    ? 'Les options cochées sont réduites aussi.'
-                    : 'Les options cochées gardent leur prix plein.'}
-                </span>
-              </span>
-              <Switch
-                checked={promo.includeExtras}
-                onChange={(e) => setPromo({ includeExtras: e.target.checked })}
-              />
-            </label>
-          )}
-
-          {/* Live before/after preview */}
+          {/* Live, interactive before/after preview */}
           {preview && (
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 p-3 space-y-3">
               <div className="flex items-center justify-between">
@@ -138,10 +153,17 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
                 </span>
               </div>
 
-              {/* Base (variation-less services) */}
+              {hasLines && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Cliquez une ligne pour l&apos;inclure ou l&apos;exclure de la promo.
+                </p>
+              )}
+
+              {/* Base (variation-less services) — always discounted */}
               {preview.base && (
                 <PriceLine
                   row={{
+                    id: null,
                     name: 'Prestation',
                     original: preview.base.original,
                     discounted: preview.base.discounted,
@@ -150,29 +172,27 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
                 />
               )}
 
-              {/* Variations — always discounted (they define the price) */}
+              {/* Variations */}
               {preview.variations.map((group, gi) => (
                 <div key={gi} className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {group.name}
-                  </p>
-                  <div className="space-y-1 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
-                    {group.rows.map((row, ri) => (
-                      <PriceLine key={ri} row={row} />
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{group.name}</p>
+                  <div className="space-y-0.5 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
+                    {group.rows.map((row) => (
+                      <PriceLine key={row.id} row={row} onToggle={() => toggleLine(row.id!)} />
                     ))}
                   </div>
                 </div>
               ))}
 
-              {/* Add-on options — discounted only when included */}
+              {/* Add-on options */}
               {preview.options.length > 0 && (
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
                     Options et suppléments
                   </p>
-                  <div className="space-y-1 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
-                    {preview.options.map((row, oi) => (
-                      <PriceLine key={oi} row={row} />
+                  <div className="space-y-0.5 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
+                    {preview.options.map((row) => (
+                      <PriceLine key={row.id} row={row} onToggle={() => toggleLine(row.id!)} />
                     ))}
                   </div>
                 </div>

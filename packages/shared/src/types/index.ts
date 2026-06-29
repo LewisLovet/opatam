@@ -699,18 +699,21 @@ export interface ServiceOption {
  * date window (local YYYY-MM-DD strings — no nested Firestore Timestamp to
  * convert).
  *
- * The promo ALWAYS reduces the prestation core — the base price for a
- * variation-less service, or the chosen variation prices when variations exist
- * (variations define the price, so the base is dropped). `includeExtras`
- * controls only whether the add-on OPTIONS (checkable suppléments) are reduced
- * too.
+ * The promo reduces the base price (variation-less service — always) plus every
+ * priced line — each variation option and each add-on option — EXCEPT the ones
+ * whose id is listed in `excludedIds`. That per-line opt-out lets the pro put,
+ * say, the premium tier or one supplément outside the sale.
  */
 export interface ServiceDiscount {
   /** Percent off, 1-100. */
   percent: number;
-  /** Also reduce the add-on options/suppléments. false = core (base or
-   *  variations) only; options keep their full price. */
-  includeExtras: boolean;
+  /** Variation-option / add-on-option ids NOT reduced by the promo.
+   *  Absent or [] = every line is reduced. */
+  excludedIds?: string[];
+  /** @deprecated Legacy single toggle (kept for back-compat): when `excludedIds`
+   *  is absent, `false` means "exclude all add-on options". New code writes
+   *  `excludedIds` instead. */
+  includeExtras?: boolean;
   /** Active window, local YYYY-MM-DD inclusive. null/absent = unbounded. */
   startsAt?: string | null;
   endsAt?: string | null;

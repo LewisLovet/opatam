@@ -44,6 +44,7 @@ import {
   resolveDeposit,
   getActiveDiscount,
   buildServiceDiscountPreview,
+  resolveExcludedIds,
   SERVICE_COLORS,
   sanitizeVariations,
   sanitizeOptions,
@@ -95,7 +96,8 @@ interface ServiceFormData {
   // Promotion (percentage). Empty/disabled = no promo on this service.
   discountEnabled: boolean;
   discountPercent: string;
-  discountIncludeExtras: boolean;
+  /** Variation-option / option ids excluded from the promo (per-line). */
+  discountExcludedIds: string[];
   discountStartsAt: string | null; // YYYY-MM-DD inclusive
   discountEndsAt: string | null;
   // Variations / options / info fields — same model as the web editor and
@@ -124,7 +126,7 @@ const DEFAULT_FORM: ServiceFormData = {
   depositRefundHours: '24',
   discountEnabled: false,
   discountPercent: '10',
-  discountIncludeExtras: true,
+  discountExcludedIds: [],
   discountStartsAt: null,
   discountEndsAt: null,
   variations: [],
@@ -154,15 +156,23 @@ function euroCents(cents: number): string {
   return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
 }
 
-/** A "12 € → 9,60 €" preview line (greyed + "non incluse" when undiscounted). */
-function PromoPriceRow({ row }: { row: DiscountPreviewRow }) {
+/** A "12 € → 9,60 €" preview line. When `onToggle` is set, the row is tappable
+ *  (checkbox + greyed "non incluse") to include/exclude it from the promo. */
+function PromoPriceRow({ row, onToggle }: { row: DiscountPreviewRow; onToggle?: () => void }) {
   const { colors } = useTheme();
   const reduced = row.applies && row.discounted < row.original;
-  return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-      <Text variant="bodySmall" color="textSecondary" style={{ flex: 1 }} numberOfLines={1}>
-        {row.name}
-      </Text>
+  const content = (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingVertical: 2 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+        {onToggle && (
+          <View style={{ width: 18, height: 18, borderRadius: 4, borderWidth: row.applies ? 0 : 1.5, borderColor: colors.border, backgroundColor: row.applies ? '#E11D48' : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+            {row.applies && <Ionicons name="checkmark" size={13} color="#fff" />}
+          </View>
+        )}
+        <Text variant="bodySmall" style={{ flex: 1, color: row.applies ? colors.text : colors.textMuted }} numberOfLines={1}>
+          {row.name}
+        </Text>
+      </View>
       {reduced ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text variant="bodySmall" style={{ color: colors.textMuted, textDecorationLine: 'line-through' }}>
@@ -175,18 +185,21 @@ function PromoPriceRow({ row }: { row: DiscountPreviewRow }) {
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text variant="bodySmall" color="textSecondary">{euroCents(row.original)}</Text>
-          {!row.applies && (
+          {onToggle && !row.applies && (
             <Text variant="caption" color="textMuted" style={{ fontSize: 10 }}>non incluse</Text>
           )}
         </View>
       )}
     </View>
   );
+  return onToggle ? <Pressable onPress={onToggle}>{content}</Pressable> : content;
 }
 
-/** Provider-facing before/after breakdown of the promo (base, variations, options). */
-function PromoPreview({ preview }: { preview: ServiceDiscountPreview }) {
+/** Provider-facing, interactive before/after breakdown. Tap a variation/option
+ *  line to include or exclude it from the promo. */
+function PromoPreview({ preview, onToggleLine }: { preview: ServiceDiscountPreview; onToggleLine: (id: string) => void }) {
   const { colors, spacing, radius } = useTheme();
+  const hasLines = preview.variations.length > 0 || preview.options.length > 0;
   return (
     <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface, padding: spacing.sm, gap: spacing.sm }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -197,22 +210,27 @@ function PromoPreview({ preview }: { preview: ServiceDiscountPreview }) {
           <Text variant="caption" style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>−{preview.percent}%</Text>
         </View>
       </View>
+      {hasLines && (
+        <Text variant="caption" color="textMuted">
+          Touchez une ligne pour l&apos;inclure ou l&apos;exclure de la promo.
+        </Text>
+      )}
       {preview.base && (
-        <PromoPriceRow row={{ name: 'Prestation', original: preview.base.original, discounted: preview.base.discounted, applies: true }} />
+        <PromoPriceRow row={{ id: null, name: 'Prestation', original: preview.base.original, discounted: preview.base.discounted, applies: true }} />
       )}
       {preview.variations.map((g, gi) => (
-        <View key={gi} style={{ gap: 4 }}>
+        <View key={gi} style={{ gap: 2 }}>
           <Text variant="caption" color="textMuted" style={{ fontWeight: '500' }}>{g.name}</Text>
-          <View style={{ gap: 4, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border }}>
-            {g.rows.map((r, ri) => <PromoPriceRow key={ri} row={r} />)}
+          <View style={{ gap: 2, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border }}>
+            {g.rows.map((r) => <PromoPriceRow key={r.id} row={r} onToggle={() => onToggleLine(r.id!)} />)}
           </View>
         </View>
       ))}
       {preview.options.length > 0 && (
-        <View style={{ gap: 4 }}>
+        <View style={{ gap: 2 }}>
           <Text variant="caption" color="textMuted" style={{ fontWeight: '500' }}>Options et suppléments</Text>
-          <View style={{ gap: 4, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border }}>
-            {preview.options.map((r, oi) => <PromoPriceRow key={oi} row={r} />)}
+          <View style={{ gap: 2, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border }}>
+            {preview.options.map((r) => <PromoPriceRow key={r.id} row={r} onToggle={() => onToggleLine(r.id!)} />)}
           </View>
         </View>
       )}
@@ -353,7 +371,7 @@ export default function ServicesScreen() {
     setGForm({
       enabled: !!g,
       percent: g ? String(g.percent) : '10',
-      includeExtras: g ? g.includeExtras : true,
+      includeExtras: g?.includeExtras ?? true,
       startsAt: g?.startsAt ?? null,
       endsAt: g?.endsAt ?? null,
     });
@@ -606,7 +624,8 @@ export default function ServicesScreen() {
       depositRefundHours,
       discountEnabled: !!service.discount,
       discountPercent: service.discount ? String(service.discount.percent) : '10',
-      discountIncludeExtras: service.discount ? service.discount.includeExtras : true,
+      // Migrate legacy includeExtras into the per-line excludedIds model.
+      discountExcludedIds: service.discount ? Array.from(resolveExcludedIds(service, service.discount)) : [],
       discountStartsAt: service.discount?.startsAt ?? null,
       discountEndsAt: service.discount?.endsAt ?? null,
       variations: service.variations ?? [],
@@ -703,7 +722,7 @@ export default function ServicesScreen() {
         }
         discountPayload = {
           percent: Math.round(pct),
-          includeExtras: form.discountIncludeExtras,
+          excludedIds: form.discountExcludedIds,
           startsAt: form.discountStartsAt,
           endsAt: form.discountEndsAt,
         };
@@ -1739,30 +1758,8 @@ export default function ServicesScreen() {
                         keyboardType="number-pad"
                       />
 
-                      {/* Include add-on options — only when the service has any.
-                          The prestation core (base or variations) is always reduced. */}
-                      {form.options.length > 0 && (
-                        <Pressable
-                          onPress={() => setForm((p) => ({ ...p, discountIncludeExtras: !p.discountIncludeExtras }))}
-                          style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingVertical: spacing.xs }}
-                        >
-                          <View style={{ flex: 1, marginRight: spacing.sm }}>
-                            <Text variant="bodySmall" style={{ color: colors.text }}>
-                              Inclure les options et suppléments
-                            </Text>
-                            <Text variant="caption" color="textSecondary" style={{ marginTop: 1 }}>
-                              {form.discountIncludeExtras
-                                ? 'Les options cochées sont réduites aussi.'
-                                : 'Les options cochées gardent leur prix plein.'}
-                            </Text>
-                          </View>
-                          <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: form.discountIncludeExtras ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
-                            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: form.discountIncludeExtras ? 'flex-end' : 'flex-start' }} />
-                          </View>
-                        </Pressable>
-                      )}
-
-                      {/* Live before/after preview — base, variations, options */}
+                      {/* Live, interactive before/after preview — tap a line to
+                          include/exclude it from the promo. */}
                       {(() => {
                         const preview = buildServiceDiscountPreview(
                           {
@@ -1770,9 +1767,22 @@ export default function ServicesScreen() {
                             variations: form.variations,
                             options: form.options,
                           },
-                          { percent: Number(form.discountPercent) || 0, includeExtras: form.discountIncludeExtras },
+                          { percent: Number(form.discountPercent) || 0, excludedIds: form.discountExcludedIds },
                         );
-                        return preview ? <PromoPreview preview={preview} /> : null;
+                        if (!preview) return null;
+                        return (
+                          <PromoPreview
+                            preview={preview}
+                            onToggleLine={(id) =>
+                              setForm((p) => ({
+                                ...p,
+                                discountExcludedIds: p.discountExcludedIds.includes(id)
+                                  ? p.discountExcludedIds.filter((x) => x !== id)
+                                  : [...p.discountExcludedIds, id],
+                              }))
+                            }
+                          />
+                        );
                       })()}
 
                       {/* Date window */}
