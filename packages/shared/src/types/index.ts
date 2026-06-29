@@ -99,6 +99,11 @@ export interface Provider {
   region: string | null;         // Region from primary location (e.g., "Île-de-France")
   countryCode: string;           // ISO 3166-1 alpha-2 from default location (e.g., 'FR')
   minPrice: number | null;       // Minimum price from active services (in centimes)
+  // Denormalized non-expired promo windows (shop-wide + per-service), maintained
+  // on service/promo writes. Lets list surfaces flag active promos with one read
+  // instead of loading every service. Evaluate with getActivePromoPercentFromWindows
+  // (date-correct at read time). Absent/[] = no promo.
+  promoSummary?: ServiceDiscount[] | null;
   searchTokens: string[];        // Normalized words from businessName for search (e.g., ["salon", "hugo"])
   geopoint: { latitude: number; longitude: number } | null; // From default location, for proximity search
   // Availability cache (computed by Cloud Functions)

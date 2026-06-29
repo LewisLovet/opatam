@@ -168,6 +168,11 @@ export class ProviderService {
     } else {
       await providerRepository.update(providerId, validated as Parameters<typeof providerRepository.update>[1]);
     }
+
+    // Shop-wide promo changed → refresh the denormalized promo summary.
+    if (validated.settings && 'globalDiscount' in validated.settings) {
+      await serviceRepository.recomputePromoSummary(providerId);
+    }
   }
 
   /**
@@ -208,6 +213,11 @@ export class ProviderService {
     await providerRepository.update(providerId, {
       settings: { ...provider.settings, ...settings },
     });
+
+    // Shop-wide promo changed → refresh the denormalized promo summary.
+    if ('globalDiscount' in settings) {
+      await serviceRepository.recomputePromoSummary(providerId);
+    }
   }
 
   /**

@@ -14,6 +14,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import type { Service } from '@booking-app/shared';
+import { buildPromoWindows } from '@booking-app/shared';
 import { getFirebaseApp } from '../lib/config';
 import { convertTimestamps, removeUndefined, type WithId } from './base.repository';
 
@@ -42,6 +43,29 @@ export class ServiceRepository {
   }
 
   /**
+   * Recompute the denormalized promo summary on the provider document from its
+   * active services + shop-wide discount. Called after any write that can change
+   * promotions. Non-fatal: a failure just leaves a slightly stale summary until
+   * the next write (reads stay date-correct via getActivePromoPercentFromWindows).
+   */
+  async recomputePromoSummary(providerId: string): Promise<void> {
+    try {
+      const providerRef = doc(this.db, 'providers', providerId);
+      const [services, snap] = await Promise.all([
+        this.getActiveByProvider(providerId),
+        getDoc(providerRef),
+      ]);
+      if (!snap.exists()) return;
+      const globalDiscount =
+        (snap.data() as { settings?: { globalDiscount?: unknown } })?.settings?.globalDiscount ?? null;
+      const promoSummary = buildPromoWindows(globalDiscount as never, services);
+      await updateDoc(providerRef, { promoSummary });
+    } catch (err) {
+      console.warn('[promoSummary] recompute failed for', providerId, err);
+    }
+  }
+
+  /**
    * Create a new service
    */
   async create(
@@ -55,6 +79,7 @@ export class ServiceRepository {
     } as Record<string, unknown>);
 
     const docRef = await addDoc(this.getCollectionRef(providerId), docData);
+    await this.recomputePromoSummary(providerId);
     return docRef.id;
   }
 
@@ -181,6 +206,11 @@ export class ServiceRepository {
     } as Record<string, unknown>);
 
     await updateDoc(docRef, docData);
+    // Only the discount or active flag affect the promo summary — skip the
+    // frequent sortOrder-only updates.
+    if ('discount' in data || 'isActive' in data) {
+      await this.recomputePromoSummary(providerId);
+    }
   }
 
   /**
@@ -189,6 +219,7 @@ export class ServiceRepository {
   async delete(providerId: string, serviceId: string): Promise<void> {
     const docRef = this.getDocRef(providerId, serviceId);
     await deleteDoc(docRef);
+    await this.recomputePromoSummary(providerId);
   }
 
   /**

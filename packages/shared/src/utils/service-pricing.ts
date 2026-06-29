@@ -441,6 +441,52 @@ export function getProviderActivePromoPercent(
   return max;
 }
 
+/**
+ * Denormalised promo summary for a provider: the non-expired discount windows
+ * (shop-wide + per-service), to store on the provider document. Lets list
+ * surfaces (search…) flag promos with ONE read instead of loading every
+ * service. Expired windows (endsAt in the past) are dropped; evaluation stays
+ * date-correct at read time via getActivePromoPercentFromWindows, so no cron
+ * is needed — only a recompute whenever a promo changes.
+ */
+export function buildPromoWindows(
+  globalDiscount: ServiceDiscount | null | undefined,
+  services: Array<Pick<Service, 'discount'>>,
+  now: Date = new Date(),
+): ServiceDiscount[] {
+  const today = discountDateKey(now);
+  const candidates: Array<ServiceDiscount | null | undefined> = [
+    globalDiscount,
+    ...services.map((s) => s.discount),
+  ];
+  const out: ServiceDiscount[] = [];
+  for (const d of candidates) {
+    if (!d) continue;
+    if (!(typeof d.percent === 'number' && d.percent > 0 && d.percent <= 100)) continue;
+    if (d.endsAt && d.endsAt < today) continue; // drop expired
+    out.push({
+      percent: d.percent,
+      includeExtras: d.includeExtras ?? true,
+      startsAt: d.startsAt ?? null,
+      endsAt: d.endsAt ?? null,
+    });
+  }
+  return out;
+}
+
+/** Highest currently-active percentage from a stored promo-windows summary. */
+export function getActivePromoPercentFromWindows(
+  windows: ServiceDiscount[] | null | undefined,
+  now: Date = new Date(),
+): number {
+  let max = 0;
+  for (const w of windows ?? []) {
+    const d = getActiveDiscount(w, now);
+    if (d && d.percent > max) max = d.percent;
+  }
+  return max;
+}
+
 /** Short French urgency label from a day count (see getDiscountDaysLeft). */
 export function formatPromoCountdown(daysLeft: number): string {
   if (daysLeft <= 0) return 'Dernier jour';
