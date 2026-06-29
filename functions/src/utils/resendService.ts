@@ -189,8 +189,11 @@ function renderSelectionsText(s: EmailSelections): string {
 
 // Helper to format relative time in French ("dans 30 minutes", "dans 1h30", "demain")
 export function formatTimeUntilFr(minutesUntil: number): string {
+  // Round to the nearest 5 minutes — "dans 3h46" reads like a glitch; clean
+  // multiples ("dans 3h45", "dans 5 heures") feel intentional.
+  minutesUntil = Math.round(minutesUntil / 5) * 5;
   if (minutesUntil < 60) {
-    const mins = Math.round(minutesUntil);
+    const mins = minutesUntil;
     return mins <= 1 ? 'dans 1 minute' : `dans ${mins} minutes`;
   }
   const hours = Math.floor(minutesUntil / 60);
@@ -248,6 +251,9 @@ export interface BookingEmailData {
   /** Access details (interphone, floor, door code…) — only set when the exact
    *  address is revealed (reminder, or confirmation ≤48h). */
   accessInstructions?: string | null;
+  /** When the exact address will reach the client (their reminder send time),
+   *  shown in the "address coming later" notice. Only set when addressPending. */
+  addressAvailableAt?: Date | null;
   memberName?: string;
   cancelToken?: string;
   bookingId?: string;
@@ -325,15 +331,16 @@ function accessInstructionsBlockText(data: { accessInstructions?: string | null 
 }
 
 /** Prominent notice telling the client when the exact address will arrive. */
-function addressPendingNoticeHtml(data: { addressPending?: boolean }): string {
+function addressPendingNoticeHtml(data: { addressPending?: boolean; addressAvailableAt?: Date | null }): string {
   if (!data.addressPending) return '';
-  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5;">&#x1F4CD; <strong>L&#39;adresse exacte et les informations d&#39;acc&#232;s vous seront communiqu&#233;es avec votre rappel, avant le rendez-vous.</strong></p></div>`;
+  const when = data.addressAvailableAt ? ` le ${formatDateFr(data.addressAvailableAt)}` : '';
+  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5;">&#x1F4CD; <strong>L&#39;adresse exacte et les informations d&#39;acc&#232;s vous seront communiqu&#233;es${when} avec votre rappel, avant le rendez-vous.</strong></p></div>`;
 }
 
-function addressPendingNoticeText(data: { addressPending?: boolean }): string {
-  return data.addressPending
-    ? "\n\nL'adresse exacte et les informations d'accès vous seront communiquées avec votre rappel, avant le rendez-vous."
-    : '';
+function addressPendingNoticeText(data: { addressPending?: boolean; addressAvailableAt?: Date | null }): string {
+  if (!data.addressPending) return '';
+  const when = data.addressAvailableAt ? ` le ${formatDateFr(data.addressAvailableAt)}` : '';
+  return `\n\nL'adresse exacte et les informations d'accès vous seront communiquées${when} avec votre rappel, avant le rendez-vous.`;
 }
 
 function locationAddressLineText(data: { locationAddress?: string; addressPending?: boolean; accessInstructions?: string | null }): string {
@@ -1529,6 +1536,8 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice)}</td></tr>
                     </table>
                   </div>
+                  ${addressPendingNoticeHtml(data)}
+                  ${accessInstructionsBlockHtml(data)}
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Mettre à jour votre calendrier</p>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
