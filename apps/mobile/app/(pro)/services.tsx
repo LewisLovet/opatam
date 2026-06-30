@@ -60,6 +60,7 @@ import {
 import { EditorSection } from '../../components/business/EditorSection';
 import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
 import { OverlaySheet } from '../../components/OverlaySheet';
+import { KeyboardAvoidingSheet } from '../../components/KeyboardAvoidingSheet';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import { uploadFile, storagePaths } from '@booking-app/firebase/storage';
@@ -2161,7 +2162,7 @@ export default function ServicesScreen() {
 
       {/* ── Category Create/Edit Modal ── */}
       <Modal visible={showCategoryModal} transparent animationType="fade">
-        <View style={styles.categoryModalOverlay}>
+        <KeyboardAvoidingSheet style={styles.categoryModalOverlay}>
           <View style={[styles.categoryModalContent, { backgroundColor: colors.background, borderRadius: radius.xl }]}>
             <Text variant="h3" style={{ marginBottom: spacing.md }}>
               {editingCategoryId ? 'Modifier la catégorie' : 'Nouvelle catégorie'}
@@ -2204,12 +2205,12 @@ export default function ServicesScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingSheet>
       </Modal>
 
       {/* Global (shop-wide) promotion modal */}
       <Modal visible={globalPromoOpen} transparent animationType="slide" onRequestClose={() => setGlobalPromoOpen(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingSheet>
           <Pressable style={{ flex: 1 }} onPress={() => setGlobalPromoOpen(false)} />
           <View style={{ backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2288,7 +2289,7 @@ export default function ServicesScreen() {
               fullWidth
             />
           </View>
-        </View>
+        </KeyboardAvoidingSheet>
 
         {/* Global promo date picker */}
         {Platform.OS === 'ios' && (
