@@ -9,6 +9,7 @@ import {
   Button,
   Select,
   Input,
+  NumberField,
   useToast,
 } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
@@ -957,14 +958,12 @@ export function BookingDetailModal({
                 −
               </button>
               <div className="flex items-baseline gap-1">
-                <input
-                  type="number"
+                <NumberField
                   min={5}
                   max={1440}
-                  step={5}
                   value={durationDraft}
-                  onChange={(e) => setDurationDraft(Math.min(1440, Math.max(0, parseInt(e.target.value || '0', 10))))}
-                  className="w-24 text-center text-4xl font-extrabold bg-transparent text-gray-900 dark:text-white border-b-2 border-primary-300 dark:border-primary-700 focus:outline-none focus:border-primary-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  onChange={(d) => setDurationDraft(d)}
+                  className="w-24 text-center text-4xl font-extrabold bg-transparent text-gray-900 dark:text-white border-b-2 border-primary-300 dark:border-primary-700 focus:outline-none focus:border-primary-500"
                 />
                 <span className="text-sm text-gray-500 dark:text-gray-400">min</span>
               </div>

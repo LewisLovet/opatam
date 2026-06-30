@@ -1017,21 +1017,20 @@ export default function RegisterPage() {
 
           <div className="grid gap-3 grid-cols-2">
             <Input
-              type="number"
               label="Durée (min)"
               placeholder="60"
-              value={svc.duration?.toString() || ''}
-              onChange={(e) => updateService(index, 'duration', parseInt(e.target.value) || 0)}
-              min="5"
-              max="480"
-              step="5"
+              numericValue={svc.duration ?? 0}
+              onNumericChange={(d) => updateService(index, 'duration', Math.round(d))}
+              min={5}
+              max={480}
             />
             <Input
-              type="number"
               label="Prix (€)"
               placeholder="0"
-              value={svc.price || ''}
-              onChange={(e) => updateService(index, 'price', parseFloat(e.target.value) || 0)}
+              numericValue={svc.price ?? 0}
+              onNumericChange={(p) => updateService(index, 'price', p)}
+              decimal
+              min={0}
             />
           </div>
 
