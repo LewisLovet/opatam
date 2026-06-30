@@ -24,6 +24,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../theme';
 import { Text, Button, Input, Card, useToast, SubscriptionRequiredModal, UpgradeToStudioModal } from '../../components';
+import { KeyboardAvoidingSheet } from '../../components/KeyboardAvoidingSheet';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import {
   memberService,
@@ -781,7 +782,7 @@ export default function MembersScreen() {
 
       {/* ── Create/Edit Modal ── */}
       <Modal visible={showModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingSheet style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
               <Text variant="h3">{editingId ? 'Modifier le membre' : 'Nouveau membre'}</Text>
@@ -893,7 +894,7 @@ export default function MembersScreen() {
               <Button variant="primary" title={isSaving ? 'Enregistrement...' : 'Enregistrer'} onPress={handleSave} loading={isSaving} disabled={isSaving} fullWidth />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingSheet>
       </Modal>
 
       {/* Location Picker Modal */}

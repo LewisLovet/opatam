@@ -28,6 +28,7 @@ import type { Booking } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
 import { Text, Card, Button, Avatar, useToast } from '../../../components';
+import { KeyboardAvoidingSheet } from '../../../components/KeyboardAvoidingSheet';
 import { useAuth } from '../../../contexts';
 
 // Helper to convert booking datetime to Date
@@ -873,7 +874,7 @@ export default function BookingDetailScreen() {
         transparent
         onRequestClose={() => setShowCancelModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingSheet style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: radius.xl }]}>
             <View style={[styles.modalIcon, { backgroundColor: '#fee2e2' }]}>
               <Ionicons name="warning-outline" size={32} color="#dc2626" />
@@ -933,7 +934,7 @@ export default function BookingDetailScreen() {
               />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingSheet>
       </Modal>
     </View>
   );
