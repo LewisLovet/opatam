@@ -72,8 +72,8 @@ export function SectionReglages({
 
   return (
     <EditorSection
-      title="Réglages"
-      description="Acompte, battement, catégorie et couleur."
+      title="Acompte & battement"
+      description="Acompte, temps de battement, catégorie et couleur."
       icon={<SlidersHorizontal className="w-5 h-5" />}
       defaultOpen={false}
       forceOpen={!!errors.depositValue}

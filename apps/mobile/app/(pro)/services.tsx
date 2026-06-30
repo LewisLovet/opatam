@@ -1559,8 +1559,8 @@ export default function ServicesScreen() {
                 </EditorSection>
 
                 <EditorSection
-                  title="Réglages"
-                  subtitle="Temps de battement et acompte"
+                  title="Acompte & battement"
+                  subtitle="Acompte et temps de battement"
                   icon="options-outline"
                   defaultOpen={false}
                 >
