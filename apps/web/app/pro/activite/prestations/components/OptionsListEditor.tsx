@@ -2,6 +2,7 @@
 
 import { Plus, Trash2 } from 'lucide-react';
 import type { ServiceOption } from '@booking-app/shared';
+import { NumberField } from '@/components/ui';
 import { newOption, moveItem } from './choiceHelpers';
 import { ReorderControls } from './ReorderControls';
 import { VariationsListEditor } from './VariationsListEditor';
@@ -91,14 +92,11 @@ function OptionCard({
 
       <div className="flex gap-2 pl-5">
         <div className="relative w-28">
-          <input
-            type="number"
+          <NumberField
+            value={option.price / 100}
+            onChange={(euros) => onChange({ price: Math.round(euros * 100) })}
+            decimal
             min={0}
-            step={0.01}
-            value={(option.price / 100).toString()}
-            onChange={(e) =>
-              onChange({ price: Math.round((parseFloat(e.target.value) || 0) * 100) })
-            }
             placeholder="0"
             className="w-full pl-2.5 pr-6 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
@@ -107,12 +105,10 @@ function OptionCard({
           </span>
         </div>
         <div className="relative w-28">
-          <input
-            type="number"
+          <NumberField
+            value={option.duration}
+            onChange={(d) => onChange({ duration: Math.round(d) })}
             min={0}
-            step={5}
-            value={option.duration.toString()}
-            onChange={(e) => onChange({ duration: parseInt(e.target.value, 10) || 0 })}
             placeholder="0"
             className="w-full pl-2.5 pr-8 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
           />

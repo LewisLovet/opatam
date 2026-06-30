@@ -133,11 +133,11 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
           {/* Percent */}
           <Input
             label="Réduction (%)"
-            type="number"
+            numericValue={promo.percent}
+            onNumericChange={(p) => setPromo({ percent: Math.round(p) })}
             min={1}
             max={100}
-            value={Number.isFinite(promo.percent) ? promo.percent : ''}
-            onChange={(e) => setPromo({ percent: parseInt(e.target.value, 10) || 0 })}
+            suffix="%"
             error={errors.discountPercent}
           />
 

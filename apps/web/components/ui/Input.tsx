@@ -1,7 +1,14 @@
 'use client';
 
-import { forwardRef, type InputHTMLAttributes, type MouseEventHandler, useId } from 'react';
+import {
+  forwardRef,
+  useId,
+  type InputHTMLAttributes,
+  type MouseEventHandler,
+  type ReactNode,
+} from 'react';
 import { Calendar, Clock } from 'lucide-react';
+import { useNumberBuffer } from './useNumberBuffer';
 
 type InputType = 'text' | 'email' | 'password' | 'tel' | 'number' | 'url' | 'date' | 'time' | 'datetime-local';
 
@@ -10,16 +17,65 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>
   label?: string;
   error?: string;
   hint?: string;
+  /** Trailing adornment shown inside the field (e.g. "%", "€", "heures"). */
+  suffix?: ReactNode;
+  /**
+   * Numeric mode. When `onNumericChange` is provided the field manages its own
+   * text buffer so it can be left empty while editing (no sticky "0" that comes
+   * back on clear), renders as `inputMode` text (no native spinner — far easier
+   * to type, especially on mobile), and emits parsed numbers. `value`/`onChange`
+   * are ignored in this mode — use `numericValue`/`onNumericChange`.
+   */
+  numericValue?: number;
+  onNumericChange?: (value: number) => void;
+  /** Allow a decimal part (prices). Default false → integers (%, minutes…). */
+  decimal?: boolean;
+  /** Value emitted when the field is left empty. Default 0. */
+  emptyValue?: number;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ type = 'text', label, error, hint, disabled, className = '', id, onClick, ...props }, ref) => {
+  (
+    {
+      type = 'text',
+      label,
+      error,
+      hint,
+      suffix,
+      disabled,
+      className = '',
+      id,
+      onClick,
+      numericValue,
+      onNumericChange,
+      decimal = false,
+      emptyValue = 0,
+      min,
+      max,
+      value,
+      onChange,
+      onBlur,
+      ...props
+    },
+    ref
+  ) => {
     const generatedId = useId();
     const inputId = id || generatedId;
     const errorId = `${inputId}-error`;
     const hintId = `${inputId}-hint`;
 
     const hasError = !!error;
+
+    // ── Numeric mode (buffered text input — see useNumberBuffer) ───────
+    const numeric = typeof onNumericChange === 'function';
+    const numProps = useNumberBuffer({
+      value: numericValue ?? 0,
+      onChange: onNumericChange ?? (() => {}),
+      decimal,
+      emptyValue,
+      min,
+      max,
+    });
 
     // Native date/time inputs are finicky on mobile (iOS): they have an
     // intrinsic min-width that ignores width:100% (overflow), collapse in
@@ -42,6 +98,16 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       }
     };
 
+    // Horizontal padding: leave room on the right for the suffix / date icon.
+    const suffixLen = suffix == null ? 0 : String(suffix).length;
+    const padX = isDateTime
+      ? 'pr-10'
+      : suffix != null
+        ? suffixLen <= 1
+          ? 'pl-3 pr-8'
+          : 'pl-3 pr-12'
+        : 'px-3';
+
     return (
       <div className="w-full">
         {label && (
@@ -56,13 +122,24 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
-          type={type}
+          type={numeric ? 'text' : type}
           disabled={disabled}
           aria-invalid={hasError}
           aria-describedby={hasError ? errorId : hint ? hintId : undefined}
           onClick={isDateTime ? handleClick : onClick}
+          {...(numeric
+            ? {
+                value: numProps.value,
+                inputMode: numProps.inputMode,
+                onChange: numProps.onChange,
+                onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+                  numProps.onBlur();
+                  onBlur?.(e);
+                },
+              }
+            : { value, onChange, onBlur, min, max })}
           className={`
-            w-full px-3 py-2 rounded-lg border text-base
+            w-full ${padX} py-2 rounded-lg border text-base
             text-gray-900 dark:text-gray-100
             bg-white dark:bg-gray-800
             placeholder:text-gray-400 dark:placeholder:text-gray-500
@@ -71,7 +148,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-900
             ${
               isDateTime
-                ? 'appearance-none min-h-[2.625rem] pr-10 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-date-and-time-value]:text-left'
+                ? 'appearance-none min-h-[2.625rem] cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-date-and-time-value]:text-left'
                 : ''
             }
             ${
@@ -83,6 +160,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           `}
           {...props}
         />
+        {suffix != null && !isDateTime && (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">
+            {suffix}
+          </span>
+        )}
         {isDateTime && (
           <DateIcon className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
         )}

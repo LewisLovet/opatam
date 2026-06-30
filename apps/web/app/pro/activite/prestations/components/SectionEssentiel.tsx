@@ -54,7 +54,6 @@ export function SectionEssentiel({
   const activeMode: PriceMode = isVariations ? 'variations' : simpleMode;
 
   const priceInEuros = data.price / 100;
-  const eurosToCents = (raw: string) => Math.round(parseFloat(raw || '0') * 100);
 
   const applySimple = (mode: SimpleMode) => {
     setSimpleMode(mode);
@@ -154,14 +153,10 @@ export function SectionEssentiel({
               <Input
                 label="Durée (minutes)"
                 name="duration"
-                type="number"
-                value={data.duration.toString()}
-                onChange={(e) =>
-                  update({ duration: parseInt(e.target.value, 10) || 0 })
-                }
-                min="5"
-                max="480"
-                step="5"
+                numericValue={data.duration}
+                onNumericChange={(d) => update({ duration: Math.round(d) })}
+                min={5}
+                max={480}
                 hint="De 5 min à 8h"
                 required
               />
@@ -169,12 +164,11 @@ export function SectionEssentiel({
                 <Input
                   label="Prix (€)"
                   name="price"
-                  type="number"
-                  value={priceInEuros.toString()}
-                  onChange={(e) => update({ price: eurosToCents(e.target.value) })}
+                  numericValue={priceInEuros}
+                  onNumericChange={(euros) => update({ price: Math.round(euros * 100) })}
+                  decimal
                   placeholder="0"
-                  min="0"
-                  step="0.01"
+                  min={0}
                   error={errors.price}
                   required
                 />

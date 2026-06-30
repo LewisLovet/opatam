@@ -5,6 +5,8 @@ export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 // Input
 export { Input } from './Input';
 export type { InputProps, InputType } from './Input';
+export { NumberField } from './NumberField';
+export type { NumberFieldProps } from './NumberField';
 
 // Textarea
 export { Textarea } from './Textarea';

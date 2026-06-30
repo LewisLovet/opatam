@@ -103,11 +103,11 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
           <div className="space-y-4">
             <Input
               label="Réduction (%)"
-              type="number"
+              numericValue={percent}
+              onNumericChange={(p) => setPercent(Math.round(p))}
               min={1}
               max={100}
-              value={Number.isFinite(percent) ? percent : ''}
-              onChange={(e) => setPercent(parseInt(e.target.value, 10) || 0)}
+              suffix="%"
             />
 
             <label className="flex items-start justify-between gap-3 cursor-pointer">

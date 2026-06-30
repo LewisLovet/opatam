@@ -2,6 +2,7 @@
 
 import { Plus, Trash2 } from 'lucide-react';
 import type { ServiceVariation, ServiceVariationOption } from '@booking-app/shared';
+import { NumberField } from '@/components/ui';
 import { newVariation, newVariationOption, moveItem } from './choiceHelpers';
 import { ReorderControls } from './ReorderControls';
 
@@ -138,16 +139,11 @@ function VariationCard({
               className="flex-1 min-w-0 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
             <div className="relative w-20 flex-shrink-0">
-              <input
-                type="number"
+              <NumberField
+                value={opt.price / 100}
+                onChange={(euros) => updateOption(opt.id, { price: Math.round(euros * 100) })}
+                decimal
                 min={0}
-                step={0.01}
-                value={(opt.price / 100).toString()}
-                onChange={(e) =>
-                  updateOption(opt.id, {
-                    price: Math.round((parseFloat(e.target.value) || 0) * 100),
-                  })
-                }
                 placeholder="0"
                 className="w-full pl-2.5 pr-5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
@@ -156,16 +152,10 @@ function VariationCard({
               </span>
             </div>
             <div className="relative w-20 flex-shrink-0">
-              <input
-                type="number"
+              <NumberField
+                value={opt.duration}
+                onChange={(d) => updateOption(opt.id, { duration: Math.round(d) })}
                 min={0}
-                step={5}
-                value={opt.duration.toString()}
-                onChange={(e) =>
-                  updateOption(opt.id, {
-                    duration: parseInt(e.target.value, 10) || 0,
-                  })
-                }
                 placeholder="0"
                 className="w-full pl-2.5 pr-7 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
               />

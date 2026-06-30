@@ -16,7 +16,7 @@ import {
   Save,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui';
+import { Input, useToast } from '@/components/ui';
 import { canUseDepositsClient } from '@/lib/feature-flags';
 import { auth as firebaseAuth } from '@booking-app/firebase';
 
@@ -654,25 +654,16 @@ export function PaymentsSection() {
                     <Percent className="w-3.5 h-3.5" />
                     Pourcentage
                   </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      step={1}
-                      value={defaultPercent}
-                      onChange={(e) => {
-                        setDefaultPercent(
-                          Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 0))
-                        );
-                        setDefaultDirty(true);
-                      }}
-                      className="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                      %
-                    </span>
-                  </div>
+                  <Input
+                    numericValue={defaultPercent}
+                    onNumericChange={(p) => {
+                      setDefaultPercent(Math.round(p));
+                      setDefaultDirty(true);
+                    }}
+                    min={1}
+                    max={100}
+                    suffix="%"
+                  />
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                     Ex. 30 % d'un service à 40 € = acompte de 12 €
                   </p>
@@ -683,25 +674,16 @@ export function PaymentsSection() {
                     <Clock className="w-3.5 h-3.5" />
                     Délai de remboursement
                   </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min={0}
-                      max={720}
-                      step={1}
-                      value={defaultRefundHours}
-                      onChange={(e) => {
-                        setDefaultRefundHours(
-                          Math.max(0, Math.min(720, parseInt(e.target.value, 10) || 0))
-                        );
-                        setDefaultDirty(true);
-                      }}
-                      className="w-full pl-3 pr-12 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                      heures
-                    </span>
-                  </div>
+                  <Input
+                    numericValue={defaultRefundHours}
+                    onNumericChange={(h) => {
+                      setDefaultRefundHours(Math.round(h));
+                      setDefaultDirty(true);
+                    }}
+                    min={0}
+                    max={720}
+                    suffix="heures"
+                  />
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                     {defaultRefundHours === 0
                       ? "Aucun remboursement automatique"
