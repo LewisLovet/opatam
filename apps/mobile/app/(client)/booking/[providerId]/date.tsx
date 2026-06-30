@@ -26,7 +26,7 @@ import {
   StickyConfirmButton,
 } from '../../../../components';
 import { useBooking } from '../../../../contexts';
-import { computeServiceTotal } from '@booking-app/shared';
+import { computeServiceTotal, computeDiscountedTotal } from '@booking-app/shared';
 import { useAvailabilitySummary, type TimeSlot } from '../../../../hooks';
 
 // Local YYYY-MM-DD — must match the server/summary key (not toISOString → UTC).
@@ -108,10 +108,12 @@ export default function DateSelectionScreen() {
 
   // Booking context
   const { provider, service, member, memberId, cart, setDateAndSlot } = useBooking();
+  const globalDiscount = provider?.settings?.globalDiscount ?? null;
 
-  // Whole-visit effective totals across the cart (variations chosen).
+  // Whole-visit effective totals across the cart (variations chosen) — with the
+  // active promo applied, so the summary price matches what the client pays.
   const cartPrice = cart.reduce(
-    (sum, c) => sum + computeServiceTotal(c.service, c.selections).price,
+    (sum, c) => sum + computeDiscountedTotal(c.service, c.selections, globalDiscount).price,
     0,
   );
   const cartDuration = cart.reduce(
