@@ -1,11 +1,14 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.kamerleontech.opatam",
       "sha256_cert_fingerprints": [
-        "TODO:REPLACE_WITH_YOUR_SHA256_FINGERPRINT"
+        "4E:B5:3F:2B:FD:B9:0A:35:42:62:50:7E:E6:71:34:5B:E7:B0:DF:15:D3:FB:44:7B:FD:57:97:35:74:7A:8E:98"
       ]
     }
   }
