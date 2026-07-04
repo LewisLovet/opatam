@@ -24,6 +24,7 @@ import {
   validateServiceSelections,
   emptyServiceSelections,
   isAccessOverrideActive,
+  hasDepositAccess,
   getPublicAreaLabel,
   type CreateBookingInput,
 } from '@booking-app/shared';
@@ -193,13 +194,15 @@ export class BookingService {
     // Generate cancel token
     const cancelToken = this.generateCancelToken();
 
-    // Resolve deposit — only honored if the provider has the add-on AND a
-    // working Connect account. Otherwise we silently skip (the provider
-    // may have configured a deposit then turned the add-on off).
+    // Resolve deposit — only honored if the provider has deposit access
+    // (paid add-on, admin comp, or free base trial — see hasDepositAccess)
+    // AND a working Connect account. Otherwise we silently skip (the
+    // provider may have configured a deposit then lost access, e.g. the
+    // trial ended without subscribing to Sérénité).
     // Pro-side manual bookings opt out via opts.skipDeposit.
     const depositReady =
       !opts.skipDeposit &&
-      !!provider.depositsAddonActive &&
+      hasDepositAccess(provider) &&
       provider.stripeConnectStatus === 'active' &&
       !!provider.stripeConnectAccountId;
     // Deposit = sum of each prestation's resolved deposit (each on its own

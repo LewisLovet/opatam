@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasDepositAccess } from '@booking-app/shared';
 import {
   memberService,
   serviceRepository,
@@ -76,8 +77,9 @@ export async function GET(request: NextRequest) {
         slug: provider.slug,
         settings: provider.settings,
         // Surfaced so the planning drawer can decide whether to offer
-        // the "demander l'acompte au client" checkbox.
-        depositsAddonActive: !!provider.depositsAddonActive,
+        // the "demander l'acompte au client" checkbox. Effective ACCESS
+        // (paid add-on, comp, or free base trial), not just the raw flag.
+        depositsAddonActive: hasDepositAccess(provider),
         stripeConnectStatus: provider.stripeConnectStatus ?? null,
       },
       services: services.map((s) => ({

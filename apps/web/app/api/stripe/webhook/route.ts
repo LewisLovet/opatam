@@ -10,6 +10,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
 import { generatePlanChangeEmail } from '@/lib/emails/planChange';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
+import { sendSerenityTrialUpsellEmail } from '@/lib/emails/serenityTrialUpsell';
 import { isAccessOverrideActive } from '@booking-app/shared';
 import { revalidateProviderPublicPages } from '@/lib/revalidate';
 
@@ -666,6 +667,40 @@ async function handleInvoicePaid(
     }
   } catch (capiErr) {
     console.error('[STRIPE-WEBHOOK/CAPI] Subscribe (invoice) error (non-blocking):', capiErr);
+  }
+
+  // Fire-and-forget: Sérénité upsell at the trial→paid conversion. Deposits
+  // are included for FREE during the base trial (see hasDepositAccess in
+  // @booking-app/shared) — converting to a paid base plan ends that free
+  // access. If the pro actually used the feature (active Stripe Connect
+  // account: Connect only exists for deposits) and doesn't have the paid
+  // add-on, nudge them ONCE (email + in-app banner via serenityUpsell).
+  try {
+    const wasTrialing = existingData?.subscription?.status === 'trialing';
+    const usedDeposits =
+      wasTrialing &&
+      existingData?.stripeConnectStatus === 'active' &&
+      !existingData?.depositsAddonActive &&
+      !existingData?.serenityUpsell?.sentAt;
+    if (usedDeposits) {
+      const to = existingData?.email || existingData?.contactEmail || null;
+      if (to) {
+        await sendSerenityTrialUpsellEmail({
+          to,
+          businessName: existingData?.businessName || 'Professionnel',
+        });
+      }
+      await providerRef.update({
+        serenityUpsell: {
+          sentAt: FieldValue.serverTimestamp(),
+          reason: 'trial_converted',
+          emailed: !!to,
+        },
+      });
+      console.log(`[STRIPE-WEBHOOK/SERENITY-UPSELL] sent to ${providerId} (emailed=${!!to})`);
+    }
+  } catch (upsellErr) {
+    console.error('[STRIPE-WEBHOOK/SERENITY-UPSELL] error (non-blocking):', upsellErr);
   }
 }
 

@@ -21,6 +21,7 @@ import {
   emptyServiceSelections,
   serviceHasChoices,
   formatDuration,
+  hasDepositAccess,
 } from '@booking-app/shared';
 import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import { ClientAutocomplete } from './ClientAutocomplete';
@@ -646,7 +647,7 @@ export function CreateBookingModal({
   const resolvedDeposit = useMemo(() => {
     if (!provider || !selectedService) return null;
     const ready =
-      provider.depositsAddonActive &&
+      hasDepositAccess(provider) &&
       provider.stripeConnectStatus === 'active';
     if (!ready) return null;
     // Estimate on the SUMMED effective price across the cart, using the

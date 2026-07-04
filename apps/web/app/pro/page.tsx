@@ -143,6 +143,20 @@ export default function DashboardPage() {
         }
       }
 
+      // 3. Sérénité upsell — the trial ended (pro converted to a paid plan)
+      // while they were using deposits for free. Until they subscribe to the
+      // add-on, their bookings no longer collect deposits: keep it visible.
+      if (provider.serenityUpsell?.sentAt && !provider.depositsAddonActive) {
+        alerts.push({
+          id: 'serenity-upsell',
+          message:
+            'Vos réservations ne demandent plus d’acompte depuis la fin de votre essai',
+          action: 'Réactiver avec Sérénité',
+          href: '/pro/parametres?tab=paiements',
+          priority: 'high',
+        });
+      }
+
       // Setup-related items (publish, photo, portfolio, location,
       // service) are now handled by the ActivationHub, not here.
 

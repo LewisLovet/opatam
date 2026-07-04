@@ -10,6 +10,7 @@ import { ServiceCard } from './ServiceCard';
 import { CategoryModal, type CategoryFormData } from './CategoryModal';
 import { GlobalPromoModal } from './GlobalPromoModal';
 import type { Service, ServiceCategory, Member } from '@booking-app/shared';
+import { hasDepositAccess } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -208,7 +209,7 @@ export function PrestationsTab() {
   const activeMembers = members.filter((m) => m.isActive);
 
   const depositsEnabled =
-    !!provider?.depositsAddonActive &&
+    hasDepositAccess(provider) &&
     provider?.stripeConnectStatus === 'active';
   const defaultDeposit = provider?.settings?.depositDefault ?? null;
   const globalDiscount = provider?.settings?.globalDiscount ?? null;

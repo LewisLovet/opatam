@@ -13,6 +13,7 @@ import type {
   Service,
   ServiceCategory,
 } from '@booking-app/shared';
+import { hasDepositAccess } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -96,7 +97,8 @@ export function useEditorData(serviceId?: string): EditorData {
     members,
     categories,
     isTeamPlan,
-    depositsEnabled: !!provider?.depositsAddonActive,
+    // Paid add-on, admin comp, or free base trial (deposits included in trial).
+    depositsEnabled: hasDepositAccess(provider),
     defaultDeposit: provider?.settings?.depositDefault ?? null,
   };
 }

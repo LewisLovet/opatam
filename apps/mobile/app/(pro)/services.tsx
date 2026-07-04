@@ -47,6 +47,7 @@ import {
   buildServiceDiscountPreview,
   resolveExcludedIds,
   getServiceMinPrice,
+  hasDepositAccess,
   SERVICE_COLORS,
   sanitizeVariations,
   sanitizeOptions,
@@ -337,9 +338,10 @@ export default function ServicesScreen() {
   const { showToast } = useToast();
   const { provider, providerId } = useProvider();
 
-  // Deposit gates (used to decide whether to show the badge)
+  // Deposit gates (used to decide whether to show the badge).
+  // hasDepositAccess = paid add-on, comp, or free base trial.
   const depositsEnabled =
-    !!provider?.depositsAddonActive &&
+    hasDepositAccess(provider) &&
     provider?.stripeConnectStatus === 'active';
   const defaultDepositSettings = provider?.settings?.depositDefault ?? null;
 

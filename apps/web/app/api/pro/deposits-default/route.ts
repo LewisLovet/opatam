@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { canUseDepositsServer } from '@/lib/feature-flags';
+import { hasDepositAccess } from '@booking-app/shared';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
 
@@ -66,7 +67,9 @@ export async function PUT(request: NextRequest) {
     }
     const provider = providerSnap.data()!;
 
-    if (!provider.depositsAddonActive) {
+    // Paid add-on, admin comp, or free base trial (deposits are included in
+    // the trial — see hasDepositAccess in @booking-app/shared).
+    if (!hasDepositAccess(provider)) {
       return NextResponse.json(
         {
           error:

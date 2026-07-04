@@ -18,6 +18,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { Input, useToast } from '@/components/ui';
 import { canUseDepositsClient } from '@/lib/feature-flags';
+import { isBaseTrialActive } from '@booking-app/shared';
 import { auth as firebaseAuth } from '@booking-app/firebase';
 
 interface ConnectStatus {
@@ -231,6 +232,11 @@ export function PaymentsSection() {
   // check in /api/pro/deposits-addon/activate.
   const canToggleAddon = hasPaidSubscription && connectActive;
   const addonActive = !!provider?.depositsAddonActive;
+  // Deposits are INCLUDED during the free base trial (computed at read time —
+  // access drops by itself when the trial ends). Subscribing to the paid
+  // add-on stays blocked until the trial converts (server enforces too).
+  const trialActive = isBaseTrialActive(provider?.subscription);
+  const depositAccess = addonActive || trialActive;
   // "Résiliation prévue le DD/MM" indicator — read from the
   // dedicated `serenity.*` sub-object (v1.5+). Falls back to the
   // legacy field for an in-flight migration window.
@@ -492,16 +498,31 @@ export function PaymentsSection() {
               Encaissez un acompte au moment de la réservation pour réduire les no-shows.
               Annulable à tout moment.
             </p>
-            {!hasPaidSubscription && isTrial && (
-              // Trial users see a distinct (non-link) note — there's
-              // nothing for them to click; they just have to wait
-              // until the trial ends and the real subscription kicks
-              // in. Linking to /pro/abonnement would be misleading.
+            {!hasPaidSubscription && trialActive && (
+              // During the free trial, deposits are INCLUDED: the pro can do
+              // the Connect onboarding above and configure deposits below.
+              // Subscribing to the paid add-on itself only opens once the
+              // trial converts — nothing to click here yet.
+              <div className="mb-3 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 px-3 py-2 flex items-start gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-primary-800 dark:text-primary-300">
+                  <strong>Inclus gratuitement pendant votre essai</strong>
+                  {baseValidUntil
+                    ? ` — jusqu'au ${baseValidUntil.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
+                    : ''}
+                  . Activez Stripe Connect ci-dessus et configurez vos acomptes
+                  dès maintenant. À la fin de l&apos;essai, souscrivez Sérénité
+                  pour continuer à les encaisser.
+                </p>
+              </div>
+            )}
+            {!hasPaidSubscription && isTrial && !trialActive && (
+              // Trial expired without converting — point to the subscription page.
               <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 flex items-start gap-2">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-800 dark:text-amber-300">
-                  Sérénité est réservé aux abonnements payants.
-                  Disponible à la fin de votre période d&apos;essai.
+                  Votre essai est terminé. Souscrivez à un plan Pro puis à
+                  Sérénité pour encaisser des acomptes.
                 </p>
               </div>
             )}
@@ -524,18 +545,22 @@ export function PaymentsSection() {
                 </p>
               </div>
             )}
-            <button
-              type="button"
-              disabled={addonWorking || !canToggleAddon}
-              onClick={() => toggleAddon(true)}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-medium rounded-lg transition-colors"
-            >
-              {addonWorking ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>Souscrire à Sérénité — 5 €/mois</>
-              )}
-            </button>
+            {/* During the trial the feature is already usable for free — a
+                disabled "Souscrire" button would only confuse; hide it. */}
+            {!trialActive && (
+              <button
+                type="button"
+                disabled={addonWorking || !canToggleAddon}
+                onClick={() => toggleAddon(true)}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-medium rounded-lg transition-colors"
+              >
+                {addonWorking ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>Souscrire à Sérénité — 5 €/mois</>
+                )}
+              </button>
+            )}
           </>
         ) : (
           // ─── État: souscrit ───────────────────────────────────────────
@@ -612,7 +637,7 @@ export function PaymentsSection() {
       </div>
 
       {/* ── Default deposit configuration ───────────────────────────────── */}
-      {addonActive && (
+      {depositAccess && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="min-w-0 flex-1">

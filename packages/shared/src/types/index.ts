@@ -153,6 +153,17 @@ export interface Provider {
    * prévue le X" until the period ends.
    */
   serenity?: SerenitySubscription | null;
+  /**
+   * One-shot Sérénité upsell fired at the trial→paid conversion (Stripe or
+   * RevenueCat webhook) when the pro used deposits during the free trial
+   * (active Stripe Connect) without the paid add-on. Presence of `sentAt`
+   * = already nudged (email best-effort + in-app banner); never re-sent.
+   */
+  serenityUpsell?: {
+    sentAt: Date | null;
+    reason?: string;
+    emailed?: boolean;
+  } | null;
   // Analytics (pageViews.today incremented in real-time, rest updated nightly)
   stats?: {
     pageViews: PageViewStats;

@@ -38,7 +38,7 @@ import { Text, Card, Button, Switch, useToast } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useDepositsSummary, useServices } from '../../hooks';
-import { formatPrice } from '@booking-app/shared';
+import { formatPrice, hasDepositAccess, isBaseTrialActive } from '@booking-app/shared';
 import { API_URL as BASE_URL } from '../../lib/config';
 
 /** Preset chips for the default deposit percentage — 90% of pros
@@ -66,14 +66,19 @@ export default function PaymentsScreen() {
   const connectStatus = provider?.stripeConnectStatus ?? null;
   const connectActive = connectStatus === 'active';
   const addonActive = !!provider?.depositsAddonActive;
+  // Deposits are INCLUDED during the free base trial (computed at read time;
+  // access drops by itself when the trial ends). `depositAccess` gates the
+  // config + stats; `addonActive` keeps gating the subscribe/cancel CTAs.
+  const trialActive = isBaseTrialActive(provider?.subscription);
+  const depositAccess = hasDepositAccess(provider);
   const depositDefault = provider?.settings?.depositDefault ?? null;
 
   // ─── Stats for the "Vue d'ensemble" strip ──────────────────────────
-  // Skip both fetches when the addon is off — no point showing
-  // (zeros / 0 services) to a pro who hasn't subscribed.
-  const { services } = useServices(addonActive ? provider?.id : undefined);
+  // Skip both fetches when there's no deposit access — no point showing
+  // (zeros / 0 services) to a pro who can't charge deposits.
+  const { services } = useServices(depositAccess ? provider?.id : undefined);
   const depositsSummary = useDepositsSummary(
-    addonActive ? provider?.id : undefined,
+    depositAccess ? provider?.id : undefined,
   );
 
   // Count how many services would actually charge a deposit at
@@ -250,7 +255,7 @@ export default function PaymentsScreen() {
   // colour gradient + headline copy at the top of the screen.
   const heroState: 'fully-active' | 'connect-only' | 'inactive' = !connectActive
     ? 'inactive'
-    : addonActive
+    : depositAccess
       ? 'fully-active'
       : 'connect-only';
 
@@ -413,7 +418,19 @@ export default function PaymentsScreen() {
                 ))}
               </View>
 
-              {!connectActive ? (
+              {trialActive ? (
+                // Free trial: the feature is INCLUDED — no subscribe CTA
+                // (and nothing pointing to the web, per store rules).
+                <View style={[s.serenityHint, { backgroundColor: 'rgba(34,197,94,0.16)' }]}>
+                  <Ionicons name="gift-outline" size={14} color="#4ADE80" />
+                  <Text style={[s.hintText, { color: 'rgba(255,255,255,0.92)' }]}>
+                    Inclus gratuitement pendant votre essai.{' '}
+                    {connectActive
+                      ? 'Configurez vos acomptes ci-dessous — à la fin de l’essai, souscrivez Sérénité pour continuer à les encaisser.'
+                      : 'Activez Stripe Connect ci-dessus pour commencer à encaisser des acomptes.'}
+                  </Text>
+                </View>
+              ) : !connectActive ? (
                 <View style={[s.serenityHint, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
                   <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.85)" />
                   <Text style={[s.hintText, { color: 'rgba(255,255,255,0.85)' }]}>
@@ -536,7 +553,7 @@ export default function PaymentsScreen() {
                 • RDV concernés (30 j)
               Helps the pro feel the value of the 5 €/mois subscription
               and spot when no service has a deposit configured. */}
-        {addonActive && (
+        {depositAccess && (
           <Card padding="md">
             <SectionHeader
               icon="stats-chart-outline"
@@ -606,28 +623,28 @@ export default function PaymentsScreen() {
         )}
 
         {/* ── 3. Default deposit (inline editable) ───────── */}
-        <Card padding="md" style={{ opacity: addonActive ? 1 : 0.55 }}>
+        <Card padding="md" style={{ opacity: depositAccess ? 1 : 0.55 }}>
           <SectionHeader
             icon="cash-outline"
             title="Acompte par défaut"
             subtitle="Appliqué aux prestations qui n'ont pas leur propre montant."
-            tint={enabled && addonActive ? colors.primary : colors.textMuted}
+            tint={enabled && depositAccess ? colors.primary : colors.textMuted}
             colors={colors}
             spacing={spacing}
             trailing={
               <Switch
-                value={enabled && addonActive}
+                value={enabled && depositAccess}
                 onValueChange={(v) => {
-                  if (!addonActive) return;
+                  if (!depositAccess) return;
                   setEnabled(v);
                   setEditing(true);
                 }}
-                disabled={!addonActive}
+                disabled={!depositAccess}
               />
             }
           />
 
-          {!addonActive && (
+          {!depositAccess && (
             <View
               style={[
                 s.lockedHint,
@@ -641,7 +658,7 @@ export default function PaymentsScreen() {
             </View>
           )}
 
-          {addonActive && enabled && (
+          {depositAccess && enabled && (
             <View style={{ marginTop: spacing.md, gap: spacing.lg }}>
               {/* Big visual % preview */}
               <View
@@ -826,7 +843,7 @@ export default function PaymentsScreen() {
                 title="Enregistrer"
                 onPress={saveDeposit}
                 loading={saving}
-                disabled={saving || !addonActive}
+                disabled={saving || !depositAccess}
                 style={{ flex: 1 }}
               />
             </View>

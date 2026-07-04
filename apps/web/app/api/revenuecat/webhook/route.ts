@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
+import { sendSerenityTrialUpsellEmail } from '@/lib/emails/serenityTrialUpsell';
 import { revalidateProviderPublicPages } from '@/lib/revalidate';
 
 // ---------------------------------------------------------------------------
@@ -348,6 +349,43 @@ async function handleInitialPurchase(
     }
   } catch (capiErr) {
     console.error('[RC-WEBHOOK/CAPI] Conversion event error (non-blocking):', capiErr);
+  }
+
+  // Fire-and-forget: Sérénité upsell at the trial→paid conversion (mirror of
+  // the Stripe webhook). Deposits are free during the local base trial; a pro
+  // who used them (active Stripe Connect — Connect only exists for deposits)
+  // and subscribes to a paid plan gets ONE nudge (email + in-app banner).
+  try {
+    const wasTrialing = existingData?.subscription?.status === 'trialing';
+    const usedDeposits =
+      wasTrialing &&
+      status === 'active' && // store trial periods don't end the free access
+      existingData?.stripeConnectStatus === 'active' &&
+      !existingData?.depositsAddonActive &&
+      !existingData?.serenityUpsell?.sentAt;
+    if (usedDeposits) {
+      const to =
+        event.subscriber_attributes?.['$email']?.value ??
+        existingData?.email ??
+        existingData?.contactEmail ??
+        null;
+      if (to) {
+        await sendSerenityTrialUpsellEmail({
+          to,
+          businessName: existingData?.businessName || 'Professionnel',
+        });
+      }
+      await providerRef.update({
+        serenityUpsell: {
+          sentAt: FieldValue.serverTimestamp(),
+          reason: 'trial_converted',
+          emailed: !!to,
+        },
+      });
+      console.log(`[RC-WEBHOOK/SERENITY-UPSELL] sent to ${providerId} (emailed=${!!to})`);
+    }
+  } catch (upsellErr) {
+    console.error('[RC-WEBHOOK/SERENITY-UPSELL] error (non-blocking):', upsellErr);
   }
 }
 

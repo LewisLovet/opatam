@@ -59,6 +59,7 @@ import {
   emptyServiceSelections,
   serviceHasChoices,
   resolveDeposit,
+  hasDepositAccess,
 } from '@booking-app/shared';
 import type { Service, Member, Location, ProviderClient, ServiceSelections } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
@@ -603,7 +604,7 @@ export default function CreateBookingScreen() {
   // no deposit applies or the deposits add-on isn't active. The server
   // recomputes the authoritative amount at creation time.
   const resolvedDeposit = useMemo(() => {
-    if (!provider?.depositsAddonActive || !selectedService) return null;
+    if (!provider || !hasDepositAccess(provider) || !selectedService) return null;
     return resolveDeposit(
       { price: totalServicePrice, deposit: selectedService.deposit },
       { depositDefault: provider.settings?.depositDefault },

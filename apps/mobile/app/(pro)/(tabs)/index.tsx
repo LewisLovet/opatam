@@ -5,7 +5,7 @@
  */
 
 import { analyticsService, bookingService, providerService } from '@booking-app/firebase';
-import { deltaPercent, type PageViewStats, type TrendPoint } from '@booking-app/shared';
+import { deltaPercent, hasDepositAccess, type PageViewStats, type TrendPoint } from '@booking-app/shared';
 import { Sparkline } from '../../../components/stats/Sparkline';
 import { WelcomeOverlay } from '../../../components/WelcomeOverlay';
 import { Ionicons } from '@expo/vector-icons';
@@ -735,7 +735,7 @@ export default function ProDashboardScreen() {
   // Sérénité add-on is active. The hook itself is harmless to call
   // either way (just returns zeros) but skipping the fetch entirely
   // when the addon is off saves a Firestore round-trip.
-  const depositsAddonActive = !!provider?.depositsAddonActive;
+  const depositsAddonActive = hasDepositAccess(provider);
   const depositsSummary = useDepositsSummary(
     depositsAddonActive ? providerId ?? undefined : undefined,
   );
