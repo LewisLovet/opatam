@@ -17,6 +17,7 @@ import { Text } from '../../Text';
 import { Input } from '../../Input';
 import { VariationsEditor } from './VariationsEditor';
 import { InfoFieldsEditor } from './InfoFieldsEditor';
+import { animateChange } from './animateChange';
 
 export interface OptionsEditorProps {
   options: ServiceOption[];
@@ -33,10 +34,12 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
   };
 
   const removeOption = (oi: number) => {
+    animateChange();
     onChange(options.filter((_, i) => i !== oi));
   };
 
   const addOption = () => {
+    animateChange();
     onChange([...options, newOption()]);
   };
 

@@ -13,6 +13,7 @@ import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Input } from '../../Input';
 import { Switch } from '../../Switch';
+import { animateChange } from './animateChange';
 
 export interface InfoFieldsEditorProps {
   fields: ServiceInfoField[];
@@ -33,10 +34,12 @@ export function InfoFieldsEditor({ fields, onChange }: InfoFieldsEditorProps) {
   };
 
   const removeField = (fi: number) => {
+    animateChange();
     onChange(fields.filter((_, i) => i !== fi));
   };
 
   const addField = () => {
+    animateChange();
     onChange([...fields, newInfoField()]);
   };
 

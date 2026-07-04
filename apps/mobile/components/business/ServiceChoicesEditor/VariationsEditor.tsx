@@ -18,6 +18,7 @@ import {
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Input } from '../../Input';
+import { animateChange } from './animateChange';
 
 export interface VariationsEditorProps {
   variations: ServiceVariation[];
@@ -32,10 +33,12 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
   };
 
   const removeVariation = (vi: number) => {
+    animateChange();
     onChange(variations.filter((_, i) => i !== vi));
   };
 
   const addVariation = () => {
+    animateChange();
     onChange([...variations, newVariation()]);
   };
 
@@ -56,12 +59,14 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
   };
 
   const removeOption = (vi: number, oi: number) => {
+    animateChange();
     updateVariation(vi, {
       options: variations[vi].options.filter((_, i) => i !== oi),
     });
   };
 
   const addOption = (vi: number) => {
+    animateChange();
     updateVariation(vi, { options: [...variations[vi].options, newVariationOption()] });
   };
 

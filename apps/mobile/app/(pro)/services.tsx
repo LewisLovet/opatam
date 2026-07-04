@@ -4,7 +4,7 @@
  * Services are grouped by category with category CRUD support.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  Animated,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
@@ -45,6 +46,7 @@ import {
   getActiveDiscount,
   buildServiceDiscountPreview,
   resolveExcludedIds,
+  getServiceMinPrice,
   SERVICE_COLORS,
   sanitizeVariations,
   sanitizeOptions,
@@ -428,6 +430,19 @@ export default function ServicesScreen() {
   const [promoDateField, setPromoDateField] = useState<'start' | 'end' | null>(null);
   // Client-view preview overlay (floating "Aperçu" button).
   const [showPreview, setShowPreview] = useState(false);
+  // Gentle permanent "breathing" of the floating preview button so the pro
+  // always knows the client preview lives there (mirrors the web editor).
+  const previewBreath = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(previewBreath, { toValue: 1, duration: 1400, useNativeDriver: true }),
+        Animated.timing(previewBreath, { toValue: 0, duration: 1400, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [previewBreath]);
   // Service whose "Déplacer vers une catégorie" sheet is open (null = closed).
   const [moveTarget, setMoveTarget] = useState<WithId<Service> | null>(null);
 
@@ -1509,44 +1524,73 @@ export default function ServicesScreen() {
                   </ScrollView>
                 </View>
 
-                {/* Duration — single minutes input with a live hour preview */}
-                <View>
-                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Durée</Text>
-                  <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-                    <View style={{ width: 110 }}>
-                      <Input
-                        label=""
-                        placeholder="60"
-                        value={(() => {
-                          const total = hoursMinutesToMinutes(form.durationHours, form.durationMinutes);
-                          return total ? String(total) : '';
-                        })()}
-                        onChangeText={(t) => {
-                          const total = parseInt(t.replace(/[^0-9]/g, ''), 10) || 0;
-                          const { hours, minutes } = minutesToHoursMinutes(total);
-                          setForm((p) => ({ ...p, durationHours: hours, durationMinutes: minutes }));
-                        }}
-                        keyboardType="number-pad"
-                      />
-                    </View>
-                    <Text variant="bodySmall" color="textSecondary">min</Text>
-                    {hoursMinutesToMinutes(form.durationHours, form.durationMinutes) >= 60 && (
-                      <View style={{ paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.md, backgroundColor: colors.surfaceSecondary }}>
-                        <Text variant="bodySmall" color="textSecondary" style={{ fontWeight: '600' }}>
-                          = {formatDuration(hoursMinutesToMinutes(form.durationHours, form.durationMinutes))}
-                        </Text>
-                      </View>
-                    )}
+                {form.variations.length > 0 ? (
+                  /* With variations, the base price/duration are ignored — hide
+                     them so the pro isn't asked for numbers that have no effect
+                     (mirrors the web editor & onboarding). */
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'flex-start',
+                      gap: spacing.sm,
+                      borderRadius: radius.md,
+                      borderWidth: 1,
+                      borderColor: colors.primaryLight || '#bfdbfe',
+                      backgroundColor: colors.primaryLight ? `${colors.primaryLight}66` : '#eff6ff',
+                      padding: spacing.md,
+                    }}
+                  >
+                    <Ionicons name="layers-outline" size={18} color={colors.primary} style={{ marginTop: 1 }} />
+                    <Text variant="caption" style={{ flex: 1, color: colors.text }}>
+                      Prix et durée définis par les variations ci-dessous — à partir de{' '}
+                      <Text variant="caption" style={{ fontWeight: '700', color: colors.primary }}>
+                        {euroCents(getServiceMinPrice({ price: 0, variations: sanitizeVariations(form.variations) }))}
+                      </Text>
+                      . Supprimez toutes les variations pour revenir à un prix fixe.
+                    </Text>
                   </View>
-                </View>
+                ) : (
+                  <>
+                    {/* Duration — single minutes input with a live hour preview */}
+                    <View>
+                      <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Durée</Text>
+                      <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                        <View style={{ width: 110 }}>
+                          <Input
+                            label=""
+                            placeholder="60"
+                            value={(() => {
+                              const total = hoursMinutesToMinutes(form.durationHours, form.durationMinutes);
+                              return total ? String(total) : '';
+                            })()}
+                            onChangeText={(t) => {
+                              const total = parseInt(t.replace(/[^0-9]/g, ''), 10) || 0;
+                              const { hours, minutes } = minutesToHoursMinutes(total);
+                              setForm((p) => ({ ...p, durationHours: hours, durationMinutes: minutes }));
+                            }}
+                            keyboardType="number-pad"
+                          />
+                        </View>
+                        <Text variant="bodySmall" color="textSecondary">min</Text>
+                        {hoursMinutesToMinutes(form.durationHours, form.durationMinutes) >= 60 && (
+                          <View style={{ paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.md, backgroundColor: colors.surfaceSecondary }}>
+                            <Text variant="bodySmall" color="textSecondary" style={{ fontWeight: '600' }}>
+                              = {formatDuration(hoursMinutesToMinutes(form.durationHours, form.durationMinutes))}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
 
-                <Input
-                  label="Prix (€)"
-                  placeholder="0"
-                  value={form.price}
-                  onChangeText={(t) => setForm((p) => ({ ...p, price: t }))}
-                  keyboardType="decimal-pad"
-                />
+                    <Input
+                      label="Prix (€)"
+                      placeholder="0"
+                      value={form.price}
+                      onChangeText={(t) => setForm((p) => ({ ...p, price: t }))}
+                      keyboardType="decimal-pad"
+                    />
+                  </>
+                )}
 
                 <Input
                   label="Description (optionnel)"
@@ -1949,13 +1993,33 @@ export default function ServicesScreen() {
               </View>
             </ScrollView>
 
-            {/* Floating "client preview" button — above the sticky footer */}
-            <Pressable
-              onPress={() => setShowPreview(true)}
-              style={({ pressed }) => ({
+            {/* Floating "client preview" button — above the sticky footer.
+                Breathes permanently (scale + glow) so the pro knows the
+                preview reacts to what they configure. */}
+            <Animated.View
+              style={{
                 position: 'absolute',
                 right: spacing.lg,
                 bottom: insets.bottom + 84,
+                borderRadius: 999,
+                transform: [
+                  {
+                    scale: previewBreath.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.05],
+                    }),
+                  },
+                ],
+                shadowColor: colors.primary,
+                shadowOpacity: 0.55,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 8,
+              }}
+            >
+            <Pressable
+              onPress={() => setShowPreview(true)}
+              style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: spacing.sm,
@@ -1964,11 +2028,6 @@ export default function ServicesScreen() {
                 paddingRight: spacing.md,
                 borderRadius: 999,
                 backgroundColor: colors.primary,
-                shadowColor: '#000',
-                shadowOpacity: 0.25,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 4 },
-                elevation: 6,
                 opacity: pressed ? 0.9 : 1,
               })}
             >
@@ -1993,6 +2052,7 @@ export default function ServicesScreen() {
                 </Text>
               </View>
             </Pressable>
+            </Animated.View>
 
             {/* Save Button */}
             <View style={[styles.stickyFooter, { padding: spacing.lg, paddingBottom: insets.bottom + spacing.sm, borderTopColor: colors.border }]}>
