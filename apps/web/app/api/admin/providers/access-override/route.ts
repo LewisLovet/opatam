@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { sendCompAccessGrantedEmail } from '@/lib/emails/compAccessGranted';
+import { revalidateProviderPublicPages } from '@/lib/revalidate';
 
 /**
  * Verifies the admin AND their personal action code (bcrypt `adminCodeHash`).
@@ -158,6 +159,10 @@ export async function POST(request: NextRequest) {
     // that guardrail lives in the booking service and is never bypassed.
     if (grantSerenity) grantUpdate.depositsAddonActive = true;
     await ref.update(grantUpdate);
+
+    // La page vient de repasser publique → purge immédiate du cache public
+    // pour ne pas laisser un 404 figé (le filet ISR de 30 s prend le relais).
+    revalidateProviderPublicPages(snap.data()?.slug as string | undefined);
 
     // Notify the provider with a branded email (best-effort, non-blocking).
     try {

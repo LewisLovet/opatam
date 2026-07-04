@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
+import { revalidateProviderPublicPages } from '@/lib/revalidate';
 
 // ---------------------------------------------------------------------------
 // RevenueCat Webhook Handler
@@ -457,12 +458,18 @@ async function handleCancellation(
   };
 
   // If expiration is in the past, the subscription is effectively expired
-  if (event.expiration_at_ms && event.expiration_at_ms < Date.now()) {
+  const nowExpired = Boolean(event.expiration_at_ms && event.expiration_at_ms < Date.now());
+  if (nowExpired) {
     updateData['subscription.status'] = 'cancelled';
     updateData.isPublished = false;
   }
 
   await providerRef.update(updateData);
+
+  // Dépublication effective → purge immédiate du cache public.
+  if (nowExpired) {
+    revalidateProviderPublicPages(providerDoc.data()?.slug as string | undefined);
+  }
 
   console.log(`[RC-WEBHOOK] Provider ${providerId} subscription cancelled (cancelAtPeriodEnd: true)`);
 }
@@ -504,6 +511,9 @@ async function handleExpiration(
     isPublished: false,
     updatedAt: FieldValue.serverTimestamp(),
   });
+
+  // Dépublication effective → purge immédiate du cache public.
+  revalidateProviderPublicPages(providerDoc.data()?.slug as string | undefined);
 
   console.log(`[RC-WEBHOOK] Provider ${providerId} subscription expired — profile unpublished`);
 }

@@ -11,6 +11,7 @@ import type Stripe from 'stripe';
 import { generatePlanChangeEmail } from '@/lib/emails/planChange';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
 import { isAccessOverrideActive } from '@booking-app/shared';
+import { revalidateProviderPublicPages } from '@/lib/revalidate';
 
 // ---------------------------------------------------------------------------
 // Stripe Webhook Handler
@@ -924,6 +925,11 @@ async function handleSubscriptionDeleted(
     update.isPublished = false; // Unpublish the provider profile
   }
   await providerRef.update(update);
+
+  // Dépublication effective → purge immédiate du cache public.
+  if (!overrideActive) {
+    revalidateProviderPublicPages(providerDoc.data()?.slug as string | undefined);
+  }
 
   console.log(
     `[STRIPE-WEBHOOK] Provider ${providerId} subscription deleted${overrideActive ? ' (comped → kept published)' : ' - profile unpublished'}`,

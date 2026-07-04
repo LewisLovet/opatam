@@ -25,6 +25,13 @@ import {
   getDemoMemberAvailabilities,
 } from './demoData';
 
+// Cache court : la page publique doit refléter l'état réel (publication /
+// dépublication, prix, dispos) sous 30 s au maximum. Sans directive, Next rend
+// cette route statiquement et la met — y compris un `notFound()` 404 — dans le
+// Full Route Cache *indéfiniment*. Un provider republié pouvait alors rester
+// « Prestataire introuvable » tant que le cache n'était pas invalidé.
+export const revalidate = 30;
+
 interface MemberNextAvailability {
   memberId: string;
   memberName: string;

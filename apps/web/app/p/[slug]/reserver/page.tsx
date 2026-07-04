@@ -18,6 +18,11 @@ import {
   demoBookingAvailabilities,
 } from '../demoData';
 
+// Cache court : reflète l'état réel (publication, prix, dispos) sous 30 s max.
+// Voir la note dans ../page.tsx — sans ceci, un 404 (provider dépublié) reste
+// figé dans le Full Route Cache après republication.
+export const revalidate = 30;
+
 interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ service?: string }>;
