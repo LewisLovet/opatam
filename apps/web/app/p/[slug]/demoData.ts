@@ -4,7 +4,22 @@
  * Photos: Unsplash (free to use, no attribution required)
  */
 
+import type { ServiceVariation, ServiceOption, ServiceDiscount } from '@booking-app/shared';
+
+/** Optional showcase fields present on some demo services (promo / choices). */
+type DemoExtras = {
+  variations?: ServiceVariation[];
+  options?: ServiceOption[];
+  discount?: ServiceDiscount | null;
+};
+
 const now = new Date().toISOString();
+
+// Rolling promo end date (~10 days out) so the demo always shows an active
+// promotion with a countdown (under the 15-day urgency threshold).
+const promoEndsSoon = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
+  .toISOString()
+  .split('T')[0];
 
 // IDs
 const PROVIDER_ID = 'demo-provider';
@@ -113,6 +128,19 @@ export const demoServices = [
     categoryId: CATEGORY_1_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: null,
+    // Variations (longueur) + promo — visibles dès la 1re prestation (catégorie ouverte).
+    variations: [
+      {
+        id: 'demo-svc-1-var-longueur',
+        name: 'Longueur des cheveux',
+        options: [
+          { id: 'demo-svc-1-len-courts', name: 'Cheveux courts', price: 3500, duration: 45 },
+          { id: 'demo-svc-1-len-milongs', name: 'Mi-longs', price: 4000, duration: 50 },
+          { id: 'demo-svc-1-len-longs', name: 'Cheveux longs', price: 4500, duration: 60 },
+        ],
+      },
+    ],
+    discount: { percent: 10 },
     isActive: true,
     sortOrder: 0,
     createdAt: now,
@@ -128,6 +156,8 @@ export const demoServices = [
     categoryId: CATEGORY_1_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: null,
+    // Promo à durée limitée → compte à rebours, dès la 2e prestation.
+    discount: { percent: 15, endsAt: promoEndsSoon },
     isActive: true,
     sortOrder: 1,
     createdAt: now,
@@ -143,6 +173,38 @@ export const demoServices = [
     categoryId: CATEGORY_2_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: [MEMBER_1_ID, MEMBER_2_ID],
+    // Variations (le prix dépend de la longueur) + options + promo « par-ligne » :
+    // la réduction s'applique à tout sauf au « Brushing final » (excludedIds).
+    variations: [
+      {
+        id: 'demo-svc-3-var-longueur',
+        name: 'Longueur des cheveux',
+        options: [
+          { id: 'demo-svc-3-len-courts', name: 'Cheveux courts', price: 5500, duration: 60 },
+          { id: 'demo-svc-3-len-milongs', name: 'Mi-longs', price: 6500, duration: 90 },
+          { id: 'demo-svc-3-len-longs', name: 'Cheveux longs', price: 7500, duration: 120 },
+        ],
+      },
+    ],
+    options: [
+      {
+        id: 'demo-svc-3-opt-soin',
+        name: 'Soin après-coloration',
+        price: 1500,
+        duration: 15,
+        nestedVariations: [],
+        nestedInfoFields: [],
+      },
+      {
+        id: 'demo-svc-3-opt-brushing',
+        name: 'Brushing final',
+        price: 2000,
+        duration: 20,
+        nestedVariations: [],
+        nestedInfoFields: [],
+      },
+    ],
+    discount: { percent: 15, excludedIds: ['demo-svc-3-opt-brushing'] },
     isActive: true,
     sortOrder: 2,
     createdAt: now,
@@ -158,6 +220,8 @@ export const demoServices = [
     categoryId: CATEGORY_2_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: [MEMBER_1_ID, MEMBER_2_ID],
+    // Promo à durée limitée → affiche le compte à rebours (fin ~10 jours).
+    discount: { percent: 20, endsAt: promoEndsSoon },
     isActive: true,
     sortOrder: 3,
     createdAt: now,
@@ -203,6 +267,18 @@ export const demoServices = [
     categoryId: CATEGORY_3_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: [MEMBER_3_ID],
+    // Variations : mains, pieds ou les deux.
+    variations: [
+      {
+        id: 'demo-svc-7-var-zone',
+        name: 'Zone',
+        options: [
+          { id: 'demo-svc-7-zone-mains', name: 'Mains', price: 3800, duration: 60 },
+          { id: 'demo-svc-7-zone-pieds', name: 'Pieds', price: 4200, duration: 60 },
+          { id: 'demo-svc-7-zone-duo', name: 'Mains + Pieds', price: 6500, duration: 90 },
+        ],
+      },
+    ],
     isActive: true,
     sortOrder: 6,
     createdAt: now,
@@ -248,6 +324,8 @@ export const demoServices = [
     categoryId: CATEGORY_4_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: [MEMBER_2_ID, MEMBER_3_ID],
+    // Promo permanente (sans date de fin) → pas de compte à rebours.
+    discount: { percent: 15 },
     isActive: true,
     sortOrder: 9,
     createdAt: now,
@@ -293,6 +371,17 @@ export const demoServices = [
     categoryId: CATEGORY_5_ID,
     locationIds: [LOCATION_1_ID],
     memberIds: [MEMBER_3_ID],
+    // Variations : demi ou jambes complètes.
+    variations: [
+      {
+        id: 'demo-svc-13-var-zone',
+        name: 'Zone',
+        options: [
+          { id: 'demo-svc-13-zone-demi', name: 'Demi-jambes', price: 2200, duration: 30 },
+          { id: 'demo-svc-13-zone-completes', name: 'Jambes complètes', price: 3500, duration: 45 },
+        ],
+      },
+    ],
     isActive: true,
     sortOrder: 12,
     createdAt: now,
@@ -557,6 +646,10 @@ export const demoBookingServices = demoServices.map((s) => ({
   categoryId: s.categoryId,
   locationIds: s.locationIds,
   memberIds: s.memberIds,
+  // Carry the showcase novelties into the booking flow (variations, options, promo).
+  variations: (s as DemoExtras).variations,
+  options: (s as DemoExtras).options,
+  discount: (s as DemoExtras).discount,
 }));
 
 export const demoBookingLocations = demoLocations.map((l) => ({
