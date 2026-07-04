@@ -19,6 +19,7 @@ import {
   Phone,
   Plus,
   X,
+  Layers,
 } from 'lucide-react';
 import { Button, Input, Checkbox, GoogleAddressAutocomplete, type GoogleAddressSuggestion, CountrySelect } from '@/components/ui';
 import { StepIndicator } from '@/components/common/StepIndicator';
@@ -31,7 +32,7 @@ import {
   schedulingService,
   memberService,
 } from '@booking-app/firebase';
-import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration } from '@booking-app/shared';
+import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, formatPrice } from '@booking-app/shared';
 import type { ServiceVariation, ServiceOption, ServiceInfoField } from '@booking-app/shared';
 import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
@@ -1015,43 +1016,60 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <div className="grid gap-3 grid-cols-2">
-            <Input
-              label="Durée (min)"
-              placeholder="60"
-              numericValue={svc.duration ?? 0}
-              onNumericChange={(d) => updateService(index, 'duration', Math.round(d))}
-              min={5}
-              max={480}
-            />
-            <Input
-              label="Prix (€)"
-              placeholder="0"
-              numericValue={svc.price ?? 0}
-              onNumericChange={(p) => updateService(index, 'price', p)}
-              decimal
-              min={0}
-            />
-          </div>
+          {(svc.variations?.length ?? 0) > 0 ? (
+            /* With variations, the base price/duration are ignored — hide them
+               so the pro isn't asked for a number that has no effect. */
+            <div className="flex items-start gap-2 rounded-lg border border-primary-200 dark:border-primary-900/40 bg-primary-50/60 dark:bg-primary-900/15 px-3 py-2.5">
+              <Layers className="w-4 h-4 mt-0.5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+              <p className="text-xs text-primary-800 dark:text-primary-200">
+                Prix et durée définis par les variations ci-dessous — à partir de{' '}
+                <strong>
+                  {formatPrice(getServiceMinPrice({ price: 0, variations: svc.variations }))}
+                </strong>
+                . Supprimez toutes les variations pour revenir à un prix fixe.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-3 grid-cols-2">
+                <Input
+                  label="Durée (min)"
+                  placeholder="60"
+                  numericValue={svc.duration ?? 0}
+                  onNumericChange={(d) => updateService(index, 'duration', Math.round(d))}
+                  min={5}
+                  max={480}
+                />
+                <Input
+                  label="Prix (€)"
+                  placeholder="0"
+                  numericValue={svc.price ?? 0}
+                  onNumericChange={(p) => updateService(index, 'price', p)}
+                  decimal
+                  min={0}
+                />
+              </div>
 
-          {/* Price options — fixed price or free. Variable pricing is handled
-              by variations below (the price range was removed). */}
-          <div className="flex items-center gap-4 flex-wrap">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!svc.price || svc.price === 0}
-                onChange={(e) => updateService(index, 'price', e.target.checked ? 0 : '')}
-                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span className={`text-sm ${!svc.price || svc.price === 0 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
-                RDV gratuit
-              </span>
-            </label>
-            <span className="text-xs text-gray-400">
-              Prix variable ? Ajoutez des variations ci-dessous.
-            </span>
-          </div>
+              {/* Price options — fixed price or free. Variable pricing is handled
+                  by variations below (the price range was removed). */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!svc.price || svc.price === 0}
+                    onChange={(e) => updateService(index, 'price', e.target.checked ? 0 : '')}
+                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className={`text-sm ${!svc.price || svc.price === 0 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
+                    RDV gratuit
+                  </span>
+                </label>
+                <span className="text-xs text-gray-400">
+                  Prix variable ? Ajoutez des variations ci-dessous.
+                </span>
+              </div>
+            </>
+          )}
 
           {/* Description */}
           <textarea
@@ -1066,7 +1084,7 @@ export default function RegisterPage() {
           <details className="mt-3 group">
             <summary className="cursor-pointer select-none text-sm font-medium text-primary-600 dark:text-primary-400 list-none flex items-center gap-1.5">
               <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
-              Variations &amp; options (optionnel)
+              Variations &amp; options — prix variable (optionnel)
             </summary>
             <div className="mt-3 space-y-5 pl-1">
               <div>

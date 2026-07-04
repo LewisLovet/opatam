@@ -5,6 +5,7 @@ import type { ServiceVariation, ServiceVariationOption } from '@booking-app/shar
 import { NumberField } from '@/components/ui';
 import { newVariation, newVariationOption, moveItem } from './choiceHelpers';
 import { ReorderControls } from './ReorderControls';
+import { useFreshIds } from './useFreshIds';
 
 interface VariationsListEditorProps {
   variations: ServiceVariation[];
@@ -31,19 +32,23 @@ export function VariationsListEditor({
 
   const addVariation = () => onChange([...variations, newVariation()]);
 
+  // Freshly added variations pop in so the update is impossible to miss.
+  const isFresh = useFreshIds(variations.map((v) => v.id));
+
   return (
     <div className="space-y-3">
       {variations.map((variation, index) => (
-        <VariationCard
-          key={variation.id}
-          variation={variation}
-          nested={nested}
-          index={index}
-          count={variations.length}
-          onMove={(dir) => onChange(moveItem(variations, index, dir))}
-          onChange={(patch) => updateVariation(variation.id, patch)}
-          onRemove={() => removeVariation(variation.id)}
-        />
+        <div key={variation.id} className={isFresh(variation.id) ? 'animate-editor-pop-in' : undefined}>
+          <VariationCard
+            variation={variation}
+            nested={nested}
+            index={index}
+            count={variations.length}
+            onMove={(dir) => onChange(moveItem(variations, index, dir))}
+            onChange={(patch) => updateVariation(variation.id, patch)}
+            onRemove={() => removeVariation(variation.id)}
+          />
+        </div>
       ))}
 
       <button

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Eye, RotateCcw, X } from 'lucide-react';
 import {
   computeServiceTotal,
@@ -35,6 +35,26 @@ export function ServicePreview({
     emptyServiceSelections(),
   );
 
+  // Flash a primary ring when the STRUCTURE of the prestation changes (a
+  // variation/option/info added or removed) so the pro's eye is drawn to the
+  // preview updating. Counts only — flashing on every keystroke would be noise.
+  const configSignature = [
+    data.variations.length,
+    data.variations.reduce((n, v) => n + v.options.length, 0),
+    data.options.length,
+    data.infoFields.length,
+  ].join('/');
+  const [flash, setFlash] = useState(false);
+  const prevSignature = useRef(configSignature);
+  useEffect(() => {
+    if (prevSignature.current !== configSignature) {
+      prevSignature.current = configSignature;
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [configSignature]);
+
   const total = computeServiceTotal(
     {
       price: data.price,
@@ -68,11 +88,11 @@ export function ServicePreview({
 
   return (
     <div
-      className={
+      className={`${
         embedded
           ? 'flex flex-col max-h-[85vh] bg-white dark:bg-gray-800'
           : 'rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden'
-      }
+      } ${flash ? 'animate-editor-flash-ring' : ''}`}
     >
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
         <Eye className="w-4 h-4 text-primary-600 dark:text-primary-400" />

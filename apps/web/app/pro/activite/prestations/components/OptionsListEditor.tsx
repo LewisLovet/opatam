@@ -5,6 +5,7 @@ import type { ServiceOption } from '@booking-app/shared';
 import { NumberField } from '@/components/ui';
 import { newOption, moveItem } from './choiceHelpers';
 import { ReorderControls } from './ReorderControls';
+import { useFreshIds } from './useFreshIds';
 import { VariationsListEditor } from './VariationsListEditor';
 import { InfoFieldsListEditor } from './InfoFieldsListEditor';
 
@@ -26,18 +27,22 @@ export function OptionsListEditor({ options, onChange }: OptionsListEditorProps)
 
   const addOption = () => onChange([...options, newOption()]);
 
+  // Freshly added options pop in so the update is impossible to miss.
+  const isFresh = useFreshIds(options.map((o) => o.id));
+
   return (
     <div className="space-y-3">
       {options.map((option, index) => (
-        <OptionCard
-          key={option.id}
-          option={option}
-          index={index}
-          count={options.length}
-          onMove={(dir) => onChange(moveItem(options, index, dir))}
-          onChange={(patch) => updateOption(option.id, patch)}
-          onRemove={() => removeOption(option.id)}
-        />
+        <div key={option.id} className={isFresh(option.id) ? 'animate-editor-pop-in' : undefined}>
+          <OptionCard
+            option={option}
+            index={index}
+            count={options.length}
+            onMove={(dir) => onChange(moveItem(options, index, dir))}
+            onChange={(patch) => updateOption(option.id, patch)}
+            onRemove={() => removeOption(option.id)}
+          />
+        </div>
       ))}
 
       <button

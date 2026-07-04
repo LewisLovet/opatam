@@ -82,6 +82,26 @@ export function ServiceEditor({
   // Mobile-only: the preview lives in a modal instead of a side pane.
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
+  // Mobile-only: pulse the floating "Voir l'aperçu" button when the structure
+  // changes (variation/option/info added or removed) — the preview itself is
+  // hidden behind the modal there, so the button is what draws the eye.
+  const configSignature = [
+    formData.variations.length,
+    formData.variations.reduce((n, v) => n + v.options.length, 0),
+    formData.options.length,
+    formData.infoFields.length,
+  ].join('/');
+  const [previewPulse, setPreviewPulse] = useState(false);
+  const prevSignatureRef = useRef(configSignature);
+  useEffect(() => {
+    if (prevSignatureRef.current !== configSignature) {
+      prevSignatureRef.current = configSignature;
+      setPreviewPulse(true);
+      const t = setTimeout(() => setPreviewPulse(false), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [configSignature]);
+
   // Snapshot of the opening state — the dirty guard compares against it.
   const initialSnapshotRef = useRef<string>(JSON.stringify(formData));
   const isDirty = JSON.stringify(formData) !== initialSnapshotRef.current;
@@ -326,7 +346,9 @@ export function ServiceEditor({
       <button
         type="button"
         onClick={() => setShowPreviewModal(true)}
-        className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary-600 text-white text-sm font-medium shadow-lg shadow-primary-600/30 hover:bg-primary-700 transition-colors"
+        className={`lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary-600 text-white text-sm font-medium shadow-lg shadow-primary-600/30 hover:bg-primary-700 transition-colors ${
+          previewPulse ? 'animate-editor-flash-ring' : ''
+        }`}
       >
         <Eye className="w-4 h-4" />
         Voir l&apos;aperçu

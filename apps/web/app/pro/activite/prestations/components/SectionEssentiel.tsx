@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Input, Textarea, ConfirmDialog } from '@/components/ui';
-import { Sparkles, Layers } from 'lucide-react';
+import { ClipboardList, Layers } from 'lucide-react';
 import { EditorSection } from './EditorSection';
 import { ServicePhotoPicker } from './ServicePhotoPicker';
 import { newVariation } from './choiceHelpers';
@@ -64,11 +64,17 @@ export function SectionEssentiel({
   const selectMode = (mode: PriceMode) => {
     if (mode === activeMode) return;
     if (mode === 'variations') {
-      // Seed one empty variation to guide the pro to the builder below.
+      // Shortcut: seed one empty variation and bring the pro to the builder
+      // below (the section force-opens as soon as a variation exists).
       update({
         variations: data.variations.length ? data.variations : [newVariation()],
         priceMax: null,
       });
+      setTimeout(() => {
+        document
+          .getElementById('section-variations')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
       return;
     }
     // Switching to a simple mode clears variations — confirm if any exist.
@@ -80,7 +86,7 @@ export function SectionEssentiel({
     <EditorSection
       title="Essentiel"
       description="Les informations indispensables pour publier la prestation."
-      icon={<Sparkles className="w-5 h-5" />}
+      icon={<ClipboardList className="w-5 h-5" />}
       collapsible={false}
     >
       <Input

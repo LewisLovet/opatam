@@ -386,3 +386,25 @@ textarea {
   animation: hero-video-zoom 24s ease-in-out infinite alternate;
   will-change: transform;
 }
+
+/* ── Prestation editor feedback ──────────────────────────────────────
+   Draws the eye when the config changes: a freshly added variation /
+   option card pops in, and the live client preview flashes a primary
+   ring so the pro notices it updated. Colors use the RGB-channel
+   custom properties (see --color-primary-*). */
+@keyframes editor-pop-in {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.98); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+.animate-editor-pop-in {
+  animation: editor-pop-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes editor-flash-ring {
+  0%   { box-shadow: 0 0 0 3px rgb(var(--color-primary-400) / 0.65); }
+  100% { box-shadow: 0 0 0 3px rgb(var(--color-primary-400) / 0); }
+}
+.animate-editor-flash-ring {
+  animation: editor-flash-ring 1.1s ease-out both;
+}
