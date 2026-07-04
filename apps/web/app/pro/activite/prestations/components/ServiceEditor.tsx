@@ -346,7 +346,7 @@ export function ServiceEditor({
       <button
         type="button"
         onClick={() => setShowPreviewModal(true)}
-        className={`lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary-600 text-white text-sm font-medium shadow-lg shadow-primary-600/30 hover:bg-primary-700 transition-colors ${
+        className={`lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors animate-editor-preview-breathe ${
           previewPulse ? 'animate-editor-flash-ring' : ''
         }`}
       >
