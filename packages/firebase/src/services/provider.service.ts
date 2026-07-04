@@ -162,7 +162,10 @@ export class ProviderService {
 
     // If business name changed, update slug and search tokens
     if (validated.businessName && validated.businessName !== provider.businessName) {
-      const newSlug = await this.generateUniqueSlug(validated.businessName);
+      // Exclure le prestataire lui-même : sans ça, `generateUniqueSlug` voit son
+      // propre slug actuel comme une collision et ajoute un `-1` inutile
+      // (orphelinant l'ancienne URL partagée / indexée).
+      const newSlug = await this.generateUniqueSlug(validated.businessName, providerId);
       const searchTokens = generateSearchTokens(validated.businessName);
       await providerRepository.update(providerId, { ...validated, slug: newSlug, searchTokens } as Parameters<typeof providerRepository.update>[1]);
     } else {
@@ -542,7 +545,10 @@ export class ProviderService {
   /**
    * Generate a unique slug from business name
    */
-  private async generateUniqueSlug(businessName: string): Promise<string> {
+  private async generateUniqueSlug(
+    businessName: string,
+    excludeId?: string,
+  ): Promise<string> {
     const baseSlug = businessName
       .toLowerCase()
       .normalize('NFD')
@@ -553,7 +559,9 @@ export class ProviderService {
     let slug = baseSlug;
     let counter = 1;
 
-    while (!(await providerRepository.isSlugAvailable(slug))) {
+    // `excludeId` : lors d'une mise \u00e0 jour, le prestataire poss\u00e8de d\u00e9j\u00e0 un slug ;
+    // il ne doit pas \u00eatre consid\u00e9r\u00e9 comme une collision avec lui-m\u00eame.
+    while (!(await providerRepository.isSlugAvailable(slug, excludeId))) {
       slug = `${baseSlug}-${counter}`;
       counter++;
     }
