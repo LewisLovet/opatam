@@ -340,7 +340,9 @@
       "badge": "Tutorials",
       "title": "Learn to use Opatam in a few minutes",
       "subtitle": "Short videos to get you up to speed with the platform and make the most of every feature.",
-      "seeAll": "See all tutorials"
+      "seeAll": "See all tutorials",
+      "carouselAria": "Tutorial selection",
+      "carouselItemAria": "Tutorial {index} of {total}"
     }
   }
 }

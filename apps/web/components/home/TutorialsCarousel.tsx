@@ -22,6 +22,7 @@
  *    no auto-advance. Same intent as the rest of the landing.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   ArticleCard,
   type ArticleCardData,
@@ -35,6 +36,7 @@ const ADVANCE_INTERVAL_MS = 4000;
 const RESUME_AFTER_INTERACTION_MS = 6000;
 
 export function TutorialsCarousel({ tutorials }: Props) {
+  const t = useTranslations('home.tutorials');
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   // `paused` is bumped to a fresh timestamp on every interaction;
@@ -132,13 +134,13 @@ export function TutorialsCarousel({ tutorials }: Props) {
         onPointerDown={bumpPause}
         className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain px-5 pb-2 gap-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {tutorials.map((t) => (
+        {tutorials.map((tut) => (
           <div
-            key={t.slug}
+            key={tut.slug}
             data-carousel-card
             className="snap-center shrink-0 basis-[82%]"
           >
-            <ArticleCard article={t} />
+            <ArticleCard article={tut} />
           </div>
         ))}
       </div>
@@ -148,17 +150,17 @@ export function TutorialsCarousel({ tutorials }: Props) {
       <div
         className="mt-6 flex items-center justify-center gap-2"
         role="tablist"
-        aria-label="Sélection du tutoriel"
+        aria-label={t('carouselAria')}
       >
-        {tutorials.map((t, i) => {
+        {tutorials.map((tut, i) => {
           const active = i === activeIndex;
           return (
             <button
-              key={t.slug}
+              key={tut.slug}
               type="button"
               role="tab"
               aria-current={active ? 'true' : undefined}
-              aria-label={`Tutoriel ${i + 1} sur ${tutorials.length}`}
+              aria-label={t('carouselItemAria', { index: i + 1, total: tutorials.length })}
               onClick={() => {
                 bumpPause();
                 setActiveIndex(i);
