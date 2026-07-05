@@ -2151,3 +2151,128 @@ export async function sendReviewRequestEmail(
     return { success: false, error: String(error) };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Sérénité — Trial ending warning (J-3)
+// ---------------------------------------------------------------------------
+
+export interface SerenityTrialEndingEmailData {
+  providerEmail: string;
+  businessName: string;
+  /** Base trial end date — deposits stop working past it without Sérénité. */
+  trialEndsAt: Date;
+}
+
+/**
+ * Warns a trial provider ~3 days before their trial ends that the deposits
+ * they are using (included for free during the trial) will STOP being
+ * collected unless they subscribe to the Sérénité add-on after converting.
+ * Sent once per provider (guarded by `serenityTrialWarnAt` on the doc).
+ */
+export async function sendSerenityTrialEndingEmail(
+  data: SerenityTrialEndingEmailData,
+): Promise<EmailResult> {
+  console.log('[EMAIL] Sending Sérénité trial-ending warning to:', data.providerEmail);
+
+  if (!isValidEmail(data.providerEmail)) {
+    console.log('[EMAIL] Invalid email format');
+    return { success: false, error: 'Invalid email format' };
+  }
+
+  const endDateFr = formatDateFr(data.trialEndsAt);
+  const ctaUrl = `${appConfig.url}/pro/parametres?tab=paiements`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" style="max-width: 480px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <tr>
+                <td style="padding: 32px 32px 24px; text-align: center;">
+                  <img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height: 48px; max-width: 200px;" />
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0 32px 24px;">
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.businessName},</p>
+                  <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #3f3f46;">
+                    Votre période d'essai se termine le <strong>${endDateFr}</strong>.
+                    Pendant l'essai, les <strong>acomptes</strong> sont inclus gratuitement —
+                    et vous les utilisez pour sécuriser vos réservations. 👏
+                  </p>
+                  <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px 18px; margin: 0 0 20px;">
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #92400e;">
+                      Après cette date, vos réservations seront confirmées
+                      <strong>sans acompte</strong>, sauf si vous activez l'abonnement
+                      <strong>Sérénité</strong> (5&nbsp;€/mois) en plus de votre plan.
+                      Votre configuration est conservée et se réactivera aussitôt.
+                    </p>
+                  </div>
+                  <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">
+                    Pour continuer sans interruption&nbsp;: souscrivez votre plan à la fin
+                    de l'essai, puis activez Sérénité en un clic.
+                  </p>
+                  <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${ctaUrl}" style="display: inline-block; padding: 14px 32px; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; border-radius: 8px;">Voir mes options d'acomptes</a></td></tr></table>
+                  <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center;">Sans engagement, annulable à tout moment.</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
+                  <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #a1a1aa; text-align: center;">
+                    Une question&nbsp;? Répondez simplement à cet email.<br />
+                    L'équipe ${appConfig.name}
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Bonjour ${data.businessName},
+
+Votre période d'essai se termine le ${endDateFr}.
+Pendant l'essai, les acomptes sont inclus gratuitement — et vous les utilisez pour sécuriser vos réservations.
+
+Après cette date, vos réservations seront confirmées SANS acompte, sauf si vous activez l'abonnement Sérénité (5 €/mois) en plus de votre plan. Votre configuration est conservée et se réactivera aussitôt.
+
+Pour continuer sans interruption : souscrivez votre plan à la fin de l'essai, puis activez Sérénité en un clic :
+${ctaUrl}
+
+Sans engagement, annulable à tout moment.
+
+L'équipe ${appConfig.name}
+  `.trim();
+
+  try {
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.providerEmail,
+      subject: "Vos acomptes s'arrêtent à la fin de votre essai — continuez avec Sérénité",
+      html,
+      text,
+    });
+
+    if (error) {
+      console.error('[EMAIL] Resend error:', error);
+      return { success: false, error: String(error) };
+    }
+
+    console.log('[EMAIL] Sérénité trial-ending warning sent successfully');
+    return { success: true };
+  } catch (err) {
+    console.error('[EMAIL] Exception sending Sérénité trial-ending warning:', err);
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}

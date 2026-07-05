@@ -164,6 +164,12 @@ export interface Provider {
     reason?: string;
     emailed?: boolean;
   } | null;
+  /**
+   * J-3 pre-warning: stamped by the sendSerenityTrialWarnings cron when the
+   * "your deposits stop with the trial" email goes out (or is skipped for
+   * lack of an address). Non-null = never warn again.
+   */
+  serenityTrialWarnAt?: Date | null;
   // Analytics (pageViews.today incremented in real-time, rest updated nightly)
   stats?: {
     pageViews: PageViewStats;

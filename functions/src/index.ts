@@ -40,6 +40,7 @@ export { sendReviewRequests } from './scheduled/sendReviewRequests';
 export { sendDailyAgendaSummary } from './scheduled/sendDailyAgendaSummary';
 export { aggregatePageViews } from './scheduled/aggregatePageViews';
 export { checkExpiredTrials } from './scheduled/checkExpiredTrials';
+export { sendSerenityTrialWarnings } from './scheduled/sendSerenityTrialWarnings';
 export { sendSubscriptionReminders } from './scheduled/sendSubscriptionReminders';
 export { sendAffiliateOnboardingReminders } from './scheduled/sendAffiliateOnboardingReminders';
 export { purgePendingPaymentBookings } from './scheduled/purgePendingPaymentBookings';
@@ -55,6 +56,7 @@ export { recomputeDashboardStatsNow } from './callable/recomputeDashboardStatsNo
 export { testSubscriptionReminders } from './callable/testSubscriptionReminders';
 export { testReviewNotification } from './callable/testReviewNotification';
 export { testAffiliateOnboardingReminder } from './callable/testAffiliateOnboardingReminder';
+export { testSerenityTrialWarning } from './callable/testSerenityTrialWarning';
 
 // ─── Test/Dev callable functions (emulator only) ─────────────────────────────
 // These are only exported when running in the Firebase emulator.
