@@ -20,33 +20,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { UserPlus, Globe, CalendarCheck } from 'lucide-react';
 import { APP_CONFIG } from '@booking-app/shared';
 
-const STEPS = [
-  {
-    icon: UserPlus,
-    title: 'Créez votre profil',
-    description:
-      'Renseignez votre activité, vos prestations et vos horaires. Notre assistant vous guide pas à pas.',
-  },
-  {
-    icon: Globe,
-    title: 'Publiez votre vitrine',
-    description:
-      'Votre page professionnelle est en ligne en un clic. Partagez le lien à vos clients par SMS, email ou réseaux sociaux.',
-  },
-  {
-    icon: CalendarCheck,
-    title: 'Recevez des réservations',
-    description:
-      'Vos clients réservent en autonomie, 24h/24. Vous recevez une notification à chaque nouveau rendez-vous.',
-  },
-] as const;
+// Text lives in packages/i18n (home.howItWorks); only icons stay in code.
+const STEP_ICONS = [UserPlus, Globe, CalendarCheck];
 
 const CYCLE_INTERVAL_MS = 3500;
 
 export function HowItWorksAnimated() {
+  const t = useTranslations('home.howItWorks');
+  const stepTexts = t.raw('steps') as { title: string; description: string }[];
+  const STEPS = stepTexts.map((text, i) => ({ ...text, icon: STEP_ICONS[i] }));
+
   const sectionRef = useRef<HTMLElement>(null);
   const [hasEntered, setHasEntered] = useState(false);
   const [active, setActive] = useState(0);
@@ -101,11 +88,10 @@ export function HowItWorksAnimated() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-            Prêt en 5 minutes, en 3 étapes
+            {t('title')}
           </h2>
           <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-            Pas de formation, pas de technicien à appeler. Vous créez votre page et
-            recevez vos premières réservations aujourd&apos;hui.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -190,10 +176,10 @@ export function HowItWorksAnimated() {
             href="/register"
             className="inline-flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 px-8 py-4 text-lg font-semibold rounded-lg transition-colors"
           >
-            Créer mon profil gratuitement
+            {t('cta')}
           </Link>
           <p className="mt-4 text-sm text-gray-500 dark:text-gray-500">
-            Essai gratuit {APP_CONFIG.trialDays} jours — Aucune carte bancaire requise
+            {t('note', { days: APP_CONFIG.trialDays })}
           </p>
         </div>
       </div>

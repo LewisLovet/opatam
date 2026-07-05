@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, PlayCircle, Sparkles } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { ArrowRight, PlayCircle, Megaphone } from 'lucide-react';
 import {
   ARTICLE_CATEGORY_LABELS,
   isArticleNew,
@@ -49,9 +50,9 @@ interface Props {
   hrefBase?: string;
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, locale: string): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString('fr-FR', {
+  return new Date(iso).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -63,6 +64,8 @@ export function ArticleCard({
   featured = false,
   hrefBase = '/blog',
 }: Props) {
+  const t = useTranslations('blog');
+  const locale = useLocale();
   const staticCover = resolveStaticCover(article);
   const hasVideo = !!article.videoUrl;
   // Falls back to a YouTube auto-thumbnail (HD with hq fallback) when
@@ -104,7 +107,7 @@ export function ArticleCard({
         {hasVideo && (
           <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/70 text-white text-[11px] font-semibold backdrop-blur-sm">
             <PlayCircle className="w-3 h-3" />
-            Vidéo
+            {t('video')}
           </span>
         )}
       </div>
@@ -123,8 +126,8 @@ export function ArticleCard({
           </span>
           {isArticleNew(article.publishedAt) && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-600 text-white text-[10px] font-bold uppercase tracking-wide">
-              <Sparkles className="w-3 h-3" />
-              Nouveau
+              <Megaphone className="w-3 h-3" />
+              {t('new')}
             </span>
           )}
         </div>
@@ -144,10 +147,10 @@ export function ArticleCard({
         </p>
         <div className="mt-auto pt-4 flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
           <span>
-            {article.authorName} · {formatDate(article.publishedAt)}
+            {article.authorName} · {formatDate(article.publishedAt, locale)}
           </span>
           <span className="inline-flex items-center gap-1 text-primary-600 dark:text-primary-400 font-medium group-hover:translate-x-0.5 transition-transform">
-            Lire <ArrowRight className="w-3.5 h-3.5" />
+            {t('read')} <ArrowRight className="w-3.5 h-3.5" />
           </span>
         </div>
       </div>

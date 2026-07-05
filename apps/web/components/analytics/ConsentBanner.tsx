@@ -20,9 +20,11 @@
  * IP anonymisation, so they're allowed without prior consent.
  */
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useConsent } from '@/hooks/useConsent';
 
 export function ConsentBanner() {
+  const t = useTranslations('consent');
   const { status, setConsent } = useConsent();
 
   // Hide once the user has made a decision OR while we're still
@@ -44,18 +46,15 @@ export function ConsentBanner() {
               id="consent-banner-title"
               className="text-base font-semibold text-gray-900 dark:text-white mb-2"
             >
-              Aidez-nous à faire grandir Opatam
+              {t('title')}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-              En acceptant les cookies de mesure, vous nous aidez à
-              savoir ce qui vous a amené ici et à mieux investir dans
-              nos campagnes Instagram et Facebook. Refuser n&apos;a
-              aucun impact sur votre expérience.{' '}
+              {t('body')}{' '}
               <Link
                 href="/legal/confidentialite"
                 className="text-primary-600 dark:text-primary-400 hover:underline"
               >
-                En savoir plus
+                {t('learnMore')}
               </Link>
             </p>
           </div>
@@ -65,14 +64,14 @@ export function ConsentBanner() {
               onClick={() => setConsent('denied')}
               className="px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
             >
-              Refuser
+              {t('refuse')}
             </button>
             <button
               type="button"
               onClick={() => setConsent('granted')}
               className="px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
             >
-              Accepter
+              {t('accept')}
             </button>
           </div>
         </div>

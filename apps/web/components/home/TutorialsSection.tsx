@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { ArrowRight, GraduationCap } from 'lucide-react';
 import { ArticleCard, type ArticleCardData } from '@/app/blog/components/ArticleCard';
 import { TutorialsCarousel } from './TutorialsCarousel';
@@ -14,6 +15,7 @@ interface TutorialsSectionProps {
  * on the landing page when no tutorial has been published yet.
  */
 export function TutorialsSection({ tutorials }: TutorialsSectionProps) {
+  const t = useTranslations('home.tutorials');
   if (tutorials.length === 0) return null;
 
   return (
@@ -25,14 +27,13 @@ export function TutorialsSection({ tutorials }: TutorialsSectionProps) {
         <div className="text-center mb-10 sm:mb-14">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-semibold mb-4">
             <GraduationCap className="w-3.5 h-3.5" />
-            Tutoriels
+            {t('badge')}
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-            Apprenez à utiliser Opatam en quelques minutes
+            {t('title')}
           </h2>
           <p className="mt-3 text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Des vidéos courtes pour prendre en main la plateforme et exploiter chaque
-            fonctionnalité.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -55,7 +56,7 @@ export function TutorialsSection({ tutorials }: TutorialsSectionProps) {
             href="/blog/categorie/tutoriels"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-semibold hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md transition-all"
           >
-            Voir tous les tutoriels
+            {t('seeAll')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

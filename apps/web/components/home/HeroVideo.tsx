@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 
@@ -124,8 +125,11 @@ export function HeroVideo({
   variant = 'panel',
   desktopSrc = '/hero-loop.mp4',
   mobileSrc = '/hero-mobile.mp4',
-  loaderTagline = 'La réservation en ligne, sans commission',
+  loaderTagline,
 }: HeroVideoProps) {
+  const t = useTranslations('home');
+  // Default tagline follows the locale; an explicit prop still wins.
+  const tagline = loaderTagline ?? t('heroLoaderTagline');
   const videoRef = useRef<HTMLVideoElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
@@ -197,7 +201,7 @@ export function HeroVideo({
       <>
         {/* Branded loader sits underneath. Stays in place; the video
             fades IN above it so the handoff is seamless. */}
-        <HeroVideoLoader tagline={loaderTagline} />
+        <HeroVideoLoader tagline={tagline} />
         {videoElement}
       </>
     );
@@ -210,7 +214,7 @@ export function HeroVideo({
   return (
     <div className="relative mx-auto max-w-lg lg:max-w-xl xl:max-w-3xl animate-float">
       <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 aspect-video bg-gray-900 hover:shadow-3xl transition-shadow duration-500">
-        <HeroVideoLoader tagline={loaderTagline} />
+        <HeroVideoLoader tagline={tagline} />
         {videoElement}
       </div>
     </div>

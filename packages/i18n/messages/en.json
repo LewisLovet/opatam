@@ -35,7 +35,38 @@
       "salesTerms": "Terms of sale",
       "privacy": "Privacy",
       "allRights": "All rights reserved."
+    },
+    "appBadges": {
+      "downloadOn": "Download on",
+      "soonOn": "Coming soon on",
+      "ariaAppStore": "Download on the App Store",
+      "ariaPlaySoon": "Google Play — Coming soon"
     }
+  },
+  "blog": {
+    "video": "Video",
+    "read": "Read",
+    "new": "New"
+  },
+  "consent": {
+    "title": "Help us grow Opatam",
+    "body": "By accepting measurement cookies, you help us understand what brought you here and invest better in our Instagram and Facebook campaigns. Refusing has no impact on your experience.",
+    "learnMore": "Learn more",
+    "refuse": "Refuse",
+    "accept": "Accept"
+  },
+  "playStore": {
+    "title": "Coming soon on Android!",
+    "body": "Leave your email to be notified as soon as the app is released on Google Play.",
+    "webNote": "In the meantime, every feature is available on the web version: search, booking and managing your appointments.",
+    "continueWeb": "Continue on the web",
+    "emailPlaceholder": "your@email.com",
+    "notifyMe": "Notify me",
+    "sending": "Sending...",
+    "successTitle": "Got it!",
+    "successBody": "You'll receive an email as soon as the app is available on Google Play.",
+    "close": "Close",
+    "genericError": "Something went wrong"
   },
   "home": {
     "hero": {
@@ -267,6 +298,49 @@
       "lookingFor": "Looking for a professional near you?",
       "searchPro": "Find a pro"
     },
-    "stickyCta": "{days}-day free trial"
+    "stickyCta": "{days}-day free trial",
+    "heroLoaderTagline": "Online booking, commission-free",
+    "howItWorks": {
+      "title": "Ready in 5 minutes, in 3 steps",
+      "subtitle": "No training, no technician to call. You create your page and receive your first bookings today.",
+      "steps": [
+        {
+          "title": "Create your profile",
+          "description": "Enter your business, services and hours. Our assistant guides you step by step."
+        },
+        {
+          "title": "Publish your storefront",
+          "description": "Your professional page goes live in one click. Share the link with your clients by text, email or social media."
+        },
+        {
+          "title": "Receive bookings",
+          "description": "Your clients book on their own, 24/7. You get a notification for every new appointment."
+        }
+      ],
+      "cta": "Create my profile for free",
+      "note": "{days}-day free trial — No credit card required"
+    },
+    "story": {
+      "badge": "Instagram & Snapchat",
+      "title": "One Instagram story. Slots filled.",
+      "titleAccent": "In 30 seconds.",
+      "body": "Got a gap this afternoon? Generate a story with your availability and your QR code in one tap. Your followers see it, scan it, book. Works with Instagram, Snapchat, and every vertical-story network.",
+      "steps": [
+        "You have a gap this Tuesday at 2pm.",
+        "Tap. Opatam generates your story with your availability and your QR code.",
+        "You post it on Instagram. Your clients scan, they book."
+      ],
+      "twoFormats": "Two formats",
+      "day": "Day",
+      "week": "Week",
+      "sendMessage": "Send a message...",
+      "storyAlt": "{label} story — Opatam"
+    },
+    "tutorials": {
+      "badge": "Tutorials",
+      "title": "Learn to use Opatam in a few minutes",
+      "subtitle": "Short videos to get you up to speed with the platform and make the most of every feature.",
+      "seeAll": "See all tutorials"
+    }
   }
 }

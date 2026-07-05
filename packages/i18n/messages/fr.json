@@ -35,7 +35,38 @@
       "salesTerms": "CGV",
       "privacy": "Confidentialité",
       "allRights": "Tous droits réservés."
+    },
+    "appBadges": {
+      "downloadOn": "Télécharger sur",
+      "soonOn": "Bientôt sur",
+      "ariaAppStore": "Télécharger sur l'App Store",
+      "ariaPlaySoon": "Google Play — Bientôt disponible"
     }
+  },
+  "blog": {
+    "video": "Vidéo",
+    "read": "Lire",
+    "new": "Nouveau"
+  },
+  "consent": {
+    "title": "Aidez-nous à faire grandir Opatam",
+    "body": "En acceptant les cookies de mesure, vous nous aidez à savoir ce qui vous a amené ici et à mieux investir dans nos campagnes Instagram et Facebook. Refuser n'a aucun impact sur votre expérience.",
+    "learnMore": "En savoir plus",
+    "refuse": "Refuser",
+    "accept": "Accepter"
+  },
+  "playStore": {
+    "title": "Bientôt sur Android !",
+    "body": "Laissez votre email pour être informé dès la sortie de l'application sur Google Play.",
+    "webNote": "En attendant, toutes les fonctionnalités sont disponibles sur la version web : recherche, réservation et gestion de vos rendez-vous.",
+    "continueWeb": "Continuer sur le web",
+    "emailPlaceholder": "votre@email.com",
+    "notifyMe": "Me prévenir",
+    "sending": "Envoi en cours...",
+    "successTitle": "C'est noté !",
+    "successBody": "Vous recevrez un email dès que l'application sera disponible sur Google Play.",
+    "close": "Fermer",
+    "genericError": "Une erreur est survenue"
   },
   "home": {
     "hero": {
@@ -267,6 +298,49 @@
       "lookingFor": "Vous cherchez un professionnel près de chez vous ?",
       "searchPro": "Rechercher un pro"
     },
-    "stickyCta": "Essai gratuit {days} jours"
+    "stickyCta": "Essai gratuit {days} jours",
+    "heroLoaderTagline": "La réservation en ligne, sans commission",
+    "howItWorks": {
+      "title": "Prêt en 5 minutes, en 3 étapes",
+      "subtitle": "Pas de formation, pas de technicien à appeler. Vous créez votre page et recevez vos premières réservations aujourd'hui.",
+      "steps": [
+        {
+          "title": "Créez votre profil",
+          "description": "Renseignez votre activité, vos prestations et vos horaires. Notre assistant vous guide pas à pas."
+        },
+        {
+          "title": "Publiez votre vitrine",
+          "description": "Votre page professionnelle est en ligne en un clic. Partagez le lien à vos clients par SMS, email ou réseaux sociaux."
+        },
+        {
+          "title": "Recevez des réservations",
+          "description": "Vos clients réservent en autonomie, 24h/24. Vous recevez une notification à chaque nouveau rendez-vous."
+        }
+      ],
+      "cta": "Créer mon profil gratuitement",
+      "note": "Essai gratuit {days} jours — Aucune carte bancaire requise"
+    },
+    "story": {
+      "badge": "Instagram & Snapchat",
+      "title": "Une story Instagram. Des créneaux remplis.",
+      "titleAccent": "En 30 secondes.",
+      "body": "Vous avez un trou cet après-midi ? Générez une story avec vos dispos et votre QR Code en un tap. Vos abonnées voient, scannent, réservent. Compatible Instagram, Snapchat, et tous les réseaux à story vertical.",
+      "steps": [
+        "Vous avez un trou ce mardi à 14h.",
+        "Tap. Opatam génère votre story avec vos dispos et votre QR Code.",
+        "Vous publiez sur Instagram. Vos clientes scannent, elles réservent."
+      ],
+      "twoFormats": "Deux formats",
+      "day": "Jour",
+      "week": "Semaine",
+      "sendMessage": "Envoyer un message...",
+      "storyAlt": "Story {label} — Opatam"
+    },
+    "tutorials": {
+      "badge": "Tutoriels",
+      "title": "Apprenez à utiliser Opatam en quelques minutes",
+      "subtitle": "Des vidéos courtes pour prendre en main la plateforme et exploiter chaque fonctionnalité.",
+      "seeAll": "Voir tous les tutoriels"
+    }
   }
 }

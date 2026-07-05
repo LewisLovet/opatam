@@ -25,6 +25,7 @@
  * chrome (we add it ourselves).
  */
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Instagram, Send } from 'lucide-react';
 
 interface Story {
@@ -32,10 +33,8 @@ interface Story {
   src: string;
 }
 
-const STORIES: Story[] = [
-  { label: 'Jour', src: '/instagram-story-jour.png' },
-  { label: 'Semaine', src: '/instagram-story-semaine.png' },
-];
+/** Screenshot sources — labels come from the dictionary (home.story). */
+const STORY_SOURCES = ['/instagram-story-jour.png', '/instagram-story-semaine.png'];
 
 /** Each story stays on screen this long before crossfading to the
  *  next. ~5 s is the sweet spot — long enough to read the slot grid
@@ -44,6 +43,8 @@ const STORIES: Story[] = [
 const STORY_DURATION_MS = 5000;
 
 export function StorySection() {
+  const t = useTranslations('home.story');
+  const storySteps = t.raw('steps') as string[];
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -52,45 +53,33 @@ export function StorySection() {
           <div className="lg:col-span-6 order-2 lg:order-1">
             <div className="inline-flex items-center gap-2 rounded-full bg-primary-100 dark:bg-primary-900/30 px-3 py-1 text-xs font-semibold text-primary-700 dark:text-primary-300 mb-5">
               <Instagram className="w-3.5 h-3.5" />
-              Instagram &amp; Snapchat
+              {t('badge')}
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
-              Une story Instagram. Des créneaux remplis.
-              <span className="text-gray-400 dark:text-gray-500"> En 30 secondes.</span>
+              {t('title')}
+              <span className="text-gray-400 dark:text-gray-500"> {t('titleAccent')}</span>
             </h2>
             <p className="mt-5 text-lg text-gray-600 dark:text-gray-400 max-w-xl">
-              Vous avez un trou cet après-midi ? Générez une story avec vos
-              dispos et votre QR Code en un tap. Vos abonnées voient, scannent,
-              réservent. Compatible Instagram, Snapchat, et tous les réseaux
-              à story vertical.
+              {t('body')}
             </p>
 
             {/* Three numbered beats — same editorial pattern as the
                 /nail-artist page. Keeps the copy concrete and
                 action-driven. */}
             <ol className="mt-10 space-y-7">
-              {[
-                { label: '01', body: 'Vous avez un trou ce mardi à 14h.' },
-                {
-                  label: '02',
-                  body:
-                    'Tap. Opatam génère votre story avec vos dispos et votre QR Code.',
-                },
-                {
-                  label: '03',
-                  body:
-                    'Vous publiez sur Instagram. Vos clientes scannent, elles réservent.',
-                },
-              ].map((step) => (
-                <li key={step.label} className="flex gap-5 items-baseline">
-                  <span className="text-3xl sm:text-4xl font-light text-gray-300 dark:text-gray-700 tracking-tighter shrink-0 w-12">
-                    {step.label}
-                  </span>
-                  <p className="text-base sm:text-lg text-gray-800 dark:text-gray-200 leading-relaxed">
-                    {step.body}
-                  </p>
-                </li>
-              ))}
+              {storySteps.map((body, i) => {
+                const label = String(i + 1).padStart(2, '0');
+                return (
+                  <li key={label} className="flex gap-5 items-baseline">
+                    <span className="text-3xl sm:text-4xl font-light text-gray-300 dark:text-gray-700 tracking-tighter shrink-0 w-12">
+                      {label}
+                    </span>
+                    <p className="text-base sm:text-lg text-gray-800 dark:text-gray-200 leading-relaxed">
+                      {body}
+                    </p>
+                  </li>
+                );
+              })}
             </ol>
 
             {/* Granularity pills — communicates that both single-day
@@ -98,13 +87,13 @@ export function StorySection() {
                 mockup. */}
             <div className="mt-10 flex flex-wrap items-center gap-2.5">
               <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                Deux formats
+                {t('twoFormats')}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300">
-                Jour
+                {t('day')}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300">
-                Semaine
+                {t('week')}
               </span>
             </div>
           </div>
@@ -126,6 +115,11 @@ export function StorySection() {
    bottom message input + reactions — so the visitor sees a real
    social story, not a UI mockup. */
 function PhoneStoryMockup() {
+  const t = useTranslations('home.story');
+  const STORIES: Story[] = [
+    { label: t('day'), src: STORY_SOURCES[0] },
+    { label: t('week'), src: STORY_SOURCES[1] },
+  ];
   const [active, setActive] = useState(0);
 
   // Auto-advance cycle. The interval is the single source of truth
@@ -133,7 +127,7 @@ function PhoneStoryMockup() {
   // both use STORY_DURATION_MS so they stay in sync visually.
   useEffect(() => {
     const id = window.setInterval(() => {
-      setActive((idx) => (idx + 1) % STORIES.length);
+      setActive((idx) => (idx + 1) % STORY_SOURCES.length);
     }, STORY_DURATION_MS);
     return () => window.clearInterval(id);
   }, []);
@@ -152,7 +146,7 @@ function PhoneStoryMockup() {
             <img
               key={story.src}
               src={story.src}
-              alt={`Story ${story.label} — Opatam`}
+              alt={t('storyAlt', { label: story.label })}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
                 active === idx ? 'opacity-100' : 'opacity-0'
               }`}
@@ -202,7 +196,7 @@ function PhoneStoryMockup() {
           <div className="absolute bottom-0 inset-x-0 px-3 pb-4 pt-3 z-20 bg-gradient-to-t from-black/50 to-transparent">
             <div className="flex items-center gap-2">
               <div className="flex-1 rounded-full border border-white/60 px-3.5 py-2 text-[11px] text-white/90">
-                Envoyer un message...
+                {t('sendMessage')}
               </div>
               <span className="text-white text-lg leading-none">♥</span>
               <Send className="w-4 h-4 text-white" strokeWidth={2} aria-hidden="true" />
