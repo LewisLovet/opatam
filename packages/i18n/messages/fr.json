@@ -1,0 +1,272 @@
+{
+  "common": {
+    "appStore": "App Store",
+    "googlePlay": "Google Play",
+    "language": "Langue",
+    "french": "Français",
+    "english": "English"
+  },
+  "layout": {
+    "header": {
+      "features": "Fonctionnalités",
+      "pricing": "Tarifs",
+      "testimonials": "Témoignages",
+      "faq": "FAQ",
+      "login": "Se connecter",
+      "createPage": "Créer ma page",
+      "start": "Commencer",
+      "menu": "Menu",
+      "openMenu": "Ouvrir le menu",
+      "closeMenu": "Fermer le menu"
+    },
+    "footer": {
+      "product": "Produit",
+      "explore": "Explorer",
+      "forWho": "Pour qui",
+      "support": "Support",
+      "legal": "Légal",
+      "allProviders": "Tous les prestataires",
+      "nailArtists": "Nail artists",
+      "contact": "Contact",
+      "careers": "Recrutement",
+      "downloadApp": "Télécharger l'app",
+      "legalNotice": "Mentions légales",
+      "terms": "CGU",
+      "salesTerms": "CGV",
+      "privacy": "Confidentialité",
+      "allRights": "Tous droits réservés."
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Vos rendez-vous ne devraient plus vivre dans vos DM.",
+      "subtitle": "Le logiciel de réservation en ligne pour les indépendants. Vos clients réservent 24h/24, les rappels partent automatiquement, et vous gardez 100% de vos gains. Prêt en 5 minutes.",
+      "pillReady": "Prêt en 5 min",
+      "pillCommission": "0% de commission",
+      "pillPrice": "Dès {price}€/mois",
+      "ctaCreate": "Créer ma page",
+      "ctaDemo": "Voir une démo",
+      "disclaimer": "{days} jours gratuits, sans carte bancaire, sans engagement"
+    },
+    "appStrip": {
+      "caption": "Aussi disponible sur mobile",
+      "downloadOn": "Télécharger sur l'",
+      "soonOn": "Bientôt sur",
+      "soonBadge": "Bientôt"
+    },
+    "stats": {
+      "items": [
+        { "value": "15+", "label": "Secteurs d'activité" },
+        { "value": "24/7", "label": "Réservation en ligne" },
+        { "value": "0%", "label": "Commission" },
+        { "value": "5 min", "label": "Pour démarrer" }
+      ]
+    },
+    "features": {
+      "title": "Reprenez le contrôle de votre quotidien",
+      "subtitle": "Fini les DM Instagram à 22h, les agendas papier, les SMS de relance. {app} s'occupe de l'administratif pour que vous restiez concentré sur votre métier.",
+      "items": [
+        {
+          "title": "Un agenda qui se remplit tout seul",
+          "description": "Vos créneaux disponibles, vos pauses, vos jours off — tout est visible en un coup d'œil. Les rappels partent automatiquement à vos clients. Plus jamais de SMS de relance à écrire à 22h."
+        },
+        {
+          "title": "Vos clients réservent pendant que vous dormez",
+          "description": "Votre page de réservation est en ligne 24h/24. Vos clients choisissent leur prestation et leur créneau en trois clics — sans créer de compte, sans vous DM. Au réveil, votre planning est rempli."
+        },
+        {
+          "title": "Tout votre agenda dans votre poche",
+          "description": "Vous configurez vos prestations et vos horaires depuis votre ordinateur. Au quotidien, vous suivez votre planning, vous validez les nouveaux rendez-vous et vous recevez vos alertes directement dans l'application mobile."
+        },
+        {
+          "title": "Toute l'équipe synchronisée",
+          "description": "Chaque membre a son propre planning, ses propres prestations, son propre code d'accès. Vous gardez la vue d'ensemble. Plus de carnet partagé, plus de « on s'est marché dessus »."
+        }
+      ]
+    },
+    "mockups": {
+      "myAgenda": "Mon agenda",
+      "weekOf": "Semaine du 3 février",
+      "days": ["Lun", "Mar", "Mer", "Jeu", "Ven"],
+      "chooseService": "Choisir une prestation",
+      "services": ["Coupe femme — 35€", "Brushing — 25€", "Coloration — 55€"],
+      "book": "Réserver",
+      "today": "Aujourd'hui",
+      "todayCount": "4 RDV",
+      "nextIn": "Prochain dans 25 min",
+      "newBooking": "Nouvelle réservation",
+      "newBookingDetail": "Alice M. — Coupe + Brushing — 14h00",
+      "myTeam": "Mon équipe",
+      "teamMembers": [
+        { "name": "Marie D.", "role": "Coiffeuse", "rdv": "6 RDV aujourd'hui" },
+        { "name": "Julie K.", "role": "Coloriste", "rdv": "4 RDV aujourd'hui" },
+        { "name": "Thomas R.", "role": "Barbier", "rdv": "5 RDV aujourd'hui" }
+      ],
+      "sampleBookings": [
+        { "time": "10:00", "name": "Marie L.", "service": "Brushing" },
+        { "time": "11:30", "name": "Thomas R.", "service": "Barbe" }
+      ]
+    },
+    "secondaryFeatures": {
+      "title": "Et tout le reste, déjà inclus",
+      "subtitle": "Pas de modules à débloquer, pas d'options payantes cachées. Ce que vous voyez, c'est ce que vous avez.",
+      "items": [
+        { "title": "Votre vitrine en ligne", "description": "Une vraie page pro avec vos prestations, vos avis et vos photos — partageable en un lien" },
+        { "title": "QR Code à afficher", "description": "Un QR Code à coller sur votre comptoir ou sur vos cartes. Vos clientes scannent, elles réservent" },
+        { "title": "Plus jamais d'oubli", "description": "Rappel automatique 24h et 2h avant chaque rendez-vous. Vos no-shows baissent, votre journée tient" },
+        { "title": "Vos chiffres en clair", "description": "Réservations, vues de votre page, activité de la semaine — tout sur un seul écran, mis à jour en direct" },
+        { "title": "Plusieurs adresses, un agenda", "description": "Salon, domicile, déplacement — jusqu'à 10 lieux avec des disponibilités différentes pour chacun" },
+        { "title": "Le récap de demain, ce soir", "description": "Chaque soir, vous recevez par email l'agenda du lendemain. Plus de surprise au réveil" },
+        { "title": "L'app iOS et Android", "description": "Votre agenda dans votre poche, notifs en temps réel à chaque réservation" },
+        { "title": "Hébergé en Europe", "description": "Conforme RGPD, données hébergées en France. Vous restez propriétaire de tout" }
+      ]
+    },
+    "sectors": {
+      "title": "Pensé pour les indépendants. Tous les indépendants.",
+      "subtitle": "De la coiffeuse à domicile au tatoueur de studio, du coach sportif au thérapeute — {app} s'adapte à votre métier, pas l'inverse.",
+      "items": [
+        { "title": "Beauté & Esthétique", "examples": "Coiffeurs, esthéticiennes, barbiers, prothésistes ongulaires" },
+        { "title": "Bien-être", "examples": "Masseurs, sophrologues, naturopathes, ostéopathes" },
+        { "title": "Sport & Coaching", "examples": "Coachs sportifs, personal trainers, salles de sport" },
+        { "title": "Coaching", "examples": "Coachs de vie, thérapeutes, consultants en développement" },
+        { "title": "Artisans", "examples": "Plombiers, électriciens, serruriers, peintres" },
+        { "title": "Audiovisuel", "examples": "Photographes, vidéastes, créateurs de contenu" }
+      ]
+    },
+    "testimonials": {
+      "title": "Ce qu'en disent les indépendants qui l'utilisent",
+      "items": [
+        {
+          "name": "Marie L.",
+          "role": "Coiffeuse indépendante",
+          "city": "Lyon",
+          "initials": "ML",
+          "text": "0% de commission, c'est ce qui m'a convaincue. Je garde 100% de ce que je gagne. Et l'outil est tellement simple que j'ai été en ligne en 10 minutes."
+        },
+        {
+          "name": "Karim B.",
+          "role": "Barbier",
+          "city": "Paris",
+          "initials": "KB",
+          "text": "Le soir de l'inscription, j'avais déjà trois réservations via le lien dans ma bio Instagram. Plus besoin de répondre aux DM à 22h pour caler un créneau."
+        },
+        {
+          "name": "Sophie D.",
+          "role": "Gérante d'institut de beauté",
+          "city": "Marseille",
+          "initials": "SD",
+          "text": "On est trois dans l'institut, chacune a son agenda sur le sien. Pour moitié moins cher que ce qu'on payait avant — et mieux pensé pour notre métier."
+        }
+      ]
+    },
+    "comparison": {
+      "title": "Pourquoi {app}, et pas les autres",
+      "subtitle": "Un prix clair, zéro commission, toutes les fonctionnalités essentielles dès le premier jour. Pas de petite ligne, pas de plan caché.",
+      "criterion": "Critère",
+      "others": "Autres applications",
+      "rows": [
+        { "label": "Tarif mensuel", "opatam": "19,90€", "others": "De 0€* à 90€/mois" },
+        { "label": "Commissions sur vos réservations", "opatam": "0%", "others": "Jusqu'à 20% ou 1€ par RDV" },
+        { "label": "Période d'essai", "opatam": "30 jours gratuits", "others": "Souvent limitée ou absente" },
+        { "label": "Rappels automatiques", "opatam": "Inclus", "others": "Parfois en option payante" },
+        { "label": "Vitrine en ligne personnalisée", "opatam": "Inclus", "others": "Incluse mais modèles limités" },
+        { "label": "Engagement", "opatam": "Sans engagement", "others": "Variable selon l'offre" },
+        { "label": "Coût réel annuel (exemple)", "opatam": "199,00€", "others": "De 300€ à 1 080€**" }
+      ],
+      "footnote": "* Les offres « gratuites » incluent généralement des commissions prélevées sur chaque réservation, des fonctionnalités limitées ou du support restreint. ** Estimation basée sur un tarif moyen de 25€ à 90€/mois, hors commissions additionnelles."
+    },
+    "pricing": {
+      "title": "Un prix juste, sans surprise",
+      "subtitle": "Deux formules. Aucune commission. Vous annulez quand vous voulez.",
+      "launchOffer": "Offre de lancement",
+      "guaranteedPrefix": "Tarif garanti",
+      "guaranteedHighlight": "à vie",
+      "guaranteeText": "Inscrivez-vous maintenant : votre tarif est bloqué à vie. Même si on augmente nos prix demain, vous restez à 19,90€.",
+      "trustLocked": "Prix bloqué à vie",
+      "trustNoIncrease": "Aucune augmentation",
+      "trustEarly": "Premiers inscrits uniquement",
+      "monthly": "Mensuel",
+      "yearly": "Annuel",
+      "toggleAria": "Basculer entre mensuel et annuel",
+      "save": "Économisez 17%",
+      "perMonth": "/mois",
+      "billedYearly": "Facturé {total}€/an",
+      "noCommitment": "Sans engagement",
+      "popular": "Populaire",
+      "upTo10": "Jusqu'à 10 membres inclus",
+      "ctaCreate": "Créer ma page",
+      "trialNote": "{days} jours d'essai gratuit sur tous les plans. Aucune carte bancaire requise.",
+      "pro": {
+        "name": "Pro",
+        "description": "L'essentiel pour les indépendants. Gérez vos rendez-vous et développez votre activité — sans commission.",
+        "features": [
+          "Réservations illimitées, 0% de commission",
+          "Votre vitrine en ligne professionnelle",
+          "Rappels automatiques email et push",
+          "Agenda accessible partout, 24h/24",
+          "Prêt en 5 minutes, sans formation"
+        ]
+      },
+      "studio": {
+        "name": "Studio",
+        "description": "La solution complète pour les équipes. Coordonnez vos agendas, gérez plusieurs lieux et offrez une expérience pro.",
+        "features": [
+          "Jusqu'à 10 agendas synchronisés",
+          "0% de commission, même en équipe",
+          "Assignation des prestations par membre",
+          "Multi-lieux (jusqu'à 10 adresses)",
+          "Page publique d'équipe professionnelle",
+          "Tout le plan Pro inclus"
+        ]
+      }
+    },
+    "faq": {
+      "title": "Questions fréquentes",
+      "items": [
+        {
+          "question": "Quel est le meilleur logiciel de prise de rendez-vous en ligne pour indépendants ?",
+          "answer": "OPATAM est conçu spécifiquement pour les indépendants et les petites équipes : agenda en ligne, page de réservation personnalisée, rappels automatiques 24h et 2h avant, application mobile — sans commission, prêt en 5 minutes. Plus de 15 métiers de service y trouvent leur compte."
+        },
+        {
+          "question": "Comment permettre à mes clients de réserver en ligne sans créer de compte ?",
+          "answer": "Vos clients tapent leur nom, leur email et leur téléphone — c'est tout. Pas de compte à créer, pas de mot de passe. Vous récupérez un lien personnalisé et un QR code à mettre dans votre bio Instagram, sur vos flyers, ou à afficher en boutique. Réservation finalisée en 3 clics."
+        },
+        {
+          "question": "Comment gérer les rendez-vous de mon équipe depuis un seul outil ?",
+          "answer": "Le plan Studio (29,90€/mois) gère jusqu'à 10 agendas synchronisés. Chaque membre a son propre planning et ses propres prestations. Vous pouvez les notifier de chaque nouveau rendez-vous, leur envoyer le récap quotidien le soir d'avant, et garder la vue d'ensemble sur toute l'équipe."
+        },
+        {
+          "question": "Comment réduire les rendez-vous manqués et les oublis de mes clients ?",
+          "answer": "OPATAM envoie automatiquement un rappel 24h avant le rendez-vous, puis un second 2h avant. Vos clients reçoivent aussi une confirmation instantanée à la réservation. Concrètement : moins d'oublis, plus de créneaux qui tiennent, plus de revenus à la fin du mois."
+        },
+        {
+          "question": "Combien coûte un logiciel de réservation en ligne professionnel ?",
+          "answer": "Deux formules sans engagement : Pro à 19,90€/mois (ou 199€/an) pour les indépendants, Studio à 29,90€/mois (ou 299€/an) pour les équipes jusqu'à 10 personnes. Essai gratuit de 30 jours, sans carte bancaire. Et zéro commission sur vos réservations — vous gardez 100% de ce que vous facturez."
+        },
+        {
+          "question": "Peut-on utiliser un agenda de réservation en ligne sur téléphone ?",
+          "answer": "Oui. L'application mobile iOS et Android vous laisse consulter votre agenda, valider les nouveaux rendez-vous et recevoir les notifications en temps réel. Vous configurez sur votre ordinateur, vous gérez votre quotidien depuis votre poche — entre deux rendez-vous, dans le métro, où vous voulez."
+        },
+        {
+          "question": "Est-ce qu'OPATAM est adapté aux métiers de la beauté, du bien-être et du coaching ?",
+          "answer": "Coiffeurs, esthéticiennes, barbiers, prothésistes ongulaires, masseurs, sophrologues, coachs sportifs, thérapeutes, photographes, artisans, formateurs… Chaque pro personnalise ses prestations, ses durées, ses tarifs et son agenda comme il l'entend."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Reprenez votre soirée.",
+      "subtitle": "Votre première page de réservation est en ligne en 5 minutes. 30 jours d'essai gratuit, sans carte bancaire, sans engagement.",
+      "cta": "Créer ma page",
+      "disclaimer": "{days} jours gratuits — Sans carte bancaire — Sans engagement",
+      "availableOn": "Disponible sur l'",
+      "soonOn": "Bientôt sur",
+      "soonBadge": "Bientôt",
+      "followUs": "Suivez-nous"
+    },
+    "marketplace": {
+      "lookingFor": "Vous cherchez un professionnel près de chez vous ?",
+      "searchPro": "Rechercher un pro"
+    },
+    "stickyCta": "Essai gratuit {days} jours"
+  }
+}

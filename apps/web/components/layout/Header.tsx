@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { MobileMenu } from './MobileMenu';
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { Logo } from '@/components/ui';
 
 interface NavLink {
@@ -16,18 +18,20 @@ interface HeaderProps {
   navLinks?: NavLink[];
 }
 
-const defaultNavLinks: NavLink[] = [
-  { href: '/#fonctionnalites', label: 'Fonctionnalités' },
-  { href: '/#tarifs', label: 'Tarifs' },
-  { href: '/#temoignages', label: 'Témoignages' },
-  { href: '/#faq', label: 'FAQ' },
-];
-
 export function Header({
   showAuthButtons = true,
   transparent = false,
-  navLinks = defaultNavLinks,
+  navLinks,
 }: HeaderProps) {
+  const t = useTranslations('layout.header');
+  // Default nav built here (not module-level) so labels follow the locale.
+  const links: NavLink[] =
+    navLinks ?? [
+      { href: '/#fonctionnalites', label: t('features') },
+      { href: '/#tarifs', label: t('pricing') },
+      { href: '/#temoignages', label: t('testimonials') },
+      { href: '/#faq', label: t('faq') },
+    ];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeLink, setActiveLink] = useState('');
@@ -39,7 +43,7 @@ export function Header({
 
     // Track which section is in view for the active indicator
     const handleIntersection = () => {
-      const sections = navLinks.map((link) => link.href.replace('/#', ''));
+      const sections = links.map((link) => link.href.replace('/#', ''));
       for (const id of sections.reverse()) {
         const el = document.getElementById(id);
         if (el) {
@@ -60,7 +64,8 @@ export function Header({
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('scroll', handleIntersection);
     };
-  }, [navLinks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [links.map((l) => l.href).join(',')]);
 
   // Header outer background: fully transparent when at top + transparent mode,
   // otherwise a glass-morphism floating bar effect
@@ -95,7 +100,7 @@ export function Header({
             {/* Desktop Navigation - Pill container */}
             <nav className="hidden md:flex items-center">
               <div className="flex items-center gap-1 bg-gray-100/80 dark:bg-gray-800/60 backdrop-blur-sm rounded-full px-1.5 py-1.5 border border-gray-200/50 dark:border-gray-700/40">
-                {navLinks.map((link) => {
+                {links.map((link) => {
                   const isActive = activeLink === link.href;
                   return (
                     <Link
@@ -119,13 +124,14 @@ export function Header({
 
             {/* Auth Buttons */}
             <div className="hidden md:flex items-center gap-3">
+              <LanguageSwitcher />
               {showAuthButtons && (
                 <>
                   <Link
                     href="/login"
                     className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-full transition-colors duration-200"
                   >
-                    Se connecter
+                    {t('login')}
                   </Link>
                   <Link
                     href="/register"
@@ -139,7 +145,7 @@ export function Header({
                       active:translate-y-0 active:shadow-[0_1px_2px_rgba(0,0,0,0.1),0_2px_6px_rgb(var(--color-primary-600)/0.2)]
                     "
                   >
-                    <span className="relative z-10">Creer ma page</span>
+                    <span className="relative z-10">{t('createPage')}</span>
                     {/* Inner highlight */}
                     <div className="absolute inset-x-0 top-0 h-px bg-white/25 rounded-full" />
                   </Link>
@@ -152,7 +158,7 @@ export function Header({
               type="button"
               className="md:hidden relative p-2.5 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white bg-gray-100/80 dark:bg-gray-800/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 border border-gray-200/50 dark:border-gray-700/40 transition-all duration-200"
               onClick={() => setMobileMenuOpen(true)}
-              aria-label="Ouvrir le menu"
+              aria-label={t('openMenu')}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16" />
@@ -167,7 +173,7 @@ export function Header({
       <MobileMenu
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
-        navLinks={navLinks}
+        navLinks={links}
         showAuthButtons={showAuthButtons}
       />
     </>

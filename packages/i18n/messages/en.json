@@ -1,0 +1,272 @@
+{
+  "common": {
+    "appStore": "App Store",
+    "googlePlay": "Google Play",
+    "language": "Language",
+    "french": "Français",
+    "english": "English"
+  },
+  "layout": {
+    "header": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "testimonials": "Testimonials",
+      "faq": "FAQ",
+      "login": "Log in",
+      "createPage": "Create my page",
+      "start": "Get started",
+      "menu": "Menu",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu"
+    },
+    "footer": {
+      "product": "Product",
+      "explore": "Explore",
+      "forWho": "Who it's for",
+      "support": "Support",
+      "legal": "Legal",
+      "allProviders": "All providers",
+      "nailArtists": "Nail artists",
+      "contact": "Contact",
+      "careers": "Careers",
+      "downloadApp": "Download the app",
+      "legalNotice": "Legal notice",
+      "terms": "Terms of use",
+      "salesTerms": "Terms of sale",
+      "privacy": "Privacy",
+      "allRights": "All rights reserved."
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Your appointments shouldn't live in your DMs anymore.",
+      "subtitle": "The online booking software for independent professionals. Your clients book 24/7, reminders go out automatically, and you keep 100% of your earnings. Ready in 5 minutes.",
+      "pillReady": "Ready in 5 min",
+      "pillCommission": "0% commission",
+      "pillPrice": "From €{price}/mo",
+      "ctaCreate": "Create my page",
+      "ctaDemo": "See a demo",
+      "disclaimer": "{days} days free, no credit card, no commitment"
+    },
+    "appStrip": {
+      "caption": "Also available on mobile",
+      "downloadOn": "Download on the",
+      "soonOn": "Coming soon on",
+      "soonBadge": "Soon"
+    },
+    "stats": {
+      "items": [
+        { "value": "15+", "label": "Industries served" },
+        { "value": "24/7", "label": "Online booking" },
+        { "value": "0%", "label": "Commission" },
+        { "value": "5 min", "label": "To get started" }
+      ]
+    },
+    "features": {
+      "title": "Take back control of your day",
+      "subtitle": "No more Instagram DMs at 10pm, paper agendas or reminder texts. {app} handles the admin so you can stay focused on your craft.",
+      "items": [
+        {
+          "title": "A calendar that fills itself",
+          "description": "Your available slots, breaks and days off — all visible at a glance. Reminders go out to your clients automatically. Never write another chase-up text at 10pm."
+        },
+        {
+          "title": "Your clients book while you sleep",
+          "description": "Your booking page is online 24/7. Clients pick their service and time slot in three taps — no account to create, no DMs. By morning, your schedule is full."
+        },
+        {
+          "title": "Your whole schedule in your pocket",
+          "description": "Set up your services and hours from your computer. Day to day, follow your schedule, confirm new appointments and get alerts right in the mobile app."
+        },
+        {
+          "title": "The whole team in sync",
+          "description": "Each member has their own schedule, services and access code. You keep the overview. No more shared notebook, no more stepping on each other's toes."
+        }
+      ]
+    },
+    "mockups": {
+      "myAgenda": "My calendar",
+      "weekOf": "Week of February 3rd",
+      "days": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      "chooseService": "Choose a service",
+      "services": ["Women's haircut — €35", "Blow-dry — €25", "Coloring — €55"],
+      "book": "Book",
+      "today": "Today",
+      "todayCount": "4 appts",
+      "nextIn": "Next in 25 min",
+      "newBooking": "New booking",
+      "newBookingDetail": "Alice M. — Cut + Blow-dry — 2:00 PM",
+      "myTeam": "My team",
+      "teamMembers": [
+        { "name": "Marie D.", "role": "Hairdresser", "rdv": "6 appts today" },
+        { "name": "Julie K.", "role": "Colorist", "rdv": "4 appts today" },
+        { "name": "Thomas R.", "role": "Barber", "rdv": "5 appts today" }
+      ],
+      "sampleBookings": [
+        { "time": "10:00", "name": "Marie L.", "service": "Blow-dry" },
+        { "time": "11:30", "name": "Thomas R.", "service": "Beard trim" }
+      ]
+    },
+    "secondaryFeatures": {
+      "title": "And everything else, already included",
+      "subtitle": "No modules to unlock, no hidden paid options. What you see is what you get.",
+      "items": [
+        { "title": "Your online storefront", "description": "A real professional page with your services, reviews and photos — shareable with one link" },
+        { "title": "QR code to display", "description": "A QR code for your counter or business cards. Your clients scan it, they book" },
+        { "title": "No more no-shows", "description": "Automatic reminders 24h and 2h before every appointment. Fewer no-shows, a schedule that holds" },
+        { "title": "Your numbers, made clear", "description": "Bookings, page views, weekly activity — all on one screen, updated live" },
+        { "title": "Several locations, one calendar", "description": "Salon, home visits, on the go — up to 10 locations, each with its own availability" },
+        { "title": "Tomorrow's recap, tonight", "description": "Every evening, you get tomorrow's schedule by email. No surprises when you wake up" },
+        { "title": "iOS and Android app", "description": "Your schedule in your pocket, real-time notifications for every booking" },
+        { "title": "Hosted in Europe", "description": "GDPR compliant, data hosted in France. You remain the owner of everything" }
+      ]
+    },
+    "sectors": {
+      "title": "Built for independents. All independents.",
+      "subtitle": "From the mobile hairdresser to the studio tattoo artist, from the personal trainer to the therapist — {app} adapts to your craft, not the other way around.",
+      "items": [
+        { "title": "Beauty & Aesthetics", "examples": "Hairdressers, beauticians, barbers, nail technicians" },
+        { "title": "Wellness", "examples": "Massage therapists, sophrologists, naturopaths, osteopaths" },
+        { "title": "Sports & Coaching", "examples": "Sports coaches, personal trainers, gyms" },
+        { "title": "Coaching", "examples": "Life coaches, therapists, development consultants" },
+        { "title": "Tradespeople", "examples": "Plumbers, electricians, locksmiths, painters" },
+        { "title": "Audiovisual", "examples": "Photographers, videographers, content creators" }
+      ]
+    },
+    "testimonials": {
+      "title": "What independent professionals say about it",
+      "items": [
+        {
+          "name": "Marie L.",
+          "role": "Independent hairdresser",
+          "city": "Lyon",
+          "initials": "ML",
+          "text": "0% commission is what won me over. I keep 100% of what I earn. And the tool is so simple I was online in 10 minutes."
+        },
+        {
+          "name": "Karim B.",
+          "role": "Barber",
+          "city": "Paris",
+          "initials": "KB",
+          "text": "The night I signed up, I already had three bookings through the link in my Instagram bio. No more answering DMs at 10pm to schedule a slot."
+        },
+        {
+          "name": "Sophie D.",
+          "role": "Beauty salon owner",
+          "city": "Marseille",
+          "initials": "SD",
+          "text": "There are three of us at the salon, each with our own calendar. For half of what we paid before — and better designed for our craft."
+        }
+      ]
+    },
+    "comparison": {
+      "title": "Why {app}, and not the others",
+      "subtitle": "A clear price, zero commission, every essential feature from day one. No fine print, no hidden plan.",
+      "criterion": "Criteria",
+      "others": "Other apps",
+      "rows": [
+        { "label": "Monthly price", "opatam": "€19.90", "others": "From €0* to €90/mo" },
+        { "label": "Commission on your bookings", "opatam": "0%", "others": "Up to 20% or €1 per appointment" },
+        { "label": "Free trial", "opatam": "30 days free", "others": "Often limited or missing" },
+        { "label": "Automatic reminders", "opatam": "Included", "others": "Sometimes a paid option" },
+        { "label": "Personalized online storefront", "opatam": "Included", "others": "Included but limited templates" },
+        { "label": "Commitment", "opatam": "None", "others": "Varies by plan" },
+        { "label": "Real yearly cost (example)", "opatam": "€199.00", "others": "From €300 to €1,080**" }
+      ],
+      "footnote": "* \"Free\" plans usually include commissions taken on every booking, limited features or restricted support. ** Estimate based on an average price of €25 to €90/month, excluding additional commissions."
+    },
+    "pricing": {
+      "title": "A fair price, no surprises",
+      "subtitle": "Two plans. No commission. Cancel whenever you want.",
+      "launchOffer": "Launch offer",
+      "guaranteedPrefix": "Price locked",
+      "guaranteedHighlight": "for life",
+      "guaranteeText": "Sign up now and your price is locked for life. Even if we raise our prices tomorrow, you stay at €19.90.",
+      "trustLocked": "Price locked for life",
+      "trustNoIncrease": "No increases, ever",
+      "trustEarly": "Early adopters only",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "toggleAria": "Toggle between monthly and yearly",
+      "save": "Save 17%",
+      "perMonth": "/mo",
+      "billedYearly": "Billed €{total}/year",
+      "noCommitment": "No commitment",
+      "popular": "Popular",
+      "upTo10": "Up to 10 members included",
+      "ctaCreate": "Create my page",
+      "trialNote": "{days}-day free trial on every plan. No credit card required.",
+      "pro": {
+        "name": "Pro",
+        "description": "The essentials for independents. Manage your appointments and grow your business — commission-free.",
+        "features": [
+          "Unlimited bookings, 0% commission",
+          "Your professional online storefront",
+          "Automatic email and push reminders",
+          "Your calendar available anywhere, 24/7",
+          "Ready in 5 minutes, no training needed"
+        ]
+      },
+      "studio": {
+        "name": "Studio",
+        "description": "The complete solution for teams. Coordinate calendars, manage several locations and deliver a professional experience.",
+        "features": [
+          "Up to 10 synchronized calendars",
+          "0% commission, even as a team",
+          "Assign services per team member",
+          "Multi-location (up to 10 addresses)",
+          "Professional public team page",
+          "Everything in the Pro plan included"
+        ]
+      }
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "items": [
+        {
+          "question": "What is the best online appointment booking software for independent professionals?",
+          "answer": "OPATAM is built specifically for independents and small teams: online calendar, personalized booking page, automatic reminders 24h and 2h before, mobile app — commission-free, ready in 5 minutes. Professionals from more than 15 industries use it."
+        },
+        {
+          "question": "How can my clients book online without creating an account?",
+          "answer": "Your clients type their name, email and phone number — that's it. No account to create, no password. You get a personalized link and a QR code for your Instagram bio, your flyers or your storefront. Booking completed in 3 clicks."
+        },
+        {
+          "question": "How do I manage my team's appointments from a single tool?",
+          "answer": "The Studio plan (€29.90/month) handles up to 10 synchronized calendars. Each member has their own schedule and services. You can notify them of every new appointment, send them the daily recap the night before, and keep the overview of the whole team."
+        },
+        {
+          "question": "How do I reduce missed appointments and client no-shows?",
+          "answer": "OPATAM automatically sends a reminder 24h before the appointment, then a second one 2h before. Your clients also receive an instant confirmation when they book. In practice: fewer no-shows, more slots that hold, more revenue at the end of the month."
+        },
+        {
+          "question": "How much does professional online booking software cost?",
+          "answer": "Two commitment-free plans: Pro at €19.90/month (or €199/year) for independents, Studio at €29.90/month (or €299/year) for teams up to 10 people. 30-day free trial, no credit card. And zero commission on your bookings — you keep 100% of what you charge."
+        },
+        {
+          "question": "Can I use an online booking calendar on my phone?",
+          "answer": "Yes. The iOS and Android mobile app lets you check your calendar, confirm new appointments and receive notifications in real time. You set things up on your computer, and manage your day from your pocket — between appointments, on the subway, wherever you want."
+        },
+        {
+          "question": "Is OPATAM a good fit for beauty, wellness and coaching professionals?",
+          "answer": "Hairdressers, beauticians, barbers, nail technicians, massage therapists, sophrologists, sports coaches, therapists, photographers, tradespeople, trainers… Every professional customizes their services, durations, prices and calendar exactly as they see fit."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Take back your evenings.",
+      "subtitle": "Your first booking page is online in 5 minutes. 30-day free trial, no credit card, no commitment.",
+      "cta": "Create my page",
+      "disclaimer": "{days} days free — No credit card — No commitment",
+      "availableOn": "Available on the",
+      "soonOn": "Coming soon on",
+      "soonBadge": "Soon",
+      "followUs": "Follow us"
+    },
+    "marketplace": {
+      "lookingFor": "Looking for a professional near you?",
+      "searchPro": "Find a pro"
+    },
+    "stickyCta": "{days}-day free trial"
+  }
+}

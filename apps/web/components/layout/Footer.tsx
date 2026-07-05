@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { AppStoreBadges } from '../common/AppStoreBadges';
 import { SocialLinks } from '../common/SocialLinks';
 import { Logo } from '@/components/ui';
@@ -20,49 +21,51 @@ interface FooterSection {
   links: FooterLink[];
 }
 
-const footerSections: FooterSection[] = [
-  {
-    title: 'Produit',
-    links: [
-      { href: '/#fonctionnalites', label: 'Fonctionnalités' },
-      { href: '/#tarifs', label: 'Tarifs' },
-      { href: '/#temoignages', label: 'Témoignages' },
-      { href: '/#faq', label: 'FAQ' },
-    ],
-  },
-  {
-    title: 'Explorer',
-    links: [
-      { href: '/recherche', label: 'Tous les prestataires' },
-    ],
-  },
-  {
-    title: 'Pour qui',
-    links: [
-      { href: '/nail-artist', label: 'Nail artists' },
-    ],
-  },
-  {
-    title: 'Support',
-    links: [
-      { href: '/contact', label: 'Contact' },
-      { href: '/recrutement', label: 'Recrutement' },
-      { href: '/telechargement', label: 'Télécharger l\'app' },
-    ],
-  },
-  {
-    title: 'Légal',
-    links: [
-      { href: '/mentions-legales', label: 'Mentions légales' },
-      { href: '/cgu', label: 'CGU' },
-      { href: '/cgv', label: 'CGV' },
-      { href: '/confidentialite', label: 'Confidentialité' },
-    ],
-  },
-];
-
 export function Footer({ variant = 'full' }: FooterProps) {
+  const t = useTranslations('layout');
   const currentYear = new Date().getFullYear();
+
+  // Built in-component so every label follows the active locale.
+  const footerSections: FooterSection[] = [
+    {
+      title: t('footer.product'),
+      links: [
+        { href: '/#fonctionnalites', label: t('header.features') },
+        { href: '/#tarifs', label: t('header.pricing') },
+        { href: '/#temoignages', label: t('header.testimonials') },
+        { href: '/#faq', label: t('header.faq') },
+      ],
+    },
+    {
+      title: t('footer.explore'),
+      links: [
+        { href: '/recherche', label: t('footer.allProviders') },
+      ],
+    },
+    {
+      title: t('footer.forWho'),
+      links: [
+        { href: '/nail-artist', label: t('footer.nailArtists') },
+      ],
+    },
+    {
+      title: t('footer.support'),
+      links: [
+        { href: '/contact', label: t('footer.contact') },
+        { href: '/recrutement', label: t('footer.careers') },
+        { href: '/telechargement', label: t('footer.downloadApp') },
+      ],
+    },
+    {
+      title: t('footer.legal'),
+      links: [
+        { href: '/mentions-legales', label: t('footer.legalNotice') },
+        { href: '/cgu', label: t('footer.terms') },
+        { href: '/cgv', label: t('footer.salesTerms') },
+        { href: '/confidentialite', label: t('footer.privacy') },
+      ],
+    },
+  ];
 
   // Simple footer for landing page
   if (variant === 'simple') {
@@ -75,11 +78,11 @@ export function Footer({ variant = 'full' }: FooterProps) {
               <span>&copy; {currentYear} Opatam</span>
               <span className="hidden sm:inline">·</span>
               <Link href="/mentions-legales" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-                Mentions legales
+                {t('footer.legalNotice')}
               </Link>
               <span className="hidden sm:inline">·</span>
               <Link href="/contact" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-                Contact
+                {t('footer.contact')}
               </Link>
             </div>
 
@@ -127,7 +130,7 @@ export function Footer({ variant = 'full' }: FooterProps) {
           <div className="flex items-center gap-3">
             <Logo size="sm" showText={false} />
             <span className="text-sm text-gray-600 dark:text-gray-400">
-              &copy; {currentYear} {APP_CONFIG.name}. Tous droits reserves.
+              &copy; {currentYear} {APP_CONFIG.name}. {t('footer.allRights')}
             </span>
           </div>
 

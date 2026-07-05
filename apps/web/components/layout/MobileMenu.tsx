@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 
 interface NavLink {
   href: string;
@@ -16,6 +18,7 @@ interface MobileMenuProps {
 }
 
 export function MobileMenu({ isOpen, onClose, navLinks, showAuthButtons = true }: MobileMenuProps) {
+  const t = useTranslations('layout.header');
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Lock body scroll when menu is open
@@ -64,13 +67,13 @@ export function MobileMenu({ isOpen, onClose, navLinks, showAuthButtons = true }
           {/* Header with close button */}
           <div className="flex items-center justify-between px-5 h-[72px]">
             <span className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-              Menu
+              {t('menu')}
             </span>
             <button
               type="button"
               className="p-2.5 rounded-full text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white bg-gray-100/80 dark:bg-gray-800/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 border border-gray-200/50 dark:border-gray-700/40 transition-all duration-200"
               onClick={onClose}
-              aria-label="Fermer le menu"
+              aria-label={t('closeMenu')}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -103,6 +106,11 @@ export function MobileMenu({ isOpen, onClose, navLinks, showAuthButtons = true }
             </div>
           </nav>
 
+          {/* Language switcher */}
+          <div className="px-5 pb-2">
+            <LanguageSwitcher />
+          </div>
+
           {/* Auth Buttons */}
           {showAuthButtons && (
             <div className="px-5 py-6 space-y-3">
@@ -121,7 +129,7 @@ export function MobileMenu({ isOpen, onClose, navLinks, showAuthButtons = true }
                   rounded-full transition-all duration-200
                 "
               >
-                Se connecter
+                {t('login')}
               </Link>
               <Link
                 href="/register"
@@ -135,7 +143,7 @@ export function MobileMenu({ isOpen, onClose, navLinks, showAuthButtons = true }
                   transition-all duration-200
                 "
               >
-                <span className="relative z-10">Commencer</span>
+                <span className="relative z-10">{t('start')}</span>
                 {/* Inner highlight */}
                 <div className="absolute inset-x-0 top-0 h-px bg-white/25 rounded-full" />
               </Link>

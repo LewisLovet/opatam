@@ -1,0 +1,8 @@
+{
+  "name": "@booking-app/i18n",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Dictionnaires de traduction partagés (web, mobile, functions). Un fichier JSON par langue, organisé par namespaces.",
+  "main": "index.ts",
+  "files": ["messages", "index.ts"]
+}

@@ -5,6 +5,8 @@ import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { Providers } from './providers';
 import { APP_CONFIG } from '@booking-app/shared';
 import { ClarityScript } from '@/components/analytics/ClarityScript';
@@ -59,17 +61,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: ReactNode;
 }) {
+  // Locale resolved per request (cookie → Accept-Language → fr), see
+  // i18n/request.ts. Drives <html lang> and the messages available to
+  // every useTranslations() call in the tree.
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="fr" className={inter.variable}>
+    <html lang={locale} className={inter.variable}>
       <head>
         <meta name="apple-itunes-app" content="app-id=6759246218" />
       </head>
       <body className="antialiased">
+        <NextIntlClientProvider locale={locale} messages={messages}>
         <Providers>
           {children as ReactNode}
           {/* ── Consented analytics ───────────────────────────────
@@ -87,6 +96,7 @@ export default function RootLayout({
           </Suspense>
           <ConsentBanner />
         </Providers>
+        </NextIntlClientProvider>
         {/* ── Analytics ─────────────────────────────────────────────
             - Vercel Analytics: page-view counts + top pages /
               referrers / countries. Auto-enabled on Vercel deploys.

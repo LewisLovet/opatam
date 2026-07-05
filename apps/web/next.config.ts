@@ -1,9 +1,14 @@
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
 
 // Force Europe/Paris timezone on the server (Vercel runs in UTC by default).
 // This ensures new Date(), setHours(), etc. use Paris time consistently,
 // which is critical for the scheduling/booking system.
 process.env.TZ = 'Europe/Paris';
+
+// i18n — resolves the request locale (cookie → Accept-Language → fr) and
+// loads the matching dictionary from @booking-app/i18n. See i18n/request.ts.
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -12,6 +17,7 @@ const nextConfig: NextConfig = {
     '@booking-app/theme',
     '@booking-app/firebase',
     '@booking-app/ui',
+    '@booking-app/i18n',
   ],
   images: {
     // Serve images straight from their source (Firebase Storage — already
@@ -73,4 +79,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
