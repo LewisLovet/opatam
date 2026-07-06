@@ -10,6 +10,15 @@ import type {
   BookingSelectedOption,
   BookingSelectedInfo,
 } from '@booking-app/shared';
+import {
+  EMAIL_TEXTS,
+  resolveEmailLocale,
+  formatEmailDate,
+  formatEmailTime,
+  formatEmailPrice,
+  formatEmailTimeUntil,
+  type EmailLocale,
+} from './emailI18n';
 
 // Define the Resend API key as a Firebase parameter
 const resendApiKey = defineString('RESEND_API_KEY');
@@ -89,17 +98,17 @@ export function formatPriceFr(priceInCentimes: number, priceMaxInCentimes?: numb
  * (originalPrice > price). HTML version: crossed-out original + "−X%".
  * Returns '' when there's no promo.
  */
-function promoNoteHtml(price: number, originalPrice?: number | null): string {
+function promoNoteHtml(price: number, originalPrice?: number | null, locale: EmailLocale = 'fr'): string {
   if (!originalPrice || originalPrice <= price) return '';
   const pct = Math.round(((originalPrice - price) / originalPrice) * 100);
-  return ` <span style="color: #a1a1aa; text-decoration: line-through; font-weight: 400;">${formatPriceFr(originalPrice)}</span> <span style="color: #e11d48; font-weight: 700;">−${pct}%</span>`;
+  return ` <span style="color: #a1a1aa; text-decoration: line-through; font-weight: 400;">${formatEmailPrice(originalPrice, locale)}</span> <span style="color: #e11d48; font-weight: 700;">−${pct}%</span>`;
 }
 
 /** Plain-text version of the promo note: " (au lieu de 50 €, −20 %)". */
-function promoNoteText(price: number, originalPrice?: number | null): string {
+function promoNoteText(price: number, originalPrice?: number | null, locale: EmailLocale = 'fr'): string {
   if (!originalPrice || originalPrice <= price) return '';
   const pct = Math.round(((originalPrice - price) / originalPrice) * 100);
-  return ` (au lieu de ${formatPriceFr(originalPrice)}, −${pct} %)`;
+  return EMAIL_TEXTS.common[locale].promoWas(formatEmailPrice(originalPrice, locale), pct);
 }
 
 // Helper to format a duration in minutes ("45 min", "1h", "1h30")
@@ -139,50 +148,52 @@ function hasSelections(s: EmailSelections): boolean {
 
 /** Render the client's choices as small muted HTML lines, indented under
  *  the prestation they belong to. Returns '' when there's nothing to show. */
-function renderSelectionsHtml(s: EmailSelections): string {
+function renderSelectionsHtml(s: EmailSelections, locale: EmailLocale = 'fr'): string {
+  const colon = EMAIL_TEXTS.common[locale].colon;
   const lines: string[] = [];
   const muted = (html: string) =>
     `<div style="font-size: 13px; color: #71717a; margin-left: 12px;">${html}</div>`;
 
   for (const v of s.selectedVariations ?? []) {
-    lines.push(muted(`${v.variationName} : <strong>${v.optionName}</strong>`));
+    lines.push(muted(`${v.variationName}${colon} <strong>${v.optionName}</strong>`));
   }
   for (const o of s.selectedOptions ?? []) {
-    const extra = o.price > 0 ? ` (+${formatPriceFr(o.price)})` : '';
+    const extra = o.price > 0 ? ` (+${formatEmailPrice(o.price, locale)})` : '';
     lines.push(muted(`+ <strong>${o.optionName}</strong>${extra}`));
     for (const nv of o.nestedVariations ?? []) {
-      lines.push(muted(`${nv.variationName} : <strong>${nv.optionName}</strong>`));
+      lines.push(muted(`${nv.variationName}${colon} <strong>${nv.optionName}</strong>`));
     }
     for (const ni of o.info ?? []) {
-      lines.push(muted(`${ni.label} : <strong>${ni.value}</strong>`));
+      lines.push(muted(`${ni.label}${colon} <strong>${ni.value}</strong>`));
     }
   }
   for (const i of s.selectedInfo ?? []) {
-    lines.push(muted(`${i.label} : <strong>${i.value}</strong>`));
+    lines.push(muted(`${i.label}${colon} <strong>${i.value}</strong>`));
   }
   return lines.join('');
 }
 
 /** Render the client's choices as indented plain-text lines, under the
  *  prestation they belong to. Returns '' when there's nothing to show. */
-function renderSelectionsText(s: EmailSelections): string {
+function renderSelectionsText(s: EmailSelections, locale: EmailLocale = 'fr'): string {
+  const colon = EMAIL_TEXTS.common[locale].colon;
   const lines: string[] = [];
 
   for (const v of s.selectedVariations ?? []) {
-    lines.push(`  - ${v.variationName} : ${v.optionName}`);
+    lines.push(`  - ${v.variationName}${colon} ${v.optionName}`);
   }
   for (const o of s.selectedOptions ?? []) {
-    const extra = o.price > 0 ? ` (+${formatPriceFr(o.price)})` : '';
+    const extra = o.price > 0 ? ` (+${formatEmailPrice(o.price, locale)})` : '';
     lines.push(`  - + ${o.optionName}${extra}`);
     for (const nv of o.nestedVariations ?? []) {
-      lines.push(`    ${nv.variationName} : ${nv.optionName}`);
+      lines.push(`    ${nv.variationName}${colon} ${nv.optionName}`);
     }
     for (const ni of o.info ?? []) {
-      lines.push(`    ${ni.label} : ${ni.value}`);
+      lines.push(`    ${ni.label}${colon} ${ni.value}`);
     }
   }
   for (const i of s.selectedInfo ?? []) {
-    lines.push(`  - ${i.label} : ${i.value}`);
+    lines.push(`  - ${i.label}${colon} ${i.value}`);
   }
   return lines.join('\n');
 }
@@ -233,6 +244,10 @@ export interface EmailResult {
 export interface BookingEmailData {
   clientEmail: string;
   clientName: string;
+  /** Client's booking language (booking.clientLocale, 'fr' | 'en').
+   *  Anything that isn't 'en' falls back to French. Optional so every
+   *  existing call site keeps working unchanged. */
+  locale?: string;
   serviceName: string;
   datetime: Date;
   duration: number;
@@ -306,50 +321,56 @@ function escapeHtml(s: string): string {
 
 /** Address-privacy aware location rows. Protected-but-not-revealed → "Secteur"
  *  with only the approximate area and no map link. Otherwise the usual address. */
-function locationAddressRowsHtml(data: { locationAddress?: string; addressPending?: boolean; accessInstructions?: string | null }): string {
+function locationAddressRowsHtml(data: { locationAddress?: string; addressPending?: boolean; accessInstructions?: string | null }, locale: EmailLocale = 'fr'): string {
   if (!data.locationAddress) return '';
+  const c = EMAIL_TEXTS.common[locale];
   const row = (label: string, value: string, extra = '') =>
     `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; vertical-align: top;">${label}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b;${extra}">${value}</td></tr>`;
-  if (data.addressPending) return row('Secteur', escapeHtml(data.locationAddress));
+  if (data.addressPending) return row(c.labels.area, escapeHtml(data.locationAddress));
   const maps = data.locationAddress.includes(',')
-    ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; Voir l&#39;itin&#233;raire</a></td></tr>`
+    ? `<tr><td></td><td style="padding: 2px 0 4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}" target="_blank" style="display: inline-block; padding: 5px 12px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; color: #2563eb;">&#x1F4CD; ${c.directionsCta}</a></td></tr>`
     : '';
-  return row('Adresse', escapeHtml(data.locationAddress)) + maps;
+  return row(c.labels.address, escapeHtml(data.locationAddress)) + maps;
 }
 
 /** Separate, highlighted block for the access details — shown only once the
  *  address is revealed. Kept out of the recap table so it stands out. */
-function accessInstructionsBlockHtml(data: { accessInstructions?: string | null }): string {
+function accessInstructionsBlockHtml(data: { accessInstructions?: string | null }, locale: EmailLocale = 'fr'): string {
   if (!data.accessInstructions) return '';
-  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #1e3a8a;">&#x1F511; Informations d&#39;acc&#232;s</p><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5; white-space: pre-line;">${escapeHtml(data.accessInstructions)}</p></div>`;
+  const c = EMAIL_TEXTS.common[locale];
+  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #1e3a8a;">&#x1F511; ${c.accessInfoTitleHtml}</p><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5; white-space: pre-line;">${escapeHtml(data.accessInstructions)}</p></div>`;
 }
 
-function accessInstructionsBlockText(data: { accessInstructions?: string | null }): string {
+function accessInstructionsBlockText(data: { accessInstructions?: string | null }, locale: EmailLocale = 'fr'): string {
+  const c = EMAIL_TEXTS.common[locale];
   return data.accessInstructions
-    ? `\n\nInformations d'accès :\n${data.accessInstructions}`
+    ? `\n\n${c.accessInfoTitleText}${c.colon}\n${data.accessInstructions}`
     : '';
 }
 
 /** Prominent notice telling the client when the exact address will arrive. */
-function addressPendingNoticeHtml(data: { addressPending?: boolean; addressAvailableAt?: Date | null }): string {
+function addressPendingNoticeHtml(data: { addressPending?: boolean; addressAvailableAt?: Date | null }, locale: EmailLocale = 'fr'): string {
   if (!data.addressPending) return '';
-  const when = data.addressAvailableAt ? ` le ${formatDateFr(data.addressAvailableAt)}` : '';
-  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5;">&#x1F4CD; <strong>L&#39;adresse exacte et les informations d&#39;acc&#232;s vous seront communiqu&#233;es${when} avec votre rappel, avant le rendez-vous.</strong></p></div>`;
+  const c = EMAIL_TEXTS.common[locale];
+  const when = data.addressAvailableAt ? c.onDate(formatEmailDate(data.addressAvailableAt, locale)) : '';
+  return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5;">&#x1F4CD; <strong>${c.addressPendingHtml(when)}</strong></p></div>`;
 }
 
-function addressPendingNoticeText(data: { addressPending?: boolean; addressAvailableAt?: Date | null }): string {
+function addressPendingNoticeText(data: { addressPending?: boolean; addressAvailableAt?: Date | null }, locale: EmailLocale = 'fr'): string {
   if (!data.addressPending) return '';
-  const when = data.addressAvailableAt ? ` le ${formatDateFr(data.addressAvailableAt)}` : '';
-  return `\n\nL'adresse exacte et les informations d'accès vous seront communiquées${when} avec votre rappel, avant le rendez-vous.`;
+  const c = EMAIL_TEXTS.common[locale];
+  const when = data.addressAvailableAt ? c.onDate(formatEmailDate(data.addressAvailableAt, locale)) : '';
+  return `\n\n${c.addressPendingText(when)}`;
 }
 
-function locationAddressLineText(data: { locationAddress?: string; addressPending?: boolean; accessInstructions?: string | null }): string {
+function locationAddressLineText(data: { locationAddress?: string; addressPending?: boolean; accessInstructions?: string | null }, locale: EmailLocale = 'fr'): string {
   if (!data.locationAddress) return '';
-  if (data.addressPending) return `- Secteur : ${data.locationAddress}`;
+  const c = EMAIL_TEXTS.common[locale];
+  if (data.addressPending) return `- ${c.labels.area}${c.colon} ${data.locationAddress}`;
   const itin = data.locationAddress.includes(',')
-    ? `\n- Itinéraire : https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}`
+    ? `\n- ${c.labels.directions}${c.colon} https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.locationAddress)}`
     : '';
-  return `- Adresse : ${data.locationAddress}${itin}`;
+  return `- ${c.labels.address}${c.colon} ${data.locationAddress}${itin}`;
 }
 
 export async function sendConfirmationEmail(data: BookingEmailData): Promise<EmailResult> {
@@ -361,11 +382,14 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
   }
 
   try {
-    const formattedDate = formatDateFr(data.datetime);
-    const formattedTime = formatTimeFr(data.datetime);
+    const l = resolveEmailLocale(data.locale);
+    const t = EMAIL_TEXTS.confirmation[l];
+    const ics = EMAIL_TEXTS.common[l].ics;
+    const formattedDate = formatEmailDate(data.datetime, l);
+    const formattedTime = formatEmailTime(data.datetime, l);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
-    const formattedEndTime = formatTimeFr(endDate);
-    const formattedPrice = formatPriceFr(data.price, data.priceMax);
+    const formattedEndTime = formatEmailTime(endDate, l);
+    const formattedPrice = formatEmailPrice(data.price, l, data.priceMax);
     const businessName = data.providerName || appConfig.name;
 
     // Generate URLs
@@ -374,22 +398,22 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
     const icsUrl = data.bookingId ? `${appConfig.url}/api/calendar/${data.bookingId}` : null;
 
     // Google Calendar URL
-    const eventTitle = encodeURIComponent(`RDV - ${data.serviceName} chez ${businessName}`);
+    const eventTitle = encodeURIComponent(ics.summary(data.serviceName, businessName));
     const eventLocation = encodeURIComponent(data.locationAddress || '');
     const eventDescription = encodeURIComponent(
-      `${data.memberName ? `Avec ${data.memberName}` : `Chez ${businessName}`}${cancelUrl ? `\n\nPour annuler : ${cancelUrl}` : ''}`
+      `${data.memberName ? ics.withMember(data.memberName) : ics.atBusiness(businessName)}${cancelUrl ? `\n\n${ics.cancelLine(cancelUrl)}` : ''}`
     );
     const eventDates = `${formatGoogleDate(data.datetime)}/${formatGoogleDate(endDate)}`;
     const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${eventDates}&location=${eventLocation}&details=${eventDescription}`;
 
     // Generate ICS content
-    const icsDescriptionParts = [data.memberName ? `Avec ${data.memberName}` : `Chez ${businessName}`];
+    const icsDescriptionParts = [data.memberName ? ics.withMember(data.memberName) : ics.atBusiness(businessName)];
     if (cancelUrl) {
       icsDescriptionParts.push('');
-      icsDescriptionParts.push(`Pour annuler : ${cancelUrl}`);
+      icsDescriptionParts.push(ics.cancelLine(cancelUrl));
     }
     const icsDescription = escapeIcs(icsDescriptionParts.join('\n'));
-    const icsSummary = escapeIcs(`RDV - ${data.serviceName} chez ${businessName}`);
+    const icsSummary = escapeIcs(ics.summary(data.serviceName, businessName));
     const icsLocation = escapeIcs(data.locationAddress || '');
 
     const icsContent = [
@@ -416,17 +440,18 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
       from: emailConfig.from,
       to: data.clientEmail,
       subject: data.updateContext
-        ? `Votre rendez-vous a été mis à jour - ${businessName}`
-        : `Confirmation de votre rendez-vous - ${data.serviceName}`,
+        ? t.subjectUpdated(businessName)
+        : t.subject(data.serviceName),
       attachments: [
         {
-          filename: 'rendez-vous.ics',
+          filename: ics.filename,
           content: icsBuffer,
           contentType: 'text/calendar; method=PUBLISH',
         },
       ],
       html: generateConfirmationHtml({
         ...data,
+        emailLocale: l,
         formattedDate,
         formattedTime,
         formattedEndTime,
@@ -439,6 +464,7 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
       }),
       text: generateConfirmationText({
         ...data,
+        emailLocale: l,
         formattedDate,
         formattedTime,
         formattedEndTime,
@@ -476,6 +502,8 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
 export interface DepositReminderEmailData {
   clientEmail: string;
   clientName: string;
+  /** Client's booking language ('fr' | 'en', anything else → fr). */
+  locale?: string;
   serviceName: string;
   datetime: Date;
   duration: number;
@@ -500,11 +528,14 @@ export async function sendDepositReminderEmail(
   }
 
   try {
-    const formattedDate = formatDateFr(data.datetime);
-    const formattedTime = formatTimeFr(data.datetime);
+    const l = resolveEmailLocale(data.locale);
+    const t = EMAIL_TEXTS.depositReminder[l];
+    const c = EMAIL_TEXTS.common[l];
+    const formattedDate = formatEmailDate(data.datetime, l);
+    const formattedTime = formatEmailTime(data.datetime, l);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
-    const formattedEndTime = formatTimeFr(endDate);
-    const formattedDeposit = formatPriceFr(data.depositAmount);
+    const formattedEndTime = formatEmailTime(endDate, l);
+    const formattedDeposit = formatEmailPrice(data.depositAmount, l);
     const cancelUrl = data.cancelToken
       ? `${appConfig.url}/reservation/annuler/${data.cancelToken}`
       : null;
@@ -521,26 +552,26 @@ export async function sendDepositReminderEmail(
                 <img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height: 48px; max-width: 200px;" />
               </td></tr>
               <tr><td style="padding: 0 32px 24px;">
-                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
-                <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous chez <strong>${data.providerName}</strong> est <strong style="color: #d97706;">en attente du paiement de votre acompte</strong>.</p>
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${c.greeting(data.clientName)}</p>
+                <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${t.introHtml(data.providerName)}</p>
                 <div style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                  <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #c2410c; text-transform: uppercase; letter-spacing: 0.5px;">Rendez-vous en attente</p>
+                  <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #c2410c; text-transform: uppercase; letter-spacing: 0.5px;">${t.boxTitle}</p>
                   <table style="width: 100%; border-collapse: collapse;">
-                    <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
-                    <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${formattedDate}</td></tr>
-                    <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedTime} - ${formattedEndTime}</td></tr>
-                    <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Acompte</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${formattedDeposit}</td></tr>
+                    <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                    <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${formattedDate}</td></tr>
+                    <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedTime} - ${formattedEndTime}</td></tr>
+                    <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.deposit}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${formattedDeposit}</td></tr>
                   </table>
                 </div>
-                <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">Sans paiement de l'acompte dans les <strong>${data.minutesLeft} minutes</strong>, votre créneau sera automatiquement libéré.</p>
-                <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.checkoutUrl}" style="display: inline-block; padding: 14px 32px; background-color: #d97706; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Régler mon acompte maintenant</a></td></tr></table>
-                ${cancelUrl ? `<p style="margin: 0; font-size: 13px; color: #71717a; text-align: center;">Vous ne pourrez pas honorer ce rendez-vous ? <a href="${cancelUrl}" style="color: #dc2626; text-decoration: underline;">Annuler la réservation</a>.</p>` : ''}
+                <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">${t.deadlineHtml(data.minutesLeft)}</p>
+                <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.checkoutUrl}" style="display: inline-block; padding: 14px 32px; background-color: #d97706; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">${t.payCta}</a></td></tr></table>
+                ${cancelUrl ? `<p style="margin: 0; font-size: 13px; color: #71717a; text-align: center;">${t.cancelQuestionHtml(cancelUrl)}</p>` : ''}
               </td></tr>
               <tr><td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-                <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À très vite,<br><strong>${data.providerName}</strong></p>
+                <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">${t.signoff}<br><strong>${data.providerName}</strong></p>
               </td></tr>
             </table>
-            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.</p>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">${c.footerAuto(appConfig.name)}</p>
           </td></tr>
         </table>
       </body>
@@ -548,28 +579,28 @@ export async function sendDepositReminderEmail(
     `;
 
     const text = `
-Bonjour ${data.clientName},
+${c.greeting(data.clientName)}
 
-Votre rendez-vous chez ${data.providerName} est en attente du paiement de votre acompte.
+${t.introText(data.providerName)}
 
-- Prestation : ${data.serviceName}
-- Date : ${formattedDate}
-- Heure : ${formattedTime} - ${formattedEndTime}
-- Acompte : ${formattedDeposit}
+- ${c.labels.service}${c.colon} ${data.serviceName}
+- ${c.labels.date}${c.colon} ${formattedDate}
+- ${c.labels.time}${c.colon} ${formattedTime} - ${formattedEndTime}
+- ${c.labels.deposit}${c.colon} ${formattedDeposit}
 
-Sans paiement de l'acompte dans les ${data.minutesLeft} minutes, votre créneau sera automatiquement libéré.
+${t.deadlineText(data.minutesLeft)}
 
-Régler mon acompte : ${data.checkoutUrl}
-${cancelUrl ? `\nAnnuler la réservation : ${cancelUrl}` : ''}
+${t.payLineText(data.checkoutUrl)}
+${cancelUrl ? `\n${t.cancelLineText(cancelUrl)}` : ''}
 
-À très vite,
+${t.signoff}
 ${data.providerName}
     `.trim();
 
     const { error } = await getResend().emails.send({
       from: emailConfig.from,
       to: data.clientEmail,
-      subject: `Acompte en attente — ${data.serviceName} chez ${data.providerName}`,
+      subject: t.subject(data.serviceName, data.providerName),
       html,
       text,
     });
@@ -776,6 +807,8 @@ L'équipe ${appConfig.name}
 export async function sendCancellationEmail(data: {
   clientEmail: string;
   clientName: string;
+  /** Client's booking language ('fr' | 'en', anything else → fr). */
+  locale?: string;
   serviceName: string;
   datetime: Date;
   reason?: string;
@@ -797,17 +830,19 @@ export async function sendCancellationEmail(data: {
   }
 
   try {
-    const formattedDate = formatDateFr(data.datetime);
-    const formattedTime = formatTimeFr(data.datetime);
+    const l = resolveEmailLocale(data.locale);
+    const formattedDate = formatEmailDate(data.datetime, l);
+    const formattedTime = formatEmailTime(data.datetime, l);
     const businessName = data.providerName || appConfig.name;
     const rebookUrl = data.providerSlug ? `${appConfig.url}/p/${data.providerSlug}` : appConfig.url;
 
     const { error } = await getResend().emails.send({
       from: emailConfig.from,
       to: data.clientEmail,
-      subject: `Annulation de votre rendez-vous - ${data.serviceName}`,
+      subject: EMAIL_TEXTS.cancellation[l].subject(data.serviceName),
       html: generateCancellationHtml({
         ...data,
+        emailLocale: l,
         formattedDate,
         formattedTime,
         businessName,
@@ -815,6 +850,7 @@ export async function sendCancellationEmail(data: {
       }),
       text: generateCancellationText({
         ...data,
+        emailLocale: l,
         formattedDate,
         formattedTime,
         businessName,
@@ -1015,13 +1051,15 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
   }
 
   try {
-    const formattedOldDate = formatDateFr(data.oldDatetime);
-    const formattedOldTime = formatTimeFr(data.oldDatetime);
-    const formattedNewDate = formatDateFr(data.datetime);
-    const formattedNewTime = formatTimeFr(data.datetime);
+    const l = resolveEmailLocale(data.locale);
+    const ics = EMAIL_TEXTS.common[l].ics;
+    const formattedOldDate = formatEmailDate(data.oldDatetime, l);
+    const formattedOldTime = formatEmailTime(data.oldDatetime, l);
+    const formattedNewDate = formatEmailDate(data.datetime, l);
+    const formattedNewTime = formatEmailTime(data.datetime, l);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
-    const formattedNewEndTime = formatTimeFr(endDate);
-    const formattedPrice = formatPriceFr(data.price, data.priceMax);
+    const formattedNewEndTime = formatEmailTime(endDate, l);
+    const formattedPrice = formatEmailPrice(data.price, l, data.priceMax);
     const businessName = data.providerName || appConfig.name;
 
     // Generate URLs
@@ -1029,22 +1067,22 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
     const icsUrl = data.bookingId ? `${appConfig.url}/api/calendar/${data.bookingId}` : null;
 
     // Google Calendar URL
-    const eventTitle = encodeURIComponent(`RDV - ${data.serviceName} chez ${businessName}`);
+    const eventTitle = encodeURIComponent(ics.summary(data.serviceName, businessName));
     const eventLocation = encodeURIComponent(data.locationAddress || '');
     const eventDescription = encodeURIComponent(
-      `${data.memberName ? `Avec ${data.memberName}` : `Chez ${businessName}`}${cancelUrl ? `\n\nPour annuler : ${cancelUrl}` : ''}`
+      `${data.memberName ? ics.withMember(data.memberName) : ics.atBusiness(businessName)}${cancelUrl ? `\n\n${ics.cancelLine(cancelUrl)}` : ''}`
     );
     const eventDates = `${formatGoogleDate(data.datetime)}/${formatGoogleDate(endDate)}`;
     const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${eventDates}&location=${eventLocation}&details=${eventDescription}`;
 
     // ICS content
-    const icsDescriptionParts = [data.memberName ? `Avec ${data.memberName}` : `Chez ${businessName}`];
+    const icsDescriptionParts = [data.memberName ? ics.withMember(data.memberName) : ics.atBusiness(businessName)];
     if (cancelUrl) {
       icsDescriptionParts.push('');
-      icsDescriptionParts.push(`Pour annuler : ${cancelUrl}`);
+      icsDescriptionParts.push(ics.cancelLine(cancelUrl));
     }
     const icsDescription = escapeIcs(icsDescriptionParts.join('\n'));
-    const icsSummary = escapeIcs(`RDV - ${data.serviceName} chez ${businessName}`);
+    const icsSummary = escapeIcs(ics.summary(data.serviceName, businessName));
     const icsLocation = escapeIcs(data.locationAddress || '');
 
     const icsContent = [
@@ -1070,16 +1108,17 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
     const { error } = await getResend().emails.send({
       from: emailConfig.from,
       to: data.clientEmail,
-      subject: `Modification de votre rendez-vous - ${data.serviceName}`,
+      subject: EMAIL_TEXTS.reschedule[l].subject(data.serviceName),
       attachments: [
         {
-          filename: 'rendez-vous.ics',
+          filename: ics.filename,
           content: icsBuffer,
           contentType: 'text/calendar; method=PUBLISH',
         },
       ],
       html: generateRescheduleHtml({
         ...data,
+        emailLocale: l,
         formattedOldDate,
         formattedOldTime,
         formattedNewDate,
@@ -1093,6 +1132,7 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
       }),
       text: generateRescheduleText({
         ...data,
+        emailLocale: l,
         formattedOldDate,
         formattedOldTime,
         formattedNewDate,
@@ -1135,11 +1175,14 @@ export async function sendReminderEmail(
   }
 
   try {
-    const formattedDate = formatDateFr(data.datetime);
-    const formattedTime = formatTimeFr(data.datetime);
+    const l = resolveEmailLocale(data.locale);
+    const t = EMAIL_TEXTS.reminder[l];
+    const ics = EMAIL_TEXTS.common[l].ics;
+    const formattedDate = formatEmailDate(data.datetime, l);
+    const formattedTime = formatEmailTime(data.datetime, l);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
-    const formattedEndTime = formatTimeFr(endDate);
-    const formattedPrice = formatPriceFr(data.price, data.priceMax);
+    const formattedEndTime = formatEmailTime(endDate, l);
+    const formattedPrice = formatEmailPrice(data.price, l, data.priceMax);
     const businessName = data.providerName || appConfig.name;
 
     // Generate URLs
@@ -1147,22 +1190,22 @@ export async function sendReminderEmail(
     const icsUrl = data.bookingId ? `${appConfig.url}/api/calendar/${data.bookingId}` : null;
 
     // Google Calendar URL
-    const eventTitle = encodeURIComponent(`RDV - ${data.serviceName} chez ${businessName}`);
+    const eventTitle = encodeURIComponent(ics.summary(data.serviceName, businessName));
     const eventLocation = encodeURIComponent(data.locationAddress || '');
     const eventDescription = encodeURIComponent(
-      `${data.memberName ? `Avec ${data.memberName}` : `Chez ${businessName}`}${cancelUrl ? `\n\nPour annuler : ${cancelUrl}` : ''}`
+      `${data.memberName ? ics.withMember(data.memberName) : ics.atBusiness(businessName)}${cancelUrl ? `\n\n${ics.cancelLine(cancelUrl)}` : ''}`
     );
     const eventDates = `${formatGoogleDate(data.datetime)}/${formatGoogleDate(endDate)}`;
     const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${eventDates}&location=${eventLocation}&details=${eventDescription}`;
 
     // ICS content
-    const icsDescriptionParts = [data.memberName ? `Avec ${data.memberName}` : `Chez ${businessName}`];
+    const icsDescriptionParts = [data.memberName ? ics.withMember(data.memberName) : ics.atBusiness(businessName)];
     if (cancelUrl) {
       icsDescriptionParts.push('');
-      icsDescriptionParts.push(`Pour annuler : ${cancelUrl}`);
+      icsDescriptionParts.push(ics.cancelLine(cancelUrl));
     }
     const icsDescription = escapeIcs(icsDescriptionParts.join('\n'));
-    const icsSummary = escapeIcs(`RDV - ${data.serviceName} chez ${businessName}`);
+    const icsSummary = escapeIcs(ics.summary(data.serviceName, businessName));
     const icsLocation = escapeIcs(data.locationAddress || '');
 
     const icsContent = [
@@ -1185,18 +1228,14 @@ export async function sendReminderEmail(
     ].join('\r\n');
     const icsBuffer = Buffer.from(icsContent, 'utf-8');
 
-    // 24h reminder = "demain" (no need for exact hours count)
-    // 2h reminder = dynamic "dans X heures/minutes"
+    // 24h reminder = "demain"/"tomorrow" (no need for exact hours count)
+    // 2h reminder = dynamic "dans X heures/minutes" / "in X hours/minutes"
     const timeLabel = reminderType === '24h'
-      ? 'demain'
+      ? t.tomorrow
       : reminderType === '48h'
-        ? 'dans 2 jours'
-        : (minutesUntil != null ? formatTimeUntilFr(minutesUntil) : 'dans 2 heures');
-    const subject = reminderType === '24h'
-      ? `Rappel : votre rendez-vous demain - ${data.serviceName}`
-      : reminderType === '48h'
-        ? `Rappel : votre rendez-vous dans 2 jours - ${data.serviceName}`
-        : `Rappel : votre rendez-vous ${timeLabel} - ${data.serviceName}`;
+        ? t.inTwoDays
+        : (minutesUntil != null ? formatEmailTimeUntil(minutesUntil, l) : t.inTwoHours);
+    const subject = t.subject(timeLabel, data.serviceName);
 
     const { error } = await getResend().emails.send({
       from: emailConfig.from,
@@ -1204,13 +1243,14 @@ export async function sendReminderEmail(
       subject,
       attachments: [
         {
-          filename: 'rendez-vous.ics',
+          filename: ics.filename,
           content: icsBuffer,
           contentType: 'text/calendar; method=PUBLISH',
         },
       ],
       html: generateReminderHtml({
         ...data,
+        emailLocale: l,
         formattedDate,
         formattedTime,
         formattedEndTime,
@@ -1224,6 +1264,7 @@ export async function sendReminderEmail(
       }),
       text: generateReminderText({
         ...data,
+        emailLocale: l,
         formattedDate,
         formattedTime,
         formattedEndTime,
@@ -1252,6 +1293,7 @@ export async function sendReminderEmail(
 
 // HTML Template generators
 interface ConfirmationTemplateData extends BookingEmailData {
+  emailLocale: EmailLocale;
   formattedDate: string;
   formattedTime: string;
   formattedEndTime: string;
@@ -1264,6 +1306,9 @@ interface ConfirmationTemplateData extends BookingEmailData {
 }
 
 function generateConfirmationHtml(data: ConfirmationTemplateData): string {
+  const l = data.emailLocale;
+  const c = EMAIL_TEXTS.common[l];
+  const t = EMAIL_TEXTS.confirmation[l];
   return `
     <!DOCTYPE html>
     <html>
@@ -1283,68 +1328,68 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
               </tr>
               <tr>
                 <td style="padding: 0 32px 24px;">
-                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${c.greeting(data.clientName)}</p>
                   ${data.updateContext
-                    ? `<p style="margin: 0 0 6px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Une prestation a été ${data.updateContext.type === 'added'
-                        ? '<strong style="color: #16a34a;">ajoutée à</strong>'
-                        : '<strong style="color: #dc2626;">retirée de</strong>'} votre rendez-vous&nbsp;: <strong>${data.updateContext.serviceName}</strong>.</p>
-                       <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #71717a;">Voici votre rendez-vous mis à jour.</p>`
-                    : `<p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous a bien été <strong style="color: #16a34a;">confirmé</strong>.</p>`}
+                    ? `<p style="margin: 0 0 6px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${data.updateContext.type === 'added'
+                        ? t.updateAddedHtml(data.updateContext.serviceName)
+                        : t.updateRemovedHtml(data.updateContext.serviceName)}</p>
+                       <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #71717a;">${t.updatedSub}</p>`
+                    : `<p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${t.introHtml}</p>`}
                   <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">${data.items && data.items.length >= 2 ? 'Vos prestations' : 'Votre rendez-vous'}</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">${data.items && data.items.length >= 2 ? t.boxTitleMulti : t.boxTitleSingle}</p>
                     ${data.items && data.items.length >= 2
                       ? `<div style="margin-bottom: 16px;">${data.items.map((item, idx) => `
                           <div style="padding: 10px 0;${idx > 0 ? ' border-top: 1px solid #bbf7d0;' : ''}">
                             <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr>
                               <td style="font-size: 15px; color: #18181b; font-weight: 600;">${idx + 1}. ${item.serviceName}</td>
-                              <td style="font-size: 15px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price)}${promoNoteHtml(item.price, item.originalPrice)}</td>
+                              <td style="font-size: 15px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatEmailPrice(item.price, l)}${promoNoteHtml(item.price, item.originalPrice, l)}</td>
                             </tr></table>
                             <div style="font-size: 13px; color: #71717a; margin-top: 2px;">${formatDurationFr(item.duration)}</div>
-                            ${hasSelections(item) ? renderSelectionsHtml(item) : ''}
+                            ${hasSelections(item) ? renderSelectionsHtml(item, l) : ''}
                           </div>`).join('')}</div>`
                       : ''}
                     <table style="width: 100%; border-collapse: collapse;">
                       ${data.items && data.items.length >= 2
                         ? ''
-                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data) : ''}</td></tr>`}
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
-                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${locationAddressRowsHtml(data)}
-                      ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice)}</td></tr>
-                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte payé</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
-                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Reste à régler</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} sur place</td></tr>` : ''}
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l) : ''}</td></tr>`}
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
+                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.location}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
+                      ${locationAddressRowsHtml(data, l)}
+                      ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.with}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l)}</td></tr>
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.depositPaid}</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatEmailPrice(data.depositPaid.amount, l)}</td></tr>` : ''}
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} ${c.onSite}</td></tr>` : ''}
                     </table>
                   </div>
-                  ${addressPendingNoticeHtml(data)}
-                  ${accessInstructionsBlockHtml(data)}
+                  ${addressPendingNoticeHtml(data, l)}
+                  ${accessInstructionsBlockHtml(data, l)}
                   ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; Information de ${data.businessName}</p>
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; ${c.providerNoticeTitle(data.businessName)}</p>
                     <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;">${data.bookingNotice}</p>
                   </div>` : ''}
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Ajouter à votre calendrier</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">${c.addToCalendar}</p>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
                       <tr>
-                        <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Google</a></td>
-                        <td style="padding-left: 6px; width: 50%;"><a href="${data.icsUrl || data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Apple / Outlook</a></td>
+                        <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">${c.calendarGoogle}</a></td>
+                        <td style="padding-left: 6px; width: 50%;"><a href="${data.icsUrl || data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">${c.calendarApple}</a></td>
                       </tr>
                     </table>
                   </div>
-                  ${data.cancelUrl ? `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.cancelUrl}" style="display: inline-block; padding: 12px 24px; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 8px;">Annuler le rendez-vous</a></td></tr></table>` : ''}
-                  ${data.providerSlug ? `<table role="presentation" style="width: 100%; border-collapse: collapse;"><tr><td align="center"><a href="${appConfig.url}/p/${data.providerSlug}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Reprendre rendez-vous</a></td></tr></table>` : ''}
+                  ${data.cancelUrl ? `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.cancelUrl}" style="display: inline-block; padding: 12px 24px; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 8px;">${c.cancelCta}</a></td></tr></table>` : ''}
+                  ${data.providerSlug ? `<table role="presentation" style="width: 100%; border-collapse: collapse;"><tr><td align="center"><a href="${appConfig.url}/p/${data.providerSlug}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">${c.rebookCta}</a></td></tr></table>` : ''}
                 </td>
               </tr>
               <tr>
                 <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>${data.businessName}</strong></p>
-                  ${data.reviewUrl ? `<p style="margin: 16px 0 0; font-size: 13px; color: #a1a1aa; text-align: center;">Après votre rendez-vous, <a href="${data.reviewUrl}" style="color: #6366f1; text-decoration: underline;">donnez-nous votre avis</a></p>` : ''}
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">${c.signoff}<br><strong>${data.businessName}</strong></p>
+                  ${data.reviewUrl ? `<p style="margin: 16px 0 0; font-size: 13px; color: #a1a1aa; text-align: center;">${t.reviewFooterHtml(data.reviewUrl)}</p>` : ''}
                 </td>
               </tr>
             </table>
-            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">${c.footerAuto(appConfig.name)}<br>${c.footerIgnore}</p>
           </td>
         </tr>
       </table>
@@ -1354,41 +1399,45 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
 }
 
 function generateConfirmationText(data: ConfirmationTemplateData): string {
+  const l = data.emailLocale;
+  const c = EMAIL_TEXTS.common[l];
+  const t = EMAIL_TEXTS.confirmation[l];
   return `
-Bonjour ${data.clientName},
+${c.greeting(data.clientName)}
 
 ${data.updateContext
-  ? `Une prestation a été ${data.updateContext.type === 'added' ? 'ajoutée à' : 'retirée de'} votre rendez-vous : ${data.updateContext.serviceName}.\nVoici votre rendez-vous mis à jour.`
-  : 'Votre rendez-vous a bien été confirmé.'}
+  ? `${data.updateContext.type === 'added' ? t.updateAddedText(data.updateContext.serviceName) : t.updateRemovedText(data.updateContext.serviceName)}\n${t.updatedSub}`
+  : t.introText}
 
-Détails de votre rendez-vous :
+${t.detailsHeading}
 ${data.items && data.items.length >= 2
-  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${promoNoteText(item.price, item.originalPrice)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
-  : `- Prestation : ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data)}` : ''}`}
-- Date : ${data.formattedDate}
-- Heure : ${data.formattedTime} - ${data.formattedEndTime}
-- Durée : ${data.duration} min
-${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${locationAddressLineText(data)}${addressPendingNoticeText(data)}${accessInstructionsBlockText(data)}
-${data.memberName ? `- Avec : ${data.memberName}` : ''}
-- Prix : ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice)}
-${data.depositPaid ? `- Acompte payé : ${formatPriceFr(data.depositPaid.amount)}` : ''}
-${data.depositPaid ? `- Reste à régler sur place : ${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)}` : ''}
+  ? data.items.map((item) => `- ${c.labels.service}${c.colon} ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatEmailPrice(item.price, l)}${promoNoteText(item.price, item.originalPrice, l)}${hasSelections(item) ? `\n${renderSelectionsText(item, l)}` : ''}`).join('\n')
+  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l)}` : ''}`}
+- ${c.labels.date}${c.colon} ${data.formattedDate}
+- ${c.labels.time}${c.colon} ${data.formattedTime} - ${data.formattedEndTime}
+- ${c.labels.duration}${c.colon} ${data.duration} min
+${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : ''}
+${locationAddressLineText(data, l)}${addressPendingNoticeText(data, l)}${accessInstructionsBlockText(data, l)}
+${data.memberName ? `- ${c.labels.with}${c.colon} ${data.memberName}` : ''}
+- ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l)}
+${data.depositPaid ? `- ${c.labels.depositPaid}${c.colon} ${formatEmailPrice(data.depositPaid.amount, l)}` : ''}
+${data.depositPaid ? `- ${c.labels.remainingOnSite}${c.colon} ${formatEmailPrice(Math.max(0, data.price - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)}` : ''}
 
-Ajouter à votre calendrier :
-- Google Calendar : ${data.googleCalendarUrl}
-${data.icsUrl ? `- Apple / Outlook : ${data.icsUrl}` : ''}
+${c.addToCalendarText}
+- ${c.calendarGoogleText}${c.colon} ${data.googleCalendarUrl}
+${data.icsUrl ? `- ${c.calendarApple}${c.colon} ${data.icsUrl}` : ''}
 
-${data.cancelUrl ? `Annuler le rendez-vous : ${data.cancelUrl}` : ''}
+${data.cancelUrl ? c.cancelLineText(data.cancelUrl) : ''}
 
-${data.reviewUrl ? `Après votre rendez-vous, donnez-nous votre avis : ${data.reviewUrl}` : ''}
+${data.reviewUrl ? t.reviewFooterText(data.reviewUrl) : ''}
 
-À bientôt,
+${c.signoff}
 ${data.businessName}
   `.trim();
 }
 
 interface CancellationTemplateData {
+  emailLocale: EmailLocale;
   clientName: string;
   serviceName: string;
   formattedDate: string;
@@ -1402,6 +1451,9 @@ interface CancellationTemplateData {
 }
 
 function generateCancellationHtml(data: CancellationTemplateData): string {
+  const l = data.emailLocale;
+  const c = EMAIL_TEXTS.common[l];
+  const t = EMAIL_TEXTS.cancellation[l];
   return `
     <!DOCTYPE html>
     <html>
@@ -1421,38 +1473,38 @@ function generateCancellationHtml(data: CancellationTemplateData): string {
               </tr>
               <tr>
                 <td style="padding: 0 32px 24px;">
-                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
-                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Nous vous informons que votre rendez-vous a été <strong style="color: #dc2626;">annulé</strong>.</p>
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${c.greeting(data.clientName)}</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${t.introHtml}</p>
                   <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Rendez-vous annulé</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">${t.boxTitle}</p>
                     <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime}</td></tr>
-                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${data.reason ? `<tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a; vertical-align: top;">Motif</td><td style="padding: 8px 0 4px; font-size: 14px; color: #18181b;">${data.reason}</td></tr>` : ''}
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime}</td></tr>
+                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.location}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
+                      ${data.reason ? `<tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a; vertical-align: top;">${c.labels.reason}</td><td style="padding: 8px 0 4px; font-size: 14px; color: #18181b;">${data.reason}</td></tr>` : ''}
                     </table>
                   </div>
                   ${data.refundedAmount ? `<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">✓ Acompte remboursé</p>
-                    <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.5;">Votre acompte de <strong>${formatPriceFr(data.refundedAmount)}</strong> est en cours de remboursement sur votre moyen de paiement. Comptez 5 à 10 jours ouvrés pour le voir apparaître.</p>
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">${t.refundedTitle}</p>
+                    <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.5;">${t.refundedBodyHtml(formatEmailPrice(data.refundedAmount, l))}</p>
                   </div>` : ''}
                   ${data.unrefundedAmount ? `<div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Acompte non remboursé</p>
-                    <p style="margin: 0 0 4px; font-size: 14px; color: #991b1b; line-height: 1.5;">Votre acompte de <strong>${formatPriceFr(data.unrefundedAmount)}</strong> n'est pas remboursable car la demande d'annulation est intervenue après le délai de remboursement fixé par ${data.businessName}.</p>
-                    <p style="margin: 0; font-size: 13px; color: #991b1b; line-height: 1.5;">Pour toute demande exceptionnelle, contactez directement ${data.businessName}.</p>
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">${t.unrefundedTitle}</p>
+                    <p style="margin: 0 0 4px; font-size: 14px; color: #991b1b; line-height: 1.5;">${t.unrefundedBodyHtml(formatEmailPrice(data.unrefundedAmount, l), data.businessName)}</p>
+                    <p style="margin: 0; font-size: 13px; color: #991b1b; line-height: 1.5;">${t.unrefundedContactHtml(data.businessName)}</p>
                   </div>` : ''}
-                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Si vous souhaitez reprendre un nouveau rendez-vous, n'hésitez pas à nous contacter ou à réserver en ligne.</p>
-                  <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr><td align="center"><a href="${data.rebookUrl}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Reprendre rendez-vous</a></td></tr></table>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${t.rebookPromptHtml}</p>
+                  <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr><td align="center"><a href="${data.rebookUrl}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">${c.rebookCta}</a></td></tr></table>
                 </td>
               </tr>
               <tr>
                 <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">Nous nous excusons pour la gêne occasionnée.<br><strong>${data.businessName}</strong></p>
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">${t.apology}<br><strong>${data.businessName}</strong></p>
                 </td>
               </tr>
             </table>
-            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">${c.footerAuto(appConfig.name)}<br>${c.footerIgnore}</p>
           </td>
         </tr>
       </table>
@@ -1462,29 +1514,33 @@ function generateCancellationHtml(data: CancellationTemplateData): string {
 }
 
 function generateCancellationText(data: CancellationTemplateData): string {
+  const l = data.emailLocale;
+  const c = EMAIL_TEXTS.common[l];
+  const t = EMAIL_TEXTS.cancellation[l];
   return `
-Bonjour ${data.clientName},
+${c.greeting(data.clientName)}
 
-Nous vous informons que votre rendez-vous a été annulé.
+${t.introText}
 
-Détails du rendez-vous annulé :
-- Prestation : ${data.serviceName}
-- Date : ${data.formattedDate}
-- Heure : ${data.formattedTime}
-${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${data.reason ? `- Motif : ${data.reason}` : ''}
-${data.refundedAmount ? `\n✓ Votre acompte de ${formatPriceFr(data.refundedAmount)} est en cours de remboursement (5 à 10 jours ouvrés).` : ''}
-${data.unrefundedAmount ? `\n⚠ Votre acompte de ${formatPriceFr(data.unrefundedAmount)} n'est pas remboursable car la demande d'annulation est intervenue après le délai fixé par ${data.businessName}.` : ''}
+${t.detailsHeading}
+- ${c.labels.service}${c.colon} ${data.serviceName}
+- ${c.labels.date}${c.colon} ${data.formattedDate}
+- ${c.labels.time}${c.colon} ${data.formattedTime}
+${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : ''}
+${data.reason ? `- ${c.labels.reason}${c.colon} ${data.reason}` : ''}
+${data.refundedAmount ? `\n${t.refundedText(formatEmailPrice(data.refundedAmount, l))}` : ''}
+${data.unrefundedAmount ? `\n${t.unrefundedText(formatEmailPrice(data.unrefundedAmount, l), data.businessName)}` : ''}
 
-Si vous souhaitez reprendre un nouveau rendez-vous, n'hésitez pas à nous contacter ou à réserver en ligne sur ${data.rebookUrl}
+${t.rebookPromptText(data.rebookUrl)}
 
-Nous nous excusons pour la gêne occasionnée.
+${t.apology}
 
 ${data.businessName}
   `.trim();
 }
 
 interface RescheduleTemplateData extends BookingEmailData {
+  emailLocale: EmailLocale;
   formattedOldDate: string;
   formattedOldTime: string;
   formattedNewDate: string;
@@ -1498,6 +1554,9 @@ interface RescheduleTemplateData extends BookingEmailData {
 }
 
 function generateRescheduleHtml(data: RescheduleTemplateData): string {
+  const l = data.emailLocale;
+  const c = EMAIL_TEXTS.common[l];
+  const t = EMAIL_TEXTS.reschedule[l];
   return `
     <!DOCTYPE html>
     <html>
@@ -1517,47 +1576,47 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
               </tr>
               <tr>
                 <td style="padding: 0 32px 24px;">
-                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
-                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Votre rendez-vous a été <strong style="color: #2563eb;">modifié</strong>.</p>
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${c.greeting(data.clientName)}</p>
+                  <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${t.introHtml}</p>
                   <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 16px; opacity: 0.8;">
-                    <p style="margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">Ancien créneau</p>
-                    <p style="margin: 0; font-size: 14px; color: #71717a; text-decoration: line-through;"><span style="text-transform: capitalize;">${data.formattedOldDate}</span> à ${data.formattedOldTime}</p>
+                    <p style="margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">${t.oldSlotTitle}</p>
+                    <p style="margin: 0; font-size: 14px; color: #71717a; text-decoration: line-through;"><span style="text-transform: capitalize;">${data.formattedOldDate}</span> ${t.atJoiner} ${data.formattedOldTime}</p>
                   </div>
                   <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">Nouveau créneau</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">${t.newSlotTitle}</p>
                     <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedNewDate}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedNewTime} - ${data.formattedNewEndTime}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
-                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${locationAddressRowsHtml(data)}
-                      ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice)}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedNewDate}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedNewTime} - ${data.formattedNewEndTime}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
+                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.location}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
+                      ${locationAddressRowsHtml(data, l)}
+                      ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.with}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l)}</td></tr>
                     </table>
                   </div>
-                  ${addressPendingNoticeHtml(data)}
-                  ${accessInstructionsBlockHtml(data)}
+                  ${addressPendingNoticeHtml(data, l)}
+                  ${accessInstructionsBlockHtml(data, l)}
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Mettre à jour votre calendrier</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">${c.updateCalendar}</p>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
                       <tr>
-                        <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Google</a></td>
-                        <td style="padding-left: 6px; width: 50%;"><a href="${data.icsUrl || data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Apple / Outlook</a></td>
+                        <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">${c.calendarGoogle}</a></td>
+                        <td style="padding-left: 6px; width: 50%;"><a href="${data.icsUrl || data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">${c.calendarApple}</a></td>
                       </tr>
                     </table>
                   </div>
-                  ${data.cancelUrl ? `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.cancelUrl}" style="display: inline-block; padding: 12px 24px; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 8px;">Annuler le rendez-vous</a></td></tr></table>` : ''}
-                  ${data.providerSlug ? `<table role="presentation" style="width: 100%; border-collapse: collapse;"><tr><td align="center"><a href="${appConfig.url}/p/${data.providerSlug}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Reprendre rendez-vous</a></td></tr></table>` : ''}
+                  ${data.cancelUrl ? `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.cancelUrl}" style="display: inline-block; padding: 12px 24px; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 8px;">${c.cancelCta}</a></td></tr></table>` : ''}
+                  ${data.providerSlug ? `<table role="presentation" style="width: 100%; border-collapse: collapse;"><tr><td align="center"><a href="${appConfig.url}/p/${data.providerSlug}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">${c.rebookCta}</a></td></tr></table>` : ''}
                 </td>
               </tr>
               <tr>
                 <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>${data.businessName}</strong></p>
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">${c.signoff}<br><strong>${data.businessName}</strong></p>
                 </td>
               </tr>
             </table>
-            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">${c.footerAuto(appConfig.name)}<br>${c.footerIgnore}</p>
           </td>
         </tr>
       </table>
@@ -1567,35 +1626,39 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
 }
 
 function generateRescheduleText(data: RescheduleTemplateData): string {
+  const l = data.emailLocale;
+  const c = EMAIL_TEXTS.common[l];
+  const t = EMAIL_TEXTS.reschedule[l];
   return `
-Bonjour ${data.clientName},
+${c.greeting(data.clientName)}
 
-Votre rendez-vous a été modifié.
+${t.introText}
 
-Ancien créneau : ${data.formattedOldDate} à ${data.formattedOldTime}
+${t.oldSlotLineText(data.formattedOldDate, data.formattedOldTime)}
 
-Nouveau créneau :
-- Prestation : ${data.serviceName}
-- Date : ${data.formattedNewDate}
-- Heure : ${data.formattedNewTime} - ${data.formattedNewEndTime}
-- Durée : ${data.duration} min
-${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${locationAddressLineText(data)}${addressPendingNoticeText(data)}${accessInstructionsBlockText(data)}
-${data.memberName ? `- Avec : ${data.memberName}` : ''}
-- Prix : ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice)}
+${t.newSlotHeadingText}
+- ${c.labels.service}${c.colon} ${data.serviceName}
+- ${c.labels.date}${c.colon} ${data.formattedNewDate}
+- ${c.labels.time}${c.colon} ${data.formattedNewTime} - ${data.formattedNewEndTime}
+- ${c.labels.duration}${c.colon} ${data.duration} min
+${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : ''}
+${locationAddressLineText(data, l)}${addressPendingNoticeText(data, l)}${accessInstructionsBlockText(data, l)}
+${data.memberName ? `- ${c.labels.with}${c.colon} ${data.memberName}` : ''}
+- ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l)}
 
-Mettre à jour votre calendrier :
-- Google Calendar : ${data.googleCalendarUrl}
-${data.icsUrl ? `- Apple / Outlook : ${data.icsUrl}` : ''}
+${c.updateCalendarText}
+- ${c.calendarGoogleText}${c.colon} ${data.googleCalendarUrl}
+${data.icsUrl ? `- ${c.calendarApple}${c.colon} ${data.icsUrl}` : ''}
 
-${data.cancelUrl ? `Annuler le rendez-vous : ${data.cancelUrl}` : ''}
+${data.cancelUrl ? c.cancelLineText(data.cancelUrl) : ''}
 
-À bientôt,
+${c.signoff}
 ${data.businessName}
   `.trim();
 }
 
 interface ReminderTemplateData extends BookingEmailData {
+  emailLocale: EmailLocale;
   formattedDate: string;
   formattedTime: string;
   formattedEndTime: string;
@@ -1609,7 +1672,10 @@ interface ReminderTemplateData extends BookingEmailData {
 }
 
 function generateReminderHtml(data: ReminderTemplateData): string {
-  const introText = `Nous vous rappelons que votre rendez-vous a lieu <strong style="color: #2563eb;">${data.timeLabel}</strong>.`;
+  const l = data.emailLocale;
+  const c = EMAIL_TEXTS.common[l];
+  const t = EMAIL_TEXTS.reminder[l];
+  const introText = t.introHtml(data.timeLabel);
 
   return `
     <!DOCTYPE html>
@@ -1630,48 +1696,48 @@ function generateReminderHtml(data: ReminderTemplateData): string {
               </tr>
               <tr>
                 <td style="padding: 0 32px 24px;">
-                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
+                  <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${c.greeting(data.clientName)}</p>
                   <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${introText}</p>
                   <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px;">Rappel de rendez-vous</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px;">${t.boxTitle}</p>
                     <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Durée</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
-                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
-                      ${locationAddressRowsHtml(data)}
-                      ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Avec</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice)}</td></tr>
-                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte payé</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
-                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Reste à régler</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatPriceFr(Math.max(0, data.price - data.depositPaid.amount), data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} sur place</td></tr>` : ''}
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
+                      ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.location}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
+                      ${locationAddressRowsHtml(data, l)}
+                      ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.with}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l)}</td></tr>
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.depositPaid}</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatEmailPrice(data.depositPaid.amount, l)}</td></tr>` : ''}
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} ${c.onSite}</td></tr>` : ''}
                     </table>
                   </div>
-                  ${addressPendingNoticeHtml(data)}
-                  ${accessInstructionsBlockHtml(data)}
+                  ${addressPendingNoticeHtml(data, l)}
+                  ${accessInstructionsBlockHtml(data, l)}
                   ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; Information de ${data.businessName}</p>
+                    <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #92400e;">&#x26A0;&#xFE0F; ${c.providerNoticeTitle(data.businessName)}</p>
                     <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;">${data.bookingNotice}</p>
                   </div>` : ''}
                   <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">Ajouter à votre calendrier</p>
+                    <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #3f3f46;">${c.addToCalendar}</p>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
                       <tr>
-                        <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Google</a></td>
-                        <td style="padding-left: 6px; width: 50%;"><a href="${data.icsUrl || data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">Apple / Outlook</a></td>
+                        <td style="padding-right: 6px; width: 50%;"><a href="${data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">${c.calendarGoogle}</a></td>
+                        <td style="padding-left: 6px; width: 50%;"><a href="${data.icsUrl || data.googleCalendarUrl}" target="_blank" style="display: block; padding: 10px 12px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 6px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 500; color: #3f3f46;">${c.calendarApple}</a></td>
                       </tr>
                     </table>
                   </div>
-                  ${data.cancelUrl ? `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.cancelUrl}" style="display: inline-block; padding: 12px 24px; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 8px;">Annuler le rendez-vous</a></td></tr></table>` : ''}
+                  ${data.cancelUrl ? `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.cancelUrl}" style="display: inline-block; padding: 12px 24px; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 8px;">${c.cancelCta}</a></td></tr></table>` : ''}
                 </td>
               </tr>
               <tr>
                 <td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À bientôt,<br><strong>${data.businessName}</strong></p>
+                  <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">${c.signoff}<br><strong>${data.businessName}</strong></p>
                 </td>
               </tr>
             </table>
-            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">Cet email a été envoyé automatiquement par ${appConfig.name}.<br>Si vous n'êtes pas concerné, veuillez ignorer ce message.</p>
+            <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">${c.footerAuto(appConfig.name)}<br>${c.footerIgnore}</p>
           </td>
         </tr>
       </table>
@@ -1681,30 +1747,33 @@ function generateReminderHtml(data: ReminderTemplateData): string {
 }
 
 function generateReminderText(data: ReminderTemplateData): string {
-  const introText = `Nous vous rappelons que votre rendez-vous a lieu ${data.timeLabel}.`;
+  const l = data.emailLocale;
+  const c = EMAIL_TEXTS.common[l];
+  const t = EMAIL_TEXTS.reminder[l];
+  const introText = t.introText(data.timeLabel);
 
   return `
-Bonjour ${data.clientName},
+${c.greeting(data.clientName)}
 
 ${introText}
 
-Détails de votre rendez-vous :
-- Prestation : ${data.serviceName}
-- Date : ${data.formattedDate}
-- Heure : ${data.formattedTime} - ${data.formattedEndTime}
-- Durée : ${data.duration} min
-${data.locationName ? `- Lieu : ${data.locationName}` : ''}
-${locationAddressLineText(data)}${addressPendingNoticeText(data)}${accessInstructionsBlockText(data)}
-${data.memberName ? `- Avec : ${data.memberName}` : ''}
-- Prix : ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice)}
+${t.detailsHeading}
+- ${c.labels.service}${c.colon} ${data.serviceName}
+- ${c.labels.date}${c.colon} ${data.formattedDate}
+- ${c.labels.time}${c.colon} ${data.formattedTime} - ${data.formattedEndTime}
+- ${c.labels.duration}${c.colon} ${data.duration} min
+${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : ''}
+${locationAddressLineText(data, l)}${addressPendingNoticeText(data, l)}${accessInstructionsBlockText(data, l)}
+${data.memberName ? `- ${c.labels.with}${c.colon} ${data.memberName}` : ''}
+- ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l)}
 
-Ajouter à votre calendrier :
-- Google Calendar : ${data.googleCalendarUrl}
-${data.icsUrl ? `- Apple / Outlook : ${data.icsUrl}` : ''}
+${c.addToCalendarText}
+- ${c.calendarGoogleText}${c.colon} ${data.googleCalendarUrl}
+${data.icsUrl ? `- ${c.calendarApple}${c.colon} ${data.icsUrl}` : ''}
 
-${data.cancelUrl ? `Annuler le rendez-vous : ${data.cancelUrl}` : ''}
+${data.cancelUrl ? c.cancelLineText(data.cancelUrl) : ''}
 
-À bientôt,
+${c.signoff}
 ${data.businessName}
   `.trim();
 }
@@ -2035,6 +2104,8 @@ export interface ReviewRequestEmailData {
   bookingId: string;
   clientEmail: string;
   clientName: string;
+  /** Client's booking language ('fr' | 'en', anything else → fr). */
+  locale?: string;
   serviceName: string;
   datetime: Date;
   providerName: string;
@@ -2059,14 +2130,17 @@ export async function sendReviewRequestEmail(
   }
 
   try {
+    const l = resolveEmailLocale(data.locale);
+    const c = EMAIL_TEXTS.common[l];
+    const t = EMAIL_TEXTS.review[l];
     const reviewUrl = `${appConfig.url}/avis/${data.bookingId}`;
-    const formattedDate = formatDateFr(data.datetime);
-    const formattedTime = formatTimeFr(data.datetime);
+    const formattedDate = formatEmailDate(data.datetime, l);
+    const formattedTime = formatEmailTime(data.datetime, l);
 
-    const subject = `Donnez votre avis sur votre rendez-vous - ${data.serviceName}`;
+    const subject = t.subject(data.serviceName);
 
     const html = `<!DOCTYPE html>
-<html lang="fr">
+<html lang="${t.htmlLang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -2079,35 +2153,35 @@ export async function sendReviewRequestEmail(
         <table role="presentation" style="width: 100%; max-width: 560px; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
           <tr>
             <td style="padding: 32px 32px 8px;">
-              <p style="margin: 0; font-size: 13px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.6px;">Votre avis compte</p>
-              <h1 style="margin: 8px 0 0; font-size: 22px; font-weight: 700; color: #18181b;">Comment s'est passé votre rendez-vous ?</h1>
+              <p style="margin: 0; font-size: 13px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.6px;">${t.eyebrow}</p>
+              <h1 style="margin: 8px 0 0; font-size: 22px; font-weight: 700; color: #18181b;">${t.heading}</h1>
             </td>
           </tr>
           <tr>
             <td style="padding: 16px 32px 24px;">
-              <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
-              <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Nous espérons que votre rendez-vous s'est bien passé. Votre avis aide d'autres clients à choisir et nous aide à améliorer nos services.</p>
+              <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${c.greeting(data.clientName)}</p>
+              <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${t.body}</p>
               <div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                <p style="margin: 0 0 12px; font-size: 13px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">Votre rendez-vous</p>
+                <p style="margin: 0 0 12px; font-size: 13px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">${t.boxTitle}</p>
                 <table style="width: 100%; border-collapse: collapse;">
-                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
-                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${formattedDate}</td></tr>
-                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedTime}</td></tr>
-                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Chez</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.providerName}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${formattedDate}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedTime}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.at}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.providerName}</td></tr>
                 </table>
               </div>
               <table role="presentation" style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td align="center">
-                    <a href="${reviewUrl}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Donner mon avis</a>
+                    <a href="${reviewUrl}" style="display: inline-block; padding: 14px 32px; background-color: #6366f1; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">${t.cta}</a>
                   </td>
                 </tr>
               </table>
-              <p style="margin: 24px 0 0; font-size: 13px; color: #a1a1aa; text-align: center;">Votre avis sera visible sur la page de ${data.providerName}.</p>
+              <p style="margin: 24px 0 0; font-size: 13px; color: #a1a1aa; text-align: center;">${t.visibleNote(data.providerName)}</p>
             </td>
           </tr>
         </table>
-        <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa;">Email envoyé par <a href="${appConfig.url}" style="color: #6366f1; text-decoration: none;">${appConfig.name}</a></p>
+        <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa;">${t.sentBy} <a href="${appConfig.url}" style="color: #6366f1; text-decoration: none;">${appConfig.name}</a></p>
       </td>
     </tr>
   </table>
@@ -2115,20 +2189,20 @@ export async function sendReviewRequestEmail(
 </html>`;
 
     const text = [
-      `Bonjour ${data.clientName},`,
+      c.greeting(data.clientName),
       '',
-      "Nous espérons que votre rendez-vous s'est bien passé. Votre avis aide d'autres clients à choisir et nous aide à améliorer nos services.",
+      t.body,
       '',
-      'Votre rendez-vous :',
-      `- Prestation : ${data.serviceName}`,
-      `- Date : ${formattedDate}`,
-      `- Heure : ${formattedTime}`,
-      `- Chez : ${data.providerName}`,
+      t.boxTitleText,
+      `- ${c.labels.service}${c.colon} ${data.serviceName}`,
+      `- ${c.labels.date}${c.colon} ${formattedDate}`,
+      `- ${c.labels.time}${c.colon} ${formattedTime}`,
+      `- ${c.labels.at}${c.colon} ${data.providerName}`,
       '',
-      'Donnez votre avis ici :',
+      t.ctaLineText,
       reviewUrl,
       '',
-      `Votre avis sera visible sur la page de ${data.providerName}.`,
+      t.visibleNote(data.providerName),
     ].join('\n');
 
     const { error } = await getResend().emails.send({

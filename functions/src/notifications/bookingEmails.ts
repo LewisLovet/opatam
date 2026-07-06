@@ -49,6 +49,9 @@ interface BookingData {
     email: string;
     phone: string;
   };
+  /** Language the client booked in ('fr' | 'en'). Absent on legacy
+   *  bookings → French. Drives the language of client emails. */
+  clientLocale?: string;
   providerName: string;
   status: string;
   cancelledBy?: 'client' | 'provider' | null;
@@ -220,6 +223,7 @@ async function toEmailData(
   return {
     clientEmail: booking.clientInfo.email,
     clientName: booking.clientInfo.name,
+    locale: booking.clientLocale,
     serviceName: booking.serviceName,
     datetime: booking.datetime.toDate(),
     duration: booking.duration || 60,
@@ -372,6 +376,7 @@ export async function emailClientBookingCancelled(
   const result = await sendCancellationEmail({
     clientEmail: booking.clientInfo.email,
     clientName: booking.clientInfo.name,
+    locale: booking.clientLocale,
     serviceName: booking.serviceName,
     datetime: booking.datetime.toDate(),
     reason: booking.cancelReason,

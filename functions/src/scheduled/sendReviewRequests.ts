@@ -230,6 +230,7 @@ export const sendReviewRequests = onSchedule(
           bookingId,
           clientEmail,
           clientName: data.clientInfo?.name ?? 'Client',
+          locale: data.clientLocale,
           serviceName: data.serviceName ?? 'Prestation',
           datetime,
           providerName: data.providerName ?? 'votre prestataire',

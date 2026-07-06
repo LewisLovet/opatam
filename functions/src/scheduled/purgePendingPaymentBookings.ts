@@ -118,6 +118,7 @@ export const purgePendingPaymentBookings = onSchedule(
           const result = await sendDepositReminderEmail({
             clientEmail,
             clientName: data.clientInfo?.name || 'cher client',
+            locale: data.clientLocale,
             serviceName: data.serviceName,
             datetime,
             duration: data.duration || 60,
