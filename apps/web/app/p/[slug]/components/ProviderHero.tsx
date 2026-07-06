@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Calendar, User, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import { getCategoryLabel } from '@booking-app/shared';
@@ -47,9 +48,13 @@ interface ProviderHeroProps {
 
 /**
  * Format the next available date for display
- * Returns: "Aujourd'hui", "Demain", or "Lun. 3 février"
+ * Returns the localized equivalent of "Today", "Tomorrow", or "Mon. 3 February"
  */
-function formatNextAvailableDate(dateStr: string | null): string | null {
+function formatNextAvailableDate(
+  dateStr: string | null,
+  locale: string,
+  labels: { today: string; tomorrow: string },
+): string | null {
   if (!dateStr) return null;
 
   const date = new Date(dateStr);
@@ -61,21 +66,20 @@ function formatNextAvailableDate(dateStr: string | null): string | null {
   const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
   if (dateOnly.getTime() === today.getTime()) {
-    return "Aujourd'hui";
+    return labels.today;
   }
 
   if (dateOnly.getTime() === tomorrow.getTime()) {
-    return 'Demain';
+    return labels.tomorrow;
   }
 
-  // Format as "Lun. 3 février"
-  const days = ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'];
-  const months = [
-    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-  ];
-
-  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+  // Locale-aware short format, e.g. "lun. 3 février" → "Lun. 3 février"
+  const formatted = date.toLocaleDateString(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+  });
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 export function ProviderHero({
@@ -85,10 +89,13 @@ export function ProviderHero({
   memberAvailabilities = [],
   isTeam = false,
 }: ProviderHeroProps) {
+  const t = useTranslations('provider');
+  const locale = useLocale();
+  const dateLabels = { today: t('hero.today'), tomorrow: t('hero.tomorrow') };
   const paypalUrl = paypalLink
     ? paypalLink.startsWith('http') ? paypalLink : `https://paypal.me/${paypalLink}`
     : null;
-  const formattedDate = formatNextAvailableDate(nextAvailableDate);
+  const formattedDate = formatNextAvailableDate(nextAvailableDate, locale, dateLabels);
   // For team plans, show per-member availability; sort by earliest date first
   const showMemberDispos = isTeam && memberAvailabilities.length > 1;
 
@@ -169,7 +176,7 @@ export function ProviderHero({
                         clipRule="evenodd"
                       />
                     </svg>
-                    Vérifié
+                    {t('hero.verified')}
                   </span>
                 )}
               </div>
@@ -196,7 +203,7 @@ export function ProviderHero({
                       onClick={() => setDescExpanded(!descExpanded)}
                       className="mt-1 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                     >
-                      {descExpanded ? 'Voir moins' : 'Voir plus'}
+                      {descExpanded ? t('common.seeLess') : t('common.seeMore')}
                     </button>
                   )}
                 </div>
@@ -208,7 +215,7 @@ export function ProviderHero({
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
                     <Calendar className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                     <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                      Prochaine dispo : {formattedDate}
+                      {t('hero.nextAvailability', { date: formattedDate })}
                     </span>
                   </div>
                 )}
@@ -232,7 +239,7 @@ export function ProviderHero({
           {showMemberDispos && (
             <div className="mt-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                Disponibilités par professionnel
+                {t('hero.memberAvailabilityTitle')}
               </h3>
               <div className="space-y-2.5">
                 {memberAvailabilities
@@ -257,13 +264,15 @@ export function ProviderHero({
                         {ma.memberName}
                       </span>
                       <span className="ml-auto text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-1 rounded-md whitespace-nowrap">
-                        {formatNextAvailableDate(ma.nextDate)}
+                        {formatNextAvailableDate(ma.nextDate, locale, dateLabels)}
                       </span>
                     </div>
                   ))}
                 {memberAvailabilities.filter((ma) => ma.nextDate === null).length > 0 && (
                   <div className="text-xs text-gray-400 dark:text-gray-500 pt-1">
-                    {memberAvailabilities.filter((ma) => ma.nextDate === null).length} professionnel(s) sans disponibilité prochaine
+                    {t('hero.membersWithoutAvailability', {
+                      count: memberAvailabilities.filter((ma) => ma.nextDate === null).length,
+                    })}
                   </div>
                 )}
               </div>

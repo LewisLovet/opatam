@@ -37,12 +37,16 @@ export * from './articles';
  * Format price from cents to display string
  * @param cents - Price in cents
  * @param currency - Currency code (default: EUR)
+ * @param locale - BCP 47 locale for number formatting (default: fr-FR —
+ *   pass the active UI locale on translated surfaces)
  * @returns Formatted price string
  */
-export function formatPrice(cents: number, currency = 'EUR'): string {
-  if (cents === 0) return 'Gratuit';
+export function formatPrice(cents: number, currency = 'EUR', locale = 'fr-FR'): string {
+  // "Free" is the only translated word here — a full dictionary lookup would
+  // drag react/i18n into shared, so a tiny inline map does the job.
+  if (cents === 0) return locale.startsWith('en') ? 'Free' : 'Gratuit';
   const amount = cents / 100;
-  return new Intl.NumberFormat('fr-FR', {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
   }).format(amount);

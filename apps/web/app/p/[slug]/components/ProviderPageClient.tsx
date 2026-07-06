@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
-import { Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Megaphone } from 'lucide-react';
 import type { ServiceDiscount } from '@booking-app/shared';
 import { ProviderHero } from './ProviderHero';
 import { ProviderNav } from './ProviderNav';
@@ -165,6 +166,7 @@ export function ProviderPageClient({
   memberAvailabilities = [],
   isDemo = false,
 }: ProviderPageClientProps) {
+  const t = useTranslations('provider');
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('prestations');
   const [showNotice, setShowNotice] = useState(false);
@@ -291,10 +293,10 @@ export function ProviderPageClient({
           <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <Megaphone className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                Information importante
+                {t('notice.title')}
               </h3>
             </div>
             <p className="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-line mb-6">
@@ -305,13 +307,13 @@ export function ProviderPageClient({
                 onClick={() => setShowNotice(false)}
                 className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
-                Retour
+                {t('notice.back')}
               </button>
               <button
                 onClick={handleNoticeAccept}
                 className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
               >
-                J&apos;ai compris, continuer
+                {t('notice.accept')}
               </button>
             </div>
           </div>

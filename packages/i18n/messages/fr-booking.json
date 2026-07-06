@@ -1,0 +1,251 @@
+{
+  "common": {
+    "back": "Retour",
+    "backHome": "Retour à l'accueil",
+    "error": "Une erreur est survenue",
+    "free": "Gratuit",
+    "priceRange": "De {min} à {max}",
+    "total": "Total",
+    "service": "Prestation",
+    "services": "Prestations",
+    "professional": "Professionnel",
+    "location": "Lieu",
+    "dateTime": "Date & Heure",
+    "date": "Date",
+    "dateAtTime": "{date} à {time}",
+    "reference": "Référence : {id}",
+    "cancelAndHome": "Annuler et retourner à l'accueil",
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "steps": {
+    "service": "Prestation",
+    "member": "Professionnel",
+    "slot": "Date & Heure",
+    "confirm": "Confirmation"
+  },
+  "page": {
+    "noServicesTitle": "Aucune prestation disponible",
+    "noServicesText": "Ce prestataire n'a pas encore configuré ses prestations."
+  },
+  "flow": {
+    "errorMissingInfo": "Informations manquantes",
+    "title": "Composez votre rendez-vous",
+    "subtitle": "Ajoutez une ou plusieurs prestations.",
+    "cartTitle": "Votre rendez-vous",
+    "cartEmpty": "Votre rendez-vous est vide",
+    "cartEmptyHint": "Ajoutez des prestations ci-dessous.",
+    "removeService": "Retirer la prestation",
+    "continue": "Continuer",
+    "continueWithCart": "Continuer · {count, plural, one {# prestation} other {# prestations}} · {total}",
+    "configureSubtitle": "Composez votre prestation",
+    "addToCart": "Ajouter au rendez-vous",
+    "missingChoices": "À choisir : {items}",
+    "servicesCount": "{count, plural, one {# prestation} other {# prestations}}",
+    "notice": {
+      "title": "Information importante",
+      "accept": "J'ai compris, continuer"
+    },
+    "demo": {
+      "confirmedTitle": "Réservation confirmée !",
+      "confirmedText": "C'est exactement ce que vos clients verront après avoir réservé chez vous.",
+      "with": "avec {name}",
+      "trialNote": "{days} jours gratuits, sans carte bancaire",
+      "backToShop": "← Retour à la boutique démo"
+    }
+  },
+  "service": {
+    "title": "Ajoutez des prestations",
+    "from": "à partir de",
+    "added": "{count, plural, =1 {Ajouté} other {Ajouté ×#}}",
+    "add": "Ajouter",
+    "moreDetails": "Plus de détails",
+    "less": "Moins",
+    "others": "Autres"
+  },
+  "member": {
+    "title": "Choisissez un professionnel"
+  },
+  "memberPicker": {
+    "any": "Peu importe",
+    "firstAvailable": "Premier disponible"
+  },
+  "slot": {
+    "title": "Choisissez une date et un horaire",
+    "nextAvailability": "Prochaine dispo",
+    "prevMonth": "Mois précédent",
+    "nextMonth": "Mois suivant",
+    "days": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
+    "months": ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"],
+    "loadError": "Erreur lors du chargement des disponibilités",
+    "noAvailabilityTitle": "Aucune disponibilité pour cette prestation",
+    "noAvailabilityHint": "dans les {days} prochains jours. Revenez plus tard ou contactez directement le professionnel.",
+    "spotsShort": "{count} pl.",
+    "full": "Complet",
+    "closed": "Fermé",
+    "available": "Disponible",
+    "almostFull": "Bientôt complet",
+    "almostFullBadge": "Bientôt complet · {count, plural, one {# créneau} other {# créneaux}}",
+    "dayFull": "Complet ce jour-là pour cette prestation.",
+    "seeNextAvailability": "Voir la prochaine disponibilité"
+  },
+  "slotPicker": {
+    "prevDays": "Jours précédents",
+    "nextDays": "Jours suivants",
+    "noSlot": "Aucun créneau",
+    "emptyTitle": "Aucun créneau disponible",
+    "emptyText": "Aucun créneau disponible pour la période sélectionnée.",
+    "selectedSlot": "Créneau :"
+  },
+  "confirm": {
+    "title": "Vos informations",
+    "nameLabel": "Nom complet",
+    "namePlaceholder": "Jean Dupont",
+    "nameError": "Le nom doit contenir au moins 2 caractères",
+    "emailLabel": "Email",
+    "emailPlaceholder": "jean@exemple.com",
+    "emailError": "Format d'email invalide",
+    "phoneLabel": "Téléphone",
+    "phonePlaceholder": "06 12 34 56 78 ou +33 6 12 34 56 78",
+    "phoneError": "Numéro de téléphone invalide",
+    "pendingInfo": "Votre réservation sera en attente de confirmation par le prestataire. Vous recevrez un email dès qu'elle sera confirmée.",
+    "submitting": "Réservation en cours...",
+    "submit": "Confirmer la réservation",
+    "terms": "En confirmant, vous acceptez nos conditions générales et notre politique de confidentialité."
+  },
+  "clientForm": {
+    "firstNameLabel": "Prénom",
+    "firstNamePlaceholder": "Jean",
+    "firstNameRequired": "Le prénom est requis",
+    "lastNameLabel": "Nom",
+    "lastNamePlaceholder": "Dupont",
+    "lastNameRequired": "Le nom est requis",
+    "emailLabel": "Email",
+    "emailPlaceholder": "jean.dupont@example.com",
+    "emailRequired": "L'email est requis",
+    "emailInvalid": "Email invalide",
+    "phoneLabel": "Téléphone",
+    "phonePlaceholder": "06 12 34 56 78",
+    "phoneRequired": "Le téléphone est requis",
+    "phoneInvalid": "Numéro de téléphone invalide",
+    "notesLabel": "Notes (optionnel)",
+    "notesPlaceholder": "Informations complémentaires...",
+    "terms": "En confirmant, vous acceptez nos <cgv>conditions générales</cgv> et notre <privacy>politique de confidentialité</privacy>."
+  },
+  "choicesPicker": {
+    "noChoices": "Aucune variation, option ou info — la cliente verra directement le prix de base.",
+    "optionFallback": "Option",
+    "variationFallback": "Variation",
+    "choiceFallback": "Choix",
+    "infoFallback": "Information",
+    "selectPlaceholder": "Choisir…",
+    "answerPlaceholder": "Votre réponse"
+  },
+  "recap": {
+    "title": "Récapitulatif",
+    "selectService": "Sélectionnez une prestation",
+    "detail": "Détail",
+    "duration": "Durée",
+    "addressAfterConfirmation": "Adresse exacte communiquée après confirmation",
+    "promoUntil": "jusqu'au {date}",
+    "promoValid": "Offre valable {datePart}",
+    "promoSavings": "Promotion −{percent}% · vous économisez {amount}"
+  },
+  "summary": {
+    "title": "Récapitulatif",
+    "atTime": "à {time}"
+  },
+  "serviceCard": {
+    "selected": "Sélectionné",
+    "select": "Sélectionner",
+    "selectedIndicator": "Prestation sélectionnée"
+  },
+  "serviceList": {
+    "emptyTitle": "Aucune prestation",
+    "emptyText": "Aucune prestation disponible pour le moment."
+  },
+  "appCta": {
+    "title": "Téléchargez l'app Opatam",
+    "subtitle": "Retrouvez vos rendez-vous, recevez des rappels et réservez en un clic."
+  },
+  "proCta": {
+    "title": "Vous êtes aussi professionnel ?",
+    "subtitle": "Créez votre page de réservation en 5 minutes et recevez vos premiers clients dès aujourd'hui.",
+    "subtitleOnline": "Créez votre page de réservation en ligne en 5 minutes et recevez vos premiers clients dès aujourd'hui.",
+    "button": "Créer ma page gratuitement"
+  },
+  "confirmation": {
+    "pendingPaymentTitle": "Paiement en cours de validation…",
+    "pendingTitle": "Demande envoyée !",
+    "confirmedTitle": "Réservation confirmée !",
+    "pendingPaymentText": "Votre paiement vient d'être effectué et est en cours de validation. Cette page se mettra à jour dans quelques secondes.",
+    "pendingText": "Votre demande de réservation a bien été envoyée. Vous recevrez un email dès que le prestataire aura confirmé.",
+    "depositPaidText": "Votre réservation est confirmée et votre acompte de {amount} a bien été enregistré. Un email de confirmation vous a été envoyé.",
+    "confirmedText": "Votre réservation a bien été enregistrée. Un email de confirmation vous a été envoyé.",
+    "awaitingConfirmation": "En attente de confirmation",
+    "addressRevealLater": "Adresse exacte communiquée ~48h avant le rendez-vous.",
+    "savings": "Vous avez économisé {amount}",
+    "depositPaid": "Acompte payé",
+    "remainingDue": "Reste à régler sur place",
+    "addToCalendar": "Ajouter à votre calendrier",
+    "emailSentTo": "Un email de confirmation a été envoyé à <email>{address}</email>",
+    "calendarTitle": "RDV - {service} chez {provider}",
+    "calendarWith": "Avec {name}",
+    "calendarAt": "Chez {name}"
+  },
+  "cancel": {
+    "notFoundTitle": "Lien invalide ou expiré",
+    "notFoundText": "Ce lien d'annulation n'est plus valide. Le rendez-vous a peut-être déjà été annulé ou le lien a expiré.",
+    "alreadyCancelledTitle": "Rendez-vous déjà annulé",
+    "alreadyCancelledText": "Ce rendez-vous a déjà été annulé.",
+    "cancelledOn": "Annulé le {date} à {time}",
+    "pastTitle": "Rendez-vous passé",
+    "pastText": "Ce rendez-vous est déjà passé et ne peut plus être annulé.",
+    "successTitle": "Rendez-vous annulé",
+    "successText": "Votre rendez-vous a bien été annulé.",
+    "refunded": "Votre acompte de {amount} a été remboursé sur votre moyen de paiement. Comptez 5 à 10 jours ouvrés pour le voir apparaître.",
+    "refundDeadlinePassed": "Le délai de remboursement de l'acompte est dépassé. Pour toute demande, contactez directement {name}.",
+    "providerNotified": "Le prestataire a été notifié de cette annulation.",
+    "rebook": "Reprendre rendez-vous",
+    "orBackHome": "Ou retourner à l'accueil",
+    "formTitle": "Annuler votre rendez-vous",
+    "formSubtitle": "Êtes-vous sûr de vouloir annuler ce rendez-vous ?",
+    "reasonLabel": "Raison de l'annulation (optionnel)",
+    "reasonPlaceholder": "Ex: Imprévu, changement de programme...",
+    "refundEligible": "Votre acompte de <strong>{amount}</strong> sera remboursé automatiquement.",
+    "refundNotEligible": "Le délai de remboursement est dépassé. Votre acompte de <strong>{amount}</strong> ne sera pas remboursé automatiquement. Contactez {name} pour toute demande.",
+    "warning": "Cette action est irréversible. Le prestataire sera notifié de votre annulation.",
+    "cancelling": "Annulation en cours...",
+    "confirmCancel": "Confirmer l'annulation"
+  },
+  "review": {
+    "selectRatingError": "Veuillez sélectionner une note",
+    "notFoundTitle": "Réservation introuvable",
+    "notFoundText": "Cette réservation n'existe pas ou le lien est invalide.",
+    "notYetPassedTitle": "Rendez-vous à venir",
+    "notYetPassedText": "Vous pourrez donner votre avis après votre rendez-vous.",
+    "scheduledFor": "Rendez-vous prévu le {date} à {time}",
+    "alreadyReviewedTitle": "Avis déjà déposé",
+    "alreadyReviewedText": "Vous avez déjà donné votre avis pour ce rendez-vous.",
+    "updatedTitle": "Avis mis à jour !",
+    "thanksTitle": "Merci pour votre avis !",
+    "updatedText": "Votre avis a bien été mis à jour.",
+    "savedText": "Votre avis a bien été enregistré et sera visible sur la page du prestataire.",
+    "updateFormTitle": "Modifier votre avis",
+    "formTitle": "Donner votre avis",
+    "updateFormSubtitle": "Vous avez déjà laissé un avis pour {name}. Vous pouvez le modifier ci-dessous.",
+    "formSubtitle": "Comment s'est passé votre rendez-vous chez {name} ?",
+    "ratingLabel": "Votre note *",
+    "rating1": "Très insatisfait",
+    "rating2": "Insatisfait",
+    "rating3": "Correct",
+    "rating4": "Satisfait",
+    "rating5": "Très satisfait",
+    "commentLabel": "Votre commentaire (optionnel)",
+    "commentPlaceholder": "Partagez votre expérience...",
+    "updating": "Mise à jour en cours...",
+    "sending": "Envoi en cours...",
+    "updateSubmit": "Modifier mon avis",
+    "submit": "Envoyer mon avis"
+  }
+}

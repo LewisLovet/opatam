@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { formatPrice, formatDuration } from '@booking-app/shared';
 import type {
   Service,
@@ -57,6 +58,7 @@ export function ServiceChoicesPicker({
   onChange,
   missing,
 }: ServiceChoicesPickerProps) {
+  const t = useTranslations('booking.choicesPicker');
   const variations = service.variations ?? [];
   const options = service.options ?? [];
   const infoFields = service.infoFields ?? [];
@@ -120,8 +122,7 @@ export function ServiceChoicesPicker({
   if (variations.length === 0 && options.length === 0 && infoFields.length === 0) {
     return (
       <p className="text-sm text-gray-400 dark:text-gray-500 italic">
-        Aucune variation, option ou info — la cliente verra directement le prix de
-        base.
+        {t('noChoices')}
       </p>
     );
   }
@@ -168,7 +169,7 @@ export function ServiceChoicesPicker({
                 )}
               </span>
               <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 dark:text-white truncate">
-                {option.name || 'Option'}
+                {option.name || t('optionFallback')}
               </span>
               <ContribTag price={option.price} duration={option.duration} />
             </button>
@@ -228,6 +229,7 @@ function VariationBlock({
   highlight?: boolean;
   additive?: boolean;
 }) {
+  const t = useTranslations('booking.choicesPicker');
   return (
     <div>
       <p
@@ -235,7 +237,7 @@ function VariationBlock({
           highlight ? 'text-error-600 dark:text-error-400' : 'text-gray-900 dark:text-white'
         }`}
       >
-        {variation.name || 'Variation'}
+        {variation.name || t('variationFallback')}
         <span className="text-error-500 ml-0.5">*</span>
       </p>
       {variation.description && (
@@ -265,7 +267,7 @@ function VariationBlock({
                 {checked && <span className="w-2 h-2 rounded-full bg-primary-600" />}
               </span>
               <span className="flex-1 min-w-0 text-sm text-gray-900 dark:text-white truncate">
-                {opt.name || 'Choix'}
+                {opt.name || t('choiceFallback')}
               </span>
               <ContribTag price={opt.price} duration={opt.duration} additive={additive} />
             </button>
@@ -287,6 +289,8 @@ function InfoFieldBlock({
   onChange: (value: string) => void;
   highlight?: boolean;
 }) {
+  const t = useTranslations('booking.choicesPicker');
+  const tCommon = useTranslations('booking.common');
   return (
     <div>
       <label
@@ -294,12 +298,12 @@ function InfoFieldBlock({
           highlight ? 'text-error-600 dark:text-error-400' : 'text-gray-900 dark:text-white'
         }`}
       >
-        {field.name || 'Information'}
+        {field.name || t('infoFallback')}
         {field.required && <span className="text-error-500 ml-0.5">*</span>}
       </label>
       {field.type === 'boolean' ? (
         <div className="flex gap-2">
-          {['Oui', 'Non'].map((opt) => {
+          {(['Oui', 'Non'] as const).map((opt) => {
             const checked = value === opt;
             return (
               <button
@@ -312,7 +316,7 @@ function InfoFieldBlock({
                     : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
-                {opt}
+                {opt === 'Oui' ? tCommon('yes') : tCommon('no')}
               </button>
             );
           })}
@@ -323,7 +327,7 @@ function InfoFieldBlock({
           onChange={(e) => onChange(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
-          <option value="">Choisir…</option>
+          <option value="">{t('selectPlaceholder')}</option>
           {(field.values ?? [])
             .map((v) => v.trim())
             .filter(Boolean)
@@ -338,7 +342,7 @@ function InfoFieldBlock({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Votre réponse"
+          placeholder={t('answerPlaceholder')}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
       )}

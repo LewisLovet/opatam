@@ -2,6 +2,7 @@
 
 import { ArrowLeft, Check, MapPin, User } from 'lucide-react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 
 interface Member {
   id: string;
@@ -35,6 +36,7 @@ export function StepMember({
   onSelect,
   onBack,
 }: StepMemberProps) {
+  const t = useTranslations('booking.member');
   const getLocationForMember = (member: Member): Location | undefined => {
     return locations.find((l) => l.id === member.locationId);
   };
@@ -49,7 +51,7 @@ export function StepMember({
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Choisissez un professionnel
+          {t('title')}
         </h2>
       </div>
 

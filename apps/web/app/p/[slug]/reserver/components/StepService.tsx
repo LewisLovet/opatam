@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Clock, Check, ChevronRight, Plus } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   getServiceMinDuration,
   getDiscountedMinPrice,
@@ -61,10 +62,9 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(cents: number): string {
-  if (cents === 0) return 'Gratuit';
+function fmtCurrency(cents: number, locale: string): string {
   const euros = cents / 100;
-  return new Intl.NumberFormat('fr-FR', {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 0,
@@ -85,6 +85,11 @@ function ServiceButton({
   cartCount?: number;
   globalDiscount?: ServiceDiscount | null;
 }) {
+  const t = useTranslations('booking.service');
+  const tCommon = useTranslations('booking.common');
+  const locale = useLocale();
+  const formatPrice = (cents: number): string =>
+    cents === 0 ? tCommon('free') : fmtCurrency(cents, locale);
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
   const descRef = useRef<HTMLParagraphElement>(null);
@@ -159,7 +164,7 @@ function ServiceButton({
                   }}
                   className="text-sm text-primary-600 dark:text-primary-400 hover:underline mt-0.5 inline-block"
                 >
-                  {descExpanded ? 'Moins' : 'Plus de détails'}
+                  {descExpanded ? t('less') : t('moreDetails')}
                 </span>
               )}
             </div>
@@ -173,7 +178,7 @@ function ServiceButton({
           <div className="text-right">
             {priceVaries && (
               <span className="block text-[11px] font-normal text-gray-400">
-                à partir de
+                {t('from')}
               </span>
             )}
             {hasPromo && (
@@ -203,7 +208,7 @@ function ServiceButton({
             {inCart && (
               <span className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-semibold text-primary-600 dark:text-primary-400">
                 <Check className="w-3 h-3" />
-                Ajouté{cartCount > 1 ? ` ×${cartCount}` : ''}
+                {t('added', { count: cartCount })}
               </span>
             )}
           </div>
@@ -216,7 +221,7 @@ function ServiceButton({
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 active:bg-primary-700 transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Ajouter
+            {t('add')}
           </button>
         </div>
       </div>
@@ -225,6 +230,7 @@ function ServiceButton({
 }
 
 export function StepService({ services, categories = [], selectedServiceId, onSelect, cartCounts = {}, globalDiscount }: StepServiceProps) {
+  const t = useTranslations('booking.service');
   const hasCategories = categories.length > 0;
 
   // When there are many categories (>3), collapse all except the first by default
@@ -271,7 +277,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
     return (
       <div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          Ajoutez des prestations
+          {t('title')}
         </h2>
         <div className="space-y-3">
           {services.map((service) => (
@@ -293,7 +299,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
   return (
     <div>
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-        Ajoutez des prestations
+        {t('title')}
       </h2>
       <div className="space-y-6">
         {grouped.groups.map(({ category, services: catServices }) => {
@@ -342,7 +348,7 @@ export function StepService({ services, categories = [], selectedServiceId, onSe
               >
                 <div className="w-1 h-5 bg-primary-500 rounded-full flex-shrink-0" />
                 <h3 className="text-[17px] font-semibold text-gray-800 dark:text-gray-200 tracking-tight">
-                  Autres
+                  {t('others')}
                 </h3>
                 <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-0.5 rounded-full">
                   {grouped.uncategorized.length}

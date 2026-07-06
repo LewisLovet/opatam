@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Avatar } from '@/components/ui/Avatar';
 import { Users } from 'lucide-react';
 
@@ -14,6 +15,7 @@ interface TeamSectionProps {
 }
 
 export function TeamSection({ members }: TeamSectionProps) {
+  const t = useTranslations('provider');
   // Filter out the default "Principal" member for display
   const displayMembers = members.filter((m) => m.name !== 'Principal');
 
@@ -23,7 +25,7 @@ export function TeamSection({ members }: TeamSectionProps) {
     <div>
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
         <Users className="w-5 h-5 text-primary-500" />
-        L&apos;équipe
+        {t('team.title')}
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {displayMembers.map((member) => (

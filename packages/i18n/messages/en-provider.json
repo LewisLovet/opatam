@@ -1,0 +1,110 @@
+{
+  "common": {
+    "close": "Close",
+    "seeMore": "See more",
+    "seeLess": "See less"
+  },
+  "hero": {
+    "verified": "Verified",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "nextAvailability": "Next availability: {date}",
+    "memberAvailabilityTitle": "Availability by professional",
+    "membersWithoutAvailability": "{count, plural, one {# professional with no upcoming availability} other {# professionals with no upcoming availability}}"
+  },
+  "nav": {
+    "services": "Services",
+    "reviews": "Reviews",
+    "hours": "Hours"
+  },
+  "services": {
+    "title": "Services",
+    "empty": "No services available at the moment.",
+    "otherCategory": "Other",
+    "free": "Free",
+    "from": "from",
+    "priceRange": "From {min} to {max}",
+    "book": "Book",
+    "showMore": "More details",
+    "showLess": "Less",
+    "promo": {
+      "lastDay": "Last day",
+      "endsTomorrow": "Ends tomorrow",
+      "daysLeft": "Only {days} days left"
+    }
+  },
+  "mobileBar": {
+    "from": "From",
+    "book": "Book now"
+  },
+  "about": {
+    "title": "About",
+    "portfolioTitle": "Portfolio",
+    "findMeOn": "Find me on"
+  },
+  "portfolio": {
+    "title": "Portfolio",
+    "photoCount": "{count, plural, one {# photo} other {# photos}}",
+    "photoAlt": "Portfolio {index}",
+    "previousPhoto": "Previous photo",
+    "nextPhoto": "Next photo"
+  },
+  "reviews": {
+    "title": "Client reviews",
+    "basedOn": "Based on <strong>{count}</strong> {count, plural, one {review} other {reviews}}",
+    "noReviews": "No reviews yet",
+    "distribution": "Rating breakdown",
+    "latest": "Latest reviews",
+    "anonymousClient": "Client",
+    "beFirst": "Be the first to leave a review!"
+  },
+  "hours": {
+    "title": "Hours",
+    "open": "Open",
+    "closed": "Closed",
+    "today": "Today"
+  },
+  "infos": {
+    "title": "Practical information",
+    "locationTitle": "{count, plural, one {Location} other {Locations}}",
+    "openingHours": "Opening hours",
+    "days": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+  },
+  "location": {
+    "fixed": "Salon",
+    "mobile": "Mobile",
+    "maskedAddress": "Exact address shared after confirmation",
+    "viewOnMaps": "View on Google Maps",
+    "homeService": "Travels to your home",
+    "travelRadius": "{radius} km radius"
+  },
+  "team": {
+    "title": "The team"
+  },
+  "share": {
+    "share": "Share",
+    "shareText": "Discover {name}",
+    "copyLink": "Copy link"
+  },
+  "socials": {
+    "website": "Website"
+  },
+  "demo": {
+    "title": "Welcome to the demo shop",
+    "intro": "This page is a <strong>real-life example</strong> of what your clients will see when they book with you.",
+    "walkthrough": "Browse the services, pick a professional and choose a time slot — exactly like your future clients will.",
+    "highlight": "Your booking page can be ready in 5 minutes, no technical skills required.",
+    "explore": "Explore the demo",
+    "createPage": "Create my page for free ({days}-day trial)"
+  },
+  "notice": {
+    "title": "Important information",
+    "back": "Back",
+    "accept": "Got it, continue"
+  },
+  "notFound": {
+    "title": "Provider not found",
+    "description": "This provider doesn't exist or is no longer available. They may have deactivated their page or changed their address.",
+    "backHome": "Back to home"
+  }
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { ServiceCard } from './ServiceCard';
+import { useTranslations } from 'next-intl';
 
 interface Service {
   id: string;
@@ -25,6 +26,7 @@ export function ServiceList({
   showBookButton = true,
   className = '',
 }: ServiceListProps) {
+  const t = useTranslations('booking.serviceList');
   if (services.length === 0) {
     return (
       <div className={`text-center py-8 ${className}`}>
@@ -42,10 +44,10 @@ export function ServiceList({
           />
         </svg>
         <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-          Aucune prestation
+          {t('emptyTitle')}
         </h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Aucune prestation disponible pour le moment.
+          {t('emptyText')}
         </p>
       </div>
     );

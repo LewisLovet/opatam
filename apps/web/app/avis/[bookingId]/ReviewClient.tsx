@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   Star,
   AlertTriangle,
@@ -54,9 +55,9 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('fr-FR', {
+  return date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -64,9 +65,9 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleTimeString('fr-FR', {
+  return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -95,6 +96,9 @@ export function ReviewClient({
   initialState,
   existingReview,
 }: ReviewClientProps) {
+  const t = useTranslations('booking.review');
+  const tCommon = useTranslations('booking.common');
+  const locale = useLocale();
   const isUpdate = initialState === 'update_form';
   const [state, setState] = useState<
     'not_found' | 'not_yet_passed' | 'already_reviewed' | 'form' | 'update_form' | 'loading' | 'success' | 'error'
@@ -105,7 +109,7 @@ export function ReviewClient({
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      setError('Veuillez sélectionner une note');
+      setError(t('selectRatingError'));
       return;
     }
 
@@ -125,13 +129,13 @@ export function ReviewClient({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Une erreur est survenue');
+        throw new Error(data.error || tCommon('error'));
       }
 
       setState('success');
     } catch (err) {
       console.error('[REVIEW] Error:', err);
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      setError(err instanceof Error ? err.message : tCommon('error'));
       setState('error');
     }
   };
@@ -145,16 +149,16 @@ export function ReviewClient({
             <XCircle className="w-10 h-10 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Réservation introuvable
+            {t('notFoundTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">
-            Cette réservation n'existe pas ou le lien est invalide.
+            {t('notFoundText')}
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour à l'accueil
+            {tCommon('backHome')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -171,21 +175,21 @@ export function ReviewClient({
             <Clock className="w-10 h-10 text-yellow-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Rendez-vous à venir
+            {t('notYetPassedTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-2">
-            Vous pourrez donner votre avis après votre rendez-vous.
+            {t('notYetPassedText')}
           </p>
           {booking && (
             <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">
-              Rendez-vous prévu le {formatDate(booking.datetime)} à {formatTime(booking.datetime)}
+              {t('scheduledFor', { date: formatDate(booking.datetime, locale), time: formatTime(booking.datetime, locale) })}
             </p>
           )}
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour à l'accueil
+            {tCommon('backHome')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -202,10 +206,10 @@ export function ReviewClient({
             <CheckCircle className="w-10 h-10 text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Avis déjà déposé
+            {t('alreadyReviewedTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-6">
-            Vous avez déjà donné votre avis pour ce rendez-vous.
+            {t('alreadyReviewedText')}
           </p>
 
           {/* Display the existing review */}
@@ -213,7 +217,7 @@ export function ReviewClient({
             <div className="flex items-center gap-3 mb-3">
               <StarDisplay rating={existingReview.rating} />
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                {formatDate(existingReview.createdAt)}
+                {formatDate(existingReview.createdAt, locale)}
               </span>
             </div>
             {existingReview.comment && (
@@ -225,7 +229,7 @@ export function ReviewClient({
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour à l'accueil
+            {tCommon('backHome')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -242,18 +246,18 @@ export function ReviewClient({
             <CheckCircle className="w-10 h-10 text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            {isUpdate ? 'Avis mis à jour !' : 'Merci pour votre avis !'}
+            {isUpdate ? t('updatedTitle') : t('thanksTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">
             {isUpdate
-              ? 'Votre avis a bien été mis à jour.'
-              : 'Votre avis a bien été enregistré et sera visible sur la page du prestataire.'}
+              ? t('updatedText')
+              : t('savedText')}
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour à l'accueil
+            {tCommon('backHome')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -275,12 +279,12 @@ export function ReviewClient({
             <Star className="w-8 h-8 text-primary-600 dark:text-primary-400" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            {isUpdate ? 'Modifier votre avis' : 'Donner votre avis'}
+            {isUpdate ? t('updateFormTitle') : t('formTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
             {isUpdate
-              ? `Vous avez déjà laissé un avis pour ${booking.providerName}. Vous pouvez le modifier ci-dessous.`
-              : `Comment s'est passé votre rendez-vous chez ${booking.providerName} ?`}
+              ? t('updateFormSubtitle', { name: booking.providerName })
+              : t('formSubtitle', { name: booking.providerName })}
           </p>
         </div>
 
@@ -293,7 +297,7 @@ export function ReviewClient({
           <div className="p-5 space-y-3">
             {/* Service */}
             <div className="flex items-center gap-3 text-sm">
-              <span className="text-gray-500 dark:text-gray-400 w-24">Prestation</span>
+              <span className="text-gray-500 dark:text-gray-400 w-24">{tCommon('service')}</span>
               <span className="font-medium text-gray-900 dark:text-white">
                 {booking.serviceName}
               </span>
@@ -302,7 +306,7 @@ export function ReviewClient({
             {/* Member */}
             {booking.memberName && (
               <div className="flex items-center gap-3 text-sm">
-                <span className="text-gray-500 dark:text-gray-400 w-24">Professionnel</span>
+                <span className="text-gray-500 dark:text-gray-400 w-24">{tCommon('professional')}</span>
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-gray-400" />
                   <span className="font-medium text-gray-900 dark:text-white">
@@ -314,11 +318,11 @@ export function ReviewClient({
 
             {/* Date */}
             <div className="flex items-center gap-3 text-sm">
-              <span className="text-gray-500 dark:text-gray-400 w-24">Date</span>
+              <span className="text-gray-500 dark:text-gray-400 w-24">{tCommon('date')}</span>
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-400" />
                 <span className="font-medium text-gray-900 dark:text-white capitalize">
-                  {formatDate(booking.datetime)}
+                  {formatDate(booking.datetime, locale)}
                 </span>
               </div>
             </div>
@@ -328,7 +332,7 @@ export function ReviewClient({
         {/* Rating Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-            Votre note *
+            {t('ratingLabel')}
           </label>
           <div className="flex justify-center">
             <StarRatingInput
@@ -340,11 +344,11 @@ export function ReviewClient({
           </div>
           {rating > 0 && (
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">
-              {rating === 1 && 'Très insatisfait'}
-              {rating === 2 && 'Insatisfait'}
-              {rating === 3 && 'Correct'}
-              {rating === 4 && 'Satisfait'}
-              {rating === 5 && 'Très satisfait'}
+              {rating === 1 && t('rating1')}
+              {rating === 2 && t('rating2')}
+              {rating === 3 && t('rating3')}
+              {rating === 4 && t('rating4')}
+              {rating === 5 && t('rating5')}
             </p>
           )}
         </div>
@@ -355,14 +359,14 @@ export function ReviewClient({
             htmlFor="comment"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >
-            Votre commentaire (optionnel)
+            {t('commentLabel')}
           </label>
           <textarea
             id="comment"
             rows={4}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Partagez votre expérience..."
+            placeholder={t('commentPlaceholder')}
             maxLength={1000}
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
             disabled={state === 'loading'}
@@ -391,12 +395,12 @@ export function ReviewClient({
           {state === 'loading' ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              {isUpdate ? 'Mise à jour en cours...' : 'Envoi en cours...'}
+              {isUpdate ? t('updating') : t('sending')}
             </>
           ) : (
             <>
               <Star className="w-5 h-5" />
-              {isUpdate ? 'Modifier mon avis' : 'Envoyer mon avis'}
+              {isUpdate ? t('updateSubmit') : t('submit')}
             </>
           )}
         </button>
@@ -407,13 +411,13 @@ export function ReviewClient({
             href="/"
             className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
-            Annuler et retourner à l'accueil
+            {tCommon('cancelAndHome')}
           </Link>
         </div>
 
         {/* Reference */}
         <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
-          Référence : {booking.id}
+          {tCommon('reference', { id: booking.id })}
         </p>
       </div>
     </div>

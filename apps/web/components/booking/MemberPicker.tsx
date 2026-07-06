@@ -1,6 +1,7 @@
 'use client';
 
 import { Avatar } from '../ui/Avatar';
+import { useTranslations } from 'next-intl';
 
 interface Member {
   id: string;
@@ -23,9 +24,11 @@ export function MemberPicker({
   selectedId,
   onSelect,
   showAnyOption = true,
-  anyOptionLabel = 'Peu importe',
+  anyOptionLabel,
   className = '',
 }: MemberPickerProps) {
+  const t = useTranslations('booking.memberPicker');
+  const anyLabel = anyOptionLabel ?? t('any');
   return (
     <div className={`space-y-2 ${className}`}>
       {/* "Any" option */}
@@ -49,10 +52,10 @@ export function MemberPicker({
           </div>
           <div className="flex-1">
             <p className={`font-medium ${selectedId === null ? 'text-primary-700 dark:text-primary-300' : 'text-gray-900 dark:text-white'}`}>
-              {anyOptionLabel}
+              {anyLabel}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Premier disponible
+              {t('firstAvailable')}
             </p>
           </div>
           {selectedId === null && (

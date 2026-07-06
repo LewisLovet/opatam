@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Clock, CheckCircle, XCircle } from 'lucide-react';
 
 interface DaySchedule {
@@ -40,6 +41,7 @@ function isCurrentlyOpen(schedule: DaySchedule[]): boolean {
 }
 
 export function HoursCard({ weekSchedule }: HoursCardProps) {
+  const t = useTranslations('provider');
   const currentDayIndex = getCurrentDayIndex();
   const isOpen = isCurrentlyOpen(weekSchedule);
 
@@ -50,7 +52,7 @@ export function HoursCard({ weekSchedule }: HoursCardProps) {
         <div className="flex items-center gap-2">
           <Clock className="w-5 h-5 text-primary-500" />
           <h4 className="font-semibold text-gray-900 dark:text-white">
-            Horaires
+            {t('hours.title')}
           </h4>
         </div>
 
@@ -65,12 +67,12 @@ export function HoursCard({ weekSchedule }: HoursCardProps) {
           {isOpen ? (
             <>
               <CheckCircle className="w-4 h-4" />
-              Ouvert
+              {t('hours.open')}
             </>
           ) : (
             <>
               <XCircle className="w-4 h-4" />
-              Fermé
+              {t('hours.closed')}
             </>
           )}
         </span>
@@ -103,7 +105,7 @@ export function HoursCard({ weekSchedule }: HoursCardProps) {
                   {day.day}
                   {isToday && (
                     <span className="ml-2 text-xs text-primary-500 dark:text-primary-400">
-                      (Aujourd'hui)
+                      ({t('hours.today')})
                     </span>
                   )}
                 </span>
@@ -124,7 +126,7 @@ export function HoursCard({ weekSchedule }: HoursCardProps) {
                           {slot.start} - {slot.end}
                         </span>
                       ))
-                    : 'Fermé'}
+                    : t('hours.closed')}
                 </span>
               </div>
             );

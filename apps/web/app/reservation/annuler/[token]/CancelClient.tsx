@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   XCircle,
   AlertTriangle,
@@ -58,9 +59,9 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(cents: number): string {
+function formatPrice(cents: number, locale: string): string {
   const euros = cents / 100;
-  return new Intl.NumberFormat('fr-FR', {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 0,
@@ -68,9 +69,9 @@ function formatPrice(cents: number): string {
   }).format(euros);
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('fr-FR', {
+  return date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -78,9 +79,9 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleTimeString('fr-FR', {
+  return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -99,6 +100,9 @@ function isWithinRefundDeadline(
 }
 
 export function CancelClient({ booking, token, initialState, cancelledAt }: CancelClientProps) {
+  const t = useTranslations('booking.cancel');
+  const tCommon = useTranslations('booking.common');
+  const locale = useLocale();
   const [state, setState] = useState<'not_found' | 'already_cancelled' | 'past' | 'form' | 'loading' | 'success' | 'error'>(initialState);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -127,14 +131,14 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Une erreur est survenue');
+        throw new Error(data.error || tCommon('error'));
       }
 
       setRefundedThisCall(!!data.refunded);
       setState('success');
     } catch (err) {
       console.error('[CANCEL-CLIENT] ERROR:', err);
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      setError(err instanceof Error ? err.message : tCommon('error'));
       setState('error');
     }
   };
@@ -148,16 +152,16 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <XCircle className="w-10 h-10 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Lien invalide ou expiré
+            {t('notFoundTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">
-            Ce lien d'annulation n'est plus valide. Le rendez-vous a peut-être déjà été annulé ou le lien a expiré.
+            {t('notFoundText')}
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour à l'accueil
+            {tCommon('backHome')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -174,21 +178,21 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <AlertTriangle className="w-10 h-10 text-yellow-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Rendez-vous déjà annulé
+            {t('alreadyCancelledTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-2">
-            Ce rendez-vous a déjà été annulé.
+            {t('alreadyCancelledText')}
           </p>
           {cancelledAt && (
             <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">
-              Annulé le {formatDate(cancelledAt)} à {formatTime(cancelledAt)}
+              {t('cancelledOn', { date: formatDate(cancelledAt, locale), time: formatTime(cancelledAt, locale) })}
             </p>
           )}
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour à l'accueil
+            {tCommon('backHome')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -205,16 +209,16 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <Clock className="w-10 h-10 text-gray-400" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Rendez-vous passé
+            {t('pastTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">
-            Ce rendez-vous est déjà passé et ne peut plus être annulé.
+            {t('pastText')}
           </p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour à l'accueil
+            {tCommon('backHome')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -231,27 +235,27 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <CheckCircle className="w-10 h-10 text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-            Rendez-vous annulé
+            {t('successTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-2">
-            Votre rendez-vous a bien été annulé.
+            {t('successText')}
           </p>
           {refundedThisCall && booking?.deposit && (
             <div className="mb-4 mx-auto max-w-md p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
               <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                Votre acompte de {formatPrice(booking.deposit.amount)} a été remboursé sur votre moyen de paiement. Comptez 5 à 10 jours ouvrés pour le voir apparaître.
+                {t('refunded', { amount: formatPrice(booking.deposit.amount, locale) })}
               </p>
             </div>
           )}
           {!refundedThisCall && depositPaid && (
             <div className="mb-4 mx-auto max-w-md p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
               <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                Le délai de remboursement de l'acompte est dépassé. Pour toute demande, contactez directement {booking?.providerName}.
+                {t('refundDeadlinePassed', { name: booking?.providerName ?? '' })}
               </p>
             </div>
           )}
           <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">
-            Le prestataire a été notifié de cette annulation.
+            {t('providerNotified')}
           </p>
 
           {booking && (
@@ -260,7 +264,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
                 href={`/p/${booking.providerName.toLowerCase().replace(/\s+/g, '-')}`}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
               >
-                Reprendre rendez-vous
+                {t('rebook')}
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <div>
@@ -268,7 +272,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
                   href="/"
                   className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
-                  Ou retourner à l'accueil
+                  {t('orBackHome')}
                 </Link>
               </div>
             </div>
@@ -292,10 +296,10 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <XCircle className="w-8 h-8 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Annuler votre rendez-vous
+            {t('formTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Êtes-vous sûr de vouloir annuler ce rendez-vous ?
+            {t('formSubtitle')}
           </p>
         </div>
 
@@ -313,7 +317,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             {/* Service */}
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Prestation
+                {tCommon('service')}
               </p>
               <p className="font-medium text-gray-900 dark:text-white">
                 {booking.serviceName}
@@ -323,7 +327,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
                   <Clock className="w-4 h-4" />
                   {formatDuration(booking.duration)}
                 </span>
-                <span>{formatPrice(booking.price)}</span>
+                <span>{formatPrice(booking.price, locale)}</span>
               </div>
             </div>
 
@@ -331,7 +335,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             {booking.memberName && (
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                  Professionnel
+                  {tCommon('professional')}
                 </p>
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-gray-400" />
@@ -345,16 +349,16 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             {/* Date & Time */}
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Date & Heure
+                {tCommon('dateTime')}
               </p>
               <div className="flex items-start gap-2">
                 <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white capitalize">
-                    {formatDate(booking.datetime)}
+                    {formatDate(booking.datetime, locale)}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatTime(booking.datetime)} - {formatTime(booking.endDatetime)}
+                    {formatTime(booking.datetime, locale)} - {formatTime(booking.endDatetime, locale)}
                   </p>
                 </div>
               </div>
@@ -363,7 +367,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             {/* Location */}
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Lieu
+                {tCommon('location')}
               </p>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -386,14 +390,14 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             htmlFor="reason"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >
-            Raison de l'annulation (optionnel)
+            {t('reasonLabel')}
           </label>
           <textarea
             id="reason"
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Ex: Imprévu, changement de programme..."
+            placeholder={t('reasonPlaceholder')}
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
             disabled={state === 'loading'}
           />
@@ -412,7 +416,10 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <div className="flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-green-800 dark:text-green-200">
-                Votre acompte de <strong>{formatPrice(booking.deposit!.amount)}</strong> sera remboursé automatiquement.
+                {t.rich('refundEligible', {
+                  amount: formatPrice(booking.deposit!.amount, locale),
+                  strong: (chunks) => <strong>{chunks}</strong>,
+                })}
               </p>
             </div>
           </div>
@@ -422,7 +429,11 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-amber-800 dark:text-amber-200">
-                Le délai de remboursement est dépassé. Votre acompte de <strong>{formatPrice(booking.deposit!.amount)}</strong> ne sera pas remboursé automatiquement. Contactez {booking.providerName} pour toute demande.
+                {t.rich('refundNotEligible', {
+                  amount: formatPrice(booking.deposit!.amount, locale),
+                  name: booking.providerName,
+                  strong: (chunks) => <strong>{chunks}</strong>,
+                })}
               </p>
             </div>
           </div>
@@ -433,7 +444,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              Cette action est irréversible. Le prestataire sera notifié de votre annulation.
+              {t('warning')}
             </p>
           </div>
         </div>
@@ -448,12 +459,12 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             {state === 'loading' ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Annulation en cours...
+                {t('cancelling')}
               </>
             ) : (
               <>
                 <XCircle className="w-5 h-5" />
-                Confirmer l'annulation
+                {t('confirmCancel')}
               </>
             )}
           </button>
@@ -461,13 +472,13 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             href="/"
             className="flex items-center justify-center w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors"
           >
-            Annuler et retourner à l'accueil
+            {tCommon('cancelAndHome')}
           </Link>
         </div>
 
         {/* Reference */}
         <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
-          Référence : {booking.id}
+          {tCommon('reference', { id: booking.id })}
         </p>
       </div>
     </div>

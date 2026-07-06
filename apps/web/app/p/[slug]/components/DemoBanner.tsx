@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { X, Sparkles, ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { X, PartyPopper, ArrowRight } from 'lucide-react';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 
 /**
@@ -10,6 +11,7 @@ import { APP_CONFIG } from '@booking-app/shared/constants';
  * Marketing-focused: helps the visitor project themselves as a provider.
  */
 export function DemoBanner() {
+  const t = useTranslations('provider');
   const [showModal, setShowModal] = useState(false);
 
   // Show modal on mount with a slight delay for smoother UX
@@ -38,7 +40,7 @@ export function DemoBanner() {
           <button
             onClick={() => setShowModal(false)}
             className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            aria-label="Fermer"
+            aria-label={t('common.close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -47,29 +49,31 @@ export function DemoBanner() {
           <div className="text-center">
             {/* Icon */}
             <div className="mx-auto w-14 h-14 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-5">
-              <Sparkles className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+              <PartyPopper className="w-7 h-7 text-primary-600 dark:text-primary-400" />
             </div>
 
             {/* Title */}
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              Bienvenue sur la boutique démo
+              {t('demo.title')}
             </h2>
 
             {/* Description */}
             <p className="mt-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base leading-relaxed">
-              Cette page est un <span className="font-semibold text-gray-900 dark:text-white">exemple concret</span> de
-              ce que vos clients verront quand ils réserveront chez vous.
+              {t.rich('demo.intro', {
+                strong: (chunks) => (
+                  <span className="font-semibold text-gray-900 dark:text-white">{chunks}</span>
+                ),
+              })}
             </p>
 
             <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm sm:text-base leading-relaxed">
-              Parcourez les prestations, sélectionnez un professionnel et choisissez un créneau
-              &mdash; exactement comme vos futurs clients le feront.
+              {t('demo.walkthrough')}
             </p>
 
             {/* Highlight box */}
             <div className="mt-5 px-4 py-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl">
               <p className="text-sm font-medium text-primary-700 dark:text-primary-300">
-                Votre page de réservation peut être prête en 5 minutes, sans aucune compétence technique.
+                {t('demo.highlight')}
               </p>
             </div>
 
@@ -79,14 +83,14 @@ export function DemoBanner() {
                 onClick={() => setShowModal(false)}
                 className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 text-white hover:bg-primary-700 px-6 py-3 text-sm font-semibold rounded-lg transition-colors"
               >
-                Explorer la démo
+                {t('demo.explore')}
                 <ArrowRight className="w-4 h-4" />
               </button>
               <Link
                 href="/register"
                 className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
               >
-                Créer ma page gratuitement ({APP_CONFIG.trialDays} jours d&apos;essai)
+                {t('demo.createPage', { days: APP_CONFIG.trialDays })}
               </Link>
             </div>
           </div>

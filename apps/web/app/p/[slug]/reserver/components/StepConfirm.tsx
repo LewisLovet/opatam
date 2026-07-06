@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowLeft, Loader2, Info } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface ClientInfo {
   name: string;
@@ -44,6 +45,7 @@ export function StepConfirm({
   isSubmitting,
   requiresConfirmation,
 }: StepConfirmProps) {
+  const t = useTranslations('booking.confirm');
   // Simple validation
   const isNameValid = clientInfo.name.trim().length >= 2;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientInfo.email);
@@ -75,7 +77,7 @@ export function StepConfirm({
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Vos informations
+          {t('title')}
         </h2>
       </div>
 
@@ -86,14 +88,14 @@ export function StepConfirm({
             htmlFor="name"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            Nom complet
+            {t('nameLabel')}
           </label>
           <input
             type="text"
             id="name"
             value={clientInfo.name}
             onChange={(e) => onChange({ name: e.target.value })}
-            placeholder="Jean Dupont"
+            placeholder={t('namePlaceholder')}
             disabled={isSubmitting}
             className={`w-full px-4 py-3 rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 ${
               clientInfo.name && !isNameValid
@@ -103,7 +105,7 @@ export function StepConfirm({
           />
           {clientInfo.name && !isNameValid && (
             <p className="mt-1 text-sm text-red-500 dark:text-red-400">
-              Le nom doit contenir au moins 2 caractères
+              {t('nameError')}
             </p>
           )}
         </div>
@@ -114,14 +116,14 @@ export function StepConfirm({
             htmlFor="email"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            Email
+            {t('emailLabel')}
           </label>
           <input
             type="email"
             id="email"
             value={clientInfo.email}
             onChange={(e) => onChange({ email: e.target.value })}
-            placeholder="jean@exemple.com"
+            placeholder={t('emailPlaceholder')}
             disabled={isSubmitting}
             className={`w-full px-4 py-3 rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 ${
               clientInfo.email && !isEmailValid
@@ -131,7 +133,7 @@ export function StepConfirm({
           />
           {clientInfo.email && !isEmailValid && (
             <p className="mt-1 text-sm text-red-500 dark:text-red-400">
-              Format d'email invalide
+              {t('emailError')}
             </p>
           )}
         </div>
@@ -142,14 +144,14 @@ export function StepConfirm({
             htmlFor="phone"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            Téléphone
+            {t('phoneLabel')}
           </label>
           <input
             type="tel"
             id="phone"
             value={clientInfo.phone}
             onChange={(e) => handlePhoneChange(e.target.value)}
-            placeholder="06 12 34 56 78 ou +33 6 12 34 56 78"
+            placeholder={t('phonePlaceholder')}
             disabled={isSubmitting}
             className={`w-full px-4 py-3 rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 ${
               clientInfo.phone && !isPhoneValid
@@ -159,7 +161,7 @@ export function StepConfirm({
           />
           {clientInfo.phone && !isPhoneValid && (
             <p className="mt-1 text-sm text-red-500 dark:text-red-400">
-              Numéro de téléphone invalide
+              {t('phoneError')}
             </p>
           )}
         </div>
@@ -169,8 +171,7 @@ export function StepConfirm({
           <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              Votre réservation sera en attente de confirmation par le prestataire.
-              Vous recevrez un email dès qu'elle sera confirmée.
+              {t('pendingInfo')}
             </p>
           </div>
         )}
@@ -184,15 +185,15 @@ export function StepConfirm({
           {isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Réservation en cours...
+              {t('submitting')}
             </>
           ) : (
-            'Confirmer la réservation'
+            t('submit')
           )}
         </button>
 
         <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-          En confirmant, vous acceptez nos conditions générales et notre politique de confidentialité.
+          {t('terms')}
         </p>
       </form>
     </div>

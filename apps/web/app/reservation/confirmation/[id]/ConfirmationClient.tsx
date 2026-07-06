@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download, Store } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 import { trackEvent } from '@/lib/meta-pixel';
 import { BookingChoices } from '@/components/booking';
 import type {
@@ -64,22 +65,18 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(cents: number, centsMax?: number | null): string {
-  if (cents === 0 && !centsMax) return 'Gratuit';
-  const fmt = (v: number) =>
-    new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(v / 100);
-  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
-  return fmt(cents);
+function fmtCurrency(cents: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('fr-FR', {
+  return date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -87,16 +84,21 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleTimeString('fr-FR', {
+  return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
 }
 
 // Generate Google Calendar URL
-function generateGoogleCalendarUrl(booking: Booking, address: string): string {
+function generateGoogleCalendarUrl(
+  booking: Booking,
+  address: string,
+  eventTitle: string,
+  eventDescription: string,
+): string {
   const startDate = new Date(booking.datetime);
   const endDate = new Date(booking.endDatetime);
 
@@ -105,18 +107,21 @@ function generateGoogleCalendarUrl(booking: Booking, address: string): string {
     return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   };
 
-  const title = encodeURIComponent(`RDV - ${booking.serviceName} chez ${booking.providerName}`);
+  const title = encodeURIComponent(eventTitle);
   const location = encodeURIComponent(address);
-  const description = encodeURIComponent(
-    booking.memberName ? `Avec ${booking.memberName}` : `Chez ${booking.providerName}`
-  );
+  const description = encodeURIComponent(eventDescription);
   const dates = `${formatGoogleDate(startDate)}/${formatGoogleDate(endDate)}`;
 
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&location=${location}&details=${description}`;
 }
 
 // Generate ICS file content
-function generateIcsContent(booking: Booking, address: string): string {
+function generateIcsContent(
+  booking: Booking,
+  address: string,
+  eventTitle: string,
+  eventDescription: string,
+): string {
   const startDate = new Date(booking.datetime);
   const endDate = new Date(booking.endDatetime);
 
@@ -125,8 +130,8 @@ function generateIcsContent(booking: Booking, address: string): string {
     return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   };
 
-  const title = `RDV - ${booking.serviceName} chez ${booking.providerName}`;
-  const description = booking.memberName ? `Avec ${booking.memberName}` : `Chez ${booking.providerName}`;
+  const title = eventTitle;
+  const description = eventDescription;
 
   return `BEGIN:VCALENDAR
 VERSION:2.0
@@ -144,8 +149,8 @@ END:VCALENDAR`;
 }
 
 // Download ICS file
-function downloadIcs(booking: Booking, address: string) {
-  const icsContent = generateIcsContent(booking, address);
+function downloadIcs(booking: Booking, address: string, eventTitle: string, eventDescription: string) {
+  const icsContent = generateIcsContent(booking, address, eventTitle, eventDescription);
   const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -158,6 +163,26 @@ function downloadIcs(booking: Booking, address: string) {
 }
 
 export function ConfirmationClient({ booking }: ConfirmationClientProps) {
+  const t = useTranslations('booking');
+  const locale = useLocale();
+  const formatPrice = (cents: number, centsMax?: number | null): string => {
+    if (cents === 0 && !centsMax) return t('common.free');
+    if (centsMax && centsMax > cents) {
+      return t('common.priceRange', {
+        min: fmtCurrency(cents, locale),
+        max: fmtCurrency(centsMax, locale),
+      });
+    }
+    return fmtCurrency(cents, locale);
+  };
+  // Translated calendar-event chrome (title + description).
+  const calendarEventTitle = t('confirmation.calendarTitle', {
+    service: booking.serviceName,
+    provider: booking.providerName,
+  });
+  const calendarEventDescription = booking.memberName
+    ? t('confirmation.calendarWith', { name: booking.memberName })
+    : t('confirmation.calendarAt', { name: booking.providerName });
   const [mounted, setMounted] = useState(false);
   // Address-privacy: resolve the displayable address server-side (exact only
   // when revealed). Falls back to the booking snapshot (already masked).
@@ -276,10 +301,10 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             }`}
           >
             {isPendingPayment
-              ? 'Paiement en cours de validation…'
+              ? t('confirmation.pendingPaymentTitle')
               : isPending
-              ? 'Demande envoyée !'
-              : 'Réservation confirmée !'}
+              ? t('confirmation.pendingTitle')
+              : t('confirmation.confirmedTitle')}
           </h1>
           <p
             className={`text-gray-500 dark:text-gray-400 transition-all duration-500 delay-400 ${
@@ -287,12 +312,12 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             }`}
           >
             {isPendingPayment
-              ? 'Votre paiement vient d\'être effectué et est en cours de validation. Cette page se mettra à jour dans quelques secondes.'
+              ? t('confirmation.pendingPaymentText')
               : isPending
-              ? 'Votre demande de réservation a bien été envoyée. Vous recevrez un email dès que le prestataire aura confirmé.'
+              ? t('confirmation.pendingText')
               : depositPaid
-              ? `Votre réservation est confirmée et votre acompte de ${formatPrice(booking.deposit!.amount)} a bien été enregistré. Un email de confirmation vous a été envoyé.`
-              : 'Votre réservation a bien été enregistrée. Un email de confirmation vous a été envoyé.'}
+              ? t('confirmation.depositPaidText', { amount: formatPrice(booking.deposit!.amount) })
+              : t('confirmation.confirmedText')}
           </p>
         </div>
 
@@ -310,7 +335,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             {isPending && (
               <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-sm font-medium rounded-full">
                 <Clock className="w-4 h-4" />
-                En attente de confirmation
+                {t('confirmation.awaitingConfirmation')}
               </span>
             )}
           </div>
@@ -320,7 +345,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             {/* Service */}
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                {booking.items && booking.items.length >= 2 ? 'Prestations' : 'Prestation'}
+                {booking.items && booking.items.length >= 2 ? t('common.services') : t('common.service')}
               </p>
               {booking.items && booking.items.length >= 2 ? (
                 <>
@@ -382,7 +407,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             {booking.memberName && (
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                  Professionnel
+                  {t('common.professional')}
                 </p>
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-gray-400" />
@@ -396,16 +421,16 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             {/* Date & Time */}
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Date & Heure
+                {t('common.dateTime')}
               </p>
               <div className="flex items-start gap-2">
                 <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white capitalize">
-                    {formatDate(booking.datetime)}
+                    {formatDate(booking.datetime, locale)}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatTime(booking.datetime)} - {formatTime(booking.endDatetime)}
+                    {formatTime(booking.datetime, locale)} - {formatTime(booking.endDatetime, locale)}
                   </p>
                 </div>
               </div>
@@ -414,7 +439,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             {/* Location */}
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Lieu
+                {t('common.location')}
               </p>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -432,7 +457,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
                   )}
                   {addr?.protected && !addr.revealed && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      Adresse exacte communiquée ~48h avant le rendez-vous.
+                      {t('confirmation.addressRevealLater')}
                     </p>
                   )}
                 </div>
@@ -444,7 +469,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
           <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <div className="flex items-center justify-between">
               <span className="font-medium text-gray-900 dark:text-white">
-                Total
+                {t('common.total')}
               </span>
               <span className="text-right">
                 {booking.originalPrice != null && booking.originalPrice > booking.price && (
@@ -459,14 +484,14 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             </div>
             {booking.originalPrice != null && booking.originalPrice > booking.price && (
               <p className="mt-1 text-right text-xs font-semibold text-rose-600 dark:text-rose-400">
-                Vous avez économisé {formatPrice(booking.originalPrice - booking.price)}
+                {t('confirmation.savings', { amount: formatPrice(booking.originalPrice - booking.price) })}
               </p>
             )}
             {depositPaid && booking.deposit && (
               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1.5 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">
-                    Acompte payé
+                    {t('confirmation.depositPaid')}
                   </span>
                   <span className="font-medium text-green-600 dark:text-green-400">
                     {formatPrice(booking.deposit.amount)}
@@ -474,7 +499,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">
-                    Reste à régler sur place
+                    {t('confirmation.remainingDue')}
                   </span>
                   <span className="font-medium text-gray-900 dark:text-white">
                     {formatPrice(remainingDue ?? 0, remainingDueMax)}
@@ -492,11 +517,11 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
           }`}
         >
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Ajouter à votre calendrier
+            {t('confirmation.addToCalendar')}
           </p>
           <div className="grid grid-cols-2 gap-3">
             <a
-              href={generateGoogleCalendarUrl(booking, addr?.address || booking.locationAddress)}
+              href={generateGoogleCalendarUrl(booking, addr?.address || booking.locationAddress, calendarEventTitle, calendarEventDescription)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
@@ -507,7 +532,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
               Google Calendar
             </a>
             <button
-              onClick={() => downloadIcs(booking, addr?.address || booking.locationAddress)}
+              onClick={() => downloadIcs(booking, addr?.address || booking.locationAddress, calendarEventTitle, calendarEventDescription)}
               className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
             >
               <Download className="w-4 h-4" />
@@ -523,8 +548,10 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
           }`}
         >
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            Un email de confirmation a été envoyé à{' '}
-            <span className="font-medium">{booking.clientInfo.email}</span>
+            {t.rich('confirmation.emailSentTo', {
+              address: booking.clientInfo.email,
+              email: (chunks) => <span className="font-medium">{chunks}</span>,
+            })}
           </p>
         </div>
 
@@ -541,10 +568,10 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold mb-0.5" style={{ color: '#111827' }}>
-                Téléchargez l&apos;app Opatam
+                {t('appCta.title')}
               </p>
               <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
-                Retrouvez vos rendez-vous, recevez des rappels et réservez en un clic.
+                {t('appCta.subtitle')}
               </p>
               <div className="flex gap-2">
                 <a
@@ -582,18 +609,18 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
           <div className="flex items-center gap-2 mb-2">
             <Store className="w-5 h-5" style={{ color: '#2563eb' }} />
             <p className="text-sm font-semibold" style={{ color: '#1d4ed8' }}>
-              Vous êtes aussi professionnel ?
+              {t('proCta.title')}
             </p>
           </div>
           <p className="text-xs mb-3" style={{ color: '#3b82f6' }}>
-            Créez votre page de réservation en ligne en 5 minutes et recevez vos premiers clients dès aujourd&apos;hui.
+            {t('proCta.subtitleOnline')}
           </p>
           <Link
             href="/register"
             className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors"
             style={{ color: '#1d4ed8' }}
           >
-            Créer ma page gratuitement
+            {t('proCta.button')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -608,7 +635,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             href="/"
             className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
-            Retour à l'accueil
+            {t('common.backHome')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -619,7 +646,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
             mounted ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          Référence : {booking.id}
+          {t('common.reference', { id: booking.id })}
         </p>
       </div>
     </div>

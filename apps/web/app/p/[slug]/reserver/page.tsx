@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import {
   providerRepository,
   serviceRepository,
@@ -91,14 +92,15 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
 
   // No services available
   if (services.length === 0) {
+    const t = await getTranslations('booking.page');
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <div className="text-center">
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Aucune prestation disponible
+            {t('noServicesTitle')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Ce prestataire n'a pas encore configuré ses prestations.
+            {t('noServicesText')}
           </p>
         </div>
       </div>

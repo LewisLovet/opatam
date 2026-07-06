@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
-import { ArrowLeft, Check, CalendarCheck, Sparkles, ArrowRight, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, CalendarCheck, Store, Info, ArrowRight, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations, useLocale } from 'next-intl';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 import type { ServiceDiscount } from '@booking-app/shared';
 import {
@@ -146,8 +147,8 @@ interface BookingState {
 }
 
 /** Human-readable labels of the chosen variations/options for a service. */
-function fmtChoiceEuro(cents: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+function fmtChoiceEuro(cents: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 0,
@@ -158,6 +159,7 @@ function fmtChoiceEuro(cents: number): string {
 function buildChoiceLabels(
   service: Service | undefined,
   selections: ServiceSelections,
+  locale: string,
 ): string[] {
   if (!service) return [];
   const labels: string[] = [];
@@ -170,7 +172,7 @@ function buildChoiceLabels(
   for (const o of service.options ?? []) {
     const selOpt = selections.options[o.id];
     if (!selOpt) continue;
-    labels.push(o.price > 0 ? `+ ${o.name} (+${fmtChoiceEuro(o.price)})` : `+ ${o.name}`);
+    labels.push(o.price > 0 ? `+ ${o.name} (+${fmtChoiceEuro(o.price, locale)})` : `+ ${o.name}`);
     for (const nv of o.nestedVariations ?? []) {
       const chosen = nv.options.find((x) => x.id === selOpt.nestedVariations[nv.id]);
       if (chosen) labels.push(`${nv.name} : ${chosen.name}`);
@@ -206,6 +208,8 @@ export function BookingFlow({
   isDemo = false,
 }: BookingFlowProps) {
   const router = useRouter();
+  const t = useTranslations('booking');
+  const locale = useLocale();
 
   // Determine initial service (deep-link via ?service=)
   const initialService = useMemo(() => {
@@ -359,7 +363,7 @@ export function BookingFlow({
     const multi = cartLines.length > 1;
     const labels: string[] = [];
     for (const line of cartLines) {
-      const itemLabels = buildChoiceLabels(line.service, line.item.selections);
+      const itemLabels = buildChoiceLabels(line.service, line.item.selections, locale);
       if (multi) {
         // Always surface the service name (with its choices appended).
         labels.push(
@@ -372,7 +376,7 @@ export function BookingFlow({
       }
     }
     return labels;
-  }, [cartLines]);
+  }, [cartLines, locale]);
 
   const selectedMember = useMemo(
     () => members.find((m) => m.id === state.memberId) || null,
@@ -449,20 +453,20 @@ export function BookingFlow({
   // Steps configuration
   const steps: { id: BookingStep; label: string }[] = useMemo(() => {
     const baseSteps: { id: BookingStep; label: string }[] = [
-      { id: 'service', label: 'Prestation' },
+      { id: 'service', label: t('steps.service') },
     ];
 
     if (isTeam) {
-      baseSteps.push({ id: 'member', label: 'Professionnel' });
+      baseSteps.push({ id: 'member', label: t('steps.member') });
     }
 
     baseSteps.push(
-      { id: 'slot', label: 'Date & Heure' },
-      { id: 'confirm', label: 'Confirmation' }
+      { id: 'slot', label: t('steps.slot') },
+      { id: 'confirm', label: t('steps.confirm') }
     );
 
     return baseSteps;
-  }, [isTeam]);
+  }, [isTeam, t]);
 
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
 
@@ -618,7 +622,7 @@ export function BookingFlow({
 
   const handleSubmit = async () => {
     if (state.cart.length === 0 || !state.memberId || !state.slot || !state.locationId) {
-      setError('Informations manquantes');
+      setError(t('flow.errorMissingInfo'));
       return;
     }
 
@@ -656,12 +660,14 @@ export function BookingFlow({
           clientInfo: state.clientInfo,
           // Kept for single-prestation backward compat (== items[0].selections).
           selections: state.cart[0].selections,
+          // Language the client booked in → transactional emails follow it.
+          clientLocale: locale,
         }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Une erreur est survenue');
+        throw new Error(data.error || t('common.error'));
       }
 
       const data = await response.json();
@@ -673,7 +679,7 @@ export function BookingFlow({
       }
       router.push(`/reservation/confirmation/${data.bookingId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      setError(err instanceof Error ? err.message : t('common.error'));
       setIsSubmitting(false);
     }
   };
@@ -777,31 +783,31 @@ export function BookingFlow({
                 {/* Service-step header — sets the "build a list" expectation. */}
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Composez votre rendez-vous
+                    {t('flow.title')}
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Ajoutez une ou plusieurs prestations.
+                    {t('flow.subtitle')}
                   </p>
                 </div>
 
                 {/* Cart (panier) — ALWAYS visible so the cart model is obvious. */}
                 <div className="mb-6">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
-                    Votre rendez-vous
+                    {t('flow.cartTitle')}
                   </h3>
                   {cartLines.length === 0 ? (
                     <div className="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 px-4 py-6 text-center">
                       <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                        Votre rendez-vous est vide
+                        {t('flow.cartEmpty')}
                       </p>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        Ajoutez des prestations ci-dessous.
+                        {t('flow.cartEmptyHint')}
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       {cartLines.map((line, idx) => {
-                        const itemLabels = buildChoiceLabels(line.service, line.item.selections);
+                        const itemLabels = buildChoiceLabels(line.service, line.item.selections, locale);
                         return (
                           <div
                             key={idx}
@@ -824,7 +830,7 @@ export function BookingFlow({
                               type="button"
                               onClick={() => removeFromCart(idx)}
                               className="flex-shrink-0 p-2 -mr-1 rounded-lg text-gray-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 transition-colors"
-                              aria-label="Retirer la prestation"
+                              aria-label={t('flow.removeService')}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -835,7 +841,7 @@ export function BookingFlow({
                       {/* Running total */}
                       <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/60">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Total
+                          {t('common.total')}
                         </span>
                         <span className="text-sm font-semibold text-gray-900 dark:text-white">
                           {formatDuration(cartTotalDuration)} · {formatPrice(cartTotalPrice)}
@@ -868,8 +874,11 @@ export function BookingFlow({
                       className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {state.cart.length === 0
-                        ? 'Continuer'
-                        : `Continuer · ${state.cart.length} ${state.cart.length === 1 ? 'prestation' : 'prestations'} · ${formatPrice(cartTotalPrice)}`}
+                        ? t('flow.continue')
+                        : t('flow.continueWithCart', {
+                            count: state.cart.length,
+                            total: formatPrice(cartTotalPrice),
+                          })}
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -886,13 +895,13 @@ export function BookingFlow({
                   className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-4"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Retour
+                  {t('common.back')}
                 </button>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                   {configuringService.name}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-5">
-                  Composez votre prestation
+                  {t('flow.configureSubtitle')}
                 </p>
 
                 <ServiceChoicesPicker
@@ -938,13 +947,13 @@ export function BookingFlow({
                     disabled={!draftValidation.valid}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Ajouter au rendez-vous
+                    {t('flow.addToCart')}
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
                 {!draftValidation.valid && (
                   <p className="mt-2 text-right text-xs text-error-600 dark:text-error-400">
-                    À choisir : {draftValidation.missing.join(', ')}
+                    {t('flow.missingChoices', { items: draftValidation.missing.join(', ') })}
                   </p>
                 )}
               </div>
@@ -993,10 +1002,10 @@ export function BookingFlow({
                   <CalendarCheck className="w-8 h-8 text-green-600 dark:text-green-400" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  Réservation confirmée !
+                  {t('flow.demo.confirmedTitle')}
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-sm mx-auto">
-                  C&apos;est exactement ce que vos clients verront après avoir réservé chez vous.
+                  {t('flow.demo.confirmedText')}
                 </p>
 
                 {/* Recap */}
@@ -1004,14 +1013,17 @@ export function BookingFlow({
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 mb-8 max-w-sm mx-auto text-left">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedService.name}</p>
                     {selectedMember && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">avec {selectedMember.name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('flow.demo.with', { name: selectedMember.name })}</p>
                     )}
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      {new Date(state.slot.datetime).toLocaleDateString('fr-FR', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                      })} à {state.slot.start}
+                      {t('common.dateAtTime', {
+                        date: new Date(state.slot.datetime).toLocaleDateString(locale, {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                        }),
+                        time: state.slot.start,
+                      })}
                     </p>
                   </div>
                 )}
@@ -1024,10 +1036,10 @@ export function BookingFlow({
                     </div>
                     <div className="flex-1 text-left">
                       <p className="text-sm font-semibold mb-0.5" style={{ color: '#111827' }}>
-                        Téléchargez l&apos;app Opatam
+                        {t('appCta.title')}
                       </p>
                       <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
-                        Retrouvez vos rendez-vous, recevez des rappels et réservez en un clic.
+                        {t('appCta.subtitle')}
                       </p>
                       <div className="flex gap-2">
                         <a
@@ -1057,13 +1069,13 @@ export function BookingFlow({
                 <div className="flex flex-col items-center gap-3">
                   <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe' }} className="rounded-xl px-5 py-4 max-w-sm">
                     <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="w-5 h-5" style={{ color: '#2563eb' }} />
+                      <Store className="w-5 h-5" style={{ color: '#2563eb' }} />
                       <p className="text-sm font-semibold" style={{ color: '#1d4ed8' }}>
-                        Vous êtes aussi professionnel ?
+                        {t('proCta.title')}
                       </p>
                     </div>
                     <p className="text-xs" style={{ color: '#3b82f6' }}>
-                      Créez votre page de réservation en 5 minutes et recevez vos premiers clients dès aujourd&apos;hui.
+                      {t('proCta.subtitle')}
                     </p>
                   </div>
 
@@ -1071,18 +1083,18 @@ export function BookingFlow({
                     href="/register"
                     className="inline-flex items-center gap-2 bg-primary-600 text-white hover:bg-primary-700 px-6 py-3 text-sm font-semibold rounded-lg transition-colors"
                   >
-                    Créer ma page gratuitement
+                    {t('proCta.button')}
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                   <p className="text-xs text-gray-500 dark:text-gray-500">
-                    {APP_CONFIG.trialDays} jours gratuits, sans carte bancaire
+                    {t('flow.demo.trialNote', { days: APP_CONFIG.trialDays })}
                   </p>
 
                   <Link
                     href="/p/demo"
                     className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 mt-2"
                   >
-                    ← Retour à la boutique démo
+                    {t('flow.demo.backToShop')}
                   </Link>
                 </div>
               </div>
@@ -1094,7 +1106,7 @@ export function BookingFlow({
           <div className="hidden lg:block">
             <BookingRecap
               service={selectedService}
-              serviceLabel={cartLines.length > 1 ? `${cartLines.length} prestations` : undefined}
+              serviceLabel={cartLines.length > 1 ? t('flow.servicesCount', { count: cartLines.length }) : undefined}
               member={selectedMember}
               location={selectedLocation}
               slot={state.slot}
@@ -1121,7 +1133,7 @@ export function BookingFlow({
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 z-30">
           <BookingRecap
             service={selectedService}
-            serviceLabel={cartLines.length > 1 ? `${cartLines.length} prestations` : undefined}
+            serviceLabel={cartLines.length > 1 ? t('flow.servicesCount', { count: cartLines.length }) : undefined}
             member={selectedMember}
             location={selectedLocation}
             slot={state.slot}
@@ -1144,10 +1156,10 @@ export function BookingFlow({
           <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <Info className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                Information importante
+                {t('flow.notice.title')}
               </h3>
             </div>
             <p className="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-line mb-6">
@@ -1158,13 +1170,13 @@ export function BookingFlow({
                 onClick={handleNoticeClose}
                 className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
-                Retour
+                {t('common.back')}
               </button>
               <button
                 onClick={handleNoticeAccept}
                 className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
               >
-                J&apos;ai compris, continuer
+                {t('flow.notice.accept')}
               </button>
             </div>
           </div>

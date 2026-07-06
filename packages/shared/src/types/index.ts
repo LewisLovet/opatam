@@ -970,6 +970,10 @@ export interface Booking {
   originalPrice?: number | null;
   priceMax: number | null;
   clientInfo: ClientInfo;
+  /** UI language the client booked in ('fr' | 'en'…). Every transactional
+   *  email/notification to this client uses it; absent = French (legacy
+   *  bookings, pro-created bookings). */
+  clientLocale?: string;
   datetime: Date;
   endDatetime: Date;
   status: BookingStatus;

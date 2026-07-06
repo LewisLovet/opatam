@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Sparkles, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Briefcase, ChevronRight } from 'lucide-react';
 import type { ServiceDiscount } from '@booking-app/shared';
 import { ServiceItem } from './ServiceItem';
 
@@ -30,6 +31,7 @@ interface ServicesSectionProps {
 }
 
 export function ServicesSection({ services, categories = [], slug, globalDiscount, onBookingClick }: ServicesSectionProps) {
+  const t = useTranslations('provider');
   const hasCategories = categories.length > 0;
 
   // When there are many categories (>3), collapse all except the first by default
@@ -75,14 +77,14 @@ export function ServicesSection({ services, categories = [], slug, globalDiscoun
     return (
       <section className="pt-6 pb-10">
         <div className="flex items-center gap-2 mb-6">
-          <Sparkles className="w-6 h-6 text-primary-500" />
+          <Briefcase className="w-6 h-6 text-primary-500" />
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Prestations
+            {t('services.title')}
           </h2>
         </div>
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
           <p className="text-gray-500 dark:text-gray-400">
-            Aucune prestation disponible pour le moment.
+            {t('services.empty')}
           </p>
         </div>
       </section>
@@ -94,9 +96,9 @@ export function ServicesSection({ services, categories = [], slug, globalDiscoun
     return (
       <section className="pt-6 pb-10">
         <div className="flex items-center gap-2 mb-6">
-          <Sparkles className="w-6 h-6 text-primary-500" />
+          <Briefcase className="w-6 h-6 text-primary-500" />
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Prestations
+            {t('services.title')}
           </h2>
           <span className="ml-2 px-2.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium rounded-full">
             {services.length}
@@ -115,9 +117,9 @@ export function ServicesSection({ services, categories = [], slug, globalDiscoun
   return (
     <section className="pt-6 pb-10">
       <div className="flex items-center gap-2 mb-6">
-        <Sparkles className="w-6 h-6 text-primary-500" />
+        <Briefcase className="w-6 h-6 text-primary-500" />
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Prestations
+          {t('services.title')}
         </h2>
         <span className="ml-2 px-2.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium rounded-full">
           {services.length}
@@ -164,7 +166,7 @@ export function ServicesSection({ services, categories = [], slug, globalDiscoun
               >
                 <div className="w-1 h-5 bg-primary-500 rounded-full flex-shrink-0" />
                 <h3 className="text-[17px] font-semibold text-gray-800 dark:text-gray-200 tracking-tight">
-                  Autres
+                  {t('services.otherCategory')}
                 </h3>
                 <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-0.5 rounded-full">
                   {grouped.uncategorized.length}

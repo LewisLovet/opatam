@@ -3,13 +3,13 @@
 import { useRef, useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useLocale, useTranslations } from 'next-intl';
 import { Clock, ArrowRight, X } from 'lucide-react';
 import {
   getServiceMinDuration,
   getDiscountedMinPrice,
   resolveServiceDiscount,
   getDiscountDaysLeft,
-  formatPromoCountdown,
   PROMO_URGENCY_DAYS,
   type ServiceVariation,
   type ServiceOption,
@@ -43,20 +43,24 @@ function formatDuration(minutes: number): string {
   return rem === 0 ? `${hours}h` : `${hours}h${rem}`;
 }
 
-function formatPrice(cents: number, centsMax?: number | null): string {
-  if (cents === 0 && !centsMax) return 'Gratuit';
-  const fmt = (v: number) =>
-    new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(v / 100);
-  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
-  return fmt(cents);
-}
-
 export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: ServiceItemProps) {
+  const t = useTranslations('provider');
+  const locale = useLocale();
+
+  const formatPrice = (cents: number, centsMax?: number | null): string => {
+    if (cents === 0 && !centsMax) return t('services.free');
+    const fmt = (v: number) =>
+      new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(v / 100);
+    if (centsMax && centsMax > cents)
+      return t('services.priceRange', { min: fmt(cents), max: fmt(centsMax) });
+    return fmt(cents);
+  };
+
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -78,6 +82,15 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
     ? getDiscountDaysLeft(resolveServiceDiscount(service, globalDiscount))
     : null;
   const showCountdown = promoDaysLeft != null && promoDaysLeft <= PROMO_URGENCY_DAYS;
+  // Localized urgency label (was formatPromoCountdown, FR-only in shared).
+  const countdownLabel =
+    promoDaysLeft == null
+      ? null
+      : promoDaysLeft <= 0
+        ? t('services.promo.lastDay')
+        : promoDaysLeft === 1
+          ? t('services.promo.endsTomorrow')
+          : t('services.promo.daysLeft', { days: promoDaysLeft });
 
   useEffect(() => {
     // Small delay to let the layout settle before measuring
@@ -132,7 +145,7 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
                 <div className="text-right">
                   {priceVaries && (
                     <span className="block text-[11px] font-normal text-gray-400 leading-none mb-0.5">
-                      à partir de
+                      {t('services.from')}
                     </span>
                   )}
                   {hasPromo && (
@@ -158,12 +171,12 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
                   </span>
                   {showCountdown && (
                     <span className="block text-[10px] font-semibold text-rose-500 dark:text-rose-400 leading-tight mt-0.5">
-                      {formatPromoCountdown(promoDaysLeft)}
+                      {countdownLabel}
                     </span>
                   )}
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 text-white text-sm font-medium rounded-lg group-hover:bg-primary-700 transition-colors shadow-sm">
-                  Reserver
+                  {t('services.book')}
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </div>
@@ -188,7 +201,7 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
                     }}
                     className="text-sm text-primary-600 dark:text-primary-400 hover:underline mt-0.5"
                   >
-                    {descExpanded ? 'Moins' : 'Plus de details'}
+                    {descExpanded ? t('services.showLess') : t('services.showMore')}
                   </button>
                 )}
               </div>

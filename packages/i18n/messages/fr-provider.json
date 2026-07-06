@@ -1,0 +1,110 @@
+{
+  "common": {
+    "close": "Fermer",
+    "seeMore": "Voir plus",
+    "seeLess": "Voir moins"
+  },
+  "hero": {
+    "verified": "Vérifié",
+    "today": "Aujourd'hui",
+    "tomorrow": "Demain",
+    "nextAvailability": "Prochaine dispo : {date}",
+    "memberAvailabilityTitle": "Disponibilités par professionnel",
+    "membersWithoutAvailability": "{count, plural, one {# professionnel sans disponibilité prochaine} other {# professionnels sans disponibilité prochaine}}"
+  },
+  "nav": {
+    "services": "Prestations",
+    "reviews": "Avis",
+    "hours": "Horaires"
+  },
+  "services": {
+    "title": "Prestations",
+    "empty": "Aucune prestation disponible pour le moment.",
+    "otherCategory": "Autres",
+    "free": "Gratuit",
+    "from": "à partir de",
+    "priceRange": "De {min} à {max}",
+    "book": "Réserver",
+    "showMore": "Plus de détails",
+    "showLess": "Moins",
+    "promo": {
+      "lastDay": "Dernier jour",
+      "endsTomorrow": "Se termine demain",
+      "daysLeft": "Plus que {days} jours"
+    }
+  },
+  "mobileBar": {
+    "from": "À partir de",
+    "book": "Réserver"
+  },
+  "about": {
+    "title": "À propos",
+    "portfolioTitle": "Portfolio",
+    "findMeOn": "Retrouvez-moi sur"
+  },
+  "portfolio": {
+    "title": "Portfolio",
+    "photoCount": "{count, plural, one {# photo} other {# photos}}",
+    "photoAlt": "Portfolio {index}",
+    "previousPhoto": "Photo précédente",
+    "nextPhoto": "Photo suivante"
+  },
+  "reviews": {
+    "title": "Avis clients",
+    "basedOn": "Basé sur <strong>{count}</strong> avis",
+    "noReviews": "Aucun avis",
+    "distribution": "Répartition des notes",
+    "latest": "Derniers avis",
+    "anonymousClient": "Client",
+    "beFirst": "Soyez le premier à donner votre avis !"
+  },
+  "hours": {
+    "title": "Horaires",
+    "open": "Ouvert",
+    "closed": "Fermé",
+    "today": "Aujourd'hui"
+  },
+  "infos": {
+    "title": "Informations pratiques",
+    "locationTitle": "{count, plural, one {Lieu} other {Lieux}}",
+    "openingHours": "Horaires d'ouverture",
+    "days": ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+  },
+  "location": {
+    "fixed": "Salon",
+    "mobile": "Mobile",
+    "maskedAddress": "Adresse exacte communiquée après confirmation",
+    "viewOnMaps": "Voir sur Google Maps",
+    "homeService": "Déplacement à domicile",
+    "travelRadius": "Rayon de {radius} km"
+  },
+  "team": {
+    "title": "L'équipe"
+  },
+  "share": {
+    "share": "Partager",
+    "shareText": "Découvrez {name}",
+    "copyLink": "Copier le lien"
+  },
+  "socials": {
+    "website": "Site web"
+  },
+  "demo": {
+    "title": "Bienvenue sur la boutique démo",
+    "intro": "Cette page est un <strong>exemple concret</strong> de ce que vos clients verront quand ils réserveront chez vous.",
+    "walkthrough": "Parcourez les prestations, sélectionnez un professionnel et choisissez un créneau — exactement comme vos futurs clients le feront.",
+    "highlight": "Votre page de réservation peut être prête en 5 minutes, sans aucune compétence technique.",
+    "explore": "Explorer la démo",
+    "createPage": "Créer ma page gratuitement ({days} jours d'essai)"
+  },
+  "notice": {
+    "title": "Information importante",
+    "back": "Retour",
+    "accept": "J'ai compris, continuer"
+  },
+  "notFound": {
+    "title": "Prestataire introuvable",
+    "description": "Ce prestataire n'existe pas ou n'est plus disponible. Il a peut-être désactivé sa page ou changé d'adresse.",
+    "backHome": "Retour à l'accueil"
+  }
+}

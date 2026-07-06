@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Check, Flame, ArrowRight, CalendarX } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 import { generateDemoSlots } from '../../demoData';
 
 interface TimeSlotWithDate {
@@ -33,12 +34,6 @@ interface StepSlotProps {
   isDemo?: boolean;
 }
 
-const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const MONTHS_FR = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-];
-
 // Local YYYY-MM-DD — must match the server's key (toISOString would shift to UTC).
 function dateKey(date: Date): string {
   const y = date.getFullYear();
@@ -59,6 +54,12 @@ export function StepSlot({
   openDays,
   isDemo = false,
 }: StepSlotProps) {
+  const t = useTranslations('booking.slot');
+  const tCommon = useTranslations('booking.common');
+  const locale = useLocale();
+  // Localised calendar labels (arrays live in the dictionaries).
+  const dayNames = t.raw('days') as string[];
+  const monthNames = t.raw('months') as string[];
   const today = useMemo(() => {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
@@ -135,7 +136,7 @@ export function StepSlot({
     });
 
     fetch(`/api/slots/summary?${params}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Erreur lors du chargement des disponibilités'))))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(t('loadError')))))
       .then((data: { days: Array<DayInfo & { date: string }> }) => {
         const entries: Record<string, DayInfo> = {};
         for (const d of data.days || []) {
@@ -145,7 +146,7 @@ export function StepSlot({
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+        setError(err instanceof Error ? err.message : tCommon('error'));
         setLoading(false);
       });
 
@@ -218,19 +219,19 @@ export function StepSlot({
         <button
           onClick={onBack}
           className="p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-          aria-label="Retour"
+          aria-label={tCommon('back')}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Choisissez une date et un horaire
+          {t('title')}
         </h2>
         {!loading && !error && hasAnyAvailability && nextAvailableAfter(selectedDate) && (
           <button
             onClick={jumpToNextAvailable}
             className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline whitespace-nowrap"
           >
-            Prochaine dispo <ArrowRight className="w-4 h-4" />
+            {t('nextAvailability')} <ArrowRight className="w-4 h-4" />
           </button>
         )}
       </div>
@@ -244,9 +245,9 @@ export function StepSlot({
       ) : !hasAnyAvailability ? (
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl px-6">
           <CalendarX className="w-10 h-10 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
-          <p className="font-semibold text-gray-900 dark:text-white">Aucune disponibilité pour cette prestation</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{t('noAvailabilityTitle')}</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            dans les {maxAdvanceDays} prochains jours. Revenez plus tard ou contactez directement le professionnel.
+            {t('noAvailabilityHint', { days: maxAdvanceDays })}
           </p>
         </div>
       ) : (
@@ -258,25 +259,25 @@ export function StepSlot({
                 onClick={goToPreviousMonth}
                 disabled={!canGoPrevious}
                 className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                aria-label="Mois précédent"
+                aria-label={t('prevMonth')}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <h3 className="font-semibold text-gray-900 dark:text-white">
-                {MONTHS_FR[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+                {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
               </h3>
               <button
                 onClick={goToNextMonth}
                 disabled={!canGoNext}
                 className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                aria-label="Mois suivant"
+                aria-label={t('nextMonth')}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
 
             <div className="grid grid-cols-7 gap-1 mb-1">
-              {DAYS_FR.map((day) => (
+              {dayNames.map((day) => (
                 <div key={day} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2">
                   {day}
                 </div>
@@ -305,13 +306,13 @@ export function StepSlot({
                   dot = true;
                 } else if (status === 'almost_full') {
                   cls = 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30';
-                  label = `${info!.capacity} pl.`;
+                  label = t('spotsShort', { count: info!.capacity });
                 } else if (status === 'full') {
                   cls = 'text-gray-400 dark:text-gray-600 line-through cursor-not-allowed';
-                  label = 'Complet';
+                  label = t('full');
                 } else {
                   cls = 'text-gray-300 dark:text-gray-600 cursor-not-allowed';
-                  if (status === 'closed' && !isPast) label = 'Fermé';
+                  if (status === 'closed' && !isPast) label = t('closed');
                 }
 
                 return (
@@ -333,10 +334,10 @@ export function StepSlot({
 
             {/* Legend */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-xs text-gray-500 dark:text-gray-400">
-              <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Disponible</span>
-              <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Bientôt complet</span>
-              <span className="inline-flex items-center gap-1.5"><span className="line-through">Complet</span></span>
-              <span className="inline-flex items-center gap-1.5"><span className="opacity-60">Fermé</span></span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{t('available')}</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{t('almostFull')}</span>
+              <span className="inline-flex items-center gap-1.5"><span className="line-through">{t('full')}</span></span>
+              <span className="inline-flex items-center gap-1.5"><span className="opacity-60">{t('closed')}</span></span>
             </div>
           </div>
 
@@ -345,25 +346,25 @@ export function StepSlot({
             <div>
               <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                 <h3 className="font-semibold text-gray-900 dark:text-white">
-                  {selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {selectedDate.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
                 </h3>
                 {selectedInfo?.status === 'almost_full' && (
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
                     <Flame className="w-3.5 h-3.5" />
-                    Bientôt complet · {selectedInfo.capacity} créneau{selectedInfo.capacity > 1 ? 'x' : ''}
+                    {t('almostFullBadge', { count: selectedInfo.capacity })}
                   </span>
                 )}
               </div>
 
               {!selectedInfo || selectedInfo.slots.length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl px-4">
-                  <p className="text-gray-500 dark:text-gray-400">Complet ce jour-là pour cette prestation.</p>
+                  <p className="text-gray-500 dark:text-gray-400">{t('dayFull')}</p>
                   {nextAvailableAfter(null) && (
                     <button
                       onClick={jumpToNextAvailable}
                       className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                     >
-                      Voir la prochaine disponibilité <ArrowRight className="w-4 h-4" />
+                      {t('seeNextAvailability')} <ArrowRight className="w-4 h-4" />
                     </button>
                   )}
                 </div>

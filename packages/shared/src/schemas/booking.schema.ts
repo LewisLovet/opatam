@@ -79,6 +79,13 @@ export const createBookingSchema = z.object({
     )
     .min(1)
     .optional(),
+  // UI language the client booked in ('fr' | 'en'…). Drives the language of
+  // every transactional email/notification sent to THIS client. Optional —
+  // absent (legacy clients, pro-created bookings) falls back to French.
+  clientLocale: z
+    .string()
+    .regex(/^[a-z]{2}$/, { message: 'Locale invalide' })
+    .optional(),
 }).refine(
   (data) => data.clientInfo !== undefined || data.clientId !== undefined,
   { message: 'Les informations du client sont requises' }

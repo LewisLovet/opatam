@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { ReviewCard } from '@/components/review/ReviewCard';
 import { RatingDisplay } from '@/components/review/RatingDisplay';
 import { RatingDistribution } from './RatingDistribution';
@@ -27,6 +28,7 @@ interface ReviewsSectionProps {
 }
 
 export function ReviewsSection({ reviews, rating }: ReviewsSectionProps) {
+  const t = useTranslations('provider');
   const hasReviews = rating.count > 0;
 
   return (
@@ -34,7 +36,7 @@ export function ReviewsSection({ reviews, rating }: ReviewsSectionProps) {
       <div className="flex items-center gap-2 mb-6">
         <Star className="w-6 h-6 text-primary-500" />
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Avis clients
+          {t('reviews.title')}
         </h2>
         {hasReviews && (
           <span className="ml-2 px-2.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium rounded-full">
@@ -52,20 +54,21 @@ export function ReviewsSection({ reviews, rating }: ReviewsSectionProps) {
           </div>
           <RatingDisplay rating={hasReviews ? rating.average : 0} showCount={false} size="lg" />
           <p className="mt-3 text-gray-600 dark:text-gray-400">
-            {hasReviews ? (
-              <>
-                Base sur <span className="font-semibold text-gray-900 dark:text-white">{rating.count}</span> avis
-              </>
-            ) : (
-              'Aucun avis'
-            )}
+            {hasReviews
+              ? t.rich('reviews.basedOn', {
+                  count: rating.count,
+                  strong: (chunks) => (
+                    <span className="font-semibold text-gray-900 dark:text-white">{chunks}</span>
+                  ),
+                })
+              : t('reviews.noReviews')}
           </p>
         </div>
 
         {/* Right column - Distribution (always shown) */}
         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-6">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wide">
-            Repartition des notes
+            {t('reviews.distribution')}
           </h3>
           <RatingDistribution distribution={rating.distribution} total={rating.count} />
         </div>
@@ -75,7 +78,7 @@ export function ReviewsSection({ reviews, rating }: ReviewsSectionProps) {
       {hasReviews && reviews.length > 0 ? (
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Derniers avis
+            {t('reviews.latest')}
           </h3>
           <div className="space-y-4">
             {reviews.map((review) => (
@@ -87,8 +90,8 @@ export function ReviewsSection({ reviews, rating }: ReviewsSectionProps) {
                   comment: review.comment,
                   // Imported reviews are anonymous (clientName ''): show a neutral name.
                   clientName: review.imported
-                    ? 'Client'
-                    : review.clientName || 'Client',
+                    ? t('reviews.anonymousClient')
+                    : review.clientName || t('reviews.anonymousClient'),
                   clientPhotoURL: review.imported ? null : review.clientPhoto,
                   imported: review.imported,
                   createdAt: new Date(review.createdAt),
@@ -100,7 +103,7 @@ export function ReviewsSection({ reviews, rating }: ReviewsSectionProps) {
       ) : (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
           <p className="text-gray-500 dark:text-gray-400">
-            Soyez le premier à donner votre avis !
+            {t('reviews.beFirst')}
           </p>
         </div>
       )}

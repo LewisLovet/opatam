@@ -2,6 +2,7 @@
 
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface ServiceCardProps {
   service: {
@@ -29,8 +30,8 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+function formatPrice(price: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 0,
@@ -45,6 +46,8 @@ export function ServiceCard({
   showBookButton = true,
   className = '',
 }: ServiceCardProps) {
+  const t = useTranslations('booking.serviceCard');
+  const locale = useLocale();
   const handleClick = () => {
     if (onSelect) {
       onSelect(service.id);
@@ -87,7 +90,7 @@ export function ServiceCard({
           {/* Price & Action */}
           <div className="flex flex-col items-end gap-2">
             <span className="text-lg font-bold text-gray-900 dark:text-white">
-              {formatPrice(service.price)}
+              {formatPrice(service.price, locale)}
             </span>
             {showBookButton && onSelect && (
               <Button
@@ -98,7 +101,7 @@ export function ServiceCard({
                   handleClick();
                 }}
               >
-                {selected ? 'Sélectionné' : 'Sélectionner'}
+                {selected ? t('selected') : t('select')}
               </Button>
             )}
           </div>
@@ -110,7 +113,7 @@ export function ServiceCard({
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <span>Prestation sélectionnée</span>
+            <span>{t('selectedIndicator')}</span>
           </div>
         )}
       </div>

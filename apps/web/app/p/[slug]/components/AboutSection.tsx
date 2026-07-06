@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { User, ChevronDown, ChevronUp, Quote } from 'lucide-react';
 import { PortfolioGallery } from './PortfolioGallery';
 import { SocialLinks } from './SocialLinks';
@@ -21,6 +22,7 @@ interface AboutSectionProps {
 const MAX_DESCRIPTION_LENGTH = 300;
 
 export function AboutSection({ description, portfolioPhotos, socialLinks }: AboutSectionProps) {
+  const t = useTranslations('provider');
   const [expanded, setExpanded] = useState(false);
   const hasSocialLinks = !!(
     socialLinks.instagram ||
@@ -39,7 +41,7 @@ export function AboutSection({ description, portfolioPhotos, socialLinks }: Abou
       <div className="flex items-center gap-2 mb-6">
         <User className="w-6 h-6 text-primary-500" />
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          A propos
+          {t('about.title')}
         </h2>
       </div>
 
@@ -62,12 +64,12 @@ export function AboutSection({ description, portfolioPhotos, socialLinks }: Abou
                 >
                   {expanded ? (
                     <>
-                      Voir moins
+                      {t('common.seeLess')}
                       <ChevronUp className="w-4 h-4" />
                     </>
                   ) : (
                     <>
-                      Voir plus
+                      {t('common.seeMore')}
                       <ChevronDown className="w-4 h-4" />
                     </>
                   )}
@@ -82,9 +84,9 @@ export function AboutSection({ description, portfolioPhotos, socialLinks }: Abou
       {portfolioPhotos.length > 0 && (
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            Portfolio
+            {t('about.portfolioTitle')}
             <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm rounded-full">
-              {portfolioPhotos.length} photos
+              {t('portfolio.photoCount', { count: portfolioPhotos.length })}
             </span>
           </h3>
           <PortfolioGallery photos={portfolioPhotos} />
@@ -95,7 +97,7 @@ export function AboutSection({ description, portfolioPhotos, socialLinks }: Abou
       {hasSocialLinks && (
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Retrouvez-moi sur
+            {t('about.findMeOn')}
           </h3>
           <SocialLinks links={socialLinks} />
         </div>

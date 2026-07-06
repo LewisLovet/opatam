@@ -2,6 +2,7 @@
 
 import { Clock, MapPin, User, Calendar } from 'lucide-react';
 import Image from 'next/image';
+import { useTranslations, useLocale } from 'next-intl';
 import { formatPromoCountdown, PROMO_URGENCY_DAYS } from '@booking-app/shared';
 
 interface TimeSlotWithDate {
@@ -90,22 +91,18 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(cents: number, centsMax?: number | null): string {
-  if (cents === 0 && !centsMax) return 'Gratuit';
-  const fmt = (v: number) =>
-    new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(v / 100);
-  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
-  return fmt(cents);
+function fmtCurrency(cents: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
 }
 
-function formatDate(isoString: string): string {
+function formatDate(isoString: string, locale: string): string {
   const date = new Date(isoString);
-  return date.toLocaleDateString('fr-FR', {
+  return date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -113,9 +110,9 @@ function formatDate(isoString: string): string {
 }
 
 /** "2026-07-05" → "5 juil." (short, for the promo deadline). */
-function formatPromoDate(key: string): string {
+function formatPromoDate(key: string, locale: string): string {
   const [y, m, d] = key.split('-').map(Number);
-  return new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString('fr-FR', {
+  return new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
   });
@@ -137,6 +134,20 @@ export function BookingRecap({
   promoDaysLeft,
   choiceLabels = [],
 }: BookingRecapProps) {
+  const t = useTranslations('booking');
+  const locale = useLocale();
+
+  const formatPrice = (cents: number, centsMax?: number | null): string => {
+    if (cents === 0 && !centsMax) return t('common.free');
+    if (centsMax && centsMax > cents) {
+      return t('common.priceRange', {
+        min: fmtCurrency(cents, locale),
+        max: fmtCurrency(centsMax, locale),
+      });
+    }
+    return fmtCurrency(cents, locale);
+  };
+
   const displayName = serviceLabel ?? service?.name ?? '';
   // When an effective price is given (variations/options), it's an exact
   // amount — drop the base range.
@@ -151,14 +162,16 @@ export function BookingRecap({
   // validity date so it reads informative, not pushy.
   let promoCountdownText: string | null = null;
   if (hasPromo) {
-    const datePart = promoEndsAt ? `jusqu'au ${formatPromoDate(promoEndsAt)}` : null;
+    const datePart = promoEndsAt
+      ? t('recap.promoUntil', { date: formatPromoDate(promoEndsAt, locale) })
+      : null;
     const urgent = promoDaysLeft != null && promoDaysLeft <= PROMO_URGENCY_DAYS;
     if (urgent) {
       promoCountdownText = datePart
         ? `${formatPromoCountdown(promoDaysLeft!)} · ${datePart}`
         : formatPromoCountdown(promoDaysLeft!);
     } else if (datePart) {
-      promoCountdownText = `Offre valable ${datePart}`;
+      promoCountdownText = t('recap.promoValid', { datePart });
     }
   }
 
@@ -183,7 +196,7 @@ export function BookingRecap({
             </>
           ) : (
             <p className="text-gray-500 dark:text-gray-400">
-              Sélectionnez une prestation
+              {t('recap.selectService')}
             </p>
           )}
         </div>
@@ -211,7 +224,7 @@ export function BookingRecap({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 sticky top-24">
       <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
-        Récapitulatif
+        {t('recap.title')}
       </h3>
 
       {/* Provider */}
@@ -243,7 +256,7 @@ export function BookingRecap({
         {service ? (
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-              Prestation
+              {t('common.service')}
             </p>
             <p className="font-medium text-gray-900 dark:text-white">
               {displayName}
@@ -251,7 +264,7 @@ export function BookingRecap({
           </div>
         ) : (
           <div className="text-sm text-gray-400 dark:text-gray-500">
-            Sélectionnez une prestation
+            {t('recap.selectService')}
           </div>
         )}
 
@@ -259,7 +272,7 @@ export function BookingRecap({
         {member && (
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-              Professionnel
+              {t('common.professional')}
             </p>
             <div className="flex items-center gap-2">
               {member.photoURL ? (
@@ -286,7 +299,7 @@ export function BookingRecap({
         {location && (
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-              Lieu
+              {t('common.location')}
             </p>
             <div className="flex items-start gap-2">
               <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -300,7 +313,7 @@ export function BookingRecap({
                       {location.approxArea?.trim() || `${location.postalCode} ${location.city}`.trim()}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      Adresse exacte communiquée après confirmation
+                      {t('recap.addressAfterConfirmation')}
                     </p>
                   </>
                 ) : (
@@ -319,13 +332,13 @@ export function BookingRecap({
         {slot && (
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-              Date & Heure
+              {t('common.dateTime')}
             </p>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-400" />
               <div>
                 <p className="font-medium text-gray-900 dark:text-white capitalize">
-                  {formatDate(slot.datetime)}
+                  {formatDate(slot.datetime, locale)}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {slot.start} - {slot.end}
@@ -340,7 +353,7 @@ export function BookingRecap({
         {service && choiceLabels.length > 0 && (
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-              Détail
+              {t('recap.detail')}
             </p>
             <ul className="space-y-0.5">
               {choiceLabels.map((label, i) => (
@@ -359,7 +372,7 @@ export function BookingRecap({
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300">
               <Clock className="w-4 h-4" />
-              Durée
+              {t('recap.duration')}
             </span>
             <span className="text-base font-semibold text-gray-900 dark:text-white">
               {formatDuration(displayDuration)}
@@ -367,7 +380,7 @@ export function BookingRecap({
           </div>
           <div className="flex items-end justify-between">
             <span className="text-base font-semibold text-gray-900 dark:text-white">
-              Total
+              {t('common.total')}
             </span>
             <span className="text-right leading-tight">
               {hasPromo && (
@@ -382,8 +395,10 @@ export function BookingRecap({
           </div>
           {hasPromo && (
             <p className="text-right text-xs font-semibold text-rose-600 dark:text-rose-400">
-              Promotion −{discountPercent}% · vous économisez{' '}
-              {formatPrice(originalPrice! - displayPrice)}
+              {t('recap.promoSavings', {
+                percent: discountPercent,
+                amount: formatPrice(originalPrice! - displayPrice),
+              })}
             </p>
           )}
           {promoCountdownText && (

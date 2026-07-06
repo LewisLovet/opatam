@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { MapPin, Car, Building2, Navigation, ExternalLink, Lock } from 'lucide-react';
 import { getCountryLabel } from '@booking-app/shared/constants';
 
@@ -21,6 +22,7 @@ interface LocationCardProps {
 }
 
 export function LocationCard({ location }: LocationCardProps) {
+  const t = useTranslations('provider');
   const isFixed = location.type === 'fixed';
   // Address-privacy: a protected fixed location never shows its exact street
   // publicly — only the approximate area, until the booking is confirmed & near.
@@ -71,7 +73,7 @@ export function LocationCard({ location }: LocationCardProps) {
                   : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                 }
               `}>
-                {isFixed ? 'Salon' : 'Mobile'}
+                {isFixed ? t('location.fixed') : t('location.mobile')}
               </span>
             </div>
 
@@ -85,7 +87,7 @@ export function LocationCard({ location }: LocationCardProps) {
                 </p>
                 <p className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
                   <Lock className="w-3.5 h-3.5" />
-                  Adresse exacte communiquée après confirmation
+                  {t('location.maskedAddress')}
                 </p>
               </>
             ) : isFixed ? (
@@ -118,7 +120,7 @@ export function LocationCard({ location }: LocationCardProps) {
                     className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
                   >
                     <Navigation className="w-4 h-4" />
-                    Voir sur Google Maps
+                    {t('location.viewOnMaps')}
                     <ExternalLink className="w-3 h-3 opacity-50" />
                   </a>
                 )}
@@ -127,10 +129,10 @@ export function LocationCard({ location }: LocationCardProps) {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 <span className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4" />
-                  Déplacement à domicile
+                  {t('location.homeService')}
                   {location.travelRadius && (
                     <span className="text-gray-500 dark:text-gray-500">
-                      • Rayon de {location.travelRadius} km
+                      • {t('location.travelRadius', { radius: location.travelRadius })}
                     </span>
                   )}
                 </span>

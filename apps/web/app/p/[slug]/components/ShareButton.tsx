@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Share2, Check, Copy, Facebook, Twitter, MessageCircle } from 'lucide-react';
 
 interface ShareButtonProps {
@@ -8,11 +9,12 @@ interface ShareButtonProps {
 }
 
 export function ShareButton({ businessName }: ShareButtonProps) {
+  const t = useTranslations('provider.share');
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
-  const shareText = `Découvrez ${businessName}`;
+  const shareText = t('shareText', { name: businessName });
 
   const handleNativeShare = async () => {
     if (navigator.share) {
@@ -50,7 +52,7 @@ export function ShareButton({ businessName }: ShareButtonProps) {
 
   const shareLinks = [
     {
-      name: 'Copier le lien',
+      name: t('copyLink'),
       icon: copied ? Check : Copy,
       onClick: copyToClipboard,
       className: copied ? 'text-green-500' : '',
@@ -77,7 +79,7 @@ export function ShareButton({ businessName }: ShareButtonProps) {
       <button
         onClick={handleNativeShare}
         className="p-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white dark:hover:bg-gray-800 transition-colors"
-        aria-label="Partager"
+        aria-label={t('share')}
       >
         <Share2 className="w-5 h-5 text-gray-700 dark:text-gray-300" />
       </button>

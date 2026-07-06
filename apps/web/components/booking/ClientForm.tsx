@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
@@ -27,9 +28,11 @@ export function ClientForm({
   loading = false,
   initialData,
   showNotes = true,
-  submitLabel = 'Confirmer la réservation',
+  submitLabel,
   className = '',
 }: ClientFormProps) {
+  const t = useTranslations('booking.clientForm');
+  const tConfirm = useTranslations('booking.confirm');
   const [formData, setFormData] = useState<ClientFormData>({
     firstName: initialData?.firstName || '',
     lastName: initialData?.lastName || '',
@@ -44,23 +47,23 @@ export function ClientForm({
     const newErrors: Partial<Record<keyof ClientFormData, string>> = {};
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = 'Le prénom est requis';
+      newErrors.firstName = t('firstNameRequired');
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Le nom est requis';
+      newErrors.lastName = t('lastNameRequired');
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = 'L\'email est requis';
+      newErrors.email = t('emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email invalide';
+      newErrors.email = t('emailInvalid');
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Le téléphone est requis';
+      newErrors.phone = t('phoneRequired');
     } else if (!/^[\d\s+()-]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Numéro de téléphone invalide';
+      newErrors.phone = t('phoneInvalid');
     }
 
     setErrors(newErrors);
@@ -88,71 +91,74 @@ export function ClientForm({
     <form onSubmit={handleSubmit} className={`space-y-4 ${className}`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input
-          label="Prénom"
+          label={t('firstNameLabel')}
           type="text"
           value={formData.firstName}
           onChange={handleChange('firstName')}
           error={errors.firstName}
-          placeholder="Jean"
+          placeholder={t('firstNamePlaceholder')}
           required
         />
         <Input
-          label="Nom"
+          label={t('lastNameLabel')}
           type="text"
           value={formData.lastName}
           onChange={handleChange('lastName')}
           error={errors.lastName}
-          placeholder="Dupont"
+          placeholder={t('lastNamePlaceholder')}
           required
         />
       </div>
 
       <Input
-        label="Email"
+        label={t('emailLabel')}
         type="email"
         value={formData.email}
         onChange={handleChange('email')}
         error={errors.email}
-        placeholder="jean.dupont@example.com"
+        placeholder={t('emailPlaceholder')}
         required
       />
 
       <Input
-        label="Téléphone"
+        label={t('phoneLabel')}
         type="tel"
         value={formData.phone}
         onChange={handleChange('phone')}
         error={errors.phone}
-        placeholder="06 12 34 56 78"
+        placeholder={t('phonePlaceholder')}
         required
       />
 
       {showNotes && (
         <Textarea
-          label="Notes (optionnel)"
+          label={t('notesLabel')}
           value={formData.notes}
           onChange={handleChange('notes')}
-          placeholder="Informations complémentaires..."
+          placeholder={t('notesPlaceholder')}
           rows={3}
         />
       )}
 
       <div className="pt-4">
         <Button type="submit" fullWidth loading={loading} size="lg">
-          {submitLabel}
+          {submitLabel ?? tConfirm('submit')}
         </Button>
       </div>
 
       <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-        En confirmant, vous acceptez nos{' '}
-        <a href="/cgv" className="text-primary-600 dark:text-primary-400 hover:underline">
-          conditions générales
-        </a>{' '}
-        et notre{' '}
-        <a href="/confidentialite" className="text-primary-600 dark:text-primary-400 hover:underline">
-          politique de confidentialité
-        </a>
-        .
+        {t.rich('terms', {
+          cgv: (chunks) => (
+            <a href="/cgv" className="text-primary-600 dark:text-primary-400 hover:underline">
+              {chunks}
+            </a>
+          ),
+          privacy: (chunks) => (
+            <a href="/confidentialite" className="text-primary-600 dark:text-primary-400 hover:underline">
+              {chunks}
+            </a>
+          ),
+        })}
       </p>
     </form>
   );

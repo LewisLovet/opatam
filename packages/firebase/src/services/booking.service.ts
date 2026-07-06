@@ -300,6 +300,9 @@ export class BookingService {
       // Per-prestation list — only persisted for true multi-service visits.
       ...(isMulti ? { items: bookingItems } : {}),
       clientInfo: validated.clientInfo!,
+      // Language the client booked in — drives the language of every
+      // transactional email/notification to THIS client (fallback fr).
+      ...(validated.clientLocale ? { clientLocale: validated.clientLocale } : {}),
       datetime: validated.datetime,
       endDatetime,
       status,

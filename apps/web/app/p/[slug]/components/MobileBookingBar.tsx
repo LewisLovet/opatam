@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 
 interface MobileBookingBarProps {
@@ -9,18 +10,21 @@ interface MobileBookingBarProps {
   businessName: string;
 }
 
-function formatPrice(cents: number): string {
-  if (cents === 0) return 'Gratuit';
-  const euros = cents / 100;
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(euros);
-}
-
 export function MobileBookingBar({ slug, minPrice, businessName }: MobileBookingBarProps) {
+  const t = useTranslations('provider');
+  const locale = useLocale();
+
+  const formatPrice = (cents: number): string => {
+    if (cents === 0) return t('services.free');
+    const euros = cents / 100;
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(euros);
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50">
       <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg">
@@ -31,7 +35,7 @@ export function MobileBookingBar({ slug, minPrice, businessName }: MobileBooking
               {minPrice !== null ? (
                 <>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
-                    A partir de
+                    {t('mobileBar.from')}
                   </span>
                   <p className="text-lg font-bold text-gray-900 dark:text-white">
                     {formatPrice(minPrice)}
@@ -47,7 +51,7 @@ export function MobileBookingBar({ slug, minPrice, businessName }: MobileBooking
             {/* CTA Button */}
             <Link href={`/p/${slug}/reserver`}>
               <Button size="lg" className="px-8 font-semibold">
-                Réserver
+                {t('mobileBar.book')}
               </Button>
             </Link>
           </div>

@@ -3,6 +3,7 @@
 import { useRef, useState, useMemo } from 'react';
 import { Button } from '../ui/Button';
 import { Loader } from '../ui/Loader';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface TimeSlot {
   datetime: Date;
@@ -18,16 +19,16 @@ interface SlotPickerProps {
   className?: string;
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('fr-FR', {
+function formatDate(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   });
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('fr-FR', {
+function formatTime(date: Date, locale: string): string {
+  return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -53,6 +54,9 @@ export function SlotPicker({
   daysToShow = 7,
   className = '',
 }: SlotPickerProps) {
+  const t = useTranslations('booking.slotPicker');
+  const tCommon = useTranslations('booking.common');
+  const locale = useLocale();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
 
@@ -136,10 +140,10 @@ export function SlotPicker({
           />
         </svg>
         <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-          Aucun créneau disponible
+          {t('emptyTitle')}
         </h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Aucun créneau disponible pour la période sélectionnée.
+          {t('emptyText')}
         </p>
       </div>
     );
@@ -154,7 +158,7 @@ export function SlotPicker({
           size="sm"
           onClick={() => scroll('left')}
           disabled={!canScrollLeft}
-          aria-label="Jours précédents"
+          aria-label={t('prevDays')}
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -164,8 +168,8 @@ export function SlotPicker({
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           {dates.length > 0 && (
             <>
-              {formatDate(dates[scrollPosition])}
-              {dates.length > 1 && ` - ${formatDate(dates[Math.min(scrollPosition + daysToShow - 1, dates.length - 1)])}`}
+              {formatDate(dates[scrollPosition], locale)}
+              {dates.length > 1 && ` - ${formatDate(dates[Math.min(scrollPosition + daysToShow - 1, dates.length - 1)], locale)}`}
             </>
           )}
         </span>
@@ -175,7 +179,7 @@ export function SlotPicker({
           size="sm"
           onClick={() => scroll('right')}
           disabled={!canScrollRight}
-          aria-label="Jours suivants"
+          aria-label={t('nextDays')}
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -205,13 +209,13 @@ export function SlotPicker({
                 ${isToday ? 'text-primary-600 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'}
               `}>
                 <div className="text-xs font-medium uppercase">
-                  {date.toLocaleDateString('fr-FR', { weekday: 'short' })}
+                  {date.toLocaleDateString(locale, { weekday: 'short' })}
                 </div>
                 <div className="text-lg font-bold">
                   {date.getDate()}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {date.toLocaleDateString('fr-FR', { month: 'short' })}
+                  {date.toLocaleDateString(locale, { month: 'short' })}
                 </div>
               </div>
 
@@ -219,7 +223,7 @@ export function SlotPicker({
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
                 {availableSlots.length === 0 ? (
                   <p className="text-xs text-center text-gray-400 dark:text-gray-500 py-4">
-                    Aucun créneau
+                    {t('noSlot')}
                   </p>
                 ) : (
                   availableSlots.map((slot) => {
@@ -238,7 +242,7 @@ export function SlotPicker({
                           }
                         `}
                       >
-                        {formatTime(slot.datetime)}
+                        {formatTime(slot.datetime, locale)}
                       </button>
                     );
                   })
@@ -256,13 +260,16 @@ export function SlotPicker({
             <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <span className="font-medium">Créneau :</span>
+            <span className="font-medium">{t('selectedSlot')}</span>
             <span>
-              {selectedSlot.toLocaleDateString('fr-FR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })} à {formatTime(selectedSlot)}
+              {tCommon('dateAtTime', {
+                date: selectedSlot.toLocaleDateString(locale, {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                }),
+                time: formatTime(selectedSlot, locale),
+              })}
             </span>
           </div>
         </div>

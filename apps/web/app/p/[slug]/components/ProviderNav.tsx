@@ -1,12 +1,13 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Briefcase, Star, Clock } from 'lucide-react';
 
 type TabId = 'prestations' | 'avis' | 'horaires';
 
 interface TabItem {
   id: TabId;
-  label: string;
+  labelKey: 'services' | 'reviews' | 'hours';
   icon: React.ReactNode;
 }
 
@@ -17,9 +18,9 @@ interface ProviderNavProps {
 }
 
 const tabs: TabItem[] = [
-  { id: 'prestations', label: 'Prestations', icon: <Briefcase className="w-4 h-4" /> },
-  { id: 'avis', label: 'Avis', icon: <Star className="w-4 h-4" /> },
-  { id: 'horaires', label: 'Horaires', icon: <Clock className="w-4 h-4" /> },
+  { id: 'prestations', labelKey: 'services', icon: <Briefcase className="w-4 h-4" /> },
+  { id: 'avis', labelKey: 'reviews', icon: <Star className="w-4 h-4" /> },
+  { id: 'horaires', labelKey: 'hours', icon: <Clock className="w-4 h-4" /> },
 ];
 
 export function ProviderNav({
@@ -27,6 +28,7 @@ export function ProviderNav({
   onTabClick,
   reviewCount,
 }: ProviderNavProps) {
+  const t = useTranslations('provider.nav');
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
       <div className="flex border-b border-gray-200 dark:border-gray-700">
@@ -45,7 +47,7 @@ export function ProviderNav({
             `}
           >
             {tab.icon}
-            <span>{tab.label}</span>
+            <span>{t(tab.labelKey)}</span>
             {tab.id === 'avis' && reviewCount !== undefined && reviewCount > 0 && (
               <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
                 {reviewCount}

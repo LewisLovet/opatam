@@ -34,7 +34,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { PlayStoreWaitlistModal } from '@/components/common/PlayStoreWaitlistModal';
 import { SocialLinks } from '@/components/common/SocialLinks';
 import { TutorialsSection } from '@/components/home/TutorialsSection';
@@ -44,8 +44,13 @@ import { StorySection } from '@/components/home/StorySection';
 import type { ArticleCardData } from '@/app/blog/components/ArticleCard';
 
 // ─── Helpers ────────────────────────────────────────────────────────
-function formatPrice(cents: number): string {
-  return (cents / 100).toFixed(2).replace('.', ',');
+/** Amount only (no symbol — the dictionaries place € around it), with the
+ *  locale's decimal separator: 19,90 in fr / 19.90 in en. */
+function formatAmount(cents: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
 }
 
 // ─── Static (locale-independent) config ─────────────────────────────
@@ -78,6 +83,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ tutorials = [] }: LandingPageProps) {
   const t = useTranslations('home');
+  const locale = useLocale();
 
   // ── Translated data arrays (from packages/i18n dictionaries) ──────
   const faqItems = t.raw('faq.items') as { question: string; answer: string }[];
@@ -141,13 +147,13 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
   }, []);
 
   // ── Pricing helpers ───────────────────────────────────────────────
-  const proMonthly = formatPrice(SUBSCRIPTION_PLANS.solo.monthlyPrice);
-  const proYearlyPerMonth = formatPrice(SUBSCRIPTION_PLANS.solo.yearlyPrice / 12);
-  const proYearlyTotal = formatPrice(SUBSCRIPTION_PLANS.solo.yearlyPrice);
+  const proMonthly = formatAmount(SUBSCRIPTION_PLANS.solo.monthlyPrice, locale);
+  const proYearlyPerMonth = formatAmount(SUBSCRIPTION_PLANS.solo.yearlyPrice / 12, locale);
+  const proYearlyTotal = formatAmount(SUBSCRIPTION_PLANS.solo.yearlyPrice, locale);
 
-  const studioMonthly = formatPrice(SUBSCRIPTION_PLANS.team.baseMonthlyPrice);
-  const studioYearlyPerMonth = formatPrice(SUBSCRIPTION_PLANS.team.baseYearlyPrice / 12);
-  const studioYearlyTotal = formatPrice(SUBSCRIPTION_PLANS.team.baseYearlyPrice);
+  const studioMonthly = formatAmount(SUBSCRIPTION_PLANS.team.baseMonthlyPrice, locale);
+  const studioYearlyPerMonth = formatAmount(SUBSCRIPTION_PLANS.team.baseYearlyPrice / 12, locale);
+  const studioYearlyTotal = formatAmount(SUBSCRIPTION_PLANS.team.baseYearlyPrice, locale);
 
   return (
     <div className="min-h-screen flex flex-col">

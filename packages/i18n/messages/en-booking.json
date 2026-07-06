@@ -1,0 +1,251 @@
+{
+  "common": {
+    "back": "Back",
+    "backHome": "Back to home",
+    "error": "Something went wrong",
+    "free": "Free",
+    "priceRange": "From {min} to {max}",
+    "total": "Total",
+    "service": "Service",
+    "services": "Services",
+    "professional": "Professional",
+    "location": "Location",
+    "dateTime": "Date & Time",
+    "date": "Date",
+    "dateAtTime": "{date} at {time}",
+    "reference": "Reference: {id}",
+    "cancelAndHome": "Cancel and return to home",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "steps": {
+    "service": "Service",
+    "member": "Professional",
+    "slot": "Date & Time",
+    "confirm": "Confirmation"
+  },
+  "page": {
+    "noServicesTitle": "No services available",
+    "noServicesText": "This provider has not set up their services yet."
+  },
+  "flow": {
+    "errorMissingInfo": "Missing information",
+    "title": "Build your appointment",
+    "subtitle": "Add one or more services.",
+    "cartTitle": "Your appointment",
+    "cartEmpty": "Your appointment is empty",
+    "cartEmptyHint": "Add services below.",
+    "removeService": "Remove this service",
+    "continue": "Continue",
+    "continueWithCart": "Continue · {count, plural, one {# service} other {# services}} · {total}",
+    "configureSubtitle": "Customise your service",
+    "addToCart": "Add to appointment",
+    "missingChoices": "Still to choose: {items}",
+    "servicesCount": "{count, plural, one {# service} other {# services}}",
+    "notice": {
+      "title": "Important information",
+      "accept": "Got it, continue"
+    },
+    "demo": {
+      "confirmedTitle": "Booking confirmed!",
+      "confirmedText": "This is exactly what your clients will see after booking with you.",
+      "with": "with {name}",
+      "trialNote": "{days} days free, no credit card required",
+      "backToShop": "← Back to the demo shop"
+    }
+  },
+  "service": {
+    "title": "Add services",
+    "from": "from",
+    "added": "{count, plural, =1 {Added} other {Added ×#}}",
+    "add": "Add",
+    "moreDetails": "More details",
+    "less": "Less",
+    "others": "Other"
+  },
+  "member": {
+    "title": "Choose a professional"
+  },
+  "memberPicker": {
+    "any": "No preference",
+    "firstAvailable": "First available"
+  },
+  "slot": {
+    "title": "Choose a date and time",
+    "nextAvailability": "Next availability",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "days": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "loadError": "Failed to load availability",
+    "noAvailabilityTitle": "No availability for this service",
+    "noAvailabilityHint": "within the next {days} days. Please check back later or contact the professional directly.",
+    "spotsShort": "{count} left",
+    "full": "Full",
+    "closed": "Closed",
+    "available": "Available",
+    "almostFull": "Almost full",
+    "almostFullBadge": "Almost full · {count, plural, one {# slot} other {# slots}}",
+    "dayFull": "Fully booked that day for this service.",
+    "seeNextAvailability": "See the next availability"
+  },
+  "slotPicker": {
+    "prevDays": "Previous days",
+    "nextDays": "Next days",
+    "noSlot": "No slots",
+    "emptyTitle": "No slots available",
+    "emptyText": "No slots available for the selected period.",
+    "selectedSlot": "Slot:"
+  },
+  "confirm": {
+    "title": "Your details",
+    "nameLabel": "Full name",
+    "namePlaceholder": "John Smith",
+    "nameError": "Name must be at least 2 characters",
+    "emailLabel": "Email",
+    "emailPlaceholder": "john@example.com",
+    "emailError": "Invalid email format",
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "06 12 34 56 78 or +33 6 12 34 56 78",
+    "phoneError": "Invalid phone number",
+    "pendingInfo": "Your booking will be pending until the provider confirms it. You will receive an email as soon as it is confirmed.",
+    "submitting": "Booking in progress...",
+    "submit": "Confirm booking",
+    "terms": "By confirming, you agree to our terms and conditions and our privacy policy."
+  },
+  "clientForm": {
+    "firstNameLabel": "First name",
+    "firstNamePlaceholder": "John",
+    "firstNameRequired": "First name is required",
+    "lastNameLabel": "Last name",
+    "lastNamePlaceholder": "Smith",
+    "lastNameRequired": "Last name is required",
+    "emailLabel": "Email",
+    "emailPlaceholder": "john.smith@example.com",
+    "emailRequired": "Email is required",
+    "emailInvalid": "Invalid email",
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "06 12 34 56 78",
+    "phoneRequired": "Phone number is required",
+    "phoneInvalid": "Invalid phone number",
+    "notesLabel": "Notes (optional)",
+    "notesPlaceholder": "Any additional information...",
+    "terms": "By confirming, you agree to our <cgv>terms and conditions</cgv> and our <privacy>privacy policy</privacy>."
+  },
+  "choicesPicker": {
+    "noChoices": "No variations, options or info — clients will see the base price directly.",
+    "optionFallback": "Option",
+    "variationFallback": "Variation",
+    "choiceFallback": "Choice",
+    "infoFallback": "Information",
+    "selectPlaceholder": "Choose…",
+    "answerPlaceholder": "Your answer"
+  },
+  "recap": {
+    "title": "Summary",
+    "selectService": "Select a service",
+    "detail": "Details",
+    "duration": "Duration",
+    "addressAfterConfirmation": "Exact address shared after confirmation",
+    "promoUntil": "until {date}",
+    "promoValid": "Offer valid {datePart}",
+    "promoSavings": "Promotion −{percent}% · you save {amount}"
+  },
+  "summary": {
+    "title": "Summary",
+    "atTime": "at {time}"
+  },
+  "serviceCard": {
+    "selected": "Selected",
+    "select": "Select",
+    "selectedIndicator": "Service selected"
+  },
+  "serviceList": {
+    "emptyTitle": "No services",
+    "emptyText": "No services available at the moment."
+  },
+  "appCta": {
+    "title": "Download the Opatam app",
+    "subtitle": "Keep track of your appointments, get reminders and book in one tap."
+  },
+  "proCta": {
+    "title": "Are you a professional too?",
+    "subtitle": "Create your booking page in 5 minutes and welcome your first clients today.",
+    "subtitleOnline": "Create your online booking page in 5 minutes and welcome your first clients today.",
+    "button": "Create my page for free"
+  },
+  "confirmation": {
+    "pendingPaymentTitle": "Payment being verified…",
+    "pendingTitle": "Request sent!",
+    "confirmedTitle": "Booking confirmed!",
+    "pendingPaymentText": "Your payment has just been made and is being verified. This page will update in a few seconds.",
+    "pendingText": "Your booking request has been sent. You will receive an email as soon as the provider confirms it.",
+    "depositPaidText": "Your booking is confirmed and your {amount} deposit has been received. A confirmation email has been sent to you.",
+    "confirmedText": "Your booking has been recorded. A confirmation email has been sent to you.",
+    "awaitingConfirmation": "Awaiting confirmation",
+    "addressRevealLater": "Exact address shared ~48h before the appointment.",
+    "savings": "You saved {amount}",
+    "depositPaid": "Deposit paid",
+    "remainingDue": "Remaining balance due on site",
+    "addToCalendar": "Add to your calendar",
+    "emailSentTo": "A confirmation email has been sent to <email>{address}</email>",
+    "calendarTitle": "Appointment - {service} at {provider}",
+    "calendarWith": "With {name}",
+    "calendarAt": "At {name}"
+  },
+  "cancel": {
+    "notFoundTitle": "Invalid or expired link",
+    "notFoundText": "This cancellation link is no longer valid. The appointment may have already been cancelled or the link has expired.",
+    "alreadyCancelledTitle": "Appointment already cancelled",
+    "alreadyCancelledText": "This appointment has already been cancelled.",
+    "cancelledOn": "Cancelled on {date} at {time}",
+    "pastTitle": "Past appointment",
+    "pastText": "This appointment has already taken place and can no longer be cancelled.",
+    "successTitle": "Appointment cancelled",
+    "successText": "Your appointment has been cancelled.",
+    "refunded": "Your {amount} deposit has been refunded to your payment method. Please allow 5 to 10 business days for it to appear.",
+    "refundDeadlinePassed": "The deposit refund deadline has passed. For any request, please contact {name} directly.",
+    "providerNotified": "The provider has been notified of this cancellation.",
+    "rebook": "Book again",
+    "orBackHome": "Or return to home",
+    "formTitle": "Cancel your appointment",
+    "formSubtitle": "Are you sure you want to cancel this appointment?",
+    "reasonLabel": "Cancellation reason (optional)",
+    "reasonPlaceholder": "E.g. unexpected event, change of plans...",
+    "refundEligible": "Your <strong>{amount}</strong> deposit will be refunded automatically.",
+    "refundNotEligible": "The refund deadline has passed. Your <strong>{amount}</strong> deposit will not be refunded automatically. Please contact {name} for any request.",
+    "warning": "This action cannot be undone. The provider will be notified of your cancellation.",
+    "cancelling": "Cancelling...",
+    "confirmCancel": "Confirm cancellation"
+  },
+  "review": {
+    "selectRatingError": "Please select a rating",
+    "notFoundTitle": "Booking not found",
+    "notFoundText": "This booking does not exist or the link is invalid.",
+    "notYetPassedTitle": "Upcoming appointment",
+    "notYetPassedText": "You will be able to leave a review after your appointment.",
+    "scheduledFor": "Appointment scheduled for {date} at {time}",
+    "alreadyReviewedTitle": "Review already submitted",
+    "alreadyReviewedText": "You have already left a review for this appointment.",
+    "updatedTitle": "Review updated!",
+    "thanksTitle": "Thank you for your review!",
+    "updatedText": "Your review has been updated.",
+    "savedText": "Your review has been saved and will be visible on the provider's page.",
+    "updateFormTitle": "Edit your review",
+    "formTitle": "Leave a review",
+    "updateFormSubtitle": "You have already left a review for {name}. You can edit it below.",
+    "formSubtitle": "How was your appointment at {name}?",
+    "ratingLabel": "Your rating *",
+    "rating1": "Very dissatisfied",
+    "rating2": "Dissatisfied",
+    "rating3": "Okay",
+    "rating4": "Satisfied",
+    "rating5": "Very satisfied",
+    "commentLabel": "Your comment (optional)",
+    "commentPlaceholder": "Share your experience...",
+    "updating": "Updating...",
+    "sending": "Submitting...",
+    "updateSubmit": "Update my review",
+    "submit": "Submit my review"
+  }
+}

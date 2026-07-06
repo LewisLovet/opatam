@@ -2,6 +2,7 @@
 
 import { Card, CardBody, CardHeader } from '../ui/Card';
 import { Avatar } from '../ui/Avatar';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface BookingSummaryProps {
   service: {
@@ -33,8 +34,8 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+function formatPrice(price: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 0,
@@ -42,8 +43,8 @@ function formatPrice(price: number): string {
   }).format(price);
 }
 
-function formatDateTime(date: Date): string {
-  return date.toLocaleDateString('fr-FR', {
+function formatDateTime(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -51,8 +52,8 @@ function formatDateTime(date: Date): string {
   });
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('fr-FR', {
+function formatTime(date: Date, locale: string): string {
+  return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -65,9 +66,11 @@ export function BookingSummary({
   member,
   className = '',
 }: BookingSummaryProps) {
+  const t = useTranslations('booking');
+  const locale = useLocale();
   return (
     <Card variant="bordered" className={className}>
-      <CardHeader title="Récapitulatif" />
+      <CardHeader title={t('summary.title')} />
       <CardBody className="space-y-4">
         {/* Service */}
         <div className="flex items-start gap-3">
@@ -83,7 +86,7 @@ export function BookingSummary({
             </p>
           </div>
           <span className="font-semibold text-gray-900 dark:text-white">
-            {formatPrice(service.price)}
+            {formatPrice(service.price, locale)}
           </span>
         </div>
 
@@ -96,10 +99,10 @@ export function BookingSummary({
           </div>
           <div>
             <h4 className="font-medium text-gray-900 dark:text-white capitalize">
-              {formatDateTime(datetime)}
+              {formatDateTime(datetime, locale)}
             </h4>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              à {formatTime(datetime)}
+              {t('summary.atTime', { time: formatTime(datetime, locale) })}
             </p>
           </div>
         </div>
@@ -126,7 +129,7 @@ export function BookingSummary({
             <Avatar src={member.photoURL} alt={member.name} size="md" />
             <div>
               <h4 className="font-medium text-gray-900 dark:text-white">{member.name}</h4>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Professionnel</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('common.professional')}</p>
             </div>
           </div>
         )}
@@ -134,9 +137,9 @@ export function BookingSummary({
         {/* Divider */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
           <div className="flex items-center justify-between">
-            <span className="text-base font-medium text-gray-900 dark:text-white">Total</span>
+            <span className="text-base font-medium text-gray-900 dark:text-white">{t('common.total')}</span>
             <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
-              {formatPrice(service.price)}
+              {formatPrice(service.price, locale)}
             </span>
           </div>
         </div>

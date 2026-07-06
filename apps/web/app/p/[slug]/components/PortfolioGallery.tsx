@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PortfolioGalleryProps {
@@ -8,6 +9,7 @@ interface PortfolioGalleryProps {
 }
 
 export function PortfolioGallery({ photos }: PortfolioGalleryProps) {
+  const t = useTranslations('provider');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -50,7 +52,7 @@ export function PortfolioGallery({ photos }: PortfolioGalleryProps) {
           >
             <img
               src={photo}
-              alt={`Portfolio ${index + 1}`}
+              alt={t('portfolio.photoAlt', { index: index + 1 })}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
               loading="lazy"
             />
@@ -82,7 +84,7 @@ export function PortfolioGallery({ photos }: PortfolioGalleryProps) {
           <button
             onClick={closeLightbox}
             className="absolute top-4 right-4 p-2 text-white/80 hover:text-white transition-colors z-10"
-            aria-label="Fermer"
+            aria-label={t('common.close')}
           >
             <X className="w-8 h-8" />
           </button>
@@ -96,7 +98,7 @@ export function PortfolioGallery({ photos }: PortfolioGalleryProps) {
                   goToPrevious();
                 }}
                 className="absolute left-4 p-2 text-white/80 hover:text-white transition-colors z-10"
-                aria-label="Photo précédente"
+                aria-label={t('portfolio.previousPhoto')}
               >
                 <ChevronLeft className="w-10 h-10" />
               </button>
@@ -106,7 +108,7 @@ export function PortfolioGallery({ photos }: PortfolioGalleryProps) {
                   goToNext();
                 }}
                 className="absolute right-4 p-2 text-white/80 hover:text-white transition-colors z-10"
-                aria-label="Photo suivante"
+                aria-label={t('portfolio.nextPhoto')}
               >
                 <ChevronRight className="w-10 h-10" />
               </button>
@@ -120,7 +122,7 @@ export function PortfolioGallery({ photos }: PortfolioGalleryProps) {
           >
             <img
               src={photos[currentIndex]}
-              alt={`Portfolio ${currentIndex + 1}`}
+              alt={t('portfolio.photoAlt', { index: currentIndex + 1 })}
               className="max-w-full max-h-[90vh] object-contain"
             />
           </div>

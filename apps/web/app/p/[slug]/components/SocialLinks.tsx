@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Instagram, Facebook, Globe, ExternalLink } from 'lucide-react';
 
 // TikTok icon (not in lucide)
@@ -52,8 +53,9 @@ const socialConfig = [
     hoverBg: 'hover:bg-gray-800 dark:hover:bg-gray-100',
   },
   {
+    // Label resolved at render time (translated); brand names above stay as-is.
     key: 'website' as const,
-    label: 'Site web',
+    label: null,
     icon: Globe,
     getUrl: (url: string) => (url.startsWith('http') ? url : `https://${url}`),
     bgColor: 'bg-gray-700 dark:bg-gray-600',
@@ -62,6 +64,7 @@ const socialConfig = [
 ];
 
 export function SocialLinks({ links }: SocialLinksProps) {
+  const t = useTranslations('provider');
   const activeLinks = socialConfig.filter((config) => links[config.key]);
 
   if (activeLinks.length === 0) return null;
@@ -93,7 +96,9 @@ export function SocialLinks({ links }: SocialLinksProps) {
             `}
           >
             <Icon className="w-5 h-5" />
-            <span className="text-sm font-semibold">{config.label}</span>
+            <span className="text-sm font-semibold">
+              {config.label ?? t('socials.website')}
+            </span>
             <ExternalLink className="w-3.5 h-3.5 opacity-70" />
           </a>
         );
