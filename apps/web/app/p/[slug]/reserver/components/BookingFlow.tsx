@@ -6,6 +6,7 @@ import { trackEvent } from '@/lib/meta-pixel';
 import { ArrowLeft, Check, CalendarCheck, Store, Info, ArrowRight, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 import type { ServiceDiscount } from '@booking-app/shared';
 import {
@@ -700,6 +701,9 @@ export function BookingFlow({
               {provider.businessName}
             </h1>
           </div>
+          {/* Clients land here straight from a QR code / bio link — give them
+              a manual language switch even though we auto-detect. */}
+          <LanguageSwitcher />
         </div>
       </header>
 

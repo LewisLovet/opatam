@@ -10,6 +10,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { RatingDisplay } from '@/components/review/RatingDisplay';
 import { ShareButton } from './ShareButton';
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 
 interface MemberNextAvailability {
   memberId: string;
@@ -143,8 +144,11 @@ export function ProviderHero({
         {/* Overlay gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-        {/* Share button */}
-        <div className="absolute top-4 right-4 z-10">
+        {/* Language switcher + share button. Clients often land here straight
+            from a QR code / bio link — give them a manual language switch
+            even though the locale is auto-detected. */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <LanguageSwitcher />
           <ShareButton businessName={provider.businessName} />
         </div>
       </div>
