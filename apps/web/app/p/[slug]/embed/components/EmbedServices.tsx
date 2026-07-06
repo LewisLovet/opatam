@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Clock, ChevronRight, ChevronDown } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface EmbedService {
   id: string;
@@ -34,10 +35,10 @@ function formatDuration(minutes: number): string {
   return rem === 0 ? `${hours}h` : `${hours}h${rem}`;
 }
 
-function formatPrice(cents: number, centsMax: number | null): string {
-  if (cents === 0 && !centsMax) return 'Gratuit';
+function formatPrice(cents: number, centsMax: number | null, locale: string, freeLabel: string): string {
+  if (cents === 0 && !centsMax) return freeLabel;
   const fmt = (v: number) =>
-    new Intl.NumberFormat('fr-FR', {
+    new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'EUR',
       minimumFractionDigits: 0,
@@ -52,6 +53,8 @@ function formatPrice(cents: number, centsMax: number | null): string {
  * Photo (64px) | name + description + duration | price + chevron
  */
 function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (id: string) => void }) {
+  const t = useTranslations('booking');
+  const locale = useLocale();
   return (
     <button
       type="button"
@@ -88,7 +91,7 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
 
         <div className="flex-shrink-0 flex flex-col items-end gap-1">
           <span className="font-bold text-gray-900 dark:text-white text-sm sm:text-[15px] whitespace-nowrap">
-            {formatPrice(service.price, service.priceMax)}
+            {formatPrice(service.price, service.priceMax, locale, t('common.free'))}
           </span>
           <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all" />
         </div>
@@ -98,6 +101,7 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
 }
 
 export function EmbedServices({ services, categories, onSelect }: EmbedServicesProps) {
+  const t = useTranslations('booking');
   const hasCategories = categories.length > 0;
 
   // Collapse all but the first category when there are many
@@ -134,7 +138,7 @@ export function EmbedServices({ services, categories, onSelect }: EmbedServicesP
     return (
       <div className="text-center py-12">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Aucune prestation disponible pour le moment.
+          {t('serviceList.emptyText')}
         </p>
       </div>
     );
@@ -145,7 +149,7 @@ export function EmbedServices({ services, categories, onSelect }: EmbedServicesP
     return (
       <div>
         <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
-          Choisissez une prestation
+          {t('embed.services.title')}
         </h2>
         <div className="space-y-2.5">
           {services.map((s) => (
@@ -160,7 +164,7 @@ export function EmbedServices({ services, categories, onSelect }: EmbedServicesP
   return (
     <div>
       <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
-        Choisissez une prestation
+        {t('embed.services.title')}
       </h2>
       <div className="space-y-4">
         {grouped.groups.map(({ category, services: catServices }) => {
@@ -202,7 +206,7 @@ export function EmbedServices({ services, categories, onSelect }: EmbedServicesP
               <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                 <div className="w-0.5 h-4 bg-gray-400 rounded-full flex-shrink-0" />
                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                  Autres prestations
+                  {t('embed.services.others')}
                 </span>
               </div>
             )}

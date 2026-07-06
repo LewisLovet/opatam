@@ -333,6 +333,8 @@ export async function POST(request: NextRequest) {
             checkoutUrl: session.url,
             minutesToPay: Math.round(CHECKOUT_EXPIRY_MIN_SECONDS / 60),
             cancelToken: booking.cancelToken,
+            // Language the client booked in (absent on pro-created bookings → fr).
+            locale: booking.clientLocale ?? null,
           }).catch((err) =>
             console.error('[BOOKINGS] deposit-request email failed:', err),
           );

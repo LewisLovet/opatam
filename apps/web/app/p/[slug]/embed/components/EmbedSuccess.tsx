@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle2, Calendar, MapPin, User } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface EmbedSuccessProps {
   /** Service + slot + member recap for context */
@@ -12,18 +13,18 @@ interface EmbedSuccessProps {
   onReset: () => void;
 }
 
-function formatDateTime(iso: string): string {
+function formatDateTimeParts(iso: string, locale: string): { date: string; time: string } {
   const d = new Date(iso);
-  const date = new Intl.DateTimeFormat('fr-FR', {
+  const date = new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   }).format(d);
-  const time = new Intl.DateTimeFormat('fr-FR', {
+  const time = new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
   }).format(d);
-  return `${date} à ${time}`;
+  return { date, time };
 }
 
 /**
@@ -40,6 +41,9 @@ export function EmbedSuccess({
   datetime,
   onReset,
 }: EmbedSuccessProps) {
+  const t = useTranslations('booking');
+  const locale = useLocale();
+  const dt = formatDateTimeParts(datetime, locale);
   return (
     <div className="py-6 px-2">
       {/* Success icon */}
@@ -51,10 +55,10 @@ export function EmbedSuccess({
 
       <div className="text-center mb-5">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-          Réservation confirmée !
+          {t('confirmation.confirmedTitle')}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Un email de confirmation vient de vous être envoyé.
+          {t('embed.success.emailSent')}
         </p>
       </div>
 
@@ -65,13 +69,17 @@ export function EmbedSuccess({
           <p className="text-sm text-gray-900 dark:text-white leading-snug">
             <span className="font-semibold">{serviceName}</span>
             <br />
-            <span className="text-gray-600 dark:text-gray-400">{formatDateTime(datetime)}</span>
+            <span className="text-gray-600 dark:text-gray-400">
+              {t('common.dateAtTime', { date: dt.date, time: dt.time })}
+            </span>
           </p>
         </div>
         {memberName && (
           <div className="flex items-center gap-2.5">
             <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">avec {memberName}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {t('embed.common.with', { name: memberName })}
+            </p>
           </div>
         )}
         {locationName && (
@@ -90,10 +98,10 @@ export function EmbedSuccess({
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 dark:text-white">
-              Gérez votre RDV dans l&apos;app Opatam
+              {t('embed.success.appTitle')}
             </p>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug mt-0.5">
-              Rappels automatiques, modifications, nouvelles réservations en un clic.
+              {t('embed.success.appSubtitle')}
             </p>
           </div>
         </div>
@@ -129,7 +137,7 @@ export function EmbedSuccess({
         onClick={onReset}
         className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
       >
-        Nouvelle réservation
+        {t('embed.success.newBooking')}
       </button>
     </div>
   );

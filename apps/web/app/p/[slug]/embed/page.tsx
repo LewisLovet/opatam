@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import {
   providerRepository,
   serviceRepository,
@@ -107,14 +108,15 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
   ]);
 
   if (services.length === 0) {
+    const t = await getTranslations('booking.page');
     return (
       <EmbedShell primaryColor={primaryColor} radius={radius} theme={theme} providerId={provider.id}>
         <div className="min-h-[200px] flex flex-col items-center justify-center p-8 text-center">
           <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-            Aucune prestation disponible
+            {t('noServicesTitle')}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Ce prestataire n&apos;a pas encore configuré ses prestations.
+            {t('noServicesText')}
           </p>
         </div>
       </EmbedShell>

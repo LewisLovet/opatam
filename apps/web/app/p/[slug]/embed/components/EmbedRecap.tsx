@@ -1,6 +1,7 @@
 'use client';
 
 import { Calendar, Clock, MapPin, User, Euro } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface EmbedRecapService {
   name: string;
@@ -33,10 +34,10 @@ function formatDuration(minutes: number): string {
   return rem === 0 ? `${hours}h` : `${hours}h${rem}`;
 }
 
-function formatPrice(cents: number, centsMax: number | null): string {
-  if (cents === 0 && !centsMax) return 'Gratuit';
+function formatPrice(cents: number, centsMax: number | null, locale: string, freeLabel: string): string {
+  if (cents === 0 && !centsMax) return freeLabel;
   const fmt = (v: number) =>
-    new Intl.NumberFormat('fr-FR', {
+    new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'EUR',
       minimumFractionDigits: 0,
@@ -46,14 +47,14 @@ function formatPrice(cents: number, centsMax: number | null): string {
   return fmt(cents);
 }
 
-function formatSlot(iso: string): { date: string; time: string } {
+function formatSlot(iso: string, locale: string): { date: string; time: string } {
   const d = new Date(iso);
-  const date = new Intl.DateTimeFormat('fr-FR', {
+  const date = new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   }).format(d);
-  const time = new Intl.DateTimeFormat('fr-FR', {
+  const time = new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
   }).format(d);
@@ -65,13 +66,15 @@ function formatSlot(iso: string): { date: string; time: string } {
  * Mirrors the recap on /p/[slug]/reserver but sized for a 240px column.
  */
 export function EmbedRecap({ service, member, location, slotDatetime }: EmbedRecapProps) {
-  const slot = slotDatetime ? formatSlot(slotDatetime) : null;
+  const t = useTranslations('booking');
+  const locale = useLocale();
+  const slot = slotDatetime ? formatSlot(slotDatetime, locale) : null;
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-hidden">
       <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">
-          Votre réservation
+          {t('embed.recap.title')}
         </p>
       </div>
 
@@ -90,7 +93,7 @@ export function EmbedRecap({ service, member, location, slotDatetime }: EmbedRec
               </span>
               <span className="inline-flex items-center gap-1">
                 <Euro className="w-3 h-3" />
-                {formatPrice(service.price, service.priceMax)}
+                {formatPrice(service.price, service.priceMax, locale, t('common.free'))}
               </span>
             </div>
           </div>
@@ -101,7 +104,12 @@ export function EmbedRecap({ service, member, location, slotDatetime }: EmbedRec
           <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
             <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <p className="text-gray-700 dark:text-gray-300 text-[13px] truncate">
-              avec <span className="font-medium text-gray-900 dark:text-white">{member.name}</span>
+              {t.rich('embed.recap.with', {
+                name: member.name,
+                b: (chunks) => (
+                  <span className="font-medium text-gray-900 dark:text-white">{chunks}</span>
+                ),
+              })}
             </p>
           </div>
         )}
@@ -115,7 +123,7 @@ export function EmbedRecap({ service, member, location, slotDatetime }: EmbedRec
                 {slot.date}
               </p>
               <p className="text-gray-600 dark:text-gray-400 text-[11px]">
-                à {slot.time}
+                {t('summary.atTime', { time: slot.time })}
               </p>
             </div>
           </div>

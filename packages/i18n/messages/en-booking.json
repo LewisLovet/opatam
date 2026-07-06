@@ -247,5 +247,27 @@
     "sending": "Submitting...",
     "updateSubmit": "Update my review",
     "submit": "Submit my review"
+  },
+  "embed": {
+    "common": {
+      "with": "with {name}"
+    },
+    "recap": {
+      "title": "Your booking",
+      "with": "with <b>{name}</b>"
+    },
+    "services": {
+      "title": "Choose a service",
+      "others": "Other services"
+    },
+    "success": {
+      "emailSent": "A confirmation email has just been sent to you.",
+      "appTitle": "Manage your appointment in the Opatam app",
+      "appSubtitle": "Automatic reminders, changes and new bookings in one tap.",
+      "newBooking": "New booking"
+    },
+    "footer": {
+      "poweredBy": "Booking powered by <b>Opatam</b>"
+    }
   }
 }

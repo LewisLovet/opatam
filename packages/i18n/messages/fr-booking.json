@@ -247,5 +247,27 @@
     "sending": "Envoi en cours...",
     "updateSubmit": "Modifier mon avis",
     "submit": "Envoyer mon avis"
+  },
+  "embed": {
+    "common": {
+      "with": "avec {name}"
+    },
+    "recap": {
+      "title": "Votre réservation",
+      "with": "avec <b>{name}</b>"
+    },
+    "services": {
+      "title": "Choisissez une prestation",
+      "others": "Autres prestations"
+    },
+    "success": {
+      "emailSent": "Un email de confirmation vient de vous être envoyé.",
+      "appTitle": "Gérez votre RDV dans l'app Opatam",
+      "appSubtitle": "Rappels automatiques, modifications, nouvelles réservations en un clic.",
+      "newBooking": "Nouvelle réservation"
+    },
+    "footer": {
+      "poweredBy": "Réservation propulsée par <b>Opatam</b>"
+    }
   }
 }

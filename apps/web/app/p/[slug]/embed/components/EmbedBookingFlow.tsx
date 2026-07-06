@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 import { StepMember } from '../../reserver/components/StepMember';
 import { StepSlot } from '../../reserver/components/StepSlot';
 import { StepConfirm } from '../../reserver/components/StepConfirm';
@@ -110,6 +111,8 @@ export function EmbedBookingFlow({
   showHeader = false,
   isDemo = false,
 }: EmbedBookingFlowProps) {
+  const t = useTranslations('booking');
+  const locale = useLocale();
   const isTeam = provider.plan === 'team' && members.length > 1;
 
   // ── State ────────────────────────────────────────────────────────────────
@@ -246,7 +249,7 @@ export function EmbedBookingFlow({
 
   const handleSubmit = async () => {
     if (!serviceId || !memberId || !slot || !locationId) {
-      setError('Informations manquantes');
+      setError(t('flow.errorMissingInfo'));
       return;
     }
 
@@ -273,11 +276,13 @@ export function EmbedBookingFlow({
           datetime: slot.datetime,
           clientInfo,
           source: 'embed',
+          // Language the client booked in → transactional emails follow it.
+          clientLocale: locale,
         }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Une erreur est survenue');
+        throw new Error(data.error || t('common.error'));
       }
       const data = await res.json().catch(() => ({}));
       // Deposit-required booking: hop the parent window to Stripe Checkout.
@@ -291,7 +296,7 @@ export function EmbedBookingFlow({
       }
       setStep('success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      setError(err instanceof Error ? err.message : t('common.error'));
     } finally {
       setSubmitting(false);
     }
@@ -303,7 +308,7 @@ export function EmbedBookingFlow({
     return (
       <div className="md:hidden mb-4 p-2.5 rounded-lg bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30">
         <p className="text-xs text-primary-600 dark:text-primary-400 font-medium uppercase tracking-wide">
-          Prestation
+          {t('common.service')}
         </p>
         <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
           {selectedService.name}
@@ -454,10 +459,10 @@ export function EmbedBookingFlow({
           <div className="relative w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-5 animate-fade-in">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <Info className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
               <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                Information importante
+                {t('flow.notice.title')}
               </h3>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line mb-5">
@@ -471,13 +476,13 @@ export function EmbedBookingFlow({
                 }}
                 className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
-                Retour
+                {t('common.back')}
               </button>
               <button
                 onClick={handleNoticeAccept}
                 className="flex-1 px-3 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
               >
-                Continuer
+                {t('flow.continue')}
               </button>
             </div>
           </div>

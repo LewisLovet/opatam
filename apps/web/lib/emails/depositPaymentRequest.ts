@@ -1,22 +1,22 @@
 import {
   appConfig,
-  formatDateFr,
-  formatPriceFr,
-  formatTimeFr,
   getResend,
   emailConfig,
   isValidEmail,
 } from '../resend';
 
 /**
- * Email sent when a *provider* manually creates a booking that requires
- * a deposit and chose "demander l'acompte au client" in the planning
- * drawer. The client gets a Stripe Checkout link they can pay from
- * their inbox — they were never on the booking page.
+ * Email sent when a booking requires a deposit and the client must pay it
+ * from their inbox: provider-created bookings ("demander l'acompte au client"
+ * in the planning drawer) and tunnel bookings whose payment page was left.
  *
  * Distinct from the "you forgot to pay" reminder (`sendDepositReminderEmail`
  * in functions/) which fires from a cron at T+15min. This is the
  * inaugural message.
+ *
+ * Bilingual: `locale` comes from `booking.clientLocale` (the language the
+ * client booked in). Absent — e.g. provider-created bookings where the
+ * client never expressed a language — falls back to French.
  */
 export interface DepositPaymentRequestEmailData {
   clientEmail: string;
@@ -33,11 +33,93 @@ export interface DepositPaymentRequestEmailData {
   /** When set, the email shows a "Annuler la réservation" link so the
    *  client can release the slot without waiting for the timeout. */
   cancelToken?: string | null;
+  /** Client language ('fr' | 'en'…). Absent = French. */
+  locale?: string | null;
 }
 
 export interface SendResult {
   success: boolean;
   error?: string;
+}
+
+const TEXTS = {
+  fr: {
+    subject: (service: string, provider: string) =>
+      `Acompte à régler — ${service} chez ${provider}`,
+    hello: (name: string) => `Bonjour ${name},`,
+    intro: (provider: string, deposit: string) =>
+      `<strong>${provider}</strong> a enregistré pour vous un rendez-vous. Pour le confirmer, merci de régler l'acompte de <strong>${deposit}</strong>.`,
+    introText: (provider: string, deposit: string) =>
+      `${provider} a enregistré un rendez-vous pour vous. Merci de régler l'acompte de ${deposit} pour le confirmer.`,
+    yourBooking: 'Votre rendez-vous',
+    service: 'Prestation',
+    date: 'Date',
+    time: 'Heure',
+    deposit: 'Acompte',
+    holdNotice: (minutes: number) =>
+      `Le créneau est réservé pour vous pendant <strong>${minutes} minutes</strong>. Sans paiement, il sera automatiquement libéré.`,
+    holdNoticeText: (minutes: number) =>
+      `Le créneau est réservé pendant ${minutes} minutes. Sans paiement, il sera libéré.`,
+    payCta: 'Régler mon acompte',
+    securePayment: 'Paiement sécurisé via Stripe.',
+    cantMakeIt: 'Vous ne pourrez pas honorer ce rendez-vous ?',
+    cancelLink: 'Annuler la réservation',
+    signoff: 'À très vite,',
+  },
+  en: {
+    subject: (service: string, provider: string) =>
+      `Deposit required — ${service} at ${provider}`,
+    hello: (name: string) => `Hello ${name},`,
+    intro: (provider: string, deposit: string) =>
+      `<strong>${provider}</strong> has scheduled an appointment for you. To confirm it, please pay the <strong>${deposit}</strong> deposit.`,
+    introText: (provider: string, deposit: string) =>
+      `${provider} has scheduled an appointment for you. Please pay the ${deposit} deposit to confirm it.`,
+    yourBooking: 'Your appointment',
+    service: 'Service',
+    date: 'Date',
+    time: 'Time',
+    deposit: 'Deposit',
+    holdNotice: (minutes: number) =>
+      `The slot is held for you for <strong>${minutes} minutes</strong>. Without payment, it will be released automatically.`,
+    holdNoticeText: (minutes: number) =>
+      `The slot is held for ${minutes} minutes. Without payment, it will be released.`,
+    payCta: 'Pay my deposit',
+    securePayment: 'Secure payment via Stripe.',
+    cantMakeIt: "Can't make this appointment?",
+    cancelLink: 'Cancel the booking',
+    signoff: 'See you soon,',
+  },
+} as const;
+
+function resolveLocale(raw: string | null | undefined): 'fr' | 'en' {
+  return raw === 'en' ? 'en' : 'fr';
+}
+
+/** Paris-anchored formats in the recipient's language (24h clock for both). */
+function formatDate(d: Date, l: 'fr' | 'en'): string {
+  return d.toLocaleDateString(l === 'en' ? 'en-GB' : 'fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Europe/Paris',
+  });
+}
+
+function formatTime(d: Date, l: 'fr' | 'en'): string {
+  return d.toLocaleTimeString(l === 'en' ? 'en-GB' : 'fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Europe/Paris',
+  });
+}
+
+function formatPrice(cents: number, l: 'fr' | 'en'): string {
+  return new Intl.NumberFormat(l === 'en' ? 'en-GB' : 'fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(cents / 100);
 }
 
 export async function sendDepositPaymentRequestEmail(
@@ -47,16 +129,19 @@ export async function sendDepositPaymentRequestEmail(
     return { success: false, error: 'Invalid email format' };
   }
 
-  const formattedDate = formatDateFr(data.datetime);
-  const formattedTime = formatTimeFr(data.datetime);
+  const l = resolveLocale(data.locale);
+  const t = TEXTS[l];
+
+  const formattedDate = formatDate(data.datetime, l);
+  const formattedTime = formatTime(data.datetime, l);
   const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
-  const formattedEndTime = formatTimeFr(endDate);
-  const formattedDeposit = formatPriceFr(data.depositAmount);
+  const formattedEndTime = formatTime(endDate, l);
+  const formattedDeposit = formatPrice(data.depositAmount, l);
   const cancelUrl = data.cancelToken
     ? `${appConfig.url}/reservation/annuler/${data.cancelToken}`
     : null;
 
-  const subject = `Acompte à régler — ${data.serviceName} chez ${data.providerName}`;
+  const subject = t.subject(data.serviceName, data.providerName);
 
   const html = `
     <!DOCTYPE html>
@@ -67,24 +152,24 @@ export async function sendDepositPaymentRequestEmail(
         <tr><td align="center" style="padding: 40px 20px;">
           <table role="presentation" style="max-width: 480px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
             <tr><td style="padding: 32px 32px 24px;">
-              <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">Bonjour ${data.clientName},</p>
-              <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;"><strong>${data.providerName}</strong> a enregistré pour vous un rendez-vous. Pour le confirmer, merci de régler l'acompte de <strong>${formattedDeposit}</strong>.</p>
+              <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${t.hello(data.clientName)}</p>
+              <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${t.intro(data.providerName, formattedDeposit)}</p>
               <div style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #c2410c; text-transform: uppercase; letter-spacing: 0.5px;">Votre rendez-vous</p>
+                <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #c2410c; text-transform: uppercase; letter-spacing: 0.5px;">${t.yourBooking}</p>
                 <table style="width: 100%; border-collapse: collapse;">
-                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">Prestation</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
-                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${formattedDate}</td></tr>
-                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Heure</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedTime} - ${formattedEndTime}</td></tr>
-                  <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">Acompte</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${formattedDeposit}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${t.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${t.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${formattedDate}</td></tr>
+                  <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${t.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formattedTime} - ${formattedEndTime}</td></tr>
+                  <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${t.deposit}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${formattedDeposit}</td></tr>
                 </table>
               </div>
-              <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">Le créneau est réservé pour vous pendant <strong>${data.minutesToPay} minutes</strong>. Sans paiement, il sera automatiquement libéré.</p>
-              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.checkoutUrl}" style="display: inline-block; padding: 14px 32px; background-color: #d97706; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">Régler mon acompte</a></td></tr></table>
-              <p style="margin: 0 0 16px; font-size: 13px; color: #71717a; text-align: center;">Paiement sécurisé via Stripe.</p>
-              ${cancelUrl ? `<p style="margin: 0; font-size: 13px; color: #71717a; text-align: center;">Vous ne pourrez pas honorer ce rendez-vous ? <a href="${cancelUrl}" style="color: #dc2626; text-decoration: underline;">Annuler la réservation</a>.</p>` : ''}
+              <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">${t.holdNotice(data.minutesToPay)}</p>
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;"><tr><td align="center"><a href="${data.checkoutUrl}" style="display: inline-block; padding: 14px 32px; background-color: #d97706; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">${t.payCta}</a></td></tr></table>
+              <p style="margin: 0 0 16px; font-size: 13px; color: #71717a; text-align: center;">${t.securePayment}</p>
+              ${cancelUrl ? `<p style="margin: 0; font-size: 13px; color: #71717a; text-align: center;">${t.cantMakeIt} <a href="${cancelUrl}" style="color: #dc2626; text-decoration: underline;">${t.cancelLink}</a>.</p>` : ''}
             </td></tr>
             <tr><td style="padding: 24px 32px 32px; border-top: 1px solid #e4e4e7;">
-              <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">À très vite,<br><strong>${data.providerName}</strong></p>
+              <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">${t.signoff}<br><strong>${data.providerName}</strong></p>
             </td></tr>
           </table>
         </td></tr>
@@ -94,21 +179,21 @@ export async function sendDepositPaymentRequestEmail(
   `;
 
   const text = `
-Bonjour ${data.clientName},
+${t.hello(data.clientName)}
 
-${data.providerName} a enregistré un rendez-vous pour vous. Merci de régler l'acompte de ${formattedDeposit} pour le confirmer.
+${t.introText(data.providerName, formattedDeposit)}
 
-- Prestation : ${data.serviceName}
-- Date : ${formattedDate}
-- Heure : ${formattedTime} - ${formattedEndTime}
-- Acompte : ${formattedDeposit}
+- ${t.service} : ${data.serviceName}
+- ${t.date} : ${formattedDate}
+- ${t.time} : ${formattedTime} - ${formattedEndTime}
+- ${t.deposit} : ${formattedDeposit}
 
-Le créneau est réservé pendant ${data.minutesToPay} minutes. Sans paiement, il sera libéré.
+${t.holdNoticeText(data.minutesToPay)}
 
-Régler mon acompte : ${data.checkoutUrl}
-${cancelUrl ? `\nAnnuler la réservation : ${cancelUrl}` : ''}
+${t.payCta} : ${data.checkoutUrl}
+${cancelUrl ? `\n${t.cancelLink} : ${cancelUrl}` : ''}
 
-À très vite,
+${t.signoff}
 ${data.providerName}
   `.trim();
 
