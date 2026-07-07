@@ -128,6 +128,14 @@ const TIME_OPTIONS: string[] = (() => {
   return opts;
 })();
 
+// "HH:MM" → minutes. Une fin à "00:00" = minuit = fin de journée (1440), pas 0
+// (sans ça, une plage 19:00→00:00 serait jugée invalide et non réservable).
+const toMinutes = (t: string) => {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+};
+const endToMinutes = (t: string) => (t === '00:00' ? 24 * 60 : toMinutes(t));
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -313,7 +321,7 @@ export default function AvailabilityScreen() {
     for (const day of schedule) {
       if (day.isOpen) {
         for (const slot of day.slots) {
-          if (slot.start >= slot.end) {
+          if (slot.start === slot.end || toMinutes(slot.start) >= endToMinutes(slot.end)) {
             showToast({
               variant: 'error',
               message: `${DAY_NAMES[day.dayOfWeek]} : l'heure de fin doit être après l'heure de début`,
@@ -601,7 +609,7 @@ export default function AvailabilityScreen() {
                         {day.isOpen ? (
                           <>
                             {day.slots.map((slot, slotIndex) => {
-                              const hasError = slot.start >= slot.end;
+                              const hasError = slot.start === slot.end || toMinutes(slot.start) >= endToMinutes(slot.end);
                               return (
                                 <View key={slotIndex} style={styles.slotRow}>
                                   <Pressable

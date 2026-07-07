@@ -108,7 +108,9 @@ export function calculatePositionFromTimeString(
   const [endH, endM] = endTimeStr.split(':').map(Number);
 
   const startMinutes = startH * 60 + startM;
-  const endMinutes = endH * 60 + endM;
+  // Une fin à "00:00" = minuit = fin de journée (1440). Sinon durée négative
+  // → hauteur 0 → le créneau (dispo ou RDV finissant à minuit) devient invisible.
+  const endMinutes = endH === 0 && endM === 0 ? 24 * 60 : endH * 60 + endM;
   const startMinutesFromGrid = startMinutes - startHour * 60;
   const durationMinutes = endMinutes - startMinutes;
 

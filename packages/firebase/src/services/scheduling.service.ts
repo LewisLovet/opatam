@@ -120,7 +120,7 @@ export class SchedulingService {
 
     // Validate time slots
     for (const slot of validated.slots) {
-      if (slot.start >= slot.end) {
+      if (slot.start === slot.end || this.hhmmToMinutes(slot.start) >= this.endMin(slot.end)) {
         throw new Error(`Créneau invalide : ${slot.start} doit être avant ${slot.end}`);
       }
     }
@@ -170,7 +170,7 @@ export class SchedulingService {
 
     // Validate time slots
     for (const slot of validated.slots) {
-      if (slot.start >= slot.end) {
+      if (slot.start === slot.end || this.hhmmToMinutes(slot.start) >= this.endMin(slot.end)) {
         throw new Error(`Créneau invalide : ${slot.start} doit être avant ${slot.end}`);
       }
     }
@@ -260,7 +260,9 @@ export class SchedulingService {
       const bookingEndTime = this.formatTime(booking.endDatetime);
 
       const isWithinNewSlots = newSlots.some(
-        (slot) => slot.start <= bookingStartTime && slot.end >= bookingEndTime
+        (slot) =>
+          this.hhmmToMinutes(slot.start) <= this.hhmmToMinutes(bookingStartTime) &&
+          this.endMin(slot.end) >= this.endMin(bookingEndTime)
       );
 
       if (!isWithinNewSlots) {
@@ -336,9 +338,16 @@ export class SchedulingService {
       if (!validated.startTime || !validated.endTime) {
         throw new Error('Les heures sont requises si ce n\'est pas une journée entière');
       }
-      // Only compare times if same day — different days allow any time combination
+      // Only compare times if same day — different days allow any time combination.
+      // Même règle que les disponibilités : une fin "00:00" = minuit = fin de
+      // journée (1440) → un blocage/activité 22:00→00:00 même jour est valide.
+      // `start === end` (dont 00:00→00:00) reste refusé comme saisie ambiguë.
       const sameDay = validated.startDate.toDateString() === validated.endDate.toDateString();
-      if (sameDay && validated.startTime >= validated.endTime) {
+      if (
+        sameDay &&
+        (validated.startTime === validated.endTime ||
+          this.hhmmToMinutes(validated.startTime) >= this.endMin(validated.endTime))
+      ) {
         throw new Error('L\'heure de fin doit être après l\'heure de début');
       }
     }
@@ -678,7 +687,7 @@ export class SchedulingService {
       // Open windows in minutes-of-day.
       const openMerged = this.mergeIntervals(
         availability.slots
-          .map((w) => [this.hhmmToMinutes(w.start), this.hhmmToMinutes(w.end)] as [number, number])
+          .map((w) => [this.hhmmToMinutes(w.start), this.endMin(w.end)] as [number, number])
           .filter(([s, e]) => e > s),
       );
       const openMinutes = openMerged.reduce((sum, [s, e]) => sum + (e - s), 0);
@@ -725,6 +734,17 @@ export class SchedulingService {
   private hhmmToMinutes(hhmm: string): number {
     const [h, m] = hhmm.split(':').map(Number);
     return h * 60 + m;
+  }
+
+  /**
+   * Minutes for a window END time. A slot/window ending at "00:00" means
+   * midnight = END OF DAY (24:00 = 1440), not the start of the day (0).
+   * Without this, a range like 19:00→00:00 has end < start → 0 slots.
+   * (Only used for END values; a START of "00:00" stays 0, which is correct.)
+   */
+  private endMin(hhmm: string): number {
+    const m = this.hhmmToMinutes(hhmm);
+    return m === 0 ? 24 * 60 : m;
   }
 
   /** Sort + merge overlapping/adjacent [start,end] minute intervals. */
@@ -819,7 +839,9 @@ export class SchedulingService {
     const timeStr = this.formatTime(datetime);
     const endTimeStr = this.formatTime(endDatetime);
     const isWithinAvailability = availability.slots.some(
-      (slot) => slot.start <= timeStr && slot.end >= endTimeStr
+      (slot) =>
+        this.hhmmToMinutes(slot.start) <= this.hhmmToMinutes(timeStr) &&
+        this.endMin(slot.end) >= this.endMin(endTimeStr)
     );
 
     if (!isWithinAvailability) {
@@ -868,11 +890,10 @@ export class SchedulingService {
   ): TimeSlotWithDate[] {
     const slots: TimeSlotWithDate[] = [];
 
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
+    // "00:00" en END = minuit = fin de journée (1440), pas 0 — sinon une plage
+    // finissant à minuit (ex. 19:00→00:00) ne génère aucun créneau.
+    const startMinutes = this.hhmmToMinutes(startTime);
+    const endMinutes = this.endMin(endTime);
 
     let currentMinutes = startMinutes;
 
@@ -909,7 +930,10 @@ export class SchedulingService {
    * Check if two time slots overlap
    */
   private slotsOverlap(slot1: TimeSlot, slot2: TimeSlot): boolean {
-    return slot1.start < slot2.end && slot2.start < slot1.end;
+    return (
+      this.hhmmToMinutes(slot1.start) < this.endMin(slot2.end) &&
+      this.hhmmToMinutes(slot2.start) < this.endMin(slot1.end)
+    );
   }
 
   /**
@@ -953,14 +977,17 @@ export class SchedulingService {
       return true;
     }
 
-    // Check time range
+    // Check time range — en minutes, avec normalisation d'une fin à "00:00"
+    // (= minuit = 1440). Un créneau réservable peut désormais finir à minuit
+    // (ex. 23:00→00:00) : une comparaison de strings laisserait passer une pause
+    // (« 00:00 » < « 23:45 ») → faux négatif.
     if (blockedSlot.startTime && blockedSlot.endTime) {
-      const slotStartTime = this.formatTime(start);
-      const slotEndTime = this.formatTime(end);
+      const slotStartMin = this.hhmmToMinutes(this.formatTime(start));
+      const slotEndMin = this.endMin(this.formatTime(end));
+      const blockStartMin = this.hhmmToMinutes(blockedSlot.startTime);
+      const blockEndMin = this.endMin(blockedSlot.endTime);
 
-      return (
-        slotStartTime < blockedSlot.endTime && blockedSlot.startTime < slotEndTime
-      );
+      return slotStartMin < blockEndMin && blockStartMin < slotEndMin;
     }
 
     return false;
@@ -988,7 +1015,8 @@ export class SchedulingService {
    * Format minutes to time string (HH:mm)
    */
   private formatTimeFromMinutes(minutes: number): string {
-    const hours = Math.floor(minutes / 60);
+    // % 24 → un créneau finissant à 1440 (minuit) s'affiche "00:00", pas "24:00".
+    const hours = Math.floor(minutes / 60) % 24;
     const mins = minutes % 60;
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   }

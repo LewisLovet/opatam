@@ -81,7 +81,9 @@ const CATEGORIES: CategoryDef[] = ACTIVITY_CATEGORY_ORDER.map((key) => ({
 
 // ─── Time wheel picker ────────────────────────────────────────────────
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+// Pas de 5 min + 59 : permet de finir une activité à 23:59 (« fin de journée »),
+// alternative à minuit que l'écran Activité — mono-date — ne peut pas gérer.
+const MINUTES = [...Array.from({ length: 12 }, (_, i) => i * 5), 59];
 const WHEEL_ITEM_HEIGHT = 48;
 const VISIBLE_ITEMS = 5;
 const WHEEL_PADDING = WHEEL_ITEM_HEIGHT * Math.floor(VISIBLE_ITEMS / 2);

@@ -4,6 +4,7 @@ import { Switch } from '@/components/ui';
 import { Plus, X } from 'lucide-react';
 import { CopyToPopover } from './CopyToPopover';
 import type { TimeSlot } from '@booking-app/shared';
+import { timeToMinutes, endTimeToMinutes } from '@booking-app/shared';
 
 const DAY_NAMES: Record<number, string> = {
   0: 'Dim',
@@ -96,7 +97,7 @@ export function DayRow({
         {isOpen ? (
           <div className="flex flex-col gap-1.5">
             {slots.map((slot, index) => {
-              const hasError = slot.start >= slot.end;
+              const hasError = slot.start === slot.end || timeToMinutes(slot.start) >= endTimeToMinutes(slot.end);
               return (
                 <div key={index} className="flex items-center gap-1">
                   <TimeSelect

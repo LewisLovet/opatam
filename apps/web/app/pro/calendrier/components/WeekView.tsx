@@ -423,8 +423,10 @@ export function WeekView({
                     closedSections.push({ top, height });
                   }
                 }
-                if (slot.end > lastEnd) {
-                  lastEnd = slot.end;
+                // Fin "00:00" = minuit = fin de journée → "24:00" pour comparer.
+                const slotEnd = slot.end === '00:00' ? '24:00' : slot.end;
+                if (slotEnd > lastEnd) {
+                  lastEnd = slotEnd;
                 }
               });
 

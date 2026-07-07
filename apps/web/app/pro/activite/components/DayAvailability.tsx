@@ -108,7 +108,14 @@ export function DayAvailability({
   };
 
   const validateSlot = (slot: TimeSlot): string | undefined => {
-    if (slot.start >= slot.end) {
+    const toMin = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    // Une fin à "00:00" = minuit = fin de journée (1440), pas 0.
+    const startMin = toMin(slot.start);
+    const endMin = slot.end === '00:00' ? 24 * 60 : toMin(slot.end);
+    if (slot.start === slot.end || startMin >= endMin) {
       return 'Heure de fin doit être après le début';
     }
     return undefined;

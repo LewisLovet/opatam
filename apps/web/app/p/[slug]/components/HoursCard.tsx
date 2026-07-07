@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Clock, CheckCircle, XCircle } from 'lucide-react';
+import { endTimeToMinutes } from '@booking-app/shared';
 
 interface DaySchedule {
   day: string;
@@ -33,9 +34,10 @@ function isCurrentlyOpen(schedule: DaySchedule[]): boolean {
 
   return todaySchedule.slots.some((slot) => {
     const [startHour, startMin] = slot.start.split(':').map(Number);
-    const [endHour, endMin] = slot.end.split(':').map(Number);
     const startTime = startHour * 60 + startMin;
-    const endTime = endHour * 60 + endMin;
+    // Fin "00:00" = minuit = 1440 (fin de journée), pas 0 — sinon le badge
+    // « Ouvert » ne serait jamais vrai le soir (currentTime < 0 toujours faux).
+    const endTime = endTimeToMinutes(slot.end);
     return currentTime >= startTime && currentTime < endTime;
   });
 }

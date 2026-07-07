@@ -147,6 +147,21 @@ export function timeToMinutes(time: string): number {
 }
 
 /**
+ * Minutes from midnight for a window/slot END time.
+ * A time range ending at "00:00" means midnight = END OF DAY (24:00 = 1440 min),
+ * not the start of the day (0). Use this (instead of `timeToMinutes`) whenever a
+ * value represents the END of a range — availability windows, breaks, bookings —
+ * so a range like 19:00→00:00 has a positive duration and renders/computes right.
+ * (A START of "00:00" must keep using `timeToMinutes` → 0.)
+ * @param time - Time string in HH:MM format
+ * @returns Minutes from midnight, with "00:00" treated as 1440
+ */
+export function endTimeToMinutes(time: string): number {
+  const minutes = timeToMinutes(time);
+  return minutes === 0 ? 24 * 60 : minutes;
+}
+
+/**
  * Convert minutes from midnight to time string
  * @param minutes - Minutes from midnight
  * @returns Time string in HH:MM format

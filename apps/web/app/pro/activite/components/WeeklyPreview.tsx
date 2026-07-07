@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import type { DaySchedule } from '../hooks/useScheduleReducer';
+import { timeToMinutes, endTimeToMinutes } from '@booking-app/shared';
 
 const DAY_LABELS: Record<number, string> = {
   1: 'Lun',
@@ -24,10 +25,9 @@ function computeHourRange(schedule: DaySchedule[]): { hourStart: number; hourEnd
   for (const day of schedule) {
     if (!day.isOpen || day.slots.length === 0) continue;
     for (const slot of day.slots) {
-      const [sh, sm] = slot.start.split(':').map(Number);
-      const [eh, em] = slot.end.split(':').map(Number);
-      const startH = sh + sm / 60;
-      const endH = eh + em / 60;
+      const startH = timeToMinutes(slot.start) / 60;
+      // Fin "00:00" = minuit = 24h (fin de journée), pas 0h.
+      const endH = endTimeToMinutes(slot.end) / 60;
       if (startH < earliest) earliest = startH;
       if (endH > latest) latest = endH;
     }
@@ -143,7 +143,8 @@ export function WeeklyPreview({ schedule, dirtyDays }: WeeklyPreviewProps) {
                   {day.isOpen && day.slots.length > 0
                     ? day.slots.map((slot, i) => {
                         const top = timeToY(slot.start);
-                        const bottom = timeToY(slot.end);
+                        // Fin "00:00" = minuit = bas de journée (24:00), pas haut (0).
+                        const bottom = timeToY(slot.end === '00:00' ? '24:00' : slot.end);
                         const height = bottom - top;
                         if (height <= 0) return null;
 
@@ -195,9 +196,8 @@ function SummaryStats({ schedule }: { schedule: DaySchedule[] }) {
       if (!day.isOpen || day.slots.length === 0) continue;
       openDays++;
       for (const slot of day.slots) {
-        const [sh, sm] = slot.start.split(':').map(Number);
-        const [eh, em] = slot.end.split(':').map(Number);
-        totalMinutes += (eh * 60 + em) - (sh * 60 + sm);
+        // Fin "00:00" = minuit = 1440 min (fin de journée), pas 0.
+        totalMinutes += endTimeToMinutes(slot.end) - timeToMinutes(slot.start);
       }
     }
 

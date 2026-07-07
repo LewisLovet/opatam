@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, schedulingService, memberService, locationService, serviceRepository } from '@booking-app/firebase';
 import type { Booking, Member, Location, Availability, BlockedSlot, Service } from '@booking-app/shared';
+import { endTimeToMinutes } from '@booking-app/shared';
 import { CalendarHeader } from './components/CalendarHeader';
 import { DayView } from './components/DayView';
 import { WeekView } from './components/WeekView';
@@ -432,8 +433,10 @@ export default function CalendarPage() {
         (min, s) => (s.start < min ? s.start : min),
         allSlots[0].start
       );
+      // Fin "00:00" = minuit = fin de journée (1440) : comparer en minutes
+      // normalisées, sinon une plage finissant à minuit ne serait jamais retenue.
       const latestEnd = allSlots.reduce(
-        (max, s) => (s.end > max ? s.end : max),
+        (max, s) => (endTimeToMinutes(s.end) > endTimeToMinutes(max) ? s.end : max),
         allSlots[0].end
       );
 

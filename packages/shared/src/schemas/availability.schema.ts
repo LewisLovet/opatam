@@ -16,8 +16,13 @@ export const timeSlotSchema = z.object({
     const [startHour, startMin] = data.start.split(':').map(Number);
     const [endHour, endMin] = data.end.split(':').map(Number);
     const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    return endMinutes > startMinutes;
+    // Une fin à "00:00" signifie minuit = fin de journée (24:00 = 1440 min),
+    // pas le début de journée (0). Sans ça, une plage 19:00→00:00 serait
+    // rejetée (fin < début) et deviendrait non réservable.
+    const endMinutes = endHour === 0 && endMin === 0 ? 24 * 60 : endHour * 60 + endMin;
+    // `start === end` (dont 00:00→00:00) est refusé comme saisie ambiguë :
+    // un 24 h/24 s'exprime par 00:00→23:59, pas par une plage de bornes égales.
+    return data.start !== data.end && endMinutes > startMinutes;
   },
   { message: 'L\'heure de fin doit être après l\'heure de début' }
 );
