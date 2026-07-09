@@ -827,7 +827,7 @@ export function BookingFlow({
                                 </p>
                               )}
                               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                {formatDuration(line.duration)} · {formatPrice(line.price)}
+                                {formatDuration(line.duration)} · {formatPrice(line.price, 'EUR', locale)}
                               </p>
                             </div>
                             <button
@@ -848,7 +848,7 @@ export function BookingFlow({
                           {t('common.total')}
                         </span>
                         <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {formatDuration(cartTotalDuration)} · {formatPrice(cartTotalPrice)}
+                          {formatDuration(cartTotalDuration)} · {formatPrice(cartTotalPrice, 'EUR', locale)}
                         </span>
                       </div>
                     </div>
@@ -881,7 +881,7 @@ export function BookingFlow({
                         ? t('flow.continue')
                         : t('flow.continueWithCart', {
                             count: state.cart.length,
-                            total: formatPrice(cartTotalPrice),
+                            total: formatPrice(cartTotalPrice, 'EUR', locale),
                           })}
                       <ArrowRight className="w-4 h-4" />
                     </button>
@@ -931,7 +931,7 @@ export function BookingFlow({
                     <p className="text-lg font-bold">
                       {draftHasPromo && (
                         <span className="mr-1.5 text-sm font-normal text-gray-400 line-through">
-                          {formatPrice(draftEffective.original)}
+                          {formatPrice(draftEffective.original, 'EUR', locale)}
                         </span>
                       )}
                       <span
@@ -941,7 +941,7 @@ export function BookingFlow({
                             : 'text-gray-900 dark:text-white'
                         }
                       >
-                        {formatPrice(draftEffective.price)}
+                        {formatPrice(draftEffective.price, 'EUR', locale)}
                       </span>
                     </p>
                   </div>

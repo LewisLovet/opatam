@@ -168,8 +168,8 @@ export function BookingRecap({
     const urgent = promoDaysLeft != null && promoDaysLeft <= PROMO_URGENCY_DAYS;
     if (urgent) {
       promoCountdownText = datePart
-        ? `${formatPromoCountdown(promoDaysLeft!)} · ${datePart}`
-        : formatPromoCountdown(promoDaysLeft!);
+        ? `${formatPromoCountdown(promoDaysLeft!, locale)} · ${datePart}`
+        : formatPromoCountdown(promoDaysLeft!, locale);
     } else if (datePart) {
       promoCountdownText = t('recap.promoValid', { datePart });
     }

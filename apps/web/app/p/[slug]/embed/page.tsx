@@ -1,6 +1,9 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
+import { NextIntlClientProvider } from 'next-intl';
+import { MESSAGES } from '@booking-app/i18n';
 import {
   providerRepository,
   serviceRepository,
@@ -35,6 +38,10 @@ interface PageProps {
     mode?: string;
     /** Pre-select a service by id. */
     service?: string;
+    /** Widget language ('en' — anything else = French). Explicit param
+     *  because the embed lives in a cross-site iframe where our locale
+     *  cookie is unreliable; the embedding pro decides. */
+    lang?: string;
   }>;
 }
 
@@ -63,10 +70,21 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
   const theme = parseTheme(sp.theme);
   const showHeader = sp.mode === 'modal';
   const preselectedServiceId = sp.service || null;
+  // Explicit widget language: ?lang=en → English, anything else → French.
+  // ALWAYS wrapped in a scoped provider — without it the embed would fall
+  // through to the root layout provider and inherit the visitor's
+  // NEXT_LOCALE cookie, showing English on a widget whose integrator chose
+  // the default (French).
+  const embedLocale = sp.lang === 'en' ? ('en' as const) : ('fr' as const);
+  const withLocale = (children: ReactNode) => (
+    <NextIntlClientProvider locale={embedLocale} messages={MESSAGES[embedLocale] as never}>
+      {children}
+    </NextIntlClientProvider>
+  );
 
   // ── Demo flow — mock data, no Firestore ────────────────────────────────
   if (slug === 'demo') {
-    return (
+    return withLocale(
       <EmbedShell primaryColor={primaryColor} radius={radius} theme={theme}>
         <EmbedBookingFlow
           provider={demoBookingProvider}
@@ -108,8 +126,8 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
   ]);
 
   if (services.length === 0) {
-    const t = await getTranslations('booking.page');
-    return (
+    const t = await getTranslations({ locale: embedLocale, namespace: 'booking.page' });
+    return withLocale(
       <EmbedShell primaryColor={primaryColor} radius={radius} theme={theme} providerId={provider.id}>
         <div className="min-h-[200px] flex flex-col items-center justify-center p-8 text-center">
           <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
@@ -181,7 +199,7 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
     isOpen: a.isOpen,
   }));
 
-  return (
+  return withLocale(
     <EmbedShell
       primaryColor={primaryColor}
       radius={radius}

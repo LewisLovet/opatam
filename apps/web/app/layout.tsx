@@ -12,6 +12,7 @@ import { APP_CONFIG } from '@booking-app/shared';
 import { ClarityScript } from '@/components/analytics/ClarityScript';
 import { MetaPixel } from '@/components/analytics/MetaPixel';
 import { ConsentBanner } from '@/components/analytics/ConsentBanner';
+import { LanguageSuggestionBanner } from '@/components/common/LanguageSuggestionBanner';
 import { ChunkReloadGuard } from '@/components/ChunkReloadGuard';
 
 const inter = Inter({
@@ -66,9 +67,10 @@ export default async function RootLayout({
 }: {
   children: ReactNode;
 }) {
-  // Locale resolved per request (cookie → Accept-Language → fr), see
-  // i18n/request.ts. Drives <html lang> and the messages available to
-  // every useTranslations() call in the tree.
+  // Locale resolved per request (NEXT_LOCALE cookie = explicit user choice,
+  // otherwise French — detection never forces it, see i18n/request.ts).
+  // Drives <html lang> and the messages available to every
+  // useTranslations() call in the tree.
   const locale = await getLocale();
   const messages = await getMessages();
 
@@ -95,6 +97,8 @@ export default async function RootLayout({
             <MetaPixel />
           </Suspense>
           <ConsentBanner />
+          {/* Proposes English to English browsers — never forces it. */}
+          <LanguageSuggestionBanner />
         </Providers>
         </NextIntlClientProvider>
         {/* ── Analytics ─────────────────────────────────────────────

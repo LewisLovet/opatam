@@ -6,8 +6,10 @@ import createNextIntlPlugin from 'next-intl/plugin';
 // which is critical for the scheduling/booking system.
 process.env.TZ = 'Europe/Paris';
 
-// i18n — resolves the request locale (cookie → Accept-Language → fr) and
-// loads the matching dictionary from @booking-app/i18n. See i18n/request.ts.
+// i18n — resolves the request locale (NEXT_LOCALE cookie = explicit user
+// choice, otherwise French; detection only ever SUGGESTS via the language
+// card) and loads the matching dictionary from @booking-app/i18n.
+// See i18n/request.ts.
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {

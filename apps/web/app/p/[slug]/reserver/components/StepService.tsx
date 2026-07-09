@@ -202,7 +202,7 @@ function ServiceButton({
             </span>
             {showCountdown && (
               <span className="block text-[10px] font-semibold text-rose-500 dark:text-rose-400 leading-tight mt-0.5">
-                {formatPromoCountdown(promoDaysLeft)}
+                {formatPromoCountdown(promoDaysLeft, locale)}
               </span>
             )}
             {inCart && (

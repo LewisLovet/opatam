@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { formatPrice, formatDuration } from '@booking-app/shared';
 import type {
   Service,
@@ -41,11 +41,12 @@ function ContribTag({
   duration: number;
   additive?: boolean;
 }) {
+  const locale = useLocale();
   if (price === 0 && duration === 0) return null;
   const sign = additive ? '+' : '';
   return (
     <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-      {price > 0 && `${sign}${formatPrice(price)}`}
+      {price > 0 && `${sign}${formatPrice(price, 'EUR', locale)}`}
       {price > 0 && duration > 0 && ' · '}
       {duration > 0 && `${sign}${formatDuration(duration)}`}
     </span>
