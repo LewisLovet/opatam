@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download, Store } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
+import { localizedPath } from '@/lib/localizedPath';
 import { trackEvent } from '@/lib/meta-pixel';
 import { BookingChoices } from '@/components/booking';
 import type {
@@ -632,7 +633,7 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
           }`}
         >
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
             {t('common.backHome')}

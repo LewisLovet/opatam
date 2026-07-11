@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
+import { localizedPath } from '@/lib/localizedPath';
 import {
   Star,
   AlertTriangle,
@@ -155,7 +156,7 @@ export function ReviewClient({
             {t('notFoundText')}
           </p>
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
             {tCommon('backHome')}
@@ -186,7 +187,7 @@ export function ReviewClient({
             </p>
           )}
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
             {tCommon('backHome')}
@@ -226,7 +227,7 @@ export function ReviewClient({
           </div>
 
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
             {tCommon('backHome')}
@@ -254,7 +255,7 @@ export function ReviewClient({
               : t('savedText')}
           </p>
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
             {tCommon('backHome')}
@@ -408,7 +409,7 @@ export function ReviewClient({
         {/* Cancel Link */}
         <div className="text-center mt-4">
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             {tCommon('cancelAndHome')}

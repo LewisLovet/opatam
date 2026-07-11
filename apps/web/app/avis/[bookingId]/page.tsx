@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { bookingRepository, reviewRepository } from '@booking-app/firebase';
 import { ReviewClient } from './ReviewClient';
 
@@ -6,10 +7,10 @@ interface PageProps {
   params: Promise<{ bookingId: string }>;
 }
 
-export const metadata: Metadata = {
-  title: 'Donner votre avis',
-  description: 'Partagez votre expérience et aidez les autres clients',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('seo.review');
+  return { title: t('title'), description: t('description') };
+}
 
 export default async function ReviewPage({ params }: PageProps) {
   const { bookingId } = await params;

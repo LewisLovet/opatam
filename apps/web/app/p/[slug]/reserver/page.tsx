@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import {
   providerRepository,
   serviceRepository,
@@ -31,11 +31,22 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  // Serves both /p/[slug]/reserver (fr) and /en/p/[slug]/reserver
+  // (re-export, locale set by middleware.ts via the x-app-locale header).
+  const locale = await getLocale();
+  const t = await getTranslations('seo.booking');
+  const tProvider = await getTranslations('seo.provider');
 
   if (slug === 'demo') {
+    const frDemo = 'https://opatam.com/p/demo/reserver';
+    const enDemo = 'https://opatam.com/en/p/demo/reserver';
     return {
-      title: 'Demo — Réserver chez Studio Beauté Élégance | OPATAM',
-      description: 'Testez le parcours de réservation OPATAM avec cette boutique de démonstration.',
+      title: t('demoTitle'),
+      description: t('demoDescription'),
+      alternates: {
+        canonical: locale === 'en' ? enDemo : frDemo,
+        languages: { fr: frDemo, en: enDemo, 'x-default': frDemo },
+      },
     };
   }
 
@@ -43,13 +54,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!provider || !provider.isPublished) {
     return {
-      title: 'Prestataire non trouvé',
+      title: tProvider('notFound'),
     };
   }
 
+  const frUrl = `https://opatam.com/p/${slug}/reserver`;
+  const enUrl = `https://opatam.com/en/p/${slug}/reserver`;
+
   return {
-    title: `Réserver chez ${provider.businessName}`,
-    description: `Réservez votre rendez-vous chez ${provider.businessName} - ${provider.category}`,
+    title: t('title', { businessName: provider.businessName }),
+    description: t('description', {
+      businessName: provider.businessName,
+      category: provider.category,
+    }),
+    alternates: {
+      canonical: locale === 'en' ? enUrl : frUrl,
+      languages: { fr: frUrl, en: enUrl, 'x-default': frUrl },
+    },
   };
 }
 

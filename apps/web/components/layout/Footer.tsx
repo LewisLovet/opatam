@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { localizedPath } from '@/lib/localizedPath';
 import { AppStoreBadges } from '../common/AppStoreBadges';
 import { SocialLinks } from '../common/SocialLinks';
 import { Logo } from '@/components/ui';
@@ -23,6 +24,7 @@ interface FooterSection {
 
 export function Footer({ variant = 'full' }: FooterProps) {
   const t = useTranslations('layout');
+  const locale = useLocale();
   const currentYear = new Date().getFullYear();
 
   // Built in-component so every label follows the active locale.
@@ -112,7 +114,9 @@ export function Footer({ variant = 'full' }: FooterProps) {
                 {section.links.map((link) => (
                   <li key={link.href}>
                     <Link
-                      href={link.href}
+                      // localizedPath only prefixes translated surfaces (the
+                      // /# anchors); /recherche, /cgu… stay on the FR page.
+                      href={localizedPath(link.href, locale)}
                       className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
                     >
                       {link.label}

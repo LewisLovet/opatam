@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { bookingService } from '@booking-app/firebase';
 import { ConfirmationClient } from './ConfirmationClient';
 
@@ -7,10 +8,10 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export const metadata: Metadata = {
-  title: 'Réservation confirmée',
-  description: 'Votre réservation a bien été enregistrée',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('seo.confirmation');
+  return { title: t('title'), description: t('description') };
+}
 
 export default async function ConfirmationPage({ params }: PageProps) {
   const { id } = await params;

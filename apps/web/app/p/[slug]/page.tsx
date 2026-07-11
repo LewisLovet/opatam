@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
 import {
   providerRepository,
   serviceRepository,
@@ -108,13 +109,22 @@ interface PageProps {
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  // Serves both /p/[slug] (fr) and /en/p/[slug] (re-export, locale set by
+  // middleware.ts via the x-app-locale header).
+  const locale = await getLocale();
+  const t = await getTranslations('seo.provider');
 
   // Demo page metadata
   if (slug === 'demo') {
+    const frDemo = 'https://opatam.com/p/demo';
+    const enDemo = 'https://opatam.com/en/p/demo';
     return {
-      title: 'Demo — Studio Beauté Élégance | OPATAM',
-      description:
-        'Découvrez à quoi ressemble une page de réservation OPATAM. Exemple avec un salon de coiffure et esthétique.',
+      title: t('demoTitle'),
+      description: t('demoDescription'),
+      alternates: {
+        canonical: locale === 'en' ? enDemo : frDemo,
+        languages: { fr: frDemo, en: enDemo, 'x-default': frDemo },
+      },
     };
   }
 
@@ -122,16 +132,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!provider || !provider.isPublished) {
     return {
-      title: 'Prestataire non trouvé',
+      title: t('notFound'),
     };
   }
 
   const city = provider.cities?.[0] || '';
+  // The pro's own description (their content, kept verbatim in any locale);
+  // the generated fallback sentence follows the page language.
   const description = provider.description
     ? provider.description.substring(0, 160)
-    : `Réservez vos rendez-vous chez ${provider.businessName}${city ? ` à ${city}` : ''} — ${provider.category}. Prise de RDV en ligne sur Opatam.`;
+    : t('fallbackDescription', {
+        businessName: provider.businessName,
+        cityPart: city ? t('inCity', { city }) : '',
+        category: provider.category,
+      });
 
-  const pageUrl = `https://opatam.com/p/${slug}`;
+  const frUrl = `https://opatam.com/p/${slug}`;
+  const enUrl = `https://opatam.com/en/p/${slug}`;
+  const pageUrl = locale === 'en' ? enUrl : frUrl;
+  const languages = { fr: frUrl, en: enUrl, 'x-default': frUrl };
 
   // Social/preview image = the PROVIDER's own identity: cover photo
   // first, then their logo. We deliberately do NOT fall back to the
@@ -148,6 +167,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description,
     alternates: {
       canonical: pageUrl,
+      languages,
     },
     openGraph: {
       title: `${provider.businessName}${city ? ` — ${city}` : ''}`,
@@ -156,7 +176,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: 'Opatam',
       images: ogImages,
       type: 'website',
-      locale: 'fr_FR',
+      locale: locale === 'en' ? 'en_GB' : 'fr_FR',
     },
     twitter: {
       card: ogImage ? 'summary_large_image' : 'summary',

@@ -6,6 +6,7 @@ import { trackEvent } from '@/lib/meta-pixel';
 import { ArrowLeft, Check, CalendarCheck, Store, Info, ArrowRight, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
+import { localizedPath } from '@/lib/localizedPath';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 import type { ServiceDiscount } from '@booking-app/shared';
@@ -678,7 +679,7 @@ export function BookingFlow({
         window.location.href = data.checkoutUrl;
         return;
       }
-      router.push(`/reservation/confirmation/${data.bookingId}`);
+      router.push(localizedPath(`/reservation/confirmation/${data.bookingId}`, locale));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.error'));
       setIsSubmitting(false);
@@ -691,7 +692,7 @@ export function BookingFlow({
       <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-4">
           <Link
-            href={`/p/${provider.slug}`}
+            href={localizedPath(`/p/${provider.slug}`, locale)}
             className="p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -1095,7 +1096,7 @@ export function BookingFlow({
                   </p>
 
                   <Link
-                    href="/p/demo"
+                    href={localizedPath('/p/demo', locale)}
                     className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 mt-2"
                   >
                     {t('flow.demo.backToShop')}

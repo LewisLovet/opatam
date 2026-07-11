@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { MobileMenu } from './MobileMenu';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
+import { localizedPath } from '@/lib/localizedPath';
 import { Logo } from '@/components/ui';
 
 interface NavLink {
@@ -24,13 +25,15 @@ export function Header({
   navLinks,
 }: HeaderProps) {
   const t = useTranslations('layout.header');
-  // Default nav built here (not module-level) so labels follow the locale.
+  const locale = useLocale();
+  // Default nav built here (not module-level) so labels AND hrefs follow the
+  // locale (on /en the anchors must stay on /en, not jump back to /).
   const links: NavLink[] =
     navLinks ?? [
-      { href: '/#fonctionnalites', label: t('features') },
-      { href: '/#tarifs', label: t('pricing') },
-      { href: '/#temoignages', label: t('testimonials') },
-      { href: '/#faq', label: t('faq') },
+      { href: localizedPath('/#fonctionnalites', locale), label: t('features') },
+      { href: localizedPath('/#tarifs', locale), label: t('pricing') },
+      { href: localizedPath('/#temoignages', locale), label: t('testimonials') },
+      { href: localizedPath('/#faq', locale), label: t('faq') },
     ];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -89,7 +92,7 @@ export function Header({
           <div className="flex items-center justify-between h-[72px]">
             {/* Logo with hover lift */}
             <Link
-              href="/"
+              href={localizedPath('/', locale)}
               className="relative group flex items-center transition-transform duration-200 hover:-translate-y-[1px]"
             >
               <Logo size="md" />

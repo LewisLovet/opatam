@@ -5,18 +5,9 @@ import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Globe, X } from 'lucide-react';
 import type { AppLocale } from '@booking-app/i18n';
-
-/**
- * Surfaces actually translated to English — the card must never promise
- * "available in English" on a page that isn't (pro dashboard, admin, auth,
- * blog…). ALLOWLIST on purpose: a new page is excluded until its i18n phase
- * lands and it gets added here.
- */
-const TRANSLATED_PREFIXES = ['/p/', '/reservation/', '/avis/'];
-function isTranslatedSurface(pathname: string): boolean {
-  if (pathname === '/') return true;
-  return TRANSLATED_PREFIXES.some((p) => pathname.startsWith(p));
-}
+// Shared allowlist of translated surfaces — same source as the switcher and
+// the /en link prefixing, so the card can never drift from reality.
+import { localizedPath, isTranslatedSurface } from '@/lib/localizedPath';
 
 /**
  * Small card PROPOSING English when the browser prefers it — detection never
@@ -68,7 +59,15 @@ export function LanguageSuggestionBanner() {
   const choose = (next: AppLocale) => {
     document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000; samesite=lax`;
     setVisible(false);
-    if (next !== locale) window.location.reload();
+    if (next === locale) return;
+    // Prefer the language-specific URL (/en/...) so the choice is visible,
+    // shareable and indexable; plain reload elsewhere.
+    const here = window.location.pathname + window.location.search + window.location.hash;
+    if (isTranslatedSurface(window.location.pathname)) {
+      window.location.assign(localizedPath(here, next));
+    } else {
+      window.location.reload();
+    }
   };
 
   if (!visible) return null;

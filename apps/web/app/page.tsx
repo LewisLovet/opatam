@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { articleRepository } from '@booking-app/firebase';
 import LandingPage from './HomePage';
 import type { ArticleCardData } from './blog/components/ArticleCard';
@@ -7,44 +8,72 @@ import type { ArticleCardData } from './blog/components/ArticleCard';
 // rare and ISR keeps Firestore reads tiny.
 export const revalidate = 1800;
 
-export const metadata: Metadata = {
-  title: 'Opatam — Réservation en ligne pour professionnels | Sans commission',
-  description:
-    'Opatam est la plateforme de réservation en ligne sans commission pour les professionnels de la beauté, bien-être, coaching et services. Agenda en ligne, rappels automatiques, page de réservation. Essai gratuit.',
-  keywords: [
-    'réservation en ligne',
-    'prise de rendez-vous',
-    'agenda professionnel',
-    'logiciel de réservation',
-    'booking en ligne',
-    'sans commission',
-    'coiffeur',
-    'esthéticienne',
-    'massage',
-    'coaching',
-  ],
-  openGraph: {
-    title: 'Opatam — Réservation en ligne sans commission',
-    description:
-      'Gérez vos rendez-vous en ligne, attirez de nouveaux clients et développez votre activité. 0% de commission. Essai gratuit.',
-    url: 'https://opatam.com',
-    type: 'website',
-    locale: 'fr_FR',
-    siteName: 'Opatam',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Opatam — Réservation en ligne sans commission',
-    description:
-      'Gérez vos rendez-vous en ligne, attirez de nouveaux clients et développez votre activité. 0% de commission.',
-  },
-  alternates: {
-    canonical: 'https://opatam.com',
-  },
+const BASE_URL = 'https://opatam.com';
+// hreflang pair — declared on BOTH versions so Google links them and serves
+// the right language. x-default = French (the historical, primary version).
+const LANGUAGE_ALTERNATES = {
+  fr: BASE_URL,
+  en: `${BASE_URL}/en`,
+  'x-default': BASE_URL,
 };
 
-// Organization + SoftwareApplication + SearchAction structured data
-const jsonLd = {
+// Serves both / (fr) and /en (re-export, locale set by middleware.ts).
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = await getTranslations('seo.home');
+  const canonical = locale === 'en' ? `${BASE_URL}/en` : BASE_URL;
+
+  return {
+    // absolute: the title already carries the brand — and the layout's
+    // `%s | OPATAM` template applies to /en (child segment) but not to /,
+    // so a plain string would render differently on the two URLs.
+    title: { absolute: t('title') },
+    description: t('description'),
+    // Keywords meta is FR-only legacy (ignored by Google, kept for parity
+    // with the historical page).
+    ...(locale === 'fr' && {
+      keywords: [
+        'réservation en ligne',
+        'prise de rendez-vous',
+        'agenda professionnel',
+        'logiciel de réservation',
+        'booking en ligne',
+        'sans commission',
+        'coiffeur',
+        'esthéticienne',
+        'massage',
+        'coaching',
+      ],
+    }),
+    openGraph: {
+      title: t('ogTitle'),
+      description: t('ogDescription'),
+      url: canonical,
+      type: 'website',
+      locale: locale === 'en' ? 'en_GB' : 'fr_FR',
+      siteName: 'Opatam',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: t('ogTitle'),
+      description: t('ogDescription'),
+    },
+    alternates: {
+      canonical,
+      languages: LANGUAGE_ALTERNATES,
+    },
+  };
+}
+
+// Organization + SoftwareApplication + SearchAction structured data.
+// Built per locale: org description + FAQ follow the page language (the FAQ
+// text comes straight from the home dictionary so it never drifts from the
+// visible FAQ section).
+function buildJsonLd(
+  orgDescription: string,
+  faqItems: { question: string; answer: string }[],
+) {
+  return {
   '@context': 'https://schema.org',
   '@graph': [
     {
@@ -52,7 +81,7 @@ const jsonLd = {
       name: 'Opatam',
       url: 'https://opatam.com',
       logo: 'https://opatam.com/logo.png',
-      description: 'Plateforme de réservation en ligne sans commission pour les professionnels de services.',
+      description: orgDescription,
       sameAs: [
         'https://www.instagram.com/opatam_app',
         'https://www.tiktok.com/@opatam_app',
@@ -85,45 +114,26 @@ const jsonLd = {
     },
     {
       '@type': 'FAQPage',
-      mainEntity: [
-        {
-          '@type': 'Question',
-          name: 'Comment fonctionne Opatam ?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Créez votre page de réservation en 5 minutes. Vos clients réservent en ligne 24h/24. Vous recevez des rappels automatiques et gérez votre agenda depuis votre téléphone.',
-          },
+      mainEntity: faqItems.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.answer,
         },
-        {
-          '@type': 'Question',
-          name: 'Est-ce qu\'Opatam prend une commission ?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Non, Opatam ne prend aucune commission sur vos réservations. Vous payez un abonnement fixe à partir de 19,90€/mois.',
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'Quels professionnels peuvent utiliser Opatam ?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Opatam est conçu pour tous les professionnels de services : coiffeurs, esthéticiennes, masseurs, coachs, consultants, artisans, formateurs et plus de 15 secteurs d\'activité.',
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'Y a-t-il un essai gratuit ?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Oui, vous bénéficiez d\'un essai gratuit sans carte bancaire. Vous pouvez tester toutes les fonctionnalités avant de vous engager.',
-          },
-        },
-      ],
+      })),
     },
   ],
-};
+  };
+}
 
 export default async function Page() {
+  const tSeo = await getTranslations('seo.home');
+  const tFaq = await getTranslations('home.faq');
+  const jsonLd = buildJsonLd(
+    tSeo('orgDescription'),
+    tFaq.raw('items') as { question: string; answer: string }[],
+  );
   // Tutorials block on the homepage — pulled from the blog with category
   // 'tutoriels'. Tolerant: an empty list (no tutorial yet, or Firestore
   // unavailable) just hides the section, never breaks the landing.

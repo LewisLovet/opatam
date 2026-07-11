@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
+import { localizedPath } from '@/lib/localizedPath';
 import { Button } from '@/components/ui/Button';
 
 interface MobileBookingBarProps {
@@ -49,7 +50,7 @@ export function MobileBookingBar({ slug, minPrice, businessName }: MobileBooking
             </div>
 
             {/* CTA Button */}
-            <Link href={`/p/${slug}/reserver`}>
+            <Link href={localizedPath(`/p/${slug}/reserver`, locale)}>
               <Button size="lg" className="px-8 font-semibold">
                 {t('mobileBar.book')}
               </Button>

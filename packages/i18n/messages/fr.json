@@ -48,6 +48,40 @@
     "read": "Lire",
     "new": "Nouveau"
   },
+  "seo": {
+    "home": {
+      "title": "Opatam — Réservation en ligne pour professionnels | Sans commission",
+      "description": "Opatam est la plateforme de réservation en ligne sans commission pour les professionnels de la beauté, bien-être, coaching et services. Agenda en ligne, rappels automatiques, page de réservation. Essai gratuit.",
+      "ogTitle": "Opatam — Réservation en ligne sans commission",
+      "ogDescription": "Gérez vos rendez-vous en ligne, attirez de nouveaux clients et développez votre activité. 0% de commission. Essai gratuit.",
+      "orgDescription": "Plateforme de réservation en ligne sans commission pour les professionnels de services."
+    },
+    "booking": {
+      "title": "Réserver chez {businessName}",
+      "description": "Réservez votre rendez-vous chez {businessName} - {category}",
+      "demoTitle": "Demo — Réserver chez Studio Beauté Élégance",
+      "demoDescription": "Testez le parcours de réservation OPATAM avec cette boutique de démonstration."
+    },
+    "provider": {
+      "demoTitle": "Demo — Studio Beauté Élégance",
+      "demoDescription": "Découvrez à quoi ressemble une page de réservation OPATAM. Exemple avec un salon de coiffure et esthétique.",
+      "notFound": "Prestataire non trouvé",
+      "inCity": " à {city}",
+      "fallbackDescription": "Réservez vos rendez-vous chez {businessName}{cityPart} — {category}. Prise de RDV en ligne sur Opatam."
+    },
+    "confirmation": {
+      "title": "Réservation confirmée",
+      "description": "Votre réservation a bien été enregistrée"
+    },
+    "cancel": {
+      "title": "Annuler votre rendez-vous",
+      "description": "Annulez votre rendez-vous en quelques clics"
+    },
+    "review": {
+      "title": "Donner votre avis",
+      "description": "Partagez votre expérience et aidez les autres clients"
+    }
+  },
   "consent": {
     "title": "Aidez-nous à faire grandir Opatam",
     "body": "En acceptant les cookies de mesure, vous nous aidez à savoir ce qui vous a amené ici et à mieux investir dans nos campagnes Instagram et Facebook. Refuser n'a aucun impact sur votre expérience.",
@@ -87,10 +121,22 @@
     },
     "stats": {
       "items": [
-        { "value": "15+", "label": "Secteurs d'activité" },
-        { "value": "24/7", "label": "Réservation en ligne" },
-        { "value": "0%", "label": "Commission" },
-        { "value": "5 min", "label": "Pour démarrer" }
+        {
+          "value": "15+",
+          "label": "Secteurs d'activité"
+        },
+        {
+          "value": "24/7",
+          "label": "Réservation en ligne"
+        },
+        {
+          "value": "0%",
+          "label": "Commission"
+        },
+        {
+          "value": "5 min",
+          "label": "Pour démarrer"
+        }
       ]
     },
     "features": {
@@ -118,9 +164,19 @@
     "mockups": {
       "myAgenda": "Mon agenda",
       "weekOf": "Semaine du 3 février",
-      "days": ["Lun", "Mar", "Mer", "Jeu", "Ven"],
+      "days": [
+        "Lun",
+        "Mar",
+        "Mer",
+        "Jeu",
+        "Ven"
+      ],
       "chooseService": "Choisir une prestation",
-      "services": ["Coupe femme — 35€", "Brushing — 25€", "Coloration — 55€"],
+      "services": [
+        "Coupe femme — 35€",
+        "Brushing — 25€",
+        "Coloration — 55€"
+      ],
       "book": "Réserver",
       "today": "Aujourd'hui",
       "todayCount": "4 RDV",
@@ -129,39 +185,101 @@
       "newBookingDetail": "Alice M. — Coupe + Brushing — 14h00",
       "myTeam": "Mon équipe",
       "teamMembers": [
-        { "name": "Marie D.", "role": "Coiffeuse", "rdv": "6 RDV aujourd'hui" },
-        { "name": "Julie K.", "role": "Coloriste", "rdv": "4 RDV aujourd'hui" },
-        { "name": "Thomas R.", "role": "Barbier", "rdv": "5 RDV aujourd'hui" }
+        {
+          "name": "Marie D.",
+          "role": "Coiffeuse",
+          "rdv": "6 RDV aujourd'hui"
+        },
+        {
+          "name": "Julie K.",
+          "role": "Coloriste",
+          "rdv": "4 RDV aujourd'hui"
+        },
+        {
+          "name": "Thomas R.",
+          "role": "Barbier",
+          "rdv": "5 RDV aujourd'hui"
+        }
       ],
       "sampleBookings": [
-        { "time": "10:00", "name": "Marie L.", "service": "Brushing" },
-        { "time": "11:30", "name": "Thomas R.", "service": "Barbe" }
+        {
+          "time": "10:00",
+          "name": "Marie L.",
+          "service": "Brushing"
+        },
+        {
+          "time": "11:30",
+          "name": "Thomas R.",
+          "service": "Barbe"
+        }
       ]
     },
     "secondaryFeatures": {
       "title": "Et tout le reste, déjà inclus",
       "subtitle": "Pas de modules à débloquer, pas d'options payantes cachées. Ce que vous voyez, c'est ce que vous avez.",
       "items": [
-        { "title": "Votre vitrine en ligne", "description": "Une vraie page pro avec vos prestations, vos avis et vos photos — partageable en un lien" },
-        { "title": "QR Code à afficher", "description": "Un QR Code à coller sur votre comptoir ou sur vos cartes. Vos clientes scannent, elles réservent" },
-        { "title": "Plus jamais d'oubli", "description": "Rappel automatique 24h et 2h avant chaque rendez-vous. Vos no-shows baissent, votre journée tient" },
-        { "title": "Vos chiffres en clair", "description": "Réservations, vues de votre page, activité de la semaine — tout sur un seul écran, mis à jour en direct" },
-        { "title": "Plusieurs adresses, un agenda", "description": "Salon, domicile, déplacement — jusqu'à 10 lieux avec des disponibilités différentes pour chacun" },
-        { "title": "Le récap de demain, ce soir", "description": "Chaque soir, vous recevez par email l'agenda du lendemain. Plus de surprise au réveil" },
-        { "title": "L'app iOS et Android", "description": "Votre agenda dans votre poche, notifs en temps réel à chaque réservation" },
-        { "title": "Hébergé en Europe", "description": "Conforme RGPD, données hébergées en France. Vous restez propriétaire de tout" }
+        {
+          "title": "Votre vitrine en ligne",
+          "description": "Une vraie page pro avec vos prestations, vos avis et vos photos — partageable en un lien"
+        },
+        {
+          "title": "QR Code à afficher",
+          "description": "Un QR Code à coller sur votre comptoir ou sur vos cartes. Vos clientes scannent, elles réservent"
+        },
+        {
+          "title": "Plus jamais d'oubli",
+          "description": "Rappel automatique 24h et 2h avant chaque rendez-vous. Vos no-shows baissent, votre journée tient"
+        },
+        {
+          "title": "Vos chiffres en clair",
+          "description": "Réservations, vues de votre page, activité de la semaine — tout sur un seul écran, mis à jour en direct"
+        },
+        {
+          "title": "Plusieurs adresses, un agenda",
+          "description": "Salon, domicile, déplacement — jusqu'à 10 lieux avec des disponibilités différentes pour chacun"
+        },
+        {
+          "title": "Le récap de demain, ce soir",
+          "description": "Chaque soir, vous recevez par email l'agenda du lendemain. Plus de surprise au réveil"
+        },
+        {
+          "title": "L'app iOS et Android",
+          "description": "Votre agenda dans votre poche, notifs en temps réel à chaque réservation"
+        },
+        {
+          "title": "Hébergé en Europe",
+          "description": "Conforme RGPD, données hébergées en France. Vous restez propriétaire de tout"
+        }
       ]
     },
     "sectors": {
       "title": "Pensé pour les indépendants. Tous les indépendants.",
       "subtitle": "De la coiffeuse à domicile au tatoueur de studio, du coach sportif au thérapeute — {app} s'adapte à votre métier, pas l'inverse.",
       "items": [
-        { "title": "Beauté & Esthétique", "examples": "Coiffeurs, esthéticiennes, barbiers, prothésistes ongulaires" },
-        { "title": "Bien-être", "examples": "Masseurs, sophrologues, naturopathes, ostéopathes" },
-        { "title": "Sport & Coaching", "examples": "Coachs sportifs, personal trainers, salles de sport" },
-        { "title": "Coaching", "examples": "Coachs de vie, thérapeutes, consultants en développement" },
-        { "title": "Artisans", "examples": "Plombiers, électriciens, serruriers, peintres" },
-        { "title": "Audiovisuel", "examples": "Photographes, vidéastes, créateurs de contenu" }
+        {
+          "title": "Beauté & Esthétique",
+          "examples": "Coiffeurs, esthéticiennes, barbiers, prothésistes ongulaires"
+        },
+        {
+          "title": "Bien-être",
+          "examples": "Masseurs, sophrologues, naturopathes, ostéopathes"
+        },
+        {
+          "title": "Sport & Coaching",
+          "examples": "Coachs sportifs, personal trainers, salles de sport"
+        },
+        {
+          "title": "Coaching",
+          "examples": "Coachs de vie, thérapeutes, consultants en développement"
+        },
+        {
+          "title": "Artisans",
+          "examples": "Plombiers, électriciens, serruriers, peintres"
+        },
+        {
+          "title": "Audiovisuel",
+          "examples": "Photographes, vidéastes, créateurs de contenu"
+        }
       ]
     },
     "testimonials": {
@@ -196,13 +314,41 @@
       "criterion": "Critère",
       "others": "Autres applications",
       "rows": [
-        { "label": "Tarif mensuel", "opatam": "19,90€", "others": "De 0€* à 90€/mois" },
-        { "label": "Commissions sur vos réservations", "opatam": "0%", "others": "Jusqu'à 20% ou 1€ par RDV" },
-        { "label": "Période d'essai", "opatam": "30 jours gratuits", "others": "Souvent limitée ou absente" },
-        { "label": "Rappels automatiques", "opatam": "Inclus", "others": "Parfois en option payante" },
-        { "label": "Vitrine en ligne personnalisée", "opatam": "Inclus", "others": "Incluse mais modèles limités" },
-        { "label": "Engagement", "opatam": "Sans engagement", "others": "Variable selon l'offre" },
-        { "label": "Coût réel annuel (exemple)", "opatam": "199,00€", "others": "De 300€ à 1 080€**" }
+        {
+          "label": "Tarif mensuel",
+          "opatam": "19,90€",
+          "others": "De 0€* à 90€/mois"
+        },
+        {
+          "label": "Commissions sur vos réservations",
+          "opatam": "0%",
+          "others": "Jusqu'à 20% ou 1€ par RDV"
+        },
+        {
+          "label": "Période d'essai",
+          "opatam": "30 jours gratuits",
+          "others": "Souvent limitée ou absente"
+        },
+        {
+          "label": "Rappels automatiques",
+          "opatam": "Inclus",
+          "others": "Parfois en option payante"
+        },
+        {
+          "label": "Vitrine en ligne personnalisée",
+          "opatam": "Inclus",
+          "others": "Incluse mais modèles limités"
+        },
+        {
+          "label": "Engagement",
+          "opatam": "Sans engagement",
+          "others": "Variable selon l'offre"
+        },
+        {
+          "label": "Coût réel annuel (exemple)",
+          "opatam": "199,00€",
+          "others": "De 300€ à 1 080€**"
+        }
       ],
       "footnote": "* Les offres « gratuites » incluent généralement des commissions prélevées sur chaque réservation, des fonctionnalités limitées ou du support restreint. ** Estimation basée sur un tarif moyen de 25€ à 90€/mois, hors commissions additionnelles."
     },

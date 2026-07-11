@@ -5,6 +5,10 @@ import { ARTICLE_CATEGORIES, CATEGORIES } from '@booking-app/shared';
 const BASE_URL = 'https://opatam.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // fr ↔ en pairing declared on every entry that exists in both languages
+  // (Google reads hreflang from the sitemap too, not only from <link> tags).
+  const homeLanguages = { fr: BASE_URL, en: `${BASE_URL}/en` };
+
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -12,6 +16,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1,
+      alternates: { languages: homeLanguages },
+    },
+    // English homepage (translated chrome; provider content stays FR).
+    {
+      url: `${BASE_URL}/en`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+      alternates: { languages: homeLanguages },
     },
     {
       url: `${BASE_URL}/telechargement`,
@@ -72,12 +85,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const providers = await providerRepository.getPublished();
     providerPages = providers
       .filter((p) => p.slug)
-      .map((p) => ({
-        url: `${BASE_URL}/p/${p.slug}`,
-        lastModified: p.updatedAt instanceof Date ? p.updatedAt : new Date(),
-        changeFrequency: 'weekly' as const,
-        priority: 0.8,
-      }));
+      .flatMap((p) => {
+        const languages = {
+          fr: `${BASE_URL}/p/${p.slug}`,
+          en: `${BASE_URL}/en/p/${p.slug}`,
+        };
+        const lastModified = p.updatedAt instanceof Date ? p.updatedAt : new Date();
+        return [
+          {
+            url: languages.fr,
+            lastModified,
+            changeFrequency: 'weekly' as const,
+            priority: 0.8,
+            alternates: { languages },
+          },
+          {
+            url: languages.en,
+            lastModified,
+            changeFrequency: 'weekly' as const,
+            priority: 0.6,
+            alternates: { languages },
+          },
+        ];
+      });
 
     const populated = new Set(providers.map((p) => p.category).filter(Boolean));
     categoryPages = CATEGORIES.filter((cat) => populated.has(cat.id)).map((cat) => ({

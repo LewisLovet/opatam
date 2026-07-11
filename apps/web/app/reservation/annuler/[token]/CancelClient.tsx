@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
+import { localizedPath } from '@/lib/localizedPath';
 import {
   XCircle,
   AlertTriangle,
@@ -158,7 +159,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             {t('notFoundText')}
           </p>
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
             {tCommon('backHome')}
@@ -189,7 +190,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             </p>
           )}
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
             {tCommon('backHome')}
@@ -215,7 +216,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             {t('pastText')}
           </p>
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
             {tCommon('backHome')}
@@ -261,7 +262,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
           {booking && (
             <div className="space-y-3">
               <Link
-                href={`/p/${booking.providerName.toLowerCase().replace(/\s+/g, '-')}`}
+                href={localizedPath(`/p/${booking.providerName.toLowerCase().replace(/\s+/g, '-')}`, locale)}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
               >
                 {t('rebook')}
@@ -269,7 +270,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
               </Link>
               <div>
                 <Link
-                  href="/"
+                  href={localizedPath('/', locale)}
                   className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
                   {t('orBackHome')}
@@ -469,7 +470,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
             )}
           </button>
           <Link
-            href="/"
+            href={localizedPath('/', locale)}
             className="flex items-center justify-center w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors"
           >
             {tCommon('cancelAndHome')}

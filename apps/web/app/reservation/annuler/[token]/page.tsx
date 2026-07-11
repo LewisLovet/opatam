@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { bookingRepository } from '@booking-app/firebase';
 import { CancelClient } from './CancelClient';
 
@@ -6,10 +7,10 @@ interface PageProps {
   params: Promise<{ token: string }>;
 }
 
-export const metadata: Metadata = {
-  title: 'Annuler votre rendez-vous',
-  description: 'Annulez votre rendez-vous en quelques clics',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('seo.cancel');
+  return { title: t('title'), description: t('description') };
+}
 
 export default async function CancelPage({ params }: PageProps) {
   const { token } = await params;

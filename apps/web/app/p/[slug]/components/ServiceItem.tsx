@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
+import { localizedPath } from '@/lib/localizedPath';
 import { Clock, ArrowRight, X } from 'lucide-react';
 import {
   getServiceMinDuration,
@@ -104,11 +105,11 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
   return (
     <Fragment>
       <Link
-        href={`/p/${slug}/reserver?service=${service.id}`}
+        href={localizedPath(`/p/${slug}/reserver?service=${service.id}`, locale)}
         className="block group"
         onClick={onBookingClick ? (e) => {
           e.preventDefault();
-          onBookingClick(`/p/${slug}/reserver?service=${service.id}`);
+          onBookingClick(localizedPath(`/p/${slug}/reserver?service=${service.id}`, locale));
         } : undefined}
       >
         <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.01] hover:border-primary-200 dark:hover:border-primary-800">

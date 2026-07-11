@@ -48,6 +48,40 @@
     "read": "Read",
     "new": "New"
   },
+  "seo": {
+    "home": {
+      "title": "Opatam — Online booking for professionals | Commission-free",
+      "description": "Opatam is the commission-free online booking platform for beauty, wellness, coaching and service professionals. Online calendar, automatic reminders, booking page. Free trial.",
+      "ogTitle": "Opatam — Commission-free online booking",
+      "ogDescription": "Manage your appointments online, attract new clients and grow your business. 0% commission. Free trial.",
+      "orgDescription": "Commission-free online booking platform for service professionals."
+    },
+    "booking": {
+      "title": "Book at {businessName}",
+      "description": "Book your appointment at {businessName} - {category}",
+      "demoTitle": "Demo — Book at Studio Beauté Élégance",
+      "demoDescription": "Try the OPATAM booking journey with this demo shop."
+    },
+    "provider": {
+      "demoTitle": "Demo — Studio Beauté Élégance",
+      "demoDescription": "See what an OPATAM booking page looks like. Example with a hair and beauty salon.",
+      "notFound": "Provider not found",
+      "inCity": " in {city}",
+      "fallbackDescription": "Book your appointments at {businessName}{cityPart} — {category}. Online booking on Opatam."
+    },
+    "confirmation": {
+      "title": "Booking confirmed",
+      "description": "Your booking has been recorded"
+    },
+    "cancel": {
+      "title": "Cancel your appointment",
+      "description": "Cancel your appointment in a few clicks"
+    },
+    "review": {
+      "title": "Leave a review",
+      "description": "Share your experience and help other clients"
+    }
+  },
   "consent": {
     "title": "Help us grow Opatam",
     "body": "By accepting measurement cookies, you help us understand what brought you here and invest better in our Instagram and Facebook campaigns. Refusing has no impact on your experience.",
@@ -87,10 +121,22 @@
     },
     "stats": {
       "items": [
-        { "value": "15+", "label": "Industries served" },
-        { "value": "24/7", "label": "Online booking" },
-        { "value": "0%", "label": "Commission" },
-        { "value": "5 min", "label": "To get started" }
+        {
+          "value": "15+",
+          "label": "Industries served"
+        },
+        {
+          "value": "24/7",
+          "label": "Online booking"
+        },
+        {
+          "value": "0%",
+          "label": "Commission"
+        },
+        {
+          "value": "5 min",
+          "label": "To get started"
+        }
       ]
     },
     "features": {
@@ -118,9 +164,19 @@
     "mockups": {
       "myAgenda": "My calendar",
       "weekOf": "Week of February 3rd",
-      "days": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      "days": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri"
+      ],
       "chooseService": "Choose a service",
-      "services": ["Women's haircut — €35", "Blow-dry — €25", "Coloring — €55"],
+      "services": [
+        "Women's haircut — €35",
+        "Blow-dry — €25",
+        "Coloring — €55"
+      ],
       "book": "Book",
       "today": "Today",
       "todayCount": "4 appts",
@@ -129,39 +185,101 @@
       "newBookingDetail": "Alice M. — Cut + Blow-dry — 2:00 PM",
       "myTeam": "My team",
       "teamMembers": [
-        { "name": "Marie D.", "role": "Hairdresser", "rdv": "6 appts today" },
-        { "name": "Julie K.", "role": "Colorist", "rdv": "4 appts today" },
-        { "name": "Thomas R.", "role": "Barber", "rdv": "5 appts today" }
+        {
+          "name": "Marie D.",
+          "role": "Hairdresser",
+          "rdv": "6 appts today"
+        },
+        {
+          "name": "Julie K.",
+          "role": "Colorist",
+          "rdv": "4 appts today"
+        },
+        {
+          "name": "Thomas R.",
+          "role": "Barber",
+          "rdv": "5 appts today"
+        }
       ],
       "sampleBookings": [
-        { "time": "10:00", "name": "Marie L.", "service": "Blow-dry" },
-        { "time": "11:30", "name": "Thomas R.", "service": "Beard trim" }
+        {
+          "time": "10:00",
+          "name": "Marie L.",
+          "service": "Blow-dry"
+        },
+        {
+          "time": "11:30",
+          "name": "Thomas R.",
+          "service": "Beard trim"
+        }
       ]
     },
     "secondaryFeatures": {
       "title": "And everything else, already included",
       "subtitle": "No modules to unlock, no hidden paid options. What you see is what you get.",
       "items": [
-        { "title": "Your online storefront", "description": "A real professional page with your services, reviews and photos — shareable with one link" },
-        { "title": "QR code to display", "description": "A QR code for your counter or business cards. Your clients scan it, they book" },
-        { "title": "No more no-shows", "description": "Automatic reminders 24h and 2h before every appointment. Fewer no-shows, a schedule that holds" },
-        { "title": "Your numbers, made clear", "description": "Bookings, page views, weekly activity — all on one screen, updated live" },
-        { "title": "Several locations, one calendar", "description": "Salon, home visits, on the go — up to 10 locations, each with its own availability" },
-        { "title": "Tomorrow's recap, tonight", "description": "Every evening, you get tomorrow's schedule by email. No surprises when you wake up" },
-        { "title": "iOS and Android app", "description": "Your schedule in your pocket, real-time notifications for every booking" },
-        { "title": "Hosted in Europe", "description": "GDPR compliant, data hosted in France. You remain the owner of everything" }
+        {
+          "title": "Your online storefront",
+          "description": "A real professional page with your services, reviews and photos — shareable with one link"
+        },
+        {
+          "title": "QR code to display",
+          "description": "A QR code for your counter or business cards. Your clients scan it, they book"
+        },
+        {
+          "title": "No more no-shows",
+          "description": "Automatic reminders 24h and 2h before every appointment. Fewer no-shows, a schedule that holds"
+        },
+        {
+          "title": "Your numbers, made clear",
+          "description": "Bookings, page views, weekly activity — all on one screen, updated live"
+        },
+        {
+          "title": "Several locations, one calendar",
+          "description": "Salon, home visits, on the go — up to 10 locations, each with its own availability"
+        },
+        {
+          "title": "Tomorrow's recap, tonight",
+          "description": "Every evening, you get tomorrow's schedule by email. No surprises when you wake up"
+        },
+        {
+          "title": "iOS and Android app",
+          "description": "Your schedule in your pocket, real-time notifications for every booking"
+        },
+        {
+          "title": "Hosted in Europe",
+          "description": "GDPR compliant, data hosted in France. You remain the owner of everything"
+        }
       ]
     },
     "sectors": {
       "title": "Built for independents. All independents.",
       "subtitle": "From the mobile hairdresser to the studio tattoo artist, from the personal trainer to the therapist — {app} adapts to your craft, not the other way around.",
       "items": [
-        { "title": "Beauty & Aesthetics", "examples": "Hairdressers, beauticians, barbers, nail technicians" },
-        { "title": "Wellness", "examples": "Massage therapists, sophrologists, naturopaths, osteopaths" },
-        { "title": "Sports & Coaching", "examples": "Sports coaches, personal trainers, gyms" },
-        { "title": "Coaching", "examples": "Life coaches, therapists, development consultants" },
-        { "title": "Tradespeople", "examples": "Plumbers, electricians, locksmiths, painters" },
-        { "title": "Audiovisual", "examples": "Photographers, videographers, content creators" }
+        {
+          "title": "Beauty & Aesthetics",
+          "examples": "Hairdressers, beauticians, barbers, nail technicians"
+        },
+        {
+          "title": "Wellness",
+          "examples": "Massage therapists, sophrologists, naturopaths, osteopaths"
+        },
+        {
+          "title": "Sports & Coaching",
+          "examples": "Sports coaches, personal trainers, gyms"
+        },
+        {
+          "title": "Coaching",
+          "examples": "Life coaches, therapists, development consultants"
+        },
+        {
+          "title": "Tradespeople",
+          "examples": "Plumbers, electricians, locksmiths, painters"
+        },
+        {
+          "title": "Audiovisual",
+          "examples": "Photographers, videographers, content creators"
+        }
       ]
     },
     "testimonials": {
@@ -196,13 +314,41 @@
       "criterion": "Criteria",
       "others": "Other apps",
       "rows": [
-        { "label": "Monthly price", "opatam": "€19.90", "others": "From €0* to €90/mo" },
-        { "label": "Commission on your bookings", "opatam": "0%", "others": "Up to 20% or €1 per appointment" },
-        { "label": "Free trial", "opatam": "30 days free", "others": "Often limited or missing" },
-        { "label": "Automatic reminders", "opatam": "Included", "others": "Sometimes a paid option" },
-        { "label": "Personalized online storefront", "opatam": "Included", "others": "Included but limited templates" },
-        { "label": "Commitment", "opatam": "None", "others": "Varies by plan" },
-        { "label": "Real yearly cost (example)", "opatam": "€199.00", "others": "From €300 to €1,080**" }
+        {
+          "label": "Monthly price",
+          "opatam": "€19.90",
+          "others": "From €0* to €90/mo"
+        },
+        {
+          "label": "Commission on your bookings",
+          "opatam": "0%",
+          "others": "Up to 20% or €1 per appointment"
+        },
+        {
+          "label": "Free trial",
+          "opatam": "30 days free",
+          "others": "Often limited or missing"
+        },
+        {
+          "label": "Automatic reminders",
+          "opatam": "Included",
+          "others": "Sometimes a paid option"
+        },
+        {
+          "label": "Personalized online storefront",
+          "opatam": "Included",
+          "others": "Included but limited templates"
+        },
+        {
+          "label": "Commitment",
+          "opatam": "None",
+          "others": "Varies by plan"
+        },
+        {
+          "label": "Real yearly cost (example)",
+          "opatam": "€199.00",
+          "others": "From €300 to €1,080**"
+        }
       ],
       "footnote": "* \"Free\" plans usually include commissions taken on every booking, limited features or restricted support. ** Estimate based on an average price of €25 to €90/month, excluding additional commissions."
     },

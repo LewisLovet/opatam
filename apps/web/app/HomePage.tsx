@@ -36,6 +36,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { PlayStoreWaitlistModal } from '@/components/common/PlayStoreWaitlistModal';
+import { localizedPath } from '@/lib/localizedPath';
 import { SocialLinks } from '@/components/common/SocialLinks';
 import { TutorialsSection } from '@/components/home/TutorialsSection';
 import { HowItWorksAnimated } from '@/components/home/HowItWorksAnimated';
@@ -228,7 +229,7 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
                   {t('hero.ctaCreate')}
                 </Link>
                 <Link
-                  href="/p/demo"
+                  href={localizedPath('/p/demo', locale)}
                   className="inline-flex items-center justify-center border border-white/40 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 hover:border-white/70 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-200 w-full sm:w-auto"
                 >
                   {t('hero.ctaDemo')}

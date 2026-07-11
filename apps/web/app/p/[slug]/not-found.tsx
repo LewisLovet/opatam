@@ -1,9 +1,11 @@
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { localizedPath } from '@/lib/localizedPath';
 import { SearchX } from 'lucide-react';
 
 export default function ProviderNotFound() {
   const t = useTranslations('provider.notFound');
+  const locale = useLocale();
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
       <div className="text-center max-w-md">
@@ -17,7 +19,7 @@ export default function ProviderNotFound() {
           {t('description')}
         </p>
         <Link
-          href="/"
+          href={localizedPath('/', locale)}
           className="inline-flex items-center justify-center px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
         >
           {t('backHome')}

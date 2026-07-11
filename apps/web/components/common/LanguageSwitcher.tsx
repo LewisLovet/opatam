@@ -3,13 +3,16 @@
 import { useLocale } from 'next-intl';
 import { Globe } from 'lucide-react';
 import { LOCALES, type AppLocale } from '@booking-app/i18n';
+import { localizedPath, isTranslatedSurface } from '@/lib/localizedPath';
 
 const LABELS: Record<AppLocale, string> = { fr: 'FR', en: 'EN' };
 
 /**
  * FR/EN pill switcher. Stores the explicit choice in the `NEXT_LOCALE`
- * cookie (read by i18n/request.ts) and reloads so every server component
- * re-renders in the new language. Cookie choice beats browser detection.
+ * cookie (read by i18n/request.ts), then NAVIGATES to the same page in the
+ * target language: on surfaces with an English URL (/en/...), switching
+ * changes the URL — the language lives in the address, shareable and
+ * indexable. Elsewhere the cookie alone drives it (plain reload).
  */
 export function LanguageSwitcher({ className = '' }: { className?: string }) {
   const locale = useLocale();
@@ -17,7 +20,12 @@ export function LanguageSwitcher({ className = '' }: { className?: string }) {
   const switchTo = (next: AppLocale) => {
     if (next === locale) return;
     document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000; samesite=lax`;
-    window.location.reload();
+    const here = window.location.pathname + window.location.search + window.location.hash;
+    if (isTranslatedSurface(window.location.pathname)) {
+      window.location.assign(localizedPath(here, next));
+    } else {
+      window.location.reload();
+    }
   };
 
   return (
