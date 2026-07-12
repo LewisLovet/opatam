@@ -7,6 +7,7 @@ import { reauthenticateUser, updateUserPassword } from '@booking-app/firebase';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Image,
@@ -19,6 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, EmptyState, Input, Text, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
+import { setAppLocale, type AppLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 
 // Delete account confirmation modal
@@ -38,6 +40,7 @@ function DeleteAccountModal({
   spacing: any;
 }) {
   const [password, setPassword] = useState('');
+  const { t } = useTranslation();
 
   if (!visible) return null;
 
@@ -48,15 +51,15 @@ function DeleteAccountModal({
           <Ionicons name="warning-outline" size={32} color="#dc2626" />
         </View>
         <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>
-          Supprimer votre compte
+          {t('profile.delete.title')}
         </Text>
         <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.sm }}>
-          Cette action est irréversible. Toutes vos données seront supprimées définitivement.
+          {t('profile.delete.message')}
         </Text>
         <View style={{ marginTop: spacing.lg, width: '100%' }}>
           <Input
-            label="Mot de passe"
-            placeholder="Entrez votre mot de passe"
+            label={t('profile.delete.passwordLabel')}
+            placeholder={t('profile.delete.passwordPlaceholder')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -69,18 +72,16 @@ function DeleteAccountModal({
             disabled={isDeleting}
             style={[deleteStyles.cancelButton, { borderColor: colors.border }]}
           >
-            <Text variant="body" style={{ fontWeight: '600' }}>Annuler</Text>
+            <Text variant="body" style={{ fontWeight: '600' }}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={() => onConfirm(password)}
             disabled={isDeleting || !password}
             style={[deleteStyles.deleteButton, { opacity: (!password || isDeleting) ? 0.5 : 1 }]}
           >
-            {isDeleting ? (
-              <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>Suppression...</Text>
-            ) : (
-              <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>Supprimer</Text>
-            )}
+            <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+              {isDeleting ? t('profile.delete.deleting') : t('profile.delete.confirm')}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -144,6 +145,7 @@ function ChangePasswordModal({
   spacing: any;
 }) {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -157,11 +159,11 @@ function ChangePasswordModal({
 
   const handleSubmit = async () => {
     if (newPassword.length < 6) {
-      showToast({ variant: 'error', message: '6 caractères minimum' });
+      showToast({ variant: 'error', message: t('profile.password.tooShort') });
       return;
     }
     if (newPassword !== confirmPassword) {
-      showToast({ variant: 'error', message: 'Les mots de passe ne correspondent pas' });
+      showToast({ variant: 'error', message: t('profile.password.mismatch') });
       return;
     }
 
@@ -169,13 +171,13 @@ function ChangePasswordModal({
     try {
       await reauthenticateUser(currentPassword);
       await updateUserPassword(newPassword);
-      showToast({ variant: 'success', message: 'Mot de passe modifié' });
+      showToast({ variant: 'success', message: t('profile.password.success') });
       reset();
       onClose();
     } catch (error: any) {
       const msg = error.code === 'auth/wrong-password'
-        ? 'Mot de passe actuel incorrect'
-        : error.message || 'Erreur lors du changement';
+        ? t('profile.password.wrongCurrent')
+        : error.message || t('profile.password.error');
       showToast({ variant: 'error', message: msg });
     } finally {
       setLoading(false);
@@ -193,28 +195,28 @@ function ChangePasswordModal({
           <Ionicons name="lock-closed-outline" size={32} color={colors.primary} />
         </View>
         <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>
-          Changer le mot de passe
+          {t('profile.password.title')}
         </Text>
         <View style={{ marginTop: spacing.lg, width: '100%', gap: spacing.sm }}>
           <Input
-            label="Mot de passe actuel"
-            placeholder="Votre mot de passe actuel"
+            label={t('profile.password.currentLabel')}
+            placeholder={t('profile.password.currentPlaceholder')}
             value={currentPassword}
             onChangeText={setCurrentPassword}
             secureTextEntry
             autoCapitalize="none"
           />
           <Input
-            label="Nouveau mot de passe"
-            placeholder="6 caractères minimum"
+            label={t('profile.password.newLabel')}
+            placeholder={t('profile.password.newPlaceholder')}
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
             autoCapitalize="none"
           />
           <Input
-            label="Confirmer"
-            placeholder="Retapez le nouveau mot de passe"
+            label={t('profile.password.confirmLabel')}
+            placeholder={t('profile.password.confirmPlaceholder')}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -227,7 +229,7 @@ function ChangePasswordModal({
             disabled={loading}
             style={[deleteStyles.cancelButton, { borderColor: colors.border }]}
           >
-            <Text variant="body" style={{ fontWeight: '600' }}>Annuler</Text>
+            <Text variant="body" style={{ fontWeight: '600' }}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={handleSubmit}
@@ -235,7 +237,7 @@ function ChangePasswordModal({
             style={[deleteStyles.deleteButton, { backgroundColor: colors.primary, opacity: canSubmit ? 1 : 0.5 }]}
           >
             <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-              {loading ? 'Modification...' : 'Modifier'}
+              {loading ? t('profile.password.submitting') : t('profile.password.submit')}
             </Text>
           </Pressable>
         </View>
@@ -289,6 +291,8 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
+  const { t, i18n } = useTranslation();
+  const currentLocale: AppLocale = i18n.language === 'en' ? 'en' : 'fr';
   const { userData, isAuthenticated, signOut, deleteAccount } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -297,12 +301,12 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t('profile.logout.title'),
+      t('profile.logout.message'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Déconnecter',
+          text: t('profile.logout.confirm'),
           style: 'destructive',
           onPress: async () => {
             setIsLoggingOut(true);
@@ -312,7 +316,7 @@ export default function ProfileScreen() {
             } catch (error: any) {
               showToast({
                 variant: 'error',
-                message: error.message || 'Erreur lors de la déconnexion',
+                message: error.message || t('profile.logout.error'),
               });
             } finally {
               setIsLoggingOut(false);
@@ -332,7 +336,7 @@ export default function ProfileScreen() {
     } catch (error: any) {
       showToast({
         variant: 'error',
-        message: error.message || 'Erreur lors de la suppression',
+        message: error.message || t('profile.delete.error'),
       });
     } finally {
       setIsDeleting(false);
@@ -342,8 +346,14 @@ export default function ProfileScreen() {
   const handleNotImplemented = (feature: string) => {
     showToast({
       variant: 'info',
-      message: `${feature} bientôt disponible`,
+      message: t('profile.comingSoon', { feature }),
     });
+  };
+
+  const handleLocaleChange = (next: AppLocale) => {
+    if (next === currentLocale) return;
+    // Choix explicite : bascule immédiate + persistance AsyncStorage.
+    void setAppLocale(next);
   };
 
   // Not authenticated
@@ -352,16 +362,16 @@ export default function ProfileScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-            <Text variant="h1" style={{ color: '#FFFFFF' }}>Plus</Text>
+            <Text variant="h1" style={{ color: '#FFFFFF' }}>{t('profile.title')}</Text>
           </View>
         </View>
         <View style={[styles.content, { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }]}>
           <Card padding="lg" shadow="sm">
             <EmptyState
               icon="person-outline"
-              title="Connectez-vous"
-              description="Accédez à votre profil, vos informations et vos préférences"
-              actionLabel="Se connecter"
+              title={t('profile.notAuth.title')}
+              description={t('profile.notAuth.description')}
+              actionLabel={t('profile.notAuth.action')}
               onAction={() => router.push('/(auth)/login')}
             />
           </Card>
@@ -372,7 +382,7 @@ export default function ProfileScreen() {
               Opatam v1.2.2
             </Text>
             <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.xs }}>
-              Réservez vos rendez-vous en toute simplicité
+              {t('profile.tagline')}
             </Text>
           </View>
         </View>
@@ -393,7 +403,7 @@ export default function ProfileScreen() {
       {/* ── Branded Header ── */}
       <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-          <Text variant="h1" style={{ color: '#FFFFFF' }}>Plus</Text>
+          <Text variant="h1" style={{ color: '#FFFFFF' }}>{t('profile.title')}</Text>
         </View>
       </View>
 
@@ -422,7 +432,7 @@ export default function ProfileScreen() {
 
               {/* User details */}
               <View style={styles.userDetails}>
-                <Text variant="h3">{userData?.displayName || 'Utilisateur'}</Text>
+                <Text variant="h3">{userData?.displayName || t('profile.defaultUser')}</Text>
                 <Text variant="body" color="textSecondary" style={{ marginTop: 2 }}>
                   {userData?.email}
                 </Text>
@@ -439,55 +449,90 @@ export default function ProfileScreen() {
         {/* Menu Section */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Compte
+            {t('profile.sections.account')}
           </Text>
           <Card padding="none" shadow="sm">
             <MenuItem
               icon="person-outline"
-              label="Modifier le profil"
+              label={t('profile.menu.editProfile')}
               onPress={() => router.push('/(client)/edit-profile')}
               colors={colors}
             />
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="notifications-outline"
-              label="Notifications"
+              label={t('profile.menu.notifications')}
               onPress={() => router.push('/(client)/notification-settings')}
               colors={colors}
             />
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="lock-closed-outline"
-              label="Changer le mot de passe"
+              label={t('profile.menu.changePassword')}
               onPress={() => setShowPasswordModal(true)}
               colors={colors}
             />
           </Card>
         </View>
 
+        {/* Preferences Section — language selector (explicit choice,
+            persisted; overrides the device language, see lib/i18n.ts) */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            {t('profile.sections.preferences')}
+          </Text>
+          <Card padding="none" shadow="sm">
+            {([
+              { locale: 'fr' as AppLocale, label: t('profile.language.french') },
+              { locale: 'en' as AppLocale, label: t('profile.language.english') },
+            ]).map((option, idx) => (
+              <React.Fragment key={option.locale}>
+                {idx > 0 && <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />}
+                <Pressable
+                  onPress={() => handleLocaleChange(option.locale)}
+                  style={({ pressed }) => [
+                    styles.menuItem,
+                    { backgroundColor: pressed ? colors.surfaceSecondary : 'transparent' },
+                  ]}
+                >
+                  <View style={[styles.menuIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
+                    <Ionicons name="language-outline" size={20} color={colors.primary} />
+                  </View>
+                  <Text variant="body" style={styles.menuLabel}>
+                    {option.label}
+                  </Text>
+                  {currentLocale === option.locale && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  )}
+                </Pressable>
+              </React.Fragment>
+            ))}
+          </Card>
+        </View>
+
         {/* Support Section */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Support
+            {t('profile.sections.support')}
           </Text>
           <Card padding="none" shadow="sm">
             <MenuItem
               icon="help-circle-outline"
-              label="Aide et contact"
+              label={t('profile.menu.help')}
               onPress={() => Linking.openURL('https://opatam.com/contact')}
               colors={colors}
             />
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="document-text-outline"
-              label="Conditions d'utilisation"
+              label={t('profile.menu.terms')}
               onPress={() => Linking.openURL('https://opatam.com/cgu')}
               colors={colors}
             />
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="shield-checkmark-outline"
-              label="Politique de confidentialité"
+              label={t('profile.menu.privacy')}
               onPress={() => Linking.openURL('https://opatam.com/confidentialite')}
               colors={colors}
             />
@@ -499,7 +544,7 @@ export default function ProfileScreen() {
           <Card padding="none" shadow="sm">
             <MenuItem
               icon="log-out-outline"
-              label="Se déconnecter"
+              label={t('profile.menu.logout')}
               onPress={handleLogout}
               showArrow={false}
               danger
@@ -508,7 +553,7 @@ export default function ProfileScreen() {
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="trash-outline"
-              label="Supprimer mon compte"
+              label={t('profile.menu.deleteAccount')}
               onPress={() => setShowDeleteModal(true)}
               showArrow={false}
               danger
@@ -523,7 +568,7 @@ export default function ProfileScreen() {
             Opatam v1.0.8
           </Text>
           <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.xs }}>
-            Réservez vos rendez-vous en toute simplicité
+            {t('profile.tagline')}
           </Text>
         </View>
       </ScrollView>

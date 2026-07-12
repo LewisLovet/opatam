@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const KEYS = {
   ONBOARDING_SEEN: '@opatam/onboarding_seen',
   NEW_FEATURES_SEEN: '@opatam/new-features-seen-v1',
+  APP_LOCALE: '@opatam/app_locale',
 } as const;
 
 const OPATAM_PREFIX = '@opatam/';
@@ -63,6 +64,26 @@ export async function resetNewFeaturesSeen(): Promise<void> {
     await AsyncStorage.removeItem(KEYS.NEW_FEATURES_SEEN);
   } catch (error) {
     console.error('Error resetting new-features state:', error);
+  }
+}
+
+/**
+ * Explicit language choice ('fr' | 'en'), set from the profile screen.
+ * Absent = follow the device language (resolved in lib/i18n.ts).
+ */
+export async function getStoredLocale(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(KEYS.APP_LOCALE);
+  } catch {
+    return null;
+  }
+}
+
+export async function setStoredLocale(locale: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.APP_LOCALE, locale);
+  } catch (error) {
+    console.error('Error saving app locale:', error);
   }
 }
 

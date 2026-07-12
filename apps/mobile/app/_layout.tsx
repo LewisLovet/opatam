@@ -1,3 +1,6 @@
+// i18n en tout premier : l'instance i18next doit exister avant le rendu du
+// moindre écran (import à effet de bord, résolution de langue incluse).
+import '../lib/i18n';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

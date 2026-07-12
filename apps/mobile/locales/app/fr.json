@@ -1,0 +1,76 @@
+{
+  "common": {
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "save": "Enregistrer",
+    "back": "Retour",
+    "next": "Suivant",
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "close": "Fermer",
+    "free": "Gratuit"
+  },
+  "profile": {
+    "title": "Plus",
+    "tagline": "Réservez vos rendez-vous en toute simplicité",
+    "defaultUser": "Utilisateur",
+    "comingSoon": "{{feature}} bientôt disponible",
+    "notAuth": {
+      "title": "Connectez-vous",
+      "description": "Accédez à votre profil, vos informations et vos préférences",
+      "action": "Se connecter"
+    },
+    "sections": {
+      "account": "Compte",
+      "preferences": "Préférences",
+      "support": "Support"
+    },
+    "menu": {
+      "editProfile": "Modifier le profil",
+      "notifications": "Notifications",
+      "changePassword": "Changer le mot de passe",
+      "help": "Aide et contact",
+      "terms": "Conditions d'utilisation",
+      "privacy": "Politique de confidentialité",
+      "logout": "Se déconnecter",
+      "deleteAccount": "Supprimer mon compte"
+    },
+    "language": {
+      "title": "Langue",
+      "french": "Français",
+      "english": "English"
+    },
+    "logout": {
+      "title": "Déconnexion",
+      "message": "Êtes-vous sûr de vouloir vous déconnecter ?",
+      "confirm": "Déconnecter",
+      "error": "Erreur lors de la déconnexion"
+    },
+    "delete": {
+      "title": "Supprimer votre compte",
+      "message": "Cette action est irréversible. Toutes vos données seront supprimées définitivement.",
+      "passwordLabel": "Mot de passe",
+      "passwordPlaceholder": "Entrez votre mot de passe",
+      "deleting": "Suppression...",
+      "confirm": "Supprimer",
+      "error": "Erreur lors de la suppression"
+    },
+    "password": {
+      "title": "Changer le mot de passe",
+      "currentLabel": "Mot de passe actuel",
+      "currentPlaceholder": "Votre mot de passe actuel",
+      "newLabel": "Nouveau mot de passe",
+      "newPlaceholder": "6 caractères minimum",
+      "confirmLabel": "Confirmer",
+      "confirmPlaceholder": "Retapez le nouveau mot de passe",
+      "tooShort": "6 caractères minimum",
+      "mismatch": "Les mots de passe ne correspondent pas",
+      "success": "Mot de passe modifié",
+      "wrongCurrent": "Mot de passe actuel incorrect",
+      "error": "Erreur lors du changement",
+      "submitting": "Modification...",
+      "submit": "Modifier"
+    }
+  }
+}
