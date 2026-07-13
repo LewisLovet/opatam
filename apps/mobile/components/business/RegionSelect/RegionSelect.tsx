@@ -14,6 +14,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 
@@ -32,9 +33,10 @@ export function RegionSelect({
   value,
   regions,
   onChange,
-  placeholder = 'Choisir une région',
+  placeholder,
 }: RegionSelectProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -52,7 +54,7 @@ export function RegionSelect({
     );
   }, [regions, search]);
 
-  const displayValue = value || placeholder;
+  const displayValue = value || placeholder || t('components.regionSelect.placeholder');
 
   return (
     <>
@@ -82,7 +84,7 @@ export function RegionSelect({
         <View style={{ flex: 1, marginLeft: spacing.sm }}>
           {value && (
             <Text variant="caption" color="textMuted" style={{ fontSize: 10, marginBottom: 1 }}>
-              Région
+              {t('components.regionSelect.label')}
             </Text>
           )}
           <Text
@@ -111,7 +113,7 @@ export function RegionSelect({
         <SafeAreaView style={[styles.modal, { backgroundColor: colors.background }]}>
           {/* Header */}
           <View style={[styles.modalHeader, { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm }]}>
-            <Text variant="h3" style={{ fontWeight: '700' }}>Choisir une région</Text>
+            <Text variant="h3" style={{ fontWeight: '700' }}>{t('components.regionSelect.title')}</Text>
             <Pressable
               onPress={() => { setIsOpen(false); setSearch(''); }}
               hitSlop={12}
@@ -127,7 +129,7 @@ export function RegionSelect({
               <Ionicons name="search" size={18} color={colors.textMuted} />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Rechercher une région..."
+                placeholder={t('components.regionSelect.searchPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={search}
                 onChangeText={setSearch}
@@ -189,7 +191,7 @@ export function RegionSelect({
             }}
             ListEmptyComponent={
               <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
-                <Text variant="body" color="textMuted">Aucune région trouvée</Text>
+                <Text variant="body" color="textMuted">{t('components.regionSelect.noResults')}</Text>
               </View>
             }
           />

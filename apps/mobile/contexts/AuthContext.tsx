@@ -22,6 +22,7 @@ import * as Crypto from 'expo-crypto';
 import type { User } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { getFirebaseErrorMessage } from '../utils';
+import i18n from '../lib/i18n';
 
 interface AuthContextValue {
   // State
@@ -122,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { identityToken } = appleCredential;
       if (!identityToken) {
-        throw new Error('Token Apple manquant');
+        throw new Error(i18n.t('errors.auth.appleTokenMissing'));
       }
 
       const provider = new OAuthProvider('apple.com');
@@ -151,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       // User cancelled = don't throw
       if (error?.code === 'ERR_REQUEST_CANCELED') return;
-      throw new Error(error.message || 'Erreur de connexion avec Apple');
+      throw new Error(error.message || i18n.t('errors.auth.appleSignInFailed'));
     }
   };
 
@@ -161,13 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await authService.logout();
       setUserData(null);
     } catch (error: any) {
-      throw new Error('Erreur lors de la déconnexion');
+      throw new Error(i18n.t('errors.auth.signOutFailed'));
     }
   };
 
   // Delete account
   const deleteAccount = async (password: string) => {
-    if (!user?.uid) throw new Error('Aucun utilisateur connecté');
+    if (!user?.uid) throw new Error(i18n.t('errors.auth.noUserSignedIn'));
 
     try {
       // Reauthenticate before deletion
@@ -190,9 +191,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       const code = error?.code || '';
       if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        throw new Error('Mot de passe incorrect');
+        throw new Error(i18n.t('errors.auth.wrongPassword'));
       }
-      throw new Error(error.message || 'Erreur lors de la suppression du compte');
+      throw new Error(error.message || i18n.t('errors.auth.deleteAccountFailed'));
     }
   };
 

@@ -8,6 +8,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, Animated, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 
@@ -47,6 +48,7 @@ export function TimeSlotSection({
   onSelectSlot,
 }: TimeSlotSectionProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   // Measure real content height via onLayout
   const [measuredHeight, setMeasuredHeight] = useState(0);
@@ -124,7 +126,7 @@ export function TimeSlotSection({
               {title}
             </Text>
             <Text variant="caption" style={{ color: accentColor, opacity: 0.7 }}>
-              {uniqueSlots.length} créneau{uniqueSlots.length > 1 ? 'x' : ''}
+              {t('components.timeSlotSection.slots', { count: uniqueSlots.length })}
             </Text>
           </View>
         </View>

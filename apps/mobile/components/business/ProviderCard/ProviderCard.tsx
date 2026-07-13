@@ -7,6 +7,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Rating, formatDistance, getCategoryLabel, capitalizeWords } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
@@ -48,7 +49,11 @@ function formatPrice(centimes: number): string {
   return euros % 1 === 0 ? `${euros}` : euros.toFixed(2);
 }
 
-function formatNextAvailable(date: any): string | null {
+function formatNextAvailable(
+  date: any,
+  t: (key: string) => string,
+  lang: string,
+): string | null {
   if (!date) return null;
   // Handle Firestore Timestamp, Date, or ISO string
   const d = date?.toDate ? date.toDate() : date instanceof Date ? date : new Date(date);
@@ -61,12 +66,14 @@ function formatNextAvailable(date: any): string | null {
   const dateOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
   if (dateOnly < today) return null; // passé
-  if (dateOnly.getTime() === today.getTime()) return "Aujourd'hui";
-  if (dateOnly.getTime() === tomorrow.getTime()) return 'Demain';
+  if (dateOnly.getTime() === today.getTime()) return t('components.providerCard.today');
+  if (dateOnly.getTime() === tomorrow.getTime()) return t('components.providerCard.tomorrow');
 
-  const days = ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'];
-  const months = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+  return new Intl.DateTimeFormat(lang, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(d);
 }
 
 export function ProviderCard({
@@ -83,10 +90,11 @@ export function ProviderCard({
   isLoading = false,
 }: ProviderCardProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t, i18n } = useTranslation();
 
   const hasRating = rating.count > 0;
   const hasValidPrice = minPrice != null && !isNaN(minPrice) && minPrice >= 0;
-  const nextAvailFormatted = formatNextAvailable(nextAvailableSlot);
+  const nextAvailFormatted = formatNextAvailable(nextAvailableSlot, t, i18n.language);
 
   // Loading animation
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -203,11 +211,13 @@ export function ProviderCard({
         <View style={[styles.footer, { marginTop: spacing.sm }]}>
           {hasValidPrice ? (
             <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>
-              {minPrice === 0 ? 'Gratuit' : `À partir de ${formatPrice(minPrice)} €`}
+              {minPrice === 0
+                ? t('common.free')
+                : t('components.providerCard.fromPrice', { price: formatPrice(minPrice) })}
             </Text>
           ) : (
             <Text variant="bodySmall" color="textMuted">
-              Prix sur demande
+              {t('components.providerCard.priceOnRequest')}
             </Text>
           )}
           {nextAvailFormatted && (

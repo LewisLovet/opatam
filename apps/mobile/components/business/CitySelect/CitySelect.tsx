@@ -14,6 +14,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 
@@ -32,9 +33,10 @@ export function CitySelect({
   value,
   cities,
   onChange,
-  placeholder = 'Toutes les villes',
+  placeholder,
 }: CitySelectProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -57,7 +59,7 @@ export function CitySelect({
     );
   }, [sortedCities, search]);
 
-  const displayValue = value || placeholder;
+  const displayValue = value || placeholder || t('components.citySelect.allCities');
 
   return (
     <>
@@ -87,7 +89,7 @@ export function CitySelect({
         <View style={{ flex: 1, marginLeft: spacing.sm }}>
           {value && (
             <Text variant="caption" color="textMuted" style={{ fontSize: 10, marginBottom: 1 }}>
-              Ville
+              {t('components.citySelect.label')}
             </Text>
           )}
           <Text
@@ -116,7 +118,7 @@ export function CitySelect({
         <SafeAreaView style={[styles.modal, { backgroundColor: colors.background }]}>
           {/* Header */}
           <View style={[styles.modalHeader, { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm }]}>
-            <Text variant="h3" style={{ fontWeight: '700' }}>Choisir une ville</Text>
+            <Text variant="h3" style={{ fontWeight: '700' }}>{t('components.citySelect.title')}</Text>
             <Pressable
               onPress={() => { setIsOpen(false); setSearch(''); }}
               hitSlop={12}
@@ -132,7 +134,7 @@ export function CitySelect({
               <Ionicons name="search" size={18} color={colors.textMuted} />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Rechercher une ville..."
+                placeholder={t('components.citySelect.searchPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={search}
                 onChangeText={setSearch}
@@ -168,7 +170,7 @@ export function CitySelect({
                 variant="body"
                 style={{ fontWeight: value === null ? '600' : '400', color: value === null ? colors.primary : colors.text, flex: 1 }}
               >
-                Toutes les villes
+                {t('components.citySelect.allCities')}
               </Text>
               <View
                 style={[
@@ -232,7 +234,7 @@ export function CitySelect({
             }}
             ListEmptyComponent={
               <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
-                <Text variant="body" color="textMuted">Aucune ville trouvée</Text>
+                <Text variant="body" color="textMuted">{t('components.citySelect.noResults')}</Text>
               </View>
             }
           />

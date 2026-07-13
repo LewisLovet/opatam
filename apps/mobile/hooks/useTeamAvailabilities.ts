@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { schedulingService, memberService, serviceRepository } from '@booking-app/firebase';
 import type { WithId } from '@booking-app/firebase';
 import type { Member } from '@booking-app/shared';
+import i18n from '../lib/i18n';
 
 export interface MemberAvailability {
   memberId: string;
@@ -26,7 +27,8 @@ export interface UseTeamAvailabilitiesResult {
 }
 
 /**
- * Format date for display: "Aujourd'hui", "Demain", or "Lun. 3 février"
+ * Format date for display: "Aujourd'hui"/"Today", "Demain"/"Tomorrow", or a
+ * localized short date like "Lun. 3 février" / "Mon, February 3"
  */
 function formatDate(date: Date | null): string | null {
   if (!date) return null;
@@ -37,15 +39,16 @@ function formatDate(date: Date | null): string | null {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-  if (dateOnly.getTime() === today.getTime()) return "Aujourd'hui";
-  if (dateOnly.getTime() === tomorrow.getTime()) return 'Demain';
+  if (dateOnly.getTime() === today.getTime()) return i18n.t('dates.today');
+  if (dateOnly.getTime() === tomorrow.getTime()) return i18n.t('dates.tomorrow');
 
-  const days = ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'];
-  const months = [
-    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-  ];
-  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+  const formatted = date.toLocaleDateString(i18n.language, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+  });
+  // Intl lowercases weekdays in French — keep the capitalized display
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 /**
@@ -137,7 +140,7 @@ export function useTeamAvailabilities(
       setMemberAvailabilities(results);
     } catch (err: any) {
       console.error('Error fetching team availabilities:', err);
-      setError(err.message || 'Erreur lors du chargement des disponibilités');
+      setError(err.message || i18n.t('errors.availability.loadFailed'));
     } finally {
       setLoading(false);
     }

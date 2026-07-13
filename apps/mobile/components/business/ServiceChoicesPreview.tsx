@@ -12,6 +12,7 @@ import React, { useState } from 'react';
 import { View, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import {
   type ServiceVariation,
   type ServiceOption,
@@ -48,7 +49,7 @@ export function ServiceChoicesPreview({
   discount = null,
   mode = 'preview',
   onConfirm,
-  confirmLabel = 'Ajouter',
+  confirmLabel,
   confirmLoading = false,
   safeAreaBottom = false,
 }: {
@@ -68,8 +69,10 @@ export function ServiceChoicesPreview({
   safeAreaBottom?: boolean;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [sel, setSel] = useState<ServiceSelections>(() => emptyServiceSelections());
+  const resolvedConfirmLabel = confirmLabel ?? t('components.serviceChoicesPreview.add');
 
   const hasChoices = serviceHasChoices(service);
   const total = computeServiceTotal(service, sel);
@@ -215,7 +218,7 @@ export function ServiceChoicesPreview({
   ) => (
     <View key={v.id} style={{ gap: spacing.xs }}>
       <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.text }}>
-        {v.name || 'Variation'}
+        {v.name || t('components.serviceChoicesPreview.variationFallback')}
       </Text>
       <View style={{ gap: spacing.xs }}>
         {v.options.map((o) => {
@@ -237,7 +240,7 @@ export function ServiceChoicesPreview({
             >
               <Radio selected={selected} />
               <Text variant="bodySmall" style={{ flex: 1, color: colors.text }}>
-                {o.name || 'Choix'}
+                {o.name || t('components.serviceChoicesPreview.choiceFallback')}
               </Text>
               {renderPrice(o.price, lineDiscountable ? cut(o.price, o.id) : o.price, '', o.duration ? ` · ${formatDuration(o.duration)}` : '')}
             </Pressable>
@@ -254,17 +257,22 @@ export function ServiceChoicesPreview({
   ) => (
     <View key={f.id} style={{ gap: spacing.xs }}>
       <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.text }}>
-        {f.name || 'Question'}
+        {f.name || t('components.serviceChoicesPreview.questionFallback')}
         {f.required ? <Text style={{ color: colors.error }}> *</Text> : null}
       </Text>
       {f.type === 'boolean' && (
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          {['Oui', 'Non'].map((opt) => {
-            const selected = value === opt;
+          {/* Stored values stay 'Oui'/'Non' (data contract with the pro
+              side) — only the displayed label is translated. */}
+          {([
+            { value: 'Oui', label: t('components.serviceChoicesPreview.yes') },
+            { value: 'Non', label: t('components.serviceChoicesPreview.no') },
+          ]).map((opt) => {
+            const selected = value === opt.value;
             return (
               <Pressable
-                key={opt}
-                onPress={() => onSet(opt)}
+                key={opt.value}
+                onPress={() => onSet(opt.value)}
                 style={{
                   paddingVertical: spacing.xs,
                   paddingHorizontal: spacing.md,
@@ -275,7 +283,7 @@ export function ServiceChoicesPreview({
                 }}
               >
                 <Text variant="bodySmall" color={selected ? 'primary' : 'textSecondary'}>
-                  {opt}
+                  {opt.label}
                 </Text>
               </Pressable>
             );
@@ -310,7 +318,7 @@ export function ServiceChoicesPreview({
       {f.type === 'text' &&
         (mode === 'picker' ? (
           <Input
-            placeholder="Votre réponse…"
+            placeholder={t('components.serviceChoicesPreview.yourAnswerPlaceholder')}
             value={value ?? ''}
             onChangeText={onSet}
             multiline
@@ -327,7 +335,7 @@ export function ServiceChoicesPreview({
             }}
           >
             <Text variant="caption" color="textMuted">
-              Réponse libre du client…
+              {t('components.serviceChoicesPreview.clientFreeAnswer')}
             </Text>
           </View>
         ))}
@@ -350,7 +358,7 @@ export function ServiceChoicesPreview({
         )}
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="h3">{service.name || 'Prestation'}</Text>
+          <Text variant="h3">{service.name || t('components.serviceChoicesPreview.serviceFallback')}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
             <View
               style={{
@@ -365,7 +373,7 @@ export function ServiceChoicesPreview({
             >
               <Ionicons name="pricetag" size={13} color={colors.primary} />
               <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.primary }}>
-                {hasChoices ? 'À partir de ' : ''}
+                {hasChoices ? `${t('components.serviceChoicesPreview.startingFrom')} ` : ''}
                 {minD.price < minD.original && (
                   <Text
                     variant="bodySmall"
@@ -400,7 +408,7 @@ export function ServiceChoicesPreview({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
             <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
             <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
-              Voici exactement ce que verra le client au moment de réserver.
+              {t('components.serviceChoicesPreview.clientPreviewHint')}
             </Text>
           </View>
         )}
@@ -420,8 +428,7 @@ export function ServiceChoicesPreview({
           >
             <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
             <Text variant="bodySmall" color="textSecondary" style={{ flex: 1 }}>
-              Prestation à prix fixe — le client réserve directement, sans choix à faire.
-              Ajoutez des variations ou options pour enrichir cette fiche.
+              {t('components.serviceChoicesPreview.fixedPriceNotice')}
             </Text>
           </View>
         )}
@@ -435,7 +442,7 @@ export function ServiceChoicesPreview({
         {service.options.length > 0 && (
           <View style={{ gap: spacing.sm }}>
             <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.text }}>
-              Options
+              {t('components.serviceChoicesPreview.options')}
             </Text>
             {service.options.map((o) => {
               const checked = !!sel.options[o.id];
@@ -462,7 +469,7 @@ export function ServiceChoicesPreview({
                       ? renderPrice(o.price, cut(o.price, o.id), '+', o.duration ? ` · +${formatDuration(o.duration)}` : '')
                       : (
                         <Text variant="caption" color="textSecondary">
-                          Inclus{o.duration ? ` · +${formatDuration(o.duration)}` : ''}
+                          {t('components.serviceChoicesPreview.included')}{o.duration ? ` · +${formatDuration(o.duration)}` : ''}
                         </Text>
                       )}
                   </Pressable>
@@ -520,7 +527,9 @@ export function ServiceChoicesPreview({
       >
         <View>
           <Text variant="caption" color="textSecondary">
-            {complete ? 'Total' : 'À partir de'}
+            {complete
+              ? t('components.serviceChoicesPreview.total')
+              : t('components.serviceChoicesPreview.startingFrom')}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
             {displayPrice < displayOriginal && (
@@ -558,7 +567,7 @@ export function ServiceChoicesPreview({
             ) : (
               <>
                 <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
-                  {confirmLabel}
+                  {resolvedConfirmLabel}
                 </Text>
                 <Ionicons name="add" size={16} color="#FFFFFF" />
               </>
@@ -577,7 +586,7 @@ export function ServiceChoicesPreview({
             }}
           >
             <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
-              Réserver
+              {t('components.serviceChoicesPreview.book')}
             </Text>
             <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
           </View>

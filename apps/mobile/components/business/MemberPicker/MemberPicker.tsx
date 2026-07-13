@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { MemberCard } from '../MemberCard';
@@ -33,6 +34,7 @@ export function MemberPicker({
   allowAny = true,
 }: MemberPickerProps) {
   const { colors, spacing, radius, shadows } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <View style={[styles.container, { gap: spacing.sm }]}>
@@ -70,10 +72,10 @@ export function MemberPicker({
 
             <View style={styles.anyInfo}>
               <Text variant="body" style={styles.anyName}>
-                Peu importe
+                {t('components.memberPicker.anyone')}
               </Text>
               <Text variant="caption" color="textSecondary">
-                Premier disponible
+                {t('components.memberPicker.firstAvailable')}
               </Text>
             </View>
 

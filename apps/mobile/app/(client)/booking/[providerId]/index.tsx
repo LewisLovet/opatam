@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -39,6 +40,7 @@ export default function MemberSelectionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
+  const { t, i18n } = useTranslation();
   const { providerId, serviceId } = useLocalSearchParams<{ providerId: string; serviceId: string }>();
 
   // Booking context
@@ -113,7 +115,7 @@ export default function MemberSelectionScreen() {
   // Proceed to date for the chosen member.
   const handleSelectMember = (member: WithId<Member>) => {
     if (cart.length === 0) {
-      showToast({ variant: 'warning', message: 'Ajoutez au moins une prestation' });
+      showToast({ variant: 'warning', message: t('bookingFlow.members.addAtLeastOne') });
       return;
     }
     setMember(member);
@@ -140,7 +142,7 @@ export default function MemberSelectionScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <BookingStepHeader title="Choisir un membre" onBack={() => router.back()} />
+        <BookingStepHeader title={t('bookingFlow.members.chooseMemberTitle')} onBack={() => router.back()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -152,13 +154,13 @@ export default function MemberSelectionScreen() {
   if (providerError || membersError || !provider) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <BookingStepHeader title="Choisir un membre" onBack={() => router.back()} />
+        <BookingStepHeader title={t('bookingFlow.members.chooseMemberTitle')} onBack={() => router.back()} />
         <View style={styles.errorContainer}>
           <EmptyState
             icon="alert-circle-outline"
-            title="Erreur"
-            description={providerError || membersError || 'Données non trouvées'}
-            actionLabel="Retour"
+            title={t('bookingFlow.errorTitle')}
+            description={providerError || membersError || t('bookingFlow.members.dataNotFound')}
+            actionLabel={t('common.back')}
             onAction={() => router.back()}
           />
         </View>
@@ -176,7 +178,7 @@ export default function MemberSelectionScreen() {
         />
         <ServiceChoicesPreview
           mode="picker"
-          confirmLabel="Ajouter"
+          confirmLabel={t('bookingFlow.members.add')}
           safeAreaBottom
           discount={resolveServiceDiscount(pendingChoiceService, globalDiscount)}
           onConfirm={(sel) => {
@@ -200,14 +202,14 @@ export default function MemberSelectionScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <BookingStepHeader title="Votre réservation" onBack={() => router.back()} />
+      <BookingStepHeader title={t('bookingFlow.members.yourBookingTitle')} onBack={() => router.back()} />
 
       {/* Cart — the prestations booked in this visit */}
       <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
         <Card padding="md" shadow="sm">
           {cart.length === 0 ? (
             <Text variant="bodySmall" color="textSecondary">
-              Aucune prestation sélectionnée.
+              {t('bookingFlow.members.emptyCart')}
             </Text>
           ) : (
             <View style={{ gap: spacing.sm }}>
@@ -267,7 +269,7 @@ export default function MemberSelectionScreen() {
           >
             <Ionicons name="add" size={18} color={colors.primary} />
             <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
-              Ajouter une prestation
+              {t('bookingFlow.members.addService')}
             </Text>
           </Pressable>
 
@@ -282,7 +284,7 @@ export default function MemberSelectionScreen() {
                 borderTopColor: colors.border,
               }}
             >
-              <Text variant="body" style={{ fontWeight: '700' }}>Total</Text>
+              <Text variant="body" style={{ fontWeight: '700' }}>{t('bookingFlow.total')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                 {cartHasPromo && (
                   <Text
@@ -313,15 +315,15 @@ export default function MemberSelectionScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.md, marginTop: spacing.lg }}>
-          Sélectionnez la personne qui réalisera votre prestation
+          {t('bookingFlow.members.selectPerson')}
         </Text>
 
         {members.length === 0 ? (
           <Card padding="lg" shadow="sm">
             <EmptyState
               icon="people-outline"
-              title="Aucun membre disponible"
-              description="Ce prestataire n'a pas encore de membres d'équipe"
+              title={t('bookingFlow.members.noMembersTitle')}
+              description={t('bookingFlow.members.noMembersDescription')}
             />
           </Card>
         ) : (
@@ -369,7 +371,7 @@ export default function MemberSelectionScreen() {
                   {member.isDefault && (
                     <View style={[styles.defaultBadge, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
                       <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>
-                        Principal
+                        {t('bookingFlow.members.defaultBadge')}
                       </Text>
                     </View>
                   )}
@@ -402,7 +404,7 @@ export default function MemberSelectionScreen() {
               borderBottomColor: colors.border,
             }}
           >
-            <Text variant="h3">Ajouter une prestation</Text>
+            <Text variant="h3">{t('bookingFlow.members.addService')}</Text>
             <Pressable onPress={() => setShowServicePicker(false)} hitSlop={8}>
               <Ionicons name="close" size={24} color={colors.text} />
             </Pressable>
@@ -419,7 +421,7 @@ export default function MemberSelectionScreen() {
               if (uncat.length) {
                 groups.push({
                   id: '__uncat__',
-                  title: categories.length ? 'Autres prestations' : 'Prestations',
+                  title: categories.length ? t('bookingFlow.members.otherServices') : t('bookingFlow.members.services'),
                   items: uncat,
                 });
               }
@@ -448,7 +450,7 @@ export default function MemberSelectionScreen() {
                       discountPercent: hasPromo ? md.discountPercent : null,
                       promoCountdown:
                         hasPromo && daysLeft != null && daysLeft <= PROMO_URGENCY_DAYS
-                          ? formatPromoCountdown(daysLeft)
+                          ? formatPromoCountdown(daysLeft, i18n.language)
                           : null,
                       priceFrom,
                     };

@@ -8,6 +8,7 @@ import { View, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Rating, getCategoryLabel } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
@@ -48,6 +49,7 @@ export function ProviderHeader({
   onRatingPress,
 }: ProviderHeaderProps) {
   const { colors, spacing, shadows } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   const hasRating = rating.count > 0;
@@ -121,7 +123,7 @@ export function ProviderHeader({
             <View style={[styles.verifiedBadge, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
               <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
               <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-                Vérifié
+                {t('components.providerHeader.verified')}
               </Text>
             </View>
           )}
@@ -140,12 +142,12 @@ export function ProviderHeader({
               {rating.average.toFixed(1)}
             </Text>
             <Text variant="bodySmall" color="textSecondary">
-              ({rating.count} avis)
+              {t('components.providerHeader.reviews', { count: rating.count })}
             </Text>
           </Pressable>
         ) : (
           <Text variant="bodySmall" color="textMuted" align="center" style={{ marginTop: spacing.sm }}>
-            Pas encore d'avis
+            {t('components.providerHeader.noReviews')}
           </Text>
         )}
       </View>

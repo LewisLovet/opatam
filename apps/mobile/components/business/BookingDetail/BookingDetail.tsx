@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, StyleSheet, Pressable, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Avatar } from '../../Avatar';
@@ -52,21 +53,6 @@ export interface BookingDetailProps {
   isModal?: boolean;
 }
 
-function formatFullDateWithTime(date: Date, time: string): string {
-  const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-  const months = [
-    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
-  ];
-
-  const dayName = days[date.getDay()];
-  const dayNum = date.getDate();
-  const monthName = months[date.getMonth()];
-  const year = date.getFullYear();
-
-  return `${dayName} ${dayNum} ${monthName} ${year} à ${time}`;
-}
-
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
     return `${minutes} min`;
@@ -92,6 +78,18 @@ export function BookingDetail({
   isModal = false,
 }: BookingDetailProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t, i18n } = useTranslation();
+
+  const formatFullDateWithTime = (date: Date, time: string): string => {
+    const formatted = new Intl.DateTimeFormat(i18n.language, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(date);
+    const capitalized = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    return t('components.bookingDetail.dateAtTime', { date: capitalized, time });
+  };
 
   const isPast = booking.date < new Date();
   const canCancel = booking.status === 'confirmed' && !isPast;
@@ -172,17 +170,17 @@ export function BookingDetail({
       <View style={[styles.section, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md }]}>
         <InfoRow
           icon="pricetag-outline"
-          label="Prestation"
+          label={t('components.bookingDetail.service')}
           value={booking.service.name}
         />
         <InfoRow
           icon="time-outline"
-          label="Durée"
+          label={t('components.bookingDetail.duration')}
           value={formatDuration(booking.service.duration)}
         />
         <InfoRow
           icon="pricetag-outline"
-          label="Prix"
+          label={t('components.bookingDetail.price')}
           value={formatPrice(booking.service.price)}
           bold
         />
@@ -195,7 +193,7 @@ export function BookingDetail({
           <View style={[styles.section, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md }]}>
             <InfoRow
               icon="location-outline"
-              label="Lieu"
+              label={t('components.bookingDetail.location')}
               value={booking.location.address?.trim() ? `${booking.location.name}\n${booking.location.address}` : booking.location.name}
             />
           </View>
@@ -222,7 +220,7 @@ export function BookingDetail({
               <View style={{ flex: 1 }}>
                 <InfoRow
                   icon="person-outline"
-                  label="Avec"
+                  label={t('components.bookingDetail.with')}
                   value={booking.member.name}
                 />
               </View>
@@ -237,10 +235,10 @@ export function BookingDetail({
           <Divider />
           <View style={[styles.actions, { padding: spacing.lg, gap: spacing.sm }]}>
             {canCancel && onCancel && (
-              <Button variant="outline" onPress={onCancel} title="Annuler la réservation" />
+              <Button variant="outline" onPress={onCancel} title={t('components.bookingDetail.cancelBooking')} />
             )}
             {canReview && onReview && (
-              <Button variant="primary" onPress={onReview} title="Laisser un avis" />
+              <Button variant="primary" onPress={onReview} title={t('components.bookingDetail.leaveReview')} />
             )}
           </View>
         </>

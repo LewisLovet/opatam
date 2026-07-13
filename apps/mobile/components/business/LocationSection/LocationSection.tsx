@@ -7,6 +7,7 @@
 import React from 'react';
 import { View, StyleSheet, Pressable, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import type { Location } from '@booking-app/shared';
@@ -19,10 +20,11 @@ export interface LocationSectionProps {
 
 export function LocationSection({ locations }: LocationSectionProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   if (locations.length === 0) return null;
 
-  const headerLabel = locations.length === 1 ? 'Lieu' : 'Lieux';
+  const headerLabel = t('components.locationSection.title', { count: locations.length });
 
   return (
     <View style={styles.container}>
@@ -55,6 +57,7 @@ interface LocationCardProps {
 
 function LocationCard({ location }: LocationCardProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   const isFixed = location.type === 'fixed';
   const isMobile = location.type === 'mobile';
@@ -141,7 +144,7 @@ function LocationCard({ location }: LocationCardProps) {
           {/* Address-privacy note */}
           {isProtected && (
             <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
-              Adresse exacte communiqu{'é'}e apr{'è'}s confirmation
+              {t('components.locationSection.protectedAddressNote')}
             </Text>
           )}
 
@@ -152,7 +155,7 @@ function LocationCard({ location }: LocationCardProps) {
               color="textSecondary"
               style={{ marginTop: spacing.xs }}
             >
-              Rayon de d{'\u00E9'}placement : {location.travelRadius} km
+              {t('components.locationSection.travelRadius', { radius: location.travelRadius })}
             </Text>
           )}
         </View>

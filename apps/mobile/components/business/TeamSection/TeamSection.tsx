@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Avatar } from '../../Avatar';
@@ -21,6 +22,7 @@ const GRID_COLUMNS = 3;
 
 export function TeamSection({ members }: TeamSectionProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   // Filter out the default system member
   const displayMembers = members.filter((member) => member.name !== 'Principal');
@@ -43,7 +45,7 @@ export function TeamSection({ members }: TeamSectionProps) {
           size={20}
           color={colors.text}
         />
-        <Text variant="h3">L'équipe</Text>
+        <Text variant="h3">{t('components.teamSection.title')}</Text>
       </View>
 
       {/* Members Grid */}

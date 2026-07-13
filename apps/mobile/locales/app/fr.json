@@ -72,5 +72,851 @@
       "submitting": "Modification...",
       "submit": "Modifier"
     }
+  },
+  "auth": {
+    "welcome": {
+      "title": "Bienvenue sur {{appName}}",
+      "subtitle": "Réservez ou gérez vos rendez-vous\nen toute simplicité",
+      "signIn": "Se connecter",
+      "or": "ou",
+      "createAccount": "Créer un compte"
+    },
+    "onboarding": {
+      "skip": "Passer",
+      "continue": "Continuer",
+      "getStarted": "C'est parti !",
+      "slides": {
+        "0": {
+          "title": "Vos rendez-vous,\nenfin simplifiés",
+          "subtitle": "Réservez en quelques clics, 24h/24, depuis votre téléphone.",
+          "features": {
+            "0": "Disponible à tout moment",
+            "1": "Réservation instantanée",
+            "2": "Simple et gratuit"
+          }
+        },
+        "1": {
+          "title": "Plus jamais de\nrendez-vous oublié",
+          "subtitle": "Des rappels intelligents pour ne rien manquer.",
+          "features": {
+            "0": "Rappels automatiques",
+            "1": "Notifications en temps réel",
+            "2": "Synchronisation agenda"
+          }
+        },
+        "2": {
+          "title": "Tous les domaines,\nun seul endroit",
+          "subtitle": "Des indépendants de confiance dans tous les secteurs.",
+          "features": {
+            "0": "Beauté, sport, coaching, bien-être...",
+            "1": "Des pros près de chez vous",
+            "2": "Avis vérifiés par la communauté"
+          }
+        }
+      }
+    },
+    "login": {
+      "title": "Connexion",
+      "subtitle": "Content de vous revoir",
+      "clientTab": "Client",
+      "proTab": "Professionnel",
+      "emailLabel": "Email",
+      "emailPlaceholder": "votre@email.com",
+      "passwordLabel": "Mot de passe",
+      "passwordPlaceholder": "Votre mot de passe",
+      "forgotPassword": "Mot de passe oublié ?",
+      "submit": "Se connecter",
+      "noAccount": "Pas encore de compte ?",
+      "createAccount": "Créer un compte",
+      "signUpOnline": "S'inscrire en ligne",
+      "errors": {
+        "emailRequired": "L'email est requis",
+        "emailInvalid": "Format d'email invalide",
+        "passwordRequired": "Le mot de passe est requis",
+        "loginFailed": "Erreur de connexion"
+      }
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "subtitle": "Entrez votre email pour recevoir un lien de réinitialisation",
+      "emailLabel": "Email",
+      "emailPlaceholder": "votre@email.com",
+      "submit": "Envoyer le lien",
+      "toastSent": "Email de réinitialisation envoyé",
+      "toastError": "Erreur lors de l'envoi",
+      "remember": "Vous vous souvenez ?",
+      "signIn": "Se connecter",
+      "success": {
+        "title": "Email envoyé !",
+        "message": "Vérifiez votre boîte mail et cliquez sur le lien.",
+        "backToLogin": "Retour à la connexion",
+        "resend": "Pas reçu ? Renvoyer"
+      }
+    },
+    "chooseType": {
+      "title": "Comment allez-vous\nutiliser OPATAM ?",
+      "subtitle": "Choisissez votre profil pour commencer",
+      "client": {
+        "title": "Réserver un service",
+        "description": "Trouvez et réservez chez des professionnels près de chez vous",
+        "chips": {
+          "hairdressers": "Coiffeurs",
+          "spas": "Spas",
+          "coaches": "Coachs"
+        }
+      },
+      "pro": {
+        "title": "Proposer mes services",
+        "description": "Gérez vos réservations et développez votre activité",
+        "chips": {
+          "calendar": "Agenda",
+          "clients": "Clients",
+          "stats": "Stats"
+        }
+      }
+    },
+    "register": {
+      "title": "Créer un compte",
+      "subtitle": "Réservez en quelques secondes",
+      "emailFormTitle": "Inscription",
+      "firstNameLabel": "Prénom",
+      "firstNamePlaceholder": "Votre prénom",
+      "emailLabel": "Email",
+      "emailPlaceholder": "votre@email.com",
+      "passwordLabel": "Mot de passe",
+      "passwordPlaceholder": "Votre mot de passe",
+      "passwordHelper": "Min. 6 caractères",
+      "phoneLabel": "Téléphone (optionnel)",
+      "phonePlaceholder": "06 12 34 56 78",
+      "submit": "Créer mon compte",
+      "legal": "En créant un compte, vous acceptez nos CGU et Politique de confidentialité",
+      "alreadyAccount": "Déjà un compte ?",
+      "signIn": "Se connecter",
+      "successToast": "Compte créé avec succès",
+      "errors": {
+        "firstNameRequired": "Le prénom est requis",
+        "firstNameTooShort": "Le prénom doit contenir au moins 2 caractères",
+        "emailRequired": "L'email est requis",
+        "emailInvalid": "Format d'email invalide",
+        "passwordRequired": "Le mot de passe est requis",
+        "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
+        "phoneInvalid": "Format invalide (ex: 06 12 34 56 78)",
+        "signUpError": "Erreur lors de l'inscription"
+      }
+    }
+  },
+  "providerScreen": {
+    "tabs": {
+      "services": "Prestations",
+      "reviews": "Avis",
+      "info": "Infos"
+    },
+    "serviceGroups": {
+      "all": "Prestations",
+      "other": "Autres"
+    },
+    "nextAvailability": "Prochaine dispo : {{date}}",
+    "teamAvailability": "Disponibilités par professionnel",
+    "selectServiceToast": "Sélectionnez une prestation",
+    "errorTitle": "Erreur",
+    "notFound": "Prestataire non trouvé",
+    "services": {
+      "emptyTitle": "Aucune prestation",
+      "emptyDescription": "Ce prestataire n'a pas encore de prestations"
+    },
+    "portfolio": "Réalisations",
+    "reviews": {
+      "emptyTitle": "Aucun avis",
+      "emptyDescription": "Ce prestataire n'a pas encore d'avis",
+      "defaultAuthor": "Client"
+    },
+    "footer": {
+      "from": "à partir de",
+      "book": "Réserver",
+      "selectService": "Sélectionnez une prestation"
+    },
+    "notice": {
+      "title": "Information importante",
+      "continue": "J'ai compris, continuer"
+    }
+  },
+  "bookingFlow": {
+    "errorTitle": "Erreur",
+    "total": "Total",
+    "members": {
+      "chooseMemberTitle": "Choisir un membre",
+      "yourBookingTitle": "Votre réservation",
+      "addAtLeastOne": "Ajoutez au moins une prestation",
+      "dataNotFound": "Données non trouvées",
+      "add": "Ajouter",
+      "emptyCart": "Aucune prestation sélectionnée.",
+      "addService": "Ajouter une prestation",
+      "selectPerson": "Sélectionnez la personne qui réalisera votre prestation",
+      "noMembersTitle": "Aucun membre disponible",
+      "noMembersDescription": "Ce prestataire n'a pas encore de membres d'équipe",
+      "defaultBadge": "Principal",
+      "services": "Prestations",
+      "otherServices": "Autres prestations"
+    },
+    "date": {
+      "title": "Choisir une date",
+      "periods": {
+        "morning": "Matin",
+        "afternoon": "Après-midi",
+        "evening": "Soir"
+      },
+      "selectMemberFirst": "Veuillez d'abord sélectionner un membre",
+      "servicesCount_one": "{{count}} prestation",
+      "servicesCount_other": "{{count}} prestations",
+      "nextAvailability": "Prochaine dispo",
+      "availableTimes": "Horaires disponibles",
+      "almostFull": "Bientôt complet · {{count}}",
+      "loadingSlots": "Chargement des créneaux...",
+      "noAvailabilityTitle": "Aucune disponibilité",
+      "noAvailabilityDescription": "Aucune disponibilité pour cette prestation dans les {{days}} prochains jours.",
+      "chooseDayTitle": "Choisissez un jour",
+      "chooseDayDescription": "Sélectionnez une date disponible dans le calendrier ci-dessus pour voir les horaires.",
+      "fullDayTitle": "Complet ce jour-là",
+      "fullDayDescription": "Aucun créneau pour cette prestation à cette date.",
+      "seeNextAvailability": "Voir la prochaine disponibilité"
+    },
+    "confirm": {
+      "title": "Confirmation",
+      "upgrade": {
+        "title": "Mise à jour requise",
+        "later": "Plus tard",
+        "update": "Mettre à jour",
+        "defaultMessage": "Cette prestation nécessite une version plus récente d’Opatam."
+      },
+      "incompleteInfo": "Informations de réservation incomplètes",
+      "loginToBook": "Veuillez vous connecter pour réserver",
+      "invalidPhoneToast": "Veuillez entrer un numéro de téléphone valide",
+      "bookingError": "Erreur lors de la réservation",
+      "paymentFailed": "Échec du paiement",
+      "paymentCancelled": {
+        "title": "Paiement annulé",
+        "message": "Voulez-vous réessayer le paiement, ou abandonner la réservation et libérer le créneau ?",
+        "abandon": "Abandonner"
+      },
+      "abandonSuccess": "Réservation annulée. Le créneau est de nouveau disponible.",
+      "abandonPending": "Le créneau sera libéré sous 30 min. Merci de réessayer plus tard.",
+      "depositPaidSuccess": "Acompte payé — réservation confirmée !",
+      "bookingConfirmed": "Réservation confirmée !",
+      "reviewTitle": "Vérifiez votre réservation",
+      "reviewSubtitle": "Assurez-vous que toutes les informations sont correctes",
+      "serviceLabel_one": "Prestation",
+      "serviceLabel_other": "Prestations",
+      "dateTime": "Date et heure",
+      "with": "Avec",
+      "location": "Lieu",
+      "addressAfterConfirmation": "Adresse exacte communiquée après confirmation",
+      "contactDetails": "Vos coordonnées",
+      "phoneLabel": "Téléphone",
+      "phonePlaceholder": "06 12 34 56 78",
+      "invalidPhone": "Numéro de téléphone invalide",
+      "youSave": "Vous économisez {{amount}} €",
+      "payOnSite": "Paiement sur place",
+      "loginRequired": "Connexion requise",
+      "loginRequiredDescription": "Connectez-vous pour confirmer votre réservation",
+      "confirmButton": "Confirmer la réservation",
+      "loginButton": "Se connecter pour réserver"
+    }
+  },
+  "bookingDetailScreen": {
+    "status": {
+      "confirmed": "Confirmé",
+      "pending": "En attente",
+      "cancelled": "Annulé",
+      "noshow": "Absent",
+      "past": "Terminé"
+    },
+    "reminder": {
+      "cancelled": "Annulé",
+      "noshow": "Absent",
+      "ongoing": "En cours",
+      "endedLessThanHour": "Terminé il y a moins d'une heure",
+      "endedHoursAgo": "Terminé il y a {{count}}h",
+      "endedYesterday": "Terminé hier",
+      "endedDaysAgo_one": "Terminé il y a {{count}} jour",
+      "endedDaysAgo_other": "Terminé il y a {{count}} jours",
+      "inHoursMinutes": "Dans {{hours}}h {{minutes}}min",
+      "inMinutes": "Dans {{count}} min",
+      "today": "Aujourd'hui",
+      "tomorrow": "Demain",
+      "inDays_one": "Dans {{count}} jour",
+      "inDays_other": "Dans {{count}} jours"
+    },
+    "priceRange": "De {{min}} à {{max}}",
+    "errors": {
+      "missingId": "ID de réservation manquant",
+      "notFound": "Réservation non trouvée",
+      "loadFailed": "Erreur lors du chargement",
+      "providerPageFailed": "Impossible d'accéder à la page du prestataire"
+    },
+    "alerts": {
+      "errorTitle": "Erreur",
+      "cannotOpenMaps": "Impossible d'ouvrir l'application de navigation",
+      "cannotOpenPhone": "Impossible d'ouvrir le téléphone"
+    },
+    "calendar": {
+      "permissionTitle": "Permission requise",
+      "permissionMessage": "L'accès au calendrier est nécessaire pour ajouter l'événement",
+      "noCalendar": "Aucun calendrier disponible",
+      "noteProvider": "Prestataire: {{name}}",
+      "noteWith": "Avec: {{name}}",
+      "added": "Ajouté au calendrier",
+      "addFailed": "Impossible d'ajouter au calendrier"
+    },
+    "info": {
+      "date": "Date",
+      "time": "Heure",
+      "provider": "Prestataire",
+      "with": "Avec",
+      "location": "Lieu",
+      "access": "Accès",
+      "viewOnMap": "Voir sur le plan",
+      "exactAddressAvailable": "Adresse exacte disponible",
+      "addressPending": "L'adresse exacte vous sera communiquée environ 48h avant le rendez-vous."
+    },
+    "actions": {
+      "rebook": "Reprendre un rendez-vous",
+      "addToCalendar": "Ajouter au calendrier",
+      "call": "Appeler",
+      "directions": "Itinéraire"
+    },
+    "review": {
+      "leave": "Laisser un avis",
+      "update": "Modifier mon avis"
+    },
+    "cancelFlow": {
+      "button": "Annuler le rendez-vous",
+      "modalTitle": "Annuler le rendez-vous ?",
+      "modalMessage": "Cette action est irréversible. Le prestataire sera notifié de l'annulation.",
+      "reasonLabel": "Raison (optionnel)",
+      "reasonPlaceholder": "Indiquez une raison...",
+      "success": "Rendez-vous annulé",
+      "error": "Erreur lors de l'annulation"
+    }
+  },
+  "review": {
+    "createTitle": "Donner votre avis",
+    "updateTitle": "Modifier votre avis",
+    "dateAt": "{{date}} à {{time}}",
+    "experienceQuestion": "Comment était votre expérience ?",
+    "ratingLabels": {
+      "1": "Très insatisfait",
+      "2": "Insatisfait",
+      "3": "Correct",
+      "4": "Satisfait",
+      "5": "Très satisfait"
+    },
+    "commentLabel": "Votre commentaire (optionnel)",
+    "commentPlaceholder": "Partagez votre expérience...",
+    "submitCreate": "Envoyer mon avis",
+    "submitUpdate": "Modifier mon avis",
+    "existingNotice": "Vous avez déjà un avis pour cet établissement. L'envoyer remplacera votre avis précédent.",
+    "selectRating": "Veuillez sélectionner une note",
+    "toastThanks": "Merci pour votre avis !",
+    "toastUpdated": "Avis mis à jour",
+    "successThanksTitle": "Merci pour votre avis !",
+    "successUpdatedTitle": "Avis mis à jour !",
+    "successMessage": "Votre avis est désormais visible sur la page du prestataire.",
+    "successUpdatedMessage": "Votre avis a bien été mis à jour.",
+    "errors": {
+      "missingData": "Données manquantes",
+      "notFound": "Réservation non trouvée",
+      "notAllowed": "Vous ne pouvez pas laisser d'avis pour cette réservation",
+      "loadFailed": "Erreur lors du chargement",
+      "submitFailed": "Erreur lors de l'envoi"
+    }
+  },
+  "editProfile": {
+    "title": "Modifier mon profil",
+    "firstNameLabel": "Prénom",
+    "firstNamePlaceholder": "Votre prénom",
+    "phoneLabel": "Téléphone",
+    "phonePlaceholder": "06 12 34 56 78",
+    "cityLabel": "Ville",
+    "cityPlaceholder": "Votre ville (optionnel)",
+    "success": "Profil mis à jour",
+    "updateError": "Erreur lors de la mise à jour",
+    "errors": {
+      "nameRequired": "Le prénom est requis",
+      "nameTooShort": "Le prénom doit contenir au moins 2 caractères",
+      "phoneRequired": "Le numéro de téléphone est requis",
+      "phoneInvalid": "Format invalide (ex: 06 12 34 56 78)"
+    }
+  },
+  "notifSettings": {
+    "title": "Notifications",
+    "updateError": "Erreur lors de la mise à jour",
+    "sections": {
+      "channels": "Canaux",
+      "types": "Types de notification"
+    },
+    "push": {
+      "label": "Notifications push",
+      "description": "Sur votre téléphone"
+    },
+    "email": {
+      "label": "Notifications email",
+      "description": "Par email"
+    },
+    "confirmations": {
+      "label": "Confirmations",
+      "description": "Quand votre RDV est confirmé"
+    },
+    "cancellations": {
+      "label": "Annulations",
+      "description": "Quand un RDV est annulé"
+    },
+    "reschedules": {
+      "label": "Modifications",
+      "description": "Quand un RDV est déplacé"
+    },
+    "reminders": {
+      "label": "Rappels",
+      "description": "Avant vos rendez-vous"
+    },
+    "channelsWarning": "Activez au moins un canal pour recevoir des notifications.",
+    "autoSaveInfo": "Les modifications sont enregistrées automatiquement."
+  },
+  "misc": {},
+  "components": {
+    "providerCard": {
+      "today": "Aujourd'hui",
+      "tomorrow": "Demain",
+      "fromPrice": "À partir de {{price}} €",
+      "priceOnRequest": "Prix sur demande"
+    },
+    "serviceCard": {
+      "fromPrefix": "à partir de",
+      "priceRange": "De {{min}} à {{max}}",
+      "showMore": "Plus de détails",
+      "showLess": "Moins"
+    },
+    "serviceChoicesPreview": {
+      "add": "Ajouter",
+      "book": "Réserver",
+      "total": "Total",
+      "startingFrom": "À partir de",
+      "options": "Options",
+      "included": "Inclus",
+      "yes": "Oui",
+      "no": "Non",
+      "variationFallback": "Variation",
+      "choiceFallback": "Choix",
+      "questionFallback": "Question",
+      "serviceFallback": "Prestation",
+      "yourAnswerPlaceholder": "Votre réponse…",
+      "clientFreeAnswer": "Réponse libre du client…",
+      "clientPreviewHint": "Voici exactement ce que verra le client au moment de réserver.",
+      "fixedPriceNotice": "Prestation à prix fixe — le client réserve directement, sans choix à faire. Ajoutez des variations ou options pour enrichir cette fiche."
+    },
+    "timeSlotGrid": {
+      "noSlotsForDate": "Aucun créneau disponible pour cette date"
+    },
+    "timeSlotSection": {
+      "slots_one": "{{count}} créneau",
+      "slots_other": "{{count}} créneaux"
+    },
+    "monthCalendar": {
+      "weekdaysShort": [
+        "Dim",
+        "Lun",
+        "Mar",
+        "Mer",
+        "Jeu",
+        "Ven",
+        "Sam"
+      ],
+      "months": [
+        "Janvier",
+        "Février",
+        "Mars",
+        "Avril",
+        "Mai",
+        "Juin",
+        "Juillet",
+        "Août",
+        "Septembre",
+        "Octobre",
+        "Novembre",
+        "Décembre"
+      ],
+      "placesLeft_one": "{{count}} pl.",
+      "placesLeft_other": "{{count}} pl.",
+      "full": "Complet",
+      "seeFullMonth": "Voir tout le mois",
+      "available": "Dispo",
+      "almostFull": "Bientôt complet"
+    },
+    "calendarStrip": {
+      "shortDays": [
+        "Dim",
+        "Lun",
+        "Mar",
+        "Mer",
+        "Jeu",
+        "Ven",
+        "Sam"
+      ],
+      "shortMonths": [
+        "Jan",
+        "Fév",
+        "Mar",
+        "Avr",
+        "Mai",
+        "Juin",
+        "Juil",
+        "Aoû",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Déc"
+      ],
+      "full": "Complet",
+      "placesLeft_one": "{{count}} pl.",
+      "placesLeft_other": "{{count}} pl."
+    },
+    "daySchedule": {
+      "allDay": "Journée entière",
+      "unavailable": "Indisponible",
+      "allMembers": "Tous les membres"
+    },
+    "hoursSection": {
+      "title": "Horaires",
+      "open": "Ouvert",
+      "closed": "Fermé",
+      "today": "(Aujourd'hui)"
+    },
+    "locationSection": {
+      "title_one": "Lieu",
+      "title_other": "Lieux",
+      "protectedAddressNote": "Adresse exacte communiquée après confirmation",
+      "travelRadius": "Rayon de déplacement : {{radius}} km"
+    },
+    "teamSection": {
+      "title": "L'équipe"
+    },
+    "reviewCard": {
+      "importedBadge": "Avis importé",
+      "providerReply": "Réponse du prestataire"
+    },
+    "ratingStats": {
+      "reviews_one": "({{count}} avis)",
+      "reviews_other": "({{count}} avis)"
+    },
+    "providerHeader": {
+      "verified": "Vérifié",
+      "reviews_one": "({{count}} avis)",
+      "reviews_other": "({{count}} avis)",
+      "noReviews": "Pas encore d'avis"
+    },
+    "providerInfo": {
+      "about": "À propos"
+    },
+    "bookingDetail": {
+      "dateAtTime": "{{date}} à {{time}}",
+      "service": "Prestation",
+      "duration": "Durée",
+      "price": "Prix",
+      "location": "Lieu",
+      "with": "Avec",
+      "cancelBooking": "Annuler la réservation",
+      "leaveReview": "Laisser un avis"
+    },
+    "bookingRecap": {
+      "dateAtTime": "{{date}} à {{time}}",
+      "service": "Prestation",
+      "duration": "Durée",
+      "appointment": "Rendez-vous",
+      "location": "Lieu",
+      "with": "Avec",
+      "total": "Total"
+    },
+    "bookingStatusBadge": {
+      "pendingPayment": "Acompte en attente",
+      "pending": "En attente",
+      "confirmed": "Confirmé",
+      "cancelled": "Annulé",
+      "noshow": "Absent",
+      "unknown": "Statut inconnu"
+    },
+    "searchBar": {
+      "placeholder": "Rechercher..."
+    },
+    "regionSelect": {
+      "placeholder": "Choisir une région",
+      "label": "Région",
+      "title": "Choisir une région",
+      "searchPlaceholder": "Rechercher une région...",
+      "noResults": "Aucune région trouvée"
+    },
+    "citySelect": {
+      "allCities": "Toutes les villes",
+      "label": "Ville",
+      "title": "Choisir une ville",
+      "searchPlaceholder": "Rechercher une ville...",
+      "noResults": "Aucune ville trouvée"
+    },
+    "categorySelect": {
+      "allCategories": "Toutes les catégories",
+      "title": "Choisir une catégorie",
+      "searchPlaceholder": "Rechercher une catégorie...",
+      "noResults": "Aucune catégorie trouvée"
+    },
+    "categoryPills": {
+      "all": "Toutes"
+    },
+    "stickyConfirmButton": {
+      "confirmTime": "Confirmer - {{time}}",
+      "selectTime": "Sélectionnez un horaire"
+    },
+    "memberPicker": {
+      "anyone": "Peu importe",
+      "firstAvailable": "Premier disponible"
+    },
+    "loadingTips": {
+      "tips": [
+        "Votre agenda est accessible par vos clients 24h/24, 7j/7.",
+        "Les rappels automatiques réduisent fortement les rendez-vous manqués.",
+        "Un acompte « Sérénité » dissuade les no-shows et sécurise vos créneaux.",
+        "Partagez votre lien de réservation sur Instagram, WhatsApp, votre vitrine…",
+        "Ajoutez des variations et options : le client compose, le prix s’ajuste seul.",
+        "Demandez un avis après chaque rendez-vous pour gagner en visibilité.",
+        "Sans commission : vous gardez 100 % de vos revenus."
+      ]
+    },
+    "updateGate": {
+      "maintenanceTitle": "Maintenance en cours",
+      "updateTitle": "Mise à jour requise",
+      "versionLabel": "Version {{version}}",
+      "maintenanceMessage": "Opatam est temporairement indisponible. Merci de réessayer dans quelques instants.",
+      "updateMessage": "Une nouvelle version d'Opatam est disponible. Mettez à jour l'application pour continuer.",
+      "whatsNew": "Nouveautés",
+      "fixes": "Corrections",
+      "updateButton": "Mettre à jour",
+      "storeHintIos": "Rendez-vous sur l'App Store pour installer la dernière version.",
+      "storeHintAndroid": "Rendez-vous sur Google Play pour installer la dernière version."
+    },
+    "webRedirectModal": {
+      "activatedTitle": "Compte activé !",
+      "activatedDescriptionNamed": "Félicitations {{name}} ! Votre compte est maintenant actif. Profitez de toutes les fonctionnalités.",
+      "activatedDescription": "Félicitations ! Votre compte est maintenant actif. Profitez de toutes les fonctionnalités.",
+      "letsGo": "C'est parti !",
+      "greeting": "Bonjour, {{name}}",
+      "trialEndedTitle": "Période d'essai terminée",
+      "trialEndedDescription": "Votre période d'essai est arrivée à son terme. Pour continuer à utiliser Opatam, activez votre compte depuis votre espace web.",
+      "checking": "Vérification...",
+      "accountActivatedButton": "J'ai activé mon compte",
+      "comeBackHint": "Vous pourrez revenir sur l'app une fois votre compte activé.",
+      "signOut": "Se déconnecter"
+    },
+    "locationPermissionPrompt": {
+      "title": "Trouvez les pros près de chez vous",
+      "intro": "Nous utilisons votre localisation pour :",
+      "benefitNearby": "Afficher les prestataires proches",
+      "benefitDistance": "Calculer la distance et le temps de trajet",
+      "benefitSort": "Trier les résultats par distance",
+      "privacyNote": "Votre position n'est jamais partagée avec les prestataires. Vous pouvez la désactiver à tout moment depuis les Réglages.",
+      "enable": "Activer la localisation",
+      "later": "Plus tard"
+    },
+    "notificationPermissionPrompt": {
+      "title": "Restez informé en temps réel",
+      "intro": "Activez les notifications pour être alerté de :",
+      "benefitBookings": "Nouveaux rendez-vous",
+      "benefitReminders": "Rappels avant vos RDV",
+      "benefitReviews": "Avis de vos clients",
+      "benefitChanges": "Annulations et modifications",
+      "enable": "Activer les notifications",
+      "later": "Plus tard"
+    },
+    "notificationsDrawer": {
+      "title": "Nouveau",
+      "unread_one": "{{count}} non lue",
+      "unread_other": "{{count}} non lues",
+      "upToDate": "À jour",
+      "markAllRead": "Tout lire",
+      "pushNotifications": "Notifications push",
+      "watchVideo": "Voir la vidéo",
+      "viewTutorial": "Voir le tutoriel",
+      "emptyTitle": "Vous êtes à jour",
+      "emptyDescription": "Les nouveautés et annonces d'Opatam s'afficheront ici.",
+      "deleteNotification": "Supprimer cette notification"
+    },
+    "expandableText": {
+      "showMore": "Voir plus",
+      "showLess": "Voir moins"
+    }
+  },
+  "errors": {
+    "auth": {
+      "emailAlreadyInUse": "Cet email est déjà utilisé",
+      "invalidEmail": "Format d'email invalide",
+      "weakPassword": "Le mot de passe est trop faible",
+      "userNotFound": "Aucun compte associé à cet email",
+      "wrongPassword": "Mot de passe incorrect",
+      "invalidCredential": "Email ou mot de passe incorrect",
+      "tooManyRequests": "Trop de tentatives, réessayez plus tard",
+      "networkRequestFailed": "Erreur de connexion",
+      "userDisabled": "Ce compte a été désactivé",
+      "appleTokenMissing": "Token Apple manquant",
+      "appleSignInFailed": "Erreur de connexion avec Apple",
+      "signOutFailed": "Erreur lors de la déconnexion",
+      "noUserSignedIn": "Aucun utilisateur connecté",
+      "deleteAccountFailed": "Erreur lors de la suppression du compte"
+    },
+    "bookings": {
+      "loadFailed": "Erreur lors du chargement des réservations"
+    },
+    "availability": {
+      "loadFailed": "Erreur lors du chargement des disponibilités"
+    },
+    "categories": {
+      "loadFailed": "Erreur lors du chargement des catégories"
+    },
+    "provider": {
+      "notFound": "Prestataire non trouvé",
+      "loadFailed": "Erreur lors du chargement du prestataire"
+    }
+  },
+  "dates": {
+    "today": "Aujourd'hui",
+    "tomorrow": "Demain",
+    "yesterday": "Hier",
+    "daysAgo_one": "Il y a {{count}} jour",
+    "daysAgo_other": "Il y a {{count}} jours",
+    "weeksAgo_one": "Il y a {{count}} semaine",
+    "weeksAgo_other": "Il y a {{count}} semaines",
+    "monthsAgo_one": "Il y a {{count}} mois",
+    "monthsAgo_other": "Il y a {{count}} mois",
+    "yearsAgo_one": "Il y a {{count}} an",
+    "yearsAgo_other": "Il y a {{count}} ans"
+  },
+  "tabs": {
+    "home": "Accueil",
+    "search": "Recherche",
+    "bookings": "Mes RDV",
+    "more": "Plus"
+  },
+  "home": {
+    "greeting": "Bonjour",
+    "greetingWithName": "Bonjour {{name}}",
+    "subtitle": "Trouvez votre prochain rendez-vous",
+    "searchPlaceholder": "Rechercher un prestataire...",
+    "categoriesTitle": "Catégories",
+    "categories": {
+      "digital": "Digital",
+      "beauty": "Beauté",
+      "coaching": "Coaching",
+      "wellness": "Bien-être",
+      "sport": "Sport",
+      "training": "Formation",
+      "artisan": "Artisans",
+      "audiovisual": "Audiovisuel"
+    },
+    "date": {
+      "todayAt": "Aujourd'hui à {{time}}",
+      "tomorrowAt": "Demain à {{time}}",
+      "dayAt": "{{date}} à {{time}}"
+    },
+    "countdown": {
+      "inMinutes": "Dans {{count}} min",
+      "inHoursMinutes": "Dans {{hours}}h{{minutes}}",
+      "inHours": "Dans {{hours}}h",
+      "tomorrow": "Demain",
+      "inDays_one": "Dans {{count}} jour",
+      "inDays_other": "Dans {{count}} jours"
+    },
+    "nextBooking": {
+      "title": "Prochain RDV",
+      "emptyTitle": "Pas de RDV à venir",
+      "emptyDescription": "Trouvez un prestataire et réservez votre prochain rendez-vous en quelques clics",
+      "searchAction": "Rechercher"
+    },
+    "recentBookings": {
+      "title": "Derniers RDV",
+      "seeAll": "Voir tout",
+      "promoActive": "Promotion en cours",
+      "rebook": "Réserver",
+      "review": "Avis"
+    },
+    "suggestions": {
+      "title": "Suggestions",
+      "nearYou": "Près de chez vous",
+      "nearYouInCity": "Près de chez vous · à {{city}}",
+      "emptyTitle": "Aucune suggestion",
+      "emptyDescription": "Aucun prestataire disponible pour le moment"
+    }
+  },
+  "search": {
+    "title": "Recherche",
+    "searchPlaceholder": "Rechercher un prestataire...",
+    "intro": {
+      "title": "Rechercher un prestataire",
+      "chooseRegionSubtitle": "Commencez par choisir votre région",
+      "chooseCountrySubtitle": "Choisissez un pays pour commencer"
+    },
+    "useMyLocation": "Utiliser ma localisation",
+    "or": "ou",
+    "chooseRegionPlaceholder": "Choisir une région",
+    "searchInCountry": "Rechercher en {{country}}",
+    "countryPickerTitle": "Pays",
+    "countries": {
+      "FR": "France",
+      "BE": "Belgique",
+      "LU": "Luxembourg",
+      "CH": "Suisse",
+      "DE": "Allemagne",
+      "ES": "Espagne",
+      "IT": "Italie",
+      "NL": "Pays-Bas",
+      "PT": "Portugal"
+    },
+    "errorTitle": "Erreur",
+    "noResults": {
+      "title": "Aucun résultat",
+      "description": "Essayez de modifier vos critères de recherche",
+      "clearFilters": "Effacer les filtres"
+    },
+    "popular": {
+      "title": "Populaires",
+      "subtitle": "Les prestataires les mieux notés"
+    }
+  },
+  "bookings": {
+    "title": "Mes rendez-vous",
+    "tabs": {
+      "upcoming": "À venir",
+      "past": "Historique"
+    },
+    "status": {
+      "confirmed": "Confirmé",
+      "pending": "En attente",
+      "cancelled": "Annulé",
+      "noshow": "Absent"
+    },
+    "date": {
+      "todayAt": "Aujourd'hui à {{time}}",
+      "tomorrowAt": "Demain à {{time}}",
+      "dayAt": "{{date}} à {{time}}"
+    },
+    "priceRange": "De {{min}} à {{max}} €",
+    "price": "{{price}} €",
+    "errorTitle": "Erreur",
+    "notAuth": {
+      "title": "Connectez-vous",
+      "description": "Connectez-vous pour voir vos rendez-vous et en prendre de nouveaux",
+      "action": "Se connecter"
+    },
+    "empty": {
+      "upcomingTitle": "Aucun RDV à venir",
+      "upcomingDescription": "Trouvez un prestataire et réservez votre prochain rendez-vous en quelques clics",
+      "pastTitle": "Aucun historique",
+      "pastDescription": "Vos anciens rendez-vous apparaîtront ici",
+      "searchAction": "Rechercher"
+    }
   }
 }

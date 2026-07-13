@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { CategoryPill } from './CategoryPill';
 
@@ -31,9 +32,10 @@ export function CategoryPills({
   selectedId,
   onSelect,
   showAll = true,
-  allLabel = 'Toutes',
+  allLabel,
 }: CategoryPillsProps) {
   const { spacing } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <ScrollView
@@ -47,7 +49,7 @@ export function CategoryPills({
       {/* "All" pill */}
       {showAll && (
         <CategoryPill
-          label={allLabel}
+          label={allLabel ?? t('components.categoryPills.all')}
           selected={selectedId === null}
           onPress={() => onSelect(null)}
         />

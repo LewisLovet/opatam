@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { providerService } from '@booking-app/firebase';
 import { useProvidersCache } from '../contexts';
+import i18n from '../lib/i18n';
 import type { Provider } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
@@ -52,7 +53,7 @@ export function useProvider(slug: string | undefined): UseProviderResult {
         const result = await providerService.getBySlug(slug);
 
         if (!result) {
-          setError('Prestataire non trouvé');
+          setError(i18n.t('errors.provider.notFound'));
           setProvider(null);
         } else {
           setProvider(result);
@@ -61,7 +62,7 @@ export function useProvider(slug: string | undefined): UseProviderResult {
         }
       } catch (err) {
         console.error('Error loading provider:', err);
-        setError('Erreur lors du chargement du prestataire');
+        setError(i18n.t('errors.provider.loadFailed'));
         // Keep cached data if available on error
         if (!cached) {
           setProvider(null);

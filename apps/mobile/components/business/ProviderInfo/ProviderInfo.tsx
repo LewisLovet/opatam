@@ -7,6 +7,7 @@
 import React from 'react';
 import { View, StyleSheet, Pressable, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Divider } from '../../Divider';
@@ -29,6 +30,7 @@ export function ProviderInfo({
   phone,
 }: ProviderInfoProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   const hasStreetAddress = !!address?.trim();
   const fullAddress = hasStreetAddress ? `${address}, ${city}` : city;
@@ -51,7 +53,7 @@ export function ProviderInfo({
         <>
           <View style={[styles.section, { paddingVertical: spacing.md }]}>
             <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm }}>
-              À propos
+              {t('components.providerInfo.about')}
             </Text>
             <Text variant="body" color="textSecondary">
               {description}

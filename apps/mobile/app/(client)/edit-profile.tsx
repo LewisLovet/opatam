@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -31,6 +32,7 @@ export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { user, userData, refreshUserData } = useAuth();
 
   // Form state - pre-filled with current values
@@ -46,18 +48,18 @@ export default function EditProfileScreen() {
 
     // Display name validation
     if (!displayName.trim()) {
-      newErrors.displayName = 'Le prénom est requis';
+      newErrors.displayName = t('editProfile.errors.nameRequired');
     } else if (displayName.trim().length < 2) {
-      newErrors.displayName = 'Le prénom doit contenir au moins 2 caractères';
+      newErrors.displayName = t('editProfile.errors.nameTooShort');
     }
 
     // Phone validation (required)
     if (!phone.trim()) {
-      newErrors.phone = 'Le numéro de téléphone est requis';
+      newErrors.phone = t('editProfile.errors.phoneRequired');
     } else {
       const cleanedPhone = phone.replace(/\s/g, '');
       if (!/^0[67]\d{8}$/.test(cleanedPhone)) {
-        newErrors.phone = 'Format invalide (ex: 06 12 34 56 78)';
+        newErrors.phone = t('editProfile.errors.phoneInvalid');
       }
     }
 
@@ -95,14 +97,14 @@ export default function EditProfileScreen() {
 
       showToast({
         variant: 'success',
-        message: 'Profil mis à jour',
+        message: t('editProfile.success'),
       });
 
       router.back();
     } catch (error: any) {
       showToast({
         variant: 'error',
-        message: error.message || 'Erreur lors de la mise à jour',
+        message: error.message || t('editProfile.updateError'),
       });
     } finally {
       setIsSubmitting(false);
@@ -142,7 +144,7 @@ export default function EditProfileScreen() {
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </Pressable>
           <Text variant="h2" style={styles.headerTitle}>
-            Modifier mon profil
+            {t('editProfile.title')}
           </Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -150,8 +152,8 @@ export default function EditProfileScreen() {
         {/* Form */}
         <View style={[styles.form, { gap: spacing.md, marginTop: spacing.xl }]}>
           <Input
-            label="Prénom"
-            placeholder="Votre prénom"
+            label={t('editProfile.firstNameLabel')}
+            placeholder={t('editProfile.firstNamePlaceholder')}
             value={displayName}
             onChangeText={(text) => {
               setDisplayName(text);
@@ -162,8 +164,8 @@ export default function EditProfileScreen() {
           />
 
           <Input
-            label="Téléphone"
-            placeholder="06 12 34 56 78"
+            label={t('editProfile.phoneLabel')}
+            placeholder={t('editProfile.phonePlaceholder')}
             value={phone}
             onChangeText={(text) => {
               setPhone(text);
@@ -174,8 +176,8 @@ export default function EditProfileScreen() {
           />
 
           <Input
-            label="Ville"
-            placeholder="Votre ville (optionnel)"
+            label={t('editProfile.cityLabel')}
+            placeholder={t('editProfile.cityPlaceholder')}
             value={city}
             onChangeText={(text) => {
               setCity(text);
@@ -187,7 +189,7 @@ export default function EditProfileScreen() {
 
           <Button
             variant="primary"
-            title="Enregistrer"
+            title={t('common.save')}
             onPress={handleSave}
             loading={isSubmitting}
             disabled={isSubmitting}

@@ -3,7 +3,9 @@
  * User's appointments list with upcoming/past tabs
  */
 
+import type { TFunction } from 'i18next';
 import React, { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -26,7 +28,7 @@ import type { WithId } from '@booking-app/firebase';
 type TabType = 'upcoming' | 'past';
 
 // Helper to format booking date
-function formatBookingDate(datetime: Date | any): string {
+function formatBookingDate(datetime: Date | any, t: TFunction, locale: string): string {
   const date = datetime instanceof Date
     ? datetime
     : datetime?.toDate?.() || new Date(datetime);
@@ -38,34 +40,34 @@ function formatBookingDate(datetime: Date | any): string {
   const isToday = date.toDateString() === now.toDateString();
   const isTomorrow = date.toDateString() === tomorrow.toDateString();
 
-  const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
   if (isToday) {
-    return `Aujourd'hui à ${timeStr}`;
+    return t('bookings.date.todayAt', { time: timeStr });
   }
   if (isTomorrow) {
-    return `Demain à ${timeStr}`;
+    return t('bookings.date.tomorrowAt', { time: timeStr });
   }
 
-  const dateStr = date.toLocaleDateString('fr-FR', {
+  const dateStr = date.toLocaleDateString(locale, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   });
-  return `${dateStr} à ${timeStr}`;
+  return t('bookings.date.dayAt', { date: dateStr, time: timeStr });
 }
 
 // Get status badge config
-function getStatusConfig(status: BookingStatus): { label: string; color: string; bgColor: string } {
+function getStatusConfig(status: BookingStatus, t: TFunction): { label: string; color: string; bgColor: string } {
   switch (status) {
     case 'confirmed':
-      return { label: 'Confirmé', color: '#16a34a', bgColor: '#dcfce7' };
+      return { label: t('bookings.status.confirmed'), color: '#16a34a', bgColor: '#dcfce7' };
     case 'pending':
-      return { label: 'En attente', color: '#ca8a04', bgColor: '#fef9c3' };
+      return { label: t('bookings.status.pending'), color: '#ca8a04', bgColor: '#fef9c3' };
     case 'cancelled':
-      return { label: 'Annulé', color: '#dc2626', bgColor: '#fee2e2' };
+      return { label: t('bookings.status.cancelled'), color: '#dc2626', bgColor: '#fee2e2' };
     case 'noshow':
-      return { label: 'Absent', color: '#6b7280', bgColor: '#f3f4f6' };
+      return { label: t('bookings.status.noshow'), color: '#6b7280', bgColor: '#f3f4f6' };
     default:
       return { label: status, color: '#6b7280', bgColor: '#f3f4f6' };
   }
@@ -81,7 +83,10 @@ function BookingCard({
   colors: any;
   onPress: () => void;
 }) {
-  const statusConfig = getStatusConfig(booking.status);
+  const { t, i18n } = useTranslation();
+  // Locale for date/time rendering (24h clock in both languages)
+  const dateLocale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const statusConfig = getStatusConfig(booking.status, t);
 
   return (
     <Pressable onPress={onPress}>
@@ -102,7 +107,7 @@ function BookingCard({
             </Text>
             <View style={styles.bookingMeta}>
               <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>
-                {formatBookingDate(booking.datetime)}
+                {formatBookingDate(booking.datetime, t, dateLocale)}
               </Text>
               <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
                 <Text style={[styles.statusText, { color: statusConfig.color }]}>
@@ -123,24 +128,24 @@ function BookingCard({
             </View>
             {booking.price === 0 && !booking.priceMax ? (
               <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
-                Gratuit
+                {t('common.free')}
               </Text>
             ) : booking.priceMax ? (
               <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
-                {`De ${(booking.price / 100).toFixed(0)} à ${(booking.priceMax / 100).toFixed(0)} €`}
+                {t('bookings.priceRange', { min: (booking.price / 100).toFixed(0), max: (booking.priceMax / 100).toFixed(0) })}
               </Text>
             ) : booking.originalPrice != null && booking.originalPrice > booking.price ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 4 }}>
                 <Text variant="caption" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
-                  {(booking.originalPrice / 100).toFixed(0)} €
+                  {t('bookings.price', { price: (booking.originalPrice / 100).toFixed(0) })}
                 </Text>
                 <Text variant="caption" style={{ fontWeight: '700', color: '#E11D48' }}>
-                  {(booking.price / 100).toFixed(0)} €
+                  {t('bookings.price', { price: (booking.price / 100).toFixed(0) })}
                 </Text>
               </View>
             ) : (
               <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
-                {`${(booking.price / 100).toFixed(0)} €`}
+                {t('bookings.price', { price: (booking.price / 100).toFixed(0) })}
               </Text>
             )}
           </View>
@@ -168,6 +173,7 @@ function BookingCardSkeleton({ colors }: { colors: any }) {
 
 export default function BookingsScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
@@ -204,16 +210,16 @@ export default function BookingsScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-            <Text variant="h1" style={{ color: '#FFFFFF' }}>Mes rendez-vous</Text>
+            <Text variant="h1" style={{ color: '#FFFFFF' }}>{t('bookings.title')}</Text>
           </View>
         </View>
         <View style={[styles.content, { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }]}>
           <Card padding="lg" shadow="sm">
             <EmptyState
               icon="log-in-outline"
-              title="Connectez-vous"
-              description="Connectez-vous pour voir vos rendez-vous et en prendre de nouveaux"
-              actionLabel="Se connecter"
+              title={t('bookings.notAuth.title')}
+              description={t('bookings.notAuth.description')}
+              actionLabel={t('bookings.notAuth.action')}
               onAction={() => router.push('/(auth)/login')}
             />
           </Card>
@@ -227,7 +233,7 @@ export default function BookingsScreen() {
       {/* ── Branded Header ── */}
       <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-          <Text variant="h1" style={{ color: '#FFFFFF' }}>Mes rendez-vous</Text>
+          <Text variant="h1" style={{ color: '#FFFFFF' }}>{t('bookings.title')}</Text>
         </View>
       </View>
 
@@ -260,7 +266,7 @@ export default function BookingsScreen() {
             color={activeTab === 'upcoming' ? 'text' : 'textSecondary'}
             style={{ fontWeight: activeTab === 'upcoming' ? '600' : '400' }}
           >
-            À venir {upcoming.length > 0 && `(${upcoming.length})`}
+            {t('bookings.tabs.upcoming')} {upcoming.length > 0 && `(${upcoming.length})`}
           </Text>
         </Pressable>
         <Pressable
@@ -278,7 +284,7 @@ export default function BookingsScreen() {
             color={activeTab === 'past' ? 'text' : 'textSecondary'}
             style={{ fontWeight: activeTab === 'past' ? '600' : '400' }}
           >
-            Historique
+            {t('bookings.tabs.past')}
           </Text>
         </Pressable>
       </View>
@@ -308,9 +314,9 @@ export default function BookingsScreen() {
           <Card padding="lg" shadow="sm">
             <EmptyState
               icon="alert-circle-outline"
-              title="Erreur"
+              title={t('bookings.errorTitle')}
               description={error}
-              actionLabel="Réessayer"
+              actionLabel={t('common.retry')}
               onAction={refresh}
             />
           </Card>
@@ -335,18 +341,18 @@ export default function BookingsScreen() {
                 />
               </View>
               <Text variant="body" style={{ fontWeight: '600', marginTop: spacing.md }}>
-                {activeTab === 'upcoming' ? 'Aucun RDV à venir' : 'Aucun historique'}
+                {activeTab === 'upcoming' ? t('bookings.empty.upcomingTitle') : t('bookings.empty.pastTitle')}
               </Text>
               <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs, textAlign: 'center' }}>
                 {activeTab === 'upcoming'
-                  ? 'Trouvez un prestataire et réservez votre prochain rendez-vous en quelques clics'
-                  : 'Vos anciens rendez-vous apparaîtront ici'}
+                  ? t('bookings.empty.upcomingDescription')
+                  : t('bookings.empty.pastDescription')}
               </Text>
               {activeTab === 'upcoming' && (
                 <View style={[styles.emptyBookingBtn, { backgroundColor: colors.primary, borderRadius: radius.full, marginTop: spacing.lg }]}>
                   <Ionicons name="search-outline" size={16} color="#FFF" />
                   <Text variant="body" style={{ color: '#FFF', fontWeight: '600', marginLeft: spacing.xs }}>
-                    Rechercher
+                    {t('bookings.empty.searchAction')}
                   </Text>
                 </View>
               )}

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import * as Application from 'expo-application';
 import { db, doc, onSnapshot } from '@booking-app/firebase';
 import type { MobileAppConfig } from '@booking-app/shared';
@@ -144,6 +145,7 @@ function NoteRow({ icon, color, text }: { icon: any; color: string; text: string
 
 export function UpdateGate() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [block, setBlock] = useState<Block>(null);
 
   useEffect(() => {
@@ -220,20 +222,24 @@ export function UpdateGate() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>
-          {isMaintenance ? 'Maintenance en cours' : 'Mise à jour requise'}
+          {isMaintenance
+            ? t('components.updateGate.maintenanceTitle')
+            : t('components.updateGate.updateTitle')}
         </Text>
 
         {block.kind === 'update' && block.latestVersion ? (
           <View style={styles.versionPill}>
-            <Text style={styles.versionPillText}>Version {block.latestVersion}</Text>
+            <Text style={styles.versionPillText}>
+              {t('components.updateGate.versionLabel', { version: block.latestVersion })}
+            </Text>
           </View>
         ) : null}
 
         <Text style={styles.message}>
           {block.message ||
             (isMaintenance
-              ? "Opatam est temporairement indisponible. Merci de réessayer dans quelques instants."
-              : "Une nouvelle version d'Opatam est disponible. Mettez à jour l'application pour continuer.")}
+              ? t('components.updateGate.maintenanceMessage')
+              : t('components.updateGate.updateMessage'))}
         </Text>
 
         {/* Release notes */}
@@ -243,7 +249,7 @@ export function UpdateGate() {
               <View style={styles.notesGroup}>
                 <View style={styles.notesGroupHead}>
                   <Ionicons name="rocket" size={16} color={BLUE} />
-                  <Text style={styles.notesGroupTitle}>Nouveautés</Text>
+                  <Text style={styles.notesGroupTitle}>{t('components.updateGate.whatsNew')}</Text>
                 </View>
                 {notes.features.map((f, i) => (
                   <NoteRow key={`f${i}`} icon="add-circle" color={BLUE} text={f} />
@@ -254,7 +260,7 @@ export function UpdateGate() {
               <View style={[styles.notesGroup, notes.features.length > 0 && styles.notesGroupSpaced]}>
                 <View style={styles.notesGroupHead}>
                   <Ionicons name="build" size={16} color="#10B981" />
-                  <Text style={styles.notesGroupTitle}>Corrections</Text>
+                  <Text style={styles.notesGroupTitle}>{t('components.updateGate.fixes')}</Text>
                 </View>
                 {notes.fixes.map((f, i) => (
                   <NoteRow key={`b${i}`} icon="checkmark-circle" color="#10B981" text={f} />
@@ -270,12 +276,13 @@ export function UpdateGate() {
         ) : hasStoreUrl ? (
           <TouchableOpacity style={styles.button} onPress={openStore} activeOpacity={0.85}>
             <Ionicons name="download-outline" size={20} color="#fff" />
-            <Text style={styles.buttonText}>Mettre à jour</Text>
+            <Text style={styles.buttonText}>{t('components.updateGate.updateButton')}</Text>
           </TouchableOpacity>
         ) : (
           <Text style={styles.hint}>
-            Rendez-vous sur {Platform.OS === 'ios' ? "l'App Store" : 'Google Play'} pour
-            installer la dernière version.
+            {Platform.OS === 'ios'
+              ? t('components.updateGate.storeHintIos')
+              : t('components.updateGate.storeHintAndroid')}
           </Text>
         )}
       </ScrollView>

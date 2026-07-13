@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   FlatList,
@@ -38,16 +39,17 @@ import {
   getRegionFromCoords,
 } from '@booking-app/shared';
 
+// Names resolved at render time via t(`search.countries.${code}`)
 const COUNTRY_OPTIONS = [
-  { code: 'FR', label: '\u{1F1EB}\u{1F1F7} France' },
-  { code: 'BE', label: '\u{1F1E7}\u{1F1EA} Belgique' },
-  { code: 'LU', label: '\u{1F1F1}\u{1F1FA} Luxembourg' },
-  { code: 'CH', label: '\u{1F1E8}\u{1F1ED} Suisse' },
-  { code: 'DE', label: '\u{1F1E9}\u{1F1EA} Allemagne' },
-  { code: 'ES', label: '\u{1F1EA}\u{1F1F8} Espagne' },
-  { code: 'IT', label: '\u{1F1EE}\u{1F1F9} Italie' },
-  { code: 'NL', label: '\u{1F1F3}\u{1F1F1} Pays-Bas' },
-  { code: 'PT', label: '\u{1F1F5}\u{1F1F9} Portugal' },
+  { code: 'FR', flag: '\u{1F1EB}\u{1F1F7}' },
+  { code: 'BE', flag: '\u{1F1E7}\u{1F1EA}' },
+  { code: 'LU', flag: '\u{1F1F1}\u{1F1FA}' },
+  { code: 'CH', flag: '\u{1F1E8}\u{1F1ED}' },
+  { code: 'DE', flag: '\u{1F1E9}\u{1F1EA}' },
+  { code: 'ES', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: 'IT', flag: '\u{1F1EE}\u{1F1F9}' },
+  { code: 'NL', flag: '\u{1F1F3}\u{1F1F1}' },
+  { code: 'PT', flag: '\u{1F1F5}\u{1F1F9}' },
 ];
 import type { Provider } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
@@ -60,7 +62,14 @@ const categoryOptions = CATEGORIES.map((c) => ({ id: c.id, label: c.label, icon:
 
 export default function SearchScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+
+  // "🇫🇷 France" — flag from COUNTRY_OPTIONS, localized country name
+  const countryLabel = (code: string) => {
+    const option = COUNTRY_OPTIONS.find((c) => c.code === code);
+    return option ? `${option.flag} ${t(`search.countries.${option.code}`)}` : '';
+  };
   const params = useLocalSearchParams<{ category?: string }>();
   const { navigateToProvider, isLoading } = useNavigateToProvider();
 
@@ -233,9 +242,9 @@ export default function SearchScreen() {
         <View style={styles.emptyContainer}>
           <EmptyState
             icon="alert-circle-outline"
-            title="Erreur"
+            title={t('search.errorTitle')}
             description={error}
-            actionLabel="Réessayer"
+            actionLabel={t('common.retry')}
             onAction={refresh}
           />
         </View>
@@ -246,9 +255,9 @@ export default function SearchScreen() {
       <View style={styles.emptyContainer}>
         <EmptyState
           icon="search-outline"
-          title="Aucun résultat"
-          description="Essayez de modifier vos critères de recherche"
-          actionLabel="Effacer les filtres"
+          title={t('search.noResults.title')}
+          description={t('search.noResults.description')}
+          actionLabel={t('search.noResults.clearFilters')}
           onAction={() => {
             setSearchQuery('');
             setDebouncedQuery('');
@@ -302,7 +311,7 @@ export default function SearchScreen() {
           }}
         >
           <Text variant="bodySmall" style={{ fontWeight: '600' }}>
-            {COUNTRY_OPTIONS.find((c) => c.code === selectedCountry)?.label || '\u{1F1EB}\u{1F1F7} France'}
+            {countryLabel(selectedCountry) || countryLabel('FR')}
           </Text>
           <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
         </Pressable>
@@ -362,10 +371,10 @@ export default function SearchScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="h3" style={{ fontWeight: '700' }}>
-                  Populaires
+                  {t('search.popular.title')}
                 </Text>
                 <Text variant="caption" color="textMuted">
-                  Les prestataires les mieux notés
+                  {t('search.popular.subtitle')}
                 </Text>
               </View>
             </View>
@@ -400,7 +409,7 @@ export default function SearchScreen() {
         {/* ── Branded Header ── */}
         <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-            <Text variant="h2" style={{ color: '#FFFFFF' }}>Recherche</Text>
+            <Text variant="h2" style={{ color: '#FFFFFF' }}>{t('search.title')}</Text>
           </View>
         </View>
         <View style={[styles.regionPickerContainer, { paddingHorizontal: spacing.lg }]}>
@@ -408,10 +417,10 @@ export default function SearchScreen() {
           <View style={{ alignItems: 'center', marginTop: spacing['2xl'], marginBottom: spacing.xl }}>
             <Ionicons name="search" size={48} color={colors.primary} style={{ marginBottom: spacing.md }} />
             <Text variant="h2" style={{ textAlign: 'center', marginBottom: spacing.sm }}>
-              Rechercher un prestataire
+              {t('search.intro.title')}
             </Text>
             <Text variant="body" color="textSecondary" style={{ textAlign: 'center' }}>
-              {selectedCountry === 'FR' ? 'Commencez par choisir votre region' : 'Choisissez un pays pour commencer'}
+              {selectedCountry === 'FR' ? t('search.intro.chooseRegionSubtitle') : t('search.intro.chooseCountrySubtitle')}
             </Text>
           </View>
 
@@ -432,7 +441,7 @@ export default function SearchScreen() {
             }}
           >
             <Text variant="body" style={{ fontWeight: '600' }}>
-              {COUNTRY_OPTIONS.find((c) => c.code === selectedCountry)?.label || '\u{1F1EB}\u{1F1F7} France'}
+              {countryLabel(selectedCountry) || countryLabel('FR')}
             </Text>
             <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
           </Pressable>
@@ -459,7 +468,7 @@ export default function SearchScreen() {
             >
               <Ionicons name="search" size={20} color="#fff" style={{ marginRight: spacing.sm }} />
               <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
-                Rechercher en {COUNTRY_OPTIONS.find((c) => c.code === selectedCountry)?.label.split(' ').slice(1).join(' ') || ''}
+                {t('search.searchInCountry', { country: t(`search.countries.${selectedCountry}`) })}
               </Text>
             </Pressable>
           )}
@@ -490,7 +499,7 @@ export default function SearchScreen() {
                   <Ionicons name="navigate" size={20} color="#fff" style={{ marginRight: spacing.sm }} />
                 )}
                 <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
-                  Utiliser ma localisation
+                  {t('search.useMyLocation')}
                 </Text>
               </Pressable>
 
@@ -498,7 +507,7 @@ export default function SearchScreen() {
               <View style={[styles.dividerRow, { marginBottom: spacing.lg }]}>
                 <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
                 <Text variant="caption" color="textMuted" style={{ marginHorizontal: spacing.md }}>
-                  ou
+                  {t('search.or')}
                 </Text>
                 <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
               </View>
@@ -508,7 +517,7 @@ export default function SearchScreen() {
                 value={selectedRegion}
                 regions={REGION_NAMES}
                 onChange={handleRegionChange}
-                placeholder="Choisir une region"
+                placeholder={t('search.chooseRegionPlaceholder')}
               />
             </>
           )}
@@ -519,7 +528,7 @@ export default function SearchScreen() {
           <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
             <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '60%' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <Text variant="h3">Pays</Text>
+                <Text variant="h3">{t('search.countryPickerTitle')}</Text>
                 <Pressable onPress={() => setShowCountryPicker(false)}>
                   <Ionicons name="close-circle" size={28} color={colors.textMuted} />
                 </Pressable>
@@ -545,7 +554,7 @@ export default function SearchScreen() {
                       }}
                     >
                       <Text variant="body" style={{ fontWeight: isSelected ? '600' : '400' }} color={isSelected ? 'primary' : 'text'}>
-                        {item.label}
+                        {`${item.flag} ${t(`search.countries.${item.code}`)}`}
                       </Text>
                       {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
                     </Pressable>
@@ -567,7 +576,7 @@ export default function SearchScreen() {
       {/* ── Branded Header ── */}
       <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md }}>
-          <Text variant="h2" style={{ color: '#FFFFFF' }}>Recherche</Text>
+          <Text variant="h2" style={{ color: '#FFFFFF' }}>{t('search.title')}</Text>
         </View>
       </View>
 
@@ -576,7 +585,7 @@ export default function SearchScreen() {
         <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Rechercher un prestataire..."
+          placeholder={t('search.searchPlaceholder')}
           onSubmit={handleSearchSubmit}
         />
       </View>
@@ -615,7 +624,7 @@ export default function SearchScreen() {
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '60%' }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <Text variant="h3">Pays</Text>
+              <Text variant="h3">{t('search.countryPickerTitle')}</Text>
               <Pressable onPress={() => setShowCountryPicker(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -641,7 +650,7 @@ export default function SearchScreen() {
                     }}
                   >
                     <Text variant="body" style={{ fontWeight: isSelected ? '600' : '400' }} color={isSelected ? 'primary' : 'text'}>
-                      {item.label}
+                      {`${item.flag} ${t(`search.countries.${item.code}`)}`}
                     </Text>
                     {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
                   </Pressable>

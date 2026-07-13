@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, StyleSheet, Pressable, Animated, Easing, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -108,6 +109,7 @@ export default function WelcomeScreen() {
   const { spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Entrance animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -156,7 +158,7 @@ export default function WelcomeScreen() {
           <Logo size="3xl" showText={false} />
 
           <Text variant="h1" style={[styles.title, { marginTop: spacing.xl }]}>
-            Bienvenue sur {APP_CONFIG.name}
+            {t('auth.welcome.title', { appName: APP_CONFIG.name })}
           </Text>
 
           <Text
@@ -164,7 +166,7 @@ export default function WelcomeScreen() {
             color="textSecondary"
             style={[styles.subtitle, { marginTop: spacing.sm }]}
           >
-            Réservez ou gérez vos rendez-vous{'\n'}en toute simplicité
+            {t('auth.welcome.subtitle')}
           </Text>
         </Animated.View>
 
@@ -190,14 +192,14 @@ export default function WelcomeScreen() {
               end={{ x: 1, y: 1 }}
             />
             <Ionicons name="log-in-outline" size={22} color="#FFFFFF" style={{ marginRight: 10 }} />
-            <Text variant="body" style={styles.primaryBtnText}>Se connecter</Text>
+            <Text variant="body" style={styles.primaryBtnText}>{t('auth.welcome.signIn')}</Text>
           </Pressable>
 
           {/* Séparateur */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
             <Text variant="caption" color="textSecondary" style={styles.dividerText}>
-              ou
+              {t('auth.welcome.or')}
             </Text>
             <View style={styles.dividerLine} />
           </View>
@@ -211,7 +213,7 @@ export default function WelcomeScreen() {
             ]}
           >
             <Ionicons name="person-add-outline" size={20} color="#3B82F6" style={{ marginRight: 10 }} />
-            <Text variant="body" style={styles.secondaryBtnText}>Créer un compte</Text>
+            <Text variant="body" style={styles.secondaryBtnText}>{t('auth.welcome.createAccount')}</Text>
           </Pressable>
         </Animated.View>
       </View>

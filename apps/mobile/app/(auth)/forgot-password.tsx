@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -30,6 +31,7 @@ export default function ForgotPasswordScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { resetPassword } = useAuth();
+  const { t } = useTranslation();
 
   // Form state
   const [email, setEmail] = useState('');
@@ -68,12 +70,12 @@ export default function ForgotPasswordScreen() {
       setEmailSent(true);
       showToast({
         variant: 'success',
-        message: 'Email de réinitialisation envoyé',
+        message: t('auth.forgotPassword.toastSent'),
       });
     } catch (error: any) {
       showToast({
         variant: 'error',
-        message: error.message || "Erreur lors de l'envoi",
+        message: error.message || t('auth.forgotPassword.toastError'),
       });
     } finally {
       setIsSubmitting(false);
@@ -116,7 +118,7 @@ export default function ForgotPasswordScreen() {
           </View>
 
           <Text variant="h2" style={[styles.successTitle, { marginTop: spacing.lg }]}>
-            Email envoyé !
+            {t('auth.forgotPassword.success.title')}
           </Text>
 
           <Text
@@ -124,12 +126,12 @@ export default function ForgotPasswordScreen() {
             color="textSecondary"
             style={[styles.successText, { marginTop: spacing.sm }]}
           >
-            Vérifiez votre boîte mail et cliquez sur le lien.
+            {t('auth.forgotPassword.success.message')}
           </Text>
 
           <Button
             variant="primary"
-            title="Retour à la connexion"
+            title={t('auth.forgotPassword.success.backToLogin')}
             onPress={() => router.replace('/(auth)/login')}
             style={{ marginTop: spacing.xl, width: '100%' }}
           />
@@ -140,7 +142,7 @@ export default function ForgotPasswordScreen() {
             style={{ marginTop: spacing.md }}
           >
             <Text variant="body" color="primary">
-              Pas reçu ? Renvoyer
+              {t('auth.forgotPassword.success.resend')}
             </Text>
           </Pressable>
         </View>
@@ -179,21 +181,21 @@ export default function ForgotPasswordScreen() {
 
         {/* Header */}
         <View style={[styles.header, { marginTop: spacing.xl }]}>
-          <Text variant="h1">Mot de passe oublié</Text>
+          <Text variant="h1">{t('auth.forgotPassword.title')}</Text>
           <Text
             variant="body"
             color="textSecondary"
             style={{ marginTop: spacing.xs }}
           >
-            Entrez votre email pour recevoir un lien de réinitialisation
+            {t('auth.forgotPassword.subtitle')}
           </Text>
         </View>
 
         {/* Form */}
         <View style={[styles.form, { marginTop: spacing.xl, gap: spacing.md }]}>
           <Input
-            label="Email"
-            placeholder="votre@email.com"
+            label={t('auth.forgotPassword.emailLabel')}
+            placeholder={t('auth.forgotPassword.emailPlaceholder')}
             value={email}
             onChangeText={(text) => {
               setEmail(text);
@@ -207,7 +209,7 @@ export default function ForgotPasswordScreen() {
 
           <Button
             variant="primary"
-            title="Envoyer le lien"
+            title={t('auth.forgotPassword.submit')}
             onPress={handleResetPassword}
             loading={isSubmitting}
             disabled={isSubmitting}
@@ -218,11 +220,11 @@ export default function ForgotPasswordScreen() {
         {/* Footer */}
         <View style={[styles.footer, { marginTop: spacing.xl }]}>
           <Text variant="body" color="textSecondary">
-            Vous vous souvenez ?{' '}
+            {t('auth.forgotPassword.remember')}{' '}
           </Text>
           <Pressable onPress={() => router.replace('/(auth)/login')}>
             <Text variant="body" color="primary" style={{ fontWeight: '600' }}>
-              Se connecter
+              {t('auth.forgotPassword.signIn')}
             </Text>
           </Pressable>
         </View>

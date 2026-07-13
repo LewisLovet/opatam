@@ -7,26 +7,23 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { View, ActivityIndicator, Animated } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../theme';
 import { Text } from './Text';
 
-const TIPS: { emoji: string; text: string }[] = [
-  { emoji: '📅', text: 'Votre agenda est accessible par vos clients 24h/24, 7j/7.' },
-  { emoji: '⏰', text: 'Les rappels automatiques réduisent fortement les rendez-vous manqués.' },
-  { emoji: '💸', text: 'Un acompte « Sérénité » dissuade les no-shows et sécurise vos créneaux.' },
-  { emoji: '🔗', text: 'Partagez votre lien de réservation sur Instagram, WhatsApp, votre vitrine…' },
-  { emoji: '🧩', text: 'Ajoutez des variations et options : le client compose, le prix s’ajuste seul.' },
-  { emoji: '⭐', text: 'Demandez un avis après chaque rendez-vous pour gagner en visibilité.' },
-  { emoji: '💯', text: 'Sans commission : vous gardez 100 % de vos revenus.' },
-];
+// Emojis stay code-side; the tip texts live in the dictionary
+// (components.loadingTips.tips) and are zipped by index.
+const TIP_EMOJIS = ['📅', '⏰', '💸', '🔗', '🧩', '⭐', '💯'];
 
-export function LoadingTips({ message = 'Chargement…' }: { message?: string }) {
+export function LoadingTips({ message }: { message?: string }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
+  const tipTexts = t('components.loadingTips.tips', { returnObjects: true }) as string[];
   const [i, setI] = useState(0);
   const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const id = setInterval(() => setI((v) => (v + 1) % TIPS.length), 2800);
+    const id = setInterval(() => setI((v) => (v + 1) % TIP_EMOJIS.length), 2800);
     return () => clearInterval(id);
   }, []);
 
@@ -35,7 +32,7 @@ export function LoadingTips({ message = 'Chargement…' }: { message?: string })
     Animated.timing(fade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
   }, [i, fade]);
 
-  const tip = TIPS[i];
+  const tip = { emoji: TIP_EMOJIS[i], text: tipTexts[i] ?? '' };
 
   return (
     <View
@@ -49,7 +46,7 @@ export function LoadingTips({ message = 'Chargement…' }: { message?: string })
     >
       <ActivityIndicator size="large" color={colors.primary} />
       <Text variant="bodySmall" color="textSecondary" style={{ marginTop: spacing.md }}>
-        {message}
+        {message ?? t('common.loading')}
       </Text>
 
       <View style={{ marginTop: spacing.xl, width: '100%', maxWidth: 360, alignSelf: 'center' }}>
@@ -73,7 +70,7 @@ export function LoadingTips({ message = 'Chargement…' }: { message?: string })
         </Animated.View>
 
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: spacing.md }}>
-          {TIPS.map((_, idx) => (
+          {TIP_EMOJIS.map((_, idx) => (
             <View
               key={idx}
               style={{

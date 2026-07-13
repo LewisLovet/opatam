@@ -12,6 +12,7 @@ import {
   TextInputProps,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 
 export interface SearchBarProps {
@@ -31,10 +32,11 @@ export function SearchBar({
   value,
   onChangeText,
   onSubmit,
-  placeholder = 'Rechercher...',
+  placeholder,
   autoFocus = false,
 }: SearchBarProps) {
   const { colors, spacing, radius, typography } = useTheme();
+  const { t } = useTranslation();
 
   const handleClear = () => {
     onChangeText('');
@@ -71,7 +73,7 @@ export function SearchBar({
         value={value}
         onChangeText={onChangeText}
         onSubmitEditing={onSubmit}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t('components.searchBar.placeholder')}
         placeholderTextColor={colors.textMuted}
         autoFocus={autoFocus}
         autoCapitalize="none"

@@ -5,7 +5,9 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { API_URL } from '../../../lib/config';
+import i18n from '../../../lib/i18n';
 import {
   View,
   StyleSheet,
@@ -38,10 +40,15 @@ function toDate(datetime: Date | any): Date {
   return new Date(datetime);
 }
 
+// Locale for date/number formatting, following the current app language
+function dateLocale(): string {
+  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+}
+
 // Helper to format date
 function formatDate(datetime: Date | any): string {
   const date = toDate(datetime);
-  return date.toLocaleDateString('fr-FR', {
+  return date.toLocaleDateString(dateLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -52,7 +59,7 @@ function formatDate(datetime: Date | any): string {
 // Helper to format time
 function formatTime(datetime: Date | any): string {
   const date = toDate(datetime);
-  return date.toLocaleTimeString('fr-FR', {
+  return date.toLocaleTimeString(dateLocale(), {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -70,10 +77,12 @@ function formatDuration(minutes: number): string {
 
 // Helper to format price
 function formatPrice(cents: number, centsMax?: number | null): string {
-  if (cents === 0 && !centsMax) return 'Gratuit';
+  if (cents === 0 && !centsMax) return i18n.t('common.free');
   const fmt = (v: number) =>
-    new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v / 100);
-  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
+    new Intl.NumberFormat(dateLocale(), { style: 'currency', currency: 'EUR' }).format(v / 100);
+  if (centsMax && centsMax > cents) {
+    return i18n.t('bookingDetailScreen.priceRange', { min: fmt(cents), max: fmt(centsMax) });
+  }
   return fmt(cents);
 }
 
@@ -89,35 +98,35 @@ interface StatusConfig {
 function getStatusConfig(status: string, isDark: boolean): StatusConfig {
   const configs: Record<string, StatusConfig> = {
     confirmed: {
-      label: 'Confirme',
+      label: i18n.t('bookingDetailScreen.status.confirmed'),
       textColor: '#16a34a',
       bgColor: '#dcfce7',
       headerBgLight: '#dcfce7',
       headerBgDark: 'rgba(22, 163, 74, 0.2)',
     },
     pending: {
-      label: 'En attente',
+      label: i18n.t('bookingDetailScreen.status.pending'),
       textColor: '#ca8a04',
       bgColor: '#fef9c3',
       headerBgLight: '#fef9c3',
       headerBgDark: 'rgba(202, 138, 4, 0.2)',
     },
     cancelled: {
-      label: 'Annule',
+      label: i18n.t('bookingDetailScreen.status.cancelled'),
       textColor: '#dc2626',
       bgColor: '#fee2e2',
       headerBgLight: '#fee2e2',
       headerBgDark: 'rgba(220, 38, 38, 0.2)',
     },
     noshow: {
-      label: 'Absent',
+      label: i18n.t('bookingDetailScreen.status.noshow'),
       textColor: '#6b7280',
       bgColor: '#f3f4f6',
       headerBgLight: '#f3f4f6',
       headerBgDark: 'rgba(107, 114, 128, 0.2)',
     },
     past: {
-      label: 'Termine',
+      label: i18n.t('bookingDetailScreen.status.past'),
       textColor: '#16a34a',
       bgColor: '#dcfce7',
       headerBgLight: '#dcfce7',
@@ -155,15 +164,15 @@ function getTimeReminder(booking: WithId<Booking>, colors: any): TimeReminder {
 
   // Already cancelled or no-show
   if (booking.status === 'cancelled') {
-    return { text: 'Annule', color: colors.error };
+    return { text: i18n.t('bookingDetailScreen.reminder.cancelled'), color: colors.error };
   }
   if (booking.status === 'noshow') {
-    return { text: 'Absent', color: colors.error };
+    return { text: i18n.t('bookingDetailScreen.reminder.noshow'), color: colors.error };
   }
 
   // Ongoing
   if (now >= startTime && now <= endTime) {
-    return { text: 'En cours', color: colors.primary };
+    return { text: i18n.t('bookingDetailScreen.reminder.ongoing'), color: colors.primary };
   }
 
   // Past
@@ -174,14 +183,14 @@ function getTimeReminder(booking: WithId<Booking>, colors: any): TimeReminder {
 
     if (diffHours < 24) {
       if (diffHours < 1) {
-        return { text: 'Termine il y a moins d\'une heure', color: colors.textSecondary };
+        return { text: i18n.t('bookingDetailScreen.reminder.endedLessThanHour'), color: colors.textSecondary };
       }
-      return { text: `Termine il y a ${diffHours}h`, color: colors.textSecondary };
+      return { text: i18n.t('bookingDetailScreen.reminder.endedHoursAgo', { count: diffHours }), color: colors.textSecondary };
     }
     if (diffDays === 1) {
-      return { text: 'Termine hier', color: colors.textSecondary };
+      return { text: i18n.t('bookingDetailScreen.reminder.endedYesterday'), color: colors.textSecondary };
     }
-    return { text: `Termine il y a ${diffDays} jours`, color: colors.textSecondary };
+    return { text: i18n.t('bookingDetailScreen.reminder.endedDaysAgo', { count: diffDays }), color: colors.textSecondary };
   }
 
   // Future
@@ -195,9 +204,9 @@ function getTimeReminder(booking: WithId<Booking>, colors: any): TimeReminder {
     const hours = Math.floor(diffMinutes / 60);
     const mins = diffMinutes % 60;
     if (hours > 0) {
-      return { text: `Dans ${hours}h ${mins}min`, color: '#f97316' }; // Orange
+      return { text: i18n.t('bookingDetailScreen.reminder.inHoursMinutes', { hours, minutes: mins }), color: '#f97316' }; // Orange
     }
-    return { text: `Dans ${mins} min`, color: '#f97316' };
+    return { text: i18n.t('bookingDetailScreen.reminder.inMinutes', { count: mins }), color: '#f97316' };
   }
 
   // Same day
@@ -205,23 +214,23 @@ function getTimeReminder(booking: WithId<Booking>, colors: any): TimeReminder {
   const bookingDate = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate());
 
   if (nowDate.getTime() === bookingDate.getTime()) {
-    return { text: 'Aujourd\'hui', color: '#16a34a' }; // Green
+    return { text: i18n.t('bookingDetailScreen.reminder.today'), color: '#16a34a' }; // Green
   }
 
   // Tomorrow
   const tomorrow = new Date(nowDate);
   tomorrow.setDate(tomorrow.getDate() + 1);
   if (tomorrow.getTime() === bookingDate.getTime()) {
-    return { text: 'Demain', color: colors.primary };
+    return { text: i18n.t('bookingDetailScreen.reminder.tomorrow'), color: colors.primary };
   }
 
   // Within 7 days
   if (diffDays <= 7) {
-    return { text: `Dans ${diffDays} jours`, color: colors.primary };
+    return { text: i18n.t('bookingDetailScreen.reminder.inDays', { count: diffDays }), color: colors.primary };
   }
 
   // More than 7 days
-  return { text: `Dans ${diffDays} jours`, color: colors.textSecondary };
+  return { text: i18n.t('bookingDetailScreen.reminder.inDays', { count: diffDays }), color: colors.textSecondary };
 }
 
 // Check if booking can be cancelled
@@ -240,7 +249,10 @@ function openMaps(address: string) {
   const url = `https://maps.google.com/?q=${encodedAddress}`;
   Linking.openURL(url).catch((err) => {
     console.error('Error opening maps:', err);
-    Alert.alert('Erreur', 'Impossible d\'ouvrir l\'application de navigation');
+    Alert.alert(
+      i18n.t('bookingDetailScreen.alerts.errorTitle'),
+      i18n.t('bookingDetailScreen.alerts.cannotOpenMaps')
+    );
   });
 }
 
@@ -249,7 +261,10 @@ function openPhone(phoneNumber: string) {
   const url = `tel:${phoneNumber}`;
   Linking.openURL(url).catch((err) => {
     console.error('Error opening phone:', err);
-    Alert.alert('Erreur', 'Impossible d\'ouvrir le telephone');
+    Alert.alert(
+      i18n.t('bookingDetailScreen.alerts.errorTitle'),
+      i18n.t('bookingDetailScreen.alerts.cannotOpenPhone')
+    );
   });
 }
 
@@ -337,6 +352,7 @@ export default function BookingDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
 
@@ -363,7 +379,7 @@ export default function BookingDetailScreen() {
   // Load booking
   const loadBooking = useCallback(async () => {
     if (!bookingId) {
-      setError('ID de reservation manquant');
+      setError(i18n.t('bookingDetailScreen.errors.missingId'));
       setLoading(false);
       return;
     }
@@ -374,13 +390,13 @@ export default function BookingDetailScreen() {
     try {
       const result = await bookingService.getById(bookingId);
       if (!result) {
-        setError('Reservation non trouvee');
+        setError(i18n.t('bookingDetailScreen.errors.notFound'));
       } else {
         setBooking(result);
       }
     } catch (err: any) {
       console.error('Error loading booking:', err);
-      setError(err.message || 'Erreur lors du chargement');
+      setError(err.message || i18n.t('bookingDetailScreen.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -427,7 +443,10 @@ export default function BookingDetailScreen() {
       // Request calendar permission
       const { status } = await Calendar.requestCalendarPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission requise', 'L\'acces au calendrier est necessaire pour ajouter l\'evenement');
+        Alert.alert(
+          t('bookingDetailScreen.calendar.permissionTitle'),
+          t('bookingDetailScreen.calendar.permissionMessage')
+        );
         return;
       }
 
@@ -438,7 +457,10 @@ export default function BookingDetailScreen() {
       ) || calendars.find((cal) => cal.allowsModifications);
 
       if (!defaultCalendar) {
-        Alert.alert('Erreur', 'Aucun calendrier disponible');
+        Alert.alert(
+          t('bookingDetailScreen.alerts.errorTitle'),
+          t('bookingDetailScreen.calendar.noCalendar')
+        );
         return;
       }
 
@@ -458,17 +480,20 @@ export default function BookingDetailScreen() {
         startDate,
         endDate,
         location: calendarLocation,
-        notes: `Prestataire: ${booking.providerName}${booking.memberName ? `\nAvec: ${booking.memberName}` : ''}`,
+        notes: `${t('bookingDetailScreen.calendar.noteProvider', { name: booking.providerName })}${booking.memberName ? `\n${t('bookingDetailScreen.calendar.noteWith', { name: booking.memberName })}` : ''}`,
         timeZone: 'Europe/Paris',
       });
 
       showToast({
         variant: 'success',
-        message: 'Ajoute au calendrier',
+        message: t('bookingDetailScreen.calendar.added'),
       });
     } catch (err: any) {
       console.error('Error adding to calendar:', err);
-      Alert.alert('Erreur', 'Impossible d\'ajouter au calendrier');
+      Alert.alert(
+        t('bookingDetailScreen.alerts.errorTitle'),
+        t('bookingDetailScreen.calendar.addFailed')
+      );
     }
   };
 
@@ -490,7 +515,7 @@ export default function BookingDetailScreen() {
 
       showToast({
         variant: 'success',
-        message: 'Rendez-vous annule',
+        message: t('bookingDetailScreen.cancelFlow.success'),
       });
 
       setShowCancelModal(false);
@@ -499,7 +524,7 @@ export default function BookingDetailScreen() {
       console.error('Error cancelling booking:', err);
       showToast({
         variant: 'error',
-        message: err.message || 'Erreur lors de l\'annulation',
+        message: err.message || t('bookingDetailScreen.cancelFlow.error'),
       });
     } finally {
       setIsCancelling(false);
@@ -515,7 +540,7 @@ export default function BookingDetailScreen() {
         router.push(`/(client)/provider/${provider.slug}` as any);
       }
     } catch {
-      showToast({ variant: 'error', message: 'Impossible d\'accéder à la page du prestataire' });
+      showToast({ variant: 'error', message: t('bookingDetailScreen.errors.providerPageFailed') });
     }
   };
 
@@ -550,11 +575,11 @@ export default function BookingDetailScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
           <Text variant="body" color="error" style={{ marginTop: spacing.md, textAlign: 'center' }}>
-            {error || 'Reservation non trouvee'}
+            {error || t('bookingDetailScreen.errors.notFound')}
           </Text>
           <Button
             variant="outline"
-            title="Retour"
+            title={t('common.back')}
             onPress={() => router.back()}
             style={{ marginTop: spacing.lg }}
           />
@@ -683,13 +708,13 @@ export default function BookingDetailScreen() {
           <View style={{ gap: spacing.md }}>
             <InfoRow
               icon="calendar-outline"
-              label="Date"
+              label={t('bookingDetailScreen.info.date')}
               value={formatDate(booking.datetime)}
               colors={colors}
             />
             <InfoRow
               icon="time-outline"
-              label="Heure"
+              label={t('bookingDetailScreen.info.time')}
               value={`${formatTime(booking.datetime)} - ${formatTime(booking.endDatetime)}`}
               colors={colors}
             />
@@ -702,7 +727,7 @@ export default function BookingDetailScreen() {
           <View style={{ gap: spacing.md }}>
             <InfoRow
               icon="business-outline"
-              label="Prestataire"
+              label={t('bookingDetailScreen.info.provider')}
               value={booking.providerName}
               colors={colors}
             />
@@ -722,7 +747,7 @@ export default function BookingDetailScreen() {
                 <View style={{ flex: 1 }}>
                   <InfoRow
                     icon="person-outline"
-                    label="Avec"
+                    label={t('bookingDetailScreen.info.with')}
                     value={booking.memberName}
                     colors={colors}
                   />
@@ -732,11 +757,11 @@ export default function BookingDetailScreen() {
             {hasAddress && (
               <InfoRow
                 icon="location-outline"
-                label="Lieu"
+                label={t('bookingDetailScreen.info.location')}
                 value={addrText}
                 colors={colors}
                 onPress={addrHasMaps ? () => openMaps(addrText) : undefined}
-                linkText={addrHasMaps ? 'Voir sur le plan' : undefined}
+                linkText={addrHasMaps ? t('bookingDetailScreen.info.viewOnMap') : undefined}
               />
             )}
             {addrRevealedProtected && (
@@ -750,7 +775,7 @@ export default function BookingDetailScreen() {
               >
                 <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
                 <Text variant="caption" style={{ color: '#16a34a', fontWeight: '600' }}>
-                  Adresse exacte disponible
+                  {t('bookingDetailScreen.info.exactAddressAvailable')}
                 </Text>
               </View>
             )}
@@ -774,14 +799,14 @@ export default function BookingDetailScreen() {
                   style={{ marginTop: 1 }}
                 />
                 <Text variant="caption" style={{ flex: 1, color: colors.primary, lineHeight: 18 }}>
-                  L'adresse exacte vous sera communiquée environ 48h avant le rendez-vous.
+                  {t('bookingDetailScreen.info.addressPending')}
                 </Text>
               </View>
             )}
             {addr?.revealed && addr.accessInstructions ? (
               <InfoRow
                 icon="key-outline"
-                label="Accès"
+                label={t('bookingDetailScreen.info.access')}
                 value={addr.accessInstructions}
                 colors={colors}
               />
@@ -794,21 +819,21 @@ export default function BookingDetailScreen() {
           {isPast && (
             <ActionRow
               icon="refresh-outline"
-              label="Reprendre un rendez-vous"
+              label={t('bookingDetailScreen.actions.rebook')}
               onPress={handleRebook}
               colors={colors}
             />
           )}
           <ActionRow
             icon="calendar-outline"
-            label="Ajouter au calendrier"
+            label={t('bookingDetailScreen.actions.addToCalendar')}
             onPress={handleAddToCalendar}
             colors={colors}
           />
           {hasPhone && (
             <ActionRow
               icon="call-outline"
-              label="Appeler"
+              label={t('bookingDetailScreen.actions.call')}
               onPress={() => openPhone((booking as any).providerPhone)}
               colors={colors}
             />
@@ -816,7 +841,7 @@ export default function BookingDetailScreen() {
           {addrHasMaps && (
             <ActionRow
               icon="navigate-outline"
-              label="Itineraire"
+              label={t('bookingDetailScreen.actions.directions')}
               onPress={() => openMaps(addrText)}
               colors={colors}
             />
@@ -840,7 +865,7 @@ export default function BookingDetailScreen() {
           >
             <Ionicons name="star" size={20} color="#f59e0b" />
             <Text style={{ color: '#f59e0b', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
-              {reviewStatus === 'can_update' ? 'Modifier mon avis' : 'Laisser un avis'}
+              {reviewStatus === 'can_update' ? t('bookingDetailScreen.review.update') : t('bookingDetailScreen.review.leave')}
             </Text>
           </Pressable>
         )}
@@ -861,7 +886,7 @@ export default function BookingDetailScreen() {
           >
             <Ionicons name="close-circle-outline" size={20} color={colors.error} />
             <Text style={{ color: colors.error, fontSize: 15, fontWeight: '500', marginLeft: 8 }}>
-              Annuler le rendez-vous
+              {t('bookingDetailScreen.cancelFlow.button')}
             </Text>
           </Pressable>
         )}
@@ -881,17 +906,17 @@ export default function BookingDetailScreen() {
             </View>
 
             <Text variant="h3" style={{ textAlign: 'center', marginTop: spacing.md }}>
-              Annuler le rendez-vous ?
+              {t('bookingDetailScreen.cancelFlow.modalTitle')}
             </Text>
 
             <Text variant="body" color="textSecondary" style={{ textAlign: 'center', marginTop: spacing.sm }}>
-              Cette action est irreversible. Le prestataire sera notifie de l'annulation.
+              {t('bookingDetailScreen.cancelFlow.modalMessage')}
             </Text>
 
             {/* Reason input */}
             <View style={{ marginTop: spacing.lg }}>
               <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.xs }}>
-                Raison (optionnel)
+                {t('bookingDetailScreen.cancelFlow.reasonLabel')}
               </Text>
               <TextInput
                 style={[
@@ -903,7 +928,7 @@ export default function BookingDetailScreen() {
                     borderRadius: radius.md,
                   },
                 ]}
-                placeholder="Indiquez une raison..."
+                placeholder={t('bookingDetailScreen.cancelFlow.reasonPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 value={cancelReason}
                 onChangeText={setCancelReason}
@@ -916,7 +941,7 @@ export default function BookingDetailScreen() {
             <View style={[styles.modalActions, { marginTop: spacing.xl }]}>
               <Button
                 variant="outline"
-                title="Retour"
+                title={t('common.back')}
                 onPress={() => {
                   setShowCancelModal(false);
                   setCancelReason('');
@@ -926,7 +951,7 @@ export default function BookingDetailScreen() {
               />
               <Button
                 variant="primary"
-                title="Confirmer"
+                title={t('common.confirm')}
                 onPress={handleCancel}
                 loading={isCancelling}
                 disabled={isCancelling}

@@ -7,6 +7,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 
@@ -31,6 +32,7 @@ function getCurrentDayIndex(): number {
 
 export function HoursSection({ weekSchedule, isCurrentlyOpen }: HoursSectionProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   const currentDayIndex = useMemo(() => getCurrentDayIndex(), []);
 
@@ -41,7 +43,7 @@ export function HoursSection({ weekSchedule, isCurrentlyOpen }: HoursSectionProp
         <View style={styles.headerLeft}>
           <Ionicons name="time-outline" size={20} color={colors.text} />
           <Text variant="h3" style={{ marginLeft: spacing.sm }}>
-            Horaires
+            {t('components.hoursSection.title')}
           </Text>
         </View>
 
@@ -69,7 +71,9 @@ export function HoursSection({ weekSchedule, isCurrentlyOpen }: HoursSectionProp
               fontWeight: '600',
             }}
           >
-            {isCurrentlyOpen ? 'Ouvert' : 'Fermé'}
+            {isCurrentlyOpen
+              ? t('components.hoursSection.open')
+              : t('components.hoursSection.closed')}
           </Text>
         </View>
       </View>
@@ -110,7 +114,7 @@ export function HoursSection({ weekSchedule, isCurrentlyOpen }: HoursSectionProp
                     variant="caption"
                     style={{ color: colors.primary, fontWeight: '500', marginLeft: spacing.xs }}
                   >
-                    (Aujourd'hui)
+                    {t('components.hoursSection.today')}
                   </Text>
                 )}
               </View>
@@ -130,7 +134,7 @@ export function HoursSection({ weekSchedule, isCurrentlyOpen }: HoursSectionProp
                   ? day.slots
                       .map((slot) => `${slot.start} - ${slot.end}`)
                       .join(', ')
-                  : 'Fermé'}
+                  : t('components.hoursSection.closed')}
               </Text>
             </View>
           );

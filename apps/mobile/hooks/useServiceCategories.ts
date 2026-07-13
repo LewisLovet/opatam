@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { serviceCategoryRepository } from '@booking-app/firebase';
 import type { ServiceCategory } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+import i18n from '../lib/i18n';
 
 export interface UseServiceCategoriesResult {
   categories: WithId<ServiceCategory>[];
@@ -38,7 +39,7 @@ export function useServiceCategories(providerId: string | undefined): UseService
       setCategories(active);
     } catch (err) {
       console.error('Error loading service categories:', err);
-      setError('Erreur lors du chargement des catégories');
+      setError(i18n.t('errors.categories.loadFailed'));
     } finally {
       setLoading(false);
     }

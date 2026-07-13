@@ -17,6 +17,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Text } from './Text';
 import { Button } from './Button';
 import { useTheme } from '../theme';
@@ -30,6 +31,7 @@ interface WebRedirectModalProps {
 
 export function WebRedirectModal({ visible }: WebRedirectModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { userData, signOut } = useAuth();
   const { provider, refreshProvider } = useProvider();
   const [refreshing, setRefreshing] = useState(false);
@@ -112,16 +114,17 @@ export function WebRedirectModal({ visible }: WebRedirectModalProps) {
             </View>
 
             <Text style={[styles.successTitle, { color: colors.text }]}>
-              Compte activé !
+              {t('components.webRedirectModal.activatedTitle')}
             </Text>
 
             <Text style={[styles.successDescription, { color: colors.textSecondary }]}>
-              {displayName ? `Félicitations ${displayName} ! ` : 'Félicitations ! '}
-              Votre compte est maintenant actif. Profitez de toutes les fonctionnalités.
+              {displayName
+                ? t('components.webRedirectModal.activatedDescriptionNamed', { name: displayName })
+                : t('components.webRedirectModal.activatedDescription')}
             </Text>
 
             <Button
-              title="C'est parti !"
+              title={t('components.webRedirectModal.letsGo')}
               onPress={() => {
                 // Force one more refresh so SubscriptionGate re-evaluates and hides the modal
                 setActivated(false);
@@ -147,7 +150,7 @@ export function WebRedirectModal({ visible }: WebRedirectModalProps) {
           {/* User greeting */}
           {displayName ? (
             <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-              Bonjour, {displayName}
+              {t('components.webRedirectModal.greeting', { name: displayName })}
             </Text>
           ) : null}
 
@@ -158,17 +161,19 @@ export function WebRedirectModal({ visible }: WebRedirectModalProps) {
 
           {/* Title */}
           <Text style={[styles.title, { color: colors.text }]}>
-            Période d'essai terminée
+            {t('components.webRedirectModal.trialEndedTitle')}
           </Text>
 
           {/* Description */}
           <Text style={[styles.description, { color: colors.textSecondary }]}>
-            Votre période d'essai est arrivée à son terme. Pour continuer à utiliser Opatam, activez votre compte depuis votre espace web.
+            {t('components.webRedirectModal.trialEndedDescription')}
           </Text>
 
           {/* Refresh status */}
           <Button
-            title={refreshing ? 'Vérification...' : "J'ai activé mon compte"}
+            title={refreshing
+              ? t('components.webRedirectModal.checking')
+              : t('components.webRedirectModal.accountActivatedButton')}
             onPress={handleRefresh}
             loading={refreshing}
             disabled={refreshing}
@@ -176,14 +181,14 @@ export function WebRedirectModal({ visible }: WebRedirectModalProps) {
           />
 
           <Text style={[styles.hint, { color: colors.textMuted }]}>
-            Vous pourrez revenir sur l'app une fois votre compte activé.
+            {t('components.webRedirectModal.comeBackHint')}
           </Text>
 
           {/* Sign out */}
           <Pressable onPress={handleSignOut} style={styles.signOutButton}>
             <Ionicons name="log-out-outline" size={18} color={colors.textSecondary} />
             <Text style={[styles.signOutText, { color: colors.textSecondary }]}>
-              Se déconnecter
+              {t('components.webRedirectModal.signOut')}
             </Text>
           </Pressable>
         </View>

@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -146,6 +147,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { signIn } = useAuth();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ tab?: string }>();
 
   // Tab state
@@ -192,13 +194,13 @@ export default function LoginScreen() {
     const newErrors: FormErrors = {};
 
     if (!email.trim()) {
-      newErrors.email = "L'email est requis";
+      newErrors.email = t('auth.login.errors.emailRequired');
     } else if (!email.includes('@') || !email.includes('.')) {
-      newErrors.email = "Format d'email invalide";
+      newErrors.email = t('auth.login.errors.emailInvalid');
     }
 
     if (!password) {
-      newErrors.password = 'Le mot de passe est requis';
+      newErrors.password = t('auth.login.errors.passwordRequired');
     }
 
     setErrors(newErrors);
@@ -218,7 +220,7 @@ export default function LoginScreen() {
     } catch (error: any) {
       showToast({
         variant: 'error',
-        message: error.message || 'Erreur de connexion',
+        message: error.message || t('auth.login.errors.loginFailed'),
       });
       setIsSubmitting(false);
     }
@@ -289,13 +291,13 @@ export default function LoginScreen() {
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
           >
-            <Text variant="h1" style={styles.headerTitle}>Connexion</Text>
+            <Text variant="h1" style={styles.headerTitle}>{t('auth.login.title')}</Text>
             <Text
               variant="body"
               color="textSecondary"
               style={{ marginTop: spacing.xs }}
             >
-              Content de vous revoir
+              {t('auth.login.subtitle')}
             </Text>
           </Animated.View>
 
@@ -341,7 +343,7 @@ export default function LoginScreen() {
                     fontSize: 14,
                   }}
                 >
-                  Client
+                  {t('auth.login.clientTab')}
                 </Text>
               </Pressable>
 
@@ -370,7 +372,7 @@ export default function LoginScreen() {
                     fontSize: 14,
                   }}
                 >
-                  Professionnel
+                  {t('auth.login.proTab')}
                 </Text>
               </Pressable>
             </View>
@@ -385,8 +387,8 @@ export default function LoginScreen() {
             ]}
           >
             <Input
-              label="Email"
-              placeholder="votre@email.com"
+              label={t('auth.login.emailLabel')}
+              placeholder={t('auth.login.emailPlaceholder')}
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
@@ -400,8 +402,8 @@ export default function LoginScreen() {
 
             <View>
               <Input
-                label="Mot de passe"
-                placeholder="Votre mot de passe"
+                label={t('auth.login.passwordLabel')}
+                placeholder={t('auth.login.passwordPlaceholder')}
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -426,14 +428,14 @@ export default function LoginScreen() {
                 style={[styles.forgotPassword, { marginTop: spacing.sm }]}
               >
                 <Text variant="caption" color="primary">
-                  Mot de passe oublié ?
+                  {t('auth.login.forgotPassword')}
                 </Text>
               </Pressable>
             </View>
 
             <Button
               variant="primary"
-              title="Se connecter"
+              title={t('auth.login.submit')}
               onPress={handleLogin}
               loading={isSubmitting}
               disabled={isSubmitting}
@@ -452,14 +454,14 @@ export default function LoginScreen() {
             {activeTab === 'client' ? (
               <View style={styles.footerRow}>
                 <Text variant="body" color="textSecondary">
-                  Pas encore de compte ?{' '}
+                  {t('auth.login.noAccount')}{' '}
                 </Text>
                 <Pressable
                   onPress={() => router.push('/(auth)/client')}
                   style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
                 >
                   <Text variant="body" color="primary" style={{ fontWeight: '600' }}>
-                    Créer un compte
+                    {t('auth.login.createAccount')}
                   </Text>
                 </Pressable>
               </View>
@@ -470,10 +472,10 @@ export default function LoginScreen() {
                   style={({ pressed }) => [styles.footerRow, { marginTop: spacing.md, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <Text variant="body" color="textSecondary">
-                    Pas encore de compte ?{' '}
+                    {t('auth.login.noAccount')}{' '}
                   </Text>
                   <Text variant="body" color="primary" style={{ fontWeight: '600' }}>
-                    S'inscrire en ligne
+                    {t('auth.login.signUpOnline')}
                   </Text>
                 </Pressable>
               </View>

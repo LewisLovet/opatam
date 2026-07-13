@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -32,6 +33,7 @@ export default function EmailFormScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { signUp } = useAuth();
+  const { t } = useTranslation();
 
   // Form state
   const [firstName, setFirstName] = useState('');
@@ -48,30 +50,30 @@ export default function EmailFormScreen() {
 
     // First name validation
     if (!firstName.trim()) {
-      newErrors.firstName = 'Le prénom est requis';
+      newErrors.firstName = t('auth.register.errors.firstNameRequired');
     } else if (firstName.trim().length < 2) {
-      newErrors.firstName = 'Le prénom doit contenir au moins 2 caractères';
+      newErrors.firstName = t('auth.register.errors.firstNameTooShort');
     }
 
     // Email validation
     if (!email.trim()) {
-      newErrors.email = "L'email est requis";
+      newErrors.email = t('auth.register.errors.emailRequired');
     } else if (!email.includes('@') || !email.includes('.')) {
-      newErrors.email = "Format d'email invalide";
+      newErrors.email = t('auth.register.errors.emailInvalid');
     }
 
     // Password validation
     if (!password) {
-      newErrors.password = 'Le mot de passe est requis';
+      newErrors.password = t('auth.register.errors.passwordRequired');
     } else if (password.length < 6) {
-      newErrors.password = 'Le mot de passe doit contenir au moins 6 caractères';
+      newErrors.password = t('auth.register.errors.passwordTooShort');
     }
 
     // Phone validation (optional)
     if (phone.trim()) {
       const cleanedPhone = phone.replace(/\s/g, '');
       if (!/^0[67]\d{8}$/.test(cleanedPhone)) {
-        newErrors.phone = 'Format invalide (ex: 06 12 34 56 78)';
+        newErrors.phone = t('auth.register.errors.phoneInvalid');
       }
     }
 
@@ -98,7 +100,7 @@ export default function EmailFormScreen() {
 
       showToast({
         variant: 'success',
-        message: 'Compte créé avec succès',
+        message: t('auth.register.successToast'),
       });
 
       // Navigation is handled reactively by the auth layout guard
@@ -106,7 +108,7 @@ export default function EmailFormScreen() {
     } catch (error: any) {
       showToast({
         variant: 'error',
-        message: error.message || "Erreur lors de l'inscription",
+        message: error.message || t('auth.register.errors.signUpError'),
       });
       setIsSubmitting(false);
     }
@@ -143,14 +145,14 @@ export default function EmailFormScreen() {
 
         {/* Header */}
         <View style={[styles.header, { marginTop: spacing.xl }]}>
-          <Text variant="h1">Inscription</Text>
+          <Text variant="h1">{t('auth.register.emailFormTitle')}</Text>
         </View>
 
         {/* Form */}
         <View style={[styles.form, { marginTop: spacing.xl, gap: spacing.md }]}>
           <Input
-            label="Prénom"
-            placeholder="Votre prénom"
+            label={t('auth.register.firstNameLabel')}
+            placeholder={t('auth.register.firstNamePlaceholder')}
             value={firstName}
             onChangeText={(text) => {
               setFirstName(text);
@@ -162,8 +164,8 @@ export default function EmailFormScreen() {
           />
 
           <Input
-            label="Email"
-            placeholder="votre@email.com"
+            label={t('auth.register.emailLabel')}
+            placeholder={t('auth.register.emailPlaceholder')}
             value={email}
             onChangeText={(text) => {
               setEmail(text);
@@ -176,8 +178,8 @@ export default function EmailFormScreen() {
           />
 
           <Input
-            label="Mot de passe"
-            placeholder="Votre mot de passe"
+            label={t('auth.register.passwordLabel')}
+            placeholder={t('auth.register.passwordPlaceholder')}
             value={password}
             onChangeText={(text) => {
               setPassword(text);
@@ -187,7 +189,7 @@ export default function EmailFormScreen() {
             autoCapitalize="none"
             autoComplete="new-password"
             error={errors.password}
-            helperText="Min. 6 caractères"
+            helperText={t('auth.register.passwordHelper')}
             rightIcon={
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -199,8 +201,8 @@ export default function EmailFormScreen() {
           />
 
           <Input
-            label="Téléphone (optionnel)"
-            placeholder="06 12 34 56 78"
+            label={t('auth.register.phoneLabel')}
+            placeholder={t('auth.register.phonePlaceholder')}
             value={phone}
             onChangeText={(text) => {
               setPhone(text);
@@ -213,7 +215,7 @@ export default function EmailFormScreen() {
 
           <Button
             variant="primary"
-            title="Créer mon compte"
+            title={t('auth.register.submit')}
             onPress={handleSubmit}
             loading={isSubmitting}
             disabled={isSubmitting}

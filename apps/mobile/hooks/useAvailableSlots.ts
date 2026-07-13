@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { schedulingService } from '@booking-app/firebase';
+import i18n from '../lib/i18n';
 
 // Time slot from scheduling service
 export interface TimeSlot {
@@ -121,7 +122,7 @@ export function useAvailableSlots(params: UseAvailableSlotsParams): UseAvailable
       setSlots(uniqueSlots);
     } catch (err: any) {
       console.error('Error fetching available slots:', err);
-      setError(err.message || 'Erreur lors du chargement des disponibilités');
+      setError(err.message || i18n.t('errors.availability.loadFailed'));
       setSlots([]);
     } finally {
       setLoading(false);

@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { providerService } from '@booking-app/firebase';
 import type { Provider } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+import i18n from '../lib/i18n';
 
 export interface UseProviderByIdResult {
   provider: WithId<Provider> | null;
@@ -34,14 +35,14 @@ export function useProviderById(providerId: string | undefined): UseProviderById
       const result = await providerService.getById(providerId);
 
       if (!result) {
-        setError('Prestataire non trouvé');
+        setError(i18n.t('errors.provider.notFound'));
         setProvider(null);
       } else {
         setProvider(result);
       }
     } catch (err) {
       console.error('Error loading provider by ID:', err);
-      setError('Erreur lors du chargement du prestataire');
+      setError(i18n.t('errors.provider.loadFailed'));
       setProvider(null);
     } finally {
       setLoading(false);

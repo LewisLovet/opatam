@@ -9,6 +9,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '../../Badge';
 import type { BookingStatus as SharedBookingStatus } from '@booking-app/shared';
 
@@ -23,20 +24,24 @@ export interface BookingStatusBadgeProps {
 
 type BadgeVariant = 'warning' | 'success' | 'neutral' | 'error';
 
-const statusConfig: Record<string, { label: string; variant: BadgeVariant }> = {
-  pending_payment: { label: 'Acompte en attente', variant: 'warning' },
-  pending: { label: 'En attente', variant: 'warning' },
-  confirmed: { label: 'Confirmé', variant: 'success' },
-  cancelled: { label: 'Annulé', variant: 'neutral' },
-  noshow: { label: 'Absent', variant: 'error' },
+const statusConfig: Record<string, { labelKey: string; variant: BadgeVariant }> = {
+  pending_payment: { labelKey: 'components.bookingStatusBadge.pendingPayment', variant: 'warning' },
+  pending: { labelKey: 'components.bookingStatusBadge.pending', variant: 'warning' },
+  confirmed: { labelKey: 'components.bookingStatusBadge.confirmed', variant: 'success' },
+  cancelled: { labelKey: 'components.bookingStatusBadge.cancelled', variant: 'neutral' },
+  noshow: { labelKey: 'components.bookingStatusBadge.noshow', variant: 'error' },
 };
 
-const FALLBACK = { label: 'Statut inconnu', variant: 'neutral' as BadgeVariant };
+const FALLBACK = {
+  labelKey: 'components.bookingStatusBadge.unknown',
+  variant: 'neutral' as BadgeVariant,
+};
 
 export function BookingStatusBadge({ status, size = 'md' }: BookingStatusBadgeProps) {
+  const { t } = useTranslation();
   const config = statusConfig[status] ?? FALLBACK;
 
   return (
-    <Badge variant={config.variant} size={size} label={config.label} />
+    <Badge variant={config.variant} size={size} label={t(config.labelKey)} />
   );
 }

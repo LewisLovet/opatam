@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { TimeSlot } from './TimeSlot';
@@ -27,6 +28,7 @@ export function TimeSlotGrid({
   onSelectTime,
 }: TimeSlotGridProps) {
   const { colors, spacing } = useTheme();
+  const { t } = useTranslation();
 
   const hasAvailableSlots = slots.some((slot) => slot.available);
 
@@ -34,7 +36,7 @@ export function TimeSlotGrid({
     return (
       <View style={[styles.emptyContainer, { padding: spacing.xl }]}>
         <Text variant="body" color="textSecondary" align="center">
-          Aucun créneau disponible pour cette date
+          {t('components.timeSlotGrid.noSlotsForDate')}
         </Text>
       </View>
     );

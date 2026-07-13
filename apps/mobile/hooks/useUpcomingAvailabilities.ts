@@ -21,8 +21,19 @@ import {
   serviceRepository,
   memberRepository,
 } from '@booking-app/firebase';
+import i18n from '../lib/i18n';
 
-const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+/**
+ * Short localized weekday label ("Lun" / "Mon") for the calendar header.
+ * Intl gives "lun." in French — strip the period and capitalize to keep
+ * the historical compact display.
+ */
+function shortWeekday(d: Date): string {
+  const w = d
+    .toLocaleDateString(i18n.language, { weekday: 'short' })
+    .replace(/\.$/, '');
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
 
 export interface UpcomingDay {
   /** YYYY-MM-DD — stable React key */
@@ -199,7 +210,7 @@ export function useUpcomingAvailabilities(
         }
         out.push({
           dateKey: k,
-          weekday: DAYS_FR[cursor.getDay()],
+          weekday: shortWeekday(cursor),
           dayOfMonth: cursor.getDate(),
           freeHalfHours,
           isAvailable: freeHalfHours.size > 0,
@@ -233,7 +244,7 @@ export function useUpcomingAvailabilities(
       setError(
         err instanceof Error
           ? err.message
-          : 'Erreur lors du chargement des disponibilités',
+          : i18n.t('errors.availability.loadFailed'),
       );
       setGrid(EMPTY_GRID);
     } finally {

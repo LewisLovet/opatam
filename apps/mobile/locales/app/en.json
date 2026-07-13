@@ -72,5 +72,851 @@
       "submitting": "Updating...",
       "submit": "Update"
     }
+  },
+  "auth": {
+    "welcome": {
+      "title": "Welcome to {{appName}}",
+      "subtitle": "Book or manage your appointments\nwith ease",
+      "signIn": "Sign in",
+      "or": "or",
+      "createAccount": "Create an account"
+    },
+    "onboarding": {
+      "skip": "Skip",
+      "continue": "Continue",
+      "getStarted": "Let's go!",
+      "slides": {
+        "0": {
+          "title": "Appointments,\nfinally made simple",
+          "subtitle": "Book in a few taps, 24/7, right from your phone.",
+          "features": {
+            "0": "Available anytime",
+            "1": "Instant booking",
+            "2": "Simple and free"
+          }
+        },
+        "1": {
+          "title": "Never miss an\nappointment again",
+          "subtitle": "Smart reminders so nothing slips through.",
+          "features": {
+            "0": "Automatic reminders",
+            "1": "Real-time notifications",
+            "2": "Calendar sync"
+          }
+        },
+        "2": {
+          "title": "Every service,\nall in one place",
+          "subtitle": "Trusted independent professionals across every field.",
+          "features": {
+            "0": "Beauty, fitness, coaching, wellness...",
+            "1": "Pros near you",
+            "2": "Community-verified reviews"
+          }
+        }
+      }
+    },
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Good to see you again",
+      "clientTab": "Client",
+      "proTab": "Professional",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@email.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Your password",
+      "forgotPassword": "Forgot your password?",
+      "submit": "Sign in",
+      "noAccount": "Don't have an account yet?",
+      "createAccount": "Create an account",
+      "signUpOnline": "Sign up online",
+      "errors": {
+        "emailRequired": "Email is required",
+        "emailInvalid": "Invalid email format",
+        "passwordRequired": "Password is required",
+        "loginFailed": "Sign-in failed"
+      }
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "subtitle": "Enter your email and we'll send you a reset link",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@email.com",
+      "submit": "Send link",
+      "toastSent": "Password reset email sent",
+      "toastError": "Could not send the email",
+      "remember": "Remember your password?",
+      "signIn": "Sign in",
+      "success": {
+        "title": "Email sent!",
+        "message": "Check your inbox and follow the link.",
+        "backToLogin": "Back to sign in",
+        "resend": "Didn't get it? Send again"
+      }
+    },
+    "chooseType": {
+      "title": "How will you\nbe using OPATAM?",
+      "subtitle": "Choose your profile to get started",
+      "client": {
+        "title": "Book a service",
+        "description": "Find and book professionals near you",
+        "chips": {
+          "hairdressers": "Hairdressers",
+          "spas": "Spas",
+          "coaches": "Coaches"
+        }
+      },
+      "pro": {
+        "title": "Offer my services",
+        "description": "Manage your bookings and grow your business",
+        "chips": {
+          "calendar": "Calendar",
+          "clients": "Clients",
+          "stats": "Stats"
+        }
+      }
+    },
+    "register": {
+      "title": "Create an account",
+      "subtitle": "Book in seconds",
+      "emailFormTitle": "Sign up",
+      "firstNameLabel": "First name",
+      "firstNamePlaceholder": "Your first name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@email.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Your password",
+      "passwordHelper": "At least 6 characters",
+      "phoneLabel": "Phone (optional)",
+      "phonePlaceholder": "06 12 34 56 78",
+      "submit": "Create my account",
+      "legal": "By creating an account, you agree to our Terms of Use and Privacy Policy",
+      "alreadyAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "successToast": "Account created",
+      "errors": {
+        "firstNameRequired": "First name is required",
+        "firstNameTooShort": "First name must be at least 2 characters",
+        "emailRequired": "Email is required",
+        "emailInvalid": "Invalid email format",
+        "passwordRequired": "Password is required",
+        "passwordTooShort": "Password must be at least 6 characters",
+        "phoneInvalid": "Invalid format (e.g. 06 12 34 56 78)",
+        "signUpError": "Could not create your account"
+      }
+    }
+  },
+  "providerScreen": {
+    "tabs": {
+      "services": "Services",
+      "reviews": "Reviews",
+      "info": "Info"
+    },
+    "serviceGroups": {
+      "all": "Services",
+      "other": "Other"
+    },
+    "nextAvailability": "Next availability: {{date}}",
+    "teamAvailability": "Availability by professional",
+    "selectServiceToast": "Select a service",
+    "errorTitle": "Error",
+    "notFound": "Provider not found",
+    "services": {
+      "emptyTitle": "No services",
+      "emptyDescription": "This provider has no services yet"
+    },
+    "portfolio": "Portfolio",
+    "reviews": {
+      "emptyTitle": "No reviews",
+      "emptyDescription": "This provider has no reviews yet",
+      "defaultAuthor": "Client"
+    },
+    "footer": {
+      "from": "from",
+      "book": "Book",
+      "selectService": "Select a service"
+    },
+    "notice": {
+      "title": "Important information",
+      "continue": "Got it, continue"
+    }
+  },
+  "bookingFlow": {
+    "errorTitle": "Error",
+    "total": "Total",
+    "members": {
+      "chooseMemberTitle": "Choose a team member",
+      "yourBookingTitle": "Your booking",
+      "addAtLeastOne": "Add at least one service",
+      "dataNotFound": "Data not found",
+      "add": "Add",
+      "emptyCart": "No service selected.",
+      "addService": "Add a service",
+      "selectPerson": "Select the person who will perform your service",
+      "noMembersTitle": "No team members available",
+      "noMembersDescription": "This provider has no team members yet",
+      "defaultBadge": "Main",
+      "services": "Services",
+      "otherServices": "Other services"
+    },
+    "date": {
+      "title": "Choose a date",
+      "periods": {
+        "morning": "Morning",
+        "afternoon": "Afternoon",
+        "evening": "Evening"
+      },
+      "selectMemberFirst": "Please select a team member first",
+      "servicesCount_one": "{{count}} service",
+      "servicesCount_other": "{{count}} services",
+      "nextAvailability": "Next availability",
+      "availableTimes": "Available times",
+      "almostFull": "Almost full · {{count}}",
+      "loadingSlots": "Loading time slots...",
+      "noAvailabilityTitle": "No availability",
+      "noAvailabilityDescription": "No availability for this service in the next {{days}} days.",
+      "chooseDayTitle": "Pick a day",
+      "chooseDayDescription": "Select an available date in the calendar above to see the times.",
+      "fullDayTitle": "Fully booked that day",
+      "fullDayDescription": "No time slots for this service on that date.",
+      "seeNextAvailability": "See next availability"
+    },
+    "confirm": {
+      "title": "Confirmation",
+      "upgrade": {
+        "title": "Update required",
+        "later": "Later",
+        "update": "Update",
+        "defaultMessage": "This service requires a newer version of Opatam."
+      },
+      "incompleteInfo": "Incomplete booking information",
+      "loginToBook": "Please sign in to book",
+      "invalidPhoneToast": "Please enter a valid phone number",
+      "bookingError": "Booking failed",
+      "paymentFailed": "Payment failed",
+      "paymentCancelled": {
+        "title": "Payment cancelled",
+        "message": "Do you want to retry the payment, or abandon the booking and free up the slot?",
+        "abandon": "Abandon"
+      },
+      "abandonSuccess": "Booking cancelled. The slot is available again.",
+      "abandonPending": "The slot will be released within 30 minutes. Please try again later.",
+      "depositPaidSuccess": "Deposit paid — booking confirmed!",
+      "bookingConfirmed": "Booking confirmed!",
+      "reviewTitle": "Review your booking",
+      "reviewSubtitle": "Make sure all the details are correct",
+      "serviceLabel_one": "Service",
+      "serviceLabel_other": "Services",
+      "dateTime": "Date and time",
+      "with": "With",
+      "location": "Location",
+      "addressAfterConfirmation": "Exact address shared after confirmation",
+      "contactDetails": "Your contact details",
+      "phoneLabel": "Phone",
+      "phonePlaceholder": "06 12 34 56 78",
+      "invalidPhone": "Invalid phone number",
+      "youSave": "You save {{amount}} €",
+      "payOnSite": "Payment on site",
+      "loginRequired": "Sign in required",
+      "loginRequiredDescription": "Sign in to confirm your booking",
+      "confirmButton": "Confirm booking",
+      "loginButton": "Sign in to book"
+    }
+  },
+  "bookingDetailScreen": {
+    "status": {
+      "confirmed": "Confirmed",
+      "pending": "Pending",
+      "cancelled": "Cancelled",
+      "noshow": "No-show",
+      "past": "Completed"
+    },
+    "reminder": {
+      "cancelled": "Cancelled",
+      "noshow": "No-show",
+      "ongoing": "In progress",
+      "endedLessThanHour": "Ended less than an hour ago",
+      "endedHoursAgo": "Ended {{count}}h ago",
+      "endedYesterday": "Ended yesterday",
+      "endedDaysAgo_one": "Ended {{count}} day ago",
+      "endedDaysAgo_other": "Ended {{count}} days ago",
+      "inHoursMinutes": "In {{hours}}h {{minutes}}min",
+      "inMinutes": "In {{count}} min",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "inDays_one": "In {{count}} day",
+      "inDays_other": "In {{count}} days"
+    },
+    "priceRange": "From {{min}} to {{max}}",
+    "errors": {
+      "missingId": "Missing booking ID",
+      "notFound": "Booking not found",
+      "loadFailed": "Failed to load the booking",
+      "providerPageFailed": "Unable to open the provider's page"
+    },
+    "alerts": {
+      "errorTitle": "Error",
+      "cannotOpenMaps": "Unable to open the maps app",
+      "cannotOpenPhone": "Unable to open the phone app"
+    },
+    "calendar": {
+      "permissionTitle": "Permission required",
+      "permissionMessage": "Calendar access is required to add the event",
+      "noCalendar": "No calendar available",
+      "noteProvider": "Provider: {{name}}",
+      "noteWith": "With: {{name}}",
+      "added": "Added to calendar",
+      "addFailed": "Unable to add to calendar"
+    },
+    "info": {
+      "date": "Date",
+      "time": "Time",
+      "provider": "Provider",
+      "with": "With",
+      "location": "Location",
+      "access": "Access",
+      "viewOnMap": "View on map",
+      "exactAddressAvailable": "Exact address available",
+      "addressPending": "The exact address will be shared with you about 48 hours before the appointment."
+    },
+    "actions": {
+      "rebook": "Book again",
+      "addToCalendar": "Add to calendar",
+      "call": "Call",
+      "directions": "Directions"
+    },
+    "review": {
+      "leave": "Leave a review",
+      "update": "Edit my review"
+    },
+    "cancelFlow": {
+      "button": "Cancel appointment",
+      "modalTitle": "Cancel this appointment?",
+      "modalMessage": "This action cannot be undone. The provider will be notified of the cancellation.",
+      "reasonLabel": "Reason (optional)",
+      "reasonPlaceholder": "Enter a reason...",
+      "success": "Appointment cancelled",
+      "error": "Failed to cancel the appointment"
+    }
+  },
+  "review": {
+    "createTitle": "Leave a review",
+    "updateTitle": "Edit your review",
+    "dateAt": "{{date}} at {{time}}",
+    "experienceQuestion": "How was your experience?",
+    "ratingLabels": {
+      "1": "Very dissatisfied",
+      "2": "Dissatisfied",
+      "3": "Okay",
+      "4": "Satisfied",
+      "5": "Very satisfied"
+    },
+    "commentLabel": "Your comment (optional)",
+    "commentPlaceholder": "Share your experience...",
+    "submitCreate": "Send my review",
+    "submitUpdate": "Update my review",
+    "existingNotice": "You already have a review for this business. Submitting will replace your previous review.",
+    "selectRating": "Please select a rating",
+    "toastThanks": "Thank you for your review!",
+    "toastUpdated": "Review updated",
+    "successThanksTitle": "Thank you for your review!",
+    "successUpdatedTitle": "Review updated!",
+    "successMessage": "Your review is now visible on the provider's page.",
+    "successUpdatedMessage": "Your review has been updated.",
+    "errors": {
+      "missingData": "Missing data",
+      "notFound": "Booking not found",
+      "notAllowed": "You cannot leave a review for this booking",
+      "loadFailed": "Failed to load",
+      "submitFailed": "Failed to send the review"
+    }
+  },
+  "editProfile": {
+    "title": "Edit my profile",
+    "firstNameLabel": "First name",
+    "firstNamePlaceholder": "Your first name",
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "06 12 34 56 78",
+    "cityLabel": "City",
+    "cityPlaceholder": "Your city (optional)",
+    "success": "Profile updated",
+    "updateError": "Failed to update the profile",
+    "errors": {
+      "nameRequired": "First name is required",
+      "nameTooShort": "First name must be at least 2 characters",
+      "phoneRequired": "Phone number is required",
+      "phoneInvalid": "Invalid format (e.g. 06 12 34 56 78)"
+    }
+  },
+  "notifSettings": {
+    "title": "Notifications",
+    "updateError": "Failed to update settings",
+    "sections": {
+      "channels": "Channels",
+      "types": "Notification types"
+    },
+    "push": {
+      "label": "Push notifications",
+      "description": "On your phone"
+    },
+    "email": {
+      "label": "Email notifications",
+      "description": "By email"
+    },
+    "confirmations": {
+      "label": "Confirmations",
+      "description": "When your appointment is confirmed"
+    },
+    "cancellations": {
+      "label": "Cancellations",
+      "description": "When an appointment is cancelled"
+    },
+    "reschedules": {
+      "label": "Changes",
+      "description": "When an appointment is rescheduled"
+    },
+    "reminders": {
+      "label": "Reminders",
+      "description": "Before your appointments"
+    },
+    "channelsWarning": "Enable at least one channel to receive notifications.",
+    "autoSaveInfo": "Changes are saved automatically."
+  },
+  "misc": {},
+  "components": {
+    "providerCard": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "fromPrice": "From {{price}} €",
+      "priceOnRequest": "Price on request"
+    },
+    "serviceCard": {
+      "fromPrefix": "from",
+      "priceRange": "From {{min}} to {{max}}",
+      "showMore": "More details",
+      "showLess": "Less"
+    },
+    "serviceChoicesPreview": {
+      "add": "Add",
+      "book": "Book",
+      "total": "Total",
+      "startingFrom": "From",
+      "options": "Options",
+      "included": "Included",
+      "yes": "Yes",
+      "no": "No",
+      "variationFallback": "Variation",
+      "choiceFallback": "Choice",
+      "questionFallback": "Question",
+      "serviceFallback": "Service",
+      "yourAnswerPlaceholder": "Your answer…",
+      "clientFreeAnswer": "Client's free-text answer…",
+      "clientPreviewHint": "This is exactly what clients will see when they book.",
+      "fixedPriceNotice": "Fixed-price service — clients book directly, with no choices to make. Add variations or options to enrich this listing."
+    },
+    "timeSlotGrid": {
+      "noSlotsForDate": "No time slots available for this date"
+    },
+    "timeSlotSection": {
+      "slots_one": "{{count}} slot",
+      "slots_other": "{{count}} slots"
+    },
+    "monthCalendar": {
+      "weekdaysShort": [
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat"
+      ],
+      "months": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ],
+      "placesLeft_one": "{{count}} left",
+      "placesLeft_other": "{{count}} left",
+      "full": "Full",
+      "seeFullMonth": "See full month",
+      "available": "Available",
+      "almostFull": "Almost full"
+    },
+    "calendarStrip": {
+      "shortDays": [
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat"
+      ],
+      "shortMonths": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ],
+      "full": "Full",
+      "placesLeft_one": "{{count}} left",
+      "placesLeft_other": "{{count}} left"
+    },
+    "daySchedule": {
+      "allDay": "All day",
+      "unavailable": "Unavailable",
+      "allMembers": "All members"
+    },
+    "hoursSection": {
+      "title": "Opening hours",
+      "open": "Open",
+      "closed": "Closed",
+      "today": "(Today)"
+    },
+    "locationSection": {
+      "title_one": "Location",
+      "title_other": "Locations",
+      "protectedAddressNote": "Exact address shared after confirmation",
+      "travelRadius": "Travel radius: {{radius}} km"
+    },
+    "teamSection": {
+      "title": "The team"
+    },
+    "reviewCard": {
+      "importedBadge": "Imported review",
+      "providerReply": "Provider's reply"
+    },
+    "ratingStats": {
+      "reviews_one": "({{count}} review)",
+      "reviews_other": "({{count}} reviews)"
+    },
+    "providerHeader": {
+      "verified": "Verified",
+      "reviews_one": "({{count}} review)",
+      "reviews_other": "({{count}} reviews)",
+      "noReviews": "No reviews yet"
+    },
+    "providerInfo": {
+      "about": "About"
+    },
+    "bookingDetail": {
+      "dateAtTime": "{{date}} at {{time}}",
+      "service": "Service",
+      "duration": "Duration",
+      "price": "Price",
+      "location": "Location",
+      "with": "With",
+      "cancelBooking": "Cancel booking",
+      "leaveReview": "Leave a review"
+    },
+    "bookingRecap": {
+      "dateAtTime": "{{date}} at {{time}}",
+      "service": "Service",
+      "duration": "Duration",
+      "appointment": "Appointment",
+      "location": "Location",
+      "with": "With",
+      "total": "Total"
+    },
+    "bookingStatusBadge": {
+      "pendingPayment": "Deposit pending",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "noshow": "No-show",
+      "unknown": "Unknown status"
+    },
+    "searchBar": {
+      "placeholder": "Search..."
+    },
+    "regionSelect": {
+      "placeholder": "Choose a region",
+      "label": "Region",
+      "title": "Choose a region",
+      "searchPlaceholder": "Search for a region...",
+      "noResults": "No region found"
+    },
+    "citySelect": {
+      "allCities": "All cities",
+      "label": "City",
+      "title": "Choose a city",
+      "searchPlaceholder": "Search for a city...",
+      "noResults": "No city found"
+    },
+    "categorySelect": {
+      "allCategories": "All categories",
+      "title": "Choose a category",
+      "searchPlaceholder": "Search for a category...",
+      "noResults": "No category found"
+    },
+    "categoryPills": {
+      "all": "All"
+    },
+    "stickyConfirmButton": {
+      "confirmTime": "Confirm - {{time}}",
+      "selectTime": "Select a time"
+    },
+    "memberPicker": {
+      "anyone": "No preference",
+      "firstAvailable": "First available"
+    },
+    "loadingTips": {
+      "tips": [
+        "Your calendar is available to your clients 24/7.",
+        "Automatic reminders greatly reduce missed appointments.",
+        "A “Serenity” deposit deters no-shows and secures your slots.",
+        "Share your booking link on Instagram, WhatsApp, your storefront…",
+        "Add variations and options: clients pick, the price adjusts automatically.",
+        "Ask for a review after each appointment to boost your visibility.",
+        "No commission: you keep 100% of your earnings."
+      ]
+    },
+    "updateGate": {
+      "maintenanceTitle": "Maintenance in progress",
+      "updateTitle": "Update required",
+      "versionLabel": "Version {{version}}",
+      "maintenanceMessage": "Opatam is temporarily unavailable. Please try again in a few moments.",
+      "updateMessage": "A new version of Opatam is available. Update the app to continue.",
+      "whatsNew": "What's new",
+      "fixes": "Fixes",
+      "updateButton": "Update",
+      "storeHintIos": "Go to the App Store to install the latest version.",
+      "storeHintAndroid": "Go to Google Play to install the latest version."
+    },
+    "webRedirectModal": {
+      "activatedTitle": "Account activated!",
+      "activatedDescriptionNamed": "Congratulations {{name}}! Your account is now active. Enjoy all the features.",
+      "activatedDescription": "Congratulations! Your account is now active. Enjoy all the features.",
+      "letsGo": "Let's go!",
+      "greeting": "Hello, {{name}}",
+      "trialEndedTitle": "Trial period ended",
+      "trialEndedDescription": "Your trial period has come to an end. To keep using Opatam, activate your account from your web dashboard.",
+      "checking": "Checking...",
+      "accountActivatedButton": "I've activated my account",
+      "comeBackHint": "You can come back to the app once your account is activated.",
+      "signOut": "Sign out"
+    },
+    "locationPermissionPrompt": {
+      "title": "Find pros near you",
+      "intro": "We use your location to:",
+      "benefitNearby": "Show nearby providers",
+      "benefitDistance": "Calculate distance and travel time",
+      "benefitSort": "Sort results by distance",
+      "privacyNote": "Your location is never shared with providers. You can turn it off at any time in Settings.",
+      "enable": "Enable location",
+      "later": "Later"
+    },
+    "notificationPermissionPrompt": {
+      "title": "Stay informed in real time",
+      "intro": "Turn on notifications to be alerted about:",
+      "benefitBookings": "New appointments",
+      "benefitReminders": "Reminders before your appointments",
+      "benefitReviews": "Reviews from your clients",
+      "benefitChanges": "Cancellations and changes",
+      "enable": "Enable notifications",
+      "later": "Later"
+    },
+    "notificationsDrawer": {
+      "title": "New",
+      "unread_one": "{{count}} unread",
+      "unread_other": "{{count}} unread",
+      "upToDate": "All caught up",
+      "markAllRead": "Mark all read",
+      "pushNotifications": "Push notifications",
+      "watchVideo": "Watch the video",
+      "viewTutorial": "View the tutorial",
+      "emptyTitle": "You're all caught up",
+      "emptyDescription": "Opatam news and announcements will appear here.",
+      "deleteNotification": "Delete this notification"
+    },
+    "expandableText": {
+      "showMore": "See more",
+      "showLess": "See less"
+    }
+  },
+  "errors": {
+    "auth": {
+      "emailAlreadyInUse": "This email is already in use",
+      "invalidEmail": "Invalid email format",
+      "weakPassword": "The password is too weak",
+      "userNotFound": "No account found for this email",
+      "wrongPassword": "Incorrect password",
+      "invalidCredential": "Incorrect email or password",
+      "tooManyRequests": "Too many attempts, please try again later",
+      "networkRequestFailed": "Connection error",
+      "userDisabled": "This account has been disabled",
+      "appleTokenMissing": "Missing Apple token",
+      "appleSignInFailed": "Could not sign in with Apple",
+      "signOutFailed": "Could not sign out",
+      "noUserSignedIn": "No user signed in",
+      "deleteAccountFailed": "Could not delete the account"
+    },
+    "bookings": {
+      "loadFailed": "Failed to load bookings"
+    },
+    "availability": {
+      "loadFailed": "Failed to load availability"
+    },
+    "categories": {
+      "loadFailed": "Failed to load categories"
+    },
+    "provider": {
+      "notFound": "Provider not found",
+      "loadFailed": "Failed to load provider"
+    }
+  },
+  "dates": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago",
+    "weeksAgo_one": "{{count}} week ago",
+    "weeksAgo_other": "{{count}} weeks ago",
+    "monthsAgo_one": "{{count}} month ago",
+    "monthsAgo_other": "{{count}} months ago",
+    "yearsAgo_one": "{{count}} year ago",
+    "yearsAgo_other": "{{count}} years ago"
+  },
+  "tabs": {
+    "home": "Home",
+    "search": "Search",
+    "bookings": "Bookings",
+    "more": "More"
+  },
+  "home": {
+    "greeting": "Hello",
+    "greetingWithName": "Hello {{name}}",
+    "subtitle": "Find your next appointment",
+    "searchPlaceholder": "Search for a provider...",
+    "categoriesTitle": "Categories",
+    "categories": {
+      "digital": "Digital",
+      "beauty": "Beauty",
+      "coaching": "Coaching",
+      "wellness": "Wellness",
+      "sport": "Sports",
+      "training": "Training",
+      "artisan": "Artisans",
+      "audiovisual": "Audiovisual"
+    },
+    "date": {
+      "todayAt": "Today at {{time}}",
+      "tomorrowAt": "Tomorrow at {{time}}",
+      "dayAt": "{{date}} at {{time}}"
+    },
+    "countdown": {
+      "inMinutes": "In {{count}} min",
+      "inHoursMinutes": "In {{hours}}h{{minutes}}",
+      "inHours": "In {{hours}}h",
+      "tomorrow": "Tomorrow",
+      "inDays_one": "In {{count}} day",
+      "inDays_other": "In {{count}} days"
+    },
+    "nextBooking": {
+      "title": "Next appointment",
+      "emptyTitle": "No upcoming appointments",
+      "emptyDescription": "Find a provider and book your next appointment in just a few taps",
+      "searchAction": "Search"
+    },
+    "recentBookings": {
+      "title": "Recent appointments",
+      "seeAll": "See all",
+      "promoActive": "Ongoing promotion",
+      "rebook": "Book again",
+      "review": "Review"
+    },
+    "suggestions": {
+      "title": "Suggestions",
+      "nearYou": "Near you",
+      "nearYouInCity": "Near you · in {{city}}",
+      "emptyTitle": "No suggestions",
+      "emptyDescription": "No providers available at the moment"
+    }
+  },
+  "search": {
+    "title": "Search",
+    "searchPlaceholder": "Search for a provider...",
+    "intro": {
+      "title": "Find a provider",
+      "chooseRegionSubtitle": "Start by choosing your region",
+      "chooseCountrySubtitle": "Choose a country to get started"
+    },
+    "useMyLocation": "Use my location",
+    "or": "or",
+    "chooseRegionPlaceholder": "Choose a region",
+    "searchInCountry": "Search in {{country}}",
+    "countryPickerTitle": "Country",
+    "countries": {
+      "FR": "France",
+      "BE": "Belgium",
+      "LU": "Luxembourg",
+      "CH": "Switzerland",
+      "DE": "Germany",
+      "ES": "Spain",
+      "IT": "Italy",
+      "NL": "Netherlands",
+      "PT": "Portugal"
+    },
+    "errorTitle": "Error",
+    "noResults": {
+      "title": "No results",
+      "description": "Try adjusting your search filters",
+      "clearFilters": "Clear filters"
+    },
+    "popular": {
+      "title": "Popular",
+      "subtitle": "Top-rated providers"
+    }
+  },
+  "bookings": {
+    "title": "My appointments",
+    "tabs": {
+      "upcoming": "Upcoming",
+      "past": "History"
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "pending": "Pending",
+      "cancelled": "Cancelled",
+      "noshow": "No-show"
+    },
+    "date": {
+      "todayAt": "Today at {{time}}",
+      "tomorrowAt": "Tomorrow at {{time}}",
+      "dayAt": "{{date}} at {{time}}"
+    },
+    "priceRange": "From €{{min}} to €{{max}}",
+    "price": "€{{price}}",
+    "errorTitle": "Error",
+    "notAuth": {
+      "title": "Sign in",
+      "description": "Sign in to view your appointments and book new ones",
+      "action": "Sign in"
+    },
+    "empty": {
+      "upcomingTitle": "No upcoming appointments",
+      "upcomingDescription": "Find a provider and book your next appointment in just a few taps",
+      "pastTitle": "No history yet",
+      "pastDescription": "Your past appointments will appear here",
+      "searchAction": "Search"
+    }
   }
 }

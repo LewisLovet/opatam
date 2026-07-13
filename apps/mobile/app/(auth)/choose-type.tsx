@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, StyleSheet, Pressable, Animated, Easing, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -83,6 +84,7 @@ export default function ChooseTypeScreen() {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Entrance animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -132,10 +134,10 @@ export default function ChooseTypeScreen() {
           style={[styles.titleSection, { opacity: fadeAnim }]}
         >
           <Text variant="h1" style={styles.title}>
-            Comment allez-vous{'\n'}utiliser OPATAM ?
+            {t('auth.chooseType.title')}
           </Text>
           <Text variant="body" color="textSecondary" style={styles.subtitle}>
-            Choisissez votre profil pour commencer
+            {t('auth.chooseType.subtitle')}
           </Text>
         </Animated.View>
 
@@ -172,23 +174,23 @@ export default function ChooseTypeScreen() {
 
               {/* Text */}
               <Text variant="h2" style={styles.cardTitle}>
-                Réserver un service
+                {t('auth.chooseType.client.title')}
               </Text>
               <Text variant="body" color="textSecondary" style={styles.cardDesc}>
-                Trouvez et réservez chez des professionnels près de chez vous
+                {t('auth.chooseType.client.description')}
               </Text>
 
               {/* Bottom row */}
               <View style={styles.cardFooter}>
                 <View style={styles.cardChips}>
                   <View style={styles.chip}>
-                    <Text variant="caption" style={styles.chipText}>Coiffeurs</Text>
+                    <Text variant="caption" style={styles.chipText}>{t('auth.chooseType.client.chips.hairdressers')}</Text>
                   </View>
                   <View style={styles.chip}>
-                    <Text variant="caption" style={styles.chipText}>Spas</Text>
+                    <Text variant="caption" style={styles.chipText}>{t('auth.chooseType.client.chips.spas')}</Text>
                   </View>
                   <View style={styles.chip}>
-                    <Text variant="caption" style={styles.chipText}>Coachs</Text>
+                    <Text variant="caption" style={styles.chipText}>{t('auth.chooseType.client.chips.coaches')}</Text>
                   </View>
                 </View>
                 <View style={styles.arrowBtn}>
@@ -226,23 +228,23 @@ export default function ChooseTypeScreen() {
 
               {/* Text */}
               <Text variant="h2" style={[styles.cardTitle, { color: '#FFFFFF' }]}>
-                Proposer mes services
+                {t('auth.chooseType.pro.title')}
               </Text>
               <Text variant="body" style={[styles.cardDesc, { color: 'rgba(255,255,255,0.8)' }]}>
-                Gérez vos réservations et développez votre activité
+                {t('auth.chooseType.pro.description')}
               </Text>
 
               {/* Bottom row */}
               <View style={styles.cardFooter}>
                 <View style={styles.cardChips}>
                   <View style={[styles.chip, styles.chipPro]}>
-                    <Text variant="caption" style={[styles.chipText, { color: '#FFFFFF' }]}>Agenda</Text>
+                    <Text variant="caption" style={[styles.chipText, { color: '#FFFFFF' }]}>{t('auth.chooseType.pro.chips.calendar')}</Text>
                   </View>
                   <View style={[styles.chip, styles.chipPro]}>
-                    <Text variant="caption" style={[styles.chipText, { color: '#FFFFFF' }]}>Clients</Text>
+                    <Text variant="caption" style={[styles.chipText, { color: '#FFFFFF' }]}>{t('auth.chooseType.pro.chips.clients')}</Text>
                   </View>
                   <View style={[styles.chip, styles.chipPro]}>
-                    <Text variant="caption" style={[styles.chipText, { color: '#FFFFFF' }]}>Stats</Text>
+                    <Text variant="caption" style={[styles.chipText, { color: '#FFFFFF' }]}>{t('auth.chooseType.pro.chips.stats')}</Text>
                   </View>
                 </View>
                 <View style={[styles.arrowBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>

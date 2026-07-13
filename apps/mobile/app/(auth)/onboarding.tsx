@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Dimensions,
@@ -34,37 +35,14 @@ interface Slide {
   features: { icon: keyof typeof Ionicons.glyphMap; text: string }[];
 }
 
-const SLIDES: Slide[] = [
-  {
-    icon: 'calendar',
-    title: 'Vos rendez-vous,\nenfin simplifiés',
-    subtitle: 'Réservez en quelques clics, 24h/24, depuis votre téléphone.',
-    features: [
-      { icon: 'time-outline', text: 'Disponible à tout moment' },
-      { icon: 'flash-outline', text: 'Réservation instantanée' },
-      { icon: 'thumbs-up-outline', text: 'Simple et gratuit' },
-    ],
-  },
-  {
-    icon: 'notifications',
-    title: 'Plus jamais de\nrendez-vous oublié',
-    subtitle: 'Des rappels intelligents pour ne rien manquer.',
-    features: [
-      { icon: 'alarm-outline', text: 'Rappels automatiques' },
-      { icon: 'chatbubble-outline', text: 'Notifications en temps réel' },
-      { icon: 'calendar-outline', text: 'Synchronisation agenda' },
-    ],
-  },
-  {
-    icon: 'people',
-    title: 'Tous les domaines,\nun seul endroit',
-    subtitle: 'Des indépendants de confiance dans tous les secteurs.',
-    features: [
-      { icon: 'briefcase-outline', text: 'Beauté, sport, coaching, bien-être...' },
-      { icon: 'location-outline', text: 'Des pros près de chez vous' },
-      { icon: 'star-outline', text: 'Avis vérifiés par la communauté' },
-    ],
-  },
+// Icons stay static; texts come from the i18n dictionaries (auth.onboarding.slides.*)
+const SLIDE_ICONS: {
+  icon: keyof typeof Ionicons.glyphMap;
+  featureIcons: (keyof typeof Ionicons.glyphMap)[];
+}[] = [
+  { icon: 'calendar', featureIcons: ['time-outline', 'flash-outline', 'thumbs-up-outline'] },
+  { icon: 'notifications', featureIcons: ['alarm-outline', 'chatbubble-outline', 'calendar-outline'] },
+  { icon: 'people', featureIcons: ['briefcase-outline', 'location-outline', 'star-outline'] },
 ];
 
 // Animated icon component with scale entrance
@@ -166,11 +144,21 @@ function AnimatedFeature({
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const isLastSlide = currentIndex === SLIDES.length - 1;
-  const currentSlide = SLIDES[currentIndex];
+  const slides: Slide[] = SLIDE_ICONS.map((slideIcons, index) => ({
+    icon: slideIcons.icon,
+    title: t(`auth.onboarding.slides.${index}.title`),
+    subtitle: t(`auth.onboarding.slides.${index}.subtitle`),
+    features: slideIcons.featureIcons.map((featureIcon, featureIndex) => ({
+      icon: featureIcon,
+      text: t(`auth.onboarding.slides.${index}.features.${featureIndex}`),
+    })),
+  }));
+
+  const isLastSlide = currentIndex === slides.length - 1;
 
   const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -195,7 +183,7 @@ export default function OnboardingScreen() {
     }
   };
 
-  const ctaText = isLastSlide ? "C'est parti !" : 'Continuer';
+  const ctaText = isLastSlide ? t('auth.onboarding.getStarted') : t('auth.onboarding.continue');
 
   return (
     <View style={styles.container}>
@@ -211,7 +199,7 @@ export default function OnboardingScreen() {
         onPress={handleSkip}
         style={[styles.skipButton, { top: insets.top + 12 }]}
       >
-        <RNText style={styles.skipText}>Passer</RNText>
+        <RNText style={styles.skipText}>{t('auth.onboarding.skip')}</RNText>
       </Pressable>
 
       {/* Slides */}
@@ -224,7 +212,7 @@ export default function OnboardingScreen() {
         scrollEventThrottle={16}
         style={styles.scrollView}
       >
-        {SLIDES.map((slide, index) => (
+        {slides.map((slide, index) => (
           <View
             key={index}
             style={[styles.slide, { width: SCREEN_WIDTH, paddingTop: insets.top + 60 }]}
@@ -258,7 +246,7 @@ export default function OnboardingScreen() {
       <View style={[styles.bottomSection, { paddingBottom: insets.bottom + 24 }]}>
         {/* Dots */}
         <View style={styles.dotsContainer}>
-          {SLIDES.map((_, dotIndex) => (
+          {slides.map((_, dotIndex) => (
             <View
               key={dotIndex}
               style={[

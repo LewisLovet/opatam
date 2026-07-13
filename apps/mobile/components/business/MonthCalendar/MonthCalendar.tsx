@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 
@@ -31,9 +32,6 @@ export interface MonthCalendarProps {
   minDate: Date;
   maxDate: Date;
 }
-
-const WEEKDAYS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
 const AMBER = '#D97706';
 const GREEN = '#10B981';
@@ -64,6 +62,10 @@ function buildWeeks(viewMonth: Date): (Date | null)[][] {
 
 export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, maxDate }: MonthCalendarProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
+  // Sunday-first, matching buildWeeks (getDay() indexing).
+  const WEEKDAYS = t('components.monthCalendar.weekdaysShort', { returnObjects: true }) as string[];
+  const MONTHS = t('components.monthCalendar.months', { returnObjects: true }) as string[];
   const [collapsed, setCollapsed] = useState(!!selectedDate);
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(selectedDate ?? minDate));
 
@@ -127,12 +129,12 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
     } else if (status === 'available') {
       showGreenDot = true;
     } else if (status === 'almost_full') {
-      bottomLabel = `${info!.capacity} pl.`;
+      bottomLabel = t('components.monthCalendar.placesLeft', { count: info!.capacity });
       bottomColor = AMBER;
     } else if (status === 'full') {
       numberColor = colors.textMuted;
       struck = true;
-      bottomLabel = 'Complet';
+      bottomLabel = t('components.monthCalendar.full');
       opacity = 0.7;
     } else {
       numberColor = colors.textMuted;
@@ -231,7 +233,7 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
         {/* "Voir tout le mois" hint when collapsed */}
         {showCollapsed && (
           <Pressable onPress={toggleCollapsed} hitSlop={HIT_SLOP} style={styles.expandHint}>
-            <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>Voir tout le mois</Text>
+            <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>{t('components.monthCalendar.seeFullMonth')}</Text>
             <Ionicons name="chevron-down" size={14} color={colors.primary} />
           </Pressable>
         )}
@@ -239,9 +241,9 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
         {/* Legend (only when full month is shown) */}
         {!showCollapsed && (
           <View style={styles.legend}>
-            <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: GREEN }]} /><Text variant="caption" style={styles.legendText}>Dispo</Text></View>
-            <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: AMBER }]} /><Text variant="caption" style={styles.legendText}>Bientôt complet</Text></View>
-            <View style={styles.legendItem}><Text variant="caption" style={[styles.legendText, { textDecorationLine: 'line-through' }]}>Complet</Text></View>
+            <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: GREEN }]} /><Text variant="caption" style={styles.legendText}>{t('components.monthCalendar.available')}</Text></View>
+            <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: AMBER }]} /><Text variant="caption" style={styles.legendText}>{t('components.monthCalendar.almostFull')}</Text></View>
+            <View style={styles.legendItem}><Text variant="caption" style={[styles.legendText, { textDecorationLine: 'line-through' }]}>{t('components.monthCalendar.full')}</Text></View>
           </View>
         )}
       </View>

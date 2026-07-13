@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -73,6 +74,7 @@ export default function NotificationSettingsScreen() {
   const router = useRouter();
   const { userData } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [saving, setSaving] = useState(false);
 
@@ -94,7 +96,7 @@ export default function NotificationSettingsScreen() {
     } catch (error) {
       // Revert on error
       setSettings(settings);
-      showToast({ variant: 'error', message: 'Erreur lors de la mise à jour' });
+      showToast({ variant: 'error', message: t('notifSettings.updateError') });
     } finally {
       setSaving(false);
     }
@@ -127,20 +129,20 @@ export default function NotificationSettingsScreen() {
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </Pressable>
           <Text variant="h2" style={styles.headerTitle}>
-            Notifications
+            {t('notifSettings.title')}
           </Text>
           <View style={styles.headerSpacer} />
         </View>
         {/* Master Toggles */}
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={styles.sectionTitle}>
-            CANAUX
+            {t('notifSettings.sections.channels')}
           </Text>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <SettingRow
               icon="phone-portrait-outline"
-              label="Notifications push"
-              description="Sur votre téléphone"
+              label={t('notifSettings.push.label')}
+              description={t('notifSettings.push.description')}
               value={settings.pushEnabled}
               onValueChange={(val) => updateSetting('pushEnabled', val)}
               colors={colors}
@@ -148,8 +150,8 @@ export default function NotificationSettingsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingRow
               icon="mail-outline"
-              label="Notifications email"
-              description="Par email"
+              label={t('notifSettings.email.label')}
+              description={t('notifSettings.email.description')}
               value={settings.emailEnabled}
               onValueChange={(val) => updateSetting('emailEnabled', val)}
               colors={colors}
@@ -160,13 +162,13 @@ export default function NotificationSettingsScreen() {
         {/* Per-type Toggles */}
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
           <Text variant="label" color="textSecondary" style={styles.sectionTitle}>
-            TYPES DE NOTIFICATION
+            {t('notifSettings.sections.types')}
           </Text>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <SettingRow
               icon="checkmark-circle-outline"
-              label="Confirmations"
-              description="Quand votre RDV est confirmé"
+              label={t('notifSettings.confirmations.label')}
+              description={t('notifSettings.confirmations.description')}
               value={settings.confirmationNotifications}
               onValueChange={(val) => updateSetting('confirmationNotifications', val)}
               disabled={channelsDisabled}
@@ -175,8 +177,8 @@ export default function NotificationSettingsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingRow
               icon="close-circle-outline"
-              label="Annulations"
-              description="Quand un RDV est annulé"
+              label={t('notifSettings.cancellations.label')}
+              description={t('notifSettings.cancellations.description')}
               value={settings.cancellationNotifications}
               onValueChange={(val) => updateSetting('cancellationNotifications', val)}
               disabled={channelsDisabled}
@@ -185,8 +187,8 @@ export default function NotificationSettingsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingRow
               icon="swap-horizontal-outline"
-              label="Modifications"
-              description="Quand un RDV est déplacé"
+              label={t('notifSettings.reschedules.label')}
+              description={t('notifSettings.reschedules.description')}
               value={settings.rescheduleNotifications}
               onValueChange={(val) => updateSetting('rescheduleNotifications', val)}
               disabled={channelsDisabled}
@@ -195,8 +197,8 @@ export default function NotificationSettingsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingRow
               icon="alarm-outline"
-              label="Rappels"
-              description="Avant vos rendez-vous"
+              label={t('notifSettings.reminders.label')}
+              description={t('notifSettings.reminders.description')}
               value={settings.reminderNotifications}
               onValueChange={(val) => updateSetting('reminderNotifications', val)}
               disabled={channelsDisabled}
@@ -205,7 +207,7 @@ export default function NotificationSettingsScreen() {
           </View>
           {channelsDisabled && (
             <Text variant="caption" style={[styles.warning, { color: '#d97706' }]}>
-              Activez au moins un canal pour recevoir des notifications.
+              {t('notifSettings.channelsWarning')}
             </Text>
           )}
         </View>
@@ -214,7 +216,7 @@ export default function NotificationSettingsScreen() {
         <View style={[styles.infoBox, { marginHorizontal: spacing.lg, marginTop: spacing.xl, backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}>
           <Ionicons name="information-circle-outline" size={20} color="#2563eb" />
           <Text variant="caption" style={{ flex: 1, color: '#1e40af', marginLeft: 8 }}>
-            Les modifications sont enregistrées automatiquement.
+            {t('notifSettings.autoSaveInfo')}
           </Text>
           {saving && <ActivityIndicator size="small" color="#2563eb" />}
         </View>

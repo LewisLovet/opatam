@@ -7,6 +7,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Avatar } from '../../Avatar';
@@ -41,21 +42,6 @@ export interface BookingRecapProps {
   } | null;
 }
 
-function formatFullDate(date: Date, time: string): string {
-  const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-  const months = [
-    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
-  ];
-
-  const dayName = days[date.getDay()];
-  const dayNum = date.getDate();
-  const monthName = months[date.getMonth()];
-  const year = date.getFullYear();
-
-  return `${dayName} ${dayNum} ${monthName} ${year} à ${time}`;
-}
-
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
     return `${minutes} min`;
@@ -81,6 +67,18 @@ export function BookingRecap({
   location,
 }: BookingRecapProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t, i18n } = useTranslation();
+
+  const formatFullDate = (d: Date, tm: string): string => {
+    const formatted = new Intl.DateTimeFormat(i18n.language, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(d);
+    const capitalized = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    return t('components.bookingRecap.dateAtTime', { date: capitalized, time: tm });
+  };
 
   return (
     <Card padding="none" shadow="sm">
@@ -119,12 +117,12 @@ export function BookingRecap({
       <View style={[styles.section, { padding: spacing.md }]}>
         <InfoRow
           icon="pricetag-outline"
-          label="Prestation"
+          label={t('components.bookingRecap.service')}
           value={service.name}
         />
         <InfoRow
           icon="time-outline"
-          label="Durée"
+          label={t('components.bookingRecap.duration')}
           value={formatDuration(service.duration)}
         />
       </View>
@@ -135,7 +133,7 @@ export function BookingRecap({
       <View style={[styles.section, { padding: spacing.md }]}>
         <InfoRow
           icon="calendar-outline"
-          label="Rendez-vous"
+          label={t('components.bookingRecap.appointment')}
           value={formatFullDate(date, time)}
         />
       </View>
@@ -147,7 +145,7 @@ export function BookingRecap({
           <View style={[styles.section, { padding: spacing.md }]}>
             <InfoRow
               icon="location-outline"
-              label="Lieu"
+              label={t('components.bookingRecap.location')}
               value={location.address?.trim() ? `${location.name}\n${location.address}` : location.name}
             />
           </View>
@@ -161,7 +159,7 @@ export function BookingRecap({
           <View style={[styles.section, { padding: spacing.md }]}>
             <InfoRow
               icon="person-outline"
-              label="Avec"
+              label={t('components.bookingRecap.with')}
               value={member.name}
             />
           </View>
@@ -181,7 +179,7 @@ export function BookingRecap({
         ]}
       >
         <Text variant="body" style={{ color: colors.primary }}>
-          Total
+          {t('components.bookingRecap.total')}
         </Text>
         <Text variant="h2" style={{ color: colors.primary }}>
           {formatPrice(service.price)}

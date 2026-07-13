@@ -27,6 +27,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { BlurView } from 'expo-blur';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { StatusBar } from 'expo-status-bar';
@@ -53,10 +54,10 @@ interface Props {
   onToggleCenterPush: (value: boolean) => void;
 }
 
-function formatDate(ms: number): string {
+function formatDate(ms: number, locale: string): string {
   if (!ms) return '';
   try {
-    return new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return new Date(ms).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   } catch {
     return '';
   }
@@ -108,6 +109,7 @@ export function NotificationsDrawer({
   onToggleCenterPush,
 }: Props) {
   const { colors } = useTheme();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -205,20 +207,20 @@ export function NotificationsDrawer({
             ) : null}
             <View style={{ flex: 1 }}>
               <Text variant="h3" style={styles.headerTitle}>
-                Nouveau
+                {t('components.notificationsDrawer.title')}
               </Text>
               {!selected ? (
                 <Text variant="caption" style={styles.headerSub}>
                   {unreadCount > 0
-                    ? `${unreadCount} non lue${unreadCount > 1 ? 's' : ''}`
-                    : 'À jour'}
+                    ? t('components.notificationsDrawer.unread', { count: unreadCount })
+                    : t('components.notificationsDrawer.upToDate')}
                 </Text>
               ) : null}
             </View>
             {!selected && unreadCount > 0 ? (
               <Pressable onPress={onMarkAllRead} hitSlop={8} style={styles.markAllPill}>
                 <Text variant="caption" style={{ color: '#fff', fontWeight: '700' }}>
-                  Tout lire
+                  {t('components.notificationsDrawer.markAllRead')}
                 </Text>
               </Pressable>
             ) : null}
@@ -232,7 +234,7 @@ export function NotificationsDrawer({
             <View style={styles.pushRow}>
               <Ionicons name="notifications-outline" size={18} color="#fff" />
               <Text variant="bodySmall" style={{ color: '#fff', flex: 1, fontWeight: '600' }}>
-                Notifications push
+                {t('components.notificationsDrawer.pushNotifications')}
               </Text>
               <Switch
                 value={centerPushEnabled}
@@ -259,7 +261,7 @@ export function NotificationsDrawer({
                   {selected.title}
                 </Text>
                 <Text variant="caption" color="textMuted" style={{ marginBottom: 14 }}>
-                  {formatDate(selected.publishedAtMs)}
+                  {formatDate(selected.publishedAtMs, i18n.language)}
                 </Text>
                 {selected.imageUrl ? (
                   <Image
@@ -298,7 +300,9 @@ export function NotificationsDrawer({
                       />
                       <Text variant="body" style={{ color: '#fff', fontWeight: '700' }}>
                         {selected.ctaLabel ||
-                          (selected.ctaIsVideo ? 'Voir la vidéo' : 'Voir le tutoriel')}
+                          (selected.ctaIsVideo
+                            ? t('components.notificationsDrawer.watchVideo')
+                            : t('components.notificationsDrawer.viewTutorial'))}
                       </Text>
                     </Pressable>
                   </>
@@ -311,14 +315,14 @@ export function NotificationsDrawer({
                 <Ionicons name="notifications-outline" size={34} color="#fff" />
               </View>
               <Text variant="body" style={{ fontWeight: '700', color: '#fff', marginTop: 16 }}>
-                Vous êtes à jour
+                {t('components.notificationsDrawer.emptyTitle')}
               </Text>
               <Text
                 variant="caption"
                 align="center"
                 style={{ color: 'rgba(255,255,255,0.7)', marginTop: 6, maxWidth: 240, lineHeight: 18 }}
               >
-                Les nouveautés et annonces d'Opatam s'afficheront ici.
+                {t('components.notificationsDrawer.emptyDescription')}
               </Text>
             </View>
           ) : (
@@ -355,7 +359,7 @@ export function NotificationsDrawer({
                           {n.title}
                         </Text>
                         <Text variant="caption" color="textMuted">
-                          {formatDate(n.publishedAtMs)}
+                          {formatDate(n.publishedAtMs, i18n.language)}
                         </Text>
                       </View>
                       <Text variant="caption" color="textMuted" numberOfLines={2} style={{ marginTop: 2 }}>
@@ -366,7 +370,7 @@ export function NotificationsDrawer({
                       onPress={() => onDismiss(n.id)}
                       hitSlop={10}
                       style={{ padding: 2, marginTop: 1 }}
-                      accessibilityLabel="Supprimer cette notification"
+                      accessibilityLabel={t('components.notificationsDrawer.deleteNotification')}
                     >
                       <Ionicons name="close" size={18} color={colors.textMuted} />
                     </Pressable>

@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   ScrollView,
@@ -64,10 +65,10 @@ import { analyticsService, type WithId } from '@booking-app/firebase';
 
 type TabId = 'prestations' | 'avis' | 'infos';
 
-const TABS: { id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { id: 'prestations', label: 'Prestations', icon: 'pricetag-outline' },
-  { id: 'avis', label: 'Avis', icon: 'star-outline' },
-  { id: 'infos', label: 'Infos', icon: 'information-circle-outline' },
+const TABS: { id: TabId; labelKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'prestations', labelKey: 'providerScreen.tabs.services', icon: 'pricetag-outline' },
+  { id: 'avis', labelKey: 'providerScreen.tabs.reviews', icon: 'star-outline' },
+  { id: 'infos', labelKey: 'providerScreen.tabs.info', icon: 'information-circle-outline' },
 ];
 
 // Check if provider has any social links
@@ -79,12 +80,13 @@ function hasSocialLinks(socialLinks: SocialLinksType): boolean {
 function groupServices(
   services: WithId<Service>[],
   categories: WithId<ServiceCategoryType>[],
+  fallbackTitles: { all: string; other: string },
 ): { id: string; title: string; services: WithId<Service>[] }[] {
   if (services.length === 0) return [];
 
   // No categories → flat list
   if (categories.length === 0) {
-    return [{ id: '__all__', title: 'Prestations', services }];
+    return [{ id: '__all__', title: fallbackTitles.all, services }];
   }
 
   const groups: { id: string; title: string; services: WithId<Service>[] }[] = [];
@@ -101,7 +103,7 @@ function groupServices(
     (s) => !s.categoryId || !categories.some((c) => c.id === s.categoryId)
   );
   if (uncategorized.length > 0) {
-    groups.push({ id: '__other__', title: 'Autres', services: uncategorized });
+    groups.push({ id: '__other__', title: fallbackTitles.other, services: uncategorized });
   }
 
   return groups;
@@ -114,6 +116,7 @@ export default function ProviderDetailScreen() {
   const isPreview = preview === '1';
   const router = useRouter();
   const { showToast } = useToast();
+  const { t, i18n } = useTranslation();
 
   // Instant cached data for splash (available before useProvider resolves)
   const { getCachedProvider } = useProvidersCache();
@@ -202,7 +205,7 @@ export default function ProviderDetailScreen() {
     if (!selectedServiceId) {
       showToast({
         variant: 'warning',
-        message: 'Sélectionnez une prestation',
+        message: t('providerScreen.selectServiceToast'),
       });
       return;
     }
@@ -220,7 +223,10 @@ export default function ProviderDetailScreen() {
   };
 
   // Group services by category
-  const serviceGroups = groupServices(services, categories);
+  const serviceGroups = groupServices(services, categories, {
+    all: t('providerScreen.serviceGroups.all'),
+    other: t('providerScreen.serviceGroups.other'),
+  });
 
   // Get selected service
   const selectedService = services.find((s) => s.id === selectedServiceId);
@@ -349,9 +355,9 @@ export default function ProviderDetailScreen() {
         </Pressable>
         <EmptyState
           icon="alert-circle-outline"
-          title="Erreur"
-          description={providerError || 'Prestataire non trouvé'}
-          actionLabel="Retour"
+          title={t('providerScreen.errorTitle')}
+          description={providerError || t('providerScreen.notFound')}
+          actionLabel={t('common.back')}
           onAction={() => router.back()}
         />
       </View>
@@ -410,7 +416,7 @@ export default function ProviderDetailScreen() {
                 <View style={[styles.availabilityBadge, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
                   <Ionicons name="calendar-outline" size={16} color={colors.primary} style={{ marginRight: spacing.xs }} />
                   <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-                    Prochaine dispo : {displayedAvailability}
+                    {t('providerScreen.nextAvailability', { date: displayedAvailability })}
                   </Text>
                 </View>
               )}
@@ -441,7 +447,7 @@ export default function ProviderDetailScreen() {
           {showTeamDispos && !loadingTeamAvail && (
             <Card padding="md" shadow="sm" style={{ marginTop: spacing.md }}>
               <Text variant="caption" style={{ fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.sm }}>
-                Disponibilités par professionnel
+                {t('providerScreen.teamAvailability')}
               </Text>
               <View style={{ gap: spacing.sm }}>
                 {memberAvailabilities
@@ -518,7 +524,7 @@ export default function ProviderDetailScreen() {
                     fontWeight: isActive ? '600' : '400',
                   }}
                 >
-                  {tab.label}
+                  {t(tab.labelKey)}
                 </Text>
                 {tab.id === 'avis' && reviews.length > 0 && (
                   <View style={[styles.tabBadge, { backgroundColor: isActive ? colors.primary : colors.textMuted }]}>
@@ -549,8 +555,8 @@ export default function ProviderDetailScreen() {
                 <Card padding="lg" shadow="sm">
                   <EmptyState
                     icon="pricetag-outline"
-                    title="Aucune prestation"
-                    description="Ce prestataire n'a pas encore de prestations"
+                    title={t('providerScreen.services.emptyTitle')}
+                    description={t('providerScreen.services.emptyDescription')}
                   />
                 </Card>
               ) : (
@@ -580,7 +586,7 @@ export default function ProviderDetailScreen() {
                           discountPercent: hasPromo ? md.discountPercent : null,
                           promoCountdown:
                             hasPromo && daysLeft != null && daysLeft <= PROMO_URGENCY_DAYS
-                              ? formatPromoCountdown(daysLeft)
+                              ? formatPromoCountdown(daysLeft, i18n.language)
                               : null,
                           priceFrom,
                         };
@@ -598,7 +604,7 @@ export default function ProviderDetailScreen() {
               {provider.portfolioPhotos && provider.portfolioPhotos.length > 0 && (
                 <View style={{ marginTop: spacing.xl }}>
                   <Text variant="h3" style={{ marginBottom: spacing.md }}>
-                    Réalisations
+                    {t('providerScreen.portfolio')}
                   </Text>
                   <PortfolioGallery photos={provider.portfolioPhotos} />
                 </View>
@@ -633,8 +639,8 @@ export default function ProviderDetailScreen() {
                 <Card padding="lg" shadow="sm">
                   <EmptyState
                     icon="chatbubble-outline"
-                    title="Aucun avis"
-                    description="Ce prestataire n'a pas encore d'avis"
+                    title={t('providerScreen.reviews.emptyTitle')}
+                    description={t('providerScreen.reviews.emptyDescription')}
                   />
                 </Card>
               ) : (
@@ -642,7 +648,7 @@ export default function ProviderDetailScreen() {
                   {reviews.map((review) => (
                     <ReviewCard
                       key={review.id}
-                      authorName={review.imported ? 'Client' : (review.clientName || 'Client')}
+                      authorName={review.imported ? t('providerScreen.reviews.defaultAuthor') : (review.clientName || t('providerScreen.reviews.defaultAuthor'))}
                       rating={review.rating}
                       comment={review.comment}
                       date={review.createdAt}
@@ -687,7 +693,7 @@ export default function ProviderDetailScreen() {
                 {(() => {
                   const md = getDiscountedMinPrice(selectedService, globalDiscount);
                   if (md.original === 0) {
-                    return <Text variant="h3" color="primary">Gratuit</Text>;
+                    return <Text variant="h3" color="primary">{t('common.free')}</Text>;
                   }
                   const promo = md.discountPercent != null && md.price < md.original;
                   const priceFrom =
@@ -696,7 +702,7 @@ export default function ProviderDetailScreen() {
                   return (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       {priceFrom && (
-                        <Text variant="caption" style={{ color: colors.textMuted }}>à partir de</Text>
+                        <Text variant="caption" style={{ color: colors.textMuted }}>{t('providerScreen.footer.from')}</Text>
                       )}
                       {promo && (
                         <Text variant="body" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
@@ -713,7 +719,7 @@ export default function ProviderDetailScreen() {
             )}
             <Button
               variant="primary"
-              title={selectedService ? 'Réserver' : 'Sélectionnez une prestation'}
+              title={selectedService ? t('providerScreen.footer.book') : t('providerScreen.footer.selectService')}
               onPress={handleBooking}
               disabled={!selectedServiceId}
             />
@@ -728,18 +734,18 @@ export default function ProviderDetailScreen() {
               <Ionicons name="alert-circle-outline" size={40} color={colors.primary} />
             </View>
             <Text variant="h3" style={{ textAlign: 'center', marginBottom: spacing.sm }}>
-              Information importante
+              {t('providerScreen.notice.title')}
             </Text>
             <Text variant="body" color="textSecondary" style={{ textAlign: 'center', marginBottom: spacing.lg }}>
               {provider?.settings?.bookingNotice}
             </Text>
             <View style={{ gap: spacing.sm }}>
               <Button
-                title="J'ai compris, continuer"
+                title={t('providerScreen.notice.continue')}
                 onPress={confirmServiceAfterNotice}
               />
               <Button
-                title="Retour"
+                title={t('common.back')}
                 variant="ghost"
                 onPress={() => {
                   setShowBookingNotice(false);

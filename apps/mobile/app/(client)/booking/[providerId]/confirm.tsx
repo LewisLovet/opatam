@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -26,6 +27,7 @@ import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
 import { computeDiscountedTotal } from '@booking-app/shared';
 import { API_URL } from '../../../../lib/config';
+import i18n, { getAppLocale } from '../../../../lib/i18n';
 
 /** App Store / Play Store URLs for the "update" CTA. iOS app id +
  *  Android package come from app.json. The `itms-apps://` /
@@ -46,10 +48,10 @@ const STORE_URLS = {
  * server refuses a booking via 426 + CLIENT_UPGRADE_REQUIRED.
  */
 function showAppUpgradeDialog(message: string): void {
-  Alert.alert('Mise à jour requise', message, [
-    { text: 'Plus tard', style: 'cancel' },
+  Alert.alert(i18n.t('bookingFlow.confirm.upgrade.title'), message, [
+    { text: i18n.t('bookingFlow.confirm.upgrade.later'), style: 'cancel' },
     {
-      text: 'Mettre à jour',
+      text: i18n.t('bookingFlow.confirm.upgrade.update'),
       style: 'default',
       onPress: async () => {
         const primary = Platform.OS === 'ios' ? STORE_URLS.ios : STORE_URLS.android;
@@ -70,17 +72,22 @@ function showAppUpgradeDialog(message: string): void {
   ]);
 }
 
-// Format date in French
+// Format date in the app's current language
 function formatDate(date: Date): string {
-  const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-  const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-
-  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  const locale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const formatted = date.toLocaleDateString(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  // Match the previous rendering ("Dimanche 12 juillet 2026") — capitalized.
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
-// Format time
+// Format time — "14h30" in French, "14:30" in English
 function formatTime(timeStr: string): string {
-  return timeStr.replace(':', 'h');
+  return i18n.language === 'en' ? timeStr : timeStr.replace(':', 'h');
 }
 
 export default function ConfirmBookingScreen() {
@@ -88,6 +95,7 @@ export default function ConfirmBookingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { providerId } = useLocalSearchParams<{ providerId: string }>();
 
   // Auth context
@@ -153,7 +161,7 @@ export default function ConfirmBookingScreen() {
     if (!isReady || !selectedSlot || !provider || !service) {
       showToast({
         variant: 'error',
-        message: 'Informations de réservation incomplètes',
+        message: t('bookingFlow.confirm.incompleteInfo'),
       });
       return;
     }
@@ -164,7 +172,7 @@ export default function ConfirmBookingScreen() {
     if (!isAuthenticated || !userData || !user?.uid) {
       showToast({
         variant: 'warning',
-        message: 'Veuillez vous connecter pour réserver',
+        message: t('bookingFlow.confirm.loginToBook'),
       });
       router.push('/(auth)/login');
       return;
@@ -175,7 +183,7 @@ export default function ConfirmBookingScreen() {
     if (!phone.trim() || !isPhoneValid) {
       showToast({
         variant: 'error',
-        message: 'Veuillez entrer un numéro de téléphone valide',
+        message: t('bookingFlow.confirm.invalidPhoneToast'),
       });
       return;
     }
@@ -213,6 +221,9 @@ export default function ConfirmBookingScreen() {
             phone: cleanedPhone,
           },
           source: 'mobile',
+          // Langue de l'app au moment de la résa — snapshotée en
+          // booking.clientLocale côté serveur, pilote les 6 emails client.
+          clientLocale: getAppLocale(),
           clientCapabilities: ['deposit'],
         }),
       });
@@ -228,13 +239,12 @@ export default function ConfirmBookingScreen() {
         // for future capabilities the server may add to its allowlist.
         if (data?.code === 'CLIENT_UPGRADE_REQUIRED') {
           showAppUpgradeDialog(
-            data.error ||
-              'Cette prestation nécessite une version plus récente d’Opatam.',
+            data.error || t('bookingFlow.confirm.upgrade.defaultMessage'),
           );
           setIsSubmitting(false);
           return;
         }
-        throw new Error(data.error || 'Erreur lors de la réservation');
+        throw new Error(data.error || t('bookingFlow.confirm.bookingError'));
       }
 
       if (data.requiresPayment && data.paymentIntent) {
@@ -279,7 +289,7 @@ export default function ConfirmBookingScreen() {
             // stays as pending_payment; cron will purge if needed.
             showToast({
               variant: 'error',
-              message: payError.message || 'Échec du paiement',
+              message: payError.message || t('bookingFlow.confirm.paymentFailed'),
             });
             return;
           }
@@ -288,16 +298,16 @@ export default function ConfirmBookingScreen() {
           // abandon — without this the slot stays locked for 30 min.
           const choice = await new Promise<'retry' | 'abandon'>((resolve) => {
             Alert.alert(
-              'Paiement annulé',
-              "Voulez-vous réessayer le paiement, ou abandonner la réservation et libérer le créneau ?",
+              t('bookingFlow.confirm.paymentCancelled.title'),
+              t('bookingFlow.confirm.paymentCancelled.message'),
               [
                 {
-                  text: 'Abandonner',
+                  text: t('bookingFlow.confirm.paymentCancelled.abandon'),
                   style: 'destructive',
                   onPress: () => resolve('abandon'),
                 },
                 {
-                  text: 'Réessayer',
+                  text: t('common.retry'),
                   style: 'default',
                   onPress: () => resolve('retry'),
                 },
@@ -343,8 +353,8 @@ export default function ConfirmBookingScreen() {
           showToast({
             variant: abandoned ? 'info' : 'error',
             message: abandoned
-              ? 'Réservation annulée. Le créneau est de nouveau disponible.'
-              : "Le créneau sera libéré sous 30 min. Merci de réessayer plus tard.",
+              ? t('bookingFlow.confirm.abandonSuccess')
+              : t('bookingFlow.confirm.abandonPending'),
           });
           // dismissAll pops every screen in the booking inner Stack
           // back to its root so React Navigation drops the cached
@@ -368,7 +378,7 @@ export default function ConfirmBookingScreen() {
         resetBooking();
         showToast({
           variant: 'success',
-          message: 'Acompte payé — réservation confirmée !',
+          message: t('bookingFlow.confirm.depositPaidSuccess'),
         });
         router.replace('/(client)/(tabs)/bookings');
         return;
@@ -379,14 +389,14 @@ export default function ConfirmBookingScreen() {
       resetBooking();
       showToast({
         variant: 'success',
-        message: 'Réservation confirmée !',
+        message: t('bookingFlow.confirm.bookingConfirmed'),
       });
       router.replace('/(client)/(tabs)/bookings');
     } catch (error: any) {
       console.error('Booking error:', error);
       showToast({
         variant: 'error',
-        message: error.message || 'Erreur lors de la réservation',
+        message: error.message || t('bookingFlow.confirm.bookingError'),
       });
     } finally {
       setIsSubmitting(false);
@@ -397,13 +407,13 @@ export default function ConfirmBookingScreen() {
   if (!isReady || !selectedSlot || !selectedDate || !provider || !service) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <BookingStepHeader title="Confirmation" onBack={() => router.back()} />
+        <BookingStepHeader title={t('bookingFlow.confirm.title')} onBack={() => router.back()} />
         <View style={styles.errorContainer}>
           <EmptyState
             icon="alert-circle-outline"
-            title="Erreur"
-            description="Informations de réservation incomplètes"
-            actionLabel="Retour"
+            title={t('bookingFlow.errorTitle')}
+            description={t('bookingFlow.confirm.incompleteInfo')}
+            actionLabel={t('common.back')}
             onAction={() => router.back()}
           />
         </View>
@@ -414,7 +424,7 @@ export default function ConfirmBookingScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <BookingStepHeader title="Confirmation" onBack={() => router.back()} />
+      <BookingStepHeader title={t('bookingFlow.confirm.title')} onBack={() => router.back()} />
 
       <ScrollView
         contentContainerStyle={[
@@ -431,10 +441,10 @@ export default function ConfirmBookingScreen() {
         </View>
 
         <Text variant="h2" align="center" style={{ marginTop: spacing.lg }}>
-          Vérifiez votre réservation
+          {t('bookingFlow.confirm.reviewTitle')}
         </Text>
         <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.sm }}>
-          Assurez-vous que toutes les informations sont correctes
+          {t('bookingFlow.confirm.reviewSubtitle')}
         </Text>
 
         {/* Booking details */}
@@ -445,7 +455,7 @@ export default function ConfirmBookingScreen() {
               <Ionicons name="pricetag-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.detailContent}>
-              <Text variant="caption" color="textSecondary">{isMulti ? 'Prestations' : 'Prestation'}</Text>
+              <Text variant="caption" color="textSecondary">{t('bookingFlow.confirm.serviceLabel', { count: cart.length })}</Text>
               {isMulti ? (
                 <>
                   {cart.map((c, idx) => {
@@ -506,7 +516,7 @@ export default function ConfirmBookingScreen() {
               <Ionicons name="calendar-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.detailContent}>
-              <Text variant="caption" color="textSecondary">Date et heure</Text>
+              <Text variant="caption" color="textSecondary">{t('bookingFlow.confirm.dateTime')}</Text>
               <Text variant="body" style={{ fontWeight: '600' }}>{formatDate(selectedDate)}</Text>
               <Text variant="caption" color="textSecondary">
                 {formatTime(selectedSlot.start)} - {formatTime(selectedSlot.end)}
@@ -524,7 +534,7 @@ export default function ConfirmBookingScreen() {
                   <Ionicons name="person-outline" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.detailContent}>
-                  <Text variant="caption" color="textSecondary">Avec</Text>
+                  <Text variant="caption" color="textSecondary">{t('bookingFlow.confirm.with')}</Text>
                   <Text variant="body" style={{ fontWeight: '600' }}>{member.name}</Text>
                 </View>
               </View>
@@ -540,7 +550,7 @@ export default function ConfirmBookingScreen() {
                 <Ionicons name="location-outline" size={20} color={colors.primary} />
               </View>
               <View style={styles.detailContent}>
-                <Text variant="caption" color="textSecondary">Lieu</Text>
+                <Text variant="caption" color="textSecondary">{t('bookingFlow.confirm.location')}</Text>
                 <Text variant="body" style={{ fontWeight: '600' }}>{location.name}</Text>
                 {location.protectAddress ? (
                   <>
@@ -548,7 +558,7 @@ export default function ConfirmBookingScreen() {
                       {location.approxArea?.trim() || `${location.postalCode} ${location.city}`}
                     </Text>
                     <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                      Adresse exacte communiqu{'é'}e apr{'è'}s confirmation
+                      {t('bookingFlow.confirm.addressAfterConfirmation')}
                     </Text>
                   </>
                 ) : (
@@ -579,16 +589,16 @@ export default function ConfirmBookingScreen() {
         {/* Phone field */}
         <Card padding="lg" shadow="sm" style={{ marginTop: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Vos coordonnées
+            {t('bookingFlow.confirm.contactDetails')}
           </Text>
           <Input
-            label="Téléphone"
-            placeholder="06 12 34 56 78"
+            label={t('bookingFlow.confirm.phoneLabel')}
+            placeholder={t('bookingFlow.confirm.phonePlaceholder')}
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
             autoComplete="tel"
-            error={phone.length > 0 && !isPhoneValid ? 'Numéro de téléphone invalide' : undefined}
+            error={phone.length > 0 && !isPhoneValid ? t('bookingFlow.confirm.invalidPhone') : undefined}
           />
         </Card>
 
@@ -611,7 +621,7 @@ export default function ConfirmBookingScreen() {
         {/* Price summary */}
         <Card padding="lg" shadow="sm" style={{ marginTop: spacing.lg }}>
           <View style={styles.priceRow}>
-            <Text variant="body">Total</Text>
+            <Text variant="body">{t('bookingFlow.total')}</Text>
             <View style={{ alignItems: 'flex-end' }}>
               {cartHasPromo && (
                 <Text
@@ -622,17 +632,17 @@ export default function ConfirmBookingScreen() {
                 </Text>
               )}
               <Text variant="h2" style={{ color: cartHasPromo ? '#E11D48' : colors.primary }}>
-                {cartPrice === 0 ? 'Gratuit' : `${(cartPrice / 100).toFixed(2)} €`}
+                {cartPrice === 0 ? t('common.free') : `${(cartPrice / 100).toFixed(2)} €`}
               </Text>
             </View>
           </View>
           {cartHasPromo && (
             <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600', marginTop: spacing.xs }}>
-              Vous économisez {((cartOriginal - cartPrice) / 100).toFixed(2)} €
+              {t('bookingFlow.confirm.youSave', { amount: ((cartOriginal - cartPrice) / 100).toFixed(2) })}
             </Text>
           )}
           <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
-            Paiement sur place
+            {t('bookingFlow.confirm.payOnSite')}
           </Text>
         </Card>
 
@@ -642,9 +652,9 @@ export default function ConfirmBookingScreen() {
             <View style={styles.loginPrompt}>
               <Ionicons name="information-circle-outline" size={24} color={colors.warning} />
               <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                <Text variant="body" style={{ fontWeight: '600' }}>Connexion requise</Text>
+                <Text variant="body" style={{ fontWeight: '600' }}>{t('bookingFlow.confirm.loginRequired')}</Text>
                 <Text variant="caption" color="textSecondary">
-                  Connectez-vous pour confirmer votre réservation
+                  {t('bookingFlow.confirm.loginRequiredDescription')}
                 </Text>
               </View>
             </View>
@@ -666,7 +676,7 @@ export default function ConfirmBookingScreen() {
       >
         <Button
           variant="primary"
-          title={isAuthenticated ? 'Confirmer la réservation' : 'Se connecter pour réserver'}
+          title={isAuthenticated ? t('bookingFlow.confirm.confirmButton') : t('bookingFlow.confirm.loginButton')}
           onPress={handleConfirm}
           loading={isSubmitting}
           disabled={isSubmitting || (isAuthenticated && !isPhoneValid)}

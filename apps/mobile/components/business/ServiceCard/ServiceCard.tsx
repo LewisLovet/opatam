@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, Image, Modal, Dimensions } from 'react-native';
 import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 
@@ -56,13 +57,6 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(euros: number, eurosMax?: number | null): string {
-  if (euros === 0 && !eurosMax) return 'Gratuit';
-  const fmt = (v: number) => (v % 1 === 0 ? `${v} €` : `${v.toFixed(2)} €`);
-  if (eurosMax && eurosMax > euros) return `De ${fmt(euros)} à ${fmt(eurosMax)}`;
-  return fmt(euros);
-}
-
 export function ServiceCard({
   name,
   description,
@@ -78,6 +72,17 @@ export function ServiceCard({
   onPress,
 }: ServiceCardProps) {
   const { colors, spacing, radius, shadows } = useTheme();
+  const { t } = useTranslation();
+
+  const formatPrice = (euros: number, eurosMax?: number | null): string => {
+    if (euros === 0 && !eurosMax) return t('common.free');
+    const fmt = (v: number) => (v % 1 === 0 ? `${v} €` : `${v.toFixed(2)} €`);
+    if (eurosMax && eurosMax > euros) {
+      return t('components.serviceCard.priceRange', { min: fmt(euros), max: fmt(eurosMax) });
+    }
+    return fmt(euros);
+  };
+
   const hasPromo =
     discountPercent != null && originalPrice != null && originalPrice > price;
   const [descExpanded, setDescExpanded] = useState(false);
@@ -135,7 +140,7 @@ export function ServiceCard({
           <View style={{ alignItems: 'flex-end' }}>
             {priceFrom && (
               <Text variant="caption" style={{ color: colors.textMuted, fontSize: 10 }}>
-                à partir de
+                {t('components.serviceCard.fromPrefix')}
               </Text>
             )}
             {hasPromo && (
@@ -267,7 +272,9 @@ export function ServiceCard({
                   variant="caption"
                   style={{ color: colors.primary, marginTop: 2 }}
                 >
-                  {descExpanded ? 'Moins' : 'Plus de détails'}
+                  {descExpanded
+                    ? t('components.serviceCard.showLess')
+                    : t('components.serviceCard.showMore')}
                 </Text>
               </Pressable>
             )}

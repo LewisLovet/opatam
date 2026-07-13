@@ -17,6 +17,7 @@
 import React from 'react';
 import { View, Modal, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Text } from './Text';
 import { Button } from './Button';
 import { useTheme } from '../theme';
@@ -29,6 +30,7 @@ interface Props {
 
 export function LocationPermissionPrompt({ visible, onAccept, onDecline }: Props) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -41,20 +43,20 @@ export function LocationPermissionPrompt({ visible, onAccept, onDecline }: Props
 
           {/* Title */}
           <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>
-            Trouvez les pros près de chez vous
+            {t('components.locationPermissionPrompt.title')}
           </Text>
 
           {/* Description */}
           <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.sm, lineHeight: 22 }}>
-            Nous utilisons votre localisation pour :
+            {t('components.locationPermissionPrompt.intro')}
           </Text>
 
           {/* Benefits list */}
           <View style={{ marginTop: spacing.md, gap: spacing.sm, width: '100%' }}>
             {[
-              { icon: 'navigate-outline' as const, text: 'Afficher les prestataires proches' },
-              { icon: 'map-outline' as const, text: 'Calculer la distance et le temps de trajet' },
-              { icon: 'options-outline' as const, text: 'Trier les résultats par distance' },
+              { icon: 'navigate-outline' as const, text: t('components.locationPermissionPrompt.benefitNearby') },
+              { icon: 'map-outline' as const, text: t('components.locationPermissionPrompt.benefitDistance') },
+              { icon: 'options-outline' as const, text: t('components.locationPermissionPrompt.benefitSort') },
             ].map((item) => (
               <View key={item.text} style={styles.benefitRow}>
                 <View style={[styles.benefitIcon, { backgroundColor: '#F0FDF4' }]}>
@@ -74,20 +76,19 @@ export function LocationPermissionPrompt({ visible, onAccept, onDecline }: Props
             align="center"
             style={{ marginTop: spacing.md, lineHeight: 16 }}
           >
-            Votre position n'est jamais partagée avec les prestataires.
-            Vous pouvez la désactiver à tout moment depuis les Réglages.
+            {t('components.locationPermissionPrompt.privacyNote')}
           </Text>
 
           {/* Buttons */}
           <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.sm }}>
             <Button
-              title="Activer la localisation"
+              title={t('components.locationPermissionPrompt.enable')}
               onPress={onAccept}
               fullWidth
             />
             <Pressable onPress={onDecline} style={styles.declineButton}>
               <Text variant="bodySmall" color="textMuted" style={{ textAlign: 'center' }}>
-                Plus tard
+                {t('components.locationPermissionPrompt.later')}
               </Text>
             </Pressable>
           </View>

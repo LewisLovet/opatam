@@ -6,6 +6,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme, type Colors } from '../../../theme';
 import { Text } from '../../Text';
 import { type BookingStatus } from '../BookingStatusBadge';
@@ -221,6 +222,7 @@ export function DaySchedule({
   onBlockedSlotPress,
 }: DayScheduleProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   // Compute effective time range: expand to fit all bookings
   const { effectiveStart, effectiveEnd } = useMemo(() => {
@@ -409,8 +411,8 @@ export function DaySchedule({
             const bgColor = isActivity
               ? accentColor
               : (primaryMemberColor ? primaryMemberColor + '12' : colors.surfaceSecondary);
-            const timeLabel = slot.allDay ? 'Journée entière' : `${slot.startTime} - ${slot.endTime}`;
-            const headerLabel = isActivity ? slot.title! : (slot.reason || 'Indisponible');
+            const timeLabel = slot.allDay ? t('components.daySchedule.allDay') : `${slot.startTime} - ${slot.endTime}`;
+            const headerLabel = isActivity ? slot.title! : (slot.reason || t('components.daySchedule.unavailable'));
             const headerIcon: keyof typeof Ionicons.glyphMap = isActivity
               ? 'flash-outline'
               : 'ban-outline';
@@ -534,7 +536,7 @@ export function DaySchedule({
                     ))}
                     <Text variant="caption" numberOfLines={1} style={{ fontSize: 10, fontWeight: '500', flex: 1 }} color="textSecondary">
                       {slot.isAllMembers
-                        ? 'Tous les membres'
+                        ? t('components.daySchedule.allMembers')
                         : slot.members.map((m) => m.name.split(' ')[0]).join(', ')}
                     </Text>
                   </View>

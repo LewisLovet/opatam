@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Avatar } from '../../Avatar';
@@ -43,6 +44,7 @@ export function ReviewCard({
   reply,
 }: ReviewCardProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Card padding="md" shadow="sm">
@@ -57,7 +59,7 @@ export function ReviewCard({
             {imported && (
               <View style={[styles.importedBadge, { backgroundColor: colors.surfaceSecondary }]}>
                 <Text variant="caption" color="textMuted" style={styles.importedBadgeText}>
-                  Avis importé
+                  {t('components.reviewCard.importedBadge')}
                 </Text>
               </View>
             )}
@@ -96,7 +98,7 @@ export function ReviewCard({
           ]}
         >
           <Text variant="label" color="primary" style={{ marginBottom: spacing.xs }}>
-            Réponse du prestataire
+            {t('components.reviewCard.providerReply')}
           </Text>
           <Text variant="body" color="textSecondary">
             {reply.text}

@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { StarRating } from '../StarRating';
@@ -27,6 +28,7 @@ export interface RatingStatsProps {
 
 export function RatingStats({ average, count, distribution }: RatingStatsProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   // Calculate total and percentages
   const total = Object.values(distribution).reduce((sum, val) => sum + val, 0);
@@ -45,7 +47,7 @@ export function RatingStats({ average, count, distribution }: RatingStatsProps) 
         </Text>
         <StarRating rating={average} size="md" />
         <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
-          ({count} avis)
+          {t('components.ratingStats.reviews', { count })}
         </Text>
       </View>
 

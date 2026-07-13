@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 
@@ -27,6 +28,7 @@ export function StickyConfirmButton({
   loading = false,
 }: StickyConfirmButtonProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   // Format time for display (14:30 -> 14h30)
@@ -67,10 +69,10 @@ export function StickyConfirmButton({
           ]}
         >
           {loading
-            ? 'Chargement...'
+            ? t('common.loading')
             : selectedTime
-            ? `Confirmer - ${formattedTime}`
-            : 'Sélectionnez un horaire'}
+            ? t('components.stickyConfirmButton.confirmTime', { time: formattedTime })
+            : t('components.stickyConfirmButton.selectTime')}
         </Text>
       </Pressable>
     </View>

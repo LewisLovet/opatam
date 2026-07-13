@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { bookingService, type WithId } from '@booking-app/firebase';
 import type { Booking } from '@booking-app/shared';
 import { useAuth } from '../contexts';
+import i18n from '../lib/i18n';
 
 export interface UseClientBookingsResult {
   bookings: WithId<Booking>[];
@@ -38,7 +39,7 @@ export function useClientBookings(): UseClientBookingsResult {
       setBookings(result);
     } catch (err: any) {
       console.error('Error loading bookings:', err);
-      setError(err.message || 'Erreur lors du chargement des réservations');
+      setError(err.message || i18n.t('errors.bookings.loadFailed'));
     } finally {
       setLoading(false);
     }

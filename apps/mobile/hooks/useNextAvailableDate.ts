@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@booking-app/firebase';
+import i18n from '../lib/i18n';
 
 export interface UseNextAvailableDateResult {
   nextAvailableDate: Date | null;
@@ -20,7 +21,8 @@ export interface UseNextAvailableDateResult {
 
 /**
  * Format the next available date for display
- * Returns: "Aujourd'hui", "Demain", or "Lun. 3 février"
+ * Returns: "Aujourd'hui"/"Today", "Demain"/"Tomorrow", or a localized
+ * short date like "Lun. 3 février" / "Mon, February 3"
  */
 function formatNextAvailableDate(date: Date | null): string | null {
   if (!date) return null;
@@ -33,20 +35,21 @@ function formatNextAvailableDate(date: Date | null): string | null {
   const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
   if (dateOnly.getTime() === today.getTime()) {
-    return "Aujourd'hui";
+    return i18n.t('dates.today');
   }
 
   if (dateOnly.getTime() === tomorrow.getTime()) {
-    return 'Demain';
+    return i18n.t('dates.tomorrow');
   }
 
-  const days = ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'];
-  const months = [
-    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-  ];
-
-  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+  const formatted = date.toLocaleDateString(i18n.language, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+  });
+  // Intl lowercases weekdays in French ("lun. 3 février") — keep the
+  // historical capitalized display ("Lun. 3 février")
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 /**
@@ -83,7 +86,7 @@ export function useNextAvailableDate(
       },
       (err) => {
         console.error('Error listening to nextAvailableSlot:', err);
-        setError(err.message || 'Erreur');
+        setError(err.message || i18n.t('common.error'));
         setLoading(false);
       }
     );

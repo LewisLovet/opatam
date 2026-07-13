@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -23,6 +24,7 @@ import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
 import { Text, Card, Button, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
+import i18n from '../../../lib/i18n';
 
 // Helper to convert datetime
 function toDate(datetime: Date | any): Date {
@@ -31,9 +33,14 @@ function toDate(datetime: Date | any): Date {
   return new Date(datetime);
 }
 
+// Locale for date formatting, following the current app language
+function dateLocale(): string {
+  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+}
+
 function formatDate(datetime: Date | any): string {
   const date = toDate(datetime);
-  return date.toLocaleDateString('fr-FR', {
+  return date.toLocaleDateString(dateLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -43,7 +50,7 @@ function formatDate(datetime: Date | any): string {
 
 function formatTime(datetime: Date | any): string {
   const date = toDate(datetime);
-  return date.toLocaleTimeString('fr-FR', {
+  return date.toLocaleTimeString(dateLocale(), {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -85,14 +92,8 @@ function StarRating({
 
 // Rating label
 function getRatingLabel(rating: number): string {
-  switch (rating) {
-    case 1: return 'Très insatisfait';
-    case 2: return 'Insatisfait';
-    case 3: return 'Correct';
-    case 4: return 'Satisfait';
-    case 5: return 'Très satisfait';
-    default: return '';
-  }
+  if (rating < 1 || rating > 5) return '';
+  return i18n.t(`review.ratingLabels.${rating}`);
 }
 
 export default function ReviewScreen() {
@@ -100,6 +101,7 @@ export default function ReviewScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
 
@@ -119,7 +121,7 @@ export default function ReviewScreen() {
   // Load booking and check for existing review
   const loadData = useCallback(async () => {
     if (!bookingId || !user?.uid) {
-      setError('Données manquantes');
+      setError(i18n.t('review.errors.missingData'));
       setLoading(false);
       return;
     }
@@ -130,7 +132,7 @@ export default function ReviewScreen() {
     try {
       const result = await bookingService.getById(bookingId);
       if (!result) {
-        setError('Réservation non trouvée');
+        setError(i18n.t('review.errors.notFound'));
         setLoading(false);
         return;
       }
@@ -151,11 +153,11 @@ export default function ReviewScreen() {
           setComment(existing.comment || '');
         }
       } else if (canReviewResult === false) {
-        setError('Vous ne pouvez pas laisser d\'avis pour cette réservation');
+        setError(i18n.t('review.errors.notAllowed'));
       }
     } catch (err: any) {
       console.error('Error loading review data:', err);
-      setError(err.message || 'Erreur lors du chargement');
+      setError(err.message || i18n.t('review.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -168,7 +170,7 @@ export default function ReviewScreen() {
   // Handle submit
   const handleSubmit = async () => {
     if (rating === 0) {
-      showToast({ variant: 'error', message: 'Veuillez sélectionner une note' });
+      showToast({ variant: 'error', message: t('review.selectRating') });
       return;
     }
 
@@ -187,13 +189,13 @@ export default function ReviewScreen() {
       setIsSuccess(true);
       showToast({
         variant: 'success',
-        message: isUpdate ? 'Avis mis à jour' : 'Merci pour votre avis !',
+        message: isUpdate ? t('review.toastUpdated') : t('review.toastThanks'),
       });
     } catch (err: any) {
       console.error('Error submitting review:', err);
       showToast({
         variant: 'error',
-        message: err.message || 'Erreur lors de l\'envoi',
+        message: err.message || t('review.errors.submitFailed'),
       });
     } finally {
       setIsSubmitting(false);
@@ -231,11 +233,11 @@ export default function ReviewScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
           <Text variant="body" color="error" style={{ marginTop: spacing.md, textAlign: 'center' }}>
-            {error || 'Réservation non trouvée'}
+            {error || t('review.errors.notFound')}
           </Text>
           <Button
             variant="outline"
-            title="Retour"
+            title={t('common.back')}
             onPress={() => router.back()}
             style={{ marginTop: spacing.lg }}
           />
@@ -253,16 +255,16 @@ export default function ReviewScreen() {
             <Ionicons name="checkmark-circle" size={48} color="#16a34a" />
           </View>
           <Text variant="h2" style={{ marginTop: spacing.lg, textAlign: 'center' }}>
-            {isUpdate ? 'Avis mis à jour !' : 'Merci pour votre avis !'}
+            {isUpdate ? t('review.successUpdatedTitle') : t('review.successThanksTitle')}
           </Text>
           <Text variant="body" color="textSecondary" style={{ marginTop: spacing.sm, textAlign: 'center' }}>
             {isUpdate
-              ? 'Votre avis a bien été mis à jour.'
-              : 'Votre avis est désormais visible sur la page du prestataire.'}
+              ? t('review.successUpdatedMessage')
+              : t('review.successMessage')}
           </Text>
           <Button
             variant="primary"
-            title="Retour"
+            title={t('common.back')}
             onPress={() => router.back()}
             style={{ marginTop: spacing.xl, minWidth: 200 }}
           />
@@ -302,7 +304,7 @@ export default function ReviewScreen() {
               <Ionicons name="chevron-back" size={24} color={colors.text} />
             </Pressable>
             <Text variant="h3" style={{ marginLeft: spacing.md }}>
-              {isUpdate ? 'Modifier votre avis' : 'Donner votre avis'}
+              {isUpdate ? t('review.updateTitle') : t('review.createTitle')}
             </Text>
           </View>
 
@@ -320,7 +322,7 @@ export default function ReviewScreen() {
                   {booking.providerName}
                 </Text>
                 <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                  {formatDate(booking.datetime)} à {formatTime(booking.datetime)}
+                  {t('review.dateAt', { date: formatDate(booking.datetime), time: formatTime(booking.datetime) })}
                 </Text>
               </View>
             </View>
@@ -329,7 +331,7 @@ export default function ReviewScreen() {
           {/* Rating */}
           <Card padding="lg" shadow="sm" style={{ marginTop: spacing.md }}>
             <Text variant="body" style={{ fontWeight: '600', textAlign: 'center', marginBottom: spacing.md }}>
-              Comment était votre expérience ?
+              {t('review.experienceQuestion')}
             </Text>
             <StarRating rating={rating} onRate={setRating} colors={colors} />
             {rating > 0 && (
@@ -342,7 +344,7 @@ export default function ReviewScreen() {
           {/* Comment */}
           <Card padding="lg" shadow="sm" style={{ marginTop: spacing.md }}>
             <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm }}>
-              Votre commentaire (optionnel)
+              {t('review.commentLabel')}
             </Text>
             <TextInput
               style={[
@@ -354,7 +356,7 @@ export default function ReviewScreen() {
                   borderRadius: radius.md,
                 },
               ]}
-              placeholder="Partagez votre expérience..."
+              placeholder={t('review.commentPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={comment}
               onChangeText={setComment}
@@ -370,7 +372,7 @@ export default function ReviewScreen() {
           {/* Submit */}
           <Button
             variant="primary"
-            title={isUpdate ? 'Modifier mon avis' : 'Envoyer mon avis'}
+            title={isUpdate ? t('review.submitUpdate') : t('review.submitCreate')}
             onPress={handleSubmit}
             loading={isSubmitting}
             disabled={isSubmitting || rating === 0}
@@ -379,7 +381,7 @@ export default function ReviewScreen() {
 
           {isUpdate && (
             <Text variant="caption" color="textSecondary" style={{ textAlign: 'center', marginTop: spacing.md }}>
-              Vous avez déjà un avis pour cet établissement. L'envoyer remplacera votre avis précédent.
+              {t('review.existingNotice')}
             </Text>
           )}
         </ScrollView>

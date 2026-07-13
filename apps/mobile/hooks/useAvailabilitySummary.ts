@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { schedulingService } from '@booking-app/firebase';
 import type { TimeSlot } from './useAvailableSlots';
+import i18n from '../lib/i18n';
 
 export type DayStatus = 'available' | 'almost_full' | 'full' | 'closed';
 
@@ -71,7 +72,7 @@ export function useAvailabilitySummary(
       setSummary(map);
     } catch (err: any) {
       console.error('Error fetching availability summary:', err);
-      setError(err.message || 'Erreur lors du chargement des disponibilités');
+      setError(err.message || i18n.t('errors.availability.loadFailed'));
       setSummary({});
     } finally {
       setLoading(false);

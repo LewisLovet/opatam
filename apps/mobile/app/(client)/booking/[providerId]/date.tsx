@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -42,7 +43,7 @@ type Period = 'morning' | 'afternoon' | 'evening';
 
 interface PeriodConfig {
   key: Period;
-  label: string;
+  labelKey: string;
   icon: keyof typeof Ionicons.glyphMap;
   backgroundColor: string;
   accentColor: string;
@@ -51,21 +52,21 @@ interface PeriodConfig {
 const PERIODS_CONFIG: PeriodConfig[] = [
   {
     key: 'morning',
-    label: 'Matin',
+    labelKey: 'bookingFlow.date.periods.morning',
     icon: 'sunny',
     backgroundColor: '#FEF3C7', // Warm yellow bg
     accentColor: '#D97706',     // Amber accent
   },
   {
     key: 'afternoon',
-    label: 'Après-midi',
+    labelKey: 'bookingFlow.date.periods.afternoon',
     icon: 'partly-sunny',
     backgroundColor: '#FFEDD5', // Warm orange bg
     accentColor: '#EA580C',     // Orange accent
   },
   {
     key: 'evening',
-    label: 'Soir',
+    labelKey: 'bookingFlow.date.periods.evening',
     icon: 'moon',
     backgroundColor: '#E0E7FF', // Cool indigo bg
     accentColor: '#4F46E5',     // Indigo accent
@@ -104,6 +105,7 @@ export default function DateSelectionScreen() {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { providerId } = useLocalSearchParams<{ providerId: string }>();
 
   // Booking context
@@ -227,13 +229,13 @@ export default function DateSelectionScreen() {
   if (!memberId) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <BookingStepHeader title="Choisir une date" onBack={() => router.back()} />
+        <BookingStepHeader title={t('bookingFlow.date.title')} onBack={() => router.back()} />
         <View style={styles.errorContainer}>
           <EmptyState
             icon="alert-circle-outline"
-            title="Erreur"
-            description="Veuillez d'abord sélectionner un membre"
-            actionLabel="Retour"
+            title={t('bookingFlow.errorTitle')}
+            description={t('bookingFlow.date.selectMemberFirst')}
+            actionLabel={t('common.back')}
             onAction={() => router.back()}
           />
         </View>
@@ -244,7 +246,7 @@ export default function DateSelectionScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <BookingStepHeader title="Choisir une date" onBack={() => router.back()} />
+      <BookingStepHeader title={t('bookingFlow.date.title')} onBack={() => router.back()} />
 
       <ScrollView
         contentContainerStyle={[
@@ -257,7 +259,7 @@ export default function DateSelectionScreen() {
         {service && provider && (
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
             <BookingSummary
-              serviceName={cart.length > 1 ? `${cart.length} prestations` : service.name}
+              serviceName={cart.length > 1 ? t('bookingFlow.date.servicesCount', { count: cart.length }) : service.name}
               duration={cartDuration}
               price={cartPrice}
               providerName={provider.businessName}
@@ -286,7 +288,7 @@ export default function DateSelectionScreen() {
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: spacing.sm }}
           >
             <Text variant="body" style={{ color: colors.primary, fontWeight: '600' }}>
-              Prochaine dispo
+              {t('bookingFlow.date.nextAvailability')}
             </Text>
             <Ionicons name="arrow-forward" size={16} color={colors.primary} />
           </Pressable>
@@ -295,12 +297,12 @@ export default function DateSelectionScreen() {
         {/* Time Slots Section */}
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
-            <Text variant="h3">Horaires disponibles</Text>
+            <Text variant="h3">{t('bookingFlow.date.availableTimes')}</Text>
             {selectedInfo?.status === 'almost_full' && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.full }}>
                 <Ionicons name="flame" size={13} color="#D97706" />
                 <Text variant="caption" style={{ color: '#B45309', fontWeight: '600' }}>
-                  Bientôt complet · {selectedInfo.capacity}
+                  {t('bookingFlow.date.almostFull', { count: selectedInfo.capacity })}
                 </Text>
               </View>
             )}
@@ -311,7 +313,7 @@ export default function DateSelectionScreen() {
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text variant="body" color="textSecondary" style={{ marginTop: spacing.md }}>
-                  Chargement des créneaux...
+                  {t('bookingFlow.date.loadingSlots')}
                 </Text>
               </View>
             </Card>
@@ -319,7 +321,7 @@ export default function DateSelectionScreen() {
             <Card padding="lg" shadow="sm">
               <EmptyState
                 icon="alert-circle-outline"
-                title="Erreur"
+                title={t('bookingFlow.errorTitle')}
                 description={error}
               />
             </Card>
@@ -327,26 +329,26 @@ export default function DateSelectionScreen() {
             <Card padding="lg" shadow="sm">
               <EmptyState
                 icon="calendar-outline"
-                title="Aucune disponibilité"
-                description={`Aucune disponibilité pour cette prestation dans les ${maxAdvanceDays} prochains jours.`}
+                title={t('bookingFlow.date.noAvailabilityTitle')}
+                description={t('bookingFlow.date.noAvailabilityDescription', { days: maxAdvanceDays })}
               />
             </Card>
           ) : !selectedDate ? (
             <Card padding="lg" shadow="sm">
               <EmptyState
                 icon="calendar-outline"
-                title="Choisissez un jour"
-                description="Sélectionnez une date disponible dans le calendrier ci-dessus pour voir les horaires."
+                title={t('bookingFlow.date.chooseDayTitle')}
+                description={t('bookingFlow.date.chooseDayDescription')}
               />
             </Card>
           ) : !hasSlots ? (
             <Card padding="lg" shadow="sm">
               <EmptyState
                 icon="time-outline"
-                title="Complet ce jour-là"
-                description="Aucun créneau pour cette prestation à cette date."
+                title={t('bookingFlow.date.fullDayTitle')}
+                description={t('bookingFlow.date.fullDayDescription')}
                 {...(nextAvailableAfter(null)
-                  ? { actionLabel: 'Voir la prochaine disponibilité', onAction: jumpToNextAvailable }
+                  ? { actionLabel: t('bookingFlow.date.seeNextAvailability'), onAction: jumpToNextAvailable }
                   : {})}
               />
             </Card>
@@ -355,7 +357,7 @@ export default function DateSelectionScreen() {
               {PERIODS_CONFIG.map((period) => (
                 <TimeSlotSection
                   key={period.key}
-                  title={period.label}
+                  title={t(period.labelKey)}
                   icon={period.icon}
                   backgroundColor={period.backgroundColor}
                   accentColor={period.accentColor}

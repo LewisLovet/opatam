@@ -5,6 +5,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 
@@ -67,9 +68,6 @@ function generateDays(minDate: Date, maxDate: Date): Date[] {
   return days;
 }
 
-const SHORT_DAYS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const SHORT_MONTHS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-
 export function CalendarStrip({
   selectedDate,
   onSelectDate,
@@ -80,6 +78,10 @@ export function CalendarStrip({
   dayStatus,
 }: CalendarStripProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
+  // Sunday-first (getDay() indexing).
+  const SHORT_DAYS = t('components.calendarStrip.shortDays', { returnObjects: true }) as string[];
+  const SHORT_MONTHS = t('components.calendarStrip.shortMonths', { returnObjects: true }) as string[];
   const scrollRef = useRef<ScrollView>(null);
 
   const today = new Date();
@@ -127,9 +129,9 @@ export function CalendarStrip({
         let bottomColor: 'textInverse' | 'textMuted' = isSelected ? 'textInverse' : 'textMuted';
         let bottomStyleColor: string | undefined;
         if (!isSelected && isFull) {
-          bottomLabel = 'Complet';
+          bottomLabel = t('components.calendarStrip.full');
         } else if (!isSelected && isAlmostFull) {
-          bottomLabel = `${info!.capacity} pl.`;
+          bottomLabel = t('components.calendarStrip.placesLeft', { count: info!.capacity });
           bottomStyleColor = STATUS_AMBER;
         }
 

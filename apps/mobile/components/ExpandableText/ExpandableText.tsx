@@ -10,6 +10,7 @@ import {
   NativeSyntheticEvent,
   TextLayoutEventData,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
 
@@ -25,6 +26,7 @@ export function ExpandableText({
   numberOfLines = 3,
 }: ExpandableTextProps) {
   const { colors, spacing } = useTheme();
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -57,7 +59,9 @@ export function ExpandableText({
             variant="bodySmall"
             style={{ color: colors.primary, fontWeight: '500' }}
           >
-            {expanded ? 'Voir moins' : 'Voir plus'}
+            {expanded
+              ? t('components.expandableText.showLess')
+              : t('components.expandableText.showMore')}
           </Text>
         </Pressable>
       )}
