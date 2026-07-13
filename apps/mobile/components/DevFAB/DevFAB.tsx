@@ -17,9 +17,11 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
 import { ThemeConfigurator } from './ThemeConfigurator';
+import { setAppLocale, type AppLocale } from '../../lib/i18n';
 import {
   resetAllOpatamStorage,
   resetNewFeaturesSeen,
@@ -42,6 +44,10 @@ interface MenuItem {
 export function DevFAB() {
   const { colors, radius, shadows, spacing } = useTheme();
   const router = useRouter();
+  // useTranslation pour la réactivité : le label FR ⇄ EN se met à jour
+  // quand la langue change (menu dev volontairement non traduit).
+  const { i18n } = useTranslation();
+  const devLocale: AppLocale = i18n.language === 'en' ? 'en' : 'fr';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isConfiguratorOpen, setIsConfiguratorOpen] = useState(false);
 
@@ -195,6 +201,17 @@ export function DevFAB() {
       action: () => {
         setIsMenuOpen(false);
         setIsConfiguratorOpen(true);
+      },
+    },
+    {
+      // Bascule la langue de l'app (même mécanique que le sélecteur du
+      // profil : setAppLocale persiste le choix dans @opatam/app_locale —
+      // « Purger @opatam/* » ramène donc à la langue système).
+      icon: 'language-outline',
+      label: devLocale === 'fr' ? 'Langue : FR → EN' : 'Langue : EN → FR',
+      action: () => {
+        void setAppLocale(devLocale === 'fr' ? 'en' : 'fr');
+        setIsMenuOpen(false);
       },
     },
     {
