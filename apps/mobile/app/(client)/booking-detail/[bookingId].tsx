@@ -511,7 +511,9 @@ export default function BookingDetailScreen() {
         cancelReason.trim() || undefined
       );
 
-      // Cancellation emails are handled by the onBookingWrite Cloud Function
+      // Le remboursement de l'acompte (le cas échéant) est géré côté serveur par
+      // le trigger onBookingCancelledRefund — quel que soit le chemin d'annulation.
+      // Les emails d'annulation sont gérés par onBookingWrite.
 
       showToast({
         variant: 'success',
