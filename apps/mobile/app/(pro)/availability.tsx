@@ -19,8 +19,10 @@ import {
   TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Card, useToast } from '../../components';
 import { useProvider } from '../../contexts';
@@ -36,46 +38,31 @@ import { MEMBER_COLORS } from '@booking-app/shared/constants';
 // Constants
 // ---------------------------------------------------------------------------
 
-const DAY_NAMES: Record<number, string> = {
-  1: 'Lundi',
-  2: 'Mardi',
-  3: 'Mercredi',
-  4: 'Jeudi',
-  5: 'Vendredi',
-  6: 'Samedi',
-  0: 'Dimanche',
-};
-
-const DAY_SHORT: Record<number, string> = {
-  1: 'Lun',
-  2: 'Mar',
-  3: 'Mer',
-  4: 'Jeu',
-  5: 'Ven',
-  6: 'Sam',
-  0: 'Dim',
-};
+// Noms de jours localisés via Intl sur la langue de l'app (plus de tableaux FR
+// en dur). Référence : 2023-01-01 (UTC) est un dimanche → dow 0.
+const REF_SUNDAY_UTC = Date.UTC(2023, 0, 1);
+function dayName(dow: number, format: 'long' | 'short'): string {
+  const label = new Intl.DateTimeFormat(i18n.language, { weekday: format, timeZone: 'UTC' })
+    .format(new Date(REF_SUNDAY_UTC + dow * 86400000));
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
 // Ordered Mon→Sun
 const ORDERED_DAYS = [1, 2, 3, 4, 5, 6, 0];
 
 const DEFAULT_SLOT: TimeSlot = { start: '09:00', end: '18:00' };
 
-// Schedule templates
+// Schedule templates — label/description résolus via i18n (proAvailability.templates.<id>)
 interface ScheduleTemplate {
-  id: string;
-  label: string;
+  id: 'standard' | 'split' | 'extended' | 'weekend';
   icon: string;
-  description: string;
   days: { dayOfWeek: number; isOpen: boolean; slots: TimeSlot[] }[];
 }
 
 const SCHEDULE_TEMPLATES: ScheduleTemplate[] = [
   {
     id: 'standard',
-    label: 'Journée continue',
     icon: 'sunny-outline',
-    description: 'Lun-Ven, 9h-18h',
     days: ORDERED_DAYS.map((dow) => ({
       dayOfWeek: dow,
       isOpen: dow >= 1 && dow <= 5,
@@ -84,9 +71,7 @@ const SCHEDULE_TEMPLATES: ScheduleTemplate[] = [
   },
   {
     id: 'split',
-    label: 'Coupure midi',
     icon: 'restaurant-outline',
-    description: 'Lun-Ven, 9h-12h / 14h-18h',
     days: ORDERED_DAYS.map((dow) => ({
       dayOfWeek: dow,
       isOpen: dow >= 1 && dow <= 5,
@@ -95,9 +80,7 @@ const SCHEDULE_TEMPLATES: ScheduleTemplate[] = [
   },
   {
     id: 'extended',
-    label: 'Horaires étendus',
     icon: 'moon-outline',
-    description: 'Lun-Sam, 8h-20h',
     days: ORDERED_DAYS.map((dow) => ({
       dayOfWeek: dow,
       isOpen: dow >= 1 && dow <= 6,
@@ -106,9 +89,7 @@ const SCHEDULE_TEMPLATES: ScheduleTemplate[] = [
   },
   {
     id: 'weekend',
-    label: 'Week-end inclus',
     icon: 'calendar-outline',
-    description: 'Lun-Sam, 9h-18h + Sam 9h-13h',
     days: ORDERED_DAYS.map((dow) => ({
       dayOfWeek: dow,
       isOpen: dow >= 1 && dow <= 6,
@@ -152,6 +133,7 @@ interface DaySchedule {
 
 export default function AvailabilityScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
@@ -213,7 +195,7 @@ export default function AvailabilityScreen() {
       setOriginalSchedule(JSON.parse(JSON.stringify(weekSchedule)));
     } catch (err) {
       console.error('Error loading schedule:', err);
-      showToast({ variant: 'error', message: 'Erreur lors du chargement des disponibilités' });
+      showToast({ variant: 'error', message: i18n.t('proAvailability.loadError') });
     }
   }, [providerId, selectedMemberId, showToast]);
 
@@ -310,7 +292,7 @@ export default function AvailabilityScreen() {
 
     setShowCopyModal(null);
     setCopyTargets([]);
-    showToast({ variant: 'success', message: 'Horaires copiés' });
+    showToast({ variant: 'success', message: t('proAvailability.copied') });
   };
 
   // Save schedule
@@ -324,7 +306,7 @@ export default function AvailabilityScreen() {
           if (slot.start === slot.end || toMinutes(slot.start) >= endToMinutes(slot.end)) {
             showToast({
               variant: 'error',
-              message: `${DAY_NAMES[day.dayOfWeek]} : l'heure de fin doit être après l'heure de début`,
+              message: t('proAvailability.validation.endAfterStart', { day: dayName(day.dayOfWeek, 'long') }),
             });
             return;
           }
@@ -334,7 +316,7 @@ export default function AvailabilityScreen() {
 
     const member = members.find((m) => m.id === selectedMemberId);
     if (!member?.locationId) {
-      showToast({ variant: 'error', message: 'Ce membre n\'a pas de lieu assigné' });
+      showToast({ variant: 'error', message: t('proAvailability.validation.noLocation') });
       return;
     }
 
@@ -351,9 +333,9 @@ export default function AvailabilityScreen() {
         }))
       );
       setOriginalSchedule(JSON.parse(JSON.stringify(schedule)));
-      showToast({ variant: 'success', message: 'Disponibilités enregistrées' });
+      showToast({ variant: 'success', message: t('proAvailability.saved') });
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur lors de l\'enregistrement' });
+      showToast({ variant: 'error', message: err.message || t('proAvailability.saveError') });
     } finally {
       setSaving(false);
     }
@@ -361,14 +343,15 @@ export default function AvailabilityScreen() {
 
   // Apply a template
   const applyTemplate = (template: ScheduleTemplate) => {
+    const label = t(`proAvailability.templates.${template.id}.label`);
     if (isDirty) {
       Alert.alert(
-        'Appliquer le modèle',
-        `Cela remplacera les horaires actuels par "${template.label}". Continuer ?`,
+        t('proAvailability.applyTemplate.title'),
+        t('proAvailability.applyTemplate.message', { label }),
         [
-          { text: 'Annuler', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Appliquer',
+            text: t('proAvailability.applyTemplate.apply'),
             onPress: () => {
               setSchedule(
                 template.days.map((d) => ({
@@ -377,7 +360,7 @@ export default function AvailabilityScreen() {
                   slots: JSON.parse(JSON.stringify(d.slots)),
                 }))
               );
-              showToast({ variant: 'success', message: `Modèle "${template.label}" appliqué` });
+              showToast({ variant: 'success', message: t('proAvailability.applyTemplate.applied', { label }) });
             },
           },
         ]
@@ -390,7 +373,7 @@ export default function AvailabilityScreen() {
           slots: JSON.parse(JSON.stringify(d.slots)),
         }))
       );
-      showToast({ variant: 'success', message: `Modèle "${template.label}" appliqué` });
+      showToast({ variant: 'success', message: t('proAvailability.applyTemplate.applied', { label }) });
     }
   };
 
@@ -405,11 +388,11 @@ export default function AvailabilityScreen() {
             onPress={() => {
               if (isDirty) {
                 Alert.alert(
-                  'Modifications non sauvegardées',
-                  'Voulez-vous quitter sans enregistrer vos modifications ?',
+                  t('proAvailability.unsaved.title'),
+                  t('proAvailability.unsaved.leaveMessage'),
                   [
-                    { text: 'Rester', style: 'cancel' },
-                    { text: 'Quitter', style: 'destructive', onPress: () => router.back() },
+                    { text: t('proAvailability.unsaved.stay'), style: 'cancel' },
+                    { text: t('proAvailability.unsaved.leave'), style: 'destructive', onPress: () => router.back() },
                   ]
                 );
               } else {
@@ -421,7 +404,7 @@ export default function AvailabilityScreen() {
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </Pressable>
           <Text variant="h3" style={{ color: '#FFFFFF', flex: 1, marginLeft: spacing.sm }}>
-            Disponibilités
+            {t('proAvailability.title')}
           </Text>
           {isDirty && (
             <Pressable
@@ -433,7 +416,7 @@ export default function AvailabilityScreen() {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-                  Enregistrer
+                  {t('common.save')}
                 </Text>
               )}
             </Pressable>
@@ -449,7 +432,7 @@ export default function AvailabilityScreen() {
         <View style={styles.centered}>
           <Ionicons name="people-outline" size={48} color={colors.textMuted} />
           <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.md }}>
-            Ajoutez d'abord un membre dans l'onglet Équipe
+            {t('proAvailability.emptyMembers')}
           </Text>
         </View>
       ) : (
@@ -468,12 +451,12 @@ export default function AvailabilityScreen() {
                         onPress={() => {
                           if (isDirty) {
                             Alert.alert(
-                              'Modifications non sauvegardées',
-                              'Voulez-vous changer de membre sans enregistrer ?',
+                              t('proAvailability.unsaved.title'),
+                              t('proAvailability.unsaved.switchMessage'),
                               [
-                                { text: 'Annuler', style: 'cancel' },
+                                { text: t('common.cancel'), style: 'cancel' },
                                 {
-                                  text: 'Changer',
+                                  text: t('proAvailability.unsaved.switchConfirm'),
                                   style: 'destructive',
                                   onPress: () => setSelectedMemberId(member.id),
                                 },
@@ -541,7 +524,7 @@ export default function AvailabilityScreen() {
           >
             {/* Templates */}
             <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Modèles
+              {t('proAvailability.templatesTitle')}
             </Text>
             <ScrollView
               horizontal
@@ -566,10 +549,10 @@ export default function AvailabilityScreen() {
                       <Ionicons name={template.icon as any} size={20} color={colors.primary} />
                     </View>
                     <Text variant="caption" style={{ fontWeight: '600', marginTop: spacing.xs }}>
-                      {template.label}
+                      {t(`proAvailability.templates.${template.id}.label`)}
                     </Text>
                     <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2 }}>
-                      {template.description}
+                      {t(`proAvailability.templates.${template.id}.description`)}
                     </Text>
                   </Pressable>
                 ))}
@@ -600,7 +583,7 @@ export default function AvailabilityScreen() {
                             width: 40,
                           }}
                         >
-                          {DAY_SHORT[day.dayOfWeek]}
+                          {dayName(day.dayOfWeek, 'short')}
                         </Text>
                       </View>
 
@@ -667,13 +650,13 @@ export default function AvailabilityScreen() {
                               >
                                 <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
                                 <Text variant="caption" style={{ color: colors.primary }}>
-                                  Plage
+                                  {t('proAvailability.addSlot')}
                                 </Text>
                               </Pressable>
                             )}
                           </>
                         ) : (
-                          <Text variant="caption" color="textMuted">Fermé</Text>
+                          <Text variant="caption" color="textMuted">{t('proAvailability.closed')}</Text>
                         )}
                       </View>
 
@@ -706,8 +689,7 @@ export default function AvailabilityScreen() {
             >
               <Ionicons name="information-circle-outline" size={18} color="#3B82F6" />
               <Text variant="caption" style={{ color: '#1D4ED8', flex: 1 }}>
-                Configurez les horaires d'ouverture pour chaque jour. Les clients ne pourront réserver
-                que pendant ces créneaux. Ajoutez plusieurs plages pour gérer les pauses (ex : matin + après-midi).
+                {t('proAvailability.infoBox')}
               </Text>
             </View>
 
@@ -715,7 +697,7 @@ export default function AvailabilityScreen() {
             {isDirty && (
               <View style={{ marginTop: spacing.lg }}>
                 <Button
-                  title="Enregistrer les modifications"
+                  title={t('proAvailability.saveChanges')}
                   onPress={handleSave}
                   loading={saving}
                   disabled={saving}
@@ -740,7 +722,7 @@ export default function AvailabilityScreen() {
               <View style={[styles.handleBar, { backgroundColor: colors.border }]} />
             </View>
             <Text variant="h3" align="center" style={{ marginBottom: spacing.md }}>
-              {showTimePicker?.field === 'start' ? 'Heure de début' : 'Heure de fin'}
+              {showTimePicker?.field === 'start' ? t('proAvailability.startTime') : t('proAvailability.endTime')}
             </Text>
             <ScrollView style={{ maxHeight: 300 }}>
               {TIME_OPTIONS.map((time) => {
@@ -800,10 +782,10 @@ export default function AvailabilityScreen() {
             onPress={(e) => e.stopPropagation()}
           >
             <Text variant="h3" style={{ marginBottom: spacing.sm }}>
-              Copier vers
+              {t('proAvailability.copy.title')}
             </Text>
             <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.md }}>
-              Copier les horaires de {showCopyModal !== null ? DAY_NAMES[showCopyModal] : ''} vers :
+              {t('proAvailability.copy.message', { day: showCopyModal !== null ? dayName(showCopyModal, 'long') : '' })}
             </Text>
 
             {ORDERED_DAYS.filter((d) => d !== showCopyModal).map((dow) => {
@@ -830,7 +812,7 @@ export default function AvailabilityScreen() {
                   >
                     {isChecked && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
                   </View>
-                  <Text variant="body">{DAY_NAMES[dow]}</Text>
+                  <Text variant="body">{dayName(dow, 'long')}</Text>
                 </Pressable>
               );
             })}
@@ -840,7 +822,7 @@ export default function AvailabilityScreen() {
                 onPress={() => setShowCopyModal(null)}
                 style={[styles.copyCancel, { borderColor: colors.border, borderRadius: radius.md }]}
               >
-                <Text variant="body" style={{ fontWeight: '500' }}>Annuler</Text>
+                <Text variant="body" style={{ fontWeight: '500' }}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={handleCopyTo}
@@ -855,7 +837,7 @@ export default function AvailabilityScreen() {
                 ]}
               >
                 <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-                  Copier
+                  {t('proAvailability.copy.confirm')}
                 </Text>
               </Pressable>
             </View>

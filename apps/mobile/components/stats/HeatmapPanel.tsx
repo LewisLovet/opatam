@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Card, Text } from '../../components';
 import { useTheme } from '../../theme';
@@ -14,28 +15,42 @@ import { useTheme } from '../../theme';
  * the screen width.
  */
 export function HeatmapPanel({ heatmap }: { heatmap: number[] }) {
+  const { t, i18n } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const max = Math.max(...heatmap, 1);
   const total = heatmap.reduce((s, v) => s + v, 0);
   const dayOrder = [1, 2, 3, 4, 5, 6, 0]; // Mon → Sun
-  const dayLabels = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
+  // Localised short weekday labels, indexed by JS getDay() (0 = Sunday).
+  // 2021-08-01 (UTC) was a Sunday — format 7 consecutive days from there.
+  const dayLabels = React.useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(i18n.language, {
+      weekday: 'short',
+      timeZone: 'UTC',
+    });
+    return Array.from({ length: 7 }, (_, dow) => {
+      const raw = fmt.format(new Date(Date.UTC(2021, 7, 1 + dow)));
+      const clean = raw.replace(/\.$/, '');
+      return clean.charAt(0).toUpperCase() + clean.slice(1);
+    });
+  }, [i18n.language]);
 
   return (
     <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
       <View style={s.header}>
         <View style={{ flex: 1 }}>
-          <Text variant="h3">Heatmap activité</Text>
+          <Text variant="h3">{t('proStats.heatmap.title')}</Text>
           <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
-            90 derniers jours · jour × heure
+            {t('proStats.heatmap.subtitle')}
           </Text>
         </View>
         <Text variant="caption" color="textMuted" style={{ fontSize: 11 }}>
-          {total} RDV
+          {t('proStats.bookingsCount', { count: total })}
         </Text>
       </View>
       {total === 0 ? (
         <Text variant="caption" color="textMuted">
-          Pas encore assez d'activité pour cette vue.
+          {t('proStats.heatmap.empty')}
         </Text>
       ) : (
         <ScrollView

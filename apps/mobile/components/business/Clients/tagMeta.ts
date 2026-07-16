@@ -9,10 +9,18 @@
  * The mobile Badge component uses 'neutral' instead of 'default'
  * and offers no 'info' equivalent — we map 'new' to 'info' here
  * since mobile Badge does support 'info'.
+ *
+ * i18n: the tag VALUES ('new', 'vip', 'at_risk'…) are what's stored
+ * in Firestore — never translate them. Only the display strings
+ * (label / shortLabel / hint / rule) go through i18n. They're
+ * exposed as lazy getters so `i18n.t` runs at render time (the
+ * consuming screens re-render on language change via
+ * useTranslation), not once at module load.
  */
 
 import type { ProviderClientTag } from '@booking-app/shared';
 import type { BadgeVariant } from '../../Badge';
+import i18n from '../../../lib/i18n';
 
 export interface TagMeta {
   value: ProviderClientTag;
@@ -24,56 +32,44 @@ export interface TagMeta {
   rule: string;
 }
 
-export const TAG_META: TagMeta[] = [
-  {
-    value: 'new',
-    label: 'Nouveau',
-    shortLabel: 'Nouveau',
-    variant: 'info',
-    hint: 'Premier RDV il y a moins de 30 jours.',
-    rule: 'Premier RDV (toutes statuts confondus) il y a moins de 30 jours.',
-  },
-  {
-    value: 'regular',
-    label: 'Habitué',
-    shortLabel: 'Habitué',
-    variant: 'success',
-    hint: 'Au moins 3 RDV confirmés et vu il y a moins de 90 jours.',
-    rule: 'Au moins 3 RDV confirmés ET dernière visite il y a moins de 90 jours.',
-  },
-  {
-    value: 'vip',
-    label: 'VIP',
-    shortLabel: 'VIP',
-    variant: 'success',
-    hint: 'Au moins 10 RDV confirmés ou 500 € cumulés.',
-    rule: 'Au moins 10 RDV confirmés OU au moins 500 € de CA cumulé sur les RDV confirmés.',
-  },
-  {
-    value: 'at_risk',
-    label: 'À risque',
-    shortLabel: 'À risque',
-    variant: 'warning',
-    hint: 'Pas revenu depuis 60 à 180 jours.',
-    rule: 'Dernière visite remonte à 60 à 180 jours — fenêtre idéale pour relancer.',
-  },
-  {
-    value: 'lost',
-    label: 'Perdu',
-    shortLabel: 'Perdu',
-    variant: 'error',
-    hint: 'Pas revenu depuis plus de 180 jours.',
-    rule: 'Dernière visite il y a plus de 180 jours — considéré perdu.',
-  },
-  {
-    value: 'noshow_prone',
-    label: 'Absent fréquent',
-    shortLabel: 'Absent freq.',
-    variant: 'warning',
-    hint: 'Plus de 20 % de no-show sur 3 RDV ou plus.',
-    rule: "Au moins 3 RDV au total ET plus de 20 % d'absences (no-show).",
-  },
+/** Firestore value → camelCase i18n key segment. */
+const TAG_I18N_KEY: Record<ProviderClientTag, string> = {
+  new: 'new',
+  regular: 'regular',
+  vip: 'vip',
+  at_risk: 'atRisk',
+  lost: 'lost',
+  noshow_prone: 'noshowProne',
+};
+
+const TAG_DEFS: { value: ProviderClientTag; variant: BadgeVariant }[] = [
+  { value: 'new', variant: 'info' },
+  { value: 'regular', variant: 'success' },
+  { value: 'vip', variant: 'success' },
+  { value: 'at_risk', variant: 'warning' },
+  { value: 'lost', variant: 'error' },
+  { value: 'noshow_prone', variant: 'warning' },
 ];
+
+export const TAG_META: TagMeta[] = TAG_DEFS.map(({ value, variant }) => {
+  const base = `proClients.tags.${TAG_I18N_KEY[value]}`;
+  return {
+    value,
+    variant,
+    get label() {
+      return i18n.t(`${base}.label`);
+    },
+    get shortLabel() {
+      return i18n.t(`${base}.shortLabel`);
+    },
+    get hint() {
+      return i18n.t(`${base}.hint`);
+    },
+    get rule() {
+      return i18n.t(`${base}.rule`);
+    },
+  };
+});
 
 export const TAG_META_BY_VALUE: Record<ProviderClientTag, TagMeta> =
   TAG_META.reduce(
@@ -89,7 +85,7 @@ export const TAG_META_BY_VALUE: Record<ProviderClientTag, TagMeta> =
  *  service price modifier. */
 export function formatRevenue(cents: number, currency = 'EUR'): string {
   const amount = cents / 100;
-  return new Intl.NumberFormat('fr-FR', {
+  return new Intl.NumberFormat(i18n.language, {
     style: 'currency',
     currency,
     maximumFractionDigits: amount % 1 === 0 ? 0 : 2,

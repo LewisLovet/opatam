@@ -9,9 +9,11 @@ import React from 'react';
 import { Modal, View, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Text, Button } from './index';
 import { useTheme } from '../theme';
 import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
+import i18n from '../lib/i18n';
 
 interface UpgradeToStudioModalProps {
   visible: boolean;
@@ -25,15 +27,25 @@ const STUDIO_HIGHLIGHTS = SUBSCRIPTION_PLANS.team.features;
 export function UpgradeToStudioModal({ visible, onClose, context }: UpgradeToStudioModalProps) {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleUpgrade = () => {
     onClose();
     router.push('/(pro)/paywall');
   };
 
-  const monthlyEquiv = (SUBSCRIPTION_PLANS.team.baseYearlyPrice / 100 / 12).toFixed(2).replace('.', ',');
-  const yearlyPrice = (SUBSCRIPTION_PLANS.team.baseYearlyPrice / 100).toFixed(0);
-  const monthlyPrice = (SUBSCRIPTION_PLANS.team.baseMonthlyPrice / 100).toFixed(2).replace('.', ',');
+  // EUR amounts localized to the current app language (no hardcoded fr-FR).
+  const locale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const formatEur = (amount: number, digits = 2) =>
+    new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(amount);
+  const monthlyEquiv = formatEur(SUBSCRIPTION_PLANS.team.baseYearlyPrice / 100 / 12);
+  const yearlyPrice = formatEur(SUBSCRIPTION_PLANS.team.baseYearlyPrice / 100, 0);
+  const monthlyPrice = formatEur(SUBSCRIPTION_PLANS.team.baseMonthlyPrice / 100);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -53,26 +65,26 @@ export function UpgradeToStudioModal({ visible, onClose, context }: UpgradeToStu
 
           {/* Title */}
           <Text variant="h2" align="center" style={{ marginTop: spacing.md }}>
-            Passez au plan Studio
+            {t('components.upgradeToStudioModal.title')}
           </Text>
 
           {/* Context message */}
           <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.sm, lineHeight: 22 }}>
-            {context || 'Cette fonctionnalité est réservée au plan Studio. Gérez votre équipe et développez votre activité.'}
+            {context || t('components.upgradeToStudioModal.defaultContext')}
           </Text>
 
           {/* Price comparison */}
           <View style={[styles.priceCard, { backgroundColor: '#8B5CF6' + '08', borderColor: '#8B5CF6' + '20' }]}>
             <View style={styles.priceRow}>
               <Text style={[styles.priceText, { color: '#8B5CF6' }]}>
-                {monthlyEquiv} €/mois
+                {t('components.upgradeToStudioModal.pricePerMonth', { price: monthlyEquiv })}
               </Text>
               <View style={styles.savingsBadge}>
                 <Text style={styles.savingsText}>-33%</Text>
               </View>
             </View>
             <Text variant="caption" color="textSecondary">
-              {yearlyPrice} €/an au lieu de {monthlyPrice} €/mois
+              {t('components.upgradeToStudioModal.yearlyVsMonthly', { yearly: yearlyPrice, monthly: monthlyPrice })}
             </Text>
           </View>
 
@@ -89,7 +101,7 @@ export function UpgradeToStudioModal({ visible, onClose, context }: UpgradeToStu
           {/* CTA Button */}
           <View style={{ marginTop: spacing.lg }}>
             <Button
-              title="Découvrir le plan Studio"
+              title={t('components.upgradeToStudioModal.discoverStudio')}
               onPress={handleUpgrade}
               fullWidth
             />
@@ -98,7 +110,7 @@ export function UpgradeToStudioModal({ visible, onClose, context }: UpgradeToStu
           {/* Secondary action */}
           <Pressable onPress={onClose} style={{ marginTop: spacing.md, paddingVertical: 8 }}>
             <Text variant="caption" color="textMuted" align="center">
-              Plus tard
+              {t('components.upgradeToStudioModal.later')}
             </Text>
           </Pressable>
         </Pressable>

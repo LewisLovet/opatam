@@ -24,10 +24,12 @@ import {
   RefreshControl,
   Modal,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
+import i18n from '../../lib/i18n';
 import { Text, Card, Avatar, Badge } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
@@ -47,15 +49,16 @@ type SortKey =
   | 'revenue-desc'
   | 'bookings-desc';
 
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: 'lastBooking-desc', label: 'Dernière visite (récent)' },
-  { value: 'lastBooking-asc', label: 'Dernière visite (ancien)' },
-  { value: 'name-asc', label: 'Nom (A → Z)' },
-  { value: 'revenue-desc', label: 'CA cumulé' },
-  { value: 'bookings-desc', label: 'Nombre de RDV' },
+const SORT_OPTIONS: { value: SortKey; labelKey: string }[] = [
+  { value: 'lastBooking-desc', labelKey: 'proClients.sort.lastBookingDesc' },
+  { value: 'lastBooking-asc', labelKey: 'proClients.sort.lastBookingAsc' },
+  { value: 'name-asc', labelKey: 'proClients.sort.nameAsc' },
+  { value: 'revenue-desc', labelKey: 'proClients.sort.revenueDesc' },
+  { value: 'bookings-desc', labelKey: 'proClients.sort.bookingsDesc' },
 ];
 
 export default function ClientsScreen() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const { provider } = useProvider();
@@ -86,8 +89,8 @@ export default function ClientsScreen() {
     [clients, search, activeTags, sort],
   );
 
-  const sortLabel =
-    SORT_OPTIONS.find((o) => o.value === sort)?.label ?? '';
+  const sortLabelKey = SORT_OPTIONS.find((o) => o.value === sort)?.labelKey;
+  const sortLabel = sortLabelKey ? t(sortLabelKey) : '';
 
   // ── Loading / error states ─────────────────────────────────────
   if (loading && clients.length === 0) {
@@ -103,7 +106,7 @@ export default function ClientsScreen() {
       {/* Branded blue header — title bar only; the search, tag
           chips and sort toolbar live in their own neutral panel
           below so dark text stays legible. */}
-      <BrandedHeader title="Clients" />
+      <BrandedHeader title={t('proClients.title')} />
 
       {/* Filter / search panel */}
       <View
@@ -132,7 +135,7 @@ export default function ClientsScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Rechercher par nom, email, téléphone…"
+            placeholder={t('proClients.searchPlaceholder')}
             placeholderTextColor={colors.textMuted}
             style={[styles.searchInput, { color: colors.text }]}
             autoCorrect={false}
@@ -198,7 +201,7 @@ export default function ClientsScreen() {
               variant="caption"
               style={{ color: colors.textMuted, fontWeight: '600' }}
             >
-              Comprendre
+              {t('proClients.understandChip')}
             </Text>
           </Pressable>
         </ScrollView>
@@ -207,8 +210,11 @@ export default function ClientsScreen() {
         <View style={styles.toolbar}>
           <Text variant="caption" color="textSecondary">
             {filtered.length === clients.length
-              ? `${clients.length} client${clients.length > 1 ? 's' : ''}`
-              : `${filtered.length} sur ${clients.length}`}
+              ? t('proClients.clientsCount', { count: clients.length })
+              : t('proClients.countFiltered', {
+                  shown: filtered.length,
+                  total: clients.length,
+                })}
           </Text>
           <Pressable
             onPress={() => setSortSheetOpen(true)}
@@ -272,7 +278,7 @@ export default function ClientsScreen() {
       {/* Sort sheet */}
       {sortSheetOpen && (
         <BottomSheet
-          title="Trier par"
+          title={t('proClients.sortSheetTitle')}
           onClose={() => setSortSheetOpen(false)}
           colors={colors}
           spacing={spacing}
@@ -300,7 +306,7 @@ export default function ClientsScreen() {
                   variant="body"
                   style={{ color: active ? colors.primary : colors.text, fontWeight: active ? '600' : '400' }}
                 >
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </Text>
                 {active && (
                   <Ionicons name="checkmark" size={18} color={colors.primary} />
@@ -314,7 +320,7 @@ export default function ClientsScreen() {
       {/* Legend sheet */}
       {legendSheetOpen && (
         <BottomSheet
-          title="Comprendre les tags"
+          title={t('proClients.legendTitle')}
           onClose={() => setLegendSheetOpen(false)}
           colors={colors}
           spacing={spacing}
@@ -332,7 +338,7 @@ export default function ClientsScreen() {
               </View>
             ))}
             <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.sm }}>
-              Les tags sont rafraîchis à chaque réservation et chaque nuit à 3h. Plusieurs tags peuvent s'appliquer en même temps.
+              {t('proClients.legendFooter')}
             </Text>
           </ScrollView>
         </BottomSheet>
@@ -354,7 +360,8 @@ function ClientRow({
   colors: any;
   spacing: any;
 }) {
-  const fullName = client.name || 'Client sans nom';
+  const { t } = useTranslation();
+  const fullName = client.name || t('proClients.unnamedClient');
   const lastVisitLabel = formatLastVisitLabel(client.lastBookingAt);
 
   // Inline KPI string — much more readable than the previous
@@ -362,8 +369,8 @@ function ClientRow({
   // was confusing). Order: activity → revenue → recency.
   const rdvPart =
     client.bookingsCount > 0
-      ? `${client.bookingsCount} RDV`
-      : 'Aucun RDV';
+      ? t('proClients.bookingsShort', { count: client.bookingsCount })
+      : t('proClients.noBookings');
   const caPart = formatRevenue(client.totalRevenue);
   const summary = lastVisitLabel
     ? `${rdvPart}  ·  ${caPart}  ·  ${lastVisitLabel}`
@@ -422,6 +429,7 @@ function ClientRow({
 // ─── Empty states ─────────────────────────────────────────────────
 
 function EmptyBaseState({ colors, spacing }: { colors: any; spacing: any }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.centered, { paddingHorizontal: spacing.xl }]}>
       <View
@@ -438,21 +446,22 @@ function EmptyBaseState({ colors, spacing }: { colors: any; spacing: any }) {
         <Ionicons name="people-outline" size={28} color={colors.primary} />
       </View>
       <Text variant="h3" style={{ fontWeight: '600', textAlign: 'center', marginBottom: spacing.xs }}>
-        Pas encore de client
+        {t('proClients.emptyTitle')}
       </Text>
       <Text variant="body" color="textSecondary" style={{ textAlign: 'center' }}>
-        Dès la première réservation, votre carnet de clients commencera à se remplir automatiquement.
+        {t('proClients.emptyDescription')}
       </Text>
     </View>
   );
 }
 
 function EmptyResultState({ colors, spacing }: { colors: any; spacing: any }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.centered, { paddingHorizontal: spacing.xl }]}>
       <Ionicons name="search-outline" size={36} color={colors.textMuted} />
       <Text variant="body" color="textSecondary" style={{ textAlign: 'center', marginTop: spacing.sm }}>
-        Aucun client ne correspond à votre recherche.
+        {t('proClients.noResults')}
       </Text>
     </View>
   );
@@ -550,7 +559,7 @@ function applyFilters(
       out.sort((a, b) => a.lastBookingAt.getTime() - b.lastBookingAt.getTime());
       break;
     case 'name-asc':
-      out.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+      out.sort((a, b) => a.name.localeCompare(b.name, i18n.language, { sensitivity: 'base' }));
       break;
     case 'revenue-desc':
       out.sort((a, b) => b.totalRevenue - a.totalRevenue);
@@ -578,15 +587,19 @@ function formatLastVisitLabel(d: Date): string | null {
   // Future date — booking ahead. Render the short date with no
   // "vu" prefix so it doesn't read as past.
   if (days < 0) {
-    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return d.toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
   }
-  if (days === 0) return "vu aujourd'hui";
-  if (days === 1) return 'vu hier';
-  if (days < 7) return `vu il y a ${days} j`;
-  if (days < 30) return `vu il y a ${Math.floor(days / 7)} sem`;
+  if (days === 0) return i18n.t('proClients.lastVisit.today');
+  if (days === 1) return i18n.t('proClients.lastVisit.yesterday');
+  if (days < 7) return i18n.t('proClients.lastVisit.daysAgo', { count: days });
+  if (days < 30) {
+    return i18n.t('proClients.lastVisit.weeksAgo', { count: Math.floor(days / 7) });
+  }
   // Older — switch to the absolute date, which is more useful past
   // a month than another count of weeks.
-  return `vu le ${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
+  return i18n.t('proClients.lastVisit.onDate', {
+    date: d.toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }),
+  });
 }
 
 const styles = StyleSheet.create({

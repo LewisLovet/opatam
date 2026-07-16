@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   RefreshControl,
@@ -26,7 +27,8 @@ import { HeatmapPanel } from '../../components/stats/HeatmapPanel';
 import { useProvider } from '../../contexts';
 import { useProviderStats } from '../../hooks';
 import { useTheme } from '../../theme';
-import { deltaPercent, PERIOD_LABELS, type Period } from '@booking-app/shared';
+import i18n from '../../lib/i18n';
+import { deltaPercent, type Period } from '@booking-app/shared';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,6 +78,7 @@ function StatRow({
 
 /** Horizontal pills to switch the active period. */
 function PeriodPills({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
+  const { t } = useTranslation();
   const { colors, radius } = useTheme();
   const order: Period[] = ['7d', '30d', '90d', '12m'];
   return (
@@ -103,7 +106,7 @@ function PeriodPills({ value, onChange }: { value: Period; onChange: (p: Period)
                 fontSize: 12,
               }}
             >
-              {PERIOD_LABELS[p]}
+              {t(`proStats.periods.${p}`)}
             </Text>
           </Pressable>
         );
@@ -177,6 +180,7 @@ function KpiCard({
 // ---------------------------------------------------------------------------
 
 export default function StatsScreen() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -200,13 +204,13 @@ export default function StatsScreen() {
           <Pressable onPress={() => router.back()} hitSlop={12} style={[s.backBtn, { borderRadius: radius.full }]}>
             <Ionicons name="arrow-back" size={22} color="#FFF" />
           </Pressable>
-          <Text variant="h2" style={{ color: '#FFF', marginLeft: spacing.md }}>Statistiques</Text>
+          <Text variant="h2" style={{ color: '#FFF', marginLeft: spacing.md }}>{t('proStats.title')}</Text>
         </View>
 
         {/* Revenue highlight */}
         <View style={[s.heroRevenue, { paddingHorizontal: spacing.lg, marginTop: spacing.lg }]}>
           <Text variant="caption" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Revenus — {PERIOD_LABELS[period].toLowerCase()}
+            {t('proStats.revenueHeading', { period: t(`proStats.periods.${period}`).toLowerCase() })}
           </Text>
           {isLoading ? (
             <View style={{ height: 44, justifyContent: 'center' }}><Loader size="sm" /></View>
@@ -243,13 +247,13 @@ export default function StatsScreen() {
                 <View style={s.heroChip}>
                   <Ionicons name="calendar-outline" size={13} color="rgba(255,255,255,0.9)" />
                   <Text variant="caption" style={s.heroChipText}>
-                    {stats?.bookingsCount ?? 0} RDV
+                    {t('proStats.bookingsCount', { count: stats?.bookingsCount ?? 0 })}
                   </Text>
                 </View>
                 <View style={s.heroChip}>
                   <Ionicons name="trending-up-outline" size={13} color="rgba(255,255,255,0.9)" />
                   <Text variant="caption" style={s.heroChipText}>
-                    {stats?.completionRate ?? 0}% réussite
+                    {t('proStats.successChip', { rate: stats?.completionRate ?? 0 })}
                   </Text>
                 </View>
               </View>
@@ -276,7 +280,7 @@ export default function StatsScreen() {
             <KpiCard
               icon="calendar-outline"
               iconColor={colors.primary}
-              label="Réservations"
+              label={t('proStats.kpiBookings')}
               value={(stats?.bookingsCount ?? 0).toString()}
               current={stats?.bookingsCount ?? 0}
               previous={stats?.bookingsCountPrevious ?? 0}
@@ -284,7 +288,7 @@ export default function StatsScreen() {
             <KpiCard
               icon="people-outline"
               iconColor="#10B981"
-              label="Clients"
+              label={t('proStats.kpiClients')}
               value={(stats?.uniqueClients ?? 0).toString()}
               current={stats?.uniqueClients ?? 0}
               previous={stats?.uniqueClientsPrevious ?? 0}
@@ -292,8 +296,8 @@ export default function StatsScreen() {
             <KpiCard
               icon="eye-outline"
               iconColor="#8B5CF6"
-              label="Vues"
-              value={(stats?.pageViews ?? 0).toLocaleString('fr-FR')}
+              label={t('proStats.kpiViews')}
+              value={(stats?.pageViews ?? 0).toLocaleString(i18n.language)}
               current={stats?.pageViews ?? 0}
               previous={stats?.pageViewsPrevious ?? 0}
             />
@@ -304,7 +308,7 @@ export default function StatsScreen() {
             <>
               <TrendChart
                 data={stats.trend}
-                title="Évolution du chiffre d'affaires"
+                title={t('proStats.revenueChartTitle')}
                 valueKey="revenue"
                 chartType={stats.chartType}
                 formatYAxis={(v) =>
@@ -319,14 +323,17 @@ export default function StatsScreen() {
               />
               <TrendChart
                 data={stats.trend}
-                title="Vues de la vitrine"
+                title={t('proStats.viewsChartTitle')}
                 valueKey="pageViews"
                 chartType={stats.chartType}
                 formatYAxis={(v) =>
                   v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${v}`
                 }
                 formatTooltipValue={(v) =>
-                  `${v.toLocaleString('fr-FR')} vue${v !== 1 ? 's' : ''}`
+                  t('proStats.viewsCount', {
+                    count: v,
+                    formatted: v.toLocaleString(i18n.language),
+                  })
                 }
               />
             </>
@@ -349,17 +356,17 @@ export default function StatsScreen() {
               data={stats.activitiesByCategory}
               total={stats.activityRevenue}
               count={stats.activityCount}
-              periodLabel={PERIOD_LABELS[period]}
+              periodLabel={t(`proStats.periods.${period}`)}
             />
           )}
 
           {/* ── Booking Breakdown ── */}
-          <Text variant="h3" style={{ marginBottom: spacing.md }}>Répartition des RDV</Text>
+          <Text variant="h3" style={{ marginBottom: spacing.md }}>{t('proStats.breakdownTitle')}</Text>
           <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
             <StatRow
               icon="checkmark-circle-outline"
               iconColor={colors.success}
-              label="Confirmés"
+              label={t('proStats.confirmed')}
               value={stats?.confirmedCount ?? 0}
               barRatio={total > 0 ? (stats?.confirmedCount ?? 0) / total : 0}
               barColor={colors.success}
@@ -367,7 +374,7 @@ export default function StatsScreen() {
             <StatRow
               icon="close-circle-outline"
               iconColor={colors.error}
-              label="Annulés"
+              label={t('proStats.cancelled')}
               value={stats?.cancelledCount ?? 0}
               barRatio={total > 0 ? (stats?.cancelledCount ?? 0) / total : 0}
               barColor={colors.error}
@@ -375,14 +382,14 @@ export default function StatsScreen() {
             <StatRow
               icon="alert-circle-outline"
               iconColor={colors.textMuted}
-              label="Absents"
+              label={t('proStats.noshows')}
               value={stats?.noshowCount ?? 0}
               barRatio={total > 0 ? (stats?.noshowCount ?? 0) / total : 0}
               barColor={colors.textMuted}
             />
             {/* Total footer */}
             <View style={[s.totalRow, { borderTopColor: colors.border, paddingTop: spacing.md, marginTop: spacing.sm }]}>
-              <Text variant="body" style={{ fontWeight: '600' }}>Total</Text>
+              <Text variant="body" style={{ fontWeight: '600' }}>{t('proStats.total')}</Text>
               <Text variant="h3" style={{ fontWeight: '800' }}>{total}</Text>
             </View>
           </Card>

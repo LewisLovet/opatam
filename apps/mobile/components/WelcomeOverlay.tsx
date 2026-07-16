@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { View, Modal, Pressable, Dimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
@@ -22,6 +23,7 @@ export function WelcomeOverlay({
   businessName?: string | null;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const { width } = Dimensions.get('window');
 
   return (
@@ -71,11 +73,12 @@ export function WelcomeOverlay({
         >
           <Text style={{ fontSize: 56, lineHeight: 64 }}>🎉</Text>
           <Text variant="h2" align="center" style={{ fontWeight: '800' }}>
-            Bienvenue{businessName ? ` ${businessName}` : ' sur Opatam'} !
+            {businessName
+              ? t('components.welcomeOverlay.titleWithName', { businessName })
+              : t('components.welcomeOverlay.title')}
           </Text>
           <Text variant="body" color="textSecondary" align="center" style={{ marginTop: 2 }}>
-            Votre espace est prêt. Ajoutez vos prestations, partagez votre lien et recevez vos
-            premières réservations.
+            {t('components.welcomeOverlay.subtitle')}
           </Text>
 
           <Pressable
@@ -94,7 +97,7 @@ export function WelcomeOverlay({
             })}
           >
             <Text variant="body" style={{ fontWeight: '700', color: '#FFFFFF' }}>
-              C&apos;est parti
+              {t('components.welcomeOverlay.cta')}
             </Text>
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </Pressable>

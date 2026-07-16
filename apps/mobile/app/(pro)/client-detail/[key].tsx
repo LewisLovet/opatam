@@ -33,10 +33,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
+import i18n from '../../../lib/i18n';
 import { Text, Card, Avatar, Badge, Button, useToast } from '../../../components';
 import { useProvider } from '../../../contexts';
 import {
@@ -54,12 +56,13 @@ import {
   formatRevenue,
 } from '../../../components/business/Clients/tagMeta';
 
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  pending: 'En attente',
-  pending_payment: 'Paiement',
-  confirmed: 'Confirmé',
-  cancelled: 'Annulé',
-  noshow: 'Absent',
+/** BookingStatus (stored value) → camelCase i18n key segment. */
+const STATUS_I18N_KEY: Record<BookingStatus, string> = {
+  pending: 'pending',
+  pending_payment: 'pendingPayment',
+  confirmed: 'confirmed',
+  cancelled: 'cancelled',
+  noshow: 'noshow',
 };
 
 const STATUS_COLOR: Record<BookingStatus, string> = {
@@ -71,6 +74,7 @@ const STATUS_COLOR: Record<BookingStatus, string> = {
 };
 
 export default function ClientDetailScreen() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -136,7 +140,7 @@ export default function ClientDetailScreen() {
         });
       } catch (err) {
         console.error('[ClientDetail] load doc:', err);
-        if (!cancelled) showToast({ message: 'Impossible de charger la fiche', variant: 'error' });
+        if (!cancelled) showToast({ message: i18n.t('proClientDetail.loadError'), variant: 'error' });
       } finally {
         if (!cancelled) setDocLoading(false);
       }
@@ -185,7 +189,8 @@ export default function ClientDetailScreen() {
 
   const frequencyLabel = useMemo(
     () => (client ? computeFrequency(client) : null),
-    [client?.confirmedCount, client?.firstBookingAt, client?.lastBookingAt],
+    // i18n.language: recompute the human label when the app language changes.
+    [client?.confirmedCount, client?.firstBookingAt, client?.lastBookingAt, i18n.language],
   );
 
   const topServices = useMemo(
@@ -218,10 +223,10 @@ export default function ClientDetailScreen() {
         notes,
         prefs: JSON.stringify(prefs),
       });
-      showToast({ message: 'Modifications enregistrées', variant: 'success' });
+      showToast({ message: t('proClientDetail.saved'), variant: 'success' });
     } catch (err) {
       console.error('[ClientDetail] save:', err);
-      showToast({ message: "Échec de l'enregistrement", variant: 'error' });
+      showToast({ message: t('proClientDetail.saveError'), variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -253,14 +258,14 @@ export default function ClientDetailScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background, paddingHorizontal: spacing.xl }]}>
         <Text variant="body" color="textSecondary" style={{ textAlign: 'center', marginBottom: spacing.md }}>
-          Cette fiche client est introuvable.
+          {t('proClientDetail.notFound')}
         </Text>
-        <Button variant="ghost" onPress={() => router.back()} title="Retour" />
+        <Button variant="ghost" onPress={() => router.back()} title={t('common.back')} />
       </View>
     );
   }
 
-  const fullName = client.name || 'Client sans nom';
+  const fullName = client.name || t('proClients.unnamedClient');
   const confirmRate =
     client.bookingsCount > 0
       ? Math.round((client.confirmedCount / client.bookingsCount) * 100)
@@ -371,34 +376,34 @@ export default function ClientDetailScreen() {
         </Card>
 
         {/* KPIs */}
-        <SectionTitle text="Vue d'ensemble" colors={colors} spacing={spacing} />
+        <SectionTitle text={t('proClientDetail.overview')} colors={colors} spacing={spacing} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md }}>
-          <KpiCard label="Réservations" value={client.bookingsCount.toString()} colors={colors} />
-          <KpiCard label="CA cumulé" value={formatRevenue(client.totalRevenue)} colors={colors} />
+          <KpiCard label={t('proClientDetail.kpi.bookings')} value={client.bookingsCount.toString()} colors={colors} />
+          <KpiCard label={t('proClientDetail.kpi.revenue')} value={formatRevenue(client.totalRevenue)} colors={colors} />
           <KpiCard
-            label="Confirmation"
+            label={t('proClientDetail.kpi.confirmation')}
             value={confirmRate != null ? `${confirmRate}%` : '—'}
             colors={colors}
           />
           <KpiCard
-            label="No-show"
+            label={t('proClientDetail.kpi.noshow')}
             value={noshowRate != null ? `${noshowRate}%` : '—'}
             colors={colors}
           />
-          <KpiCard label="Première visite" value={formatLongDate(client.firstBookingAt)} colors={colors} />
-          <KpiCard label="Dernière visite" value={formatLongDate(client.lastBookingAt)} colors={colors} />
-          <KpiCard label="Fréquence" value={frequencyLabel ?? '—'} colors={colors} />
+          <KpiCard label={t('proClientDetail.kpi.firstVisit')} value={formatLongDate(client.firstBookingAt)} colors={colors} />
+          <KpiCard label={t('proClientDetail.kpi.lastVisit')} value={formatLongDate(client.lastBookingAt)} colors={colors} />
+          <KpiCard label={t('proClientDetail.kpi.frequency')} value={frequencyLabel ?? '—'} colors={colors} />
         </View>
 
         {/* Services préférés */}
-        <SectionTitle text="Services préférés" colors={colors} spacing={spacing} />
+        <SectionTitle text={t('proClientDetail.favoriteServices')} colors={colors} spacing={spacing} />
         {historyLoading ? (
           <Text variant="bodySmall" color="textSecondary">
-            Calcul en cours…
+            {t('proClientDetail.computing')}
           </Text>
         ) : topServices.length === 0 ? (
           <Text variant="bodySmall" color="textSecondary">
-            Pas encore assez de données pour identifier des préférences.
+            {t('proClientDetail.notEnoughData')}
           </Text>
         ) : (
           <View style={{ gap: 8, marginBottom: spacing.md }}>
@@ -427,7 +432,7 @@ export default function ClientDetailScreen() {
                     {s.name}
                   </Text>
                   <Text variant="bodySmall" color="textSecondary">
-                    {s.count} fois
+                    {t('proClientDetail.timesCount', { count: s.count })}
                   </Text>
                 </View>
               </Card>
@@ -436,12 +441,12 @@ export default function ClientDetailScreen() {
         )}
 
         {/* Notes */}
-        <SectionTitle text="Notes privées" colors={colors} spacing={spacing} />
+        <SectionTitle text={t('proClientDetail.privateNotes')} colors={colors} spacing={spacing} />
         <Card padding="md" style={{ marginBottom: spacing.md }}>
           <TextInput
             value={notes}
             onChangeText={setNotes}
-            placeholder="Allergies, préférences de coupe, anniversaire…"
+            placeholder={t('proClientDetail.notesPlaceholder')}
             placeholderTextColor={colors.textMuted}
             multiline
             style={{
@@ -453,7 +458,7 @@ export default function ClientDetailScreen() {
             }}
           />
           <Text variant="caption" color="textSecondary" style={{ marginTop: 6 }}>
-            Privé — visible seulement par votre équipe.
+            {t('proClientDetail.notesPrivacy')}
           </Text>
         </Card>
 
@@ -474,7 +479,7 @@ export default function ClientDetailScreen() {
               letterSpacing: 0.5,
             }}
           >
-            Préférences
+            {t('proClientDetail.preferences')}
           </Text>
           <Pressable
             onPress={() => setPrefs((p) => [...p, { key: '', value: '' }])}
@@ -488,13 +493,13 @@ export default function ClientDetailScreen() {
           >
             <Ionicons name="add" size={16} color={colors.primary} />
             <Text variant="bodySmall" style={{ color: colors.primary, fontWeight: '600' }}>
-              Ajouter
+              {t('proClientDetail.add')}
             </Text>
           </Pressable>
         </View>
         {prefs.length === 0 ? (
           <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: spacing.md }}>
-            Aucune préférence enregistrée.
+            {t('proClientDetail.noPreferences')}
           </Text>
         ) : (
           <View style={{ gap: 6, marginBottom: spacing.md }}>
@@ -509,7 +514,7 @@ export default function ClientDetailScreen() {
                       return next;
                     })
                   }
-                  placeholder="Clé"
+                  placeholder={t('proClientDetail.prefKeyPlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   style={[
                     styles.prefInput,
@@ -525,7 +530,7 @@ export default function ClientDetailScreen() {
                       return next;
                     })
                   }
-                  placeholder="Valeur"
+                  placeholder={t('proClientDetail.prefValuePlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   style={[
                     styles.prefInput,
@@ -563,24 +568,24 @@ export default function ClientDetailScreen() {
             <Ionicons name="megaphone-outline" size={20} color={colors.textMuted} />
             <View style={{ flex: 1 }}>
               <Text variant="bodySmall" style={{ fontWeight: '600' }}>
-                Fonctionnalités marketing
+                {t('proClientDetail.marketingTitle')}
               </Text>
               <Text variant="caption" color="textSecondary">
-                En cours de développement — bientôt disponibles.
+                {t('proClientDetail.marketingSoon')}
               </Text>
             </View>
           </View>
         </Card>
 
         {/* History */}
-        <SectionTitle text="Historique des réservations" colors={colors} spacing={spacing} />
+        <SectionTitle text={t('proClientDetail.historyTitle')} colors={colors} spacing={spacing} />
         {historyLoading ? (
           <Text variant="bodySmall" color="textSecondary">
-            Chargement…
+            {t('common.loading')}
           </Text>
         ) : bookings.length === 0 ? (
           <Text variant="bodySmall" color="textSecondary">
-            Aucune réservation dans l'historique.
+            {t('proClientDetail.historyEmpty')}
           </Text>
         ) : (
           <View style={{ gap: 8 }}>
@@ -607,7 +612,7 @@ export default function ClientDetailScreen() {
                             variant="caption"
                             style={{ color: STATUS_COLOR[b.status] }}
                           >
-                            · {STATUS_LABEL[b.status]}
+                            · {t(`proClientDetail.status.${STATUS_I18N_KEY[b.status]}`)}
                           </Text>
                         </View>
                         <Text variant="caption" color="textSecondary">
@@ -643,14 +648,14 @@ export default function ClientDetailScreen() {
         <Button
           variant="primary"
           onPress={handleCreateBooking}
-          title="Nouveau RDV"
+          title={t('proClientDetail.newBooking')}
           style={{ flex: 1 }}
         />
         <Button
           variant={isDirty ? 'primary' : 'ghost'}
           onPress={handleSave}
           disabled={!isDirty || saving}
-          title={saving ? '…' : 'Enregistrer'}
+          title={saving ? '…' : t('common.save')}
           style={{ flex: 1 }}
         />
       </View>
@@ -728,7 +733,7 @@ function KpiCard({
 
 function formatLongDate(d: Date | null): string {
   if (!d || d.getTime() === 0) return '—';
-  return d.toLocaleDateString('fr-FR', {
+  return d.toLocaleDateString(i18n.language, {
     day: 'numeric',
     month: 'short',
     year: '2-digit',
@@ -737,13 +742,13 @@ function formatLongDate(d: Date | null): string {
 
 function formatBookingDate(d: Date): string {
   return (
-    d.toLocaleDateString('fr-FR', {
+    d.toLocaleDateString(i18n.language, {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
     }) +
     ' · ' +
-    d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    d.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
   );
 }
 
@@ -766,10 +771,14 @@ function computeFrequency(client: ProviderClient): string | null {
   const avgDays = Math.round(
     spanMs / (1000 * 60 * 60 * 24) / (client.confirmedCount - 1),
   );
-  if (avgDays < 7) return `Tous les ${avgDays} j`;
-  if (avgDays < 60) return `Toutes les ${Math.round(avgDays / 7)} sem`;
-  if (avgDays < 720) return `Tous les ${Math.round(avgDays / 30)} mois`;
-  return `Tous les ${Math.round(avgDays / 365)} ans`;
+  if (avgDays < 7) return i18n.t('proClientDetail.frequency.days', { count: avgDays });
+  if (avgDays < 60) {
+    return i18n.t('proClientDetail.frequency.weeks', { count: Math.round(avgDays / 7) });
+  }
+  if (avgDays < 720) {
+    return i18n.t('proClientDetail.frequency.months', { count: Math.round(avgDays / 30) });
+  }
+  return i18n.t('proClientDetail.frequency.years', { count: Math.round(avgDays / 365) });
 }
 
 function computeTopServices(

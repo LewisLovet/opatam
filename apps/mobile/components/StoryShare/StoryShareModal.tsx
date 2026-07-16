@@ -35,9 +35,11 @@ try {
   // Native module not available
 }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { catalogService, memberService, schedulingService } from '@booking-app/firebase';
 import type { Service, Member } from '@booking-app/shared';
 import { APP_CONFIG } from '@booking-app/shared';
+import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
 import { useNewFeatures } from '../../hooks/useNewFeatures';
@@ -61,10 +63,10 @@ try {
 // Create one at https://developers.facebook.com if not yet available
 const FACEBOOK_APP_ID = '2649028388814234';
 
-const MONTHS_SHORT = [
-  'janv', 'févr', 'mars', 'avr', 'mai', 'juin',
-  'juill', 'août', 'sept', 'oct', 'nov', 'déc',
-];
+/** Locale-aware short month name ("janv." / "Jan") for the app language. */
+function shortMonth(d: Date): string {
+  return new Intl.DateTimeFormat(i18n.language, { month: 'short' }).format(d);
+}
 
 /** Build the human-readable date span for a given week offset. Mirrors
  *  the formatting the story card uses internally so the modal label
@@ -79,12 +81,12 @@ function formatWeekRange(offset: number, days: number): string {
   const sameMonth = start.getMonth() === end.getMonth();
   const sameYear = start.getFullYear() === end.getFullYear();
   if (sameMonth && sameYear) {
-    return `${start.getDate()} → ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`;
+    return `${start.getDate()} → ${end.getDate()} ${shortMonth(end)} ${end.getFullYear()}`;
   }
   if (sameYear) {
-    return `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]} → ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`;
+    return `${start.getDate()} ${shortMonth(start)} → ${end.getDate()} ${shortMonth(end)} ${end.getFullYear()}`;
   }
-  return `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]} ${start.getFullYear()} → ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`;
+  return `${start.getDate()} ${shortMonth(start)} ${start.getFullYear()} → ${end.getDate()} ${shortMonth(end)} ${end.getFullYear()}`;
 }
 
 /** Resolve a Date that's `offset` days after today (midnight). Used by
@@ -109,24 +111,23 @@ function dayOffsetFromDate(picked: Date): number {
   return Math.max(0, diff);
 }
 
-const DAY_LABEL_NAMES = [
-  'Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi',
-];
-
 /** "Aujourd'hui" / "Demain" / "Mardi 13 mai" — the headline of the
- *  day selector. Concise + readable across any offset. */
+ *  day selector. Concise + readable across any offset. Localized:
+ *  the weekday comes from Intl on the app language. */
 function formatDayOffsetLabel(offset: number): string {
-  if (offset === 0) return "Aujourd'hui";
-  if (offset === 1) return 'Demain';
+  if (offset === 0) return i18n.t('storyShare.today');
+  if (offset === 1) return i18n.t('storyShare.tomorrow');
   const d = dateForDayOffset(offset);
-  return `${DAY_LABEL_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+  const weekday = new Intl.DateTimeFormat(i18n.language, { weekday: 'long' }).format(d);
+  const capitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  return `${capitalized} ${d.getDate()} ${shortMonth(d)}`;
 }
 
 /** Subtitle under the headline — full date so an offset like
  *  "Demain" still tells you exactly which day. */
 function formatDayOffsetSubtitle(offset: number): string {
   const d = dateForDayOffset(offset);
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getDate()} ${shortMonth(d)} ${d.getFullYear()}`;
 }
 
 type WithId<T> = { id: string } & T;
@@ -140,17 +141,13 @@ type DisplayMode = 'services' | 'availabilities' | 'none';
  */
 type AvailabilityScope = 'week' | 'day' | 'month';
 
-const FRENCH_MONTHS = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
-/** "Juin 2026" for `today + offset` months (1st of that month). */
+/** "juin 2026" / "June 2026" for `today + offset` months (1st of that
+ *  month), localized via Intl on the app language. */
 function monthLabelForOffset(offset: number): string {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   d.setMonth(d.getMonth() + offset, 1);
-  return `${FRENCH_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return `${new Intl.DateTimeFormat(i18n.language, { month: 'long' }).format(d)} ${d.getFullYear()}`;
 }
 
 interface StoryShareModalProps {
@@ -160,24 +157,27 @@ interface StoryShareModalProps {
 
 interface SocialNetwork {
   key: string;
-  label: string;
+  /** "Instagram" is a proper noun; "share" resolves via t() at render. */
+  label: string | null;
   icon: string;
   color: string;
 }
 
 const NETWORKS: SocialNetwork[] = [
   { key: 'instagram', label: 'Instagram', icon: 'logo-instagram', color: '#E1306C' },
-  { key: 'share', label: 'Partager', icon: 'share-outline', color: '#555555' },
+  { key: 'share', label: null, icon: 'share-outline', color: '#555555' },
 ];
 
-const DISPLAY_MODES: { key: DisplayMode; label: string; icon: string }[] = [
-  { key: 'services', label: 'Prestations', icon: 'pricetags-outline' },
-  { key: 'availabilities', label: 'Dispos', icon: 'calendar-outline' },
-  { key: 'none', label: 'QR Code', icon: 'qr-code-outline' },
+// Labels resolved at render time via t(`storyShare.modes.${key}`).
+const DISPLAY_MODES: { key: DisplayMode; icon: string }[] = [
+  { key: 'services', icon: 'pricetags-outline' },
+  { key: 'availabilities', icon: 'calendar-outline' },
+  { key: 'none', icon: 'qr-code-outline' },
 ];
 
 export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { provider } = useProvider();
   const { categories } = useServiceCategories(provider?.id);
@@ -217,7 +217,8 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const MAX_MONTH_OFFSET = 3;
   const [monthServiceId, setMonthServiceId] = useState<string | null>(null);
   const [monthDurationOverride, setMonthDurationOverride] = useState<number | undefined>(undefined);
-  const [monthServiceLabel, setMonthServiceLabel] = useState('Vue générale');
+  // null = general (service-agnostic) view — labelled via t() at render.
+  const [monthServiceLabel, setMonthServiceLabel] = useState<string | null>(null);
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
   // Team member selection for the availability story. null = all members
   // (availability is the union / best status across the team).
@@ -428,10 +429,12 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
       await Sharing.shareAsync(fileUri, {
         mimeType: 'image/png',
         UTI: 'public.png',
-        dialogTitle: `Réservez chez ${provider?.businessName || 'nous'}`,
+        dialogTitle: i18n.t('storyShare.shareDialogTitle', {
+          name: provider?.businessName || i18n.t('storyShare.us'),
+        }),
       });
     } else {
-      Alert.alert('Erreur', 'Le partage n\'est pas disponible sur cet appareil.');
+      Alert.alert(i18n.t('storyShare.errorTitle'), i18n.t('storyShare.shareUnavailable'));
     }
   }, [provider?.businessName]);
 
@@ -448,11 +451,11 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
         ? `https://apps.apple.com/app/${appName.toLowerCase()}/id${iosId}`
         : `https://play.google.com/store/apps/details?id=${androidPackage}`;
       Alert.alert(
-        `${appName} non installé`,
-        `Installez ${appName} pour partager en story.`,
+        i18n.t('storyShare.appNotInstalledTitle', { appName }),
+        i18n.t('storyShare.appNotInstalledMessage', { appName }),
         [
-          { text: 'Annuler', style: 'cancel' },
-          { text: 'Installer', onPress: () => Linking.openURL(storeUrl) },
+          { text: i18n.t('common.cancel'), style: 'cancel' },
+          { text: i18n.t('storyShare.install'), onPress: () => Linking.openURL(storeUrl) },
         ],
       );
       return false;
@@ -482,7 +485,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
       if (!installed) return;
 
       const fileUri = await captureStory();
-      if (!fileUri) { Alert.alert('Erreur', 'Impossible de capturer l\'image.'); return; }
+      if (!fileUri) { Alert.alert(i18n.t('storyShare.errorTitle'), i18n.t('storyShare.captureFailed')); return; }
 
       if (RNShare) {
         await RNShare.shareSingle({
@@ -510,7 +513,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     setSharing('share');
     try {
       const fileUri = await captureStory();
-      if (!fileUri) { Alert.alert('Erreur', 'Impossible de capturer l\'image.'); return; }
+      if (!fileUri) { Alert.alert(i18n.t('storyShare.errorTitle'), i18n.t('storyShare.captureFailed')); return; }
       await fallbackShare(fileUri);
     } catch {
       // Ignore
@@ -589,7 +592,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </Pressable>
           <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>
-            Créer une story
+            {t('storyShare.headerTitle')}
           </Text>
           <View style={{ width: 24 }} />
         </View>
@@ -624,7 +627,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           {/* Display mode selector */}
           <View style={styles.sectionSpacing}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              Contenu affiché
+              {t('storyShare.sections.content')}
             </Text>
             <View style={styles.modeRow}>
               {DISPLAY_MODES.map((mode) => {
@@ -664,7 +667,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                         { color: isActive ? '#fff' : colors.text },
                       ]}
                     >
-                      {mode.label}
+                      {t(`storyShare.modes.${mode.key}`)}
                     </Text>
                     {showNewPill && (
                       <View
@@ -689,7 +692,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                             letterSpacing: 0.4,
                           }}
                         >
-                          Nouveau
+                          {t('storyShare.newPill')}
                         </Text>
                       </View>
                     )}
@@ -706,7 +709,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           {displayMode === 'availabilities' && (
             <View style={styles.sectionSpacing}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                Quand ?
+                {t('storyShare.sections.when')}
               </Text>
               <View
                 style={[
@@ -719,9 +722,9 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
               >
                 {(
                   [
-                    { key: 'week', label: 'Semaine', icon: 'calendar-outline' },
-                    { key: 'day', label: 'Jour', icon: 'sunny-outline' },
-                    { key: 'month', label: 'Mois', icon: 'grid-outline' },
+                    { key: 'week', label: t('storyShare.sections.week'), icon: 'calendar-outline' },
+                    { key: 'day', label: t('storyShare.sections.day'), icon: 'sunny-outline' },
+                    { key: 'month', label: t('storyShare.sections.month'), icon: 'grid-outline' },
                   ] as const
                 ).map((opt) => {
                   const active = availabilityScope === opt.key;
@@ -761,7 +764,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           {displayMode === 'availabilities' && members.length > 1 && (
             <View style={styles.sectionSpacing}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                Membre
+                {t('storyShare.sections.member')}
               </Text>
               <ScrollView
                 horizontal
@@ -769,7 +772,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                 contentContainerStyle={{ gap: 8, paddingRight: 8 }}
               >
                 {[
-                  { id: null as string | null, name: 'Tous les membres' },
+                  { id: null as string | null, name: t('storyShare.allMembers') },
                   ...members
                     .filter((m) => m.isActive !== false)
                     .map((m) => ({ id: m.id as string | null, name: m.name })),
@@ -805,7 +808,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           {displayMode === 'availabilities' && availabilityScope === 'week' && (
             <View style={styles.sectionSpacing}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                Semaine
+                {t('storyShare.sections.week')}
               </Text>
               <View
                 style={[
@@ -830,10 +833,10 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                 <View style={{ flex: 1, alignItems: 'center' }}>
                   <Text style={[styles.weekLabel, { color: colors.text }]}>
                     {weekOffset === 0
-                      ? 'Cette semaine'
+                      ? t('storyShare.thisWeek')
                       : weekOffset === 1
-                        ? 'Semaine prochaine'
-                        : `Dans ${weekOffset} semaines`}
+                        ? t('storyShare.nextWeek')
+                        : t('storyShare.inWeeks', { count: weekOffset })}
                   </Text>
                   <Text style={[styles.weekRange, { color: colors.textSecondary }]}>
                     {formatWeekRange(weekOffset, 7)}
@@ -862,7 +865,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           {displayMode === 'availabilities' && availabilityScope === 'day' && (
             <View style={styles.sectionSpacing}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                Jour
+                {t('storyShare.sections.day')}
               </Text>
               <View
                 style={[
@@ -922,7 +925,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                   { color: colors.textSecondary },
                 ]}
               >
-                Touchez la date pour choisir un autre jour
+                {t('storyShare.tapDateHint')}
               </Text>
             </View>
           )}
@@ -933,7 +936,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             <>
               <View style={styles.sectionSpacing}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                  Mois
+                  {t('storyShare.sections.month')}
                 </Text>
                 <View
                   style={[
@@ -975,7 +978,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
 
               <View style={styles.sectionSpacing}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                  Prestation
+                  {t('storyShare.sections.service')}
                 </Text>
                 <Pressable
                   onPress={() => setMonthPickerOpen(true)}
@@ -995,7 +998,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                     style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' }}
                     numberOfLines={1}
                   >
-                    {monthServiceLabel}
+                    {monthServiceLabel ?? t('storyShare.generalView')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
                 </Pressable>
@@ -1008,12 +1011,12 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
               of what the pro wants to share. */}
           <View style={styles.sectionSpacing}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              Thème
+              {t('storyShare.sections.theme')}
             </Text>
             <View style={styles.modeRow}>
               {[
-                { key: 'light', label: 'Clair', icon: 'sunny-outline' },
-                { key: 'dark', label: 'Sombre', icon: 'moon-outline' },
+                { key: 'light', label: t('storyShare.themeLight'), icon: 'sunny-outline' },
+                { key: 'dark', label: t('storyShare.themeDark'), icon: 'moon-outline' },
               ].map((variant) => {
                 const isActive = storyTheme === variant.key;
                 return (
@@ -1052,7 +1055,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           {displayMode === 'services' && services.length > 0 && (
             <View style={styles.sectionSpacing}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                Prestations affichées (5 max)
+                {t('storyShare.sections.servicesShown')}
               </Text>
               <View style={[styles.customizeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 {services.map((service) => {
@@ -1084,7 +1087,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                         {service.name}
                       </Text>
                       <Text style={[styles.serviceCheckPrice, { color: colors.textSecondary }]}>
-                        {service.price === 0 ? 'Gratuit' : `${(service.price / 100).toFixed(0)}€`}
+                        {service.price === 0 ? t('common.free') : `${(service.price / 100).toFixed(0)}€`}
                       </Text>
                     </Pressable>
                   );
@@ -1096,7 +1099,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           {/* Network buttons */}
           <View style={styles.sectionSpacing}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              Partager sur
+              {t('storyShare.sections.shareOn')}
             </Text>
             <View style={styles.networkRow}>
               {NETWORKS.map((network) => {
@@ -1123,7 +1126,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                       <Ionicons name={network.icon as any} size={24} color={network.color} />
                     )}
                     <Text style={[styles.networkLabel, { color: colors.text }]}>
-                      {network.label}
+                      {network.label ?? t(`storyShare.networks.${network.key}`)}
                     </Text>
                   </Pressable>
                 );
@@ -1143,7 +1146,9 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           onApply={(sid, dur, label) => {
             setMonthServiceId(sid);
             setMonthDurationOverride(dur);
-            setMonthServiceLabel(label);
+            // General view → null so the label re-resolves via t() on
+            // language change instead of freezing the picker's wording.
+            setMonthServiceLabel(sid ? label : null);
             setMonthPickerOpen(false);
           }}
         />
@@ -1162,11 +1167,11 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
               </View>
 
               <Text style={[styles.reminderTitle, { color: colors.text }]}>
-                N'oubliez pas votre lien !
+                {t('storyShare.reminderTitle')}
               </Text>
 
               <Text style={[styles.reminderDesc, { color: colors.textSecondary }]}>
-                Instagram ne permet pas d'inclure de lien cliquable dans les stories. Pensez à ajouter votre lien de réservation en sticker pour que vos clients puissent réserver.
+                {t('storyShare.reminderDesc')}
               </Text>
 
               {/* Copy link button */}
@@ -1192,7 +1197,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                   ]}
                   numberOfLines={1}
                 >
-                  {linkCopied ? 'Lien copié !' : bookingUrl}
+                  {linkCopied ? t('storyShare.linkCopied') : bookingUrl}
                 </Text>
               </Pressable>
 
@@ -1203,7 +1208,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
               >
                 <Ionicons name="logo-instagram" size={20} color="#fff" />
                 <Text style={styles.reminderContinueText}>
-                  Partager sur Instagram
+                  {t('storyShare.shareOnInstagram')}
                 </Text>
               </Pressable>
             </Pressable>
@@ -1261,7 +1266,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                   display="inline"
                   minimumDate={new Date()}
                   maximumDate={dateForDayOffset(MAX_DAY_OFFSET)}
-                  locale="fr-FR"
+                  locale={i18n.language}
                   themeVariant={
                     // The theme tokens type colors.background as a string
                     // literal so a direct === comparison fails strict
@@ -1286,7 +1291,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                     { backgroundColor: colors.primary },
                   ]}
                 >
-                  <Text style={styles.datePickerDoneText}>Terminé</Text>
+                  <Text style={styles.datePickerDoneText}>{t('storyShare.done')}</Text>
                 </Pressable>
               </Pressable>
             </Pressable>

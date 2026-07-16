@@ -34,6 +34,7 @@ import type {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -56,6 +57,7 @@ import {
 } from '../../../components';
 import { useAuth, useProvider } from '../../../contexts';
 import { API_URL } from '../../../lib/config';
+import i18n from '../../../lib/i18n';
 import {
   useProviderBookings,
   useProviderActivities,
@@ -91,50 +93,50 @@ type PlanningView = 'upcoming' | 'past';
 type TypeFilter = 'all' | 'bookings' | 'activities';
 
 interface StatusOption {
-  label: string;
+  labelKey: string;
   value: BookingStatus | undefined;
 }
 
 interface PeriodOption {
-  label: string;
+  labelKey: string;
   value: PeriodFilter;
 }
 
 interface ViewOption {
-  label: string;
+  labelKey: string;
   value: PlanningView;
 }
 
 interface TypeOption {
-  label: string;
+  labelKey: string;
   value: TypeFilter;
   icon: React.ComponentProps<typeof Ionicons>['name'];
 }
 
 const STATUS_OPTIONS: StatusOption[] = [
-  { label: 'Tous', value: undefined },
-  { label: 'En attente', value: 'pending' },
-  { label: 'Confirmés', value: 'confirmed' },
-  { label: 'Annulés', value: 'cancelled' },
-  { label: 'Absences', value: 'noshow' },
+  { labelKey: 'proBookings.filters.status.all', value: undefined },
+  { labelKey: 'proBookings.filters.status.pending', value: 'pending' },
+  { labelKey: 'proBookings.filters.status.confirmed', value: 'confirmed' },
+  { labelKey: 'proBookings.filters.status.cancelled', value: 'cancelled' },
+  { labelKey: 'proBookings.filters.status.noshow', value: 'noshow' },
 ];
 
 const PERIOD_OPTIONS: PeriodOption[] = [
-  { label: 'Jour', value: 'today' },
-  { label: 'Semaine', value: 'week' },
-  { label: 'Mois', value: 'month' },
-  { label: 'Tout', value: 'all' },
+  { labelKey: 'proBookings.filters.period.day', value: 'today' },
+  { labelKey: 'proBookings.filters.period.week', value: 'week' },
+  { labelKey: 'proBookings.filters.period.month', value: 'month' },
+  { labelKey: 'proBookings.filters.period.all', value: 'all' },
 ];
 
 const VIEW_OPTIONS: ViewOption[] = [
-  { label: 'À venir', value: 'upcoming' },
-  { label: 'Passé', value: 'past' },
+  { labelKey: 'proBookings.view.upcoming', value: 'upcoming' },
+  { labelKey: 'proBookings.view.past', value: 'past' },
 ];
 
 const TYPE_OPTIONS: TypeOption[] = [
-  { label: 'Tout', value: 'all', icon: 'apps-outline' },
-  { label: 'Réservations', value: 'bookings', icon: 'people-outline' },
-  { label: 'Activités', value: 'activities', icon: 'calendar-outline' },
+  { labelKey: 'proBookings.filters.type.all', value: 'all', icon: 'apps-outline' },
+  { labelKey: 'proBookings.filters.type.bookings', value: 'bookings', icon: 'people-outline' },
+  { labelKey: 'proBookings.filters.type.activities', value: 'activities', icon: 'calendar-outline' },
 ];
 
 /**
@@ -246,12 +248,10 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remaining}`;
 }
 
-// French day and month names for section headers
-const FRENCH_DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-const FRENCH_MONTHS = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
-];
+/** Locale for date formatting, following the current app language */
+function dateLocale(): string {
+  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+}
 
 /** Format a date into a section header label */
 function formatSectionDate(date: Date): string {
@@ -260,14 +260,16 @@ function formatSectionDate(date: Date): string {
   const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "Aujourd'hui";
-  if (diffDays === 1) return 'Demain';
-  if (diffDays === -1) return 'Hier';
+  if (diffDays === 0) return i18n.t('dates.today');
+  if (diffDays === 1) return i18n.t('dates.tomorrow');
+  if (diffDays === -1) return i18n.t('dates.yesterday');
 
-  const dayName = FRENCH_DAYS[date.getDay()];
-  const dayNum = date.getDate();
-  const monthName = FRENCH_MONTHS[date.getMonth()];
-  return `${dayName} ${dayNum} ${monthName}`;
+  const label = date.toLocaleDateString(dateLocale(), {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 /** Get a date key for grouping (YYYY-MM-DD) */
@@ -323,6 +325,7 @@ interface PlanningSection {
 
 export default function ProBookingsScreen() {
   const { colors, spacing, radius, shadows } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { providerId } = useProvider();
@@ -486,7 +489,8 @@ export default function ProBookingsScreen() {
         date: group.date,
         data: group.items,
       }));
-  }, [bookings, activities, view, typeFilter]);
+    // `t` keeps section titles in sync with the current language.
+  }, [bookings, activities, view, typeFilter, t]);
 
   // -- Booking actions -------------------------------------------------------
 
@@ -497,7 +501,10 @@ export default function ProBookingsScreen() {
         await bookingService.confirmBooking(bookingId, user.uid);
         await refresh();
       } catch {
-        Alert.alert('Erreur', 'Impossible de confirmer le rendez-vous.');
+        Alert.alert(
+          i18n.t('proBookings.alerts.errorTitle'),
+          i18n.t('proBookings.alerts.confirmError'),
+        );
       }
     },
     [user, refresh],
@@ -506,12 +513,12 @@ export default function ProBookingsScreen() {
   const handleCancel = useCallback(
     (bookingId: string) => {
       Alert.alert(
-        'Annuler le rendez-vous',
-        'Êtes-vous sûr de vouloir annuler ce rendez-vous ?',
+        i18n.t('proBookings.alerts.cancelTitle'),
+        i18n.t('proBookings.alerts.cancelMessage'),
         [
-          { text: 'Non', style: 'cancel' },
+          { text: i18n.t('proBookings.alerts.no'), style: 'cancel' },
           {
-            text: 'Oui, annuler',
+            text: i18n.t('proBookings.alerts.yesCancel'),
             style: 'destructive',
             onPress: async () => {
               if (!user) return;
@@ -519,7 +526,10 @@ export default function ProBookingsScreen() {
                 await bookingService.cancelBooking(bookingId, 'provider', user.uid);
                 await refresh();
               } catch {
-                Alert.alert('Erreur', "Impossible d'annuler le rendez-vous.");
+                Alert.alert(
+                  i18n.t('proBookings.alerts.errorTitle'),
+                  i18n.t('proBookings.alerts.cancelError'),
+                );
               }
             },
           },
@@ -543,12 +553,18 @@ export default function ProBookingsScreen() {
         });
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
-          throw new Error(data.error || "Erreur lors de l'envoi");
+          throw new Error(data.error || i18n.t('proBookings.alerts.reviewRequestSendError'));
         }
-        Alert.alert('Succès', "La demande d'avis a été envoyée par email.");
+        Alert.alert(
+          i18n.t('proBookings.alerts.successTitle'),
+          i18n.t('proBookings.alerts.reviewRequestSent'),
+        );
         await refresh();
       } catch (error: any) {
-        Alert.alert('Erreur', error.message || "Impossible d'envoyer la demande d'avis.");
+        Alert.alert(
+          i18n.t('proBookings.alerts.errorTitle'),
+          error.message || i18n.t('proBookings.alerts.reviewRequestError'),
+        );
       } finally {
         setReviewRequestLoadingId(null);
       }
@@ -750,7 +766,7 @@ export default function ProBookingsScreen() {
                   style={{ marginRight: spacing.xs }}
                 />
                 <Text variant="caption" style={{ color: colors.success, fontWeight: '600' }}>
-                  Confirmer
+                  {t('common.confirm')}
                 </Text>
               </Pressable>
 
@@ -777,7 +793,7 @@ export default function ProBookingsScreen() {
                   style={{ marginRight: spacing.xs }}
                 />
                 <Text variant="caption" color="textSecondary" style={{ fontWeight: '600' }}>
-                  Refuser
+                  {t('proBookings.card.decline')}
                 </Text>
               </Pressable>
             </View>
@@ -804,7 +820,7 @@ export default function ProBookingsScreen() {
                 style={{ marginRight: spacing.xs }}
               />
               <Text variant="caption" style={{ fontWeight: '500', color: '#f59e0b' }}>
-                Avis reçu
+                {t('proBookings.card.reviewReceived')}
               </Text>
             </View>
           )}
@@ -840,7 +856,7 @@ export default function ProBookingsScreen() {
                     style={{ marginRight: spacing.xs }}
                   />
                   <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
-                    Demander un avis
+                    {t('proBookings.card.requestReview')}
                   </Text>
                 </>
               )}
@@ -868,7 +884,7 @@ export default function ProBookingsScreen() {
                 style={{ marginRight: spacing.xs }}
               />
               <Text variant="caption" color="textMuted" style={{ fontWeight: '500' }}>
-                Demande d'avis envoyée
+                {t('proBookings.card.reviewRequestSentLabel')}
               </Text>
             </View>
           )}
@@ -892,7 +908,7 @@ export default function ProBookingsScreen() {
       const accent = meta?.color ?? colors.border;
 
       const timeLabel = slot.allDay
-        ? 'Journée'
+        ? t('proBookings.activity.allDay')
         : `${formatHour(start)}h${formatMinutes(start)}`;
       const durationMinutes = Math.max(
         0,
@@ -969,10 +985,10 @@ export default function ProBookingsScreen() {
                 </View>
                 <View style={styles.clientInfo}>
                   <Text variant="body" numberOfLines={1} style={styles.clientName}>
-                    {slot.title || meta?.label || 'Activité'}
+                    {slot.title || meta?.label || t('proBookings.activity.fallback')}
                   </Text>
                   <Text variant="caption" color="textSecondary" numberOfLines={1}>
-                    {meta?.label ?? 'Activité'}
+                    {meta?.label ?? t('proBookings.activity.fallback')}
                     {slot.address ? ` · ${slot.address}` : ''}
                   </Text>
                 </View>
@@ -1005,7 +1021,7 @@ export default function ProBookingsScreen() {
         </Pressable>
       );
     },
-    [colors, spacing, radius, shadows, router],
+    [colors, spacing, radius, shadows, router, t],
   );
 
   /**
@@ -1048,16 +1064,18 @@ export default function ProBookingsScreen() {
           />
         </View>
         <Text variant="h3" align="center" style={{ marginBottom: spacing.xs }}>
-          {view === 'upcoming' ? 'Rien de prévu' : 'Aucun événement passé'}
+          {view === 'upcoming'
+            ? t('proBookings.empty.upcomingTitle')
+            : t('proBookings.empty.pastTitle')}
         </Text>
         <Text variant="body" color="textSecondary" align="center">
           {view === 'upcoming'
-            ? "Aucun événement à venir ne correspond aux filtres sélectionnés."
-            : "Aucun événement passé ne correspond aux filtres sélectionnés."}
+            ? t('proBookings.empty.upcomingDescription')
+            : t('proBookings.empty.pastDescription')}
         </Text>
       </View>
     ),
-    [spacing, colors, view],
+    [spacing, colors, view, t],
   );
 
   const renderListHeader = useCallback(
@@ -1102,7 +1120,7 @@ export default function ProBookingsScreen() {
                     fontWeight: isActive ? '600' : '400',
                   }}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Text>
               </Pressable>
             );
@@ -1154,7 +1172,7 @@ export default function ProBookingsScreen() {
                     fontWeight: isActive ? '600' : '400',
                   }}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Text>
               </Pressable>
             );
@@ -1179,7 +1197,7 @@ export default function ProBookingsScreen() {
 
             return (
               <Pressable
-                key={option.label}
+                key={t(option.labelKey)}
                 onPress={() => {
                   LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                   setStatusFilter(option.value);
@@ -1204,7 +1222,7 @@ export default function ProBookingsScreen() {
                     fontWeight: isActive ? '600' : '400',
                   }}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Text>
                 {showBadge && (
                   <View
@@ -1289,7 +1307,7 @@ export default function ProBookingsScreen() {
                     fontWeight: isActive ? '600' : '400',
                   }}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Text>
               </Pressable>
             );
@@ -1369,7 +1387,7 @@ export default function ProBookingsScreen() {
                     fontWeight: memberFilter === undefined ? '600' : '400',
                   }}
                 >
-                  Tous
+                  {t('proBookings.filters.member.all')}
                 </Text>
               </Pressable>
 
@@ -1434,6 +1452,7 @@ export default function ProBookingsScreen() {
       memberFilter,
       members,
       pendingCount,
+      t,
     ],
   );
 
@@ -1444,7 +1463,7 @@ export default function ProBookingsScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.brandedHeader, { backgroundColor: colors.primary, paddingTop: insets.top }]}>
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-            <Text variant="h1" style={{ color: '#FFFFFF' }}>Planning</Text>
+            <Text variant="h1" style={{ color: '#FFFFFF' }}>{t('proBookings.title')}</Text>
           </View>
         </View>
         <View style={styles.loaderContainer}>
@@ -1461,7 +1480,7 @@ export default function ProBookingsScreen() {
       {/* ── Branded Header ────────────────────────────────────────── */}
       <View style={[styles.brandedHeader, { backgroundColor: colors.primary, paddingTop: insets.top }]}>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-          <Text variant="h1" style={{ color: '#FFFFFF' }}>Planning</Text>
+          <Text variant="h1" style={{ color: '#FFFFFF' }}>{t('proBookings.title')}</Text>
         </View>
       </View>
 

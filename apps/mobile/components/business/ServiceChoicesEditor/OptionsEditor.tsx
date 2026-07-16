@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { type ServiceOption, newOption, moveItem } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
@@ -26,6 +27,7 @@ export interface OptionsEditorProps {
 
 export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   // Which option cards have their nested "Détails" section open.
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -68,8 +70,8 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
               <View style={{ flex: 1 }}>
                 <Input
-                  label="Nom de l'option"
-                  placeholder="Nom de l'option (ex : Mèches)"
+                  label={t('proServices.editor.optionNameLabel')}
+                  placeholder={t('proServices.editor.optionNamePlaceholder')}
                   value={option.name}
                   onChangeText={(t) => updateOption(oi, { name: t })}
                   autoCapitalize="sentences"
@@ -91,7 +93,7 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <View style={{ width: 90 }}>
                 <Input
-                  label="Prix (€)"
+                  label={t('proServices.editor.priceLabel')}
                   placeholder="0"
                   keyboardType="numeric"
                   value={option.price ? String(option.price / 100) : ''}
@@ -102,7 +104,7 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
               </View>
               <View style={{ width: 90 }}>
                 <Input
-                  label="Durée (min)"
+                  label={t('proServices.editor.durationLabel')}
                   placeholder="0"
                   keyboardType="numeric"
                   value={option.duration ? String(option.duration) : ''}
@@ -131,8 +133,9 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
                 color={colors.textSecondary}
               />
               <Text variant="caption" style={{ fontWeight: '600', color: colors.textSecondary }}>
-                Détails de l'option
-                {nestedCount > 0 ? ` (${nestedCount})` : ' — variations & infos'}
+                {nestedCount > 0
+                  ? t('proServices.editor.optionDetailsWithCount', { count: nestedCount })
+                  : t('proServices.editor.optionDetailsEmpty')}
               </Text>
             </Pressable>
 
@@ -148,7 +151,7 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
               >
                 <View style={{ gap: spacing.xs }}>
                   <Text variant="caption" color="textSecondary">
-                    Variations de cette option (visibles si l'option est cochée)
+                    {t('proServices.editor.nestedVariationsHint')}
                   </Text>
                   <VariationsEditor
                     variations={option.nestedVariations ?? []}
@@ -157,7 +160,7 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
                 </View>
                 <View style={{ gap: spacing.xs }}>
                   <Text variant="caption" color="textSecondary">
-                    Infos à demander pour cette option
+                    {t('proServices.editor.nestedInfoHint')}
                   </Text>
                   <InfoFieldsEditor
                     fields={option.nestedInfoFields ?? []}
@@ -186,7 +189,7 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
       >
         <Ionicons name="add" size={18} color={colors.textSecondary} />
         <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.textSecondary }}>
-          Ajouter une option
+          {t('proServices.editor.addOption')}
         </Text>
       </Pressable>
     </View>

@@ -14,6 +14,10 @@
 import React from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+// i18n.t (not useTranslation) : les textes de la story sont aussi produits
+// dans des helpers hors composant ; la langue est figée au moment du rendu,
+// ce qui suffit puisque la carte est recapturée à chaque partage.
+import i18n from '../../lib/i18n';
 import { Text } from '../Text';
 
 // Safe import — react-native-qrcode-svg requires native module (react-native-svg)
@@ -247,7 +251,7 @@ function AvailabilityStoryLayout({
           shows each day number, and the user wanted the freed
           vertical space for the grid bars instead. */}
       <Text style={[availStoryStyles.bigTitle, { color: palette.text }]}>
-        Mes dispos{'\n'}de la semaine
+        {i18n.t('storyShare.card.weekTitle')}
       </Text>
 
       {/* Day headers */}
@@ -329,13 +333,13 @@ function AvailabilityStoryLayout({
         <View style={availStoryStyles.legendItem}>
           <View style={[availStoryStyles.legendDot, { backgroundColor: palette.cellFree }]} />
           <Text style={[availStoryStyles.legendText, { color: palette.text }]}>
-            Libre
+            {i18n.t('storyShare.card.free')}
           </Text>
         </View>
         <View style={availStoryStyles.legendItem}>
           <View style={[availStoryStyles.legendDot, { backgroundColor: palette.legendDotMuted }]} />
           <Text style={[availStoryStyles.legendText, { color: palette.textMuted }]}>
-            Occupé
+            {i18n.t('storyShare.card.busy')}
           </Text>
         </View>
       </View>
@@ -371,28 +375,29 @@ function AvailabilityStoryLayout({
 
 // ─── Today-only availability story (single-day list of free slots) ───────
 
-const FRENCH_DAYS = [
-  'Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi',
-];
-const FRENCH_MONTHS_LONG = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
-/** Format a YYYY-MM-DD into "Vendredi 9 mai 2026". */
-function formatLongFrenchDate(dateKey: string): string {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  return `${FRENCH_DAYS[date.getDay()]} ${date.getDate()} ${FRENCH_MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}`;
+/** Capitalize the first character (Intl gives lowercase weekdays in fr). */
+function capitalizeFirst(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Headline accent shown after "Mes dispos\n…". Reads naturally
- *  whatever the picked date is:
- *    today      → "aujourd'hui"
- *    tomorrow   → "de demain"
- *    other date → "de [jour]" (e.g. "de samedi")
- */
-function computeDayHeadline(dateKey: string): string {
+/** Format a YYYY-MM-DD into a locale long date ("Vendredi 9 mai 2026" /
+ *  "Friday, May 9, 2026") following the app language. */
+function formatLongDate(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return capitalizeFirst(
+    new Intl.DateTimeFormat(i18n.language, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(date),
+  );
+}
+
+/** "Complet …" headline of the fully-booked empty state. Reads naturally
+ *  whatever the picked date is (today / tomorrow / a weekday). */
+function fullyBookedLabel(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map(Number);
   const target = new Date(y, m - 1, d);
   target.setHours(0, 0, 0, 0);
@@ -401,11 +406,14 @@ function computeDayHeadline(dateKey: string): string {
   const diffDays = Math.round(
     (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
-  if (diffDays === 0) return "aujourd'hui";
-  if (diffDays === 1) return 'de demain';
-  // Lowercase the weekday — the title reads as a sentence so it
+  if (diffDays === 0) return i18n.t('storyShare.card.fullyBookedToday');
+  if (diffDays === 1) return i18n.t('storyShare.card.fullyBookedTomorrow');
+  // Lowercase weekday in fr — the title reads as a sentence so it
   // shouldn't have a stranded capital ("de Samedi" looks wrong).
-  return `de ${FRENCH_DAYS[target.getDay()].toLowerCase()}`;
+  const weekday = new Intl.DateTimeFormat(i18n.language, { weekday: 'long' }).format(target);
+  return i18n.t('storyShare.card.fullyBookedOn', {
+    weekday: i18n.language === 'fr' ? weekday.toLowerCase() : capitalizeFirst(weekday),
+  });
 }
 
 /**
@@ -440,11 +448,16 @@ function TodayAvailabilityLayout({
   const palette = theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE;
 
   const dateParts = parseDateKey(day.dateKey);
-  // Capitalised weekday + day number + lowercase long-form month —
-  // matches the reference design ("Jeudi 7 mai"). Rendered as a
-  // single headline so the title block stays compact.
-  const longDateLabel =
-    `${FRENCH_DAYS[dateParts.dow]} ${dateParts.day} ${FRENCH_MONTHS_LONG[dateParts.month]}`;
+  // Capitalised weekday + day number + long-form month, localized —
+  // matches the reference design ("Jeudi 7 mai" / "Thursday, May 7").
+  // Rendered as a single headline so the title block stays compact.
+  const longDateLabel = capitalizeFirst(
+    new Intl.DateTimeFormat(i18n.language, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }).format(new Date(dateParts.year, dateParts.month, dateParts.day)),
+  );
   const summary = summarizeFreeWindow(day);
   const isFullyBooked = day.freeHalfHours.size === 0;
 
@@ -499,7 +512,7 @@ function TodayAvailabilityLayout({
           style={[todayStyles.captionLabel, { color: palette.text }]}
           numberOfLines={1}
         >
-          DISPOS DU JOUR
+          {i18n.t('storyShare.card.dayCaption')}
         </Text>
       </View>
 
@@ -519,7 +532,11 @@ function TodayAvailabilityLayout({
             style={[todayStyles.subtitle, { color: palette.textMuted }]}
             numberOfLines={1}
           >
-            {summary.totalLabel} libres {summary.rangeLabel}
+            {i18n.t('storyShare.card.freeSummary', {
+              total: summary.totalLabel,
+              start: summary.startLabel,
+              end: summary.endLabel,
+            })}
           </Text>
         )}
       </View>
@@ -528,10 +545,10 @@ function TodayAvailabilityLayout({
       {isFullyBooked ? (
         <View style={todayStyles.emptyWrap}>
           <Text style={[todayStyles.emptyTitle, { color: palette.text }]}>
-            Complet {computeDayHeadline(day.dateKey)}
+            {fullyBookedLabel(day.dateKey)}
           </Text>
           <Text style={[todayStyles.emptySubtitle, { color: palette.textMuted }]}>
-            Réservez en ligne pour les prochains jours
+            {i18n.t('storyShare.card.bookOnlineNextDays')}
           </Text>
         </View>
       ) : (
@@ -672,7 +689,7 @@ function HourRow({
             ]}
             numberOfLines={1}
           >
-            Libre
+            {i18n.t('storyShare.card.free')}
           </Text>
         )}
       </View>
@@ -726,15 +743,16 @@ function computeMaxHour(day: AvailabilityDay): number | null {
  *
  * Returns:
  *   - `totalLabel` like "3h", "3h30", "30min" (sum of all free buckets)
- *   - `rangeLabel` like "entre 12h et 20h" (smallest → largest free
- *     bucket, end inclusive — the last bucket is 30 min wide)
+ *   - `startLabel` / `endLabel` like "12h" / "20h" (smallest → largest
+ *     free bucket, end inclusive — the last bucket is 30 min wide);
+ *     assembled by the caller via the storyShare.card.freeSummary key.
  *
  * Returns `null` when the day has no free time so the caller can
  * fall back to the empty-state UI without a misleading "0min libres".
  */
 function summarizeFreeWindow(
   day: AvailabilityDay,
-): { totalLabel: string; rangeLabel: string } | null {
+): { totalLabel: string; startLabel: string; endLabel: string } | null {
   if (day.freeHalfHours.size === 0) return null;
 
   // Total time across every free 30-minute bucket.
@@ -766,7 +784,8 @@ function summarizeFreeWindow(
 
   return {
     totalLabel,
-    rangeLabel: `entre ${fmt(startH, startM)} et ${fmt(endH, endM)}`,
+    startLabel: fmt(startH, startM),
+    endLabel: fmt(endH, endM),
   };
 }
 
@@ -1108,7 +1127,13 @@ function MonthAvailabilityStoryLayout({
       .slice(0, 2)
       .map((w) => w[0]?.toUpperCase() ?? '')
       .join('') || 'O';
-  const WEEK = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  // Narrow weekday initials, Monday-first, localized via Intl
+  // ("L M M J V S D" in fr, "M T W T F S S" in en). 2021-01-04 is a Monday.
+  const WEEK = Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(i18n.language, { weekday: 'narrow' }).format(
+      new Date(2021, 0, 4 + i),
+    ),
+  );
 
   const inner = (
     <>
@@ -1137,7 +1162,7 @@ function MonthAvailabilityStoryLayout({
 
       {/* Title */}
       <Text style={[availStoryStyles.bigTitle, { color: palette.text }]}>
-        Mes dispos{'\n'}du mois
+        {i18n.t('storyShare.card.monthTitle')}
       </Text>
       <Text style={[monthStoryStyles.subtitle, { color: palette.text }]} numberOfLines={1}>
         {grid.monthLabel}
@@ -1176,9 +1201,9 @@ function MonthAvailabilityStoryLayout({
       {/* Legend */}
       <View style={monthStoryStyles.legend}>
         {([
-          ['#10b981', 'Dispo'],
-          ['#f59e0b', 'Bientôt complet'],
-          ['#f43f5e', 'Complet'],
+          ['#10b981', i18n.t('storyShare.card.available')],
+          ['#f59e0b', i18n.t('storyShare.card.almostFull')],
+          ['#f43f5e', i18n.t('storyShare.card.full')],
         ] as [string, string][]).map(([c, l], i) => (
           <View key={i} style={monthStoryStyles.legendItem}>
             <View style={[monthStoryStyles.legendDot, { backgroundColor: c }]} />
@@ -1452,7 +1477,7 @@ export function StoryCard({
                   topServices.length > 3 && { marginBottom: 8 },
                 ]}
               >
-                Nos prestations
+                {i18n.t('storyShare.card.ourServices')}
               </Text>
               {topServices.map((service, index) => (
                 <View key={index} style={[styles.serviceRow, topServices.length > 3 && { marginBottom: 6 }]}>
@@ -1475,7 +1500,7 @@ export function StoryCard({
                       topServices.length > 3 && { fontSize: 14 },
                     ]}
                   >
-                    {service.price === 0 ? 'Gratuit' : `${(service.price / 100).toFixed(0)}€`}
+                    {service.price === 0 ? i18n.t('common.free') : `${(service.price / 100).toFixed(0)}€`}
                   </Text>
                 </View>
               ))}
@@ -1506,7 +1531,7 @@ export function StoryCard({
                 )}
               </View>
               <Text style={[styles.qrLabel, { color: palette.qrLabel }]}>
-                Scannez pour réserver
+                {i18n.t('storyShare.card.scanToBook')}
               </Text>
             </View>
           )}

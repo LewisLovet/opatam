@@ -18,10 +18,12 @@ import {
   Animated,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
+import i18n from '../../lib/i18n';
 import { Text, Button, Input, Card, useToast } from '../../components';
 import { useProvider } from '../../contexts';
 import {
@@ -151,19 +153,24 @@ function dateToYmd(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
-function formatPromoDateFr(ymd: string): string {
-  return ymdToDate(ymd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+// Locale for date/number formatting, following the current app language.
+function dateLocale(): string {
+  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+}
+function formatPromoDate(ymd: string): string {
+  return ymdToDate(ymd).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function euroCents(cents: number): string {
-  if (cents === 0) return 'Gratuit';
-  return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
+  if (cents === 0) return i18n.t('common.free');
+  return new Intl.NumberFormat(dateLocale(), { style: 'currency', currency: 'EUR' }).format(cents / 100);
 }
 
 /** A "12 € → 9,60 €" preview line. When `onToggle` is set, the row is tappable
  *  (checkbox + greyed "non incluse") to include/exclude it from the promo. */
 function PromoPriceRow({ row, onToggle }: { row: DiscountPreviewRow; onToggle?: () => void }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const reduced = row.applies && row.discounted < row.original;
   const content = (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingVertical: 2 }}>
@@ -190,7 +197,7 @@ function PromoPriceRow({ row, onToggle }: { row: DiscountPreviewRow; onToggle?: 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text variant="bodySmall" color="textSecondary">{euroCents(row.original)}</Text>
           {onToggle && !row.applies && (
-            <Text variant="caption" color="textMuted" style={{ fontSize: 10 }}>non incluse</Text>
+            <Text variant="caption" color="textMuted" style={{ fontSize: 10 }}>{t('proServices.promo.preview.notIncluded')}</Text>
           )}
         </View>
       )}
@@ -203,12 +210,13 @@ function PromoPriceRow({ row, onToggle }: { row: DiscountPreviewRow; onToggle?: 
  *  line to include or exclude it from the promo. */
 function PromoPreview({ preview, onToggleLine }: { preview: ServiceDiscountPreview; onToggleLine: (id: string) => void }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const hasLines = preview.variations.length > 0 || preview.options.length > 0;
   return (
     <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface, padding: spacing.sm, gap: spacing.sm }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text variant="caption" color="textSecondary" style={{ fontWeight: '700', textTransform: 'uppercase' }}>
-          Aperçu des prix
+          {t('proServices.promo.preview.title')}
         </Text>
         <View style={{ backgroundColor: '#E11D48', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
           <Text variant="caption" style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>−{preview.percent}%</Text>
@@ -216,11 +224,11 @@ function PromoPreview({ preview, onToggleLine }: { preview: ServiceDiscountPrevi
       </View>
       {hasLines && (
         <Text variant="caption" color="textMuted">
-          Touchez une ligne pour l&apos;inclure ou l&apos;exclure de la promo.
+          {t('proServices.promo.preview.tapHint')}
         </Text>
       )}
       {preview.base && (
-        <PromoPriceRow row={{ id: null, name: 'Prestation', original: preview.base.original, discounted: preview.base.discounted, applies: true }} />
+        <PromoPriceRow row={{ id: null, name: t('proServices.promo.preview.baseService'), original: preview.base.original, discounted: preview.base.discounted, applies: true }} />
       )}
       {preview.variations.map((g, gi) => (
         <View key={gi} style={{ gap: 2 }}>
@@ -232,7 +240,7 @@ function PromoPreview({ preview, onToggleLine }: { preview: ServiceDiscountPrevi
       ))}
       {preview.options.length > 0 && (
         <View style={{ gap: 2 }}>
-          <Text variant="caption" color="textMuted" style={{ fontWeight: '500' }}>Options et suppléments</Text>
+          <Text variant="caption" color="textMuted" style={{ fontWeight: '500' }}>{t('proServices.promo.preview.optionsGroup')}</Text>
           <View style={{ gap: 2, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border }}>
             {preview.options.map((r) => <PromoPriceRow key={r.id} row={r} onToggle={() => onToggleLine(r.id!)} />)}
           </View>
@@ -262,9 +270,12 @@ function formatDuration(min: number): string {
 }
 
 function formatPrice(cents: number, centsMax?: number | null): string {
-  if (cents === 0 && !centsMax) return 'Gratuit';
-  const fmt = (v: number) => `${(v / 100).toFixed(2)} €`;
-  if (centsMax && centsMax > cents) return `De ${fmt(cents)} à ${fmt(centsMax)}`;
+  if (cents === 0 && !centsMax) return i18n.t('common.free');
+  const fmt = (v: number) =>
+    new Intl.NumberFormat(dateLocale(), { style: 'currency', currency: 'EUR' }).format(v / 100);
+  if (centsMax && centsMax > cents) {
+    return i18n.t('proServices.priceRange', { min: fmt(cents), max: fmt(centsMax) });
+  }
   return fmt(cents);
 }
 
@@ -280,6 +291,7 @@ function DepositBadge({
   depositsEnabled: boolean;
   defaultDeposit: { percent: number; refundDeadlineHours: number } | null;
 }) {
+  const { t } = useTranslation();
   if (!depositsEnabled) return null;
 
   // Explicitly disabled — show a grey "Pas d'acompte" pill.
@@ -296,7 +308,7 @@ function DepositBadge({
         }}
       >
         <Text variant="caption" style={{ color: '#4B5563', fontWeight: '600', fontSize: 11 }}>
-          Pas d&apos;acompte
+          {t('proServices.badge.noDeposit')}
         </Text>
       </View>
     );
@@ -307,8 +319,11 @@ function DepositBadge({
     { depositDefault: defaultDeposit },
   );
   if (!resolved || resolved.amount === 0) return null;
-  const amount = (resolved.amount / 100).toFixed(2).replace('.', ',') + ' €';
-  const suffix = resolved.source === 'service' ? 'perso' : 'défaut';
+  const amount = euroCents(resolved.amount);
+  const suffix =
+    resolved.source === 'service'
+      ? t('proServices.badge.sourceCustom')
+      : t('proServices.badge.sourceDefault');
   return (
     <View
       style={{
@@ -321,7 +336,7 @@ function DepositBadge({
       }}
     >
       <Text variant="caption" style={{ color: '#1D4ED8', fontWeight: '600', fontSize: 11 }}>
-        Acompte {amount} · {suffix}
+        {t('proServices.badge.deposit', { amount, source: suffix })}
       </Text>
     </View>
   );
@@ -336,6 +351,7 @@ export default function ServicesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { provider, providerId } = useProvider();
 
   // Deposit gates (used to decide whether to show the badge).
@@ -389,11 +405,11 @@ export default function ServicesScreen() {
     if (gForm.enabled) {
       const pct = Number(gForm.percent);
       if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
-        showToast({ variant: 'error', message: 'La réduction doit être entre 1 et 100 %' });
+        showToast({ variant: 'error', message: t('proServices.errors.percentRange') });
         return;
       }
       if (gForm.startsAt && gForm.endsAt && gForm.startsAt > gForm.endsAt) {
-        showToast({ variant: 'error', message: 'La date de fin doit être après le début' });
+        showToast({ variant: 'error', message: t('proServices.errors.endAfterStart') });
         return;
       }
       globalDiscount = {
@@ -408,11 +424,11 @@ export default function ServicesScreen() {
       await providerService.updateSettings(providerId, { globalDiscount });
       showToast({
         variant: 'success',
-        message: gForm.enabled ? 'Promotion globale enregistrée' : 'Promotion globale désactivée',
+        message: gForm.enabled ? t('proServices.globalPromo.saved') : t('proServices.globalPromo.disabled'),
       });
       setGlobalPromoOpen(false);
     } catch {
-      showToast({ variant: 'error', message: 'Une erreur est survenue' });
+      showToast({ variant: 'error', message: t('common.error') });
     } finally {
       setGSaving(false);
     }
@@ -470,7 +486,7 @@ export default function ServicesScreen() {
       setMembers(mbrs);
     } catch (err) {
       console.error('Error loading services:', err);
-      showToast({ variant: 'error', message: 'Erreur lors du chargement' });
+      showToast({ variant: 'error', message: t('proServices.loadError') });
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -529,26 +545,26 @@ export default function ServicesScreen() {
   const handleSaveCategory = async () => {
     if (!providerId) return;
     if (!categoryName.trim()) {
-      showToast({ variant: 'error', message: 'Le nom est requis' });
+      showToast({ variant: 'error', message: t('proServices.errors.nameRequired') });
       return;
     }
     setIsSavingCategory(true);
     try {
       if (editingCategoryId) {
         await serviceCategoryRepository.update(providerId, editingCategoryId, { name: categoryName.trim() });
-        showToast({ variant: 'success', message: 'Catégorie modifiée' });
+        showToast({ variant: 'success', message: t('proServices.toasts.categoryUpdated') });
       } else {
         await serviceCategoryRepository.create(providerId, {
           name: categoryName.trim(),
           sortOrder: categories.length,
           isActive: true,
         });
-        showToast({ variant: 'success', message: 'Catégorie créée' });
+        showToast({ variant: 'success', message: t('proServices.toasts.categoryCreated') });
       }
       setShowCategoryModal(false);
       loadData();
     } catch (err: any) {
-      showToast({ variant: 'error', message: err?.message || 'Erreur' });
+      showToast({ variant: 'error', message: err?.message || t('common.error') });
     } finally {
       setIsSavingCategory(false);
     }
@@ -557,14 +573,14 @@ export default function ServicesScreen() {
   const handleDeleteCategory = (cat: WithId<ServiceCategory>) => {
     const count = services.filter((s) => s.categoryId === cat.id).length;
     Alert.alert(
-      'Supprimer la catégorie',
+      t('proServices.deleteCategory.title'),
       count > 0
-        ? `"${cat.name}" contient ${count} prestation(s). Elles seront déplacées dans "Autres prestations".`
-        : `Supprimer "${cat.name}" ?`,
+        ? t('proServices.deleteCategory.messageWithServices', { name: cat.name, count })
+        : t('proServices.deleteCategory.messageEmpty', { name: cat.name }),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('proServices.deleteConfirm'),
           style: 'destructive',
           onPress: async () => {
             if (!providerId) return;
@@ -574,10 +590,10 @@ export default function ServicesScreen() {
                 await serviceRepository.update(providerId, s.id, { categoryId: null });
               }
               await serviceCategoryRepository.delete(providerId, cat.id);
-              showToast({ variant: 'success', message: 'Catégorie supprimée' });
+              showToast({ variant: 'success', message: t('proServices.toasts.categoryDeleted') });
               loadData();
             } catch (err: any) {
-              showToast({ variant: 'error', message: err?.message || 'Erreur' });
+              showToast({ variant: 'error', message: err?.message || t('common.error') });
             }
           },
         },
@@ -665,20 +681,20 @@ export default function ServicesScreen() {
   const handleSave = async () => {
     if (!providerId) return;
     if (!form.name.trim()) {
-      showToast({ variant: 'error', message: 'Le nom est requis' });
+      showToast({ variant: 'error', message: t('proServices.errors.nameRequired') });
       return;
     }
     if (!form.price.trim() || isNaN(Number(form.price)) || Number(form.price) < 0) {
-      showToast({ variant: 'error', message: 'Le prix doit être un nombre positif' });
+      showToast({ variant: 'error', message: t('proServices.errors.pricePositive') });
       return;
     }
     const totalDuration = hoursMinutesToMinutes(form.durationHours, form.durationMinutes);
     if (totalDuration <= 0) {
-      showToast({ variant: 'error', message: 'La durée doit être supérieure à 0' });
+      showToast({ variant: 'error', message: t('proServices.errors.durationPositive') });
       return;
     }
     if (form.locationIds.length === 0) {
-      showToast({ variant: 'error', message: 'Sélectionnez au moins un lieu' });
+      showToast({ variant: 'error', message: t('proServices.errors.locationRequired') });
       return;
     }
 
@@ -697,19 +713,19 @@ export default function ServicesScreen() {
         const valueRaw = Number(form.depositValue);
         const hoursRaw = Number(form.depositRefundHours);
         if (!Number.isFinite(valueRaw) || valueRaw < 1) {
-          showToast({ variant: 'error', message: "Le montant de l'acompte doit être > 0" });
+          showToast({ variant: 'error', message: t('proServices.errors.depositPositive') });
           setIsSaving(false);
           return;
         }
         if (form.depositType === 'percent' && valueRaw > 100) {
-          showToast({ variant: 'error', message: 'Le pourcentage ne peut pas dépasser 100' });
+          showToast({ variant: 'error', message: t('proServices.errors.depositPercentMax') });
           setIsSaving(false);
           return;
         }
         const valueCents =
           form.depositType === 'fixed' ? Math.round(valueRaw * 100) : Math.round(valueRaw);
         if (form.depositType === 'fixed' && valueCents > priceCents) {
-          showToast({ variant: 'error', message: "L'acompte fixe ne peut pas dépasser le prix" });
+          showToast({ variant: 'error', message: t('proServices.errors.depositFixedMax') });
           setIsSaving(false);
           return;
         }
@@ -725,7 +741,7 @@ export default function ServicesScreen() {
       if (form.discountEnabled) {
         const pct = Number(form.discountPercent);
         if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
-          showToast({ variant: 'error', message: 'La réduction doit être entre 1 et 100 %' });
+          showToast({ variant: 'error', message: t('proServices.errors.percentRange') });
           setIsSaving(false);
           return;
         }
@@ -734,7 +750,7 @@ export default function ServicesScreen() {
           form.discountEndsAt &&
           form.discountStartsAt > form.discountEndsAt
         ) {
-          showToast({ variant: 'error', message: 'La date de fin doit être après le début' });
+          showToast({ variant: 'error', message: t('proServices.errors.endAfterStart') });
           setIsSaving(false);
           return;
         }
@@ -770,19 +786,19 @@ export default function ServicesScreen() {
 
       if (editingId) {
         await serviceRepository.update(providerId, editingId, payload);
-        showToast({ variant: 'success', message: 'Prestation modifiée' });
+        showToast({ variant: 'success', message: t('proServices.toasts.serviceUpdated') });
       } else {
         await serviceRepository.create(providerId, {
           ...payload,
           sortOrder: services.length,
         });
-        showToast({ variant: 'success', message: 'Prestation créée' });
+        showToast({ variant: 'success', message: t('proServices.toasts.serviceCreated') });
       }
 
       setShowModal(false);
       loadData();
     } catch (err: any) {
-      showToast({ variant: 'error', message: err?.message || 'Erreur' });
+      showToast({ variant: 'error', message: err?.message || t('common.error') });
     } finally {
       setIsSaving(false);
     }
@@ -796,27 +812,27 @@ export default function ServicesScreen() {
         prev.map((s) => (s.id === service.id ? { ...s, isActive: !s.isActive } : s))
       );
     } catch (err: any) {
-      showToast({ variant: 'error', message: err?.message || 'Erreur' });
+      showToast({ variant: 'error', message: err?.message || t('common.error') });
     }
   };
 
   const handleDelete = (service: WithId<Service>) => {
     Alert.alert(
-      'Supprimer la prestation',
-      `Êtes-vous sûr de vouloir supprimer "${service.name}" ?`,
+      t('proServices.deleteService.title'),
+      t('proServices.deleteService.message', { name: service.name }),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('proServices.deleteConfirm'),
           style: 'destructive',
           onPress: async () => {
             if (!providerId) return;
             try {
               await serviceRepository.delete(providerId, service.id);
-              showToast({ variant: 'success', message: 'Prestation supprimée' });
+              showToast({ variant: 'success', message: t('proServices.toasts.serviceDeleted') });
               loadData();
             } catch (err: any) {
-              showToast({ variant: 'error', message: err?.message || 'Erreur' });
+              showToast({ variant: 'error', message: err?.message || t('common.error') });
             }
           },
         },
@@ -844,8 +860,8 @@ export default function ServicesScreen() {
   };
 
   const getCategoryName = (id: string | null) => {
-    if (!id) return 'Sans catégorie';
-    return categories.find((c) => c.id === id)?.name || 'Sans catégorie';
+    if (!id) return t('proServices.noCategory');
+    return categories.find((c) => c.id === id)?.name || t('proServices.noCategory');
   };
 
   const toggleCategoryPicker = () => {
@@ -895,7 +911,7 @@ export default function ServicesScreen() {
                 <Text variant="body" style={{ fontWeight: '600' }}>{service.name}</Text>
                 {!service.isActive && (
                   <View style={[styles.badge, { backgroundColor: '#FEE2E2' }]}>
-                    <Text variant="caption" style={{ color: '#DC2626', fontWeight: '600', fontSize: 10 }}>Inactif</Text>
+                    <Text variant="caption" style={{ color: '#DC2626', fontWeight: '600', fontSize: 10 }}>{t('proServices.inactiveBadge')}</Text>
                   </View>
                 )}
               </View>
@@ -934,8 +950,10 @@ export default function ServicesScreen() {
                       }}
                     >
                       {effectiveActive
-                        ? `Promo −${effectiveActive.percent}%${fromGlobal ? ' · globale' : ''}`
-                        : `Promo −${service.discount!.percent}% · inactive`}
+                        ? fromGlobal
+                          ? t('proServices.promo.badgeActiveGlobal', { percent: effectiveActive.percent })
+                          : t('proServices.promo.badgeActive', { percent: effectiveActive.percent })
+                        : t('proServices.promo.badgeInactive', { percent: service.discount!.percent })}
                     </Text>
                   </View>
                 </View>
@@ -952,7 +970,7 @@ export default function ServicesScreen() {
                     <View style={[styles.memberChip, { backgroundColor: colors.primaryLight }]}>
                       <Ionicons name="people-outline" size={11} color={colors.primary} />
                       <Text style={[styles.memberChipText, { color: colors.primary }]}>
-                        Tous les membres
+                        {t('proServices.availability.allMembers')}
                       </Text>
                     </View>
                   ) : (
@@ -1020,9 +1038,9 @@ export default function ServicesScreen() {
     ); // optimistic
     try {
       await serviceRepository.update(providerId, service.id, { categoryId });
-      showToast({ variant: 'success', message: 'Prestation déplacée' });
+      showToast({ variant: 'success', message: t('proServices.toasts.serviceMoved') });
     } catch {
-      showToast({ variant: 'error', message: 'Déplacement non enregistré' });
+      showToast({ variant: 'error', message: t('proServices.toasts.moveFailed') });
       loadData();
     }
   };
@@ -1099,7 +1117,7 @@ export default function ServicesScreen() {
       >
         <Ionicons name="folder-outline" size={18} color={colors.primary} />
         <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
-          Ajouter une catégorie
+          {t('proServices.addCategory')}
         </Text>
       </Pressable>
       <Pressable
@@ -1119,7 +1137,7 @@ export default function ServicesScreen() {
       >
         <Ionicons name="add" size={18} color={colors.primary} />
         <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
-          Ajouter une prestation
+          {t('proServices.addService')}
         </Text>
       </Pressable>
     </View>
@@ -1133,7 +1151,7 @@ export default function ServicesScreen() {
           <Pressable onPress={() => router.back()} hitSlop={12} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>Prestations</Text>
+          <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>{t('proServices.title')}</Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <Pressable onPress={openCreateCategory} style={({ pressed }) => [styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
               <Ionicons name="folder-outline" size={18} color="#FFFFFF" />
@@ -1155,11 +1173,11 @@ export default function ServicesScreen() {
             <View style={[styles.emptyIcon, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="pricetag-outline" size={32} color={colors.primary} />
             </View>
-            <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>Aucune prestation</Text>
+            <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>{t('proServices.emptyTitle')}</Text>
             <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.xs }}>
-              Ajoutez votre première prestation pour commencer à recevoir des réservations.
+              {t('proServices.emptyDescription')}
             </Text>
-            <Button variant="primary" title="Ajouter une prestation" onPress={openCreate} style={{ marginTop: spacing.lg }} />
+            <Button variant="primary" title={t('proServices.addService')} onPress={openCreate} style={{ marginTop: spacing.lg }} />
           </View>
         </ScrollView>
       ) : (
@@ -1192,18 +1210,18 @@ export default function ServicesScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                    Promotion globale
+                    {t('proServices.globalPromo.title')}
                   </Text>
                   <Text variant="caption" color="textSecondary" style={{ marginTop: 1 }}>
                     {g
                       ? gActive
-                        ? `−${g.percent}% sur toutes les prestations`
-                        : `−${g.percent}% · inactive (hors période)`
-                      : 'Appliquez une réduction sur toutes vos prestations'}
+                        ? t('proServices.globalPromo.activeSummary', { percent: g.percent })
+                        : t('proServices.globalPromo.inactiveSummary', { percent: g.percent })
+                      : t('proServices.globalPromo.promptSummary')}
                   </Text>
                 </View>
                 <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
-                  {g ? 'Modifier' : 'Configurer'}
+                  {g ? t('proServices.globalPromo.edit') : t('proServices.globalPromo.configure')}
                 </Text>
               </Pressable>
             );
@@ -1223,7 +1241,7 @@ export default function ServicesScreen() {
                   <View style={{ gap: spacing.sm, marginLeft: spacing.md }}>
                     {catServices.length === 0 ? (
                       <Text variant="caption" color="textMuted" style={{ fontStyle: 'italic', paddingVertical: spacing.xs }}>
-                        Aucune prestation dans cette catégorie
+                        {t('proServices.emptyCategory')}
                       </Text>
                     ) : (
                       catServices.map(renderServiceCard)
@@ -1237,7 +1255,7 @@ export default function ServicesScreen() {
           {uncategorized.length > 0 && (
             <View>
               {categories.length > 0 &&
-                renderCategoryBand('Autres prestations', uncategorized.length, { accent: colors.textMuted })}
+                renderCategoryBand(t('proServices.uncategorizedBand'), uncategorized.length, { accent: colors.textMuted })}
               <View style={{ gap: spacing.sm, marginLeft: categories.length > 0 ? spacing.md : 0 }}>
                 {uncategorized.map(renderServiceCard)}
               </View>
@@ -1254,7 +1272,7 @@ export default function ServicesScreen() {
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
             {/* Modal Header */}
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">{editingId ? 'Modifier' : 'Nouvelle prestation'}</Text>
+              <Text variant="h3">{editingId ? t('proServices.form.editTitle') : t('proServices.form.createTitle')}</Text>
               <Pressable onPress={() => setShowModal(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -1268,14 +1286,14 @@ export default function ServicesScreen() {
             >
               <View style={{ gap: spacing.lg }}>
                 <EditorSection
-                  title="Essentiel"
-                  subtitle="Nom, photo, catégorie, durée et prix"
+                  title={t('proServices.form.essentialsTitle')}
+                  subtitle={t('proServices.form.essentialsSubtitle')}
                   icon="pricetag-outline"
                   collapsible={false}
                 >
                 <Input
-                  label="Nom"
-                  placeholder="Ex: Coupe femme"
+                  label={t('proServices.form.nameLabel')}
+                  placeholder={t('proServices.form.namePlaceholder')}
                   value={form.name}
                   onChangeText={(t) => setForm((p) => ({ ...p, name: t }))}
                   autoCapitalize="sentences"
@@ -1284,7 +1302,7 @@ export default function ServicesScreen() {
                 {/* Photo */}
                 <View>
                   <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-                    Photo <Text variant="caption" color="textMuted">(optionnel)</Text>
+                    {t('proServices.form.photoLabel')} <Text variant="caption" color="textMuted">{t('proServices.form.optional')}</Text>
                   </Text>
 
                   {form.photoURL && (
@@ -1336,7 +1354,7 @@ export default function ServicesScreen() {
                     >
                       <Ionicons name="camera-outline" size={16} color={colors.textMuted} />
                       <Text variant="caption" color="textMuted" style={{ fontWeight: '500' }}>
-                        {form.photoURL ? "Changer (appareil)" : "Depuis l'appareil"}
+                        {form.photoURL ? t('proServices.form.changeFromDevice') : t('proServices.form.fromDevice')}
                       </Text>
                     </Pressable>
 
@@ -1367,7 +1385,7 @@ export default function ServicesScreen() {
                           color={showPortfolio ? 'primary' : 'textMuted'}
                           style={{ fontWeight: '500' }}
                         >
-                          {form.photoURL ? 'Changer (portfolio)' : 'Depuis le portfolio'}
+                          {form.photoURL ? t('proServices.form.changeFromPortfolio') : t('proServices.form.fromPortfolio')}
                         </Text>
                         <Text variant="caption" color="textMuted">
                           ({portfolioPhotos.length})
@@ -1436,7 +1454,7 @@ export default function ServicesScreen() {
                 {/* Category — inline picker */}
                 {categories.length > 0 && (
                   <View>
-                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Catégorie</Text>
+                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>{t('proServices.form.categoryLabel')}</Text>
                     <Pressable
                       onPress={toggleCategoryPicker}
                       style={[styles.selectBtn, { borderColor: expandedPicker === 'category' ? colors.primary : colors.border, borderRadius: radius.lg, padding: spacing.md }]}
@@ -1453,7 +1471,7 @@ export default function ServicesScreen() {
                           style={[styles.inlinePickerItem, { padding: spacing.sm, paddingHorizontal: spacing.md, backgroundColor: form.categoryId === null ? colors.primaryLight : 'transparent' }]}
                         >
                           <Text variant="bodySmall" color={form.categoryId === null ? 'primary' : 'textMuted'} style={{ flex: 1, fontWeight: form.categoryId === null ? '600' : '400' }}>
-                            Sans catégorie
+                            {t('proServices.noCategory')}
                           </Text>
                           {form.categoryId === null && <Ionicons name="checkmark" size={18} color={colors.primary} />}
                         </Pressable>
@@ -1478,7 +1496,7 @@ export default function ServicesScreen() {
                     null = fall back to the member's color (existing behavior). */}
                 <View>
                   <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-                    Couleur sur le calendrier <Text variant="caption" color="textMuted">(optionnel)</Text>
+                    {t('proServices.form.colorLabel')} <Text variant="caption" color="textMuted">{t('proServices.form.optional')}</Text>
                   </Text>
                   <ScrollView
                     horizontal
@@ -1544,18 +1562,18 @@ export default function ServicesScreen() {
                   >
                     <Ionicons name="layers-outline" size={18} color={colors.primary} style={{ marginTop: 1 }} />
                     <Text variant="caption" style={{ flex: 1, color: colors.text }}>
-                      Prix et durée définis par les variations ci-dessous — à partir de{' '}
+                      {t('proServices.form.variationsPricingBefore')}{' '}
                       <Text variant="caption" style={{ fontWeight: '700', color: colors.primary }}>
                         {euroCents(getServiceMinPrice({ price: 0, variations: sanitizeVariations(form.variations) }))}
                       </Text>
-                      . Supprimez toutes les variations pour revenir à un prix fixe.
+                      {t('proServices.form.variationsPricingAfter')}
                     </Text>
                   </View>
                 ) : (
                   <>
                     {/* Duration — single minutes input with a live hour preview */}
                     <View>
-                      <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Durée</Text>
+                      <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>{t('proServices.form.durationLabel')}</Text>
                       <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
                         <View style={{ width: 110 }}>
                           <Input
@@ -1573,11 +1591,11 @@ export default function ServicesScreen() {
                             keyboardType="number-pad"
                           />
                         </View>
-                        <Text variant="bodySmall" color="textSecondary">min</Text>
+                        <Text variant="bodySmall" color="textSecondary">{t('proServices.form.durationMinUnit')}</Text>
                         {hoursMinutesToMinutes(form.durationHours, form.durationMinutes) >= 60 && (
                           <View style={{ paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.md, backgroundColor: colors.surfaceSecondary }}>
                             <Text variant="bodySmall" color="textSecondary" style={{ fontWeight: '600' }}>
-                              = {formatDuration(hoursMinutesToMinutes(form.durationHours, form.durationMinutes))}
+                              {t('proServices.form.durationPreview', { duration: formatDuration(hoursMinutesToMinutes(form.durationHours, form.durationMinutes)) })}
                             </Text>
                           </View>
                         )}
@@ -1585,7 +1603,7 @@ export default function ServicesScreen() {
                     </View>
 
                     <Input
-                      label="Prix (€)"
+                      label={t('proServices.form.priceLabel')}
                       placeholder="0"
                       value={form.price}
                       onChangeText={(t) => setForm((p) => ({ ...p, price: t }))}
@@ -1595,8 +1613,8 @@ export default function ServicesScreen() {
                 )}
 
                 <Input
-                  label="Description (optionnel)"
-                  placeholder="Décrivez cette prestation"
+                  label={t('proServices.form.descriptionLabel')}
+                  placeholder={t('proServices.form.descriptionPlaceholder')}
                   value={form.description}
                   onChangeText={(t) => setForm((p) => ({ ...p, description: t }))}
                   multiline
@@ -1605,21 +1623,21 @@ export default function ServicesScreen() {
                 </EditorSection>
 
                 <EditorSection
-                  title="Réglages & acompte"
-                  subtitle="Acompte et temps de battement"
+                  title={t('proServices.settingsSection.title')}
+                  subtitle={t('proServices.settingsSection.subtitle')}
                   icon="options-outline"
                   defaultOpen={false}
                 >
                 {/* Buffer time — free input with info box */}
                 <View>
                   <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-                    Temps de battement (minutes)
+                    {t('proServices.settingsSection.bufferLabel')}
                   </Text>
                   <View style={[styles.infoBox, { backgroundColor: '#EFF6FF', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.sm }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                       <Ionicons name="information-circle-outline" size={18} color="#3B82F6" style={{ marginTop: 1 }} />
                       <Text variant="caption" style={{ marginLeft: spacing.xs, flex: 1, color: '#1E40AF', lineHeight: 18 }}>
-                        Temps de pause automatique ajouté après chaque rendez-vous. Permet de préparer le prochain client, ranger ou se déplacer.
+                        {t('proServices.settingsSection.bufferInfo')}
                       </Text>
                     </View>
                   </View>
@@ -1639,23 +1657,28 @@ export default function ServicesScreen() {
                       variant="bodySmall"
                       style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}
                     >
-                      Acompte sur cette prestation
+                      {t('proServices.deposit.label')}
                     </Text>
                     {(['inherit', 'custom', 'none'] as DepositMode[]).map((mode) => {
                       const checked = form.depositMode === mode;
                       const labels: Record<DepositMode, string> = {
-                        inherit: defaultDepositSettings ? 'Acompte par défaut' : 'Aucun acompte (par défaut)',
-                        custom: 'Acompte personnalisé',
-                        none: "Pas d'acompte",
+                        inherit: defaultDepositSettings
+                          ? t('proServices.deposit.modeInheritWithDefault')
+                          : t('proServices.deposit.modeInheritNoDefault'),
+                        custom: t('proServices.deposit.modeCustom'),
+                        none: t('proServices.deposit.modeNone'),
                       };
                       const hints: Record<DepositMode, string> = {
                         inherit: defaultDepositSettings
-                          ? `${defaultDepositSettings.percent} % du prix · remboursable jusqu'à ${defaultDepositSettings.refundDeadlineHours}h avant le RDV`
-                          : "Aucun acompte par défaut configuré → pas d'acompte demandé.",
-                        custom: "Remplace l'acompte par défaut avec une valeur spécifique.",
+                          ? t('proServices.deposit.hintInheritWithDefault', {
+                              percent: defaultDepositSettings.percent,
+                              hours: defaultDepositSettings.refundDeadlineHours,
+                            })
+                          : t('proServices.deposit.hintInheritNoDefault'),
+                        custom: t('proServices.deposit.hintCustom'),
                         none: defaultDepositSettings
-                          ? "Désactive explicitement l'acompte sur cette prestation, même si vous avez un acompte par défaut."
-                          : "Pas d'acompte demandé sur cette prestation.",
+                          ? t('proServices.deposit.hintNoneWithDefault')
+                          : t('proServices.deposit.hintNoneNoDefault'),
                       };
                       return (
                         <Pressable
@@ -1715,16 +1738,16 @@ export default function ServicesScreen() {
                       >
                         {/* Type segmented */}
                         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                          {(['percent', 'fixed'] as DepositCustomType[]).map((t) => {
-                            const sel = form.depositType === t;
+                          {(['percent', 'fixed'] as DepositCustomType[]).map((dt) => {
+                            const sel = form.depositType === dt;
                             return (
                               <Pressable
-                                key={t}
+                                key={dt}
                                 onPress={() =>
                                   setForm((p) => ({
                                     ...p,
-                                    depositType: t,
-                                    depositValue: t === 'percent' ? '30' : '10',
+                                    depositType: dt,
+                                    depositValue: dt === 'percent' ? '30' : '10',
                                   }))
                                 }
                                 style={{
@@ -1744,7 +1767,7 @@ export default function ServicesScreen() {
                                     color: sel ? colors.primary : colors.textSecondary,
                                   }}
                                 >
-                                  {t === 'percent' ? 'Pourcentage' : 'Montant fixe'}
+                                  {dt === 'percent' ? t('proServices.deposit.typePercent') : t('proServices.deposit.typeFixed')}
                                 </Text>
                               </Pressable>
                             );
@@ -1752,7 +1775,7 @@ export default function ServicesScreen() {
                         </View>
 
                         <Input
-                          label={form.depositType === 'percent' ? 'Pourcentage (%)' : 'Montant (€)'}
+                          label={form.depositType === 'percent' ? t('proServices.deposit.percentLabel') : t('proServices.deposit.amountLabel')}
                           placeholder={form.depositType === 'percent' ? '30' : '10'}
                           value={form.depositValue}
                           onChangeText={(t) =>
@@ -1764,14 +1787,14 @@ export default function ServicesScreen() {
                           keyboardType={form.depositType === 'percent' ? 'number-pad' : 'decimal-pad'}
                         />
                         <Input
-                          label="Délai de remboursement (heures avant le RDV)"
+                          label={t('proServices.deposit.refundDelayLabel')}
                           placeholder="24"
                           value={form.depositRefundHours}
                           onChangeText={(t) => setForm((p) => ({ ...p, depositRefundHours: t.replace(/[^0-9]/g, '') }))}
                           keyboardType="number-pad"
                         />
                         <Text variant="caption" color="textSecondary">
-                          0 = pas de remboursement automatique. Au-delà du délai, l&apos;acompte n&apos;est pas remboursé en cas d&apos;annulation par le client.
+                          {t('proServices.deposit.refundDelayNote')}
                         </Text>
                       </View>
                     )}
@@ -1781,8 +1804,8 @@ export default function ServicesScreen() {
                 </EditorSection>
 
                 <EditorSection
-                  title="Promotion"
-                  subtitle="Une réduction en % sur cette prestation"
+                  title={t('proServices.promo.sectionTitle')}
+                  subtitle={t('proServices.promo.sectionSubtitle')}
                   icon="pricetag-outline"
                   defaultOpen={form.discountEnabled}
                 >
@@ -1792,7 +1815,7 @@ export default function ServicesScreen() {
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}
                   >
                     <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text, flex: 1 }}>
-                      Activer une promotion
+                      {t('proServices.promo.enable')}
                     </Text>
                     <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: form.discountEnabled ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
                       <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: form.discountEnabled ? 'flex-end' : 'flex-start' }} />
@@ -1802,7 +1825,7 @@ export default function ServicesScreen() {
                   {form.discountEnabled && (
                     <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
                       <Input
-                        label="Réduction (%)"
+                        label={t('proServices.promo.percentLabel')}
                         placeholder="10"
                         value={form.discountPercent}
                         onChangeText={(t) => setForm((p) => ({ ...p, discountPercent: t.replace(/[^0-9]/g, '') }))}
@@ -1848,10 +1871,10 @@ export default function ServicesScreen() {
                             >
                               <View style={{ flex: 1 }}>
                                 <Text variant="caption" color="textSecondary">
-                                  {which === 'start' ? 'Début' : 'Fin'}
+                                  {which === 'start' ? t('proServices.promo.start') : t('proServices.promo.end')}
                                 </Text>
                                 <Text variant="bodySmall" style={{ color: ymd ? colors.text : colors.textMuted, marginTop: 1 }}>
-                                  {ymd ? formatPromoDateFr(ymd) : 'Optionnel'}
+                                  {ymd ? formatPromoDate(ymd) : t('proServices.promo.optionalDate')}
                                 </Text>
                               </View>
                               <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
@@ -1860,7 +1883,7 @@ export default function ServicesScreen() {
                         })}
                       </View>
                       <Text variant="caption" color="textSecondary">
-                        Dates vides = promotion permanente. La fin est incluse.
+                        {t('proServices.promo.permanentNote')}
                       </Text>
                     </View>
                   )}
@@ -1868,15 +1891,15 @@ export default function ServicesScreen() {
 
                 {(locations.length > 1 || members.length > 1) && (
                   <EditorSection
-                    title="Disponibilité"
-                    subtitle="Lieux et membres concernés"
+                    title={t('proServices.availability.title')}
+                    subtitle={t('proServices.availability.subtitle')}
                     icon="people-outline"
                     defaultOpen={false}
                   >
                 {/* Locations */}
                 {locations.length > 1 && (
                   <View>
-                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>Lieux</Text>
+                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>{t('proServices.availability.locations')}</Text>
                     {locations.map((loc) => (
                       <Pressable
                         key={loc.id}
@@ -1898,7 +1921,7 @@ export default function ServicesScreen() {
                 {members.length > 1 && (
                   <View>
                     <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>
-                      Membres
+                      {t('proServices.availability.members')}
                     </Text>
                     {/* "Tous" toggle */}
                     <Pressable
@@ -1912,7 +1935,7 @@ export default function ServicesScreen() {
                       />
                       <Ionicons name="people-outline" size={16} color={form.memberIds === null ? colors.primary : colors.textMuted} style={{ marginLeft: spacing.sm }} />
                       <Text variant="body" style={{ marginLeft: spacing.xs, fontWeight: form.memberIds === null ? '600' : '400', color: form.memberIds === null ? colors.primary : colors.text }}>
-                        Tous les membres
+                        {t('proServices.availability.allMembers')}
                       </Text>
                     </Pressable>
                     {/* Individual members */}
@@ -1947,18 +1970,18 @@ export default function ServicesScreen() {
                 )}
 
                 <EditorSection
-                  title="Variations & options"
-                  subtitle="Choix, suppléments et infos demandées au client"
+                  title={t('proServices.choices.title')}
+                  subtitle={t('proServices.choices.subtitle')}
                   icon="construct-outline"
                   open={choicesExpanded}
                   onToggle={() => setChoicesExpanded((v) => !v)}
                 >
                   <View style={{ gap: spacing.xs }}>
                     <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                      Variations
+                      {t('proServices.choices.variationsTitle')}
                     </Text>
                     <Text variant="caption" color="textSecondary">
-                      Des choix exclusifs qui fixent le prix et la durée (ex : Longueur).
+                      {t('proServices.choices.variationsHint')}
                     </Text>
                     <VariationsEditor
                       variations={form.variations}
@@ -1968,10 +1991,10 @@ export default function ServicesScreen() {
 
                   <View style={{ gap: spacing.xs }}>
                     <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                      Options
+                      {t('proServices.choices.optionsTitle')}
                     </Text>
                     <Text variant="caption" color="textSecondary">
-                      Des suppléments à cocher (ex : Mèches).
+                      {t('proServices.choices.optionsHint')}
                     </Text>
                     <OptionsEditor
                       options={form.options}
@@ -1981,10 +2004,10 @@ export default function ServicesScreen() {
 
                   <View style={{ gap: spacing.xs }}>
                     <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                      Infos demandées
+                      {t('proServices.choices.infoTitle')}
                     </Text>
                     <Text variant="caption" color="textSecondary">
-                      Des questions au client, sans impact sur le prix.
+                      {t('proServices.choices.infoHint')}
                     </Text>
                     <InfoFieldsEditor
                       fields={form.infoFields}
@@ -2047,10 +2070,10 @@ export default function ServicesScreen() {
               </View>
               <View>
                 <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF', lineHeight: 16 }}>
-                  Aperçu client
+                  {t('proServices.preview.clientPreview')}
                 </Text>
                 <Text variant="caption" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, lineHeight: 12 }}>
-                  Voir la fiche de réservation
+                  {t('proServices.preview.buttonSubtitle')}
                 </Text>
               </View>
             </Pressable>
@@ -2060,7 +2083,7 @@ export default function ServicesScreen() {
             <View style={[styles.stickyFooter, { padding: spacing.lg, paddingBottom: insets.bottom + spacing.sm, borderTopColor: colors.border }]}>
               <Button
                 variant="primary"
-                title={isSaving ? 'Enregistrement...' : 'Enregistrer'}
+                title={isSaving ? t('proServices.saving') : t('common.save')}
                 onPress={handleSave}
                 loading={isSaving}
                 disabled={isSaving}
@@ -2074,7 +2097,7 @@ export default function ServicesScreen() {
               à la fois → une 2e Modal sœur ne s'afficherait pas). */}
           <OverlaySheet visible={showPreview} onClose={() => setShowPreview(false)}>
             <View style={[styles.modalHeader, { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomColor: colors.border }]}>
-              <Text variant="h3">Aperçu client</Text>
+              <Text variant="h3">{t('proServices.preview.clientPreview')}</Text>
               <Pressable onPress={() => setShowPreview(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -2110,13 +2133,13 @@ export default function ServicesScreen() {
                     setPromoDateField(null);
                   }}
                 >
-                  <Text variant="body" color="textSecondary">Effacer</Text>
+                  <Text variant="body" color="textSecondary">{t('proServices.promo.clear')}</Text>
                 </Pressable>
                 <Text variant="body" style={{ fontWeight: '600' }}>
-                  {promoDateField === 'start' ? 'Début' : 'Fin'} de la promo
+                  {promoDateField === 'start' ? t('proServices.promo.pickerTitleStart') : t('proServices.promo.pickerTitleEnd')}
                 </Text>
                 <Pressable hitSlop={8} onPress={() => setPromoDateField(null)}>
-                  <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
+                  <Text variant="body" color="primary" style={{ fontWeight: '600' }}>{t('proServices.promo.ok')}</Text>
                 </Pressable>
               </View>
               <DateTimePicker
@@ -2163,7 +2186,7 @@ export default function ServicesScreen() {
           >
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
               <View style={{ flex: 1 }}>
-                <Text variant="h3">Déplacer vers…</Text>
+                <Text variant="h3">{t('proServices.move.title')}</Text>
                 {moveTarget && (
                   <Text variant="caption" color="textSecondary" numberOfLines={1}>
                     {moveTarget.name}
@@ -2213,7 +2236,7 @@ export default function ServicesScreen() {
               >
                 <Ionicons name="ellipsis-horizontal-circle-outline" size={18} color={colors.textMuted} />
                 <Text variant="body" style={{ flex: 1, fontWeight: !moveTarget?.categoryId ? '700' : '400', color: !moveTarget?.categoryId ? colors.primary : colors.text }}>
-                  Sans catégorie (Autres prestations)
+                  {t('proServices.move.noCategoryOption')}
                 </Text>
                 {!moveTarget?.categoryId && <Ionicons name="checkmark" size={18} color={colors.primary} />}
               </Pressable>
@@ -2227,11 +2250,11 @@ export default function ServicesScreen() {
         <KeyboardAvoidingSheet style={styles.categoryModalOverlay}>
           <View style={[styles.categoryModalContent, { backgroundColor: colors.background, borderRadius: radius.xl }]}>
             <Text variant="h3" style={{ marginBottom: spacing.md }}>
-              {editingCategoryId ? 'Modifier la catégorie' : 'Nouvelle catégorie'}
+              {editingCategoryId ? t('proServices.categoryModal.editTitle') : t('proServices.categoryModal.createTitle')}
             </Text>
             <Input
-              label="Nom"
-              placeholder="Ex: Soins visage"
+              label={t('proServices.form.nameLabel')}
+              placeholder={t('proServices.categoryModal.namePlaceholder')}
               value={categoryName}
               onChangeText={setCategoryName}
               autoCapitalize="sentences"
@@ -2254,7 +2277,7 @@ export default function ServicesScreen() {
                 onPress={() => setShowCategoryModal(false)}
                 style={[styles.categoryActionBtn, { borderColor: colors.border, flex: 1 }]}
               >
-                <Text variant="body" style={{ fontWeight: '600' }}>Annuler</Text>
+                <Text variant="body" style={{ fontWeight: '600' }}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={handleSaveCategory}
@@ -2262,7 +2285,7 @@ export default function ServicesScreen() {
                 style={[styles.categoryActionBtn, { backgroundColor: colors.primary, flex: 1, opacity: (!categoryName.trim() || isSavingCategory) ? 0.5 : 1 }]}
               >
                 <Text variant="body" style={{ fontWeight: '600', color: '#FFFFFF' }}>
-                  {isSavingCategory ? 'Enregistrement...' : 'Enregistrer'}
+                  {isSavingCategory ? t('proServices.saving') : t('common.save')}
                 </Text>
               </Pressable>
             </View>
@@ -2276,13 +2299,13 @@ export default function ServicesScreen() {
           <Pressable style={{ flex: 1 }} onPress={() => setGlobalPromoOpen(false)} />
           <View style={{ backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text variant="h3">Promotion globale</Text>
+              <Text variant="h3">{t('proServices.globalPromo.title')}</Text>
               <Pressable onPress={() => setGlobalPromoOpen(false)} hitSlop={8}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
             </View>
             <Text variant="caption" color="textSecondary">
-              Une réduction appliquée à toutes vos prestations, sauf celles qui ont déjà leur propre promotion.
+              {t('proServices.globalPromo.description')}
             </Text>
 
             <Pressable
@@ -2290,7 +2313,7 @@ export default function ServicesScreen() {
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}
             >
               <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text, flex: 1 }}>
-                Activer la promotion globale
+                {t('proServices.globalPromo.enable')}
               </Text>
               <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: gForm.enabled ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
                 <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: gForm.enabled ? 'flex-end' : 'flex-start' }} />
@@ -2300,7 +2323,7 @@ export default function ServicesScreen() {
             {gForm.enabled && (
               <View style={{ gap: spacing.sm }}>
                 <Input
-                  label="Réduction (%)"
+                  label={t('proServices.promo.percentLabel')}
                   placeholder="10"
                   value={gForm.percent}
                   onChangeText={(t) => setGForm((f) => ({ ...f, percent: t.replace(/[^0-9]/g, '') }))}
@@ -2311,7 +2334,7 @@ export default function ServicesScreen() {
                   style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}
                 >
                   <Text variant="bodySmall" style={{ color: colors.text, flex: 1, marginRight: spacing.sm }}>
-                    Appliquer aux variations et options
+                    {t('proServices.globalPromo.includeExtras')}
                   </Text>
                   <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: gForm.includeExtras ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
                     <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: gForm.includeExtras ? 'flex-end' : 'flex-start' }} />
@@ -2327,9 +2350,9 @@ export default function ServicesScreen() {
                         style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                       >
                         <View style={{ flex: 1 }}>
-                          <Text variant="caption" color="textSecondary">{which === 'start' ? 'Début' : 'Fin'}</Text>
+                          <Text variant="caption" color="textSecondary">{which === 'start' ? t('proServices.promo.start') : t('proServices.promo.end')}</Text>
                           <Text variant="bodySmall" style={{ color: ymd ? colors.text : colors.textMuted, marginTop: 1 }}>
-                            {ymd ? formatPromoDateFr(ymd) : 'Optionnel'}
+                            {ymd ? formatPromoDate(ymd) : t('proServices.promo.optionalDate')}
                           </Text>
                         </View>
                         <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
@@ -2338,14 +2361,14 @@ export default function ServicesScreen() {
                   })}
                 </View>
                 <Text variant="caption" color="textSecondary">
-                  Dates vides = promotion permanente. La fin est incluse.
+                  {t('proServices.promo.permanentNote')}
                 </Text>
               </View>
             )}
 
             <Button
               variant="primary"
-              title={gSaving ? 'Enregistrement...' : 'Enregistrer'}
+              title={gSaving ? t('proServices.saving') : t('common.save')}
               onPress={saveGlobalPromo}
               disabled={gSaving}
               fullWidth
@@ -2365,13 +2388,13 @@ export default function ServicesScreen() {
                   setGDateField(null);
                 }}
               >
-                <Text variant="body" color="textSecondary">Effacer</Text>
+                <Text variant="body" color="textSecondary">{t('proServices.promo.clear')}</Text>
               </Pressable>
               <Text variant="body" style={{ fontWeight: '600' }}>
-                {gDateField === 'start' ? 'Début' : 'Fin'} de la promo
+                {gDateField === 'start' ? t('proServices.promo.pickerTitleStart') : t('proServices.promo.pickerTitleEnd')}
               </Text>
               <Pressable hitSlop={8} onPress={() => setGDateField(null)}>
-                <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
+                <Text variant="body" color="primary" style={{ fontWeight: '600' }}>{t('proServices.promo.ok')}</Text>
               </Pressable>
             </View>
             <DateTimePicker

@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   ScrollView,
@@ -34,12 +35,12 @@ import {
   isArticleNew,
 } from '../../../hooks';
 import type { ArticleCategory } from '@booking-app/shared';
-import { ARTICLE_CATEGORY_LABELS } from '@booking-app/shared';
 import { extractYouTubeId } from '@booking-app/shared';
 
 type CategoryFilter = ArticleCategory | 'all';
 
 export default function HelpScreen() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -75,9 +76,9 @@ export default function HelpScreen() {
   const onRefresh = () => {};
 
   const filterChips: { value: CategoryFilter; label: string }[] = [
-    { value: 'tutoriels', label: ARTICLE_CATEGORY_LABELS.tutoriels },
-    { value: 'conseils', label: ARTICLE_CATEGORY_LABELS.conseils },
-    { value: 'all', label: 'Tous' },
+    { value: 'tutoriels', label: t('proHelp.categories.tutoriels') },
+    { value: 'conseils', label: t('proHelp.categories.conseils') },
+    { value: 'all', label: t('proHelp.categories.all') },
   ];
 
   return (
@@ -85,8 +86,8 @@ export default function HelpScreen() {
       {/* Branded blue header — matches the rest of the pro space.
           Subtitle gives the screen its short value-prop. */}
       <BrandedHeader
-        title="Tutoriels & guides"
-        subtitle="Apprenez à tirer le meilleur d'Opatam"
+        title={t('proHelp.title')}
+        subtitle={t('proHelp.subtitle')}
       />
 
       {/* Category chips — wrapped in a fixed-height View so the
@@ -143,7 +144,7 @@ export default function HelpScreen() {
         <View style={[styles.center, { paddingHorizontal: spacing.lg }]}>
           <EmptyState
             icon="cloud-offline-outline"
-            title="Impossible de charger les articles"
+            title={t('proHelp.loadErrorTitle')}
             description={error}
           />
         </View>
@@ -151,8 +152,8 @@ export default function HelpScreen() {
         <View style={[styles.center, { paddingHorizontal: spacing.lg }]}>
           <EmptyState
             icon="book-outline"
-            title="Aucun article pour cette catégorie"
-            description="Revenez bientôt — de nouveaux contenus sont publiés régulièrement."
+            title={t('proHelp.emptyTitle')}
+            description={t('proHelp.emptyDescription')}
           />
         </View>
       ) : (
@@ -216,7 +217,7 @@ export default function HelpScreen() {
                             letterSpacing: 0.4,
                           }}
                         >
-                          {ARTICLE_CATEGORY_LABELS[a.category]}
+                          {t(`proHelp.categories.${a.category}`)}
                         </Text>
                       </View>
                       {isArticleNew(a.publishedAt) && (
@@ -237,7 +238,7 @@ export default function HelpScreen() {
                               letterSpacing: 0.4,
                             }}
                           >
-                            Nouveau
+                            {t('proHelp.newBadge')}
                           </Text>
                         </View>
                       )}
@@ -257,7 +258,7 @@ export default function HelpScreen() {
                               fontSize: 10,
                             }}
                           >
-                            Vidéo
+                            {t('proHelp.videoBadge')}
                           </Text>
                         </View>
                       )}

@@ -18,6 +18,7 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Trans, useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -62,6 +63,7 @@ const DEFAULT_FORM: MemberFormData = {
 
 export default function MembersScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
@@ -113,7 +115,7 @@ export default function MembersScreen() {
       setMembers(mbrs.sort((a, b) => a.sortOrder - b.sortOrder));
       setLocations(locs);
     } catch (err) {
-      showToast({ variant: 'error', message: 'Erreur lors du chargement' });
+      showToast({ variant: 'error', message: t('proMembers.loadError') });
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -165,7 +167,7 @@ export default function MembersScreen() {
   const handlePickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission requise', "Autorisez l'accès à vos photos pour ajouter un avatar.");
+      Alert.alert(t('proMembers.photo.permissionTitle'), t('proMembers.photo.permissionMessage'));
       return;
     }
 
@@ -189,9 +191,9 @@ export default function MembersScreen() {
         const downloadURL = await uploadFile(path, blob, { contentType: 'image/jpeg' });
         await memberService.updatePhoto(providerId, editingId, downloadURL);
         setPhotoURL(downloadURL);
-        showToast({ variant: 'success', message: 'Photo mise à jour' });
+        showToast({ variant: 'success', message: t('proMembers.photo.updated') });
       } catch {
-        showToast({ variant: 'error', message: 'Erreur lors du téléchargement' });
+        showToast({ variant: 'error', message: t('proMembers.photo.uploadError') });
       } finally {
         setUploadingPhoto(false);
       }
@@ -207,9 +209,9 @@ export default function MembersScreen() {
       try {
         await memberService.updatePhoto(providerId, editingId, '');
         setPhotoURL(null);
-        showToast({ variant: 'success', message: 'Photo supprimée' });
+        showToast({ variant: 'success', message: t('proMembers.photo.removed') });
       } catch {
-        showToast({ variant: 'error', message: 'Erreur' });
+        showToast({ variant: 'error', message: t('common.error') });
       } finally {
         setUploadingPhoto(false);
       }
@@ -221,9 +223,9 @@ export default function MembersScreen() {
   // Save
   const handleSave = async () => {
     if (!providerId) return;
-    if (!form.name.trim()) { showToast({ variant: 'error', message: 'Le nom est requis' }); return; }
-    if (!form.email.trim()) { showToast({ variant: 'error', message: "L'email est requis" }); return; }
-    if (!form.locationId) { showToast({ variant: 'error', message: 'Sélectionnez un lieu' }); return; }
+    if (!form.name.trim()) { showToast({ variant: 'error', message: t('proMembers.form.nameRequired') }); return; }
+    if (!form.email.trim()) { showToast({ variant: 'error', message: t('proMembers.form.emailRequired') }); return; }
+    if (!form.locationId) { showToast({ variant: 'error', message: t('proMembers.form.locationRequired') }); return; }
 
     setIsSaving(true);
     try {
@@ -238,7 +240,7 @@ export default function MembersScreen() {
         if (existing && existing.locationId !== form.locationId) {
           await memberService.changeLocation(providerId, editingId, form.locationId);
         }
-        showToast({ variant: 'success', message: 'Membre modifié' });
+        showToast({ variant: 'success', message: t('proMembers.form.updated') });
       } else {
         const newMember = await memberService.createMember(providerId, {
           name: form.name.trim(),
@@ -261,12 +263,12 @@ export default function MembersScreen() {
             // Non-blocking: member created but photo failed
           }
         }
-        showToast({ variant: 'success', message: 'Membre ajouté' });
+        showToast({ variant: 'success', message: t('proMembers.form.added') });
       }
       setShowModal(false);
       loadData();
     } catch (err: any) {
-      showToast({ variant: 'error', message: err?.message || 'Erreur' });
+      showToast({ variant: 'error', message: err?.message || t('common.error') });
     } finally {
       setIsSaving(false);
     }
@@ -275,7 +277,7 @@ export default function MembersScreen() {
   // Delete
   const handleDelete = (member: WithId<Member>) => {
     if (member.isDefault) {
-      showToast({ variant: 'error', message: 'Impossible de supprimer le membre principal' });
+      showToast({ variant: 'error', message: t('proMembers.delete.cannotDeleteDefault') });
       return;
     }
     setDeleteBlocked(false);
@@ -288,7 +290,7 @@ export default function MembersScreen() {
     try {
       await memberService.deleteMember(providerId, deleteTarget.id);
       setDeleteTarget(null);
-      showToast({ variant: 'success', message: 'Membre supprimé' });
+      showToast({ variant: 'success', message: t('proMembers.delete.deleted') });
       loadData();
     } catch (err: any) {
       const msg = err?.message || '';
@@ -296,7 +298,7 @@ export default function MembersScreen() {
         setDeleteBlocked(true);
       } else {
         setDeleteTarget(null);
-        showToast({ variant: 'error', message: msg || 'Erreur' });
+        showToast({ variant: 'error', message: msg || t('common.error') });
       }
     } finally {
       setIsDeleting(false);
@@ -321,14 +323,14 @@ export default function MembersScreen() {
     try {
       if (member.isActive) {
         await memberService.deactivateMember(providerId, member.id);
-        showToast({ variant: 'success', message: `${member.name} désactivé` });
+        showToast({ variant: 'success', message: t('proMembers.toggle.deactivated', { name: member.name }) });
       } else {
         await memberService.reactivateMember(providerId, member.id);
-        showToast({ variant: 'success', message: `${member.name} réactivé` });
+        showToast({ variant: 'success', message: t('proMembers.toggle.reactivated', { name: member.name }) });
       }
       loadData();
     } catch (err: any) {
-      showToast({ variant: 'error', message: err?.message || 'Erreur' });
+      showToast({ variant: 'error', message: err?.message || t('common.error') });
     } finally {
       setTogglingMember(null);
     }
@@ -338,22 +340,22 @@ export default function MembersScreen() {
   const handleRegenerateCode = async (memberId: string) => {
     if (!providerId) return;
     Alert.alert(
-      'Régénérer le code',
-      "L'ancien code ne fonctionnera plus. Continuer ?",
+      t('proMembers.code.regenerateTitle'),
+      t('proMembers.code.regenerateMessage'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Régénérer',
+          text: t('proMembers.code.regenerateConfirm'),
           onPress: async () => {
             try {
               const newCode = await memberService.regenerateAccessCode(providerId, memberId);
-              showToast({ variant: 'success', message: `Nouveau code: ${newCode}` });
+              showToast({ variant: 'success', message: t('proMembers.code.newCode', { code: newCode }) });
               loadData();
               if (codeModalMember && codeModalMember.id === memberId) {
                 setCodeModalMember((prev) => prev ? { ...prev, accessCode: newCode } : null);
               }
             } catch (err: any) {
-              showToast({ variant: 'error', message: err?.message || 'Erreur' });
+              showToast({ variant: 'error', message: err?.message || t('common.error') });
             }
           },
         },
@@ -364,7 +366,7 @@ export default function MembersScreen() {
   // Copy code
   const handleCopyCode = async (code: string) => {
     await Clipboard.setStringAsync(code);
-    showToast({ variant: 'success', message: 'Code copié dans le presse-papier' });
+    showToast({ variant: 'success', message: t('proMembers.code.copied') });
   };
 
   // Send agenda email (contains the access code already)
@@ -379,11 +381,11 @@ export default function MembersScreen() {
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Erreur lors de l\'envoi');
+        throw new Error(data.error || t('proMembers.agenda.sendError'));
       }
-      showToast({ variant: 'success', message: `Récap agenda + code envoyé à ${member.name}` });
+      showToast({ variant: 'success', message: t('proMembers.agenda.sent', { name: member.name }) });
     } catch (err: any) {
-      showToast({ variant: 'error', message: err?.message || "Erreur lors de l'envoi" });
+      showToast({ variant: 'error', message: err?.message || t('proMembers.agenda.sendError') });
     } finally {
       setSendingAgenda(null);
     }
@@ -414,12 +416,12 @@ export default function MembersScreen() {
       <SubscriptionRequiredModal
         visible={showSubModal}
         onClose={() => setShowSubModal(false)}
-        context="Abonnez-vous pour accéder à toutes les fonctionnalités et développer votre activité."
+        context={t('proMembers.subscriptionContext')}
       />
       <UpgradeToStudioModal
         visible={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        context="Le plan Pro est limité à 1 membre. Passez au plan Studio pour ajouter jusqu'à 10 membres et gérer votre équipe."
+        context={t('proMembers.upgradeContext')}
       />
 
       {/* Deactivation confirmation modal */}
@@ -432,11 +434,11 @@ export default function MembersScreen() {
             </View>
 
             <Text variant="h3" style={{ textAlign: 'center', marginTop: spacing.md }}>
-              Désactiver {deactivateTarget?.name} ?
+              {t('proMembers.deactivate.confirmTitle', { name: deactivateTarget?.name })}
             </Text>
 
             <Text variant="bodySmall" color="textMuted" style={{ textAlign: 'center', marginTop: spacing.xs }}>
-              Voici ce qui se passe quand vous désactivez un membre :
+              {t('proMembers.deactivate.intro')}
             </Text>
 
             {/* Info items */}
@@ -446,7 +448,7 @@ export default function MembersScreen() {
                   <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
                 </View>
                 <Text variant="bodySmall" style={{ flex: 1 }}>
-                  Les rendez-vous existants sont <Text variant="bodySmall" style={{ fontWeight: '700' }}>conservés</Text> et restent visibles dans l'agenda
+                  <Trans i18nKey="proMembers.deactivate.keepAppointments" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                 </Text>
               </View>
 
@@ -455,7 +457,7 @@ export default function MembersScreen() {
                   <Ionicons name="close-circle" size={18} color="#DC2626" />
                 </View>
                 <Text variant="bodySmall" style={{ flex: 1 }}>
-                  Les clients ne pourront <Text variant="bodySmall" style={{ fontWeight: '700' }}>plus prendre de rendez-vous</Text> avec ce membre
+                  <Trans i18nKey="proMembers.deactivate.noNewBookings" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                 </Text>
               </View>
 
@@ -464,7 +466,7 @@ export default function MembersScreen() {
                   <Ionicons name="close-circle" size={18} color="#DC2626" />
                 </View>
                 <Text variant="bodySmall" style={{ flex: 1 }}>
-                  Le membre n'apparaîtra <Text variant="bodySmall" style={{ fontWeight: '700' }}>plus sur votre page de réservation</Text>
+                  <Trans i18nKey="proMembers.deactivate.hiddenFromBooking" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                 </Text>
               </View>
 
@@ -473,7 +475,7 @@ export default function MembersScreen() {
                   <Ionicons name="refresh-circle" size={18} color="#2563EB" />
                 </View>
                 <Text variant="bodySmall" style={{ flex: 1 }}>
-                  Vous pouvez <Text variant="bodySmall" style={{ fontWeight: '700' }}>réactiver</Text> le membre à tout moment
+                  <Trans i18nKey="proMembers.deactivate.canReactivate" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                 </Text>
               </View>
             </View>
@@ -482,13 +484,13 @@ export default function MembersScreen() {
             <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
               <Button
                 variant="primary"
-                title="Désactiver"
+                title={t('proMembers.deactivate.confirmButton')}
                 onPress={() => deactivateTarget && confirmToggle(deactivateTarget)}
                 style={{ backgroundColor: '#DC2626' }}
               />
               <Button
                 variant="outline"
-                title="Annuler"
+                title={t('common.cancel')}
                 onPress={() => setDeactivateTarget(null)}
               />
             </View>
@@ -508,11 +510,11 @@ export default function MembersScreen() {
                 </View>
 
                 <Text variant="h3" style={{ textAlign: 'center', marginTop: spacing.md }}>
-                  Suppression impossible
+                  {t('proMembers.delete.blockedTitle')}
                 </Text>
 
                 <Text variant="bodySmall" color="textMuted" style={{ textAlign: 'center', marginTop: spacing.xs }}>
-                  {deleteTarget?.name} ne peut pas être supprimé pour le moment :
+                  {t('proMembers.delete.blockedIntro', { name: deleteTarget?.name })}
                 </Text>
 
                 <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
@@ -521,7 +523,7 @@ export default function MembersScreen() {
                       <Ionicons name="calendar" size={18} color="#D97706" />
                     </View>
                     <Text variant="bodySmall" style={{ flex: 1 }}>
-                      Ce membre a des <Text variant="bodySmall" style={{ fontWeight: '700' }}>rendez-vous futurs confirmés</Text> ou en attente
+                      <Trans i18nKey="proMembers.delete.blockedFuture" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                     </Text>
                   </View>
 
@@ -530,7 +532,7 @@ export default function MembersScreen() {
                       <Ionicons name="arrow-forward-circle" size={18} color="#2563EB" />
                     </View>
                     <Text variant="bodySmall" style={{ flex: 1 }}>
-                      Vous devez d'abord <Text variant="bodySmall" style={{ fontWeight: '700' }}>annuler ou réassigner</Text> ces rendez-vous
+                      <Trans i18nKey="proMembers.delete.blockedReassign" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                     </Text>
                   </View>
 
@@ -539,7 +541,7 @@ export default function MembersScreen() {
                       <Ionicons name="swap-horizontal" size={18} color="#16A34A" />
                     </View>
                     <Text variant="bodySmall" style={{ flex: 1 }}>
-                      Sinon, vous pouvez <Text variant="bodySmall" style={{ fontWeight: '700' }}>désactiver</Text> le membre à la place (les RDV seront conservés)
+                      <Trans i18nKey="proMembers.delete.blockedDeactivateInstead" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                     </Text>
                   </View>
                 </View>
@@ -547,7 +549,7 @@ export default function MembersScreen() {
                 <View style={{ marginTop: spacing.lg }}>
                   <Button
                     variant="outline"
-                    title="Compris"
+                    title={t('proMembers.delete.understood')}
                     onPress={() => setDeleteTarget(null)}
                   />
                 </View>
@@ -560,11 +562,11 @@ export default function MembersScreen() {
                 </View>
 
                 <Text variant="h3" style={{ textAlign: 'center', marginTop: spacing.md }}>
-                  Supprimer {deleteTarget?.name} ?
+                  {t('proMembers.delete.confirmTitle', { name: deleteTarget?.name })}
                 </Text>
 
                 <Text variant="bodySmall" color="textMuted" style={{ textAlign: 'center', marginTop: spacing.xs }}>
-                  Cette action est irréversible. Voici ce qui sera supprimé :
+                  {t('proMembers.delete.confirmIntro')}
                 </Text>
 
                 <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
@@ -573,7 +575,7 @@ export default function MembersScreen() {
                       <Ionicons name="close-circle" size={18} color="#DC2626" />
                     </View>
                     <Text variant="bodySmall" style={{ flex: 1 }}>
-                      Le profil et les <Text variant="bodySmall" style={{ fontWeight: '700' }}>disponibilités</Text> du membre seront supprimés
+                      <Trans i18nKey="proMembers.delete.bulletProfile" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                     </Text>
                   </View>
 
@@ -582,7 +584,7 @@ export default function MembersScreen() {
                       <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
                     </View>
                     <Text variant="bodySmall" style={{ flex: 1 }}>
-                      L'historique des <Text variant="bodySmall" style={{ fontWeight: '700' }}>rendez-vous passés</Text> sera conservé
+                      <Trans i18nKey="proMembers.delete.bulletHistory" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                     </Text>
                   </View>
 
@@ -591,7 +593,7 @@ export default function MembersScreen() {
                       <Ionicons name="information-circle" size={18} color="#D97706" />
                     </View>
                     <Text variant="bodySmall" style={{ flex: 1 }}>
-                      Préférez la <Text variant="bodySmall" style={{ fontWeight: '700' }}>désactivation</Text> si vous pensez en avoir besoin plus tard
+                      <Trans i18nKey="proMembers.delete.bulletPreferDeactivate" components={{ b: <Text variant="bodySmall" style={{ fontWeight: '700' }}>{''}</Text> }} />
                     </Text>
                   </View>
                 </View>
@@ -599,14 +601,14 @@ export default function MembersScreen() {
                 <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
                   <Button
                     variant="primary"
-                    title={isDeleting ? 'Suppression...' : 'Supprimer définitivement'}
+                    title={isDeleting ? t('proMembers.delete.deleting') : t('proMembers.delete.confirmButton')}
                     onPress={confirmDelete}
                     disabled={isDeleting}
                     style={{ backgroundColor: '#DC2626' }}
                   />
                   <Button
                     variant="outline"
-                    title="Annuler"
+                    title={t('common.cancel')}
                     onPress={() => setDeleteTarget(null)}
                   />
                 </View>
@@ -622,7 +624,7 @@ export default function MembersScreen() {
           <Pressable onPress={() => router.back()} hitSlop={12} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>Équipe</Text>
+          <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>{t('proMembers.title')}</Text>
           <Pressable onPress={openCreate} style={({ pressed }) => [styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
             <Ionicons name="add" size={22} color="#FFFFFF" />
           </Pressable>
@@ -639,8 +641,8 @@ export default function MembersScreen() {
             <View style={[styles.emptyIcon, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="people-outline" size={32} color={colors.primary} />
             </View>
-            <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>Aucun membre</Text>
-            <Button variant="primary" title="Ajouter un membre" onPress={openCreate} style={{ marginTop: spacing.lg }} />
+            <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>{t('proMembers.empty.title')}</Text>
+            <Button variant="primary" title={t('proMembers.empty.addButton')} onPress={openCreate} style={{ marginTop: spacing.lg }} />
           </View>
         ) : (
           <View style={{ gap: spacing.md }}>
@@ -672,7 +674,7 @@ export default function MembersScreen() {
                         <Text variant="body" style={{ fontWeight: '600' }}>{member.name}</Text>
                         {member.isDefault && (
                           <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
-                            <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 10 }}>Vous</Text>
+                            <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 10 }}>{t('proMembers.badgeYou')}</Text>
                           </View>
                         )}
                       </View>
@@ -693,7 +695,7 @@ export default function MembersScreen() {
                           style={{ transform: [{ scale: 0.85 }] }}
                         />
                         <Text variant="caption" color={member.isActive ? 'primary' : 'textMuted'} style={{ fontSize: 10, marginTop: 2 }}>
-                          {member.isActive ? 'Actif' : 'Inactif'}
+                          {member.isActive ? t('proMembers.status.active') : t('proMembers.status.inactive')}
                         </Text>
                       </View>
                     )}
@@ -705,7 +707,7 @@ export default function MembersScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Ionicons name="key-outline" size={16} color={colors.textMuted} />
                     <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs }}>
-                      Code :{' '}
+                      {t('proMembers.code.label')}{' '}
                     </Text>
                     <Text variant="bodySmall" style={{ fontWeight: '600', fontFamily: 'monospace', letterSpacing: 1 }}>
                       {showCodeFor === member.id ? member.accessCode : '••••••••'}
@@ -747,7 +749,7 @@ export default function MembersScreen() {
                       <Ionicons name="mail-outline" size={16} color={colors.primary} />
                     )}
                     <Text variant="caption" color="primary" style={{ marginLeft: 4, fontWeight: '500' }}>
-                      Récap + code
+                      {t('proMembers.agenda.recapAction')}
                     </Text>
                   </Pressable>
 
@@ -758,7 +760,7 @@ export default function MembersScreen() {
                   >
                     <Ionicons name="calendar-outline" size={16} color={colors.primary} />
                     <Text variant="caption" color="primary" style={{ marginLeft: 4, fontWeight: '500' }}>
-                      Agenda
+                      {t('proMembers.agenda.calendarAction')}
                     </Text>
                   </Pressable>
 
@@ -785,7 +787,7 @@ export default function MembersScreen() {
         <KeyboardAvoidingSheet style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">{editingId ? 'Modifier le membre' : 'Nouveau membre'}</Text>
+              <Text variant="h3">{editingId ? t('proMembers.form.editTitle') : t('proMembers.form.newTitle')}</Text>
               <Pressable onPress={() => setShowModal(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -814,23 +816,23 @@ export default function MembersScreen() {
                       </View>
                     )}
                     <Text variant="caption" color="primary" style={{ marginTop: spacing.xs, fontWeight: '500' }}>
-                      {photoURL ? 'Changer la photo' : 'Ajouter une photo'}
+                      {photoURL ? t('proMembers.photo.change') : t('proMembers.photo.add')}
                     </Text>
                   </Pressable>
                   {photoURL && (
                     <Pressable onPress={handleRemovePhoto} disabled={uploadingPhoto} style={{ marginTop: 4 }}>
-                      <Text variant="caption" style={{ color: '#DC2626', fontSize: 11 }}>Supprimer</Text>
+                      <Text variant="caption" style={{ color: '#DC2626', fontSize: 11 }}>{t('proMembers.photo.remove')}</Text>
                     </Pressable>
                   )}
                 </View>
 
-                <Input label="Nom" placeholder="Prénom du membre" value={form.name} onChangeText={(t) => setForm((p) => ({ ...p, name: t }))} autoCapitalize="words" />
-                <Input label="Email" placeholder="email@exemple.com" value={form.email} onChangeText={(t) => setForm((p) => ({ ...p, email: t }))} keyboardType="email-address" autoCapitalize="none" />
-                <Input label="Téléphone (optionnel)" placeholder="06 12 34 56 78" value={form.phone} onChangeText={(t) => setForm((p) => ({ ...p, phone: t }))} keyboardType="phone-pad" />
+                <Input label={t('proMembers.form.nameLabel')} placeholder={t('proMembers.form.namePlaceholder')} value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} autoCapitalize="words" />
+                <Input label={t('proMembers.form.emailLabel')} placeholder={t('proMembers.form.emailPlaceholder')} value={form.email} onChangeText={(v) => setForm((p) => ({ ...p, email: v }))} keyboardType="email-address" autoCapitalize="none" />
+                <Input label={t('proMembers.form.phoneLabel')} placeholder={t('proMembers.form.phonePlaceholder')} value={form.phone} onChangeText={(v) => setForm((p) => ({ ...p, phone: v }))} keyboardType="phone-pad" />
 
                 {/* Color picker */}
                 <View>
-                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>Couleur</Text>
+                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>{t('proMembers.form.colorLabel')}</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
                     {MEMBER_COLORS.map((c) => {
                       const takenByOther = members.some((m) => m.color === c && m.id !== editingId);
@@ -859,7 +861,7 @@ export default function MembersScreen() {
 
                 {/* Location picker */}
                 <View>
-                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>Lieu assigné</Text>
+                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>{t('proMembers.form.locationLabel')}</Text>
                   {locations.length <= 3 ? (
                     <View style={{ gap: spacing.xs }}>
                       {locations.map((loc) => (
@@ -882,7 +884,7 @@ export default function MembersScreen() {
                       onPress={() => setShowLocationPicker(true)}
                       style={[styles.selectBtn, { borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md }]}
                     >
-                      <Text variant="body">{getLocationName(form.locationId) || 'Choisir un lieu'}</Text>
+                      <Text variant="body">{getLocationName(form.locationId) || t('proMembers.form.chooseLocation')}</Text>
                       <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
                     </Pressable>
                   )}
@@ -891,7 +893,7 @@ export default function MembersScreen() {
             </ScrollView>
 
             <View style={[styles.stickyFooter, { padding: spacing.lg, paddingBottom: insets.bottom + spacing.sm, borderTopColor: colors.border }]}>
-              <Button variant="primary" title={isSaving ? 'Enregistrement...' : 'Enregistrer'} onPress={handleSave} loading={isSaving} disabled={isSaving} fullWidth />
+              <Button variant="primary" title={isSaving ? t('proMembers.form.saving') : t('common.save')} onPress={handleSave} loading={isSaving} disabled={isSaving} fullWidth />
             </View>
           </View>
         </KeyboardAvoidingSheet>
@@ -902,7 +904,7 @@ export default function MembersScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.pickerContent, { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">Choisir un lieu</Text>
+              <Text variant="h3">{t('proMembers.form.chooseLocation')}</Text>
               <Pressable onPress={() => setShowLocationPicker(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -933,7 +935,7 @@ export default function MembersScreen() {
                   <View style={[styles.codeIconCircle, { backgroundColor: colors.primaryLight }]}>
                     <Ionicons name="key" size={28} color={colors.primary} />
                   </View>
-                  <Text variant="h3" style={{ marginTop: spacing.md }}>Code d'accès</Text>
+                  <Text variant="h3" style={{ marginTop: spacing.md }}>{t('proMembers.code.modalTitle')}</Text>
                   <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
                     {codeModalMember.name}
                   </Text>
@@ -947,7 +949,7 @@ export default function MembersScreen() {
                 </View>
 
                 <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.sm }}>
-                  Ce code permet d'accéder au planning sur opatam.com/planning
+                  {t('proMembers.code.modalHint')}
                 </Text>
 
                 {/* Action buttons */}
@@ -958,7 +960,7 @@ export default function MembersScreen() {
                   >
                     <Ionicons name="copy-outline" size={20} color={colors.primary} />
                     <Text variant="body" color="primary" style={{ marginLeft: spacing.sm, fontWeight: '500' }}>
-                      Copier le code
+                      {t('proMembers.code.copy')}
                     </Text>
                   </Pressable>
 
@@ -973,7 +975,7 @@ export default function MembersScreen() {
                       <Ionicons name="mail-outline" size={20} color={colors.primary} />
                     )}
                     <Text variant="body" color="primary" style={{ marginLeft: spacing.sm, fontWeight: '500' }}>
-                      Envoyer récap + code par email
+                      {t('proMembers.code.sendEmail')}
                     </Text>
                   </Pressable>
 
@@ -983,7 +985,7 @@ export default function MembersScreen() {
                   >
                     <Ionicons name="refresh-outline" size={20} color="#DC2626" />
                     <Text variant="body" style={{ marginLeft: spacing.sm, fontWeight: '500', color: '#DC2626' }}>
-                      Régénérer le code
+                      {t('proMembers.code.regenerateTitle')}
                     </Text>
                   </Pressable>
                 </View>
@@ -992,7 +994,7 @@ export default function MembersScreen() {
                   onPress={() => setShowCodeModal(false)}
                   style={({ pressed }) => [styles.closeCodeBtn, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, marginTop: spacing.lg, opacity: pressed ? 0.7 : 1 }]}
                 >
-                  <Text variant="body" style={{ fontWeight: '600' }}>Fermer</Text>
+                  <Text variant="body" style={{ fontWeight: '600' }}>{t('common.close')}</Text>
                 </Pressable>
               </>
             )}

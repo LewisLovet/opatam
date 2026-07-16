@@ -10,6 +10,7 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 import { useTheme } from '../theme';
 import { Text } from './Text';
@@ -21,6 +22,7 @@ interface TrialReminderBannerProps {
 export function TrialReminderBanner({ daysRemaining }: TrialReminderBannerProps) {
   const { spacing, radius } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Only show when ≤14 days remaining
   if (daysRemaining > 14) return null;
@@ -65,13 +67,13 @@ export function TrialReminderBanner({ daysRemaining }: TrialReminderBannerProps)
           <View style={{ flex: 1 }}>
             <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '800' }}>
               {isExpired
-                ? 'Essai terminé'
-                : `${daysRemaining} jour${daysRemaining > 1 ? 's' : ''} restant${daysRemaining > 1 ? 's' : ''}`}
+                ? t('components.trialReminderBanner.expiredTitle')
+                : t('components.trialReminderBanner.daysRemaining', { count: daysRemaining })}
             </Text>
             <Text variant="caption" style={{ color: 'rgba(255,255,255,0.9)', marginTop: 2 }}>
               {isExpired
-                ? "Votre page n'est plus visible. Réactivez-la pour recevoir des réservations."
-                : 'Activez votre abonnement pour continuer à recevoir des réservations.'}
+                ? t('components.trialReminderBanner.expiredMessage')
+                : t('components.trialReminderBanner.activeMessage')}
             </Text>
           </View>
         </View>
@@ -86,7 +88,9 @@ export function TrialReminderBanner({ daysRemaining }: TrialReminderBannerProps)
         {/* CTA — white pill button with the accent-colored label */}
         <View style={[styles.cta, { marginTop: spacing.md }]}>
           <Text style={{ color: accentColor, fontWeight: '800', fontSize: 14 }}>
-            {isExpired ? 'Réactiver ma page' : 'Voir les offres'}
+            {isExpired
+              ? t('components.trialReminderBanner.reactivateCta')
+              : t('components.trialReminderBanner.seeOffersCta')}
           </Text>
           <Ionicons name="arrow-forward" size={16} color={accentColor} />
         </View>

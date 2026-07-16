@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Tabs, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +19,7 @@ import {
 
 export default function ProTabsLayout() {
   const { colors, spacing } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { provider } = useProvider();
   const { todayCount, pendingCount } = useProBookingBadges(provider?.id);
@@ -82,7 +84,7 @@ export default function ProTabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Accueil',
+          title: t('proTabs.home'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
@@ -93,7 +95,7 @@ export default function ProTabsLayout() {
       <Tabs.Screen
         name="calendar"
         options={{
-          title: 'Agenda',
+          title: t('proTabs.agenda'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar-outline" size={size} color={color} />
           ),
@@ -148,7 +150,7 @@ export default function ProTabsLayout() {
         // tab label is what the user sees, which is what matters.
         name="bookings"
         options={{
-          title: 'Planning',
+          title: t('proTabs.planning'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" size={size} color={color} />
           ),
@@ -159,7 +161,7 @@ export default function ProTabsLayout() {
       <Tabs.Screen
         name="more"
         options={{
-          title: 'Plus',
+          title: t('proTabs.more'),
           tabBarIcon: ({ color, size }) => (
             <View>
               <Ionicons name="ellipsis-horizontal" size={size} color={color} />

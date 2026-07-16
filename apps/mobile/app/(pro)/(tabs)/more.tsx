@@ -8,6 +8,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Image,
@@ -29,15 +30,22 @@ import {
   useNewFeatures,
   useProviderClientsCount,
 } from '../../../hooks';
+import i18n, { setAppLocale, type AppLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 
-/** Map internal plan IDs to user-facing labels */
-const PLAN_LABELS: Record<string, string> = {
-  solo: 'Pro',
-  team: 'Studio',
-  trial: 'Essai',
-  test: 'Test',
+/** Map internal plan IDs to their i18n label keys. "Pro"/"Studio"/"Test"
+ *  are product names (identical in both languages); "trial" translates. */
+const PLAN_LABEL_KEYS: Record<string, string> = {
+  solo: 'proMore.plans.solo',
+  team: 'proMore.plans.team',
+  trial: 'proMore.plans.trial',
+  test: 'proMore.plans.test',
 };
+
+/** User-facing plan label — i18n.t called at the moment the label is produced. */
+function planLabel(plan?: string | null): string {
+  return i18n.t(PLAN_LABEL_KEYS[plan ?? ''] ?? 'proMore.plans.solo');
+}
 
 // Delete account confirmation modal
 function DeleteAccountModal({
@@ -56,6 +64,7 @@ function DeleteAccountModal({
   spacing: any;
 }) {
   const [password, setPassword] = React.useState('');
+  const { t } = useTranslation();
 
   if (!visible) return null;
 
@@ -66,15 +75,15 @@ function DeleteAccountModal({
           <Ionicons name="warning-outline" size={32} color="#dc2626" />
         </View>
         <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>
-          Supprimer votre compte
+          {t('proMore.delete.title')}
         </Text>
         <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.sm }}>
-          Cette action est irréversible. Toutes vos données (établissement, services, réservations) seront supprimées définitivement.
+          {t('proMore.delete.message')}
         </Text>
         <View style={{ marginTop: spacing.lg, width: '100%' }}>
           <Input
-            label="Mot de passe"
-            placeholder="Entrez votre mot de passe"
+            label={t('proMore.delete.passwordLabel')}
+            placeholder={t('proMore.delete.passwordPlaceholder')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -87,7 +96,7 @@ function DeleteAccountModal({
             disabled={isDeleting}
             style={[deleteStyles.cancelButton, { borderColor: colors.border }]}
           >
-            <Text variant="body" style={{ fontWeight: '600' }}>Annuler</Text>
+            <Text variant="body" style={{ fontWeight: '600' }}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={() => onConfirm(password)}
@@ -95,9 +104,9 @@ function DeleteAccountModal({
             style={[deleteStyles.deleteButton, { opacity: (!password || isDeleting) ? 0.5 : 1 }]}
           >
             {isDeleting ? (
-              <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>Suppression...</Text>
+              <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>{t('proMore.delete.deleting')}</Text>
             ) : (
-              <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>Supprimer</Text>
+              <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>{t('proMore.delete.confirm')}</Text>
             )}
           </Pressable>
         </View>
@@ -162,6 +171,7 @@ function ChangePasswordModal({
   spacing: any;
 }) {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
@@ -175,11 +185,11 @@ function ChangePasswordModal({
 
   const handleSubmit = async () => {
     if (newPassword.length < 6) {
-      showToast({ variant: 'error', message: '6 caractères minimum' });
+      showToast({ variant: 'error', message: t('proMore.password.tooShort') });
       return;
     }
     if (newPassword !== confirmPassword) {
-      showToast({ variant: 'error', message: 'Les mots de passe ne correspondent pas' });
+      showToast({ variant: 'error', message: t('proMore.password.mismatch') });
       return;
     }
 
@@ -187,13 +197,13 @@ function ChangePasswordModal({
     try {
       await reauthenticateUser(currentPassword);
       await updateUserPassword(newPassword);
-      showToast({ variant: 'success', message: 'Mot de passe modifié' });
+      showToast({ variant: 'success', message: t('proMore.password.success') });
       reset();
       onClose();
     } catch (error: any) {
       const msg = error.code === 'auth/wrong-password'
-        ? 'Mot de passe actuel incorrect'
-        : error.message || 'Erreur lors du changement';
+        ? t('proMore.password.wrongCurrent')
+        : error.message || t('proMore.password.error');
       showToast({ variant: 'error', message: msg });
     } finally {
       setLoading(false);
@@ -211,28 +221,28 @@ function ChangePasswordModal({
           <Ionicons name="lock-closed-outline" size={32} color={colors.primary} />
         </View>
         <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>
-          Changer le mot de passe
+          {t('proMore.password.title')}
         </Text>
         <View style={{ marginTop: spacing.lg, width: '100%', gap: spacing.sm }}>
           <Input
-            label="Mot de passe actuel"
-            placeholder="Votre mot de passe actuel"
+            label={t('proMore.password.currentLabel')}
+            placeholder={t('proMore.password.currentPlaceholder')}
             value={currentPassword}
             onChangeText={setCurrentPassword}
             secureTextEntry
             autoCapitalize="none"
           />
           <Input
-            label="Nouveau mot de passe"
-            placeholder="6 caractères minimum"
+            label={t('proMore.password.newLabel')}
+            placeholder={t('proMore.password.newPlaceholder')}
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
             autoCapitalize="none"
           />
           <Input
-            label="Confirmer"
-            placeholder="Retapez le nouveau mot de passe"
+            label={t('proMore.password.confirmLabel')}
+            placeholder={t('proMore.password.confirmPlaceholder')}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -245,7 +255,7 @@ function ChangePasswordModal({
             disabled={loading}
             style={[deleteStyles.cancelButton, { borderColor: colors.border }]}
           >
-            <Text variant="body" style={{ fontWeight: '600' }}>Annuler</Text>
+            <Text variant="body" style={{ fontWeight: '600' }}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={handleSubmit}
@@ -253,7 +263,7 @@ function ChangePasswordModal({
             style={[deleteStyles.deleteButton, { backgroundColor: colors.primary, opacity: canSubmit ? 1 : 0.5 }]}
           >
             <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-              {loading ? 'Modification...' : 'Modifier'}
+              {loading ? t('proMore.password.submitting') : t('proMore.password.submit')}
             </Text>
           </Pressable>
         </View>
@@ -320,6 +330,7 @@ function MenuItem({
   danger?: boolean;
   colors: any;
 }) {
+  const { t } = useTranslation();
   return (
     <Pressable
       onPress={onPress}
@@ -368,7 +379,7 @@ function MenuItem({
                 letterSpacing: 0.6,
               }}
             >
-              Nouveau
+              {t('proMore.newBadge')}
             </Text>
           </View>
         )}
@@ -391,6 +402,8 @@ function MenuItem({
 
 export default function MoreScreen() {
   const { colors, spacing } = useTheme();
+  const { t, i18n: i18nInstance } = useTranslation();
+  const currentLocale: AppLocale = i18nInstance.language === 'en' ? 'en' : 'fr';
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
@@ -422,7 +435,7 @@ export default function MoreScreen() {
     } catch (error: any) {
       showToast({
         variant: 'error',
-        message: error.message || 'Erreur lors de la suppression',
+        message: error.message || t('proMore.delete.error'),
       });
     } finally {
       setIsDeleting(false);
@@ -431,12 +444,12 @@ export default function MoreScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t('proMore.logout.title'),
+      t('proMore.logout.message'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Déconnecter',
+          text: t('proMore.logout.confirm'),
           style: 'destructive',
           onPress: async () => {
             await signOut();
@@ -447,12 +460,18 @@ export default function MoreScreen() {
     );
   };
 
+  const handleLocaleChange = (next: AppLocale) => {
+    if (next === currentLocale) return;
+    // Choix explicite : bascule immédiate + persistance AsyncStorage.
+    void setAppLocale(next);
+  };
+
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
       {/* ── Branded Header ── */}
       <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-          <Text variant="h1" style={{ color: '#FFFFFF' }}>Plus</Text>
+          <Text variant="h1" style={{ color: '#FFFFFF' }}>{t('proMore.title')}</Text>
         </View>
       </View>
 
@@ -482,7 +501,7 @@ export default function MoreScreen() {
                 </View>
               )}
               <View style={s.providerDetails}>
-                <Text variant="h3">{provider?.businessName || 'Mon établissement'}</Text>
+                <Text variant="h3">{provider?.businessName || t('proMore.businessFallback')}</Text>
                 <Text variant="body" color="textSecondary" style={{ marginTop: 2 }}>
                   {userData?.email || ''}
                 </Text>
@@ -541,32 +560,32 @@ export default function MoreScreen() {
                 <View style={s.subCardBadge}>
                   <Text style={s.subCardBadgeText}>
                     {sub.isActive
-                      ? PLAN_LABELS[sub.plan || ''] || 'Pro'
+                      ? planLabel(sub.plan)
                       : sub.isTrialing
-                        ? 'Essai'
-                        : 'Expiré'}
+                        ? t('proMore.plans.trial')
+                        : t('proMore.sub.badgeExpired')}
                   </Text>
                 </View>
               </View>
 
               <Text style={s.subCardTitle}>
                 {sub.isActive
-                  ? `Plan ${PLAN_LABELS[sub.plan || ''] || 'Pro'}`
+                  ? t('proMore.sub.planTitle', { plan: planLabel(sub.plan) })
                   : sub.isTrialing
-                    ? 'Période d\'essai'
-                    : 'Aucun abonnement'}
+                    ? t('proMore.sub.trialTitle')
+                    : t('proMore.sub.noneTitle')}
               </Text>
               <Text style={s.subCardSubtitle}>
                 {sub.isActive
-                  ? `Votre abonnement est actif${sub.paymentSource === 'stripe' ? ' · via le web' : sub.paymentSource === 'apple' ? ' · via Apple' : sub.paymentSource === 'google' ? ' · via Google Play' : ''}`
+                  ? `${t('proMore.sub.activeSubtitle')}${sub.paymentSource === 'stripe' ? t('proMore.sub.viaWeb') : sub.paymentSource === 'apple' ? t('proMore.sub.viaApple') : sub.paymentSource === 'google' ? t('proMore.sub.viaGoogle') : ''}`
                   : sub.isTrialing
-                    ? 'Profitez de toutes les fonctionnalités'
-                    : 'Abonnez-vous pour continuer'}
+                    ? t('proMore.sub.trialSubtitle')
+                    : t('proMore.sub.expiredSubtitle')}
               </Text>
 
               <View style={s.subCardFooter}>
                 <Text style={s.subCardAction}>
-                  {sub.isActive ? 'Gérer' : 'Voir les offres'}
+                  {sub.isActive ? t('proMore.sub.manage') : t('proMore.sub.seePlans')}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
               </View>
@@ -585,10 +604,10 @@ export default function MoreScreen() {
                 <Ionicons name="alert-circle" size={22} color="#DC2626" />
                 <View style={{ flex: 1 }}>
                   <Text variant="body" style={{ fontWeight: '600', color: '#991B1B' }}>
-                    Abonnement requis
+                    {t('proMore.sub.requiredTitle')}
                   </Text>
                   <Text variant="caption" style={{ color: '#B91C1C', marginTop: 2 }}>
-                    Votre essai est terminé. Abonnez-vous pour continuer à utiliser toutes les fonctionnalités.
+                    {t('proMore.sub.requiredMessage')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#DC2626" />
@@ -600,31 +619,31 @@ export default function MoreScreen() {
         {/* Mon enseigne — grille d'icônes */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Mon enseigne
+            {t('proMore.sections.business')}
           </Text>
           <Card padding="md" shadow="sm">
             <View style={s.grid}>
               <GridItem
                 icon="cut-outline"
-                label="Prestations"
+                label={t('proMore.grid.services')}
                 onPress={() => router.push('/(pro)/services')}
                 colors={colors}
               />
               <GridItem
                 icon="location-outline"
-                label="Lieux"
+                label={t('proMore.grid.locations')}
                 onPress={() => router.push('/(pro)/locations')}
                 colors={colors}
               />
               <GridItem
                 icon="people-outline"
-                label="Équipe"
+                label={t('proMore.grid.team')}
                 onPress={() => router.push('/(pro)/members')}
                 colors={colors}
               />
               <GridItem
                 icon="time-outline"
-                label="Disponibilités"
+                label={t('proMore.grid.availability')}
                 onPress={() => router.push('/(pro)/availability')}
                 colors={colors}
               />
@@ -645,19 +664,19 @@ export default function MoreScreen() {
                     <Ionicons name="globe-outline" size={22} color={provider?.isPublished ? '#16A34A' : colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text variant="body" style={{ fontWeight: '600' }}>Ma vitrine</Text>
+                    <Text variant="body" style={{ fontWeight: '600' }}>{t('proMore.storefront.title')}</Text>
                     <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                      {provider?.isPublished ? 'Votre page est visible en ligne' : 'Votre page n\'est pas encore publiée'}
+                      {provider?.isPublished ? t('proMore.storefront.published') : t('proMore.storefront.unpublished')}
                     </Text>
                     <Text variant="caption" color="primary" style={{ marginTop: 4, fontWeight: '600' }}>
-                      Modifier ma page →
+                      {t('proMore.storefront.editCta')}
                     </Text>
                   </View>
                   <View style={s.profileCardRight}>
                     <View style={[s.statusBadge, { backgroundColor: provider?.isPublished ? '#DCFCE7' : colors.surfaceSecondary }]}>
                       <View style={[s.statusDot, { backgroundColor: provider?.isPublished ? '#16A34A' : colors.textMuted }]} />
                       <Text variant="caption" style={{ fontWeight: '600', color: provider?.isPublished ? '#16A34A' : colors.textMuted, fontSize: 11 }}>
-                        {provider?.isPublished ? 'En ligne' : 'Hors ligne'}
+                        {provider?.isPublished ? t('proMore.storefront.online') : t('proMore.storefront.offline')}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginTop: 4 }} />
@@ -671,12 +690,12 @@ export default function MoreScreen() {
         {/* Gestion */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Gestion
+            {t('proMore.sections.management')}
           </Text>
           <Card padding="none" shadow="sm">
             <MenuItem
               icon="people-outline"
-              label="Clients"
+              label={t('proMore.menu.clients')}
               badge={clientsCount && clientsCount > 0 ? clientsCount : null}
               isNew={isNew('clients-2026-05')}
               onPress={() => {
@@ -688,7 +707,7 @@ export default function MoreScreen() {
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="star-outline"
-              label="Avis clients"
+              label={t('proMore.menu.reviews')}
               badge={provider?.rating?.count || null}
               onPress={() => router.push('/(pro)/reviews')}
               colors={colors}
@@ -696,7 +715,7 @@ export default function MoreScreen() {
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="ban-outline"
-              label="Créneaux bloqués"
+              label={t('proMore.menu.blockedSlots')}
               badge={blockedSlots?.length || null}
               onPress={() => router.push('/(pro)/blocked-slots')}
               colors={colors}
@@ -704,7 +723,7 @@ export default function MoreScreen() {
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="stats-chart-outline"
-              label="Statistiques"
+              label={t('proMore.menu.stats')}
               isNew={isNew('stats-2026-05')}
               onPress={() => {
                 markSeen('stats-2026-05');
@@ -718,12 +737,12 @@ export default function MoreScreen() {
         {/* Paramètres */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Paramètres
+            {t('proMore.sections.settings')}
           </Text>
           <Card padding="none" shadow="sm">
             <MenuItem
               icon="calendar-outline"
-              label="Paramètres de réservation"
+              label={t('proMore.menu.bookingSettings')}
               // Surface the auto-review "Nouveau" indicator on the
               // entry point so the Plus-tab dot has a visible
               // counterpart in the menu. Mark seen on tap — making
@@ -740,14 +759,14 @@ export default function MoreScreen() {
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="notifications-outline"
-              label="Notifications"
+              label={t('proMore.menu.notifications')}
               onPress={() => router.push('/(pro)/notification-settings')}
               colors={colors}
             />
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="card-outline"
-              label="Paiements & acomptes"
+              label={t('proMore.menu.payments')}
               isNew={isNew('payments-2026-05')}
               onPress={() => {
                 markSeen('payments-2026-05');
@@ -758,22 +777,57 @@ export default function MoreScreen() {
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="lock-closed-outline"
-              label="Changer le mot de passe"
+              label={t('proMore.menu.changePassword')}
               onPress={() => setShowPasswordModal(true)}
               colors={colors}
             />
           </Card>
         </View>
 
+        {/* Préférences — sélecteur de langue (choix explicite, persisté ;
+            même pattern que l'onglet Profil client, voir lib/i18n.ts) */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            {t('profile.sections.preferences')}
+          </Text>
+          <Card padding="none" shadow="sm">
+            {([
+              { locale: 'fr' as AppLocale, label: t('profile.language.french') },
+              { locale: 'en' as AppLocale, label: t('profile.language.english') },
+            ]).map((option, idx) => (
+              <React.Fragment key={option.locale}>
+                {idx > 0 && <View style={[s.menuDivider, { backgroundColor: colors.border }]} />}
+                <Pressable
+                  onPress={() => handleLocaleChange(option.locale)}
+                  style={({ pressed }) => [
+                    s.menuItem,
+                    { backgroundColor: pressed ? colors.surfaceSecondary : 'transparent' },
+                  ]}
+                >
+                  <View style={[s.menuIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
+                    <Ionicons name="language-outline" size={20} color={colors.primary} />
+                  </View>
+                  <Text variant="body" style={s.menuLabel}>
+                    {option.label}
+                  </Text>
+                  {currentLocale === option.locale && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  )}
+                </Pressable>
+              </React.Fragment>
+            ))}
+          </Card>
+        </View>
+
         {/* Support */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
           <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Support
+            {t('proMore.sections.support')}
           </Text>
           <Card padding="none" shadow="sm">
             <MenuItem
               icon="book-outline"
-              label="Tutoriels & guides"
+              label={t('proMore.menu.tutorials')}
               isNew={hasNewTutorials}
               onPress={() => {
                 // The help screen itself calls markVisited on mount,
@@ -786,21 +840,21 @@ export default function MoreScreen() {
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="help-circle-outline"
-              label="Aide et contact"
+              label={t('proMore.menu.help')}
               onPress={() => Linking.openURL('https://opatam.com/contact')}
               colors={colors}
             />
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="document-text-outline"
-              label="Conditions d'utilisation"
+              label={t('proMore.menu.terms')}
               onPress={() => Linking.openURL('https://opatam.com/cgu')}
               colors={colors}
             />
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="shield-checkmark-outline"
-              label="Politique de confidentialité"
+              label={t('proMore.menu.privacy')}
               onPress={() => Linking.openURL('https://opatam.com/confidentialite')}
               colors={colors}
             />
@@ -812,7 +866,7 @@ export default function MoreScreen() {
           <Card padding="none" shadow="sm">
             <MenuItem
               icon="log-out-outline"
-              label="Se déconnecter"
+              label={t('proMore.menu.logout')}
               onPress={handleLogout}
               showArrow={false}
               danger
@@ -821,7 +875,7 @@ export default function MoreScreen() {
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="trash-outline"
-              label="Supprimer mon compte"
+              label={t('proMore.menu.deleteAccount')}
               onPress={() => setShowDeleteModal(true)}
               showArrow={false}
               danger
@@ -836,7 +890,7 @@ export default function MoreScreen() {
             Opatam v1.3.1
           </Text>
           <Text variant="caption" color="textMuted" align="center" style={{ marginTop: 4 }}>
-            Gérez votre activité en toute simplicité
+            {t('proMore.tagline')}
           </Text>
         </View>
       </ScrollView>

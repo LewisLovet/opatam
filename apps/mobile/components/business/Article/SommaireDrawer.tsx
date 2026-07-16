@@ -23,6 +23,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Modal,
@@ -51,6 +52,7 @@ const PANEL_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 360);
 const ANIM_MS = 240;
 
 export function SommaireDrawer({ visible, headings, onClose, onJump }: Props) {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -140,7 +142,7 @@ export function SommaireDrawer({ visible, headings, onClose, onJump }: Props) {
               color={colors.text}
             />
             <Text variant="body" style={{ flex: 1, fontWeight: '700' }}>
-              Sommaire
+              {t('components.article.tocTitle')}
             </Text>
             <Pressable
               onPress={onClose}
@@ -162,7 +164,7 @@ export function SommaireDrawer({ visible, headings, onClose, onJump }: Props) {
           {headings.length === 0 ? (
             <View style={[styles.empty, { padding: spacing.lg }]}>
               <Text variant="caption" color="textMuted" align="center">
-                Cet article n'a pas de sections définies.
+                {t('components.article.noSections')}
               </Text>
             </View>
           ) : (

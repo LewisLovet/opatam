@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
+import i18n from '../../lib/i18n';
 import { Text, useToast } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
@@ -73,6 +75,7 @@ function SettingRow({
 // ---------------------------------------------------------------------------
 
 export default function ProNotificationSettingsScreen() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const { provider, providerId, refreshProvider } = useProvider();
   const { showToast } = useToast();
@@ -100,7 +103,7 @@ export default function ProNotificationSettingsScreen() {
       refreshProvider();
     } catch {
       setPrefs(previous);
-      showToast({ variant: 'error', message: 'Erreur lors de la mise à jour' });
+      showToast({ variant: 'error', message: i18n.t('proNotifSettings.updateError') });
     } finally {
       setSaving(false);
     }
@@ -113,7 +116,7 @@ export default function ProNotificationSettingsScreen() {
       {/* Branded blue header. Auto-save is fast and any failure
           surfaces via toast, so the inline spinner the previous
           header showed isn't worth a custom right-slot here. */}
-      <BrandedHeader title="Notifications" />
+      <BrandedHeader title={t('proNotifSettings.title')} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -126,13 +129,13 @@ export default function ProNotificationSettingsScreen() {
             color="textSecondary"
             style={styles.sectionTitle}
           >
-            CANAUX
+            {t('proNotifSettings.channelsSection')}
           </Text>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg }]}>
             <SettingRow
               icon="phone-portrait-outline"
-              label="Notifications push"
-              description="Sur votre téléphone"
+              label={t('proNotifSettings.push.label')}
+              description={t('proNotifSettings.push.description')}
               value={prefs.pushEnabled}
               onValueChange={(val) => updatePref('pushEnabled', val)}
               colors={colors}
@@ -140,8 +143,8 @@ export default function ProNotificationSettingsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingRow
               icon="mail-outline"
-              label="Notifications email"
-              description="Par email"
+              label={t('proNotifSettings.email.label')}
+              description={t('proNotifSettings.email.description')}
               value={prefs.emailEnabled}
               onValueChange={(val) => updatePref('emailEnabled', val)}
               colors={colors}
@@ -156,13 +159,13 @@ export default function ProNotificationSettingsScreen() {
             color="textSecondary"
             style={styles.sectionTitle}
           >
-            TYPES DE NOTIFICATION
+            {t('proNotifSettings.typesSection')}
           </Text>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg }]}>
             <SettingRow
               icon="add-circle-outline"
-              label="Nouvelles réservations"
-              description="Quand un client prend RDV"
+              label={t('proNotifSettings.newBookings.label')}
+              description={t('proNotifSettings.newBookings.description')}
               value={prefs.newBookingNotifications}
               onValueChange={(val) => updatePref('newBookingNotifications', val)}
               disabled={channelsDisabled}
@@ -171,8 +174,8 @@ export default function ProNotificationSettingsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingRow
               icon="close-circle-outline"
-              label="Annulations"
-              description="Quand un RDV est annulé"
+              label={t('proNotifSettings.cancellations.label')}
+              description={t('proNotifSettings.cancellations.description')}
               value={prefs.cancellationNotifications}
               onValueChange={(val) => updatePref('cancellationNotifications', val)}
               disabled={channelsDisabled}
@@ -181,8 +184,8 @@ export default function ProNotificationSettingsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingRow
               icon="alarm-outline"
-              label="Rappels"
-              description="Avant vos rendez-vous"
+              label={t('proNotifSettings.reminders.label')}
+              description={t('proNotifSettings.reminders.description')}
               value={prefs.reminderNotifications}
               onValueChange={(val) => updatePref('reminderNotifications', val)}
               disabled={channelsDisabled}
@@ -192,7 +195,7 @@ export default function ProNotificationSettingsScreen() {
 
           {channelsDisabled && (
             <Text variant="caption" style={[styles.warning, { color: '#d97706' }]}>
-              Activez au moins un canal pour recevoir des notifications.
+              {t('proNotifSettings.warning')}
             </Text>
           )}
         </View>
@@ -212,7 +215,7 @@ export default function ProNotificationSettingsScreen() {
         >
           <Ionicons name="information-circle-outline" size={20} color="#2563eb" />
           <Text variant="caption" style={{ flex: 1, color: '#1e40af', marginLeft: 8 }}>
-            Les modifications sont enregistrées automatiquement.
+            {t('proNotifSettings.autoSave')}
           </Text>
         </View>
       </ScrollView>

@@ -29,8 +29,10 @@ import {
   FlatList,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Card, Input, Loader, SubscriptionRequiredModal } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
@@ -42,13 +44,14 @@ import {
 import type { Member, ActivityCategory } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
-const months = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
 function formatDateShort(date: Date): string {
-  return `${date.getDate()} ${months[date.getMonth()].slice(0, 3)}. ${date.getFullYear()}`;
+  // Locale-aware short date ("6 janv. 2026" / "Jan 6, 2026") — follows
+  // the app language instead of a hardcoded French month list.
+  return new Intl.DateTimeFormat(i18n.language, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
 }
 
 function formatTime(date: Date): string {
@@ -179,6 +182,7 @@ function TimePickerModal({
   spacing: any;
   radius: any;
 }) {
+  const { t } = useTranslation();
   const [selectedHour, setSelectedHour] = useState(initialHour);
   const [selectedMinute, setSelectedMinute] = useState(initialMinute);
   const padTwo = (n: number) => n.toString().padStart(2, '0');
@@ -196,7 +200,7 @@ function TimePickerModal({
         <View style={[s.modalSheet, { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
           <View style={[s.modalHeader, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomColor: colors.border }]}>
             <Pressable onPress={onClose} hitSlop={8}>
-              <Text variant="body" color="textSecondary">Annuler</Text>
+              <Text variant="body" color="textSecondary">{t('common.cancel')}</Text>
             </Pressable>
             <Text variant="body" style={{ fontWeight: '600' }}>{title}</Text>
             <Pressable onPress={() => onConfirm(selectedHour, selectedMinute)} hitSlop={8}>
@@ -248,6 +252,7 @@ type PickerMode = 'date' | 'startTime' | 'endTime' | null;
 
 export default function CreateActivityScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { providerId } = useProvider();
   const sub = useSubscriptionStatus();
@@ -330,9 +335,11 @@ export default function CreateActivityScreen() {
           const existing = await blockedSlotRepository.getById(providerId, editId);
           if (cancelled) return;
           if (!existing) {
-            Alert.alert('Activité introuvable', 'Cette activité a été supprimée.', [
-              { text: 'OK', onPress: () => router.back() },
-            ]);
+            Alert.alert(
+              i18n.t('proActivity.notFoundTitle'),
+              i18n.t('proActivity.notFoundMessage'),
+              [{ text: 'OK', onPress: () => router.back() }],
+            );
             return;
           }
           const startDt =
@@ -427,15 +434,15 @@ export default function CreateActivityScreen() {
   const handleSubmit = async () => {
     if (!providerId) return;
     if (!selectedMember) {
-      Alert.alert('Erreur', 'Veuillez sélectionner un membre');
+      Alert.alert(t('proActivity.errorTitle'), t('proActivity.selectMember'));
       return;
     }
     if (!title.trim()) {
-      Alert.alert('Titre requis', 'Donnez un nom à votre activité (ex : « Crossfit »).');
+      Alert.alert(t('proActivity.titleRequiredTitle'), t('proActivity.titleRequiredMessage'));
       return;
     }
     if (endTime <= startTime) {
-      Alert.alert('Heures invalides', "L'heure de fin doit être après l'heure de début.");
+      Alert.alert(t('proActivity.invalidTimesTitle'), t('proActivity.invalidTimesMessage'));
       return;
     }
 
@@ -446,7 +453,7 @@ export default function CreateActivityScreen() {
     if (trimmedAmount.length > 0) {
       const parsed = Number.parseFloat(trimmedAmount);
       if (!Number.isFinite(parsed) || parsed < 0) {
-        Alert.alert('Montant invalide', 'Saisissez un montant en euros (ex : 120 ou 89,50).');
+        Alert.alert(t('proActivity.invalidAmountTitle'), t('proActivity.invalidAmountMessage'));
         return;
       }
       amountCents = Math.round(parsed * 100);
@@ -472,9 +479,11 @@ export default function CreateActivityScreen() {
           address: address.trim() || null,
           amount: amountCents,
         });
-        Alert.alert('Activité modifiée', `${title.trim()} a été mis à jour.`, [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        Alert.alert(
+          t('proActivity.updatedTitle'),
+          t('proActivity.updatedMessage', { title: title.trim() }),
+          [{ text: 'OK', onPress: () => router.back() }],
+        );
       } else {
         await schedulingService.blockPeriod(providerId, {
           memberId: selectedMember.id,
@@ -491,15 +500,17 @@ export default function CreateActivityScreen() {
           address: address.trim() || null,
           amount: amountCents,
         });
-        Alert.alert('Activité ajoutée', `${title.trim()} a été ajouté à votre agenda.`, [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        Alert.alert(
+          t('proActivity.addedTitle'),
+          t('proActivity.addedMessage', { title: title.trim() }),
+          [{ text: 'OK', onPress: () => router.back() }],
+        );
       }
     } catch (error) {
       console.error('Error saving activity:', error);
       Alert.alert(
-        'Erreur',
-        error instanceof Error ? error.message : "Impossible d'enregistrer l'activité",
+        t('proActivity.errorTitle'),
+        error instanceof Error ? error.message : t('proActivity.saveError'),
       );
     } finally {
       setIsSubmitting(false);
@@ -513,12 +524,14 @@ export default function CreateActivityScreen() {
   const handleDelete = () => {
     if (!editId || !providerId) return;
     Alert.alert(
-      "Supprimer l'activité ?",
-      `« ${title.trim() || 'Cette activité'} » sera retirée de votre agenda.`,
+      t('proActivity.deleteConfirmTitle'),
+      t('proActivity.deleteConfirmMessage', {
+        title: title.trim() || t('proActivity.thisActivity'),
+      }),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('proActivity.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -528,10 +541,10 @@ export default function CreateActivityScreen() {
             } catch (error) {
               console.error('Error deleting activity:', error);
               Alert.alert(
-                'Erreur',
+                t('proActivity.errorTitle'),
                 error instanceof Error
                   ? error.message
-                  : "Impossible de supprimer l'activité",
+                  : t('proActivity.deleteError'),
               );
             } finally {
               setIsSubmitting(false);
@@ -555,7 +568,7 @@ export default function CreateActivityScreen() {
       <SubscriptionRequiredModal
         visible={showSubModal}
         onClose={() => { setShowSubModal(false); router.back(); }}
-        context="Créez des activités personnelles dans votre agenda avec un abonnement Pro."
+        context={t('proActivity.subscriptionContext')}
       />
 
       {/* Header */}
@@ -564,7 +577,7 @@ export default function CreateActivityScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text variant="h2" style={{ marginLeft: spacing.md, flex: 1 }}>
-          {isEditing ? "Modifier l'activité" : 'Nouvelle activité'}
+          {isEditing ? t('proActivity.editTitle') : t('proActivity.newTitle')}
         </Text>
       </View>
 
@@ -587,7 +600,7 @@ export default function CreateActivityScreen() {
               marginLeft: spacing.xs,
             }}
           >
-            Catégorie
+            {t('proActivity.category')}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
@@ -635,8 +648,8 @@ export default function CreateActivityScreen() {
         {/* Title */}
         <View style={{ marginBottom: spacing.lg }}>
           <Input
-            label="Titre"
-            placeholder="ex : Crossfit, Déjeuner avec…"
+            label={t('proActivity.titleLabel')}
+            placeholder={t('proActivity.titlePlaceholder')}
             value={title}
             onChangeText={setTitle}
             autoCapitalize="sentences"
@@ -658,7 +671,7 @@ export default function CreateActivityScreen() {
                 marginLeft: spacing.xs,
               }}
             >
-              Pour
+              {t('proActivity.forLabel')}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: spacing.xs }}>
@@ -704,7 +717,7 @@ export default function CreateActivityScreen() {
           >
             <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
             <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text variant="caption" color="textSecondary">Date</Text>
+              <Text variant="caption" color="textSecondary">{t('proActivity.date')}</Text>
               <Text variant="body" style={{ fontWeight: '500' }}>
                 {formatDateShort(activityDate)}
               </Text>
@@ -718,7 +731,7 @@ export default function CreateActivityScreen() {
           >
             <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
             <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text variant="caption" color="textSecondary">Début</Text>
+              <Text variant="caption" color="textSecondary">{t('proActivity.start')}</Text>
               <Text variant="body" style={{ fontWeight: '500' }}>
                 {formatTime(startTime)}
               </Text>
@@ -732,7 +745,7 @@ export default function CreateActivityScreen() {
           >
             <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
             <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text variant="caption" color="textSecondary">Fin</Text>
+              <Text variant="caption" color="textSecondary">{t('proActivity.end')}</Text>
               <Text variant="body" style={{ fontWeight: '500' }}>
                 {formatTime(endTime)}
               </Text>
@@ -744,8 +757,8 @@ export default function CreateActivityScreen() {
         {/* Address (optional) */}
         <View style={{ marginBottom: spacing.lg }}>
           <Input
-            label="Adresse (optionnel)"
-            placeholder="ex : Salle de sport, 12 rue X"
+            label={t('proActivity.addressLabel')}
+            placeholder={t('proActivity.addressPlaceholder')}
             value={address}
             onChangeText={setAddress}
             autoCapitalize="sentences"
@@ -756,8 +769,8 @@ export default function CreateActivityScreen() {
         {/* Notes (optional) */}
         <View style={{ marginBottom: spacing.lg }}>
           <Input
-            label="Notes (optionnel)"
-            placeholder="Ajouter des notes…"
+            label={t('proActivity.notesLabel')}
+            placeholder={t('proActivity.notesPlaceholder')}
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -771,7 +784,7 @@ export default function CreateActivityScreen() {
             aggregated into "Autres revenus" in the stats Phase 2. */}
         <View style={{ marginBottom: spacing.lg }}>
           <Input
-            label="Montant facturé (optionnel)"
+            label={t('proActivity.amountLabel')}
             placeholder="0"
             value={amount}
             onChangeText={(v) => {
@@ -783,7 +796,7 @@ export default function CreateActivityScreen() {
             }}
             keyboardType="decimal-pad"
             maxLength={10}
-            helperText="Pour une activité rémunérée hors plateforme. Affiché comme badge sur l'agenda."
+            helperText={t('proActivity.amountHelper')}
           />
         </View>
 
@@ -792,11 +805,11 @@ export default function CreateActivityScreen() {
           title={
             isSubmitting
               ? isEditing
-                ? 'Enregistrement…'
-                : 'Création…'
+                ? t('proActivity.saving')
+                : t('proActivity.creating')
               : isEditing
-                ? 'Enregistrer les modifications'
-                : "Ajouter à l'agenda"
+                ? t('proActivity.saveChanges')
+                : t('proActivity.addToCalendar')
           }
           onPress={handleSubmit}
           loading={isSubmitting}
@@ -822,7 +835,7 @@ export default function CreateActivityScreen() {
             ]}
           >
             <Text variant="body" style={{ color: '#DC2626', fontWeight: '600' }}>
-              Supprimer cette activité
+              {t('proActivity.deleteActivity')}
             </Text>
           </Pressable>
         )}
@@ -831,7 +844,7 @@ export default function CreateActivityScreen() {
       {/* Time picker */}
       <TimePickerModal
         visible={activePicker === 'startTime' || activePicker === 'endTime'}
-        title={activePicker === 'startTime' ? 'Heure de début' : 'Heure de fin'}
+        title={activePicker === 'startTime' ? t('proActivity.startTimeTitle') : t('proActivity.endTimeTitle')}
         initialHour={
           activePicker === 'startTime' ? startTime.getHours() : endTime.getHours()
         }
@@ -881,9 +894,9 @@ export default function CreateActivityScreen() {
                 ]}
               >
                 <Pressable onPress={() => setActivePicker(null)} hitSlop={8}>
-                  <Text variant="body" color="textSecondary">Annuler</Text>
+                  <Text variant="body" color="textSecondary">{t('common.cancel')}</Text>
                 </Pressable>
-                <Text variant="body" style={{ fontWeight: '600' }}>Date</Text>
+                <Text variant="body" style={{ fontWeight: '600' }}>{t('proActivity.date')}</Text>
                 <Pressable onPress={() => setActivePicker(null)} hitSlop={8}>
                   <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
                 </Pressable>

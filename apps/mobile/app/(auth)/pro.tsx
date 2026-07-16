@@ -23,9 +23,11 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Input, useToast } from '../../components';
 import {
@@ -138,7 +140,8 @@ const DEFAULT_DATA: WizardData = {
   referralCode: '',
   referralAffiliateId: null,
   referralLabel: null,
-  locationName: 'Mon salon',
+  // Filled at state init with the localized default ("Mon salon" / "My salon").
+  locationName: '',
   countryCode: 'FR',
   locationType: 'fixed',
   cityOnly: false,
@@ -155,27 +158,33 @@ const DEFAULT_DATA: WizardData = {
   confirmPassword: '',
 };
 
+// Labels/subtitles resolved at render via t(`auth.pro.steps.${key}.label|subtitle`).
 const STEPS = [
-  { label: 'Activité', icon: 'business-outline' as const, subtitle: 'Parlez-nous de votre activité' },
-  { label: 'Lieu', icon: 'location-outline' as const, subtitle: 'Où exercez-vous ?' },
-  { label: 'Prestation', icon: 'pricetag-outline' as const, subtitle: 'Ajoutez vos prestations' },
-  { label: 'Horaires', icon: 'time-outline' as const, subtitle: 'Vos disponibilités' },
-  { label: 'Aperçu', icon: 'eye-outline' as const, subtitle: 'Vérifiez vos informations' },
-  { label: 'Compte', icon: 'person-outline' as const, subtitle: 'Créez votre accès' },
+  { key: 'activity', icon: 'business-outline' as const },
+  { key: 'location', icon: 'location-outline' as const },
+  { key: 'service', icon: 'pricetag-outline' as const },
+  { key: 'schedule', icon: 'time-outline' as const },
+  { key: 'preview', icon: 'eye-outline' as const },
+  { key: 'account', icon: 'person-outline' as const },
 ];
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 75, 90, 120, 150, 180, 240];
 
-// Same labels as /api/affiliates/verify (web) so the message matches.
-const REFERRAL_DURATION_LABELS: Record<string, string> = {
-  once: 'le 1er mois',
-  repeating_3: 'les 3 premiers mois',
-  repeating_12: 'la 1ère année',
-  forever: 'tous les mois',
+// Same wording as /api/affiliates/verify (web) so the message matches.
+// Module-level helper — i18n.t is called at message time, not import time.
+const REFERRAL_DURATION_KEYS: Record<string, string> = {
+  once: 'auth.pro.referral.spanOnce',
+  repeating_3: 'auth.pro.referral.spanThreeMonths',
+  repeating_12: 'auth.pro.referral.spanFirstYear',
+  forever: 'auth.pro.referral.spanForever',
 };
 function buildReferralLabel(discount: number, duration?: string | null): string {
-  const span = duration && REFERRAL_DURATION_LABELS[duration] ? REFERRAL_DURATION_LABELS[duration] : 'votre abonnement';
-  return `-${discount}% sur ${span}`;
+  const span = i18n.t(
+    duration && REFERRAL_DURATION_KEYS[duration]
+      ? REFERRAL_DURATION_KEYS[duration]
+      : 'auth.pro.referral.spanSubscription',
+  );
+  return i18n.t('auth.pro.referral.discountLabel', { discount, span });
 }
 
 // Map Lucide icon names to Ionicons equivalents
@@ -197,16 +206,15 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   'more-horizontal': 'ellipsis-horizontal-outline',
 };
 
-// Days for schedule display (Mon-Sun, French style)
-const SCHEDULE_DAYS = [
-  { value: 1, label: 'Lundi', short: 'Lun' },
-  { value: 2, label: 'Mardi', short: 'Mar' },
-  { value: 3, label: 'Mercredi', short: 'Mer' },
-  { value: 4, label: 'Jeudi', short: 'Jeu' },
-  { value: 5, label: 'Vendredi', short: 'Ven' },
-  { value: 6, label: 'Samedi', short: 'Sam' },
-  { value: 0, label: 'Dimanche', short: 'Dim' },
-];
+// Days for schedule display (Mon-Sun). Labels come from Intl on the app
+// language — 2021-01-03 is a Sunday, so `3 + value` maps 0→Sun … 6→Sat.
+const SCHEDULE_DAY_VALUES = [1, 2, 3, 4, 5, 6, 0];
+function weekdayLabel(value: number): string {
+  const label = new Intl.DateTimeFormat(i18n.language, { weekday: 'long' }).format(
+    new Date(2021, 0, 3 + value),
+  );
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
 // ---------------------------------------------------------------------------
 // Floating Bubbles Background
@@ -384,17 +392,21 @@ async function searchAddressFallbackBAN(query: string, limit = 5, type?: string)
   }
 }
 
+// Country names resolved at render via t(`auth.pro.countries.${code}`).
 const SUPPORTED_COUNTRIES = [
-  { code: 'FR', label: '\u{1F1EB}\u{1F1F7} France' },
-  { code: 'BE', label: '\u{1F1E7}\u{1F1EA} Belgique' },
-  { code: 'LU', label: '\u{1F1F1}\u{1F1FA} Luxembourg' },
-  { code: 'CH', label: '\u{1F1E8}\u{1F1ED} Suisse' },
-  { code: 'DE', label: '\u{1F1E9}\u{1F1EA} Allemagne' },
-  { code: 'ES', label: '\u{1F1EA}\u{1F1F8} Espagne' },
-  { code: 'IT', label: '\u{1F1EE}\u{1F1F9} Italie' },
-  { code: 'NL', label: '\u{1F1F3}\u{1F1F1} Pays-Bas' },
-  { code: 'PT', label: '\u{1F1F5}\u{1F1F9} Portugal' },
+  { code: 'FR', flag: '\u{1F1EB}\u{1F1F7}' },
+  { code: 'BE', flag: '\u{1F1E7}\u{1F1EA}' },
+  { code: 'LU', flag: '\u{1F1F1}\u{1F1FA}' },
+  { code: 'CH', flag: '\u{1F1E8}\u{1F1ED}' },
+  { code: 'DE', flag: '\u{1F1E9}\u{1F1EA}' },
+  { code: 'ES', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: 'IT', flag: '\u{1F1EE}\u{1F1F9}' },
+  { code: 'NL', flag: '\u{1F1F3}\u{1F1F1}' },
+  { code: 'PT', flag: '\u{1F1F5}\u{1F1F9}' },
 ];
+function countryLabel(code: string, flag: string): string {
+  return `${flag} ${i18n.t(`auth.pro.countries.${code}`)}`;
+}
 
 // ---------------------------------------------------------------------------
 // Main Component
@@ -402,12 +414,16 @@ const SUPPORTED_COUNTRIES = [
 
 export default function ProRegisterScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [data, setData] = useState<WizardData>(DEFAULT_DATA);
+  const [data, setData] = useState<WizardData>(() => ({
+    ...DEFAULT_DATA,
+    locationName: i18n.t('auth.pro.locationNames.salon'),
+  }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -497,7 +513,7 @@ export default function ProRegisterScreen() {
       );
       if (snap.empty) {
         updateFields({ referralAffiliateId: null, referralLabel: null });
-        Alert.alert('Code invalide', "Ce code parrain n'existe pas ou n'est plus actif.");
+        Alert.alert(i18n.t('auth.pro.referral.invalidTitle'), i18n.t('auth.pro.referral.invalidMessage'));
         return;
       }
       const docSnap = snap.docs[0];
@@ -505,10 +521,10 @@ export default function ProRegisterScreen() {
       const label =
         typeof a.discount === 'number' && a.discount > 0
           ? buildReferralLabel(a.discount, a.discountDuration)
-          : 'Réduction appliquée';
+          : i18n.t('auth.pro.referral.applied');
       updateFields({ referralAffiliateId: docSnap.id, referralLabel: label, referralCode: code });
     } catch {
-      Alert.alert('Erreur', 'Impossible de vérifier le code pour le moment.');
+      Alert.alert(i18n.t('auth.pro.referral.checkErrorTitle'), i18n.t('auth.pro.referral.checkErrorMessage'));
     } finally {
       setReferralChecking(false);
     }
@@ -657,43 +673,43 @@ export default function ProRegisterScreen() {
   const validateStep = (): string | null => {
     switch (currentStep) {
       case 0:
-        if (!data.businessName.trim()) return 'Le nom de votre activité est requis';
-        if (!data.category) return 'Veuillez choisir une catégorie';
+        if (!data.businessName.trim()) return t('auth.pro.validation.businessNameRequired');
+        if (!data.category) return t('auth.pro.validation.categoryRequired');
         return null;
       case 1:
-        if (!data.locationName.trim()) return 'Le nom du lieu est requis';
+        if (!data.locationName.trim()) return t('auth.pro.validation.locationNameRequired');
         if (!data.city.trim())
           return data.cityOnly
-            ? 'Veuillez selectionner une ville dans les suggestions'
-            : 'Veuillez selectionner une adresse dans les suggestions';
+            ? t('auth.pro.validation.selectCitySuggestion')
+            : t('auth.pro.validation.selectAddressSuggestion');
         if (!data.cityOnly && !data.postalCode.trim())
-          return 'Veuillez selectionner une adresse dans les suggestions';
+          return t('auth.pro.validation.selectAddressSuggestion');
         return null;
       case 2:
-        if (data.services.length === 0) return 'Ajoutez au moins une prestation';
+        if (data.services.length === 0) return t('auth.pro.validation.addOneService');
         for (let i = 0; i < data.services.length; i++) {
-          if (!data.services[i].name.trim()) return `Le nom de la prestation ${i + 1} est requis`;
+          if (!data.services[i].name.trim()) return t('auth.pro.validation.serviceNameRequired', { index: i + 1 });
           if (!data.services[i].price.trim() || isNaN(Number(data.services[i].price)) || Number(data.services[i].price) < 0)
-            return `Le prix de la prestation ${i + 1} doit etre un nombre positif`;
+            return t('auth.pro.validation.servicePriceInvalid', { index: i + 1 });
         }
         return null;
       case 3: {
         const hasOpenDay = Object.values(data.availability).some((d) => d.isOpen);
-        if (!hasOpenDay) return 'Au moins un jour doit être ouvert';
+        if (!hasOpenDay) return t('auth.pro.validation.openDayRequired');
         return null;
       }
       case 4:
         return null;
       case 5:
-        if (!data.displayName.trim()) return 'Votre nom est requis';
-        if (!data.email.trim()) return "L'email est requis";
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) return "Format d'email invalide";
-        if (!data.phone.trim()) return 'Le téléphone est requis';
+        if (!data.displayName.trim()) return t('auth.pro.validation.nameRequired');
+        if (!data.email.trim()) return t('auth.pro.validation.emailRequired');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) return t('auth.pro.validation.emailInvalid');
+        if (!data.phone.trim()) return t('auth.pro.validation.phoneRequired');
         const cleanPhone = data.phone.replace(/[\s.\-]/g, '');
         if (cleanPhone.length < 8 || !/^(\+\d{8,15}|0\d{8,10})$/.test(cleanPhone))
-          return 'Numero de telephone invalide';
-        if (!data.password || data.password.length < 6) return 'Le mot de passe doit contenir au moins 6 caractères';
-        if (data.password !== data.confirmPassword) return 'Les mots de passe ne correspondent pas';
+          return t('auth.pro.validation.phoneInvalid');
+        if (!data.password || data.password.length < 6) return t('auth.pro.validation.passwordTooShort');
+        if (data.password !== data.confirmPassword) return t('auth.pro.validation.passwordMismatch');
         return null;
       default:
         return null;
@@ -860,7 +876,7 @@ export default function ProRegisterScreen() {
       setFinalizing(true);
     } catch (err: any) {
       console.error('Registration error:', err);
-      const msg = err?.message || "Erreur lors de l'inscription";
+      const msg = err?.message || t('auth.pro.registerError');
       showToast({ variant: 'error', message: msg });
     } finally {
       setIsSubmitting(false);
@@ -959,16 +975,16 @@ export default function ProRegisterScreen() {
   const renderStep1 = () => (
     <View style={{ gap: spacing.md }}>
       <Input
-        label="Nom de votre activité"
-        placeholder="Ex: Studio Beauté Marie"
+        label={t('auth.pro.step1.businessNameLabel')}
+        placeholder={t('auth.pro.step1.businessNamePlaceholder')}
         value={data.businessName}
-        onChangeText={(t) => updateField('businessName', t)}
+        onChangeText={(v) => updateField('businessName', v)}
         autoCapitalize="words"
       />
 
       <View>
         <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-          Catégorie
+          {t('auth.pro.step1.categoryLabel')}
         </Text>
         <Pressable
           onPress={() => setShowCategoryModal(true)}
@@ -995,17 +1011,17 @@ export default function ProRegisterScreen() {
               </Text>
             </View>
           ) : (
-            <Text variant="body" color="textMuted">Choisir une catégorie</Text>
+            <Text variant="body" color="textMuted">{t('auth.pro.step1.chooseCategory')}</Text>
           )}
           <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
         </Pressable>
       </View>
 
       <Input
-        label={`Description (optionnel) ${data.description.length}/500`}
-        placeholder="Décrivez votre activité en quelques mots"
+        label={t('auth.pro.step1.descriptionLabel', { count: data.description.length })}
+        placeholder={t('auth.pro.step1.descriptionPlaceholder')}
         value={data.description}
-        onChangeText={(t) => { if (t.length <= 500) updateField('description', t); }}
+        onChangeText={(v) => { if (v.length <= 500) updateField('description', v); }}
         multiline
         numberOfLines={3}
       />
@@ -1013,15 +1029,15 @@ export default function ProRegisterScreen() {
       {/* Referral / affiliate code (optional) */}
       <View style={{ gap: spacing.xs }}>
         <Text variant="bodySmall" style={{ fontWeight: '500', color: colors.text }}>
-          Code parrain (facultatif)
+          {t('auth.pro.referral.codeLabel')}
         </Text>
         <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
           <View style={{ flex: 1 }}>
             <Input
-              placeholder="Ex : MARIE"
+              placeholder={t('auth.pro.referral.codePlaceholder')}
               value={data.referralCode}
-              onChangeText={(t) =>
-                updateFields({ referralCode: t.toUpperCase(), referralAffiliateId: null, referralLabel: null })
+              onChangeText={(v) =>
+                updateFields({ referralCode: v.toUpperCase(), referralAffiliateId: null, referralLabel: null })
               }
             />
           </View>
@@ -1039,7 +1055,7 @@ export default function ProRegisterScreen() {
             })}
           >
             <Text variant="bodySmall" style={{ color: '#fff', fontWeight: '700' }}>
-              {referralChecking ? '…' : 'Vérifier'}
+              {referralChecking ? '…' : t('auth.pro.referral.verify')}
             </Text>
           </Pressable>
         </View>
@@ -1047,7 +1063,7 @@ export default function ProRegisterScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
             <Text variant="caption" style={{ color: '#16A34A', flex: 1 }}>
-              Code validé : {data.referralLabel}
+              {t('auth.pro.referral.validated', { label: data.referralLabel })}
             </Text>
           </View>
         ) : null}
@@ -1055,14 +1071,24 @@ export default function ProRegisterScreen() {
     </View>
   );
 
-  const LOCATION_NAME_OPTIONS = ['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne', 'Consultation téléphonique', 'Consultation vidéo'];
+  const LOCATION_NAME_OPTIONS = [
+    t('auth.pro.locationNames.salon'),
+    t('auth.pro.locationNames.cabinet'),
+    t('auth.pro.locationNames.studio'),
+    t('auth.pro.locationNames.atelier'),
+    t('auth.pro.locationNames.home'),
+    t('auth.pro.locationNames.office'),
+    t('auth.pro.locationNames.online'),
+    t('auth.pro.locationNames.phoneCall'),
+    t('auth.pro.locationNames.videoCall'),
+  ];
 
   const renderStep2 = () => (
     <View style={{ gap: spacing.md }}>
       {/* Location name — dropdown style */}
       <View>
         <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-          Nom du lieu
+          {t('auth.pro.step2.locationNameLabel')}
         </Text>
         <Pressable
           onPress={() => setShowLocationNameModal(true)}
@@ -1077,14 +1103,14 @@ export default function ProRegisterScreen() {
             },
           ]}
         >
-          <Text variant="body">{data.locationName || 'Choisir...'}</Text>
+          <Text variant="body">{data.locationName || t('auth.pro.step2.choose')}</Text>
           <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
         </Pressable>
-        {!LOCATION_NAME_OPTIONS.includes(data.locationName) && data.locationName !== 'Mon salon' && (
+        {!LOCATION_NAME_OPTIONS.includes(data.locationName) && (
           <Input
-            placeholder="Nom personnalise du lieu"
+            placeholder={t('auth.pro.step2.customLocationPlaceholder')}
             value={LOCATION_NAME_OPTIONS.includes(data.locationName) ? '' : data.locationName}
-            onChangeText={(t) => updateField('locationName', t)}
+            onChangeText={(v) => updateField('locationName', v)}
             autoCapitalize="words"
           />
         )}
@@ -1093,7 +1119,7 @@ export default function ProRegisterScreen() {
       {/* Country — dropdown style */}
       <View>
         <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-          Pays
+          {t('auth.pro.step2.countryLabel')}
         </Text>
         <Pressable
           onPress={() => setShowCountryModal(true)}
@@ -1109,7 +1135,10 @@ export default function ProRegisterScreen() {
           ]}
         >
           <Text variant="body">
-            {SUPPORTED_COUNTRIES.find((c) => c.code === data.countryCode)?.label ?? 'France'}
+            {(() => {
+              const c = SUPPORTED_COUNTRIES.find((sc) => sc.code === data.countryCode) ?? SUPPORTED_COUNTRIES[0];
+              return countryLabel(c.code, c.flag);
+            })()}
           </Text>
           <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
         </Pressable>
@@ -1118,12 +1147,12 @@ export default function ProRegisterScreen() {
       {/* Location type selector */}
       <View>
         <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-          Type de lieu
+          {t('auth.pro.step2.locationTypeLabel')}
         </Text>
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
           {([
-            { value: 'fixed' as const, label: 'Fixe', icon: 'storefront-outline' as const },
-            { value: 'mobile' as const, label: 'Mobile', icon: 'car-outline' as const },
+            { value: 'fixed' as const, label: t('auth.pro.step2.fixed'), icon: 'storefront-outline' as const },
+            { value: 'mobile' as const, label: t('auth.pro.step2.mobile'), icon: 'car-outline' as const },
           ]).map((opt) => {
             const isSelected = data.locationType === opt.value;
             return (
@@ -1170,7 +1199,7 @@ export default function ProRegisterScreen() {
       {data.locationType === 'fixed' && (
         <View>
           <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-            Type de localisation
+            {t('auth.pro.step2.addressTypeLabel')}
           </Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <Pressable
@@ -1192,7 +1221,7 @@ export default function ProRegisterScreen() {
             >
               <Ionicons name="location-outline" size={20} color={!data.cityOnly ? colors.primary : colors.textMuted} />
               <Text variant="bodySmall" style={{ fontWeight: '600', marginTop: 4, color: !data.cityOnly ? colors.primary : colors.text }}>
-                Adresse precise
+                {t('auth.pro.step2.preciseAddress')}
               </Text>
             </Pressable>
             <Pressable
@@ -1218,7 +1247,7 @@ export default function ProRegisterScreen() {
             >
               <Ionicons name="business-outline" size={20} color={data.cityOnly ? colors.primary : colors.textMuted} />
               <Text variant="bodySmall" style={{ fontWeight: '600', marginTop: 4, color: data.cityOnly ? colors.primary : colors.text }}>
-                Ville uniquement
+                {t('auth.pro.step2.cityOnly')}
               </Text>
             </Pressable>
           </View>
@@ -1229,8 +1258,8 @@ export default function ProRegisterScreen() {
       {!data.cityOnly && (
         <View style={{ zIndex: 10 }}>
           <Input
-            label="Adresse"
-            placeholder="Saisissez une adresse..."
+            label={t('auth.pro.step2.addressLabel')}
+            placeholder={t('auth.pro.step2.addressPlaceholder')}
             value={addressQuery || data.address}
             onChangeText={handleAddressSearch}
             autoCapitalize="words"
@@ -1285,8 +1314,8 @@ export default function ProRegisterScreen() {
       {data.cityOnly && (
         <View style={{ zIndex: 10 }}>
           <Input
-            label="Ville"
-            placeholder="Rechercher une ville..."
+            label={t('auth.pro.step2.cityLabel')}
+            placeholder={t('auth.pro.step2.cityPlaceholder')}
             value={cityQuery}
             onChangeText={handleCitySearch}
             autoCapitalize="words"
@@ -1343,7 +1372,7 @@ export default function ProRegisterScreen() {
           {!data.cityOnly && data.postalCode ? (
             <View style={{ flex: 1 }}>
               <Input
-                label="Code postal"
+                label={t('auth.pro.step2.postalCodeLabel')}
                 placeholder="—"
                 value={data.postalCode}
                 onChangeText={() => {}}
@@ -1354,7 +1383,7 @@ export default function ProRegisterScreen() {
           ) : null}
           <View style={{ flex: data.cityOnly ? 1 : 2 }}>
             <Input
-              label="Ville"
+              label={t('auth.pro.step2.cityLabel')}
               placeholder="—"
               value={data.city}
               onChangeText={() => {}}
@@ -1407,7 +1436,7 @@ export default function ProRegisterScreen() {
         >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Prestation {index + 1}
+              {t('auth.pro.step3.serviceTitle', { index: index + 1 })}
             </Text>
             {data.services.length > 1 && (
               <Pressable onPress={() => removeServiceEntry(index)} hitSlop={8}>
@@ -1417,17 +1446,17 @@ export default function ProRegisterScreen() {
           </View>
 
           <Input
-            label="Nom"
-            placeholder="Ex: Coupe femme"
+            label={t('auth.pro.step3.nameLabel')}
+            placeholder={t('auth.pro.step3.namePlaceholder')}
             value={svc.name}
-            onChangeText={(t: string) => updateServiceField(index, 'name', t)}
+            onChangeText={(v: string) => updateServiceField(index, 'name', v)}
             autoCapitalize="sentences"
           />
 
           {/* Category (optional) */}
           {svc.category ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text variant="caption" color="textSecondary">Catégorie :</Text>
+              <Text variant="caption" color="textSecondary">{t('auth.pro.step3.categoryPrefix')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryLight || '#e4effa', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, gap: 4 }}>
                 <Text variant="bodySmall" style={{ color: colors.primary, fontWeight: '600' }}>{svc.category}</Text>
                 <Pressable onPress={() => updateServiceField(index, 'category', '')} hitSlop={8}>
@@ -1446,7 +1475,7 @@ export default function ProRegisterScreen() {
               >
                 <Ionicons name="add" size={16} color={colors.primary} />
                 <Text variant="bodySmall" style={{ color: colors.primary, fontWeight: '600' }}>
-                  Ajouter une catégorie (facultatif)
+                  {t('auth.pro.step3.addCategory')}
                 </Text>
               </Pressable>
             </View>
@@ -1455,7 +1484,7 @@ export default function ProRegisterScreen() {
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <View style={{ flex: 1 }}>
               <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-                Durée
+                {t('auth.pro.step3.durationLabel')}
               </Text>
               <Pressable
                 onPress={() => {
@@ -1479,10 +1508,10 @@ export default function ProRegisterScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Input
-                label="Prix (€)"
+                label={t('auth.pro.step3.priceLabel')}
                 placeholder="0"
                 value={svc.price}
-                onChangeText={(t: string) => updateServiceField(index, 'price', t)}
+                onChangeText={(v: string) => updateServiceField(index, 'price', v)}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -1503,17 +1532,17 @@ export default function ProRegisterScreen() {
                 color={!svc.price || svc.price === '0' ? colors.primary : colors.textMuted}
               />
               <Text variant="bodySmall" style={{ color: !svc.price || svc.price === '0' ? colors.primary : colors.textSecondary }}>
-                RDV gratuit
+                {t('auth.pro.step3.freeAppointment')}
               </Text>
             </Pressable>
           </View>
 
           {/* Description */}
           <Input
-            label="Description (optionnel)"
-            placeholder="Details sur la prestation..."
+            label={t('auth.pro.step3.descriptionLabel')}
+            placeholder={t('auth.pro.step3.descriptionPlaceholder')}
             value={svc.description}
-            onChangeText={(t: string) => updateServiceField(index, 'description', t)}
+            onChangeText={(v: string) => updateServiceField(index, 'description', v)}
             multiline
             numberOfLines={2}
           />
@@ -1544,16 +1573,16 @@ export default function ProRegisterScreen() {
                 color={colors.textSecondary}
               />
               <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.textSecondary }}>
-                Variations & options (optionnel)
+                {t('auth.pro.step3.choicesToggle')}
               </Text>
             </Pressable>
 
             {expandedChoices[index] && (
               <View style={{ gap: spacing.lg, marginTop: spacing.sm }}>
                 <View style={{ gap: spacing.xs }}>
-                  <Text variant="label" color="text">Variations</Text>
+                  <Text variant="label" color="text">{t('auth.pro.step3.variationsTitle')}</Text>
                   <Text variant="caption" color="textSecondary">
-                    Des choix exclusifs qui fixent le prix et la durée (ex : Longueur).
+                    {t('auth.pro.step3.variationsDesc')}
                   </Text>
                   <VariationsEditor
                     variations={svc.variations ?? []}
@@ -1562,9 +1591,9 @@ export default function ProRegisterScreen() {
                 </View>
 
                 <View style={{ gap: spacing.xs }}>
-                  <Text variant="label" color="text">Options</Text>
+                  <Text variant="label" color="text">{t('auth.pro.step3.optionsTitle')}</Text>
                   <Text variant="caption" color="textSecondary">
-                    Des suppléments à cocher (ex : Mèches).
+                    {t('auth.pro.step3.optionsDesc')}
                   </Text>
                   <OptionsEditor
                     options={svc.options ?? []}
@@ -1573,9 +1602,9 @@ export default function ProRegisterScreen() {
                 </View>
 
                 <View style={{ gap: spacing.xs }}>
-                  <Text variant="label" color="text">Infos demandées</Text>
+                  <Text variant="label" color="text">{t('auth.pro.step3.infoFieldsTitle')}</Text>
                   <Text variant="caption" color="textSecondary">
-                    Des questions au client, sans impact sur le prix.
+                    {t('auth.pro.step3.infoFieldsDesc')}
                   </Text>
                   <InfoFieldsEditor
                     fields={svc.infoFields ?? []}
@@ -1602,7 +1631,7 @@ export default function ProRegisterScreen() {
           >
             <Ionicons name="eye-outline" size={16} color={colors.primary} />
             <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
-              Aperçu client
+              {t('auth.pro.step3.clientPreview')}
             </Text>
           </Pressable>
         </View>
@@ -1624,7 +1653,7 @@ export default function ProRegisterScreen() {
       >
         <Ionicons name="add" size={20} color={colors.textMuted} />
         <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.textMuted }}>
-          Ajouter une prestation
+          {t('auth.pro.step3.addService')}
         </Text>
       </Pressable>
     </View>
@@ -1687,8 +1716,9 @@ export default function ProRegisterScreen() {
         ))}
       </View>
 
-      {SCHEDULE_DAYS.map(({ value, label }) => {
+      {SCHEDULE_DAY_VALUES.map((value) => {
         const day = data.availability[value];
+        const label = weekdayLabel(value);
         return (
           <View
             key={value}
@@ -1745,7 +1775,7 @@ export default function ProRegisterScreen() {
                   <Text variant="body" color="primary" style={{ fontWeight: '700', fontSize: 15 }}>{slot.start}</Text>
                   <Ionicons name="pencil" size={11} color={colors.primary} />
                 </Pressable>
-                <Text variant="bodySmall" color="textMuted" style={{ fontWeight: '500' }}>à</Text>
+                <Text variant="bodySmall" color="textMuted" style={{ fontWeight: '500' }}>{t('auth.pro.step4.to')}</Text>
                 <Pressable
                   onPress={() => setTimePickerState({ visible: true, dayValue: value, slotIndex: si, field: 'end', currentValue: slot.end })}
                   style={{ backgroundColor: colors.primaryLight, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(59, 130, 246, 0.15)', flexDirection: 'row', alignItems: 'center', gap: 4 }}
@@ -1761,7 +1791,7 @@ export default function ProRegisterScreen() {
               </View>
             ))}
             {!day.isOpen && (
-              <Text variant="caption" color="textMuted" style={{ marginTop: spacing.xs, paddingLeft: 52 }}>Fermé</Text>
+              <Text variant="caption" color="textMuted" style={{ marginTop: spacing.xs, paddingLeft: 52 }}>{t('auth.pro.step4.closed')}</Text>
             )}
           </View>
         );
@@ -1780,7 +1810,7 @@ export default function ProRegisterScreen() {
             <View style={[styles.previewIconCircle, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="business-outline" size={16} color={colors.primary} />
             </View>
-            <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>Activité</Text>
+            <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{t('auth.pro.steps.activity.label')}</Text>
           </View>
           <Text variant="h3">{data.businessName}</Text>
           <Text variant="bodySmall" color="textSecondary">{selectedCategory?.label}</Text>
@@ -1793,11 +1823,11 @@ export default function ProRegisterScreen() {
             <View style={[styles.previewIconCircle, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="location-outline" size={16} color={colors.primary} />
             </View>
-            <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>Lieu</Text>
+            <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{t('auth.pro.steps.location.label')}</Text>
           </View>
           <Text variant="body" style={{ fontWeight: '500' }}>{data.locationName}</Text>
           <Text variant="bodySmall" color="textSecondary">
-            {data.locationType === 'mobile' ? 'Mobile' : 'Fixe'}{data.cityOnly ? ' — ville uniquement' : ''}
+            {data.locationType === 'mobile' ? t('auth.pro.step2.mobile') : t('auth.pro.step2.fixed')}{data.cityOnly ? ` ${t('auth.pro.step5.cityOnlySuffix')}` : ''}
           </Text>
           <Text variant="bodySmall" color="textSecondary">
             {[data.address, data.postalCode, data.city].filter(Boolean).join(', ')}
@@ -1810,16 +1840,20 @@ export default function ProRegisterScreen() {
             <View style={[styles.previewIconCircle, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="pricetag-outline" size={16} color={colors.primary} />
             </View>
-            <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>Prestation</Text>
+            <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{t('auth.pro.steps.service.label')}</Text>
           </View>
           <Text variant="body" style={{ fontWeight: '500' }}>
-            {data.services.length} prestation{data.services.length > 1 ? 's' : ''}
+            {t('auth.pro.step5.servicesCount', { count: data.services.length })}
           </Text>
-          {data.services.map((svc: WizardService, i: number) => (
-            <Text key={i} variant="bodySmall" color="textSecondary">
-              {svc.name || '—'} • {svc.duration} min • {Number(svc.price || 0).toFixed(2)} €{svc.category ? ` • ${svc.category}` : ''}{((svc.variations?.length ?? 0) + (svc.options?.length ?? 0)) > 0 ? ` • ${(svc.variations?.length ?? 0) + (svc.options?.length ?? 0)} choix` : ''}
-            </Text>
-          ))}
+          {data.services.map((svc: WizardService, i: number) => {
+            const choicesCount = (svc.variations?.length ?? 0) + (svc.options?.length ?? 0);
+            const price = new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'EUR' }).format(Number(svc.price || 0));
+            return (
+              <Text key={i} variant="bodySmall" color="textSecondary">
+                {svc.name || '—'} • {svc.duration} min • {price}{svc.category ? ` • ${svc.category}` : ''}{choicesCount > 0 ? ` • ${t('auth.pro.step5.choicesCount', { count: choicesCount })}` : ''}
+              </Text>
+            );
+          })}
         </View>
 
         {/* Schedule */}
@@ -1828,15 +1862,15 @@ export default function ProRegisterScreen() {
             <View style={[styles.previewIconCircle, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="time-outline" size={16} color={colors.primary} />
             </View>
-            <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>Horaires</Text>
+            <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{t('auth.pro.steps.schedule.label')}</Text>
           </View>
-          {SCHEDULE_DAYS.map(({ value, label }) => {
+          {SCHEDULE_DAY_VALUES.map((value) => {
             const day = data.availability[value];
             return (
               <View key={value} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
-                <Text variant="bodySmall" style={{ fontWeight: '500', minWidth: 80 }}>{label}</Text>
+                <Text variant="bodySmall" style={{ fontWeight: '500', minWidth: 80 }}>{weekdayLabel(value)}</Text>
                 <Text variant="bodySmall" color={day.isOpen ? 'text' : 'textMuted'}>
-                  {day.isOpen ? day.slots.map((s) => `${s.start}-${s.end}`).join(', ') : 'Fermé'}
+                  {day.isOpen ? day.slots.map((s) => `${s.start}-${s.end}`).join(', ') : t('auth.pro.step4.closed')}
                 </Text>
               </View>
             );
@@ -1849,39 +1883,39 @@ export default function ProRegisterScreen() {
   const renderStep6 = () => (
     <View style={{ gap: spacing.md }}>
       <Input
-        label="Nom complet"
-        placeholder="Votre nom"
+        label={t('auth.pro.step6.fullNameLabel')}
+        placeholder={t('auth.pro.step6.fullNamePlaceholder')}
         value={data.displayName}
-        onChangeText={(t) => updateField('displayName', t)}
+        onChangeText={(v) => updateField('displayName', v)}
         autoCapitalize="words"
         autoComplete="name"
       />
       <Input
-        label="Email"
-        placeholder="votre@email.com"
+        label={t('auth.pro.step6.emailLabel')}
+        placeholder={t('auth.pro.step6.emailPlaceholder')}
         value={data.email}
-        onChangeText={(t) => updateField('email', t)}
+        onChangeText={(v) => updateField('email', v)}
         keyboardType="email-address"
         autoCapitalize="none"
         autoComplete="email"
       />
       <Input
-        label="Téléphone"
+        label={t('auth.pro.step6.phoneLabel')}
         placeholder="06 12 34 56 78"
         value={data.phone}
-        onChangeText={(t) => updateField('phone', t)}
+        onChangeText={(v) => updateField('phone', v)}
         keyboardType="phone-pad"
         autoComplete="tel"
       />
       <Input
-        label="Mot de passe"
-        placeholder="Min. 6 caractères"
+        label={t('auth.pro.step6.passwordLabel')}
+        placeholder={t('auth.pro.step6.passwordPlaceholder')}
         value={data.password}
-        onChangeText={(t) => updateField('password', t)}
+        onChangeText={(v) => updateField('password', v)}
         secureTextEntry={!showPassword}
         autoCapitalize="none"
         autoComplete="new-password"
-        helperText="Min. 6 caractères"
+        helperText={t('auth.pro.step6.passwordPlaceholder')}
         rightIcon={
           <Ionicons
             name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -1892,10 +1926,10 @@ export default function ProRegisterScreen() {
         onRightIconPress={() => setShowPassword(!showPassword)}
       />
       <Input
-        label="Confirmer le mot de passe"
-        placeholder="Confirmez votre mot de passe"
+        label={t('auth.pro.step6.confirmPasswordLabel')}
+        placeholder={t('auth.pro.step6.confirmPasswordPlaceholder')}
         value={data.confirmPassword}
-        onChangeText={(t) => updateField('confirmPassword', t)}
+        onChangeText={(v) => updateField('confirmPassword', v)}
         secureTextEntry={!showPassword}
         autoCapitalize="none"
       />
@@ -1923,7 +1957,7 @@ export default function ProRegisterScreen() {
   // Account just created → show the branded finalisation screen while the
   // auth state propagates and the (auth) layout redirects to /(pro).
   if (finalizing) {
-    return <LoadingTips message="Création de votre espace…" />;
+    return <LoadingTips message={t('auth.pro.finalizing')} />;
   }
 
   return (
@@ -2011,10 +2045,10 @@ export default function ProRegisterScreen() {
               </View>
               <View>
                 <Text variant="h2" style={{ fontWeight: '700' }}>
-                  {STEPS[currentStep].label}
+                  {t(`auth.pro.steps.${STEPS[currentStep].key}.label`)}
                 </Text>
                 <Text variant="bodySmall" color="textSecondary">
-                  {STEPS[currentStep].subtitle}
+                  {t(`auth.pro.steps.${STEPS[currentStep].key}.subtitle`)}
                 </Text>
               </View>
             </View>
@@ -2034,7 +2068,7 @@ export default function ProRegisterScreen() {
           {isLastStep && (
             <Animated.View style={{ marginTop: spacing.lg, opacity: stepFadeAnim }}>
               <Text variant="caption" color="textSecondary" style={{ textAlign: 'center', paddingHorizontal: spacing.lg }}>
-                En créant un compte, vous acceptez nos CGU et notre Politique de confidentialité.
+                {t('auth.pro.legal')}
               </Text>
             </Animated.View>
           )}
@@ -2042,9 +2076,9 @@ export default function ProRegisterScreen() {
           {/* Footer link on first step */}
           {currentStep === 0 && (
             <Animated.View style={[styles.footerLink, { marginTop: spacing.xl, opacity: fadeAnim }]}>
-              <Text variant="body" color="textSecondary">Déjà un compte ? </Text>
+              <Text variant="body" color="textSecondary">{t('auth.pro.alreadyAccount')}{' '}</Text>
               <Pressable onPress={() => router.push('/(auth)/login')} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-                <Text variant="body" color="primary" style={{ fontWeight: '600' }}>Se connecter</Text>
+                <Text variant="body" color="primary" style={{ fontWeight: '600' }}>{t('auth.pro.signIn')}</Text>
               </Pressable>
             </Animated.View>
           )}
@@ -2064,7 +2098,7 @@ export default function ProRegisterScreen() {
           {isLastStep ? (
             <Button
               variant="primary"
-              title={isSubmitting ? 'Création en cours...' : 'Créer mon compte'}
+              title={isSubmitting ? t('auth.pro.submitting') : t('auth.pro.createAccount')}
               onPress={handleSubmit}
               loading={isSubmitting}
               disabled={isSubmitting}
@@ -2073,7 +2107,7 @@ export default function ProRegisterScreen() {
           ) : (
             <Button
               variant="primary"
-              title="Continuer"
+              title={t('auth.pro.continueBtn')}
               onPress={handleNext}
               fullWidth
             />
@@ -2086,7 +2120,7 @@ export default function ProRegisterScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">Catégorie</Text>
+              <Text variant="h3">{t('auth.pro.step1.categoryLabel')}</Text>
               <Pressable onPress={() => setShowCategoryModal(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -2148,7 +2182,7 @@ export default function ProRegisterScreen() {
         heightPct={0.85}
       >
         <View style={[styles.modalHeader, { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomColor: colors.border }]}>
-          <Text variant="h3">Aperçu client</Text>
+          <Text variant="h3">{t('auth.pro.step3.clientPreview')}</Text>
           <Pressable onPress={() => setPreviewServiceIndex(null)}>
             <Ionicons name="close-circle" size={28} color={colors.textMuted} />
           </Pressable>
@@ -2173,7 +2207,7 @@ export default function ProRegisterScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">Durée</Text>
+              <Text variant="h3">{t('auth.pro.step3.durationLabel')}</Text>
               <Pressable onPress={() => setShowDurationModal(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -2232,7 +2266,7 @@ export default function ProRegisterScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '60%' }]}>
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">Catégorie de prestation</Text>
+              <Text variant="h3">{t('auth.pro.step3.serviceCategoryModalTitle')}</Text>
               <Pressable onPress={() => { setShowCategoryPicker(false); setCustomCategoryText(''); }}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -2296,13 +2330,13 @@ export default function ProRegisterScreen() {
               {/* Custom category */}
               <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
               <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.sm, marginBottom: spacing.xs }}>
-                Ou entrez un nom personnalisé :
+                {t('auth.pro.step3.customCategoryHint')}
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
                 <View style={{ flex: 1 }}>
                   <Input
                     label=""
-                    placeholder="Autre catégorie..."
+                    placeholder={t('auth.pro.step3.customCategoryPlaceholder')}
                     value={customCategoryText}
                     onChangeText={setCustomCategoryText}
                     autoCapitalize="sentences"
@@ -2342,17 +2376,17 @@ export default function ProRegisterScreen() {
             style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '85%', maxWidth: 340 }}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text variant="h3" style={{ marginBottom: 4 }}>Copier vers</Text>
+            <Text variant="h3" style={{ marginBottom: 4 }}>{t('auth.pro.step4.copy.title')}</Text>
             <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.md }}>
-              Copier les horaires de {copyFromDay !== null ? SCHEDULE_DAYS.find((d) => d.value === copyFromDay)?.label : ''} vers :
+              {t('auth.pro.step4.copy.subtitle', { day: copyFromDay !== null ? weekdayLabel(copyFromDay) : '' })}
             </Text>
 
-            {SCHEDULE_DAYS.filter((d) => d.value !== copyFromDay).map((d) => {
-              const isChecked = copyTargetDays.includes(d.value);
+            {SCHEDULE_DAY_VALUES.filter((dv) => dv !== copyFromDay).map((dv) => {
+              const isChecked = copyTargetDays.includes(dv);
               return (
                 <Pressable
-                  key={d.value}
-                  onPress={() => setCopyTargetDays((prev) => isChecked ? prev.filter((v) => v !== d.value) : [...prev, d.value])}
+                  key={dv}
+                  onPress={() => setCopyTargetDays((prev) => isChecked ? prev.filter((v) => v !== dv) : [...prev, dv])}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8 }}
                 >
                   <View style={{
@@ -2363,7 +2397,7 @@ export default function ProRegisterScreen() {
                   }}>
                     {isChecked && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
                   </View>
-                  <Text variant="body">{d.label}</Text>
+                  <Text variant="body">{weekdayLabel(dv)}</Text>
                 </Pressable>
               );
             })}
@@ -2371,16 +2405,16 @@ export default function ProRegisterScreen() {
             {/* Quick select */}
             <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.md }}>
               <Pressable
-                onPress={() => setCopyTargetDays(SCHEDULE_DAYS.filter((d) => d.value !== copyFromDay && d.value >= 1 && d.value <= 5).map((d) => d.value))}
+                onPress={() => setCopyTargetDays(SCHEDULE_DAY_VALUES.filter((dv) => dv !== copyFromDay && dv >= 1 && dv <= 5))}
                 style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.primaryLight || '#e4effa' }}
               >
-                <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>Lun – Ven</Text>
+                <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>{t('auth.pro.step4.copy.monFri')}</Text>
               </Pressable>
               <Pressable
-                onPress={() => setCopyTargetDays(SCHEDULE_DAYS.filter((d) => d.value !== copyFromDay).map((d) => d.value))}
+                onPress={() => setCopyTargetDays(SCHEDULE_DAY_VALUES.filter((dv) => dv !== copyFromDay))}
                 style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.primaryLight || '#e4effa' }}
               >
-                <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>Tous</Text>
+                <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>{t('auth.pro.step4.copy.all')}</Text>
               </Pressable>
             </View>
 
@@ -2389,7 +2423,7 @@ export default function ProRegisterScreen() {
                 onPress={() => setCopyFromDay(null)}
                 style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}
               >
-                <Text variant="body" style={{ fontWeight: '500' }}>Annuler</Text>
+                <Text variant="body" style={{ fontWeight: '500' }}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -2407,7 +2441,7 @@ export default function ProRegisterScreen() {
                 disabled={copyTargetDays.length === 0}
                 style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', opacity: copyTargetDays.length === 0 ? 0.4 : 1 }}
               >
-                <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>Copier</Text>
+                <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>{t('auth.pro.step4.copy.copy')}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -2419,7 +2453,7 @@ export default function ProRegisterScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">Nom du lieu</Text>
+              <Text variant="h3">{t('auth.pro.step2.locationNameLabel')}</Text>
               <Pressable onPress={() => setShowLocationNameModal(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -2428,7 +2462,7 @@ export default function ProRegisterScreen() {
               data={[...LOCATION_NAME_OPTIONS, '_other']}
               keyExtractor={(item) => item}
               renderItem={({ item }) => {
-                const label = item === '_other' ? 'Autre...' : item;
+                const label = item === '_other' ? t('auth.pro.locationNames.other') : item;
                 const isSelected = item === '_other'
                   ? !LOCATION_NAME_OPTIONS.includes(data.locationName)
                   : data.locationName === item;
@@ -2473,7 +2507,7 @@ export default function ProRegisterScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">Pays</Text>
+              <Text variant="h3">{t('auth.pro.step2.countryLabel')}</Text>
               <Pressable onPress={() => setShowCountryModal(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -2509,7 +2543,7 @@ export default function ProRegisterScreen() {
                       style={{ flex: 1, fontWeight: isSelected ? '600' : '400' }}
                       color={isSelected ? 'primary' : 'text'}
                     >
-                      {item.label}
+                      {countryLabel(item.code, item.flag)}
                     </Text>
                     {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
                   </Pressable>
@@ -2527,7 +2561,7 @@ export default function ProRegisterScreen() {
             <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
               <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
                 <Text variant="h3">
-                  {timePickerState.field === 'start' ? 'Heure de début' : 'Heure de fin'}
+                  {timePickerState.field === 'start' ? t('auth.pro.step4.startTime') : t('auth.pro.step4.endTime')}
                 </Text>
                 <Pressable onPress={() => setTimePickerState(null)}>
                   <Ionicons name="close-circle" size={28} color={colors.textMuted} />

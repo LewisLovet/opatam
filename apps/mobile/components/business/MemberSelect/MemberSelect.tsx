@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Modal,
@@ -22,6 +23,7 @@ export interface MemberSelectProps {
 
 export function MemberSelect({ value, members, onChange }: MemberSelectProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSelect = (memberId: string | null) => {
@@ -32,7 +34,7 @@ export function MemberSelect({ value, members, onChange }: MemberSelectProps) {
   const selectedMember = value ? members.find((m) => m.id === value) : null;
   const triggerLabel = selectedMember
     ? selectedMember.name.split(' ')[0]
-    : 'Tous les membres';
+    : t('components.memberSelect.allMembers');
 
   return (
     <>
@@ -98,7 +100,7 @@ export function MemberSelect({ value, members, onChange }: MemberSelectProps) {
               { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
             ]}
           >
-            <Text variant="h3">Choisir un membre</Text>
+            <Text variant="h3">{t('components.memberSelect.title')}</Text>
             <Pressable
               onPress={() => setIsOpen(false)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -148,7 +150,7 @@ export function MemberSelect({ value, members, onChange }: MemberSelectProps) {
                       color={isSelected ? 'primary' : 'text'}
                       style={{ fontWeight: isSelected ? '600' : '400' }}
                     >
-                      {item ? item.name : 'Tous les membres'}
+                      {item ? item.name : t('components.memberSelect.allMembers')}
                     </Text>
                   </View>
                   {isSelected && (

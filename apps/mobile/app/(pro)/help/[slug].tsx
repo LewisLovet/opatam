@@ -18,6 +18,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   ScrollView,
@@ -28,11 +29,11 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
+import i18n from '../../../lib/i18n';
 import { Text, Loader, EmptyState } from '../../../components';
 import { BrandedHeader } from '../../../components/business/BrandedHeader';
 import { useArticle, useRelatedArticles } from '../../../hooks';
 import {
-  ARTICLE_CATEGORY_LABELS,
   extractHeadings,
   type Heading,
 } from '@booking-app/shared';
@@ -43,6 +44,7 @@ import { SommaireDrawer } from '../../../components/business/Article/SommaireDra
 import { RelatedArticles } from '../../../components/business/Article/RelatedArticles';
 
 export default function ArticleDetailScreen() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -121,15 +123,15 @@ export default function ArticleDetailScreen() {
       <BrandedHeader
         title={
           article && article.category
-            ? ARTICLE_CATEGORY_LABELS[article.category]
-            : 'Article'
+            ? t(`proHelp.categories.${article.category}`)
+            : t('proHelp.articleFallbackTitle')
         }
         secondaryRightAction={
           article
             ? {
                 icon: 'share-outline',
                 onPress: handleShare,
-                accessibilityLabel: "Partager l'article",
+                accessibilityLabel: t('proHelp.shareArticle'),
               }
             : undefined
         }
@@ -138,7 +140,7 @@ export default function ArticleDetailScreen() {
             ? {
                 icon: 'menu-outline',
                 onPress: () => setDrawerOpen(true),
-                accessibilityLabel: 'Sommaire',
+                accessibilityLabel: t('proHelp.tocLabel'),
               }
             : undefined
         }
@@ -152,10 +154,8 @@ export default function ArticleDetailScreen() {
         <View style={[styles.center, { paddingHorizontal: spacing.lg }]}>
           <EmptyState
             icon="document-text-outline"
-            title="Article introuvable"
-            description={
-              error ?? 'Cet article n’est plus disponible. Revenez à la liste pour en consulter d’autres.'
-            }
+            title={t('proHelp.notFoundTitle')}
+            description={error ?? t('proHelp.notFoundDescription')}
           />
         </View>
       ) : (
@@ -200,7 +200,7 @@ export default function ArticleDetailScreen() {
                   letterSpacing: 0.4,
                 }}
               >
-                {ARTICLE_CATEGORY_LABELS[article.category]}
+                {t(`proHelp.categories.${article.category}`)}
               </Text>
             </View>
 
@@ -241,7 +241,7 @@ export default function ArticleDetailScreen() {
                 </View>
               )}
               <Text variant="caption" color="textSecondary">
-                {article.authorName || 'Équipe Opatam'}
+                {article.authorName || t('proHelp.authorFallback')}
                 {article.publishedAt
                   ? ` · ${formatPublishedDate(article.publishedAt)}`
                   : ''}
@@ -319,7 +319,7 @@ function formatPublishedDate(d: Date | { toDate: () => Date } | string): string 
       : 'toDate' in d
         ? d.toDate()
         : d;
-  return date.toLocaleDateString('fr-FR', {
+  return date.toLocaleDateString(i18n.language, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

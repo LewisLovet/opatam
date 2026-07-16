@@ -17,8 +17,10 @@ import {
   FlatList,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
@@ -26,14 +28,13 @@ import { schedulingService, memberService } from '@booking-app/firebase';
 import type { Member } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
-const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-const months = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
+// Date localisée via Intl sur la langue de l'app (plus de tableaux FR en dur).
 function formatDateShort(date: Date): string {
-  return `${date.getDate()} ${months[date.getMonth()].slice(0, 3)}. ${date.getFullYear()}`;
+  return new Intl.DateTimeFormat(i18n.language, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
 }
 
 function formatTime(date: Date): string {
@@ -163,6 +164,7 @@ function TimePickerModal({
   spacing: any;
   radius: any;
 }) {
+  const { t } = useTranslation();
   const snap = (m: number) => { const r = Math.round(m / 5) * 5; return r >= 60 ? 0 : r; };
   const [selectedHour, setSelectedHour] = useState(value.getHours());
   const [selectedMinute, setSelectedMinute] = useState(snap(value.getMinutes()));
@@ -200,14 +202,14 @@ function TimePickerModal({
             ]}
           >
             <Pressable onPress={onClose} hitSlop={8}>
-              <Text variant="body" color="textSecondary">Annuler</Text>
+              <Text variant="body" color="textSecondary">{t('common.cancel')}</Text>
             </Pressable>
             <Text variant="body" style={{ fontWeight: '600' }}>{title}</Text>
             <Pressable
               onPress={() => onConfirm(selectedHour, selectedMinute)}
               hitSlop={8}
             >
-              <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
+              <Text variant="body" color="primary" style={{ fontWeight: '600' }}>{t('proBlockSlot.ok')}</Text>
             </Pressable>
           </View>
 
@@ -283,6 +285,7 @@ function DatePickerModal({
   colors: any;
   spacing: any;
 }) {
+  const { t } = useTranslation();
   if (Platform.OS === 'android') {
     if (!visible) return null;
     return (
@@ -320,11 +323,11 @@ function DatePickerModal({
             ]}
           >
             <Pressable onPress={onClose} hitSlop={8}>
-              <Text variant="body" color="textSecondary">Annuler</Text>
+              <Text variant="body" color="textSecondary">{t('common.cancel')}</Text>
             </Pressable>
             <Text variant="body" style={{ fontWeight: '600' }}>{title}</Text>
             <Pressable onPress={onClose} hitSlop={8}>
-              <Text variant="body" color="primary" style={{ fontWeight: '600' }}>OK</Text>
+              <Text variant="body" color="primary" style={{ fontWeight: '600' }}>{t('proBlockSlot.ok')}</Text>
             </Pressable>
           </View>
           <DateTimePicker
@@ -352,6 +355,7 @@ type PickerMode = 'startDate' | 'endDate' | 'startTime' | 'endTime' | null;
 
 export default function BlockSlotScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { providerId } = useProvider();
   const sub = useSubscriptionStatus();
@@ -432,7 +436,7 @@ export default function BlockSlotScreen() {
 
   const handleSubmit = async () => {
     if (!providerId || selectedMemberIds.length === 0) {
-      Alert.alert('Erreur', 'Veuillez sélectionner au moins un membre');
+      Alert.alert(t('proBlockSlot.errorTitle'), t('proBlockSlot.selectAtLeastOne'));
       return;
     }
 
@@ -457,15 +461,13 @@ export default function BlockSlotScreen() {
         ),
       );
 
-      const label = selectedMembers.length > 1
-        ? `Créneau bloqué pour ${selectedMembers.length} membres`
-        : 'Créneau bloqué avec succès';
-      Alert.alert('Succès', label, [
-        { text: 'OK', onPress: () => router.back() },
+      const label = t('proBlockSlot.success', { count: selectedMembers.length });
+      Alert.alert(t('proBlockSlot.successTitle'), label, [
+        { text: t('proBlockSlot.ok'), onPress: () => router.back() },
       ]);
     } catch (error) {
       console.error('Error blocking slot:', error);
-      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de bloquer le créneau');
+      Alert.alert(t('proBlockSlot.errorTitle'), error instanceof Error ? error.message : t('proBlockSlot.blockError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -490,7 +492,7 @@ export default function BlockSlotScreen() {
       <SubscriptionRequiredModal
         visible={showSubModal}
         onClose={() => { setShowSubModal(false); router.back(); }}
-        context="Bloquez des créneaux et gérez votre planning avec un abonnement Pro."
+        context={t('proBlockSlot.subscriptionContext')}
       />
 
       {/* Header */}
@@ -499,7 +501,7 @@ export default function BlockSlotScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text variant="h2" style={{ marginLeft: spacing.md, flex: 1 }}>
-          Bloquer un créneau
+          {t('proBlockSlot.title')}
         </Text>
       </View>
 
@@ -508,7 +510,7 @@ export default function BlockSlotScreen() {
         {members.length > 1 && (
           <View style={{ marginBottom: spacing.lg }}>
             <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}>
-              Membres
+              {t('proBlockSlot.membersLabel')}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: spacing.xs }}>
@@ -529,7 +531,7 @@ export default function BlockSlotScreen() {
                     variant="bodySmall"
                     style={{ color: allSelected ? '#fff' : colors.text, fontWeight: '500' }}
                   >
-                    Tous
+                    {t('proBlockSlot.all')}
                   </Text>
                 </Pressable>
                 {members.map((member) => {
@@ -565,7 +567,7 @@ export default function BlockSlotScreen() {
 
         {/* Period section */}
         <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}>
-          Période
+          {t('proBlockSlot.periodLabel')}
         </Text>
         <Card padding="none" shadow="sm" style={{ marginBottom: spacing.lg }}>
           {/* All day toggle */}
@@ -573,7 +575,7 @@ export default function BlockSlotScreen() {
             <View style={[s.rowIcon, { backgroundColor: colors.primaryLight, borderRadius: radius.md }]}>
               <Ionicons name="sunny-outline" size={18} color={colors.primary} />
             </View>
-            <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>Journée entière</Text>
+            <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>{t('proBlockSlot.allDay')}</Text>
             <Switch value={allDay} onValueChange={setAllDay} />
           </View>
           <View style={[s.divider, { backgroundColor: colors.divider, marginLeft: spacing.lg + 36 + spacing.md }]} />
@@ -586,7 +588,7 @@ export default function BlockSlotScreen() {
             <View style={[s.rowIcon, { backgroundColor: '#DBEAFE', borderRadius: radius.md }]}>
               <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
             </View>
-            <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>Début</Text>
+            <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>{t('proBlockSlot.start')}</Text>
             <Text variant="body" color="primary" style={{ fontWeight: '500' }}>
               {formatDateShort(startDate)}
             </Text>
@@ -608,7 +610,7 @@ export default function BlockSlotScreen() {
             <View style={[s.rowIcon, { backgroundColor: '#FEE2E2', borderRadius: radius.md }]}>
               <Ionicons name="calendar-outline" size={18} color="#EF4444" />
             </View>
-            <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>Fin</Text>
+            <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>{t('proBlockSlot.end')}</Text>
             <Text variant="body" color="primary" style={{ fontWeight: '500' }}>
               {formatDateShort(endDate)}
             </Text>
@@ -624,14 +626,15 @@ export default function BlockSlotScreen() {
 
         {/* Reason section */}
         <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}>
-          Motif
+          {t('proBlockSlot.reasonLabel')}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: isCustomReason ? spacing.sm : spacing.xl }}>
-          {['Vacances', 'Formation', 'Maladie', 'Personnel', 'Férié', 'Réunion'].map((label) => {
+          {(['vacation', 'training', 'sick', 'personal', 'holiday', 'meeting'] as const).map((reasonKey) => {
+            const label = t(`proBlockSlot.reasons.${reasonKey}`);
             const isSelected = reason === label && !isCustomReason;
             return (
               <Pressable
-                key={label}
+                key={reasonKey}
                 onPress={() => {
                   setReason(isSelected ? '' : label);
                   setIsCustomReason(false);
@@ -681,17 +684,17 @@ export default function BlockSlotScreen() {
               variant="bodySmall"
               style={{ color: isCustomReason ? '#fff' : colors.text, fontWeight: '500' }}
             >
-              Autre
+              {t('proBlockSlot.reasons.other')}
             </Text>
           </Pressable>
         </View>
         {isCustomReason && (
           <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
             <Input
-              label="Motif personnalisé"
+              label={t('proBlockSlot.customReasonLabel')}
               value={reason}
               onChangeText={setReason}
-              placeholder="Précisez le motif..."
+              placeholder={t('proBlockSlot.customReasonPlaceholder')}
               autoFocus
             />
           </Card>
@@ -699,7 +702,7 @@ export default function BlockSlotScreen() {
 
         {/* Submit */}
         <Button
-          title={isSubmitting ? 'Blocage en cours...' : 'Bloquer le créneau'}
+          title={isSubmitting ? t('proBlockSlot.submitting') : t('proBlockSlot.submit')}
           variant="primary"
           onPress={handleSubmit}
           disabled={isSubmitting || selectedMemberIds.length === 0}
@@ -709,7 +712,7 @@ export default function BlockSlotScreen() {
       {/* Date Picker Modal (native inline calendar) */}
       <DatePickerModal
         visible={isDatePicker}
-        title={activePicker === 'startDate' ? 'Date de début' : 'Date de fin'}
+        title={activePicker === 'startDate' ? t('proBlockSlot.startDate') : t('proBlockSlot.endDate')}
         value={activePicker === 'startDate' ? startDate : endDate}
         minimumDate={activePicker === 'endDate' ? startDate : new Date()}
         onClose={() => setActivePicker(null)}
@@ -721,7 +724,7 @@ export default function BlockSlotScreen() {
       {/* Custom Time Picker Modal */}
       <TimePickerModal
         visible={isTimePicker}
-        title={activePicker === 'startTime' ? 'Heure de début' : 'Heure de fin'}
+        title={activePicker === 'startTime' ? t('proBlockSlot.startTime') : t('proBlockSlot.endTime')}
         value={activePicker === 'startTime' ? startDate : endDate}
         onClose={() => setActivePicker(null)}
         onConfirm={handleTimeConfirm}

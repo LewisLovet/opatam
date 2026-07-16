@@ -18,10 +18,12 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
+import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Input, Card, useToast, SubscriptionRequiredModal } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
@@ -59,13 +61,14 @@ interface PublishCheck {
   };
 }
 
-const REQUIREMENT_LABELS: Record<string, { label: string; icon: string }> = {
-  hasBusinessName: { label: 'Nom de l\'entreprise', icon: 'business-outline' },
-  hasCategory: { label: 'Catégorie', icon: 'grid-outline' },
-  hasLocation: { label: 'Au moins un lieu', icon: 'location-outline' },
-  hasService: { label: 'Au moins une prestation', icon: 'cut-outline' },
-  hasAvailability: { label: 'Disponibilités configurées', icon: 'time-outline' },
-};
+// Labels resolved at render time via t(`proProfile.requirements.${key}`).
+const REQUIREMENT_KEYS = [
+  'hasBusinessName',
+  'hasCategory',
+  'hasLocation',
+  'hasService',
+  'hasAvailability',
+] as const;
 
 // ---------------------------------------------------------------------------
 // Image upload helper
@@ -77,7 +80,8 @@ async function pickAndUploadImage(
 ): Promise<string | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    Alert.alert('Permission requise', 'Autorisez l\'accès à vos photos pour modifier l\'image.');
+    // Module-level helper — i18n.t is called at message time, not import time.
+    Alert.alert(i18n.t('proProfile.permissionRequiredTitle'), i18n.t('proProfile.photoPermissionMessage'));
     return null;
   }
 
@@ -109,7 +113,7 @@ async function pickAndUploadMultiple(
 ): Promise<string[]> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    Alert.alert('Permission requise', 'Autorisez l\'accès à vos photos.');
+    Alert.alert(i18n.t('proProfile.permissionRequiredTitle'), i18n.t('proProfile.photoPermissionShort'));
     return [];
   }
 
@@ -144,6 +148,7 @@ async function pickAndUploadMultiple(
 
 export default function ProfileScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
@@ -251,10 +256,10 @@ export default function ProfileScreen() {
       if (url) {
         await providerService.updateProvider(providerId, { photoURL: url });
         await refreshProvider();
-        showToast({ variant: 'success', message: 'Logo mis à jour' });
+        showToast({ variant: 'success', message: t('proProfile.logoUpdated') });
       }
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur lors de l\'upload' });
+      showToast({ variant: 'error', message: err.message || t('proProfile.uploadError') });
     } finally {
       setUploadingLogo(false);
     }
@@ -271,10 +276,10 @@ export default function ProfileScreen() {
       if (url) {
         await providerService.updateProvider(providerId, { coverPhotoURL: url });
         await refreshProvider();
-        showToast({ variant: 'success', message: 'Photo de couverture mise à jour' });
+        showToast({ variant: 'success', message: t('proProfile.coverUpdated') });
       }
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur lors de l\'upload' });
+      showToast({ variant: 'error', message: err.message || t('proProfile.uploadError') });
     } finally {
       setUploadingCover(false);
     }
@@ -288,7 +293,7 @@ export default function ProfileScreen() {
     if (!providerId) return;
     const remaining = maxPhotos - portfolioPhotos.length;
     if (remaining <= 0) {
-      showToast({ variant: 'error', message: `Maximum ${maxPhotos} photos atteint` });
+      showToast({ variant: 'error', message: t('proProfile.maxPhotosReached', { max: maxPhotos }) });
       return;
     }
 
@@ -305,14 +310,11 @@ export default function ProfileScreen() {
         await refreshProvider();
         showToast({
           variant: 'success',
-          message:
-            newUrls.length === 1
-              ? 'Photo ajoutée au portfolio'
-              : `${newUrls.length} photos ajoutées au portfolio`,
+          message: t('proProfile.photosAdded', { count: newUrls.length }),
         });
       }
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur lors de l\'upload' });
+      showToast({ variant: 'error', message: err.message || t('proProfile.uploadError') });
     } finally {
       setUploadingPortfolio(false);
     }
@@ -330,18 +332,18 @@ export default function ProfileScreen() {
       await providerService.updateProvider(providerId, { portfolioPhotos: next });
       await refreshProvider();
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur lors du réordonnancement' });
+      showToast({ variant: 'error', message: err.message || t('proProfile.reorderError') });
     }
   };
 
   const handleDeletePortfolioPhoto = (url: string) => {
     Alert.alert(
-      'Supprimer cette photo',
-      'Cette action est irréversible.',
+      t('proProfile.deletePhotoTitle'),
+      t('proProfile.deletePhotoMessage'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('proProfile.delete'),
           style: 'destructive',
           onPress: async () => {
             if (!providerId) return;
@@ -352,9 +354,9 @@ export default function ProfileScreen() {
                 portfolioPhotos: updated,
               });
               await refreshProvider();
-              showToast({ variant: 'success', message: 'Photo supprimée' });
+              showToast({ variant: 'success', message: t('proProfile.photoDeleted') });
             } catch (err: any) {
-              showToast({ variant: 'error', message: err.message || 'Erreur lors de la suppression' });
+              showToast({ variant: 'error', message: err.message || t('proProfile.deleteError') });
             } finally {
               setDeletingPhoto(null);
             }
@@ -368,7 +370,7 @@ export default function ProfileScreen() {
   const handleSaveProfile = async () => {
     if (!providerId) return;
     if (!profileForm.businessName.trim()) {
-      showToast({ variant: 'error', message: 'Le nom est obligatoire' });
+      showToast({ variant: 'error', message: t('proProfile.nameRequired') });
       return;
     }
 
@@ -380,9 +382,9 @@ export default function ProfileScreen() {
         description: profileForm.description.trim(),
       });
       await refreshProvider();
-      showToast({ variant: 'success', message: 'Profil mis à jour' });
+      showToast({ variant: 'success', message: t('proProfile.profileUpdated') });
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur lors de la mise à jour' });
+      showToast({ variant: 'error', message: err.message || t('proProfile.updateError') });
     } finally {
       setSavingProfile(false);
     }
@@ -412,9 +414,9 @@ export default function ProfileScreen() {
         },
       });
       await refreshProvider();
-      showToast({ variant: 'success', message: 'Liens sociaux mis à jour' });
+      showToast({ variant: 'success', message: t('proProfile.socialUpdated') });
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur lors de la mise à jour' });
+      showToast({ variant: 'error', message: err.message || t('proProfile.updateError') });
     } finally {
       setSavingSocial(false);
     }
@@ -436,9 +438,9 @@ export default function ProfileScreen() {
         },
       });
       await refreshProvider();
-      showToast({ variant: 'success', message: 'Lien PayPal mis à jour' });
+      showToast({ variant: 'success', message: t('proProfile.paypalUpdated') });
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur' });
+      showToast({ variant: 'error', message: err.message || t('common.error') });
     } finally {
       setSavingPaypal(false);
     }
@@ -456,13 +458,13 @@ export default function ProfileScreen() {
       const result = await providerService.publishProvider(providerId);
       if (!result.canPublish) {
         setPublishCheck(result);
-        showToast({ variant: 'error', message: 'Veuillez compléter tous les éléments requis' });
+        showToast({ variant: 'error', message: t('proProfile.completeRequired') });
         return;
       }
       await refreshProvider();
-      showToast({ variant: 'success', message: 'Page activée !' });
+      showToast({ variant: 'success', message: t('proProfile.pagePublished') });
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur lors de l\'activation' });
+      showToast({ variant: 'error', message: err.message || t('proProfile.publishError') });
     } finally {
       setPublishing(false);
     }
@@ -470,12 +472,12 @@ export default function ProfileScreen() {
 
   const handleUnpublish = () => {
     Alert.alert(
-      'Désactiver ma page',
-      'Votre page ne sera plus visible par les clients. Vous pourrez la réactiver à tout moment.',
+      t('proProfile.unpublishTitle'),
+      t('proProfile.unpublishMessage'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Désactiver',
+          text: t('proProfile.unpublishConfirm'),
           style: 'destructive',
           onPress: async () => {
             if (!providerId) return;
@@ -484,9 +486,9 @@ export default function ProfileScreen() {
               await providerService.unpublishProvider(providerId);
               await refreshProvider();
               await checkRequirements();
-              showToast({ variant: 'success', message: 'Page désactivée' });
+              showToast({ variant: 'success', message: t('proProfile.pageUnpublished') });
             } catch (err: any) {
-              showToast({ variant: 'error', message: err.message || 'Erreur' });
+              showToast({ variant: 'error', message: err.message || t('common.error') });
             } finally {
               setPublishing(false);
             }
@@ -501,7 +503,7 @@ export default function ProfileScreen() {
     if (!provider?.slug) return;
     const url = `https://opatam.com/p/${provider.slug}`;
     await Clipboard.setStringAsync(url);
-    showToast({ variant: 'success', message: 'Lien copié !' });
+    showToast({ variant: 'success', message: t('proProfile.linkCopied') });
   };
 
   // View preview (same route as dashboard "Aperçu" button)
@@ -524,9 +526,9 @@ export default function ProfileScreen() {
   const bookingUrl = provider?.slug ? `https://opatam.com/p/${provider.slug}` : null;
 
   const tabs = [
-    { key: 'publication' as const, label: 'Visibilité', icon: 'globe-outline' },
-    { key: 'profile' as const, label: 'Profil', icon: 'person-outline' },
-    { key: 'social' as const, label: 'Réseaux', icon: 'share-social-outline' },
+    { key: 'publication' as const, label: t('proProfile.tabs.visibility'), icon: 'globe-outline' },
+    { key: 'profile' as const, label: t('proProfile.tabs.profile'), icon: 'person-outline' },
+    { key: 'social' as const, label: t('proProfile.tabs.social'), icon: 'share-social-outline' },
   ];
 
   return (
@@ -535,7 +537,7 @@ export default function ProfileScreen() {
       <SubscriptionRequiredModal
         visible={showSubModal}
         onClose={() => setShowSubModal(false)}
-        context="Publiez votre page et rendez-vous visible auprès de vos clients avec un abonnement Pro."
+        context={t('proProfile.subscriptionContext')}
       />
 
       {/* Header */}
@@ -545,7 +547,7 @@ export default function ProfileScreen() {
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </Pressable>
           <Text variant="h3" style={{ color: '#FFFFFF', flex: 1, marginLeft: spacing.sm }}>
-            Profil & Publication
+            {t('proProfile.headerTitle')}
           </Text>
         </View>
 
@@ -613,7 +615,7 @@ export default function ProfileScreen() {
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                     <Text variant="h3">
-                      {provider?.isPublished ? 'Page active' : 'Page inactive'}
+                      {provider?.isPublished ? t('proProfile.status.pageActive') : t('proProfile.status.pageInactive')}
                     </Text>
                     <View
                       style={[
@@ -632,14 +634,14 @@ export default function ProfileScreen() {
                           fontSize: 11,
                         }}
                       >
-                        {provider?.isPublished ? 'Active' : 'Inactive'}
+                        {provider?.isPublished ? t('proProfile.status.activeBadge') : t('proProfile.status.inactiveBadge')}
                       </Text>
                     </View>
                   </View>
                   <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
                     {provider?.isPublished
-                      ? 'Visible et accessible par les clients'
-                      : 'Non visible par les clients'}
+                      ? t('proProfile.status.visibleDesc')
+                      : t('proProfile.status.notVisibleDesc')}
                   </Text>
                 </View>
               </View>
@@ -658,7 +660,7 @@ export default function ProfileScreen() {
                       >
                         <Ionicons name="copy-outline" size={18} color={colors.primary} />
                         <Text variant="caption" style={{ color: colors.primary, fontWeight: '500' }}>
-                          Copier le lien
+                          {t('proProfile.copyLink')}
                         </Text>
                       </Pressable>
                       <Pressable
@@ -670,7 +672,7 @@ export default function ProfileScreen() {
                       >
                         <Ionicons name="eye-outline" size={18} color="#16A34A" />
                         <Text variant="caption" style={{ color: '#16A34A', fontWeight: '500' }}>
-                          Voir l'aperçu
+                          {t('proProfile.viewPreview')}
                         </Text>
                       </Pressable>
                     </View>
@@ -688,7 +690,7 @@ export default function ProfileScreen() {
                         <>
                           <Ionicons name="eye-off-outline" size={18} color="#F97316" />
                           <Text variant="caption" style={{ color: '#F97316', fontWeight: '500' }}>
-                            Désactiver ma page
+                            {t('proProfile.unpublishTitle')}
                           </Text>
                         </>
                       )}
@@ -696,7 +698,7 @@ export default function ProfileScreen() {
                   </>
                 ) : (
                   <Button
-                    title="Activer ma page"
+                    title={t('proProfile.activatePage')}
                     onPress={handlePublish}
                     loading={publishing}
                     disabled={publishing || !publishCheck?.canPublish}
@@ -710,14 +712,14 @@ export default function ProfileScreen() {
               <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.lg }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
                   <Ionicons name="alert-circle-outline" size={20} color="#F59E0B" />
-                  <Text variant="h3">Éléments requis</Text>
+                  <Text variant="h3">{t('proProfile.requiredItems')}</Text>
                 </View>
 
                 {checkingPublish ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
                   <View style={{ gap: spacing.sm }}>
-                    {Object.entries(REQUIREMENT_LABELS).map(([key, { label }]) => {
+                    {REQUIREMENT_KEYS.map((key) => {
                       const isComplete = publishCheck?.completeness[key as keyof typeof publishCheck.completeness];
                       return (
                         <View key={key} style={styles.requirementRow}>
@@ -733,7 +735,7 @@ export default function ProfileScreen() {
                               color: isComplete ? colors.text : colors.textSecondary,
                             }}
                           >
-                            {label}
+                            {t(`proProfile.requirements.${key}`)}
                           </Text>
                         </View>
                       );
@@ -747,7 +749,7 @@ export default function ProfileScreen() {
                   style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}
                 >
                   <Text variant="caption" style={{ color: colors.primary, fontWeight: '500' }}>
-                    Actualiser
+                    {t('proProfile.refresh')}
                   </Text>
                 </Pressable>
               </Card>
@@ -756,7 +758,7 @@ export default function ProfileScreen() {
             {/* QR Codes section (if published) */}
             {provider?.isPublished && bookingUrl && (
               <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.lg }}>
-                <Text variant="h3" style={{ marginBottom: spacing.md }}>QR Codes</Text>
+                <Text variant="h3" style={{ marginBottom: spacing.md }}>{t('proProfile.qr.title')}</Text>
 
                 {/* Tab bar */}
                 <View style={[styles.qrTabBar, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.md }]}>
@@ -778,7 +780,7 @@ export default function ProfileScreen() {
                         fontWeight: activeQR === 'booking' ? '600' : '400',
                       }}
                     >
-                      Réservation
+                      {t('proProfile.qr.bookingTab')}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -815,10 +817,10 @@ export default function ProfileScreen() {
                       />
                     </View>
                     <Text variant="body" style={{ fontWeight: '500', marginTop: spacing.md }}>
-                      QR code de réservation
+                      {t('proProfile.qr.bookingQrTitle')}
                     </Text>
                     <Text variant="caption" color="textSecondary" align="center" style={{ marginTop: spacing.xs }}>
-                      Affichez-le dans votre établissement. Vos clients scannent et réservent directement.
+                      {t('proProfile.qr.bookingQrDesc')}
                     </Text>
                   </View>
                 ) : (
@@ -834,17 +836,17 @@ export default function ProfileScreen() {
                           />
                         </View>
                         <Text variant="body" style={{ fontWeight: '500', marginTop: spacing.md }}>
-                          QR code PayPal
+                          {t('proProfile.qr.paypalQrTitle')}
                         </Text>
                         <Text variant="caption" color="textSecondary" align="center" style={{ marginTop: spacing.xs }}>
-                          Vos clients scannent ce QR code pour vous payer via PayPal.
+                          {t('proProfile.qr.paypalQrDesc')}
                         </Text>
                       </>
                     ) : (
                       <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
                         <Ionicons name="logo-paypal" size={32} color={colors.textMuted} />
                         <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.sm }}>
-                          Configurez votre lien PayPal ci-dessous pour activer le QR code.
+                          {t('proProfile.qr.paypalSetupHint')}
                         </Text>
                       </View>
                     )}
@@ -859,22 +861,22 @@ export default function ProfileScreen() {
                 <View style={[styles.socialIconSmall, { backgroundColor: '#EFF6FF' }]}>
                   <Ionicons name="logo-paypal" size={18} color="#0070BA" />
                 </View>
-                <Text variant="h3">Lien PayPal</Text>
+                <Text variant="h3">{t('proProfile.paypal.title')}</Text>
               </View>
               <Input
-                label="PayPal.me ou URL"
-                placeholder="votre-nom (ou https://paypal.me/votre-nom)"
+                label={t('proProfile.paypal.inputLabel')}
+                placeholder={t('proProfile.paypal.inputPlaceholder')}
                 value={paypalLink}
                 onChangeText={setPaypalLink}
                 autoCapitalize="none"
                 keyboardType="url"
               />
               <Text variant="caption" color="textMuted" style={{ marginTop: 4 }}>
-                Permet de générer un QR code pour les paiements
+                {t('proProfile.paypal.helper')}
               </Text>
               <View style={{ marginTop: spacing.md }}>
                 <Button
-                  title="Enregistrer"
+                  title={t('common.save')}
                   onPress={handleSavePaypal}
                   loading={savingPaypal}
                   disabled={savingPaypal}
@@ -904,7 +906,7 @@ export default function ProfileScreen() {
                       <>
                         <Ionicons name="image-outline" size={28} color={colors.textMuted} />
                         <Text variant="caption" color="textMuted" style={{ marginTop: 4 }}>
-                          Ajouter une photo de couverture
+                          {t('proProfile.form.addCover')}
                         </Text>
                       </>
                     )}
@@ -959,15 +961,15 @@ export default function ProfileScreen() {
             {/* Profile form */}
             <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.lg }}>
               <Input
-                label="Nom de l'entreprise"
-                placeholder="Ex: Salon de beauté Marie"
+                label={t('proProfile.form.businessNameLabel')}
+                placeholder={t('proProfile.form.businessNamePlaceholder')}
                 value={profileForm.businessName}
                 onChangeText={(v) => setProfileForm((p) => ({ ...p, businessName: v }))}
               />
 
               <View style={{ marginTop: spacing.md }}>
                 <Text variant="label" style={{ marginBottom: spacing.xs }}>
-                  Catégorie
+                  {t('proProfile.form.categoryLabel')}
                 </Text>
                 <Pressable
                   onPress={() => setShowCategoryPicker(true)}
@@ -984,7 +986,7 @@ export default function ProfileScreen() {
                     variant="body"
                     style={{ flex: 1, color: profileForm.category ? colors.text : colors.textMuted }}
                   >
-                    {profileForm.category ? getCategoryLabel(profileForm.category) : 'Sélectionnez une catégorie'}
+                    {profileForm.category ? getCategoryLabel(profileForm.category) : t('proProfile.form.selectCategory')}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
                 </Pressable>
@@ -992,8 +994,8 @@ export default function ProfileScreen() {
 
               <View style={{ marginTop: spacing.md }}>
                 <Input
-                  label="Description"
-                  placeholder="Décrivez votre activité en quelques lignes..."
+                  label={t('proProfile.form.descriptionLabel')}
+                  placeholder={t('proProfile.form.descriptionPlaceholder')}
                   value={profileForm.description}
                   onChangeText={(v) => setProfileForm((p) => ({ ...p, description: v }))}
                   multiline
@@ -1001,13 +1003,13 @@ export default function ProfileScreen() {
                   style={{ minHeight: 100, textAlignVertical: 'top' }}
                 />
                 <Text variant="caption" color="textMuted" style={{ marginTop: 4 }}>
-                  Visible sur votre page publique
+                  {t('proProfile.form.descriptionHelper')}
                 </Text>
               </View>
 
               <View style={{ marginTop: spacing.lg }}>
                 <Button
-                  title="Enregistrer"
+                  title={t('common.save')}
                   onPress={handleSaveProfile}
                   loading={savingProfile}
                   disabled={savingProfile}
@@ -1022,7 +1024,7 @@ export default function ProfileScreen() {
                   <View style={[styles.socialIconSmall, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
                     <Ionicons name="images-outline" size={18} color={colors.primary} />
                   </View>
-                  <Text variant="h3">Portfolio</Text>
+                  <Text variant="h3">{t('proProfile.portfolio.title')}</Text>
                 </View>
                 <Text variant="caption" color="textMuted">
                   {portfolioPhotos.length}/{maxPhotos}
@@ -1030,7 +1032,7 @@ export default function ProfileScreen() {
               </View>
 
               <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.md }}>
-                Ajoutez des photos de vos réalisations pour votre page publique
+                {t('proProfile.portfolio.desc')}
               </Text>
 
               <View style={styles.portfolioGrid}>
@@ -1107,7 +1109,7 @@ export default function ProfileScreen() {
                       <>
                         <Ionicons name="add" size={28} color={colors.primary} />
                         <Text variant="caption" color="textMuted" style={{ marginTop: 2, fontSize: 10 }}>
-                          Ajouter
+                          {t('proProfile.portfolio.add')}
                         </Text>
                       </>
                     )}
@@ -1123,7 +1125,7 @@ export default function ProfileScreen() {
           <>
             <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.lg }}>
               <Text variant="body" color="textSecondary" style={{ marginBottom: spacing.md }}>
-                Ajoutez vos réseaux sociaux pour augmenter votre visibilité
+                {t('proProfile.social.desc')}
               </Text>
 
               <View style={{ gap: spacing.md }}>
@@ -1134,11 +1136,11 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <Input
                       label="Instagram"
-                      placeholder="https://instagram.com/votre_compte"
+                      placeholder={t('proProfile.social.instagramPlaceholder')}
                       value={socialForm.instagram}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, instagram: v }))}
                       autoCapitalize="none"
-                      helperText="Collez le lien de votre profil Instagram"
+                      helperText={t('proProfile.social.instagramHelper')}
                     />
                   </View>
                 </View>
@@ -1150,11 +1152,11 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <Input
                       label="Facebook"
-                      placeholder="https://facebook.com/votre_page"
+                      placeholder={t('proProfile.social.facebookPlaceholder')}
                       value={socialForm.facebook}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, facebook: v }))}
                       autoCapitalize="none"
-                      helperText="Collez le lien de votre page Facebook"
+                      helperText={t('proProfile.social.facebookHelper')}
                     />
                   </View>
                 </View>
@@ -1166,11 +1168,11 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <Input
                       label="TikTok"
-                      placeholder="https://tiktok.com/@votre_compte"
+                      placeholder={t('proProfile.social.tiktokPlaceholder')}
                       value={socialForm.tiktok}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, tiktok: v }))}
                       autoCapitalize="none"
-                      helperText="Collez le lien de votre profil TikTok"
+                      helperText={t('proProfile.social.tiktokHelper')}
                     />
                   </View>
                 </View>
@@ -1181,8 +1183,8 @@ export default function ProfileScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label="Site web"
-                      placeholder="https://votre-site.com"
+                      label={t('proProfile.social.websiteLabel')}
+                      placeholder={t('proProfile.social.websitePlaceholder')}
                       value={socialForm.website}
                       onChangeText={(v) => setSocialForm((p) => ({ ...p, website: v }))}
                       autoCapitalize="none"
@@ -1194,7 +1196,7 @@ export default function ProfileScreen() {
 
               <View style={{ marginTop: spacing.lg }}>
                 <Button
-                  title="Enregistrer"
+                  title={t('common.save')}
                   onPress={handleSaveSocial}
                   loading={savingSocial}
                   disabled={savingSocial}
@@ -1222,7 +1224,7 @@ export default function ProfileScreen() {
               <View style={[styles.handleBar, { backgroundColor: colors.border }]} />
             </View>
             <Text variant="h3" align="center" style={{ marginBottom: spacing.md }}>
-              Catégorie
+              {t('proProfile.form.categoryLabel')}
             </Text>
             <ScrollView style={{ maxHeight: 400 }}>
               {CATEGORIES.map((cat) => {

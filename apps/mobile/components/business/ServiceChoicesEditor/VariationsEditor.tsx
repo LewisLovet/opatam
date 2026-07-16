@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { View, Pressable } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import {
   type ServiceVariation,
@@ -27,6 +28,7 @@ export interface VariationsEditorProps {
 
 export function VariationsEditor({ variations, onChange }: VariationsEditorProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   const updateVariation = (vi: number, patch: Partial<ServiceVariation>) => {
     onChange(variations.map((v, i) => (i === vi ? { ...v, ...patch } : v)));
@@ -92,8 +94,8 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
             <View style={{ flex: 1 }}>
               <Input
-                label="Nom de la variation"
-                placeholder="Nom de la variation (ex : Longueur)"
+                label={t('proServices.editor.variationNameLabel')}
+                placeholder={t('proServices.editor.variationNamePlaceholder')}
                 value={variation.name}
                 onChangeText={(t) => updateVariation(vi, { name: t })}
                 autoCapitalize="sentences"
@@ -126,7 +128,7 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
               }}
             >
               <Input
-                placeholder="Choix (ex : Mi-dos)"
+                placeholder={t('proServices.editor.choicePlaceholder')}
                 value={option.name}
                 onChangeText={(t) => updateOption(vi, oi, { name: t })}
                 autoCapitalize="sentences"
@@ -134,7 +136,7 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
                 <View style={{ width: 90 }}>
                   <Input
-                    label="Prix (€)"
+                    label={t('proServices.editor.priceLabel')}
                     placeholder="0"
                     keyboardType="numeric"
                     value={option.price ? String(option.price / 100) : ''}
@@ -147,7 +149,7 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
                 </View>
                 <View style={{ width: 90 }}>
                   <Input
-                    label="Durée (min)"
+                    label={t('proServices.editor.durationLabel')}
                     placeholder="0"
                     keyboardType="numeric"
                     value={option.duration ? String(option.duration) : ''}
@@ -191,14 +193,14 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
           >
             <Ionicons name="add" size={18} color={colors.primary} />
             <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
-              Ajouter un choix
+              {t('proServices.editor.addChoice')}
             </Text>
           </Pressable>
         </View>
       ))}
 
       <Text variant="caption" color="textSecondary">
-        Prix et durée = le total pour ce choix (pas un supplément).
+        {t('proServices.editor.totalPriceNote')}
       </Text>
 
       <Pressable
@@ -217,7 +219,7 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
       >
         <Ionicons name="add" size={18} color={colors.textSecondary} />
         <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.textSecondary }}>
-          Ajouter une variation
+          {t('proServices.editor.addVariation')}
         </Text>
       </Pressable>
     </View>

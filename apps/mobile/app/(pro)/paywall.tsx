@@ -18,16 +18,29 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Text, Button } from '../../components';
 import { useTheme } from '../../theme';
 import { useAuth, useProvider, useRevenueCat } from '../../contexts';
 import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
+import i18n from '../../lib/i18n';
 import type { PurchasesPackage } from 'react-native-purchases';
 
 type BillingCycle = 'monthly' | 'annual';
 
+/** Locale for number/currency formatting, following the app language. */
+function numberLocale(): string {
+  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+}
+
+/** Amount (in currency units, not cents) → localized currency string. */
+function formatCurrency(amount: number, currency = 'EUR'): string {
+  return new Intl.NumberFormat(numberLocale(), { style: 'currency', currency }).format(amount);
+}
+
 export default function PaywallScreen() {
   const { colors, spacing } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigation = useNavigation();
@@ -62,18 +75,17 @@ export default function PaywallScreen() {
     const cents = plan === 'solo'
       ? (cycle === 'monthly' ? SUBSCRIPTION_PLANS.solo.monthlyPrice : SUBSCRIPTION_PLANS.solo.yearlyPrice)
       : (cycle === 'monthly' ? SUBSCRIPTION_PLANS.team.baseMonthlyPrice : SUBSCRIPTION_PLANS.team.baseYearlyPrice);
-    return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
+    return formatCurrency(cents / 100);
   };
 
   const getMonthlyEquivalent = (plan: 'solo' | 'team'): string => {
     const pkg = findPackage(plan, 'annual');
     if (pkg) {
-      const monthlyPrice = pkg.product.price / 12;
-      return `${monthlyPrice.toFixed(2).replace('.', ',')} €/mois`;
+      return formatCurrency(pkg.product.price / 12, pkg.product.currencyCode || 'EUR');
     }
     // Fallback
     const yearlyPrice = plan === 'solo' ? SUBSCRIPTION_PLANS.solo.yearlyPrice : SUBSCRIPTION_PLANS.team.baseYearlyPrice;
-    return `${(yearlyPrice / 100 / 12).toFixed(2).replace('.', ',')} €/mois`;
+    return formatCurrency(yearlyPrice / 100 / 12);
   };
 
   const handlePurchase = async () => {
@@ -82,8 +94,8 @@ export default function PaywallScreen() {
     const pkg = findPackage(selectedPlan, billingCycle);
     if (!pkg) {
       Alert.alert(
-        'Offres indisponibles',
-        'Impossible de charger les offres d\'abonnement. Vérifiez votre connexion internet et réessayez.',
+        t('paywall.offersUnavailableTitle'),
+        t('paywall.offersUnavailableMessage'),
       );
       return;
     }
@@ -98,8 +110,8 @@ export default function PaywallScreen() {
       }
     } catch (error: any) {
       Alert.alert(
-        'Erreur',
-        error.message || "Une erreur est survenue lors de l'achat."
+        t('paywall.purchaseErrorTitle'),
+        error.message || t('paywall.purchaseErrorMessage')
       );
     } finally {
       setPurchasing(false);
@@ -113,12 +125,12 @@ export default function PaywallScreen() {
       const success = await restorePurchases();
       if (success) {
         await refreshProvider();
-        Alert.alert('Succès', 'Votre abonnement a été restauré.');
+        Alert.alert(t('paywall.restoreSuccessTitle'), t('paywall.restoreSuccessMessage'));
       } else {
-        Alert.alert('Aucun abonnement', "Aucun abonnement actif n'a été trouvé.");
+        Alert.alert(t('paywall.restoreNoneTitle'), t('paywall.restoreNoneMessage'));
       }
     } catch {
-      Alert.alert('Erreur', 'Impossible de restaurer les achats.');
+      Alert.alert(t('paywall.purchaseErrorTitle'), t('paywall.restoreErrorMessage'));
     } finally {
       setRestoring(false);
     }
@@ -126,11 +138,11 @@ export default function PaywallScreen() {
 
   const handleSignOut = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t('paywall.signOutTitle'),
+      t('paywall.signOutMessage'),
       [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Déconnecter', style: 'destructive', onPress: signOut },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('paywall.signOutConfirm'), style: 'destructive', onPress: signOut },
       ],
     );
   };
@@ -139,14 +151,14 @@ export default function PaywallScreen() {
     {
       id: 'solo' as const,
       name: SUBSCRIPTION_PLANS.solo.name,
-      tagline: 'Pour les indépendants',
+      tagline: t('paywall.soloTagline'),
       icon: 'person-outline',
       features: SUBSCRIPTION_PLANS.solo.features,
     },
     {
       id: 'team' as const,
       name: SUBSCRIPTION_PLANS.team.name,
-      tagline: 'Pour les équipes',
+      tagline: t('paywall.teamTagline'),
       icon: 'people-outline',
       features: SUBSCRIPTION_PLANS.team.features,
     },
@@ -172,14 +184,14 @@ export default function PaywallScreen() {
         <View style={styles.header}>
           {displayName ? (
             <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-              Bonjour, {displayName}
+              {t('paywall.greeting', { name: displayName })}
             </Text>
           ) : null}
           <Text style={[styles.title, { color: colors.text }]}>
-            Activez votre compte
+            {t('paywall.title')}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Votre période d'essai est terminée.{'\n'}Choisissez votre formule pour continuer.
+            {t('paywall.subtitle')}
           </Text>
         </View>
 
@@ -198,7 +210,7 @@ export default function PaywallScreen() {
               { color: billingCycle === 'monthly' ? colors.text : colors.textSecondary },
               billingCycle === 'monthly' && { fontWeight: '600' },
             ]}>
-              Mensuel
+              {t('paywall.monthly')}
             </Text>
           </Pressable>
           <Pressable
@@ -214,7 +226,7 @@ export default function PaywallScreen() {
               { color: billingCycle === 'annual' ? colors.text : colors.textSecondary },
               billingCycle === 'annual' && { fontWeight: '600' },
             ]}>
-              Annuel
+              {t('paywall.annual')}
             </Text>
             <View style={styles.savingsBadge}>
               <Text style={styles.savingsText}>-17%</Text>
@@ -258,11 +270,11 @@ export default function PaywallScreen() {
               <View style={styles.priceRow}>
                 <Text style={[styles.price, { color: colors.text }]}>{price}</Text>
                 <Text style={[styles.pricePeriod, { color: colors.textSecondary }]}>
-                  /{billingCycle === 'monthly' ? 'mois' : 'an'}
+                  /{billingCycle === 'monthly' ? t('paywall.perMonth') : t('paywall.perYear')}
                 </Text>
                 {billingCycle === 'annual' && (
                   <Text style={[styles.monthlyEquivalent, { color: colors.textMuted }]}>
-                    soit {getMonthlyEquivalent(plan.id)}
+                    {t('paywall.monthlyEquivalent', { price: getMonthlyEquivalent(plan.id) })}
                   </Text>
                 )}
               </View>
@@ -288,19 +300,24 @@ export default function PaywallScreen() {
             <View style={styles.loadingOfferings}>
               <ActivityIndicator size="small" color={colors.textMuted} />
               <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-                Chargement des offres...
+                {t('paywall.loadingOffers')}
               </Text>
             </View>
           ) : !currentOffering ? (
             <View style={styles.loadingOfferings}>
               <Ionicons name="warning-outline" size={16} color="#DC2626" />
               <Text style={[styles.loadingText, { color: '#DC2626' }]}>
-                Impossible de charger les offres. Vérifiez votre connexion.
+                {t('paywall.offersLoadError')}
               </Text>
             </View>
           ) : (
             <Button
-              title={purchasing ? 'Traitement en cours...' : `S'abonner — ${getPrice(selectedPlan, billingCycle)}/${billingCycle === 'monthly' ? 'mois' : 'an'}`}
+              title={purchasing
+                ? t('paywall.processing')
+                : t('paywall.subscribeCta', {
+                    price: getPrice(selectedPlan, billingCycle),
+                    period: billingCycle === 'monthly' ? t('paywall.perMonth') : t('paywall.perYear'),
+                  })}
               onPress={handlePurchase}
               loading={purchasing}
               disabled={purchasing}
@@ -311,20 +328,20 @@ export default function PaywallScreen() {
 
         {/* Legal notice */}
         <Text style={[styles.legalText, { color: colors.textMuted }]}>
-          L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période en cours. Le paiement est débité sur votre compte Apple. Vous pouvez gérer et annuler vos abonnements dans les réglages de votre compte Apple.
+          {t('paywall.legalNotice')}
         </Text>
 
         {/* Legal links */}
         <View style={styles.legalLinks}>
           <Pressable onPress={() => Linking.openURL('https://opatam.com/cgu')}>
             <Text style={[styles.legalLinkText, { color: colors.primary }]}>
-              Conditions d'utilisation
+              {t('paywall.termsLink')}
             </Text>
           </Pressable>
           <Text style={{ color: colors.textMuted }}>·</Text>
           <Pressable onPress={() => Linking.openURL('https://opatam.com/confidentialite')}>
             <Text style={[styles.legalLinkText, { color: colors.primary }]}>
-              Politique de confidentialité
+              {t('paywall.privacyLink')}
             </Text>
           </Pressable>
         </View>
@@ -333,14 +350,14 @@ export default function PaywallScreen() {
         <View style={styles.footer}>
           <Pressable onPress={handleRestore} disabled={restoring} style={styles.footerLink}>
             <Text style={[styles.footerText, { color: colors.primary }]}>
-              {restoring ? 'Restauration...' : 'Restaurer mes achats'}
+              {restoring ? t('paywall.restoring') : t('paywall.restore')}
             </Text>
           </Pressable>
 
           <Pressable onPress={handleSignOut} style={styles.footerLink}>
             <Ionicons name="log-out-outline" size={16} color={colors.textSecondary} />
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-              Se déconnecter
+              {t('paywall.signOut')}
             </Text>
           </Pressable>
         </View>

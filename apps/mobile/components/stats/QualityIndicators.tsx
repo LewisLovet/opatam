@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text } from '../../components';
@@ -21,16 +22,17 @@ export function QualityIndicators({
   averageRating: number | null;
   ratingCount: number;
 }) {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   return (
     <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
       <Text variant="h3" style={{ marginBottom: spacing.md }}>
-        Indicateurs qualité
+        {t('proStats.quality.title')}
       </Text>
       <View style={[s.grid, { gap: spacing.sm }]}>
         <Tile
           icon="close-circle-outline"
-          label="Annulation"
+          label={t('proStats.quality.cancellation')}
           value={`${(cancellationRate * 100).toFixed(1)}%`}
           warn={cancellationRate > 0.1}
           colors={colors}
@@ -38,7 +40,7 @@ export function QualityIndicators({
         />
         <Tile
           icon="alert-circle-outline"
-          label="No-show"
+          label={t('proStats.quality.noshow')}
           value={`${(noshowRate * 100).toFixed(1)}%`}
           warn={noshowRate > 0.05}
           colors={colors}
@@ -46,11 +48,15 @@ export function QualityIndicators({
         />
         <Tile
           icon="star"
-          label="Note moyenne"
+          label={t('proStats.quality.avgRating')}
           value={
             averageRating === null ? '—' : `${averageRating.toFixed(1)} / 5`
           }
-          sublabel={ratingCount > 0 ? `${ratingCount} avis` : 'aucun avis'}
+          sublabel={
+            ratingCount > 0
+              ? t('proStats.quality.reviewsCount', { count: ratingCount })
+              : t('proStats.quality.noReviews')
+          }
           warn={false}
           colors={colors}
           radius={radius.md}

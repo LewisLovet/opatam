@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text } from '../../components';
 import { useTheme } from '../../theme';
@@ -14,18 +15,19 @@ interface ClientEntry {
 }
 
 export function TopClientsPanel({ data }: { data: ClientEntry[] }) {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   return (
     <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
       <View style={{ marginBottom: spacing.md }}>
-        <Text variant="h3">Top clients</Text>
+        <Text variant="h3">{t('proStats.topClients.title')}</Text>
         <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
-          Par CA cumulé sur la période
+          {t('proStats.topClients.subtitle')}
         </Text>
       </View>
       {data.length === 0 ? (
         <Text variant="caption" color="textMuted">
-          Aucun client identifié sur la période.
+          {t('proStats.topClients.empty')}
         </Text>
       ) : (
         data.slice(0, 5).map((c, i) => {
@@ -61,7 +63,7 @@ export function TopClientsPanel({ data }: { data: ClientEntry[] }) {
                   {display}
                 </Text>
                 <Text variant="caption" color="textMuted" style={{ fontSize: 11 }}>
-                  {c.bookingsCount} RDV
+                  {t('proStats.bookingsCount', { count: c.bookingsCount })}
                 </Text>
               </View>
               <Text variant="body" style={{ fontWeight: '700' }}>

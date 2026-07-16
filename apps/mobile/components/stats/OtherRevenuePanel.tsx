@@ -14,6 +14,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text } from '../../components';
 import { useTheme } from '../../theme';
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   if (total === 0 || data.length === 0) return null;
   const max = Math.max(...data.map((d) => d.revenue), 1);
@@ -60,9 +62,9 @@ export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
         }}
       >
         <View style={{ flex: 1 }}>
-          <Text variant="h3">Autres revenus</Text>
+          <Text variant="h3">{t('proStats.otherRevenue.title')}</Text>
           <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
-            Activités hors RDV · {periodLabel}
+            {t('proStats.otherRevenue.subtitle', { period: periodLabel })}
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
@@ -70,7 +72,7 @@ export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
             {formatPrice(total)}
           </Text>
           <Text variant="caption" color="textMuted">
-            {count} activité{count > 1 ? 's' : ''}
+            {t('proStats.otherRevenue.activitiesCount', { count })}
           </Text>
         </View>
       </View>
@@ -93,7 +95,9 @@ export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
                 style={{ flex: 1, fontWeight: '500' }}
                 numberOfLines={1}
               >
-                {meta?.label ?? c.category}
+                {t(`proStats.activityCategories.${c.category}`, {
+                  defaultValue: meta?.label ?? c.category,
+                })}
               </Text>
               <Text variant="caption" color="textMuted" style={{ fontSize: 11 }}>
                 {c.count}

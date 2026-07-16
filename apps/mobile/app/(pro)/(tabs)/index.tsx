@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Dimensions,
@@ -84,6 +85,7 @@ import {
   useNewFeatures,
   type NewFeatureKey,
 } from '../../../hooks/useNewFeatures';
+import i18n from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -101,12 +103,16 @@ function toDate(dt: any): Date {
   return new Date(dt);
 }
 
-const FRENCH_DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-const FRENCH_MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-
-function formatFrenchDate(date: Date): string {
-  return `${FRENCH_DAYS[date.getDay()]} ${date.getDate()} ${FRENCH_MONTHS[date.getMonth()]}`;
+/** Locale-aware "Vendredi 11 juillet" — driven by the app language (Intl,
+ *  no native module; same pattern as the client screens). */
+function formatDashboardDate(date: Date): string {
+  const locale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const formatted = new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(date);
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 function formatTime(date: Date): string {
@@ -140,16 +146,19 @@ function formatPrice(centimes: number): string {
   return euros % 1 === 0 ? `${euros} €` : `${euros.toFixed(2)} €`;
 }
 
-/** Returns "Dans Xh", "Dans X min", or null if booking is in the past */
+/** Returns "Dans Xh" / "In Xh", "Dans X min" / "In X min", or null if the
+ *  booking is in the past. i18n.t is called when the message is produced. */
 function getTimeUntilChip(bookingDate: Date): string | null {
   const now = new Date();
   const diffMs = bookingDate.getTime() - now.getTime();
   if (diffMs <= 0) return null;
   const diffMin = Math.round(diffMs / 60000);
-  if (diffMin < 60) return `Dans ${diffMin} min`;
+  if (diffMin < 60) return i18n.t('proHome.inMinutes', { count: diffMin });
   const diffH = Math.floor(diffMin / 60);
   const remainMin = diffMin % 60;
-  return remainMin > 0 ? `Dans ${diffH}h${remainMin.toString().padStart(2, '0')}` : `Dans ${diffH}h`;
+  return remainMin > 0
+    ? i18n.t('proHome.inHoursMinutes', { hours: diffH, minutes: remainMin.toString().padStart(2, '0') })
+    : i18n.t('proHome.inHours', { hours: diffH });
 }
 
 // ---------------------------------------------------------------------------
@@ -237,6 +246,7 @@ function TimelineBookingItem({
   onCancel?: () => void;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   const statusColor = status === 'confirmed' ? colors.success : status === 'pending' ? colors.warning : colors.error;
   const barColor = memberColor || statusColor;
@@ -291,11 +301,11 @@ function TimelineBookingItem({
                   <Text variant="body" style={{ fontWeight: '700' }}>{formatPrice(remaining)}</Text>
                   {hasDeposit ? (
                     <Text variant="caption" style={{ color: colors.success, fontSize: 10, fontWeight: '600' }} numberOfLines={1}>
-                      acompte {formatPrice(depositPaid as number)} ✓
+                      {t('proHome.depositPaid', { amount: formatPrice(depositPaid as number) })}
                     </Text>
                   ) : (
                     <Text variant="caption" color="textMuted" style={{ fontSize: 10 }} numberOfLines={1}>
-                      à encaisser
+                      {t('proHome.toCollect')}
                     </Text>
                   )}
                 </View>
@@ -313,7 +323,7 @@ function TimelineBookingItem({
                 style={[styles.timelineActionBtn, { backgroundColor: colors.success, borderRadius: radius.md }]}
               >
                 <Ionicons name="checkmark" size={14} color="#FFF" />
-                <Text variant="caption" style={{ color: '#FFF', fontWeight: '600', marginLeft: 4 }}>Confirmer</Text>
+                <Text variant="caption" style={{ color: '#FFF', fontWeight: '600', marginLeft: 4 }}>{t('common.confirm')}</Text>
               </Pressable>
             )}
             {onCancel && (
@@ -321,7 +331,7 @@ function TimelineBookingItem({
                 onPress={onCancel}
                 style={[styles.timelineActionBtn, { backgroundColor: colors.errorLight, borderRadius: radius.md }]}
               >
-                <Text variant="caption" color="error" style={{ fontWeight: '600' }}>Refuser</Text>
+                <Text variant="caption" color="error" style={{ fontWeight: '600' }}>{t('proHome.decline')}</Text>
               </Pressable>
             )}
           </View>
@@ -383,6 +393,7 @@ function StatCardToday({
   onPress?: () => void;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const progress = bookingsCount > 0 ? passedCount / bookingsCount : 0;
 
   return (
@@ -399,10 +410,10 @@ function StatCardToday({
     >
       <View style={[styles.statCardHeader, { marginBottom: spacing.md }]}>
         <Ionicons name="today-outline" size={18} color={colors.primary} />
-        <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500' }}>Aujourd'hui</Text>
+        <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500' }}>{t('proHome.today')}</Text>
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: spacing.md }}>
-        <Text variant="h2" style={{ fontWeight: '800' }}>{bookingsCount} <Text variant="bodySmall" color="textMuted">RDV</Text></Text>
+        <Text variant="h2" style={{ fontWeight: '800' }}>{bookingsCount} <Text variant="bodySmall" color="textMuted">{t('proHome.appointmentsShort')}</Text></Text>
         <Text variant="h3" color="primary" style={{ fontWeight: '700' }}>{formatPrice(revenue)}</Text>
       </View>
       {/* Progress bar */}
@@ -410,7 +421,7 @@ function StatCardToday({
         <View style={[styles.progressFill, { width: `${Math.min(progress * 100, 100)}%`, backgroundColor: colors.primary, borderRadius: radius.full }]} />
       </View>
       <Text variant="caption" color="textMuted" style={{ marginTop: spacing.xs }}>
-        {passedCount}/{bookingsCount} passés
+        {t('proHome.todayProgress', { passed: passedCount, total: bookingsCount })}
       </Text>
     </Pressable>
   );
@@ -435,6 +446,7 @@ function StatCardWeek({
   onPress?: () => void;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   return (
     <Pressable
       onPress={onPress}
@@ -446,13 +458,13 @@ function StatCardWeek({
       <View style={[styles.statCardHeader, { marginBottom: spacing.md }]}>
         <Ionicons name="trending-up-outline" size={18} color={colors.info} />
         <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500', flex: 1 }}>
-          7 derniers jours
+          {t('proHome.last7Days')}
         </Text>
         <DeltaChip delta={delta} />
       </View>
       <Text variant="h2" style={{ fontWeight: '800' }}>{formatPrice(revenue)}</Text>
       <Text variant="caption" color="textMuted" style={{ marginTop: 2, marginBottom: spacing.sm }}>
-        {bookingsCount} RDV
+        {t('proHome.countRdv', { count: bookingsCount })}
       </Text>
       {/* Smoothed sparkline (height 32). Renders nothing if <2 data
           points — keeps the card visually tidy in that edge case. */}
@@ -483,6 +495,7 @@ function StatCardMonth({
   onPress?: () => void;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const rateColor = completionRate >= 80 ? colors.success : completionRate >= 50 ? colors.warning : colors.error;
 
   return (
@@ -496,15 +509,15 @@ function StatCardMonth({
       <View style={[styles.statCardHeader, { marginBottom: spacing.md }]}>
         <Ionicons name="wallet-outline" size={18} color={colors.success} />
         <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500', flex: 1 }}>
-          30 derniers jours
+          {t('proHome.last30Days')}
         </Text>
         <DeltaChip delta={delta} />
       </View>
       <Text variant="h2" style={{ fontWeight: '800' }}>{formatPrice(revenue)}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 }}>
-        <Text variant="caption" color="textMuted">{bookingsCount} RDV</Text>
+        <Text variant="caption" color="textMuted">{t('proHome.countRdv', { count: bookingsCount })}</Text>
         <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: colors.textMuted, opacity: 0.4 }} />
-        <Text variant="caption" style={{ color: rateColor, fontWeight: '600' }}>{completionRate}% réussite</Text>
+        <Text variant="caption" style={{ color: rateColor, fontWeight: '600' }}>{t('proHome.completionRate', { rate: completionRate })}</Text>
       </View>
       <View style={[styles.sparklineSlot, { marginTop: spacing.sm }]}>
         <Sparkline data={trend} width={STAT_CARD_WIDTH - 48} height={36} color={colors.success} />
@@ -541,6 +554,7 @@ function DepositsCard({
   onPress?: () => void;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Pressable
@@ -574,10 +588,10 @@ function DepositsCard({
         </View>
         <View style={{ flex: 1 }}>
           <Text variant="body" style={{ fontWeight: '700' }}>
-            Acomptes encaissés
+            {t('proHome.deposits.title')}
           </Text>
           <Text variant="caption" color="textMuted">
-            30 derniers jours · Sérénité
+            {t('proHome.deposits.subtitle')}
           </Text>
         </View>
         {onPress && (
@@ -591,7 +605,7 @@ function DepositsCard({
           {formatPrice(totalAmount)}
         </Text>
         <Text variant="bodySmall" color="textMuted" style={{ marginBottom: 6 }}>
-          sur {bookingsCount} RDV
+          {t('proHome.deposits.onBookings', { count: bookingsCount })}
         </Text>
       </View>
 
@@ -608,7 +622,7 @@ function DepositsCard({
               marginBottom: spacing.xs,
             }}
           >
-            Prestations concernées
+            {t('proHome.deposits.topServices')}
           </Text>
           {topServices.map((svc) => (
             <View
@@ -623,7 +637,7 @@ function DepositsCard({
                 {svc.serviceName}
               </Text>
               <Text variant="caption" color="textMuted">
-                {svc.bookingsCount} RDV
+                {t('proHome.countRdv', { count: svc.bookingsCount })}
               </Text>
             </View>
           ))}
@@ -634,8 +648,7 @@ function DepositsCard({
       {!loading && bookingsCount === 0 && (
         <View style={{ marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
           <Text variant="caption" color="textSecondary">
-            Aucun acompte encaissé sur la période. Configurez un acompte
-            par défaut ou par prestation pour commencer.
+            {t('proHome.deposits.empty')}
           </Text>
         </View>
       )}
@@ -646,27 +659,29 @@ function DepositsCard({
 // ---------------------------------------------------------------------------
 // New-feature display labels
 // ---------------------------------------------------------------------------
-// User-facing names for each NewFeatureKey. Used by the discovery
-// banner ("Découvrez Clients, Statistiques et Paiements"). Add the
-// matching label here whenever a new key is shipped.
-const FEATURE_DISPLAY_LABELS: Record<NewFeatureKey, string> = {
-  'clients-2026-05': 'Clients',
-  'stats-2026-05': 'Statistiques',
-  'payments-2026-05': 'Paiements',
+// i18n keys for the user-facing name of each NewFeatureKey. Used by
+// the discovery banner ("Découvrez Clients, Statistiques et
+// Paiements"). Add the matching key here whenever a new one ships.
+const FEATURE_LABEL_KEYS: Record<NewFeatureKey, string> = {
+  'clients-2026-05': 'proHome.features.clients',
+  'stats-2026-05': 'proHome.features.stats',
+  'payments-2026-05': 'proHome.features.payments',
   // Story share lives on the home tab itself (FAB), not behind
   // Plus — the home banner never references it, but the map still
   // needs every key for type-completeness.
-  'story-share-2026-05': 'Stories',
-  'auto-review-2026-05': 'Avis auto',
+  'story-share-2026-05': 'proHome.features.stories',
+  'auto-review-2026-05': 'proHome.features.autoReview',
 };
 
-/** "A, B et C" — French enumeration with proper "et" before the
- *  last item. Falls back to "A" / "A et B" for shorter lists. */
-function joinFr(items: string[]): string {
+/** "A, B et C" / "A, B and C" — enumeration with the localized
+ *  conjunction before the last item. i18n.t is called at the moment
+ *  the message is produced, so language switches apply live. */
+function joinList(items: string[]): string {
   if (items.length === 0) return '';
   if (items.length === 1) return items[0];
-  if (items.length === 2) return `${items[0]} et ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}`;
+  const and = i18n.t('proHome.listAnd');
+  if (items.length === 2) return `${items[0]} ${and} ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')} ${and} ${items[items.length - 1]}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -675,6 +690,7 @@ function joinFr(items: string[]): string {
 
 export default function ProDashboardScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { provider, providerId, refreshProvider } = useProvider();
@@ -748,7 +764,7 @@ export default function ProDashboardScreen() {
   const showDiscoveryBanner = hasAnyUnseen(MORE_TAB_FEATURE_KEYS);
   const unseenLabels = MORE_TAB_FEATURE_KEYS
     .filter((k) => isNew(k))
-    .map((k) => FEATURE_DISPLAY_LABELS[k] ?? k);
+    .map((k) => (FEATURE_LABEL_KEYS[k] ? t(FEATURE_LABEL_KEYS[k]) : k));
   const dismissDiscoveryBanner = () => {
     MORE_TAB_FEATURE_KEYS.forEach((k) => markSeen(k));
   };
@@ -795,15 +811,15 @@ export default function ProDashboardScreen() {
       await bookingService.confirmBooking(bookingId, user.uid);
       await refresh();
     } catch {
-      Alert.alert('Erreur', 'Impossible de confirmer le rendez-vous.');
+      Alert.alert(t('proHome.errorTitle'), t('proHome.confirmError'));
     }
-  }, [user, refresh]);
+  }, [user, refresh, t]);
 
   const handleCancel = useCallback((bookingId: string) => {
-    Alert.alert('Annuler le rendez-vous', 'Êtes-vous sûr de vouloir annuler ce rendez-vous ?', [
-      { text: 'Non', style: 'cancel' },
+    Alert.alert(t('proHome.cancelDialog.title'), t('proHome.cancelDialog.message'), [
+      { text: t('proHome.cancelDialog.no'), style: 'cancel' },
       {
-        text: 'Oui, annuler',
+        text: t('proHome.cancelDialog.yes'),
         style: 'destructive',
         onPress: async () => {
           if (!user) return;
@@ -811,12 +827,12 @@ export default function ProDashboardScreen() {
             await bookingService.cancelBooking(bookingId, 'provider', user.uid);
             await refresh();
           } catch {
-            Alert.alert('Erreur', "Impossible d'annuler le rendez-vous.");
+            Alert.alert(t('proHome.errorTitle'), t('proHome.cancelDialog.error'));
           }
         },
       },
     ]);
-  }, [user, refresh]);
+  }, [user, refresh, t]);
 
   const navigateToBooking = useCallback((bookingId: string) => {
     router.push(`/(pro)/booking-detail/${bookingId}`);
@@ -837,11 +853,11 @@ export default function ProDashboardScreen() {
     if (!shopUrl) return;
     try {
       await Clipboard.setStringAsync(shopUrl);
-      Alert.alert('Lien copié', 'Le lien a été copié dans le presse-papiers.');
+      Alert.alert(t('proHome.linkCopied.title'), t('proHome.linkCopied.message'));
     } catch {
-      Alert.alert('Erreur', 'Impossible de copier le lien.');
+      Alert.alert(t('proHome.errorTitle'), t('proHome.copyError'));
     }
-  }, [shopUrl]);
+  }, [shopUrl, t]);
 
 
   const handleViewShop = useCallback(() => {
@@ -861,7 +877,7 @@ export default function ProDashboardScreen() {
   // -- Derived values (all hooks must be called before any early return) -----
 
   const today = new Date();
-  const firstName = user?.displayName?.split(' ')[0] || provider?.businessName || 'Pro';
+  const firstName = user?.displayName?.split(' ')[0] || provider?.businessName || t('proHome.defaultName');
   const { todayBookings, pendingBookings, weekBookingsCount, weekBookingsPerDay, locations, services, members, averageRating } = data;
   const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
 
@@ -891,9 +907,9 @@ export default function ProDashboardScreen() {
       alerts.push({
         id: 'pending',
         icon: 'time-outline',
-        message: `${pendingBookings.length} RDV en attente de confirmation`,
+        message: t('proHome.setupAlerts.pending', { count: pendingBookings.length }),
         route: '/(pro)/(tabs)/calendar',
-        action: 'Voir',
+        action: t('proHome.setupAlerts.view'),
         color: colors.warning,
       });
     }
@@ -903,9 +919,9 @@ export default function ProDashboardScreen() {
       alerts.push({
         id: 'unpublished',
         icon: 'eye-off-outline',
-        message: 'Votre page n\'est pas encore visible',
+        message: t('proHome.setupAlerts.unpublished'),
         route: '/(pro)/profile',
-        action: 'Activer',
+        action: t('proHome.setupAlerts.activate'),
         color: colors.error,
       });
     }
@@ -915,9 +931,9 @@ export default function ProDashboardScreen() {
       alerts.push({
         id: 'no-service',
         icon: 'pricetag-outline',
-        message: 'Créez votre première prestation',
+        message: t('proHome.setupAlerts.noService'),
         route: '/(pro)/services',
-        action: 'Créer',
+        action: t('proHome.setupAlerts.create'),
         color: colors.warning,
       });
     }
@@ -927,9 +943,9 @@ export default function ProDashboardScreen() {
       alerts.push({
         id: 'no-location',
         icon: 'location-outline',
-        message: 'Ajoutez un lieu pour recevoir des réservations',
+        message: t('proHome.setupAlerts.noLocation'),
         route: '/(pro)/locations',
-        action: 'Ajouter',
+        action: t('proHome.setupAlerts.add'),
         color: colors.warning,
       });
     }
@@ -939,9 +955,9 @@ export default function ProDashboardScreen() {
       alerts.push({
         id: 'no-photo',
         icon: 'camera-outline',
-        message: 'Ajoutez une photo de profil',
+        message: t('proHome.setupAlerts.noPhoto'),
         route: '/(pro)/profile',
-        action: 'Ajouter',
+        action: t('proHome.setupAlerts.add'),
         color: colors.textMuted,
       });
     }
@@ -951,15 +967,15 @@ export default function ProDashboardScreen() {
       alerts.push({
         id: 'no-portfolio',
         icon: 'images-outline',
-        message: 'Ajoutez des photos à votre portfolio',
+        message: t('proHome.setupAlerts.noPortfolio'),
         route: '/(pro)/profile',
-        action: 'Ajouter',
+        action: t('proHome.setupAlerts.add'),
         color: colors.textMuted,
       });
     }
 
     return alerts;
-  }, [provider, pendingBookings.length, locations.length, services.length, colors]);
+  }, [provider, pendingBookings.length, locations.length, services.length, colors, t]);
 
   // -- Setup progress (completeness checklist) --------------------------------
   const setupSteps = useMemo(() => {
@@ -967,48 +983,48 @@ export default function ProDashboardScreen() {
     return [
       {
         id: 'photo',
-        label: 'Photo de profil',
+        label: t('proHome.setup.stepPhoto'),
         icon: 'camera-outline' as keyof typeof Ionicons.glyphMap,
         done: !!provider.photoURL,
         route: '/(pro)/profile',
       },
       {
         id: 'description',
-        label: 'Description',
+        label: t('proHome.setup.stepDescription'),
         icon: 'document-text-outline' as keyof typeof Ionicons.glyphMap,
         done: !!provider.description && provider.description.length > 10,
         route: '/(pro)/profile',
       },
       {
         id: 'services',
-        label: 'Au moins 1 prestation',
+        label: t('proHome.setup.stepServices'),
         icon: 'pricetag-outline' as keyof typeof Ionicons.glyphMap,
         done: services.length > 0,
         route: '/(pro)/services',
       },
       {
         id: 'locations',
-        label: 'Au moins 1 lieu',
+        label: t('proHome.setup.stepLocations'),
         icon: 'location-outline' as keyof typeof Ionicons.glyphMap,
         done: locations.length > 0,
         route: '/(pro)/locations',
       },
       {
         id: 'portfolio',
-        label: 'Photos portfolio',
+        label: t('proHome.setup.stepPortfolio'),
         icon: 'images-outline' as keyof typeof Ionicons.glyphMap,
         done: !!provider.portfolioPhotos && provider.portfolioPhotos.length > 0,
         route: '/(pro)/profile',
       },
       {
         id: 'published',
-        label: 'Page publiée',
+        label: t('proHome.setup.stepPublished'),
         icon: 'globe-outline' as keyof typeof Ionicons.glyphMap,
         done: !!provider.isPublished,
         route: '/(pro)/profile',
       },
     ];
-  }, [provider, services.length, locations.length]);
+  }, [provider, services.length, locations.length, t]);
 
   const completedSteps = setupSteps.filter((s) => s.done).length;
   const totalSteps = setupSteps.length;
@@ -1058,7 +1074,7 @@ export default function ProDashboardScreen() {
                 {provider?.businessName || firstName}
               </Text>
               <Text variant="bodySmall" style={{ color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
-                {formatFrenchDate(today)}
+                {formatDashboardDate(today)}
               </Text>
             </View>
             {/* Header avatar doubles as the notification-center entry:
@@ -1069,7 +1085,7 @@ export default function ProDashboardScreen() {
               hitSlop={8}
               style={{ position: 'relative' }}
               accessibilityRole="button"
-              accessibilityLabel="Nouveau"
+              accessibilityLabel={t('proHome.a11yNotifications')}
             >
               <View style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderRadius: radius.full }}>
                 <Avatar
@@ -1136,13 +1152,13 @@ export default function ProDashboardScreen() {
 
           {/* Stat chips */}
           <View style={[styles.heroChips, { marginTop: spacing.md, marginBottom: spacing.sm }]}>
-            <HeroChip icon="calendar-outline" label={`${todayBookings.length} RDV`} />
+            <HeroChip icon="calendar-outline" label={t('proHome.countRdv', { count: todayBookings.length })} />
             <HeroChip icon="wallet-outline" label={formatPrice(todayRevenue)} />
             {pendingBookings.length > 0 && (
-              <HeroChip icon="time-outline" label={`${pendingBookings.length} en attente`} />
+              <HeroChip icon="time-outline" label={t('proHome.pendingChip', { count: pendingBookings.length })} />
             )}
             {liveViews && liveViews.today > 0 && (
-              <HeroChip icon="eye-outline" label={`${liveViews.today} vue${liveViews.today > 1 ? 's' : ''}`} />
+              <HeroChip icon="eye-outline" label={t('proHome.viewsChip', { count: liveViews.today })} />
             )}
           </View>
         </View>
@@ -1174,15 +1190,15 @@ export default function ProDashboardScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text variant="body" style={{ fontWeight: '800', color: '#FFFFFF' }}>
-                      Votre essai est terminé
+                      {t('proHome.trialEnded.title')}
                     </Text>
                     <Text variant="caption" style={{ color: 'rgba(255,255,255,0.9)', marginTop: 2 }}>
-                      Réactivez votre page pour continuer à recevoir des réservations.
+                      {t('proHome.trialEnded.subtitle')}
                     </Text>
                   </View>
                 </View>
                 <View style={{ marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFFFFF', borderRadius: 12, paddingVertical: 11 }}>
-                  <Text style={{ color: '#DC2626', fontWeight: '800', fontSize: 14 }}>Réactiver ma page</Text>
+                  <Text style={{ color: '#DC2626', fontWeight: '800', fontSize: 14 }}>{t('proHome.trialEnded.cta')}</Text>
                   <Ionicons name="arrow-forward" size={16} color="#DC2626" />
                 </View>
               </LinearGradient>
@@ -1243,14 +1259,14 @@ export default function ProDashboardScreen() {
                   variant="body"
                   style={{ color: '#FFFFFF', fontWeight: '700' }}
                 >
-                  Nouvelles fonctionnalités !
+                  {t('proHome.discovery.title')}
                 </Text>
                 <Text
                   variant="caption"
                   style={{ color: 'rgba(255,255,255,0.85)', marginTop: 2 }}
                   numberOfLines={1}
                 >
-                  Découvrez {joinFr(unseenLabels)} dans l'onglet Plus.
+                  {t('proHome.discovery.subtitle', { features: joinList(unseenLabels) })}
                 </Text>
               </View>
               <Pressable
@@ -1312,13 +1328,13 @@ export default function ProDashboardScreen() {
                 <View style={{ flex: 1 }}>
                   <Text variant="body" style={{ fontWeight: '700' }}>
                     {isPublished
-                      ? 'Votre page est en ligne 🎉'
-                      : `Votre page est prête à ${Math.round(progressPct * 100)} %`}
+                      ? t('proHome.setup.onlineTitle')
+                      : t('proHome.setup.readyTitle', { pct: Math.round(progressPct * 100) })}
                   </Text>
                   <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
                     {isPublished
-                      ? 'Quelques détails de plus pour tirer le meilleur de votre page.'
-                      : 'Finalisez votre page pour recevoir vos premières réservations.'}
+                      ? t('proHome.setup.onlineSubtitle')
+                      : t('proHome.setup.readySubtitle')}
                   </Text>
                 </View>
                 <Text variant="h3" style={{ color: colors.primary, fontWeight: '800' }}>{Math.round(progressPct * 100)}%</Text>
@@ -1354,7 +1370,7 @@ export default function ProDashboardScreen() {
                         >
                           <Ionicons name="rocket-outline" size={18} color="#FFFFFF" />
                           <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
-                            Publier ma page
+                            {t('proHome.setup.publishCta')}
                           </Text>
                         </Pressable>
                       </View>
@@ -1455,10 +1471,10 @@ export default function ProDashboardScreen() {
         {/* ── Quick Actions ── */}
         {provider?.slug && (
           <View style={[styles.quickActions, { paddingHorizontal: spacing.lg, marginBottom: spacing.xl }]}>
-            <QuickAction icon="qr-code-outline" label="QR Code" onPress={() => setShowQRModal(true)} />
-            <QuickAction icon="storefront-outline" label="Aperçu" onPress={handleViewShop} />
-            <QuickAction icon="globe-outline" label="En ligne" onPress={handleViewOnline} />
-            <QuickAction icon="create-outline" label="Modifier" onPress={handleEditShop} />
+            <QuickAction icon="qr-code-outline" label={t('proHome.quick.qr')} onPress={() => setShowQRModal(true)} />
+            <QuickAction icon="storefront-outline" label={t('proHome.quick.preview')} onPress={handleViewShop} />
+            <QuickAction icon="globe-outline" label={t('proHome.quick.online')} onPress={handleViewOnline} />
+            <QuickAction icon="create-outline" label={t('proHome.quick.edit')} onPress={handleEditShop} />
           </View>
         )}
 
@@ -1479,13 +1495,13 @@ export default function ProDashboardScreen() {
             <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>
-                  <Text variant="h3">Mon équipe</Text>
+                  <Text variant="h3">{t('proHome.team.title')}</Text>
                   <View style={[styles.countBadge, { backgroundColor: colors.primaryLight, borderRadius: radius.full, marginLeft: spacing.sm }]}>
                     <Text variant="caption" color="primary" style={{ fontWeight: '700' }}>{members.length}</Text>
                   </View>
                 </View>
                 <Pressable onPress={() => router.push('/(pro)/members')} hitSlop={8}>
-                  <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>Gérer →</Text>
+                  <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>{t('proHome.team.manage')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -1582,7 +1598,7 @@ export default function ProDashboardScreen() {
                         {memberBookings.length}
                       </Text>
                       <Text variant="caption" style={{ color: memberColor, fontWeight: '500', marginLeft: 3, fontSize: 11 }}>
-                        RDV
+                        {t('proHome.appointmentsShort')}
                       </Text>
                     </View>
                   </Pressable>
@@ -1598,7 +1614,7 @@ export default function ProDashboardScreen() {
             onPress={() => router.push('/(pro)/stats')}
             style={({ pressed }) => ({ paddingHorizontal: spacing.lg, marginBottom: spacing.xl, opacity: pressed ? 0.85 : 1 })}
           >
-            <Text variant="h3" style={{ marginBottom: spacing.md }}>Vues de votre page</Text>
+            <Text variant="h3" style={{ marginBottom: spacing.md }}>{t('proHome.views.title')}</Text>
             <Card padding="lg" shadow="sm">
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
                 <LinearGradient
@@ -1615,17 +1631,17 @@ export default function ProDashboardScreen() {
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
                   <View style={{ flex: 1, alignItems: 'center' }}>
                     <Text variant="h2" color="primary" style={{ fontWeight: '800' }}>{liveViews.today}</Text>
-                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>Aujourd'hui</Text>
+                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>{t('proHome.today')}</Text>
                   </View>
                   <View style={[styles.viewsDivider, { backgroundColor: colors.border }]} />
                   <View style={{ flex: 1, alignItems: 'center' }}>
                     <Text variant="h2" style={{ fontWeight: '800' }}>{liveViews.last7Days}</Text>
-                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>7 derniers jours</Text>
+                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>{t('proHome.last7Days')}</Text>
                   </View>
                   <View style={[styles.viewsDivider, { backgroundColor: colors.border }]} />
                   <View style={{ flex: 1, alignItems: 'center' }}>
                     <Text variant="h2" style={{ fontWeight: '800' }}>{liveViews.last30Days}</Text>
-                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>30 derniers jours</Text>
+                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>{t('proHome.last30Days')}</Text>
                   </View>
                 </View>
               </View>
@@ -1651,7 +1667,7 @@ export default function ProDashboardScreen() {
               >
                 <Ionicons name="camera-outline" size={15} color={colors.primary} />
                 <Text variant="caption" color="primary" style={{ fontWeight: '600', flex: 1 }}>
-                  Créez une story pour attirer plus de clients
+                  {t('proHome.views.storyCta')}
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.primary} />
               </Pressable>
@@ -1663,14 +1679,14 @@ export default function ProDashboardScreen() {
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
           <View style={[styles.sectionHeader, { marginBottom: spacing.md }]}>
             <View style={styles.sectionTitleRow}>
-              <Text variant="h3">Aujourd'hui</Text>
+              <Text variant="h3">{t('proHome.today')}</Text>
               <View style={[styles.countBadge, { backgroundColor: colors.primaryLight, borderRadius: radius.full, marginLeft: spacing.sm }]}>
                 <Text variant="caption" color="primary" style={{ fontWeight: '700' }}>{todayBookings.length}</Text>
               </View>
             </View>
             {todayBookings.length > 0 && (
               <Pressable onPress={() => router.push('/(pro)/(tabs)/calendar')} hitSlop={8}>
-                <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>Voir tout →</Text>
+                <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>{t('proHome.seeAll')}</Text>
               </Pressable>
             )}
           </View>
@@ -1678,8 +1694,8 @@ export default function ProDashboardScreen() {
           {todayBookings.length === 0 ? (
             <EmptyState
               icon="calendar-clear-outline"
-              title="Aucun rendez-vous"
-              description="Vous n'avez pas de rendez-vous aujourd'hui."
+              title={t('proHome.emptyToday.title')}
+              description={t('proHome.emptyToday.description')}
             />
           ) : (
             <>
@@ -1710,7 +1726,7 @@ export default function ProDashboardScreen() {
               })}
               {remainingTodayCount > 0 && (
                 <Button
-                  title={`Voir les ${remainingTodayCount} restants`}
+                  title={t('proHome.seeRemaining', { count: remainingTodayCount })}
                   variant="ghost"
                   size="sm"
                   onPress={() => router.push('/(pro)/(tabs)/calendar')}
@@ -1726,7 +1742,7 @@ export default function ProDashboardScreen() {
           <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
             <View style={[styles.sectionHeader, { marginBottom: spacing.md }]}>
               <View style={styles.sectionTitleRow}>
-                <Text variant="h3">À traiter</Text>
+                <Text variant="h3">{t('proHome.pendingSection')}</Text>
                 <View style={[styles.countBadge, { backgroundColor: colors.warningLight, borderRadius: radius.full, marginLeft: spacing.sm }]}>
                   <Text variant="caption" style={{ fontWeight: '700', color: colors.warningDark }}>{pendingBookings.length}</Text>
                 </View>
@@ -1760,9 +1776,9 @@ export default function ProDashboardScreen() {
         {recentReviews.length > 0 && (
           <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
             <View style={[styles.sectionHeader, { marginBottom: spacing.md }]}>
-              <Text variant="h3">Derniers avis</Text>
+              <Text variant="h3">{t('proHome.reviewsSection')}</Text>
               <Pressable onPress={() => router.push('/(pro)/reviews')} hitSlop={8}>
-                <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>Voir tout →</Text>
+                <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>{t('proHome.seeAll')}</Text>
               </Pressable>
             </View>
 
@@ -1838,7 +1854,7 @@ export default function ProDashboardScreen() {
                     variant="bodySmall"
                     style={{ fontWeight: '600', marginLeft: 6, color: activeQRTab === 'booking' ? colors.primary : colors.textMuted }}
                   >
-                    Réservation
+                    {t('proHome.qr.bookingTab')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -1866,7 +1882,7 @@ export default function ProDashboardScreen() {
               {activeQRTab === 'booking' ? (
                 <>
                   <Text variant="body" color="textSecondary" align="center" style={{ marginBottom: spacing.lg, marginTop: spacing.md }}>
-                    Partagez ce QR code pour que vos clients accèdent à votre page de réservation
+                    {t('proHome.qr.bookingDesc')}
                   </Text>
                   <View style={[styles.qrContainer, { backgroundColor: '#FFF', borderRadius: radius.lg, padding: spacing.md }]}>
                     <Image
@@ -1893,13 +1909,13 @@ export default function ProDashboardScreen() {
                     ]}
                   >
                     <Ionicons name="copy-outline" size={18} color="#FFF" style={{ marginRight: spacing.xs }} />
-                    <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>Copier le lien</Text>
+                    <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>{t('proHome.qr.copyLink')}</Text>
                   </Pressable>
                 </>
               ) : paypalUrl ? (
                 <>
                   <Text variant="body" color="textSecondary" align="center" style={{ marginBottom: spacing.lg, marginTop: spacing.md }}>
-                    Partagez ce QR code pour recevoir des paiements via PayPal
+                    {t('proHome.qr.paypalDesc')}
                   </Text>
                   <View style={[styles.qrContainer, { backgroundColor: '#FFF', borderRadius: radius.lg, padding: spacing.md }]}>
                     <Image
@@ -1915,7 +1931,7 @@ export default function ProDashboardScreen() {
                   <Pressable
                     onPress={() => {
                       Clipboard.setStringAsync(paypalUrl);
-                      Alert.alert('Lien copié', 'Le lien PayPal a été copié dans le presse-papiers.');
+                      Alert.alert(t('proHome.linkCopied.title'), t('proHome.linkCopied.paypalMessage'));
                       setShowQRModal(false);
                     }}
                     style={({ pressed }) => [
@@ -1924,7 +1940,7 @@ export default function ProDashboardScreen() {
                     ]}
                   >
                     <Ionicons name="copy-outline" size={18} color="#FFF" style={{ marginRight: spacing.xs }} />
-                    <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>Copier le lien PayPal</Text>
+                    <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>{t('proHome.qr.copyPaypalLink')}</Text>
                   </Pressable>
                 </>
               ) : (
@@ -1933,10 +1949,10 @@ export default function ProDashboardScreen() {
                     <Ionicons name="logo-paypal" size={32} color="#0070BA" />
                   </View>
                   <Text variant="h3" align="center" style={{ marginTop: spacing.lg }}>
-                    PayPal non configuré
+                    {t('proHome.qr.paypalNotConfigured')}
                   </Text>
                   <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.sm, paddingHorizontal: spacing.sm }}>
-                    Ajoutez votre lien PayPal depuis l'interface web pour générer un QR code de paiement.
+                    {t('proHome.qr.paypalNotConfiguredDesc')}
                   </Text>
                   <Pressable
                     onPress={() => {
@@ -1949,7 +1965,7 @@ export default function ProDashboardScreen() {
                     ]}
                   >
                     <Ionicons name="open-outline" size={18} color="#FFF" style={{ marginRight: spacing.xs }} />
-                    <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>Configurer PayPal</Text>
+                    <Text variant="body" style={{ color: '#FFF', fontWeight: '600' }}>{t('proHome.qr.configurePaypal')}</Text>
                   </Pressable>
                 </View>
               )}

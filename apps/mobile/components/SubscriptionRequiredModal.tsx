@@ -8,6 +8,7 @@ import React from 'react';
 import { Modal, View, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Text, Button } from './index';
 import { useTheme } from '../theme';
 import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
@@ -24,6 +25,7 @@ const FEATURES = SUBSCRIPTION_PLANS.solo.features;
 export function SubscriptionRequiredModal({ visible, onClose, context }: SubscriptionRequiredModalProps) {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleSubscribe = () => {
     onClose();
@@ -48,12 +50,12 @@ export function SubscriptionRequiredModal({ visible, onClose, context }: Subscri
 
           {/* Title */}
           <Text variant="h2" align="center" style={{ marginTop: spacing.md }}>
-            Passez au plan Pro
+            {t('components.subscriptionRequiredModal.title')}
           </Text>
 
           {/* Context message */}
           <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.sm, lineHeight: 22 }}>
-            {context || 'Votre période d\'essai est terminée. Abonnez-vous pour débloquer toutes les fonctionnalités.'}
+            {context || t('components.subscriptionRequiredModal.defaultContext')}
           </Text>
 
           {/* Reassurance — no hardcoded price here. The exact amount is
@@ -61,10 +63,10 @@ export function SubscriptionRequiredModal({ visible, onClose, context }: Subscri
               Play), so the two screens can never display divergent prices. */}
           <View style={[styles.priceCard, { backgroundColor: colors.primary + '08', borderColor: colors.primary + '20' }]}>
             <Text style={[styles.priceText, { color: colors.primary }]}>
-              Sans engagement
+              {t('components.subscriptionRequiredModal.noCommitment')}
             </Text>
             <Text variant="caption" color="textSecondary">
-              Résiliable à tout moment
+              {t('components.subscriptionRequiredModal.cancelAnytime')}
             </Text>
           </View>
 
@@ -81,7 +83,7 @@ export function SubscriptionRequiredModal({ visible, onClose, context }: Subscri
           {/* CTA Button */}
           <View style={{ marginTop: spacing.lg }}>
             <Button
-              title="Voir les offres"
+              title={t('components.subscriptionRequiredModal.seeOffers')}
               onPress={handleSubscribe}
               fullWidth
             />
@@ -90,7 +92,7 @@ export function SubscriptionRequiredModal({ visible, onClose, context }: Subscri
           {/* Secondary action */}
           <Pressable onPress={onClose} style={{ marginTop: spacing.md, paddingVertical: 8 }}>
             <Text variant="caption" color="textMuted" align="center">
-              Plus tard
+              {t('components.subscriptionRequiredModal.later')}
             </Text>
           </Pressable>
         </Pressable>

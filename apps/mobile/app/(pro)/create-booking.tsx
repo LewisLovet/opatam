@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -30,6 +31,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import {
   Text,
@@ -114,6 +116,7 @@ function ClientSuggestionPanel({
   spacing: ReturnType<typeof useTheme>['spacing'];
   radius: ReturnType<typeof useTheme>['radius'];
 }) {
+  const { t } = useTranslation();
   const allEmpty = !name.trim() && !email.trim() && !phone.trim();
 
   const frequent = useMemo(() => {
@@ -183,7 +186,7 @@ function ClientSuggestionPanel({
             color="textMuted"
             style={{ textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5 }}
           >
-            Clients fréquents
+            {t('proCreateBooking.clientSuggestions.frequentClients')}
           </Text>
         </View>
       )}
@@ -203,15 +206,15 @@ function ClientSuggestionPanel({
             backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
           })}
         >
-          <Avatar name={c.name || 'Client'} size="sm" />
+          <Avatar name={c.name || t('proCreateBooking.clientSuggestions.clientFallback')} size="sm" />
           <View style={{ flex: 1, minWidth: 0 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               <Text variant="body" style={{ fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>
-                {c.name || 'Client'}
+                {c.name || t('proCreateBooking.clientSuggestions.clientFallback')}
               </Text>
               {(c.bookingsCount ?? 0) > 0 && (
                 <Text variant="caption" color="textMuted">
-                  {c.bookingsCount} RDV
+                  {t('proCreateBooking.clientSuggestions.bookingsCount', { count: c.bookingsCount })}
                 </Text>
               )}
             </View>
@@ -253,7 +256,7 @@ type Period = 'morning' | 'afternoon' | 'evening';
 
 interface PeriodConfig {
   key: Period;
-  label: string;
+  labelKey: string;
   icon: keyof typeof Ionicons.glyphMap;
   backgroundColor: string;
   accentColor: string;
@@ -262,21 +265,21 @@ interface PeriodConfig {
 const PERIODS_CONFIG: PeriodConfig[] = [
   {
     key: 'morning',
-    label: 'Matin',
+    labelKey: 'proCreateBooking.periods.morning',
     icon: 'sunny',
     backgroundColor: '#FEF3C7',
     accentColor: '#D97706',
   },
   {
     key: 'afternoon',
-    label: 'Après-midi',
+    labelKey: 'proCreateBooking.periods.afternoon',
     icon: 'partly-sunny',
     backgroundColor: '#FFEDD5',
     accentColor: '#EA580C',
   },
   {
     key: 'evening',
-    label: 'Soir',
+    labelKey: 'proCreateBooking.periods.evening',
     icon: 'moon',
     backgroundColor: '#E0E7FF',
     accentColor: '#4F46E5',
@@ -287,23 +290,25 @@ const PERIODS_CONFIG: PeriodConfig[] = [
 // Helpers
 // ---------------------------------------------------------------------------
 
-const DAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-const MONTHS = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
+/** Locale for date/number formatting, following the current app language */
+function dateLocale(): string {
+  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+}
 
-function formatFrenchDate(date: Date): string {
-  const day = DAYS[date.getDay()];
-  const dayOfMonth = date.getDate();
-  const month = MONTHS[date.getMonth()];
-  const year = date.getFullYear();
-  return `${day} ${dayOfMonth} ${month} ${year}`;
+function formatLongDate(date: Date): string {
+  return date.toLocaleDateString(dateLocale(), {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function formatPrice(centimes: number): string {
-  const euros = centimes / 100;
-  return euros.toFixed(2).replace('.', ',') + ' €';
+  return (centimes / 100).toLocaleString(dateLocale(), {
+    style: 'currency',
+    currency: 'EUR',
+  });
 }
 
 /** Parse "HH:MM" into hour number */
@@ -316,36 +321,36 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// Step labels/titles — with or without member step
+// Step labels/titles (i18n keys) — with or without member step
 const STEP_LABELS_WITH_MEMBER: Record<Step, string> = {
-  1: 'Service',
-  2: 'Membre',
-  3: 'Horaire',
-  4: 'Client',
-  5: 'Résumé',
+  1: 'proCreateBooking.stepLabels.service',
+  2: 'proCreateBooking.stepLabels.member',
+  3: 'proCreateBooking.stepLabels.time',
+  4: 'proCreateBooking.stepLabels.client',
+  5: 'proCreateBooking.stepLabels.summary',
 };
 
 const STEP_LABELS_WITHOUT_MEMBER: Record<Step, string> = {
-  1: 'Service',
-  2: 'Horaire',
-  3: 'Client',
-  4: 'Résumé',
+  1: 'proCreateBooking.stepLabels.service',
+  2: 'proCreateBooking.stepLabels.time',
+  3: 'proCreateBooking.stepLabels.client',
+  4: 'proCreateBooking.stepLabels.summary',
   5: '', // unused
 };
 
 const STEP_TITLES_WITH_MEMBER: Record<Step, string> = {
-  1: 'Choisir une prestation',
-  2: 'Choisir un membre',
-  3: 'Date et heure',
-  4: 'Informations client',
-  5: 'Confirmation',
+  1: 'proCreateBooking.stepTitles.service',
+  2: 'proCreateBooking.stepTitles.member',
+  3: 'proCreateBooking.stepTitles.time',
+  4: 'proCreateBooking.stepTitles.client',
+  5: 'proCreateBooking.stepTitles.confirmation',
 };
 
 const STEP_TITLES_WITHOUT_MEMBER: Record<Step, string> = {
-  1: 'Choisir une prestation',
-  2: 'Date et heure',
-  3: 'Informations client',
-  4: 'Confirmation',
+  1: 'proCreateBooking.stepTitles.service',
+  2: 'proCreateBooking.stepTitles.time',
+  3: 'proCreateBooking.stepTitles.client',
+  4: 'proCreateBooking.stepTitles.confirmation',
   5: '', // unused
 };
 
@@ -368,6 +373,7 @@ function ProgressStepper({
   stepLabels: Record<Step, string>;
 }) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   const steps = Array.from({ length: totalSteps }, (_, i) => (i + 1) as Step);
 
@@ -441,7 +447,7 @@ function ProgressStepper({
                     fontSize: 10,
                   }}
                 >
-                  {stepLabels[step]}
+                  {stepLabels[step] ? t(stepLabels[step]) : ''}
                 </Text>
               </View>
             </React.Fragment>
@@ -480,6 +486,7 @@ const stepperStyles = StyleSheet.create({
 
 export default function CreateBookingScreen() {
   const { colors, spacing, radius, shadows } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { providerId, provider } = useProvider();
   const { user } = useAuth();
@@ -684,7 +691,10 @@ export default function CreateBookingScreen() {
         setLocations(locationsData);
       } catch (error) {
         console.error('Error loading data:', error);
-        Alert.alert('Erreur', 'Impossible de charger les données.');
+        Alert.alert(
+          i18n.t('proCreateBooking.alerts.errorTitle'),
+          i18n.t('proCreateBooking.alerts.loadDataError'),
+        );
       } finally {
         setLoadingData(false);
       }
@@ -842,7 +852,10 @@ export default function CreateBookingScreen() {
         setExpandedSections({ morning: false, afternoon: false, evening: false });
       } catch (error) {
         console.error('Error loading slots:', error);
-        Alert.alert('Erreur', 'Impossible de charger les créneaux disponibles.');
+        Alert.alert(
+          i18n.t('proCreateBooking.alerts.errorTitle'),
+          i18n.t('proCreateBooking.alerts.loadSlotsError'),
+        );
         setSlots([]);
       } finally {
         setLoadingSlots(false);
@@ -995,15 +1008,24 @@ export default function CreateBookingScreen() {
 
   const handleNextFromClientInfo = useCallback(() => {
     if (!clientName.trim()) {
-      Alert.alert('Champ requis', 'Veuillez saisir le nom du client.');
+      Alert.alert(
+        i18n.t('proCreateBooking.validation.requiredTitle'),
+        i18n.t('proCreateBooking.validation.nameRequired'),
+      );
       return;
     }
     if (!clientEmail.trim()) {
-      Alert.alert('Champ requis', "Veuillez saisir l'email du client.");
+      Alert.alert(
+        i18n.t('proCreateBooking.validation.requiredTitle'),
+        i18n.t('proCreateBooking.validation.emailRequired'),
+      );
       return;
     }
     if (!clientPhone.trim()) {
-      Alert.alert('Champ requis', 'Veuillez saisir le numéro de téléphone du client.');
+      Alert.alert(
+        i18n.t('proCreateBooking.validation.requiredTitle'),
+        i18n.t('proCreateBooking.validation.phoneRequired'),
+      );
       return;
     }
     animateStepTransition('forward', () => {
@@ -1060,21 +1082,23 @@ export default function CreateBookingScreen() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Impossible de créer le rendez-vous.');
+        throw new Error(data.error || i18n.t('proCreateBooking.alerts.createError'));
       }
 
       Alert.alert(
-        data.paymentRequested ? 'Lien de paiement envoyé' : 'Rendez-vous créé',
         data.paymentRequested
-          ? `Un email avec un lien de paiement a été envoyé à ${clientEmail.trim()}. La réservation reste en attente jusqu'au paiement (30 min max).`
-          : 'Le rendez-vous a été créé avec succès.',
+          ? i18n.t('proCreateBooking.alerts.paymentLinkSentTitle')
+          : i18n.t('proCreateBooking.alerts.createdTitle'),
+        data.paymentRequested
+          ? i18n.t('proCreateBooking.alerts.paymentLinkSentMessage', { email: clientEmail.trim() })
+          : i18n.t('proCreateBooking.alerts.createdMessage'),
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (error: any) {
       console.error('Error creating booking:', error);
       Alert.alert(
-        'Erreur',
-        error.message || 'Impossible de créer le rendez-vous. Veuillez réessayer.',
+        i18n.t('proCreateBooking.alerts.errorTitle'),
+        error.message || i18n.t('proCreateBooking.alerts.createErrorRetry'),
       );
     } finally {
       setSubmitting(false);
@@ -1113,7 +1137,7 @@ export default function CreateBookingScreen() {
       <SubscriptionRequiredModal
         visible={showSubModal}
         onClose={() => { setShowSubModal(false); router.back(); }}
-        context="Créez des rendez-vous en illimité avec un abonnement Pro. Gérez votre agenda comme un pro."
+        context={t('proCreateBooking.subscriptionContext')}
       />
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -1132,7 +1156,7 @@ export default function CreateBookingScreen() {
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
         <Text variant="h3" style={styles.headerTitle}>
-          {stepTitles[step]}
+          {stepTitles[step] ? t(stepTitles[step]) : ''}
         </Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -1161,8 +1185,8 @@ export default function CreateBookingScreen() {
             {services.length === 0 ? (
               <EmptyState
                 icon="list-outline"
-                title="Aucune prestation"
-                description="Vous n'avez pas encore de prestation active."
+                title={t('proCreateBooking.services.emptyTitle')}
+                description={t('proCreateBooking.services.emptyDescription')}
               />
             ) : (
               services.map((service) => {
@@ -1255,7 +1279,7 @@ export default function CreateBookingScreen() {
                               ]}
                             >
                               <Ionicons name="options-outline" size={13} color={colors.textSecondary} style={{ marginRight: 4 }} />
-                              <Text variant="caption" color="textSecondary">Variantes</Text>
+                              <Text variant="caption" color="textSecondary">{t('proCreateBooking.services.variantsBadge')}</Text>
                             </View>
                           )}
                         </View>
@@ -1309,11 +1333,19 @@ export default function CreateBookingScreen() {
             >
               {selectedServices.length > 1 && (
                 <Text variant="caption" color="textSecondary" style={{ textAlign: 'center', marginBottom: spacing.sm }}>
-                  {selectedServices.length} prestations · {totalServiceDuration} min · {formatPrice(totalServicePrice)}
+                  {t('proCreateBooking.services.cartSummary', {
+                    count: selectedServices.length,
+                    duration: totalServiceDuration,
+                    price: formatPrice(totalServicePrice),
+                  })}
                 </Text>
               )}
               <Button
-                title={selectedServices.length > 1 ? `Continuer — ${selectedServices.length} prestations` : 'Continuer'}
+                title={
+                  selectedServices.length > 1
+                    ? t('proCreateBooking.services.continueWithCount', { count: selectedServices.length })
+                    : t('proCreateBooking.services.continue')
+                }
                 variant="primary"
                 size="lg"
                 onPress={proceedFromServices}
@@ -1335,7 +1367,7 @@ export default function CreateBookingScreen() {
               <View style={styles.loaderContainerSmall}>
                 <Loader />
                 <Text variant="body" color="textSecondary" style={{ marginTop: spacing.md }}>
-                  Recherche des disponibilités...
+                  {t('proCreateBooking.members.searchingAvailability')}
                 </Text>
               </View>
             )}
@@ -1347,14 +1379,21 @@ export default function CreateBookingScreen() {
               let nextAvailLabel: string;
               if (nextAvail) {
                 const d = new Date(nextAvail);
-                const dayName = DAYS[d.getDay()];
-                const dayNum = d.getDate();
-                const monthName = MONTHS[d.getMonth()];
+                const dateStr = capitalize(
+                  d.toLocaleDateString(dateLocale(), {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                  }),
+                );
                 const hours = d.getHours().toString().padStart(2, '0');
                 const mins = d.getMinutes().toString().padStart(2, '0');
-                nextAvailLabel = `${capitalize(dayName)} ${dayNum} ${monthName} à ${hours}:${mins}`;
+                nextAvailLabel = t('proCreateBooking.members.nextAvailAt', {
+                  date: dateStr,
+                  time: `${hours}:${mins}`,
+                });
               } else {
-                nextAvailLabel = 'Aucune disponibilité prochaine';
+                nextAvailLabel = t('proCreateBooking.members.noUpcomingAvailability');
               }
 
               return (
@@ -1422,7 +1461,7 @@ export default function CreateBookingScreen() {
               showsVerticalScrollIndicator={false}
             >
               <Text variant="h3" style={{ marginBottom: spacing.md }}>
-                Horaires disponibles
+                {t('proCreateBooking.slots.availableSlots')}
               </Text>
 
               {loadingSlots ? (
@@ -1434,22 +1473,22 @@ export default function CreateBookingScreen() {
                       color="textSecondary"
                       style={{ marginTop: spacing.md }}
                     >
-                      Chargement des créneaux...
+                      {t('proCreateBooking.slots.loadingSlots')}
                     </Text>
                   </View>
                 </Card>
               ) : slots.length === 0 ? (
                 <EmptyState
                   icon="time-outline"
-                  title="Aucun créneau disponible"
-                  description="Aucun créneau n'est disponible pour cette date. Essayez une autre date."
+                  title={t('proCreateBooking.slots.noSlotsTitle')}
+                  description={t('proCreateBooking.slots.noSlotsDescription')}
                 />
               ) : (
                 <View>
                   {PERIODS_CONFIG.map((period) => (
                     <TimeSlotSection
                       key={period.key}
-                      title={period.label}
+                      title={t(period.labelKey)}
                       icon={period.icon}
                       backgroundColor={period.backgroundColor}
                       accentColor={period.accentColor}
@@ -1479,7 +1518,7 @@ export default function CreateBookingScreen() {
                 ]}
               >
                 <Button
-                  title={`Continuer — ${selectedSlot.start}`}
+                  title={t('proCreateBooking.slots.continueWithTime', { time: selectedSlot.start })}
                   variant="primary"
                   size="lg"
                   onPress={handleConfirmSlot}
@@ -1511,13 +1550,13 @@ export default function CreateBookingScreen() {
             >
               <View style={{ marginBottom: spacing.lg }}>
                 <Input
-                  label="Nom *"
+                  label={t('proCreateBooking.clientForm.nameLabel')}
                   value={clientName}
                   onChangeText={(v) => {
                     setClientName(v);
                     setClientQueryField('name');
                   }}
-                  placeholder="Nom du client"
+                  placeholder={t('proCreateBooking.clientForm.namePlaceholder')}
                   autoCapitalize="words"
                   leftIcon={
                     <Ionicons
@@ -1542,13 +1581,13 @@ export default function CreateBookingScreen() {
 
               <View style={{ marginBottom: spacing.lg }}>
                 <Input
-                  label="Email *"
+                  label={t('proCreateBooking.clientForm.emailLabel')}
                   value={clientEmail}
                   onChangeText={(v) => {
                     setClientEmail(v);
                     setClientQueryField('email');
                   }}
-                  placeholder="email@exemple.com"
+                  placeholder={t('proCreateBooking.clientForm.emailPlaceholder')}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   leftIcon={
@@ -1563,13 +1602,13 @@ export default function CreateBookingScreen() {
 
               <View style={{ marginBottom: spacing.sm }}>
                 <Input
-                  label="Téléphone *"
+                  label={t('proCreateBooking.clientForm.phoneLabel')}
                   value={clientPhone}
                   onChangeText={(v) => {
                     setClientPhone(v);
                     setClientQueryField('phone');
                   }}
-                  placeholder="06 12 34 56 78"
+                  placeholder={t('proCreateBooking.clientForm.phonePlaceholder')}
                   keyboardType="phone-pad"
                   leftIcon={
                     <Ionicons
@@ -1585,15 +1624,15 @@ export default function CreateBookingScreen() {
                 color="textMuted"
                 style={{ marginBottom: spacing.lg, marginLeft: spacing.xs }}
               >
-                Le client recevra une confirmation par email
+                {t('proCreateBooking.clientForm.emailConfirmationHint')}
               </Text>
 
               <View style={{ marginBottom: spacing['2xl'] }}>
                 <Input
-                  label="Notes"
+                  label={t('proCreateBooking.clientForm.notesLabel')}
                   value={notes}
                   onChangeText={setNotes}
-                  placeholder="Notes optionnelles..."
+                  placeholder={t('proCreateBooking.clientForm.notesPlaceholder')}
                   multiline
                   numberOfLines={3}
                   leftIcon={
@@ -1607,7 +1646,7 @@ export default function CreateBookingScreen() {
               </View>
 
               <Button
-                title="Suivant"
+                title={t('common.next')}
                 variant="primary"
                 size="lg"
                 onPress={handleNextFromClientInfo}
@@ -1636,7 +1675,7 @@ export default function CreateBookingScreen() {
               <View style={styles.receiptHeader}>
                 <Text variant="h2" style={styles.receiptServiceName}>
                   {selectedServices.length > 1
-                    ? `${selectedServices.length} prestations`
+                    ? t('proCreateBooking.confirm.servicesCount', { count: selectedServices.length })
                     : selectedService.name}
                 </Text>
                 <View style={{ alignItems: 'flex-end' }}>
@@ -1704,8 +1743,8 @@ export default function CreateBookingScreen() {
                     <Ionicons name="calendar-outline" size={16} color={colors.primary} />
                   </View>
                   <View style={styles.detailTextColumn}>
-                    <Text variant="caption" color="textMuted">Date</Text>
-                    <Text variant="body">{capitalize(formatFrenchDate(selectedSlot.datetime))}</Text>
+                    <Text variant="caption" color="textMuted">{t('proCreateBooking.confirm.date')}</Text>
+                    <Text variant="body">{capitalize(formatLongDate(selectedSlot.datetime))}</Text>
                   </View>
                 </View>
 
@@ -1715,7 +1754,7 @@ export default function CreateBookingScreen() {
                     <Ionicons name="time-outline" size={16} color={colors.primary} />
                   </View>
                   <View style={styles.detailTextColumn}>
-                    <Text variant="caption" color="textMuted">Horaire</Text>
+                    <Text variant="caption" color="textMuted">{t('proCreateBooking.confirm.time')}</Text>
                     <Text variant="body">{selectedSlot.start} - {selectedSlot.end}</Text>
                   </View>
                 </View>
@@ -1726,7 +1765,7 @@ export default function CreateBookingScreen() {
                     <Ionicons name="hourglass-outline" size={16} color={colors.primary} />
                   </View>
                   <View style={styles.detailTextColumn}>
-                    <Text variant="caption" color="textMuted">Durée</Text>
+                    <Text variant="caption" color="textMuted">{t('proCreateBooking.confirm.duration')}</Text>
                     <Text variant="body">{totalServiceDuration} min</Text>
                   </View>
                 </View>
@@ -1738,7 +1777,7 @@ export default function CreateBookingScreen() {
                       <Ionicons name="person-outline" size={16} color={colors.primary} />
                     </View>
                     <View style={styles.detailTextColumn}>
-                      <Text variant="caption" color="textMuted">Membre</Text>
+                      <Text variant="caption" color="textMuted">{t('proCreateBooking.confirm.member')}</Text>
                       <Text variant="body">{selectedMember.name}</Text>
                     </View>
                   </View>
@@ -1751,7 +1790,7 @@ export default function CreateBookingScreen() {
                       <Ionicons name="location-outline" size={16} color={colors.primary} />
                     </View>
                     <View style={styles.detailTextColumn}>
-                      <Text variant="caption" color="textMuted">Lieu</Text>
+                      <Text variant="caption" color="textMuted">{t('proCreateBooking.confirm.location')}</Text>
                       <Text variant="body">{memberLocation.name}</Text>
                       {memberLocation.address && (
                         <Text variant="caption" color="textSecondary">
@@ -1780,7 +1819,7 @@ export default function CreateBookingScreen() {
                   color="textMuted"
                   style={{ marginBottom: spacing.md, textTransform: 'uppercase', letterSpacing: 1 }}
                 >
-                  Client
+                  {t('proCreateBooking.confirm.client')}
                 </Text>
                 <View style={styles.clientRow}>
                   <Avatar name={clientName || '?'} size="md" />
@@ -1806,7 +1845,7 @@ export default function CreateBookingScreen() {
                     color="textMuted"
                     style={{ marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 }}
                   >
-                    Notes
+                    {t('proCreateBooking.confirm.notes')}
                   </Text>
                   <View
                     style={[
@@ -1838,12 +1877,12 @@ export default function CreateBookingScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text variant="body" style={{ fontWeight: '600' }}>
-                      Demander l'acompte au client
+                      {t('proCreateBooking.deposit.askTitle')}
                     </Text>
                     <Text variant="caption" color="textSecondary" style={{ marginTop: 4, lineHeight: 18 }}>
                       {askDeposit
-                        ? `Un email avec un lien de paiement de ${formatPrice(resolvedDeposit.amount)} sera envoyé. La réservation reste en attente jusqu'au paiement (30 min max).`
-                        : "Aucune demande d'acompte. Vous encaisserez en personne."}
+                        ? t('proCreateBooking.deposit.onDescription', { amount: formatPrice(resolvedDeposit.amount) })
+                        : t('proCreateBooking.deposit.offDescription')}
                     </Text>
                   </View>
                   <Switch value={askDeposit} onValueChange={setAskDeposit} />
@@ -1853,7 +1892,7 @@ export default function CreateBookingScreen() {
 
             {/* Confirm button */}
             <Button
-              title="Confirmer le rendez-vous"
+              title={t('proCreateBooking.confirm.submit')}
               variant="primary"
               size="lg"
               onPress={handleSubmit}
@@ -1878,7 +1917,7 @@ export default function CreateBookingScreen() {
               align="center"
               style={{ marginTop: spacing.md, marginBottom: spacing['2xl'] }}
             >
-              Le client recevra un email de confirmation
+              {t('proCreateBooking.confirm.emailConfirmationHint')}
             </Text>
           </ScrollView>
         )}
@@ -1920,7 +1959,7 @@ export default function CreateBookingScreen() {
           {pendingChoiceService && (
             <ServiceChoicesPreview
               mode="picker"
-              confirmLabel="Ajouter"
+              confirmLabel={t('proCreateBooking.choices.addLabel')}
               onConfirm={(sel) => {
                 addServiceToCart(pendingChoiceService, sel);
                 setPendingChoiceService(null);

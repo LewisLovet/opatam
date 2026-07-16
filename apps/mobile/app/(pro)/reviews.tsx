@@ -14,10 +14,12 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
+import i18n from '../../lib/i18n';
 import { Text, Card, useToast } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
@@ -34,7 +36,7 @@ import type { Review, Member } from '@booking-app/shared/types';
 
 function formatDate(date: Date | any): string {
   const d = date instanceof Date ? date : date?.toDate?.() ?? new Date(date);
-  return d.toLocaleDateString('fr-FR', {
+  return d.toLocaleDateString(i18n.language, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -116,6 +118,7 @@ function RatingBar({
 // ---------------------------------------------------------------------------
 
 export default function ReviewsScreen() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -149,7 +152,7 @@ export default function ReviewsScreen() {
       setMembers(mbrs);
     } catch (err) {
       console.error('Error loading reviews:', err);
-      showToast({ variant: 'error', message: 'Erreur lors du chargement des avis' });
+      showToast({ variant: 'error', message: i18n.t('proReviews.loadError') });
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -196,7 +199,7 @@ export default function ReviewsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Branded blue header — same chrome as the rest of the
           pro space. Stats card and review list start below. */}
-      <BrandedHeader title="Avis clients" />
+      <BrandedHeader title={t('proReviews.title')} />
 
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }}
@@ -215,7 +218,7 @@ export default function ReviewsScreen() {
               </Text>
               <Stars rating={Math.round(rating.average)} size={18} />
               <Text variant="caption" color="textSecondary" style={{ marginTop: 4 }}>
-                {rating.count} avis
+                {t('proReviews.reviewsCount', { count: rating.count })}
               </Text>
             </View>
 
@@ -260,7 +263,7 @@ export default function ReviewsScreen() {
                   color: filterRating === null ? '#FFFFFF' : colors.text,
                 }}
               >
-                Tous ({reviews.length})
+                {t('proReviews.filterAll', { count: reviews.length })}
               </Text>
             </Pressable>
             {[5, 4, 3, 2, 1].map((star) => {
@@ -322,7 +325,7 @@ export default function ReviewsScreen() {
                     color: filterMember === null ? '#FFFFFF' : colors.text,
                   }}
                 >
-                  Tous les membres
+                  {t('proReviews.allMembers')}
                 </Text>
               </Pressable>
               {members.map((mbr) => (
@@ -366,12 +369,14 @@ export default function ReviewsScreen() {
               <Ionicons name="chatbubble-outline" size={32} color={colors.primary} />
             </View>
             <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>
-              {reviews.length === 0 ? 'Aucun avis' : 'Aucun résultat'}
+              {reviews.length === 0
+                ? t('proReviews.emptyNoReviewsTitle')
+                : t('proReviews.emptyNoResultsTitle')}
             </Text>
             <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.xs }}>
               {reviews.length === 0
-                ? 'Vos clients pourront laisser des avis après leurs rendez-vous.'
-                : 'Modifiez les filtres pour voir d\'autres avis.'}
+                ? t('proReviews.emptyNoReviewsDescription')
+                : t('proReviews.emptyNoResultsDescription')}
             </Text>
           </View>
         ) : (

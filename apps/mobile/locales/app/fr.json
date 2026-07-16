@@ -203,6 +203,180 @@
         "phoneInvalid": "Format invalide (ex: 06 12 34 56 78)",
         "signUpError": "Erreur lors de l'inscription"
       }
+    },
+    "pro": {
+      "steps": {
+        "activity": {
+          "label": "Activité",
+          "subtitle": "Parlez-nous de votre activité"
+        },
+        "location": {
+          "label": "Lieu",
+          "subtitle": "Où exercez-vous ?"
+        },
+        "service": {
+          "label": "Prestation",
+          "subtitle": "Ajoutez vos prestations"
+        },
+        "schedule": {
+          "label": "Horaires",
+          "subtitle": "Vos disponibilités"
+        },
+        "preview": {
+          "label": "Aperçu",
+          "subtitle": "Vérifiez vos informations"
+        },
+        "account": {
+          "label": "Compte",
+          "subtitle": "Créez votre accès"
+        }
+      },
+      "referral": {
+        "spanOnce": "le 1er mois",
+        "spanThreeMonths": "les 3 premiers mois",
+        "spanFirstYear": "la 1ère année",
+        "spanForever": "tous les mois",
+        "spanSubscription": "votre abonnement",
+        "discountLabel": "-{{discount}}% sur {{span}}",
+        "invalidTitle": "Code invalide",
+        "invalidMessage": "Ce code parrain n'existe pas ou n'est plus actif.",
+        "applied": "Réduction appliquée",
+        "checkErrorTitle": "Erreur",
+        "checkErrorMessage": "Impossible de vérifier le code pour le moment.",
+        "codeLabel": "Code parrain (facultatif)",
+        "codePlaceholder": "Ex : MARIE",
+        "verify": "Vérifier",
+        "validated": "Code validé : {{label}}"
+      },
+      "countries": {
+        "FR": "France",
+        "BE": "Belgique",
+        "LU": "Luxembourg",
+        "CH": "Suisse",
+        "DE": "Allemagne",
+        "ES": "Espagne",
+        "IT": "Italie",
+        "NL": "Pays-Bas",
+        "PT": "Portugal"
+      },
+      "locationNames": {
+        "salon": "Mon salon",
+        "cabinet": "Mon cabinet",
+        "studio": "Mon studio",
+        "atelier": "Mon atelier",
+        "home": "A domicile",
+        "office": "Mon bureau",
+        "online": "RDV en ligne",
+        "phoneCall": "Consultation téléphonique",
+        "videoCall": "Consultation vidéo",
+        "other": "Autre..."
+      },
+      "validation": {
+        "businessNameRequired": "Le nom de votre activité est requis",
+        "categoryRequired": "Veuillez choisir une catégorie",
+        "locationNameRequired": "Le nom du lieu est requis",
+        "selectCitySuggestion": "Veuillez selectionner une ville dans les suggestions",
+        "selectAddressSuggestion": "Veuillez selectionner une adresse dans les suggestions",
+        "addOneService": "Ajoutez au moins une prestation",
+        "serviceNameRequired": "Le nom de la prestation {{index}} est requis",
+        "servicePriceInvalid": "Le prix de la prestation {{index}} doit etre un nombre positif",
+        "openDayRequired": "Au moins un jour doit être ouvert",
+        "nameRequired": "Votre nom est requis",
+        "emailRequired": "L'email est requis",
+        "emailInvalid": "Format d'email invalide",
+        "phoneRequired": "Le téléphone est requis",
+        "phoneInvalid": "Numero de telephone invalide",
+        "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
+        "passwordMismatch": "Les mots de passe ne correspondent pas"
+      },
+      "registerError": "Erreur lors de l'inscription",
+      "finalizing": "Création de votre espace…",
+      "step1": {
+        "businessNameLabel": "Nom de votre activité",
+        "businessNamePlaceholder": "Ex: Studio Beauté Marie",
+        "categoryLabel": "Catégorie",
+        "chooseCategory": "Choisir une catégorie",
+        "descriptionLabel": "Description (optionnel) {{count}}/500",
+        "descriptionPlaceholder": "Décrivez votre activité en quelques mots"
+      },
+      "step2": {
+        "locationNameLabel": "Nom du lieu",
+        "choose": "Choisir...",
+        "customLocationPlaceholder": "Nom personnalise du lieu",
+        "countryLabel": "Pays",
+        "locationTypeLabel": "Type de lieu",
+        "fixed": "Fixe",
+        "mobile": "Mobile",
+        "addressTypeLabel": "Type de localisation",
+        "preciseAddress": "Adresse precise",
+        "cityOnly": "Ville uniquement",
+        "addressLabel": "Adresse",
+        "addressPlaceholder": "Saisissez une adresse...",
+        "cityLabel": "Ville",
+        "cityPlaceholder": "Rechercher une ville...",
+        "postalCodeLabel": "Code postal"
+      },
+      "step3": {
+        "serviceTitle": "Prestation {{index}}",
+        "nameLabel": "Nom",
+        "namePlaceholder": "Ex: Coupe femme",
+        "categoryPrefix": "Catégorie :",
+        "addCategory": "Ajouter une catégorie (facultatif)",
+        "durationLabel": "Durée",
+        "priceLabel": "Prix (€)",
+        "freeAppointment": "RDV gratuit",
+        "descriptionLabel": "Description (optionnel)",
+        "descriptionPlaceholder": "Details sur la prestation...",
+        "choicesToggle": "Variations & options (optionnel)",
+        "variationsTitle": "Variations",
+        "variationsDesc": "Des choix exclusifs qui fixent le prix et la durée (ex : Longueur).",
+        "optionsTitle": "Options",
+        "optionsDesc": "Des suppléments à cocher (ex : Mèches).",
+        "infoFieldsTitle": "Infos demandées",
+        "infoFieldsDesc": "Des questions au client, sans impact sur le prix.",
+        "clientPreview": "Aperçu client",
+        "addService": "Ajouter une prestation",
+        "serviceCategoryModalTitle": "Catégorie de prestation",
+        "customCategoryHint": "Ou entrez un nom personnalisé :",
+        "customCategoryPlaceholder": "Autre catégorie..."
+      },
+      "step4": {
+        "to": "à",
+        "closed": "Fermé",
+        "startTime": "Heure de début",
+        "endTime": "Heure de fin",
+        "copy": {
+          "title": "Copier vers",
+          "subtitle": "Copier les horaires de {{day}} vers :",
+          "monFri": "Lun – Ven",
+          "all": "Tous",
+          "copy": "Copier"
+        }
+      },
+      "step5": {
+        "cityOnlySuffix": "— ville uniquement",
+        "servicesCount_one": "{{count}} prestation",
+        "servicesCount_other": "{{count}} prestations",
+        "choicesCount_one": "{{count}} choix",
+        "choicesCount_other": "{{count}} choix"
+      },
+      "step6": {
+        "fullNameLabel": "Nom complet",
+        "fullNamePlaceholder": "Votre nom",
+        "emailLabel": "Email",
+        "emailPlaceholder": "votre@email.com",
+        "phoneLabel": "Téléphone",
+        "passwordLabel": "Mot de passe",
+        "passwordPlaceholder": "Min. 6 caractères",
+        "confirmPasswordLabel": "Confirmer le mot de passe",
+        "confirmPasswordPlaceholder": "Confirmez votre mot de passe"
+      },
+      "legal": "En créant un compte, vous acceptez nos CGU et notre Politique de confidentialité.",
+      "alreadyAccount": "Déjà un compte ?",
+      "signIn": "Se connecter",
+      "submitting": "Création en cours...",
+      "createAccount": "Créer mon compte",
+      "continueBtn": "Continuer"
     }
   },
   "providerScreen": {
@@ -749,6 +923,61 @@
     "expandableText": {
       "showMore": "Voir plus",
       "showLess": "Voir moins"
+    },
+    "bookingCard": {
+      "dateAtTime": "{{date}} • {{time}}"
+    },
+    "article": {
+      "tocTitle": "Sommaire",
+      "noSections": "Cet article n'a pas de sections définies.",
+      "videoUnavailable": "Vidéo indisponible"
+    },
+    "trialReminderBanner": {
+      "expiredTitle": "Essai terminé",
+      "daysRemaining_one": "{{count}} jour restant",
+      "daysRemaining_other": "{{count}} jours restants",
+      "expiredMessage": "Votre page n'est plus visible. Réactivez-la pour recevoir des réservations.",
+      "activeMessage": "Activez votre abonnement pour continuer à recevoir des réservations.",
+      "reactivateCta": "Réactiver ma page",
+      "seeOffersCta": "Voir les offres"
+    },
+    "subscriptionRequiredModal": {
+      "title": "Passez au plan Pro",
+      "defaultContext": "Votre période d'essai est terminée. Abonnez-vous pour débloquer toutes les fonctionnalités.",
+      "noCommitment": "Sans engagement",
+      "cancelAnytime": "Résiliable à tout moment",
+      "seeOffers": "Voir les offres",
+      "later": "Plus tard"
+    },
+    "upgradeToStudioModal": {
+      "title": "Passez au plan Studio",
+      "defaultContext": "Cette fonctionnalité est réservée au plan Studio. Gérez votre équipe et développez votre activité.",
+      "pricePerMonth": "{{price}}/mois",
+      "yearlyVsMonthly": "{{yearly}}/an au lieu de {{monthly}}/mois",
+      "discoverStudio": "Découvrir le plan Studio",
+      "later": "Plus tard"
+    },
+    "welcomeOverlay": {
+      "title": "Bienvenue sur Opatam !",
+      "titleWithName": "Bienvenue {{businessName}} !",
+      "subtitle": "Votre espace est prêt. Ajoutez vos prestations, partagez votre lien et recevez vos premières réservations.",
+      "cta": "C'est parti"
+    },
+    "servicePickerModal": {
+      "title": "Choisir une prestation",
+      "overview": "Vue générale",
+      "overviewSubtitle": "Occupation, toutes prestations confondues",
+      "otherCategory": "Autres",
+      "allServices": "Toutes les prestations",
+      "hasChoices": "Variations / options",
+      "options": "Options",
+      "apply": "Appliquer",
+      "minutes": "{{count}} min",
+      "minutesAdd": "+{{count}} min"
+    },
+    "memberSelect": {
+      "allMembers": "Tous les membres",
+      "title": "Choisir un membre"
     }
   },
   "errors": {
@@ -917,6 +1146,1675 @@
       "pastTitle": "Aucun historique",
       "pastDescription": "Vos anciens rendez-vous apparaîtront ici",
       "searchAction": "Rechercher"
+    }
+  },
+  "proBookings": {
+    "title": "Planning",
+    "view": {
+      "upcoming": "À venir",
+      "past": "Passé"
+    },
+    "filters": {
+      "type": {
+        "all": "Tout",
+        "bookings": "Réservations",
+        "activities": "Activités"
+      },
+      "status": {
+        "all": "Tous",
+        "pending": "En attente",
+        "confirmed": "Confirmés",
+        "cancelled": "Annulés",
+        "noshow": "Absences"
+      },
+      "period": {
+        "day": "Jour",
+        "week": "Semaine",
+        "month": "Mois",
+        "all": "Tout"
+      },
+      "member": {
+        "all": "Tous"
+      }
+    },
+    "card": {
+      "decline": "Refuser",
+      "reviewReceived": "Avis reçu",
+      "requestReview": "Demander un avis",
+      "reviewRequestSentLabel": "Demande d'avis envoyée"
+    },
+    "activity": {
+      "allDay": "Journée",
+      "fallback": "Activité"
+    },
+    "empty": {
+      "upcomingTitle": "Rien de prévu",
+      "upcomingDescription": "Aucun événement à venir ne correspond aux filtres sélectionnés.",
+      "pastTitle": "Aucun événement passé",
+      "pastDescription": "Aucun événement passé ne correspond aux filtres sélectionnés."
+    },
+    "alerts": {
+      "errorTitle": "Erreur",
+      "successTitle": "Succès",
+      "no": "Non",
+      "yesCancel": "Oui, annuler",
+      "confirmError": "Impossible de confirmer le rendez-vous.",
+      "cancelTitle": "Annuler le rendez-vous",
+      "cancelMessage": "Êtes-vous sûr de vouloir annuler ce rendez-vous ?",
+      "cancelError": "Impossible d'annuler le rendez-vous.",
+      "reviewRequestSent": "La demande d'avis a été envoyée par email.",
+      "reviewRequestSendError": "Erreur lors de l'envoi",
+      "reviewRequestError": "Impossible d'envoyer la demande d'avis."
+    }
+  },
+  "proBookingDetail": {
+    "headerTitle": "Détail",
+    "errors": {
+      "missingId": "ID de rendez-vous manquant",
+      "notFound": "Rendez-vous non trouvé",
+      "loadFailed": "Erreur lors du chargement"
+    },
+    "alerts": {
+      "errorTitle": "Erreur",
+      "successTitle": "Succès",
+      "no": "Non"
+    },
+    "confirmAlert": {
+      "title": "Confirmer le rendez-vous",
+      "message": "Voulez-vous confirmer ce rendez-vous ?",
+      "yes": "Oui, confirmer",
+      "error": "Impossible de confirmer le rendez-vous"
+    },
+    "cancelAlert": {
+      "title": "Annuler le rendez-vous",
+      "message": "Êtes-vous sûr de vouloir annuler ce rendez-vous ? Cette action est irréversible.",
+      "yes": "Oui, annuler",
+      "error": "Impossible d'annuler le rendez-vous"
+    },
+    "noShowAlert": {
+      "title": "Marquer comme absent",
+      "message": "Voulez-vous marquer ce client comme absent ?",
+      "yes": "Oui, marquer absent",
+      "error": "Impossible de marquer comme absent"
+    },
+    "periods": {
+      "morning": "Matin",
+      "afternoon": "Après-midi",
+      "evening": "Soir"
+    },
+    "serviceSectionTitle_one": "Prestation",
+    "serviceSectionTitle_other": "Prestations",
+    "total": "Total",
+    "detailsSectionTitle": "Détails du rendez-vous",
+    "details": {
+      "date": "Date",
+      "time": "Horaire",
+      "duration": "Durée",
+      "location": "Lieu",
+      "price": "Prix",
+      "deposit": "Acompte",
+      "remainingBalance": "Reste à payer",
+      "notes": "Notes"
+    },
+    "deposit": {
+      "status": {
+        "paid": "payé",
+        "refunded": "remboursé",
+        "failed": "échec du paiement",
+        "pending": "en attente"
+      }
+    },
+    "actions": {
+      "reschedule": "Modifier l'horaire",
+      "adjustDuration": "Ajuster la durée",
+      "addService": "Ajouter une prestation",
+      "markNoShow": "Marquer absent",
+      "cancelBooking": "Annuler le RDV"
+    },
+    "removeService": {
+      "title": "Retirer la prestation",
+      "message": "Retirer « {{name}} » de ce rendez-vous ? La durée et le prix seront recalculés.",
+      "thisService": "cette prestation",
+      "confirm": "Retirer",
+      "error": "Impossible de retirer la prestation.",
+      "link": "Retirer cette prestation"
+    },
+    "reschedule": {
+      "title": "Modifier l'horaire",
+      "availableSlots": "Horaires disponibles",
+      "loadingSlots": "Chargement des créneaux...",
+      "noSlotsTitle": "Aucun créneau disponible",
+      "noSlotsDescription": "Aucun créneau n'est disponible pour cette date. Essayez une autre date.",
+      "confirmWithTime": "Confirmer — {{time}}",
+      "confirmMessage": "Reprogrammer au {{date}} à {{time}} ?",
+      "success": "L'horaire a été modifié avec succès.",
+      "error": "Impossible de modifier l'horaire"
+    },
+    "duration": {
+      "subtitle": "Modifie uniquement ce rendez-vous, pas la prestation.",
+      "unchanged": "Durée inchangée ({{duration}} min)",
+      "recap": "{{from}} min → {{to}} min  ·  {{delta}} min  ·  fin {{end}}",
+      "hint": "Raccourcir libère du temps pour un autre rendez-vous. Rallonger est refusé si ça chevauche le rendez-vous suivant.",
+      "confirmTitle": "Confirmer la durée",
+      "confirmMessage": "Vous passez ce rendez-vous de {{from}} min à {{to}} min ({{delta}} min).\nNouvelle fin : {{end}}.",
+      "updateSuccess": "La durée du rendez-vous a été mise à jour.",
+      "updateError": "Impossible de modifier la durée"
+    },
+    "addService": {
+      "errorTitle": "Impossible d'ajouter la prestation",
+      "errorRetry": "Veuillez réessayer.",
+      "notEnoughTime": "Pas assez de temps",
+      "optionsBadge": "Options",
+      "confirmTitle": "Confirmer l'ajout",
+      "continueLabel": "Continuer",
+      "addedBadge": "PRESTATION AJOUTÉE",
+      "recapTitle": "Récapitulatif du rendez-vous",
+      "newTotal": "Nouveau total",
+      "description": "Elle sera ajoutée à la suite de ce rendez-vous (même client). Le créneau juste après doit être libre.",
+      "otherServices": "Autres prestations"
+    },
+    "contact": {
+      "phoneError": "Impossible d'ouvrir le téléphone",
+      "emailError": "Impossible d'ouvrir l'application mail",
+      "copiedTitle": "Copié",
+      "copiedMessage": "\"{{text}}\" copié dans le presse-papier."
+    }
+  },
+  "proCreateBooking": {
+    "stepLabels": {
+      "service": "Service",
+      "member": "Membre",
+      "time": "Horaire",
+      "client": "Client",
+      "summary": "Résumé"
+    },
+    "stepTitles": {
+      "service": "Choisir une prestation",
+      "member": "Choisir un membre",
+      "time": "Date et heure",
+      "client": "Informations client",
+      "confirmation": "Confirmation"
+    },
+    "subscriptionContext": "Créez des rendez-vous en illimité avec un abonnement Pro. Gérez votre agenda comme un pro.",
+    "alerts": {
+      "errorTitle": "Erreur",
+      "loadDataError": "Impossible de charger les données.",
+      "loadSlotsError": "Impossible de charger les créneaux disponibles.",
+      "createError": "Impossible de créer le rendez-vous.",
+      "createErrorRetry": "Impossible de créer le rendez-vous. Veuillez réessayer.",
+      "createdTitle": "Rendez-vous créé",
+      "createdMessage": "Le rendez-vous a été créé avec succès.",
+      "paymentLinkSentTitle": "Lien de paiement envoyé",
+      "paymentLinkSentMessage": "Un email avec un lien de paiement a été envoyé à {{email}}. La réservation reste en attente jusqu'au paiement (30 min max)."
+    },
+    "validation": {
+      "requiredTitle": "Champ requis",
+      "nameRequired": "Veuillez saisir le nom du client.",
+      "emailRequired": "Veuillez saisir l'email du client.",
+      "phoneRequired": "Veuillez saisir le numéro de téléphone du client."
+    },
+    "services": {
+      "emptyTitle": "Aucune prestation",
+      "emptyDescription": "Vous n'avez pas encore de prestation active.",
+      "variantsBadge": "Variantes",
+      "cartSummary": "{{count}} prestations · {{duration}} min · {{price}}",
+      "continue": "Continuer",
+      "continueWithCount_one": "Continuer — {{count}} prestation",
+      "continueWithCount_other": "Continuer — {{count}} prestations"
+    },
+    "periods": {
+      "morning": "Matin",
+      "afternoon": "Après-midi",
+      "evening": "Soir"
+    },
+    "members": {
+      "searchingAvailability": "Recherche des disponibilités...",
+      "nextAvailAt": "{{date}} à {{time}}",
+      "noUpcomingAvailability": "Aucune disponibilité prochaine"
+    },
+    "slots": {
+      "availableSlots": "Horaires disponibles",
+      "loadingSlots": "Chargement des créneaux...",
+      "noSlotsTitle": "Aucun créneau disponible",
+      "noSlotsDescription": "Aucun créneau n'est disponible pour cette date. Essayez une autre date.",
+      "continueWithTime": "Continuer — {{time}}"
+    },
+    "clientSuggestions": {
+      "frequentClients": "Clients fréquents",
+      "clientFallback": "Client",
+      "bookingsCount_one": "{{count}} RDV",
+      "bookingsCount_other": "{{count}} RDV"
+    },
+    "clientForm": {
+      "nameLabel": "Nom *",
+      "namePlaceholder": "Nom du client",
+      "emailLabel": "Email *",
+      "emailPlaceholder": "email@exemple.com",
+      "phoneLabel": "Téléphone *",
+      "phonePlaceholder": "06 12 34 56 78",
+      "emailConfirmationHint": "Le client recevra une confirmation par email",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Notes optionnelles..."
+    },
+    "confirm": {
+      "servicesCount_one": "{{count}} prestation",
+      "servicesCount_other": "{{count}} prestations",
+      "date": "Date",
+      "time": "Horaire",
+      "duration": "Durée",
+      "member": "Membre",
+      "location": "Lieu",
+      "client": "Client",
+      "notes": "Notes",
+      "submit": "Confirmer le rendez-vous",
+      "emailConfirmationHint": "Le client recevra un email de confirmation"
+    },
+    "deposit": {
+      "askTitle": "Demander l'acompte au client",
+      "onDescription": "Un email avec un lien de paiement de {{amount}} sera envoyé. La réservation reste en attente jusqu'au paiement (30 min max).",
+      "offDescription": "Aucune demande d'acompte. Vous encaisserez en personne."
+    },
+    "choices": {
+      "addLabel": "Ajouter"
+    }
+  },
+  "proBookingSettings": {
+    "title": "Paramètres de réservation",
+    "saveChanges": "Enregistrer les modifications",
+    "toast": {
+      "saved": "Paramètres mis à jour",
+      "saveError": "Erreur lors de l'enregistrement"
+    },
+    "minNotice": {
+      "title": "Délai minimum de réservation",
+      "description": "Combien de temps à l'avance un client doit réserver"
+    },
+    "maxAdvance": {
+      "title": "Délai maximum de réservation",
+      "description": "Jusqu'à combien de temps à l'avance un client peut réserver"
+    },
+    "slotInterval": {
+      "title": "Intervalle entre les créneaux",
+      "description": "Fréquence des créneaux proposés aux clients (ex : toutes les 15 min)"
+    },
+    "options": {
+      "noMinNotice": "Pas de délai minimum",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "hours_one": "{{count}} heure",
+      "hours_other": "{{count}} heures",
+      "hoursWithDays_one": "{{hours}} heures ({{count}} jour)",
+      "hoursWithDays_other": "{{hours}} heures ({{count}} jours)",
+      "days_one": "{{count}} jour",
+      "days_other": "{{count}} jours",
+      "daysWithMonths_one": "{{days}} jours ({{count}} mois)",
+      "daysWithMonths_other": "{{days}} jours ({{count}} mois)",
+      "daysWithYears_one": "{{days}} jours ({{count}} an)",
+      "daysWithYears_other": "{{days}} jours ({{count}} ans)"
+    },
+    "notice": {
+      "title": "Avertissement avant réservation",
+      "placeholder": "Ex: Merci d'arriver 5 minutes avant votre rendez-vous.",
+      "hint": "Ce message sera affiché aux clients avant la confirmation de leur réservation."
+    },
+    "autoReview": {
+      "title": "Relance automatique des avis",
+      "newBadge": "Nouveau",
+      "description": "Email envoyé 1h après le RDV pour demander un avis. Ne fonctionne que pour les RDV confirmés."
+    },
+    "about": {
+      "title": "À propos de ces paramètres",
+      "description": "Ces règles s'appliquent à toutes les nouvelles réservations. Les réservations existantes ne sont pas affectées par ces changements."
+    }
+  },
+  "proClients": {
+    "title": "Clients",
+    "searchPlaceholder": "Rechercher par nom, email, téléphone…",
+    "understandChip": "Comprendre",
+    "sortSheetTitle": "Trier par",
+    "sort": {
+      "lastBookingDesc": "Dernière visite (récent)",
+      "lastBookingAsc": "Dernière visite (ancien)",
+      "nameAsc": "Nom (A → Z)",
+      "revenueDesc": "CA cumulé",
+      "bookingsDesc": "Nombre de RDV"
+    },
+    "clientsCount_one": "{{count}} client",
+    "clientsCount_other": "{{count}} clients",
+    "countFiltered": "{{shown}} sur {{total}}",
+    "legendTitle": "Comprendre les tags",
+    "legendFooter": "Les tags sont rafraîchis à chaque réservation et chaque nuit à 3h. Plusieurs tags peuvent s'appliquer en même temps.",
+    "unnamedClient": "Client sans nom",
+    "bookingsShort_one": "{{count}} RDV",
+    "bookingsShort_other": "{{count}} RDV",
+    "noBookings": "Aucun RDV",
+    "lastVisit": {
+      "today": "vu aujourd'hui",
+      "yesterday": "vu hier",
+      "daysAgo": "vu il y a {{count}} j",
+      "weeksAgo": "vu il y a {{count}} sem",
+      "onDate": "vu le {{date}}"
+    },
+    "emptyTitle": "Pas encore de client",
+    "emptyDescription": "Dès la première réservation, votre carnet de clients commencera à se remplir automatiquement.",
+    "noResults": "Aucun client ne correspond à votre recherche.",
+    "tags": {
+      "new": {
+        "label": "Nouveau",
+        "shortLabel": "Nouveau",
+        "hint": "Premier RDV il y a moins de 30 jours.",
+        "rule": "Premier RDV (toutes statuts confondus) il y a moins de 30 jours."
+      },
+      "regular": {
+        "label": "Habitué",
+        "shortLabel": "Habitué",
+        "hint": "Au moins 3 RDV confirmés et vu il y a moins de 90 jours.",
+        "rule": "Au moins 3 RDV confirmés ET dernière visite il y a moins de 90 jours."
+      },
+      "vip": {
+        "label": "VIP",
+        "shortLabel": "VIP",
+        "hint": "Au moins 10 RDV confirmés ou 500 € cumulés.",
+        "rule": "Au moins 10 RDV confirmés OU au moins 500 € de CA cumulé sur les RDV confirmés."
+      },
+      "atRisk": {
+        "label": "À risque",
+        "shortLabel": "À risque",
+        "hint": "Pas revenu depuis 60 à 180 jours.",
+        "rule": "Dernière visite remonte à 60 à 180 jours — fenêtre idéale pour relancer."
+      },
+      "lost": {
+        "label": "Perdu",
+        "shortLabel": "Perdu",
+        "hint": "Pas revenu depuis plus de 180 jours.",
+        "rule": "Dernière visite il y a plus de 180 jours — considéré perdu."
+      },
+      "noshowProne": {
+        "label": "Absent fréquent",
+        "shortLabel": "Absent freq.",
+        "hint": "Plus de 20 % de no-show sur 3 RDV ou plus.",
+        "rule": "Au moins 3 RDV au total ET plus de 20 % d'absences (no-show)."
+      }
+    }
+  },
+  "proClientDetail": {
+    "loadError": "Impossible de charger la fiche",
+    "notFound": "Cette fiche client est introuvable.",
+    "overview": "Vue d'ensemble",
+    "kpi": {
+      "bookings": "Réservations",
+      "revenue": "CA cumulé",
+      "confirmation": "Confirmation",
+      "noshow": "No-show",
+      "firstVisit": "Première visite",
+      "lastVisit": "Dernière visite",
+      "frequency": "Fréquence"
+    },
+    "favoriteServices": "Services préférés",
+    "computing": "Calcul en cours…",
+    "notEnoughData": "Pas encore assez de données pour identifier des préférences.",
+    "timesCount_one": "{{count}} fois",
+    "timesCount_other": "{{count}} fois",
+    "privateNotes": "Notes privées",
+    "notesPlaceholder": "Allergies, préférences de coupe, anniversaire…",
+    "notesPrivacy": "Privé — visible seulement par votre équipe.",
+    "preferences": "Préférences",
+    "add": "Ajouter",
+    "noPreferences": "Aucune préférence enregistrée.",
+    "prefKeyPlaceholder": "Clé",
+    "prefValuePlaceholder": "Valeur",
+    "marketingTitle": "Fonctionnalités marketing",
+    "marketingSoon": "En cours de développement — bientôt disponibles.",
+    "historyTitle": "Historique des réservations",
+    "historyEmpty": "Aucune réservation dans l'historique.",
+    "status": {
+      "pending": "En attente",
+      "pendingPayment": "Paiement",
+      "confirmed": "Confirmé",
+      "cancelled": "Annulé",
+      "noshow": "Absent"
+    },
+    "newBooking": "Nouveau RDV",
+    "saved": "Modifications enregistrées",
+    "saveError": "Échec de l'enregistrement",
+    "frequency": {
+      "days_one": "Tous les jours",
+      "days_other": "Tous les {{count}} j",
+      "weeks_one": "Toutes les semaines",
+      "weeks_other": "Toutes les {{count}} sem",
+      "months_one": "Tous les mois",
+      "months_other": "Tous les {{count}} mois",
+      "years_one": "Tous les ans",
+      "years_other": "Tous les {{count}} ans"
+    }
+  },
+  "proStats": {
+    "title": "Statistiques",
+    "periods": {
+      "7d": "7 jours",
+      "30d": "30 jours",
+      "90d": "90 jours",
+      "12m": "12 mois"
+    },
+    "revenueHeading": "Revenus — {{period}}",
+    "bookingsCount_one": "{{count}} RDV",
+    "bookingsCount_other": "{{count}} RDV",
+    "successChip": "{{rate}}% réussite",
+    "kpiBookings": "Réservations",
+    "kpiClients": "Clients",
+    "kpiViews": "Vues",
+    "revenueChartTitle": "Évolution du chiffre d'affaires",
+    "viewsChartTitle": "Vues de la vitrine",
+    "viewsCount_one": "{{formatted}} vue",
+    "viewsCount_other": "{{formatted}} vues",
+    "chart": {
+      "empty": "Aucune donnée sur la période sélectionnée",
+      "tapHint": "Touchez le graphique pour voir la valeur d'une journée",
+      "dragHint": "Glissez pour parcourir les autres jours"
+    },
+    "topServices": {
+      "title": "Top prestations",
+      "subtitle": "Triées par CA sur la période",
+      "empty": "Aucune prestation sur la période."
+    },
+    "topClients": {
+      "title": "Top clients",
+      "subtitle": "Par CA cumulé sur la période",
+      "empty": "Aucun client identifié sur la période."
+    },
+    "otherRevenue": {
+      "title": "Autres revenus",
+      "subtitle": "Activités hors RDV · {{period}}",
+      "activitiesCount_one": "{{count}} activité",
+      "activitiesCount_other": "{{count}} activités"
+    },
+    "activityCategories": {
+      "prestation": "Prestation",
+      "sport": "Sport",
+      "meeting": "Meeting",
+      "personal": "Perso",
+      "admin": "Admin",
+      "travel": "Trajet",
+      "imprevu": "Imprévu",
+      "other": "Autre"
+    },
+    "breakdownTitle": "Répartition des RDV",
+    "confirmed": "Confirmés",
+    "cancelled": "Annulés",
+    "noshows": "Absents",
+    "total": "Total",
+    "quality": {
+      "title": "Indicateurs qualité",
+      "cancellation": "Annulation",
+      "noshow": "No-show",
+      "avgRating": "Note moyenne",
+      "reviewsCount_one": "{{count}} avis",
+      "reviewsCount_other": "{{count}} avis",
+      "noReviews": "aucun avis"
+    },
+    "heatmap": {
+      "title": "Heatmap activité",
+      "subtitle": "90 derniers jours · jour × heure",
+      "empty": "Pas encore assez d'activité pour cette vue."
+    }
+  },
+  "proReviews": {
+    "title": "Avis clients",
+    "loadError": "Erreur lors du chargement des avis",
+    "reviewsCount_one": "{{count}} avis",
+    "reviewsCount_other": "{{count}} avis",
+    "filterAll": "Tous ({{count}})",
+    "allMembers": "Tous les membres",
+    "emptyNoReviewsTitle": "Aucun avis",
+    "emptyNoResultsTitle": "Aucun résultat",
+    "emptyNoReviewsDescription": "Vos clients pourront laisser des avis après leurs rendez-vous.",
+    "emptyNoResultsDescription": "Modifiez les filtres pour voir d'autres avis."
+  },
+  "proHelp": {
+    "title": "Tutoriels & guides",
+    "subtitle": "Apprenez à tirer le meilleur d'Opatam",
+    "categories": {
+      "tutoriels": "Tutoriels",
+      "conseils": "Conseils",
+      "temoignages": "Témoignages",
+      "all": "Tous"
+    },
+    "loadErrorTitle": "Impossible de charger les articles",
+    "emptyTitle": "Aucun article pour cette catégorie",
+    "emptyDescription": "Revenez bientôt — de nouveaux contenus sont publiés régulièrement.",
+    "newBadge": "Nouveau",
+    "videoBadge": "Vidéo",
+    "articleFallbackTitle": "Article",
+    "shareArticle": "Partager l'article",
+    "tocLabel": "Sommaire",
+    "notFoundTitle": "Article introuvable",
+    "notFoundDescription": "Cet article n'est plus disponible. Revenez à la liste pour en consulter d'autres.",
+    "authorFallback": "Équipe Opatam"
+  },
+  "proNotifSettings": {
+    "title": "Notifications",
+    "updateError": "Erreur lors de la mise à jour",
+    "channelsSection": "Canaux",
+    "typesSection": "Types de notification",
+    "push": {
+      "label": "Notifications push",
+      "description": "Sur votre téléphone"
+    },
+    "email": {
+      "label": "Notifications email",
+      "description": "Par email"
+    },
+    "newBookings": {
+      "label": "Nouvelles réservations",
+      "description": "Quand un client prend RDV"
+    },
+    "cancellations": {
+      "label": "Annulations",
+      "description": "Quand un RDV est annulé"
+    },
+    "reminders": {
+      "label": "Rappels",
+      "description": "Avant vos rendez-vous"
+    },
+    "warning": "Activez au moins un canal pour recevoir des notifications.",
+    "autoSave": "Les modifications sont enregistrées automatiquement."
+  },
+  "proTabs": {
+    "home": "Accueil",
+    "agenda": "Agenda",
+    "planning": "Planning",
+    "more": "Plus"
+  },
+  "proHome": {
+    "defaultName": "Pro",
+    "a11yNotifications": "Nouveau",
+    "today": "Aujourd'hui",
+    "appointmentsShort": "RDV",
+    "countRdv": "{{count}} RDV",
+    "pendingChip": "{{count}} en attente",
+    "viewsChip_one": "{{count}} vue",
+    "viewsChip_other": "{{count}} vues",
+    "inMinutes": "Dans {{count}} min",
+    "inHours": "Dans {{hours}}h",
+    "inHoursMinutes": "Dans {{hours}}h{{minutes}}",
+    "decline": "Refuser",
+    "depositPaid": "acompte {{amount}} ✓",
+    "toCollect": "à encaisser",
+    "todayProgress": "{{passed}}/{{total}} passés",
+    "last7Days": "7 derniers jours",
+    "last30Days": "30 derniers jours",
+    "completionRate": "{{rate}}% réussite",
+    "deposits": {
+      "title": "Acomptes encaissés",
+      "subtitle": "30 derniers jours · Sérénité",
+      "onBookings": "sur {{count}} RDV",
+      "topServices": "Prestations concernées",
+      "empty": "Aucun acompte encaissé sur la période. Configurez un acompte par défaut ou par prestation pour commencer."
+    },
+    "features": {
+      "clients": "Clients",
+      "stats": "Statistiques",
+      "payments": "Paiements",
+      "stories": "Stories",
+      "autoReview": "Avis auto"
+    },
+    "listAnd": "et",
+    "discovery": {
+      "title": "Nouvelles fonctionnalités !",
+      "subtitle": "Découvrez {{features}} dans l'onglet Plus."
+    },
+    "trialEnded": {
+      "title": "Votre essai est terminé",
+      "subtitle": "Réactivez votre page pour continuer à recevoir des réservations.",
+      "cta": "Réactiver ma page"
+    },
+    "setupAlerts": {
+      "pending_one": "{{count}} RDV en attente de confirmation",
+      "pending_other": "{{count}} RDV en attente de confirmation",
+      "view": "Voir",
+      "unpublished": "Votre page n'est pas encore visible",
+      "activate": "Activer",
+      "noService": "Créez votre première prestation",
+      "create": "Créer",
+      "noLocation": "Ajoutez un lieu pour recevoir des réservations",
+      "add": "Ajouter",
+      "noPhoto": "Ajoutez une photo de profil",
+      "noPortfolio": "Ajoutez des photos à votre portfolio"
+    },
+    "setup": {
+      "stepPhoto": "Photo de profil",
+      "stepDescription": "Description",
+      "stepServices": "Au moins 1 prestation",
+      "stepLocations": "Au moins 1 lieu",
+      "stepPortfolio": "Photos portfolio",
+      "stepPublished": "Page publiée",
+      "onlineTitle": "Votre page est en ligne 🎉",
+      "readyTitle": "Votre page est prête à {{pct}} %",
+      "onlineSubtitle": "Quelques détails de plus pour tirer le meilleur de votre page.",
+      "readySubtitle": "Finalisez votre page pour recevoir vos premières réservations.",
+      "publishCta": "Publier ma page"
+    },
+    "quick": {
+      "qr": "QR Code",
+      "preview": "Aperçu",
+      "online": "En ligne",
+      "edit": "Modifier"
+    },
+    "team": {
+      "title": "Mon équipe",
+      "manage": "Gérer →"
+    },
+    "views": {
+      "title": "Vues de votre page",
+      "storyCta": "Créez une story pour attirer plus de clients"
+    },
+    "seeAll": "Voir tout →",
+    "seeRemaining": "Voir les {{count}} restants",
+    "emptyToday": {
+      "title": "Aucun rendez-vous",
+      "description": "Vous n'avez pas de rendez-vous aujourd'hui."
+    },
+    "pendingSection": "À traiter",
+    "reviewsSection": "Derniers avis",
+    "errorTitle": "Erreur",
+    "confirmError": "Impossible de confirmer le rendez-vous.",
+    "cancelDialog": {
+      "title": "Annuler le rendez-vous",
+      "message": "Êtes-vous sûr de vouloir annuler ce rendez-vous ?",
+      "no": "Non",
+      "yes": "Oui, annuler",
+      "error": "Impossible d'annuler le rendez-vous."
+    },
+    "linkCopied": {
+      "title": "Lien copié",
+      "message": "Le lien a été copié dans le presse-papiers.",
+      "paypalMessage": "Le lien PayPal a été copié dans le presse-papiers."
+    },
+    "copyError": "Impossible de copier le lien.",
+    "qr": {
+      "bookingTab": "Réservation",
+      "bookingDesc": "Partagez ce QR code pour que vos clients accèdent à votre page de réservation",
+      "copyLink": "Copier le lien",
+      "paypalDesc": "Partagez ce QR code pour recevoir des paiements via PayPal",
+      "copyPaypalLink": "Copier le lien PayPal",
+      "paypalNotConfigured": "PayPal non configuré",
+      "paypalNotConfiguredDesc": "Ajoutez votre lien PayPal depuis l'interface web pour générer un QR code de paiement.",
+      "configurePaypal": "Configurer PayPal"
+    }
+  },
+  "proCalendar": {
+    "title": "Agenda",
+    "viewToggle": {
+      "day": "Jour",
+      "week": "Semaine",
+      "month": "Mois"
+    },
+    "generalView": "Vue générale",
+    "horizonNotice": "Vos clients ne peuvent réserver que jusqu'au {{date}} (J+{{days}}), selon vos paramètres de réservation. Au-delà, aucun créneau ne leur est proposé.",
+    "legend": {
+      "available": "Disponible",
+      "almostFull": "Bientôt complet",
+      "busy": "Chargé",
+      "full": "Complet",
+      "closed": "Fermé"
+    },
+    "blocked": "Bloqué",
+    "memberFallback": "Membre",
+    "clientFallback": "Client",
+    "blockedSlot": {
+      "fallbackLabel": "Période bloquée",
+      "deleteMessage": "Voulez-vous supprimer cette période ?",
+      "delete": "Supprimer",
+      "errorTitle": "Erreur",
+      "deleteError": "Impossible de supprimer"
+    },
+    "emptyDay": {
+      "title": "Aucun rendez-vous",
+      "description": "Vous n'avez pas de rendez-vous ce jour."
+    },
+    "addSheet": {
+      "title": "Ajouter",
+      "booking": "Réservation client",
+      "bookingDesc": "Nouveau RDV pour un client",
+      "activity": "Activité personnelle",
+      "activityDesc": "Sport, RDV perso, admin…",
+      "block": "Bloquer une période",
+      "blockDesc": "Vacances, formation, absence"
+    },
+    "bookingsCount_one": "{{count}} rendez-vous",
+    "bookingsCount_other": "{{count}} rendez-vous",
+    "activitiesAtSlot_one": "{{count}} activité à ce créneau",
+    "activitiesAtSlot_other": "{{count}} activités à ce créneau",
+    "allDay": "Journée",
+    "activityFallback": "Activité",
+    "pickDate": "Choisir une date",
+    "ok": "OK"
+  },
+  "proMore": {
+    "title": "Plus",
+    "plans": {
+      "solo": "Pro",
+      "team": "Studio",
+      "trial": "Essai",
+      "test": "Test"
+    },
+    "businessFallback": "Mon établissement",
+    "sub": {
+      "badgeExpired": "Expiré",
+      "planTitle": "Plan {{plan}}",
+      "trialTitle": "Période d'essai",
+      "noneTitle": "Aucun abonnement",
+      "activeSubtitle": "Votre abonnement est actif",
+      "viaWeb": " · via le web",
+      "viaApple": " · via Apple",
+      "viaGoogle": " · via Google Play",
+      "trialSubtitle": "Profitez de toutes les fonctionnalités",
+      "expiredSubtitle": "Abonnez-vous pour continuer",
+      "manage": "Gérer",
+      "seePlans": "Voir les offres",
+      "requiredTitle": "Abonnement requis",
+      "requiredMessage": "Votre essai est terminé. Abonnez-vous pour continuer à utiliser toutes les fonctionnalités."
+    },
+    "sections": {
+      "business": "Mon enseigne",
+      "management": "Gestion",
+      "settings": "Paramètres",
+      "support": "Support"
+    },
+    "grid": {
+      "services": "Prestations",
+      "locations": "Lieux",
+      "team": "Équipe",
+      "availability": "Disponibilités"
+    },
+    "storefront": {
+      "title": "Ma vitrine",
+      "published": "Votre page est visible en ligne",
+      "unpublished": "Votre page n'est pas encore publiée",
+      "editCta": "Modifier ma page →",
+      "online": "En ligne",
+      "offline": "Hors ligne"
+    },
+    "menu": {
+      "clients": "Clients",
+      "reviews": "Avis clients",
+      "blockedSlots": "Créneaux bloqués",
+      "stats": "Statistiques",
+      "bookingSettings": "Paramètres de réservation",
+      "notifications": "Notifications",
+      "payments": "Paiements & acomptes",
+      "changePassword": "Changer le mot de passe",
+      "tutorials": "Tutoriels & guides",
+      "help": "Aide et contact",
+      "terms": "Conditions d'utilisation",
+      "privacy": "Politique de confidentialité",
+      "logout": "Se déconnecter",
+      "deleteAccount": "Supprimer mon compte"
+    },
+    "newBadge": "Nouveau",
+    "logout": {
+      "title": "Déconnexion",
+      "message": "Êtes-vous sûr de vouloir vous déconnecter ?",
+      "confirm": "Déconnecter"
+    },
+    "delete": {
+      "title": "Supprimer votre compte",
+      "message": "Cette action est irréversible. Toutes vos données (établissement, services, réservations) seront supprimées définitivement.",
+      "passwordLabel": "Mot de passe",
+      "passwordPlaceholder": "Entrez votre mot de passe",
+      "deleting": "Suppression...",
+      "confirm": "Supprimer",
+      "error": "Erreur lors de la suppression"
+    },
+    "password": {
+      "title": "Changer le mot de passe",
+      "tooShort": "6 caractères minimum",
+      "mismatch": "Les mots de passe ne correspondent pas",
+      "success": "Mot de passe modifié",
+      "wrongCurrent": "Mot de passe actuel incorrect",
+      "error": "Erreur lors du changement",
+      "currentLabel": "Mot de passe actuel",
+      "currentPlaceholder": "Votre mot de passe actuel",
+      "newLabel": "Nouveau mot de passe",
+      "newPlaceholder": "6 caractères minimum",
+      "confirmLabel": "Confirmer",
+      "confirmPlaceholder": "Retapez le nouveau mot de passe",
+      "submitting": "Modification...",
+      "submit": "Modifier"
+    },
+    "tagline": "Gérez votre activité en toute simplicité"
+  },
+  "proPayments": {
+    "title": "Paiements & acomptes",
+    "errors": {
+      "title": "Erreur",
+      "openPortal": "Impossible d'ouvrir le portail de paiement.",
+      "sessionExpired": "Session expirée — reconnectez-vous"
+    },
+    "hero": {
+      "fullyActiveTitle": "Acomptes activés",
+      "fullyActiveSubtitle": "Votre vitrine demande un acompte à la réservation.",
+      "connectOnlyTitle": "Stripe prêt — il manque Sérénité",
+      "connectOnlySubtitle": "Souscrivez à Sérénité pour activer les acomptes.",
+      "inactiveTitle": "Acomptes non disponibles",
+      "inactiveSubtitle": "Activez Stripe Connect pour réduire les no-shows.",
+      "activateStripe": "Activer Stripe"
+    },
+    "stripe": {
+      "title": "Compte Stripe",
+      "subtitle": "Le compte qui reçoit les acomptes.",
+      "status": {
+        "active": "Actif",
+        "pending": "En attente",
+        "restricted": "Restreint",
+        "notActivated": "Non activé"
+      },
+      "activeDescription": "Vous pouvez accepter des acomptes. Les fonds sont versés directement sur votre IBAN.",
+      "inactiveDescription": "Activez Stripe pour pouvoir encaisser des acomptes au moment de la réservation.",
+      "docsTitle": "À avoir sous la main",
+      "docsBeforeSiret": "Une pièce d'identité, votre IBAN, et un ",
+      "docsAfterSiret": " valide (votre numéro d'entreprise).",
+      "manage": "Gérer mon compte Stripe",
+      "activate": "Activer les paiements"
+    },
+    "addon": {
+      "title": "Abonnement Sérénité",
+      "subtitle": "Encaissez un acompte au moment de la réservation pour réduire les no-shows.",
+      "pricePerMonth": "5 €/mois",
+      "bullets": {
+        "customPerService": "Acompte personnalisable par prestation",
+        "autoRefund": "Remboursement automatique sous délai",
+        "cancelAnytime": "Annulable à tout moment"
+      },
+      "trialIncluded": "Inclus gratuitement pendant votre essai.",
+      "trialConfigureHint": "Configurez vos acomptes ci-dessous — à la fin de l'essai, souscrivez Sérénité pour continuer à les encaisser.",
+      "trialConnectHint": "Activez Stripe Connect ci-dessus pour commencer à encaisser des acomptes.",
+      "connectFirstHint": "Activez d'abord Stripe Connect ci-dessus. Sans compte vérifié, les acomptes ne pourraient pas être encaissés.",
+      "activateOnWeb": "Activer sur opatam.com",
+      "subscribeCta": "Souscrire — 5 €/mois",
+      "activeTitle": "Sérénité actif",
+      "activeSubtitle": "5 €/mois · prélevés à la prochaine échéance",
+      "unverifiedTitle": "Compte Stripe non vérifié",
+      "unverifiedBody": "Aucun acompte ne sera encaissé tant que Stripe n'a pas fini de vérifier votre compte. Terminez l'onboarding ci-dessus.",
+      "deactivate": "Désactiver l'abonnement",
+      "deactivating": "Désactivation…",
+      "deactivateConfirmTitle": "Désactiver l'abonnement Sérénité ?",
+      "deactivateConfirmMessage": "Plus de prélèvement de 5 €/mois. Vous gardez l'accès jusqu'à la fin de votre période en cours, puis vous ne pourrez plus demander d'acomptes.",
+      "deactivateAction": "Désactiver",
+      "activated": "Abonnement Sérénité activé",
+      "deactivated": "Abonnement Sérénité désactivé"
+    },
+    "stats": {
+      "title": "Vue d'ensemble",
+      "subtitle": "30 derniers jours",
+      "servicesLabel": "Prestations",
+      "servicesSublabel": "avec acompte",
+      "collectedLabel": "Encaissé",
+      "collectedSublabel": "30 j",
+      "bookingsLabel": "RDV",
+      "bookingsSublabel": "concernés",
+      "noDepositWarning": "Aucune prestation ne demande d'acompte. Activez-en au moins une dans Prestations, ou définissez un acompte par défaut ci-dessous."
+    },
+    "deposit": {
+      "title": "Acompte par défaut",
+      "subtitle": "Appliqué aux prestations qui n'ont pas leur propre montant.",
+      "lockedHint": "Activez Sérénité pour configurer un acompte par défaut.",
+      "ofBookedPrice": "du prix réservé",
+      "percentLabel": "Pourcentage du prix",
+      "customPlaceholder": "Autre",
+      "refundLabel": "Acompte remboursé si annulation",
+      "refundNever": "Jamais",
+      "refundBefore": "{{hours}}h avant",
+      "hoursBeforeSuffix": "h avant",
+      "refundNeverHint": "L'acompte est conservé en cas d'annulation, peu importe le délai.",
+      "refundHint": "Si votre client annule au moins {{delay}} avant son RDV, son acompte lui est automatiquement remboursé. Au-delà du délai, vous conservez l'acompte.",
+      "days_one": "{{count}} jour",
+      "days_other": "{{count}} jours",
+      "saved": "Acompte par défaut enregistré",
+      "errors": {
+        "percentRange": "Pourcentage entre 1 et 100",
+        "hoursRange": "Délai entre 0 et 720 heures"
+      }
+    }
+  },
+  "paywall": {
+    "greeting": "Bonjour, {{name}}",
+    "title": "Activez votre compte",
+    "subtitle": "Votre période d'essai est terminée.\nChoisissez votre formule pour continuer.",
+    "monthly": "Mensuel",
+    "annual": "Annuel",
+    "soloTagline": "Pour les indépendants",
+    "teamTagline": "Pour les équipes",
+    "perMonth": "mois",
+    "perYear": "an",
+    "monthlyEquivalent": "soit {{price}}/mois",
+    "loadingOffers": "Chargement des offres...",
+    "offersLoadError": "Impossible de charger les offres. Vérifiez votre connexion.",
+    "processing": "Traitement en cours...",
+    "subscribeCta": "S'abonner — {{price}}/{{period}}",
+    "offersUnavailableTitle": "Offres indisponibles",
+    "offersUnavailableMessage": "Impossible de charger les offres d'abonnement. Vérifiez votre connexion internet et réessayez.",
+    "purchaseErrorTitle": "Erreur",
+    "purchaseErrorMessage": "Une erreur est survenue lors de l'achat.",
+    "restoreSuccessTitle": "Succès",
+    "restoreSuccessMessage": "Votre abonnement a été restauré.",
+    "restoreNoneTitle": "Aucun abonnement",
+    "restoreNoneMessage": "Aucun abonnement actif n'a été trouvé.",
+    "restoreErrorMessage": "Impossible de restaurer les achats.",
+    "signOutTitle": "Déconnexion",
+    "signOutMessage": "Êtes-vous sûr de vouloir vous déconnecter ?",
+    "signOutConfirm": "Déconnecter",
+    "legalNotice": "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période en cours. Le paiement est débité sur votre compte Apple. Vous pouvez gérer et annuler vos abonnements dans les réglages de votre compte Apple.",
+    "termsLink": "Conditions d'utilisation",
+    "privacyLink": "Politique de confidentialité",
+    "restoring": "Restauration...",
+    "restore": "Restaurer mes achats",
+    "signOut": "Se déconnecter"
+  },
+  "proProfile": {
+    "permissionRequiredTitle": "Permission requise",
+    "photoPermissionMessage": "Autorisez l'accès à vos photos pour modifier l'image.",
+    "photoPermissionShort": "Autorisez l'accès à vos photos.",
+    "requirements": {
+      "hasBusinessName": "Nom de l'entreprise",
+      "hasCategory": "Catégorie",
+      "hasLocation": "Au moins un lieu",
+      "hasService": "Au moins une prestation",
+      "hasAvailability": "Disponibilités configurées"
+    },
+    "logoUpdated": "Logo mis à jour",
+    "uploadError": "Erreur lors de l'upload",
+    "coverUpdated": "Photo de couverture mise à jour",
+    "maxPhotosReached": "Maximum {{max}} photos atteint",
+    "photosAdded_one": "Photo ajoutée au portfolio",
+    "photosAdded_other": "{{count}} photos ajoutées au portfolio",
+    "reorderError": "Erreur lors du réordonnancement",
+    "deletePhotoTitle": "Supprimer cette photo",
+    "deletePhotoMessage": "Cette action est irréversible.",
+    "delete": "Supprimer",
+    "photoDeleted": "Photo supprimée",
+    "deleteError": "Erreur lors de la suppression",
+    "nameRequired": "Le nom est obligatoire",
+    "profileUpdated": "Profil mis à jour",
+    "updateError": "Erreur lors de la mise à jour",
+    "socialUpdated": "Liens sociaux mis à jour",
+    "paypalUpdated": "Lien PayPal mis à jour",
+    "completeRequired": "Veuillez compléter tous les éléments requis",
+    "pagePublished": "Page activée !",
+    "publishError": "Erreur lors de l'activation",
+    "unpublishTitle": "Désactiver ma page",
+    "unpublishMessage": "Votre page ne sera plus visible par les clients. Vous pourrez la réactiver à tout moment.",
+    "unpublishConfirm": "Désactiver",
+    "pageUnpublished": "Page désactivée",
+    "linkCopied": "Lien copié !",
+    "subscriptionContext": "Publiez votre page et rendez-vous visible auprès de vos clients avec un abonnement Pro.",
+    "headerTitle": "Profil & Publication",
+    "tabs": {
+      "visibility": "Visibilité",
+      "profile": "Profil",
+      "social": "Réseaux"
+    },
+    "status": {
+      "pageActive": "Page active",
+      "pageInactive": "Page inactive",
+      "activeBadge": "Active",
+      "inactiveBadge": "Inactive",
+      "visibleDesc": "Visible et accessible par les clients",
+      "notVisibleDesc": "Non visible par les clients"
+    },
+    "copyLink": "Copier le lien",
+    "viewPreview": "Voir l'aperçu",
+    "activatePage": "Activer ma page",
+    "requiredItems": "Éléments requis",
+    "refresh": "Actualiser",
+    "qr": {
+      "title": "QR Codes",
+      "bookingTab": "Réservation",
+      "bookingQrTitle": "QR code de réservation",
+      "bookingQrDesc": "Affichez-le dans votre établissement. Vos clients scannent et réservent directement.",
+      "paypalQrTitle": "QR code PayPal",
+      "paypalQrDesc": "Vos clients scannent ce QR code pour vous payer via PayPal.",
+      "paypalSetupHint": "Configurez votre lien PayPal ci-dessous pour activer le QR code."
+    },
+    "paypal": {
+      "title": "Lien PayPal",
+      "inputLabel": "PayPal.me ou URL",
+      "inputPlaceholder": "votre-nom (ou https://paypal.me/votre-nom)",
+      "helper": "Permet de générer un QR code pour les paiements"
+    },
+    "form": {
+      "addCover": "Ajouter une photo de couverture",
+      "businessNameLabel": "Nom de l'entreprise",
+      "businessNamePlaceholder": "Ex: Salon de beauté Marie",
+      "categoryLabel": "Catégorie",
+      "selectCategory": "Sélectionnez une catégorie",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Décrivez votre activité en quelques lignes...",
+      "descriptionHelper": "Visible sur votre page publique"
+    },
+    "portfolio": {
+      "title": "Portfolio",
+      "desc": "Ajoutez des photos de vos réalisations pour votre page publique",
+      "add": "Ajouter"
+    },
+    "social": {
+      "desc": "Ajoutez vos réseaux sociaux pour augmenter votre visibilité",
+      "instagramPlaceholder": "https://instagram.com/votre_compte",
+      "instagramHelper": "Collez le lien de votre profil Instagram",
+      "facebookPlaceholder": "https://facebook.com/votre_page",
+      "facebookHelper": "Collez le lien de votre page Facebook",
+      "tiktokPlaceholder": "https://tiktok.com/@votre_compte",
+      "tiktokHelper": "Collez le lien de votre profil TikTok",
+      "websiteLabel": "Site web",
+      "websitePlaceholder": "https://votre-site.com"
+    }
+  },
+  "proActivity": {
+    "notFoundTitle": "Activité introuvable",
+    "notFoundMessage": "Cette activité a été supprimée.",
+    "errorTitle": "Erreur",
+    "selectMember": "Veuillez sélectionner un membre",
+    "titleRequiredTitle": "Titre requis",
+    "titleRequiredMessage": "Donnez un nom à votre activité (ex : « Crossfit »).",
+    "invalidTimesTitle": "Heures invalides",
+    "invalidTimesMessage": "L'heure de fin doit être après l'heure de début.",
+    "invalidAmountTitle": "Montant invalide",
+    "invalidAmountMessage": "Saisissez un montant en euros (ex : 120 ou 89,50).",
+    "updatedTitle": "Activité modifiée",
+    "updatedMessage": "{{title}} a été mis à jour.",
+    "addedTitle": "Activité ajoutée",
+    "addedMessage": "{{title}} a été ajouté à votre agenda.",
+    "saveError": "Impossible d'enregistrer l'activité",
+    "deleteConfirmTitle": "Supprimer l'activité ?",
+    "deleteConfirmMessage": "« {{title}} » sera retirée de votre agenda.",
+    "thisActivity": "Cette activité",
+    "delete": "Supprimer",
+    "deleteError": "Impossible de supprimer l'activité",
+    "subscriptionContext": "Créez des activités personnelles dans votre agenda avec un abonnement Pro.",
+    "editTitle": "Modifier l'activité",
+    "newTitle": "Nouvelle activité",
+    "category": "Catégorie",
+    "titleLabel": "Titre",
+    "titlePlaceholder": "ex : Crossfit, Déjeuner avec…",
+    "forLabel": "Pour",
+    "date": "Date",
+    "start": "Début",
+    "end": "Fin",
+    "addressLabel": "Adresse (optionnel)",
+    "addressPlaceholder": "ex : Salle de sport, 12 rue X",
+    "notesLabel": "Notes (optionnel)",
+    "notesPlaceholder": "Ajouter des notes…",
+    "amountLabel": "Montant facturé (optionnel)",
+    "amountHelper": "Pour une activité rémunérée hors plateforme. Affiché comme badge sur l'agenda.",
+    "saving": "Enregistrement…",
+    "creating": "Création…",
+    "saveChanges": "Enregistrer les modifications",
+    "addToCalendar": "Ajouter à l'agenda",
+    "deleteActivity": "Supprimer cette activité",
+    "startTimeTitle": "Heure de début",
+    "endTimeTitle": "Heure de fin"
+  },
+  "storyShare": {
+    "today": "Aujourd'hui",
+    "tomorrow": "Demain",
+    "generalView": "Vue générale",
+    "networks": {
+      "share": "Partager"
+    },
+    "modes": {
+      "services": "Prestations",
+      "availabilities": "Dispos",
+      "none": "QR Code"
+    },
+    "errorTitle": "Erreur",
+    "shareUnavailable": "Le partage n'est pas disponible sur cet appareil.",
+    "captureFailed": "Impossible de capturer l'image.",
+    "appNotInstalledTitle": "{{appName}} non installé",
+    "appNotInstalledMessage": "Installez {{appName}} pour partager en story.",
+    "install": "Installer",
+    "shareDialogTitle": "Réservez chez {{name}}",
+    "us": "nous",
+    "headerTitle": "Créer une story",
+    "sections": {
+      "content": "Contenu affiché",
+      "when": "Quand ?",
+      "member": "Membre",
+      "week": "Semaine",
+      "day": "Jour",
+      "month": "Mois",
+      "service": "Prestation",
+      "theme": "Thème",
+      "servicesShown": "Prestations affichées (5 max)",
+      "shareOn": "Partager sur"
+    },
+    "newPill": "Nouveau",
+    "allMembers": "Tous les membres",
+    "thisWeek": "Cette semaine",
+    "nextWeek": "Semaine prochaine",
+    "inWeeks": "Dans {{count}} semaines",
+    "tapDateHint": "Touchez la date pour choisir un autre jour",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "linkCopied": "Lien copié !",
+    "reminderTitle": "N'oubliez pas votre lien !",
+    "reminderDesc": "Instagram ne permet pas d'inclure de lien cliquable dans les stories. Pensez à ajouter votre lien de réservation en sticker pour que vos clients puissent réserver.",
+    "shareOnInstagram": "Partager sur Instagram",
+    "done": "Terminé",
+    "card": {
+      "weekTitle": "Mes dispos\nde la semaine",
+      "monthTitle": "Mes dispos\ndu mois",
+      "dayCaption": "Dispos du jour",
+      "free": "Libre",
+      "busy": "Occupé",
+      "freeSummary": "{{total}} libres entre {{start}} et {{end}}",
+      "fullyBookedToday": "Complet aujourd'hui",
+      "fullyBookedTomorrow": "Complet de demain",
+      "fullyBookedOn": "Complet de {{weekday}}",
+      "bookOnlineNextDays": "Réservez en ligne pour les prochains jours",
+      "available": "Dispo",
+      "almostFull": "Bientôt complet",
+      "full": "Complet",
+      "ourServices": "Nos prestations",
+      "scanToBook": "Scannez pour réserver"
+    },
+    "fab": {
+      "linkCopiedTitle": "Lien copié",
+      "linkCopiedMessage": "Le lien a été copié dans le presse-papiers.",
+      "errorTitle": "Erreur",
+      "copyError": "Impossible de copier le lien.",
+      "shareMessage": "Réservez chez {{businessName}} : {{url}}",
+      "createStory": "Créer une story"
+    }
+  },
+  "proServices": {
+    "title": "Prestations",
+    "loadError": "Erreur lors du chargement",
+    "emptyTitle": "Aucune prestation",
+    "emptyDescription": "Ajoutez votre première prestation pour commencer à recevoir des réservations.",
+    "addService": "Ajouter une prestation",
+    "addCategory": "Ajouter une catégorie",
+    "uncategorizedBand": "Autres prestations",
+    "noCategory": "Sans catégorie",
+    "emptyCategory": "Aucune prestation dans cette catégorie",
+    "inactiveBadge": "Inactif",
+    "saving": "Enregistrement...",
+    "deleteConfirm": "Supprimer",
+    "priceRange": "De {{min}} à {{max}}",
+    "badge": {
+      "noDeposit": "Pas d'acompte",
+      "deposit": "Acompte {{amount}} · {{source}}",
+      "sourceCustom": "perso",
+      "sourceDefault": "défaut"
+    },
+    "toasts": {
+      "serviceCreated": "Prestation créée",
+      "serviceUpdated": "Prestation modifiée",
+      "serviceDeleted": "Prestation supprimée",
+      "serviceMoved": "Prestation déplacée",
+      "moveFailed": "Déplacement non enregistré",
+      "categoryCreated": "Catégorie créée",
+      "categoryUpdated": "Catégorie modifiée",
+      "categoryDeleted": "Catégorie supprimée"
+    },
+    "errors": {
+      "nameRequired": "Le nom est requis",
+      "pricePositive": "Le prix doit être un nombre positif",
+      "durationPositive": "La durée doit être supérieure à 0",
+      "locationRequired": "Sélectionnez au moins un lieu",
+      "depositPositive": "Le montant de l'acompte doit être > 0",
+      "depositPercentMax": "Le pourcentage ne peut pas dépasser 100",
+      "depositFixedMax": "L'acompte fixe ne peut pas dépasser le prix",
+      "percentRange": "La réduction doit être entre 1 et 100 %",
+      "endAfterStart": "La date de fin doit être après le début"
+    },
+    "deleteService": {
+      "title": "Supprimer la prestation",
+      "message": "Êtes-vous sûr de vouloir supprimer \"{{name}}\" ?"
+    },
+    "deleteCategory": {
+      "title": "Supprimer la catégorie",
+      "messageWithServices_one": "\"{{name}}\" contient {{count}} prestation. Elle sera déplacée dans \"Autres prestations\".",
+      "messageWithServices_other": "\"{{name}}\" contient {{count}} prestations. Elles seront déplacées dans \"Autres prestations\".",
+      "messageEmpty": "Supprimer \"{{name}}\" ?"
+    },
+    "globalPromo": {
+      "title": "Promotion globale",
+      "activeSummary": "−{{percent}}% sur toutes les prestations",
+      "inactiveSummary": "−{{percent}}% · inactive (hors période)",
+      "promptSummary": "Appliquez une réduction sur toutes vos prestations",
+      "edit": "Modifier",
+      "configure": "Configurer",
+      "description": "Une réduction appliquée à toutes vos prestations, sauf celles qui ont déjà leur propre promotion.",
+      "enable": "Activer la promotion globale",
+      "includeExtras": "Appliquer aux variations et options",
+      "saved": "Promotion globale enregistrée",
+      "disabled": "Promotion globale désactivée"
+    },
+    "promo": {
+      "sectionTitle": "Promotion",
+      "sectionSubtitle": "Une réduction en % sur cette prestation",
+      "enable": "Activer une promotion",
+      "percentLabel": "Réduction (%)",
+      "start": "Début",
+      "end": "Fin",
+      "optionalDate": "Optionnel",
+      "permanentNote": "Dates vides = promotion permanente. La fin est incluse.",
+      "pickerTitleStart": "Début de la promo",
+      "pickerTitleEnd": "Fin de la promo",
+      "clear": "Effacer",
+      "ok": "OK",
+      "badgeActive": "Promo −{{percent}}%",
+      "badgeActiveGlobal": "Promo −{{percent}}% · globale",
+      "badgeInactive": "Promo −{{percent}}% · inactive",
+      "preview": {
+        "title": "Aperçu des prix",
+        "tapHint": "Touchez une ligne pour l'inclure ou l'exclure de la promo.",
+        "baseService": "Prestation",
+        "optionsGroup": "Options et suppléments",
+        "notIncluded": "non incluse"
+      }
+    },
+    "form": {
+      "editTitle": "Modifier",
+      "createTitle": "Nouvelle prestation",
+      "essentialsTitle": "Essentiel",
+      "essentialsSubtitle": "Nom, photo, catégorie, durée et prix",
+      "nameLabel": "Nom",
+      "namePlaceholder": "Ex: Coupe femme",
+      "photoLabel": "Photo",
+      "optional": "(optionnel)",
+      "changeFromDevice": "Changer (appareil)",
+      "fromDevice": "Depuis l'appareil",
+      "changeFromPortfolio": "Changer (portfolio)",
+      "fromPortfolio": "Depuis le portfolio",
+      "categoryLabel": "Catégorie",
+      "colorLabel": "Couleur sur le calendrier",
+      "variationsPricingBefore": "Prix et durée définis par les variations ci-dessous — à partir de",
+      "variationsPricingAfter": ". Supprimez toutes les variations pour revenir à un prix fixe.",
+      "durationLabel": "Durée",
+      "durationMinUnit": "min",
+      "durationPreview": "= {{duration}}",
+      "priceLabel": "Prix (€)",
+      "descriptionLabel": "Description (optionnel)",
+      "descriptionPlaceholder": "Décrivez cette prestation"
+    },
+    "settingsSection": {
+      "title": "Réglages & acompte",
+      "subtitle": "Acompte et temps de battement",
+      "bufferLabel": "Temps de battement (minutes)",
+      "bufferInfo": "Temps de pause automatique ajouté après chaque rendez-vous. Permet de préparer le prochain client, ranger ou se déplacer."
+    },
+    "deposit": {
+      "label": "Acompte sur cette prestation",
+      "modeInheritWithDefault": "Acompte par défaut",
+      "modeInheritNoDefault": "Aucun acompte (par défaut)",
+      "modeCustom": "Acompte personnalisé",
+      "modeNone": "Pas d'acompte",
+      "hintInheritWithDefault": "{{percent}} % du prix · remboursable jusqu'à {{hours}}h avant le RDV",
+      "hintInheritNoDefault": "Aucun acompte par défaut configuré → pas d'acompte demandé.",
+      "hintCustom": "Remplace l'acompte par défaut avec une valeur spécifique.",
+      "hintNoneWithDefault": "Désactive explicitement l'acompte sur cette prestation, même si vous avez un acompte par défaut.",
+      "hintNoneNoDefault": "Pas d'acompte demandé sur cette prestation.",
+      "typePercent": "Pourcentage",
+      "typeFixed": "Montant fixe",
+      "percentLabel": "Pourcentage (%)",
+      "amountLabel": "Montant (€)",
+      "refundDelayLabel": "Délai de remboursement (heures avant le RDV)",
+      "refundDelayNote": "0 = pas de remboursement automatique. Au-delà du délai, l'acompte n'est pas remboursé en cas d'annulation par le client."
+    },
+    "availability": {
+      "title": "Disponibilité",
+      "subtitle": "Lieux et membres concernés",
+      "locations": "Lieux",
+      "members": "Membres",
+      "allMembers": "Tous les membres"
+    },
+    "choices": {
+      "title": "Variations & options",
+      "subtitle": "Choix, suppléments et infos demandées au client",
+      "variationsTitle": "Variations",
+      "variationsHint": "Des choix exclusifs qui fixent le prix et la durée (ex : Longueur).",
+      "optionsTitle": "Options",
+      "optionsHint": "Des suppléments à cocher (ex : Mèches).",
+      "infoTitle": "Infos demandées",
+      "infoHint": "Des questions au client, sans impact sur le prix."
+    },
+    "preview": {
+      "clientPreview": "Aperçu client",
+      "buttonSubtitle": "Voir la fiche de réservation"
+    },
+    "move": {
+      "title": "Déplacer vers…",
+      "noCategoryOption": "Sans catégorie (Autres prestations)"
+    },
+    "categoryModal": {
+      "editTitle": "Modifier la catégorie",
+      "createTitle": "Nouvelle catégorie",
+      "namePlaceholder": "Ex: Soins visage"
+    },
+    "editor": {
+      "variationNameLabel": "Nom de la variation",
+      "variationNamePlaceholder": "Nom de la variation (ex : Longueur)",
+      "choicePlaceholder": "Choix (ex : Mi-dos)",
+      "priceLabel": "Prix (€)",
+      "durationLabel": "Durée (min)",
+      "addChoice": "Ajouter un choix",
+      "totalPriceNote": "Prix et durée = le total pour ce choix (pas un supplément).",
+      "addVariation": "Ajouter une variation",
+      "optionNameLabel": "Nom de l'option",
+      "optionNamePlaceholder": "Nom de l'option (ex : Mèches)",
+      "optionDetailsWithCount": "Détails de l'option ({{count}})",
+      "optionDetailsEmpty": "Détails de l'option — variations & infos",
+      "nestedVariationsHint": "Variations de cette option (visibles si l'option est cochée)",
+      "nestedInfoHint": "Infos à demander pour cette option",
+      "addOption": "Ajouter une option",
+      "questionLabel": "Question",
+      "questionPlaceholder": "Question (ex : Allergies ?)",
+      "typeText": "Texte libre",
+      "typeBoolean": "Oui/Non",
+      "typeSelect": "Liste de choix",
+      "valuePlaceholder": "Choix",
+      "requiredLabel": "Obligatoire",
+      "addInfoField": "Ajouter une info"
+    }
+  },
+  "proMembers": {
+    "title": "Équipe",
+    "loadError": "Erreur lors du chargement",
+    "subscriptionContext": "Abonnez-vous pour accéder à toutes les fonctionnalités et développer votre activité.",
+    "upgradeContext": "Le plan Pro est limité à 1 membre. Passez au plan Studio pour ajouter jusqu'à 10 membres et gérer votre équipe.",
+    "empty": {
+      "title": "Aucun membre",
+      "addButton": "Ajouter un membre"
+    },
+    "badgeYou": "Vous",
+    "status": {
+      "active": "Actif",
+      "inactive": "Inactif"
+    },
+    "photo": {
+      "permissionTitle": "Permission requise",
+      "permissionMessage": "Autorisez l'accès à vos photos pour ajouter un avatar.",
+      "updated": "Photo mise à jour",
+      "uploadError": "Erreur lors du téléchargement",
+      "removed": "Photo supprimée",
+      "change": "Changer la photo",
+      "add": "Ajouter une photo",
+      "remove": "Supprimer"
+    },
+    "form": {
+      "editTitle": "Modifier le membre",
+      "newTitle": "Nouveau membre",
+      "nameLabel": "Nom",
+      "namePlaceholder": "Prénom du membre",
+      "emailLabel": "Email",
+      "emailPlaceholder": "email@exemple.com",
+      "phoneLabel": "Téléphone (optionnel)",
+      "phonePlaceholder": "06 12 34 56 78",
+      "colorLabel": "Couleur",
+      "locationLabel": "Lieu assigné",
+      "chooseLocation": "Choisir un lieu",
+      "nameRequired": "Le nom est requis",
+      "emailRequired": "L'email est requis",
+      "locationRequired": "Sélectionnez un lieu",
+      "updated": "Membre modifié",
+      "added": "Membre ajouté",
+      "saving": "Enregistrement..."
+    },
+    "deactivate": {
+      "confirmTitle": "Désactiver {{name}} ?",
+      "intro": "Voici ce qui se passe quand vous désactivez un membre :",
+      "keepAppointments": "Les rendez-vous existants sont <b>conservés</b> et restent visibles dans l'agenda",
+      "noNewBookings": "Les clients ne pourront <b>plus prendre de rendez-vous</b> avec ce membre",
+      "hiddenFromBooking": "Le membre n'apparaîtra <b>plus sur votre page de réservation</b>",
+      "canReactivate": "Vous pouvez <b>réactiver</b> le membre à tout moment",
+      "confirmButton": "Désactiver"
+    },
+    "toggle": {
+      "deactivated": "{{name}} désactivé",
+      "reactivated": "{{name}} réactivé"
+    },
+    "delete": {
+      "cannotDeleteDefault": "Impossible de supprimer le membre principal",
+      "deleted": "Membre supprimé",
+      "confirmTitle": "Supprimer {{name}} ?",
+      "confirmIntro": "Cette action est irréversible. Voici ce qui sera supprimé :",
+      "bulletProfile": "Le profil et les <b>disponibilités</b> du membre seront supprimés",
+      "bulletHistory": "L'historique des <b>rendez-vous passés</b> sera conservé",
+      "bulletPreferDeactivate": "Préférez la <b>désactivation</b> si vous pensez en avoir besoin plus tard",
+      "deleting": "Suppression...",
+      "confirmButton": "Supprimer définitivement",
+      "blockedTitle": "Suppression impossible",
+      "blockedIntro": "{{name}} ne peut pas être supprimé pour le moment :",
+      "blockedFuture": "Ce membre a des <b>rendez-vous futurs confirmés</b> ou en attente",
+      "blockedReassign": "Vous devez d'abord <b>annuler ou réassigner</b> ces rendez-vous",
+      "blockedDeactivateInstead": "Sinon, vous pouvez <b>désactiver</b> le membre à la place (les RDV seront conservés)",
+      "understood": "Compris"
+    },
+    "code": {
+      "label": "Code :",
+      "regenerateTitle": "Régénérer le code",
+      "regenerateMessage": "L'ancien code ne fonctionnera plus. Continuer ?",
+      "regenerateConfirm": "Régénérer",
+      "newCode": "Nouveau code : {{code}}",
+      "copied": "Code copié dans le presse-papier",
+      "modalTitle": "Code d'accès",
+      "modalHint": "Ce code permet d'accéder au planning sur opatam.com/planning",
+      "copy": "Copier le code",
+      "sendEmail": "Envoyer récap + code par email"
+    },
+    "agenda": {
+      "sent": "Récap agenda + code envoyé à {{name}}",
+      "sendError": "Erreur lors de l'envoi",
+      "recapAction": "Récap + code",
+      "calendarAction": "Agenda"
+    }
+  },
+  "proLocations": {
+    "title": "Lieux",
+    "loadError": "Erreur lors du chargement",
+    "empty": {
+      "title": "Aucun lieu",
+      "description": "Ajoutez un lieu pour accueillir vos clients.",
+      "addButton": "Ajouter un lieu"
+    },
+    "badges": {
+      "default": "Principal",
+      "inactive": "Inactif",
+      "protectedAddress": "Adresse masquée"
+    },
+    "card": {
+      "travelWithRadius": "Déplacement {{radius}} km autour de {{city}}",
+      "travelAround": "Déplacement autour de {{city}}",
+      "setDefault": "Définir comme principal",
+      "noMemberAssigned": "Aucun membre assigné"
+    },
+    "form": {
+      "editTitle": "Modifier le lieu",
+      "newTitle": "Nouveau lieu",
+      "nameLabel": "Nom du lieu",
+      "chooseName": "Choisir un nom",
+      "customNamePlaceholder": "Nom personnalisé du lieu",
+      "typeLabel": "Type",
+      "typeFixed": "Fixe",
+      "typeMobile": "Mobile",
+      "countryLabel": "Pays",
+      "locationTypeLabel": "Type de localisation",
+      "preciseAddress": "Adresse précise",
+      "cityOnly": "Ville uniquement",
+      "addressLabel": "Adresse",
+      "addressPlaceholder": "Saisissez une adresse...",
+      "citySearchLabel": "Rechercher une ville",
+      "citySearchPlaceholder": "Saisissez une ville...",
+      "postalCodeLabel": "Code postal",
+      "cityLabel": "Ville",
+      "travelRadiusLabel": "Rayon de déplacement (km)",
+      "descriptionLabel": "Description (optionnel)",
+      "descriptionPlaceholder": "Informations complémentaires",
+      "nameRequired": "Le nom est requis",
+      "cityRequired": "La ville est requise",
+      "postalCodeRequired": "Le code postal est requis",
+      "updated": "Lieu modifié",
+      "created": "Lieu créé",
+      "saving": "Enregistrement..."
+    },
+    "namePresets": {
+      "salon": "Mon salon",
+      "office": "Mon cabinet",
+      "studio": "Mon studio",
+      "workshop": "Mon atelier",
+      "atHome": "A domicile",
+      "desk": "Mon bureau",
+      "online": "RDV en ligne",
+      "phone": "Consultation téléphonique",
+      "video": "Consultation vidéo",
+      "other": "Autre..."
+    },
+    "countries": {
+      "FR": "🇫🇷 France",
+      "BE": "🇧🇪 Belgique",
+      "LU": "🇱🇺 Luxembourg",
+      "CH": "🇨🇭 Suisse",
+      "DE": "🇩🇪 Allemagne",
+      "ES": "🇪🇸 Espagne",
+      "IT": "🇮🇹 Italie",
+      "NL": "🇳🇱 Pays-Bas",
+      "PT": "🇵🇹 Portugal"
+    },
+    "protect": {
+      "title": "Protéger mon adresse",
+      "description": "Communiquée à la cliente ~48h avant le rendez-vous (email + app), une fois la réservation confirmée. Avant, elle ne voit que la zone.",
+      "areaLabel": "Zone affichée avant révélation",
+      "areaPlaceholder": "Ex: Batignolles, Paris 17e",
+      "accessLabel": "Infos d'accès (révélées avec l'adresse)",
+      "accessPlaceholder": "Ex: Interphone 1346, 2e étage, sonner à 203…"
+    },
+    "delete": {
+      "cannotDeleteDefault": "Impossible de supprimer le lieu principal",
+      "title": "Supprimer le lieu",
+      "message": "Supprimer \"{{name}}\" ?",
+      "confirm": "Supprimer",
+      "deleted": "Lieu supprimé"
+    },
+    "setDefaultSuccess": "{{name}} est maintenant le lieu principal",
+    "assign": {
+      "title": "Membres",
+      "empty": "Aucun membre actif.\nCréez des membres depuis la page Équipe.",
+      "thisLocation": "Ce lieu",
+      "updated": "Membres mis à jour"
+    }
+  },
+  "proAvailability": {
+    "title": "Disponibilités",
+    "loadError": "Erreur lors du chargement des disponibilités",
+    "templatesTitle": "Modèles",
+    "templates": {
+      "standard": {
+        "label": "Journée continue",
+        "description": "Lun-Ven, 9h-18h"
+      },
+      "split": {
+        "label": "Coupure midi",
+        "description": "Lun-Ven, 9h-12h / 14h-18h"
+      },
+      "extended": {
+        "label": "Horaires étendus",
+        "description": "Lun-Sam, 8h-20h"
+      },
+      "weekend": {
+        "label": "Week-end inclus",
+        "description": "Lun-Sam, 9h-18h + Sam 9h-13h"
+      }
+    },
+    "applyTemplate": {
+      "title": "Appliquer le modèle",
+      "message": "Cela remplacera les horaires actuels par \"{{label}}\". Continuer ?",
+      "apply": "Appliquer",
+      "applied": "Modèle \"{{label}}\" appliqué"
+    },
+    "unsaved": {
+      "title": "Modifications non sauvegardées",
+      "leaveMessage": "Voulez-vous quitter sans enregistrer vos modifications ?",
+      "stay": "Rester",
+      "leave": "Quitter",
+      "switchMessage": "Voulez-vous changer de membre sans enregistrer ?",
+      "switchConfirm": "Changer"
+    },
+    "validation": {
+      "endAfterStart": "{{day}} : l'heure de fin doit être après l'heure de début",
+      "noLocation": "Ce membre n'a pas de lieu assigné"
+    },
+    "saved": "Disponibilités enregistrées",
+    "saveError": "Erreur lors de l'enregistrement",
+    "copied": "Horaires copiés",
+    "emptyMembers": "Ajoutez d'abord un membre dans l'onglet Équipe",
+    "addSlot": "Plage",
+    "closed": "Fermé",
+    "infoBox": "Configurez les horaires d'ouverture pour chaque jour. Les clients ne pourront réserver que pendant ces créneaux. Ajoutez plusieurs plages pour gérer les pauses (ex : matin + après-midi).",
+    "saveChanges": "Enregistrer les modifications",
+    "startTime": "Heure de début",
+    "endTime": "Heure de fin",
+    "copy": {
+      "title": "Copier vers",
+      "message": "Copier les horaires de {{day}} vers :",
+      "confirm": "Copier"
+    }
+  },
+  "proBlockSlot": {
+    "title": "Bloquer un créneau",
+    "subscriptionContext": "Bloquez des créneaux et gérez votre planning avec un abonnement Pro.",
+    "membersLabel": "Membres",
+    "all": "Tous",
+    "periodLabel": "Période",
+    "allDay": "Journée entière",
+    "start": "Début",
+    "end": "Fin",
+    "reasonLabel": "Motif",
+    "reasons": {
+      "vacation": "Vacances",
+      "training": "Formation",
+      "sick": "Maladie",
+      "personal": "Personnel",
+      "holiday": "Férié",
+      "meeting": "Réunion",
+      "other": "Autre"
+    },
+    "customReasonLabel": "Motif personnalisé",
+    "customReasonPlaceholder": "Précisez le motif...",
+    "submit": "Bloquer le créneau",
+    "submitting": "Blocage en cours...",
+    "errorTitle": "Erreur",
+    "selectAtLeastOne": "Veuillez sélectionner au moins un membre",
+    "successTitle": "Succès",
+    "success_one": "Créneau bloqué avec succès",
+    "success_other": "Créneau bloqué pour {{count}} membres",
+    "blockError": "Impossible de bloquer le créneau",
+    "ok": "OK",
+    "startDate": "Date de début",
+    "endDate": "Date de fin",
+    "startTime": "Heure de début",
+    "endTime": "Heure de fin"
+  },
+  "proBlockedSlots": {
+    "title": "Créneaux bloqués",
+    "addA11y": "Ajouter un créneau bloqué",
+    "delete": {
+      "title": "Supprimer le blocage",
+      "messageMulti": "Supprimer ce blocage pour {{count}} membres ?",
+      "messageSingle": "Supprimer le blocage du {{date}} ?",
+      "confirm": "Supprimer",
+      "errorTitle": "Erreur",
+      "error": "Impossible de supprimer le blocage"
+    },
+    "range": "Du {{start}} au {{end}}",
+    "days_one": "{{count}} jour",
+    "days_other": "{{count}} jours",
+    "allDay": "Journée entière",
+    "all": "Tous",
+    "memberFallback": "Membre",
+    "empty": {
+      "title": "Aucun créneau bloqué",
+      "description": "Bloquez des créneaux pour indiquer vos indisponibilités"
     }
   }
 }

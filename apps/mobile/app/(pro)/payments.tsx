@@ -29,6 +29,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -38,28 +39,26 @@ import { Text, Card, Button, Switch, useToast } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useDepositsSummary, useServices } from '../../hooks';
-import { formatPrice, hasDepositAccess, isBaseTrialActive } from '@booking-app/shared';
+import { hasDepositAccess, isBaseTrialActive } from '@booking-app/shared';
+import i18n from '../../lib/i18n';
 import { API_URL as BASE_URL } from '../../lib/config';
 
 /** Preset chips for the default deposit percentage — 90% of pros
  *  will pick one of these, the custom input remains for the rest. */
 const PERCENT_PRESETS = [10, 20, 30, 50, 100];
 
-/** Refund-window presets in hours.
+/** Refund-window preset values in hours.
  *  `0` is a special "off" value — interpreted server-side as "no
  *  automatic refund, the deposit is always kept on cancellation".
- *  Hence the explicit "Jamais" label rather than "0h". */
-const HOURS_PRESETS: { value: number; label: string }[] = [
-  { value: 0, label: 'Jamais' },
-  { value: 24, label: '24h avant' },
-  { value: 48, label: '48h avant' },
-  { value: 72, label: '72h avant' },
-];
+ *  Hence the explicit "Jamais/Never" label (translated at render
+ *  time) rather than "0h". */
+const HOURS_PRESET_VALUES = [0, 24, 48, 72];
 
 export default function PaymentsScreen() {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  const { t } = useTranslation();
   const { provider, isLoading } = useProvider();
 
   // ─── Derived state from the provider doc ──────────────────────────
@@ -139,7 +138,7 @@ export default function PaymentsScreen() {
       });
     } catch (err) {
       console.error('[payments] in-app browser error:', err);
-      Alert.alert('Erreur', "Impossible d'ouvrir le portail de paiement.");
+      Alert.alert(t('proPayments.errors.title'), t('proPayments.errors.openPortal'));
     }
   };
 
@@ -148,7 +147,7 @@ export default function PaymentsScreen() {
     if (addonWorking) return;
     const user = firebaseAuth.currentUser;
     if (!user) {
-      toast.showToast({ variant: 'error', message: 'Session expirée — reconnectez-vous' });
+      toast.showToast({ variant: 'error', message: t('proPayments.errors.sessionExpired') });
       return;
     }
 
@@ -157,11 +156,11 @@ export default function PaymentsScreen() {
       // unsubscribe means (no more 5 €/mois charge).
       const confirmed = await new Promise<boolean>((resolve) => {
         Alert.alert(
-          "Désactiver l'abonnement Sérénité ?",
-          "Plus de prélèvement de 5 €/mois. Vous gardez l'accès jusqu'à la fin de votre période en cours, puis vous ne pourrez plus demander d'acomptes.",
+          t('proPayments.addon.deactivateConfirmTitle'),
+          t('proPayments.addon.deactivateConfirmMessage'),
           [
-            { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Désactiver', style: 'destructive', onPress: () => resolve(true) },
+            { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+            { text: t('proPayments.addon.deactivateAction'), style: 'destructive', onPress: () => resolve(true) },
           ],
         );
       });
@@ -182,13 +181,15 @@ export default function PaymentsScreen() {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       toast.showToast({
         variant: 'success',
-        message: subscribe ? 'Abonnement Sérénité activé' : 'Abonnement Sérénité désactivé',
+        message: subscribe
+          ? t('proPayments.addon.activated')
+          : t('proPayments.addon.deactivated'),
       });
       // Provider doc updates via real-time listener — UI catches up.
     } catch (err) {
       toast.showToast({
         variant: 'error',
-        message: err instanceof Error ? err.message : 'Erreur',
+        message: err instanceof Error ? err.message : t('common.error'),
       });
     } finally {
       setAddonWorking(false);
@@ -200,17 +201,17 @@ export default function PaymentsScreen() {
     if (saving) return;
     const user = firebaseAuth.currentUser;
     if (!user) {
-      toast.showToast({ variant: 'error', message: 'Session expirée — reconnectez-vous' });
+      toast.showToast({ variant: 'error', message: t('proPayments.errors.sessionExpired') });
       return;
     }
     const percentNum = Number(percent);
     const hoursNum = Number(hours);
     if (enabled && (!Number.isFinite(percentNum) || percentNum < 1 || percentNum > 100)) {
-      toast.showToast({ variant: 'error', message: 'Pourcentage entre 1 et 100' });
+      toast.showToast({ variant: 'error', message: t('proPayments.deposit.errors.percentRange') });
       return;
     }
     if (!Number.isFinite(hoursNum) || hoursNum < 0 || hoursNum > 720) {
-      toast.showToast({ variant: 'error', message: 'Délai entre 0 et 720 heures' });
+      toast.showToast({ variant: 'error', message: t('proPayments.deposit.errors.hoursRange') });
       return;
     }
 
@@ -230,12 +231,12 @@ export default function PaymentsScreen() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      toast.showToast({ variant: 'success', message: 'Acompte par défaut enregistré' });
+      toast.showToast({ variant: 'success', message: t('proPayments.deposit.saved') });
       setEditing(false);
     } catch (err) {
       toast.showToast({
         variant: 'error',
-        message: err instanceof Error ? err.message : 'Erreur',
+        message: err instanceof Error ? err.message : t('common.error'),
       });
     } finally {
       setSaving(false);
@@ -262,7 +263,7 @@ export default function PaymentsScreen() {
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
       {/* Branded blue header — matches the rest of the pro space. */}
-      <BrandedHeader title="Paiements & acomptes" />
+      <BrandedHeader title={t('proPayments.title')} />
 
       {/* KeyboardAvoidingView so the refund-deadline + percent
           inputs stay visible above the keyboard on iOS. Without
@@ -295,8 +296,8 @@ export default function PaymentsScreen() {
         <Card padding="md">
           <SectionHeader
             icon="card-outline"
-            title="Compte Stripe"
-            subtitle="Le compte qui reçoit les acomptes."
+            title={t('proPayments.stripe.title')}
+            subtitle={t('proPayments.stripe.subtitle')}
             tint={connectActive ? colors.success : colors.warning}
             colors={colors}
             spacing={spacing}
@@ -305,12 +306,12 @@ export default function PaymentsScreen() {
                 ok={connectActive}
                 status={
                   connectStatus === 'active'
-                    ? 'Actif'
+                    ? t('proPayments.stripe.status.active')
                     : connectStatus === 'pending'
-                      ? 'En attente'
+                      ? t('proPayments.stripe.status.pending')
                       : connectStatus === 'restricted'
-                        ? 'Restreint'
-                        : 'Non activé'
+                        ? t('proPayments.stripe.status.restricted')
+                        : t('proPayments.stripe.status.notActivated')
                 }
               />
             }
@@ -321,8 +322,8 @@ export default function PaymentsScreen() {
             style={{ marginTop: spacing.sm }}
           >
             {connectActive
-              ? 'Vous pouvez accepter des acomptes. Les fonds sont versés directement sur votre IBAN.'
-              : 'Activez Stripe pour pouvoir encaisser des acomptes au moment de la réservation.'}
+              ? t('proPayments.stripe.activeDescription')
+              : t('proPayments.stripe.inactiveDescription')}
           </Text>
 
           {/* Required-docs callout — surfaces the SIRET requirement
@@ -344,12 +345,12 @@ export default function PaymentsScreen() {
                 variant="caption"
                 style={{ color: '#92400E', fontWeight: '700', marginBottom: 4 }}
               >
-                À avoir sous la main
+                {t('proPayments.stripe.docsTitle')}
               </Text>
               <Text variant="caption" style={{ color: '#92400E', lineHeight: 18 }}>
-                Une pièce d'identité, votre IBAN, et un{' '}
-                <Text style={{ color: '#92400E', fontWeight: '700' }}>SIRET</Text>{' '}
-                valide (votre numéro d'entreprise).
+                {t('proPayments.stripe.docsBeforeSiret')}
+                <Text style={{ color: '#92400E', fontWeight: '700' }}>SIRET</Text>
+                {t('proPayments.stripe.docsAfterSiret')}
               </Text>
             </View>
           )}
@@ -365,7 +366,7 @@ export default function PaymentsScreen() {
             ]}
           >
             <Text variant="body" style={{ color: colors.primary, fontWeight: '600' }}>
-              {connectActive ? 'Gérer mon compte Stripe' : 'Activer les paiements'}
+              {connectActive ? t('proPayments.stripe.manage') : t('proPayments.stripe.activate')}
             </Text>
             <Ionicons name="open-outline" size={16} color={colors.primary} />
           </Pressable>
@@ -391,23 +392,23 @@ export default function PaymentsScreen() {
                 </View>
                 <View style={s.serenityPrice}>
                   <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>
-                    5 €/mois
+                    {t('proPayments.addon.pricePerMonth')}
                   </Text>
                 </View>
               </View>
 
               <Text style={[s.serenityTitle, { color: '#FFFFFF' }]}>
-                Abonnement Sérénité
+                {t('proPayments.addon.title')}
               </Text>
               <Text style={[s.serenitySub, { color: 'rgba(255,255,255,0.75)' }]}>
-                Encaissez un acompte au moment de la réservation pour réduire les no-shows.
+                {t('proPayments.addon.subtitle')}
               </Text>
 
               <View style={[s.serenityBullets, { gap: spacing.xs }]}>
                 {[
-                  'Acompte personnalisable par prestation',
-                  'Remboursement automatique sous délai',
-                  'Annulable à tout moment',
+                  t('proPayments.addon.bullets.customPerService'),
+                  t('proPayments.addon.bullets.autoRefund'),
+                  t('proPayments.addon.bullets.cancelAnytime'),
                 ].map((b) => (
                   <View key={b} style={s.bulletRow}>
                     <Ionicons name="checkmark" size={14} color="#22C55E" />
@@ -424,18 +425,17 @@ export default function PaymentsScreen() {
                 <View style={[s.serenityHint, { backgroundColor: 'rgba(34,197,94,0.16)' }]}>
                   <Ionicons name="gift-outline" size={14} color="#4ADE80" />
                   <Text style={[s.hintText, { color: 'rgba(255,255,255,0.92)' }]}>
-                    Inclus gratuitement pendant votre essai.{' '}
+                    {t('proPayments.addon.trialIncluded')}{' '}
                     {connectActive
-                      ? 'Configurez vos acomptes ci-dessous — à la fin de l’essai, souscrivez Sérénité pour continuer à les encaisser.'
-                      : 'Activez Stripe Connect ci-dessus pour commencer à encaisser des acomptes.'}
+                      ? t('proPayments.addon.trialConfigureHint')
+                      : t('proPayments.addon.trialConnectHint')}
                   </Text>
                 </View>
               ) : !connectActive ? (
                 <View style={[s.serenityHint, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
                   <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.85)" />
                   <Text style={[s.hintText, { color: 'rgba(255,255,255,0.85)' }]}>
-                    Activez d'abord Stripe Connect ci-dessus. Sans compte
-                    vérifié, les acomptes ne pourraient pas être encaissés.
+                    {t('proPayments.addon.connectFirstHint')}
                   </Text>
                 </View>
               ) : Platform.OS === 'ios' ? (
@@ -447,7 +447,7 @@ export default function PaymentsScreen() {
                   ]}
                 >
                   <Text style={{ color: '#0F172A', fontWeight: '700', fontSize: 14 }}>
-                    Activer sur opatam.com
+                    {t('proPayments.addon.activateOnWeb')}
                   </Text>
                   <Ionicons name="open-outline" size={16} color="#0F172A" />
                 </Pressable>
@@ -468,7 +468,7 @@ export default function PaymentsScreen() {
                   ) : (
                     <>
                       <Text style={{ color: '#0F172A', fontWeight: '700', fontSize: 14 }}>
-                        Souscrire — 5 €/mois
+                        {t('proPayments.addon.subscribeCta')}
                       </Text>
                       <Ionicons name="arrow-forward" size={16} color="#0F172A" />
                     </>
@@ -491,10 +491,10 @@ export default function PaymentsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="body" style={{ fontWeight: '700' }}>
-                  Sérénité actif
+                  {t('proPayments.addon.activeTitle')}
                 </Text>
                 <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                  5 €/mois · prélevés à la prochaine échéance
+                  {t('proPayments.addon.activeSubtitle')}
                 </Text>
               </View>
             </View>
@@ -519,11 +519,10 @@ export default function PaymentsScreen() {
                   variant="caption"
                   style={{ color: '#92400E', fontWeight: '700', marginBottom: 2 }}
                 >
-                  Compte Stripe non vérifié
+                  {t('proPayments.addon.unverifiedTitle')}
                 </Text>
                 <Text variant="caption" style={{ color: '#92400E', lineHeight: 17 }}>
-                  Aucun acompte ne sera encaissé tant que Stripe n'a pas fini
-                  de vérifier votre compte. Terminez l'onboarding ci-dessus.
+                  {t('proPayments.addon.unverifiedBody')}
                 </Text>
               </View>
             )}
@@ -540,7 +539,9 @@ export default function PaymentsScreen() {
               ]}
             >
               <Text variant="caption" style={{ color: colors.error, fontWeight: '600' }}>
-                {addonWorking ? 'Désactivation…' : "Désactiver l'abonnement"}
+                {addonWorking
+                  ? t('proPayments.addon.deactivating')
+                  : t('proPayments.addon.deactivate')}
               </Text>
             </Pressable>
           </Card>
@@ -557,8 +558,8 @@ export default function PaymentsScreen() {
           <Card padding="md">
             <SectionHeader
               icon="stats-chart-outline"
-              title="Vue d'ensemble"
-              subtitle="30 derniers jours"
+              title={t('proPayments.stats.title')}
+              subtitle={t('proPayments.stats.subtitle')}
               tint={colors.primary}
               colors={colors}
               spacing={spacing}
@@ -571,29 +572,29 @@ export default function PaymentsScreen() {
               }}
             >
               <DepositKpi
-                label="Prestations"
+                label={t('proPayments.stats.servicesLabel')}
                 value={
                   servicesWithDeposit.total > 0
                     ? `${servicesWithDeposit.count}/${servicesWithDeposit.total}`
                     : '—'
                 }
-                sublabel="avec acompte"
+                sublabel={t('proPayments.stats.servicesSublabel')}
                 colors={colors}
                 spacing={spacing}
                 radius={radius}
               />
               <DepositKpi
-                label="Encaissé"
-                value={formatPrice(depositsSummary.totalAmount)}
-                sublabel="30 j"
+                label={t('proPayments.stats.collectedLabel')}
+                value={formatAmount(depositsSummary.totalAmount)}
+                sublabel={t('proPayments.stats.collectedSublabel')}
                 colors={colors}
                 spacing={spacing}
                 radius={radius}
               />
               <DepositKpi
-                label="RDV"
+                label={t('proPayments.stats.bookingsLabel')}
                 value={depositsSummary.bookingsCount.toString()}
-                sublabel="concernés"
+                sublabel={t('proPayments.stats.bookingsSublabel')}
                 colors={colors}
                 spacing={spacing}
                 radius={radius}
@@ -613,9 +614,7 @@ export default function PaymentsScreen() {
               >
                 <Ionicons name="information-circle" size={14} color={colors.warning} />
                 <Text variant="caption" style={{ color: colors.warning, flex: 1 }}>
-                  Aucune prestation ne demande d'acompte. Activez-en au moins
-                  une dans Prestations, ou définissez un acompte par défaut
-                  ci-dessous.
+                  {t('proPayments.stats.noDepositWarning')}
                 </Text>
               </View>
             )}
@@ -626,8 +625,8 @@ export default function PaymentsScreen() {
         <Card padding="md" style={{ opacity: depositAccess ? 1 : 0.55 }}>
           <SectionHeader
             icon="cash-outline"
-            title="Acompte par défaut"
-            subtitle="Appliqué aux prestations qui n'ont pas leur propre montant."
+            title={t('proPayments.deposit.title')}
+            subtitle={t('proPayments.deposit.subtitle')}
             tint={enabled && depositAccess ? colors.primary : colors.textMuted}
             colors={colors}
             spacing={spacing}
@@ -653,7 +652,7 @@ export default function PaymentsScreen() {
             >
               <Ionicons name="lock-closed" size={14} color={colors.textMuted} />
               <Text variant="caption" color="textSecondary">
-                Activez Sérénité pour configurer un acompte par défaut.
+                {t('proPayments.deposit.lockedHint')}
               </Text>
             </View>
           )}
@@ -676,7 +675,7 @@ export default function PaymentsScreen() {
                 </Text>
                 <Text style={[s.percentSign, { color: colors.primary }]}>%</Text>
                 <Text variant="caption" color="textSecondary" style={{ marginTop: 4 }}>
-                  du prix réservé
+                  {t('proPayments.deposit.ofBookedPrice')}
                 </Text>
               </View>
 
@@ -692,7 +691,7 @@ export default function PaymentsScreen() {
                     fontWeight: '600',
                   }}
                 >
-                  Pourcentage du prix
+                  {t('proPayments.deposit.percentLabel')}
                 </Text>
                 <View style={s.chipRow}>
                   {PERCENT_PRESETS.map((p) => {
@@ -740,7 +739,7 @@ export default function PaymentsScreen() {
                           color: colors.text,
                         },
                       ]}
-                      placeholder="Autre"
+                      placeholder={t('proPayments.deposit.customPlaceholder')}
                       placeholderTextColor={colors.textMuted}
                       maxLength={3}
                     />
@@ -761,16 +760,16 @@ export default function PaymentsScreen() {
                     fontWeight: '600',
                   }}
                 >
-                  Acompte remboursé si annulation
+                  {t('proPayments.deposit.refundLabel')}
                 </Text>
                 <View style={s.chipRow}>
-                  {HOURS_PRESETS.map((h) => {
-                    const active = Number(hours) === h.value;
+                  {HOURS_PRESET_VALUES.map((value) => {
+                    const active = Number(hours) === value;
                     return (
                       <Pressable
-                        key={h.value}
+                        key={value}
                         onPress={() => {
-                          setHours(String(h.value));
+                          setHours(String(value));
                           setEditing(true);
                         }}
                         style={({ pressed }) => [
@@ -789,7 +788,9 @@ export default function PaymentsScreen() {
                             fontWeight: '600',
                           }}
                         >
-                          {h.label}
+                          {value === 0
+                            ? t('proPayments.deposit.refundNever')
+                            : t('proPayments.deposit.refundBefore', { hours: value })}
                         </Text>
                       </Pressable>
                     );
@@ -809,11 +810,13 @@ export default function PaymentsScreen() {
                           color: colors.text,
                         },
                       ]}
-                      placeholder="Autre"
+                      placeholder={t('proPayments.deposit.customPlaceholder')}
                       placeholderTextColor={colors.textMuted}
                       maxLength={3}
                     />
-                    <Text style={[s.customInputSuffix, { color: colors.textMuted }]}>h avant</Text>
+                    <Text style={[s.customInputSuffix, { color: colors.textMuted }]}>
+                      {t('proPayments.deposit.hoursBeforeSuffix')}
+                    </Text>
                   </View>
                 </View>
                 <Text
@@ -822,8 +825,8 @@ export default function PaymentsScreen() {
                   style={{ marginTop: spacing.sm, lineHeight: 17 }}
                 >
                   {Number(hours) === 0
-                    ? "L'acompte est conservé en cas d'annulation, peu importe le délai."
-                    : `Si votre client annule au moins ${formatHours(Number(hours))} avant son RDV, son acompte lui est automatiquement remboursé. Au-delà du délai, vous conservez l'acompte.`}
+                    ? t('proPayments.deposit.refundNeverHint')
+                    : t('proPayments.deposit.refundHint', { delay: formatHours(Number(hours)) })}
                 </Text>
               </View>
             </View>
@@ -832,7 +835,7 @@ export default function PaymentsScreen() {
           {dirty && (
             <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
               <Button
-                title="Annuler"
+                title={t('common.cancel')}
                 variant="ghost"
                 onPress={() => {
                   setEditing(false);
@@ -840,7 +843,7 @@ export default function PaymentsScreen() {
                 style={{ flex: 1 }}
               />
               <Button
-                title="Enregistrer"
+                title={t('common.save')}
                 onPress={saveDeposit}
                 loading={saving}
                 disabled={saving || !depositAccess}
@@ -858,18 +861,28 @@ export default function PaymentsScreen() {
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 /**
- * Hours → human-friendly French duration. Pros think in days past
- * 24 hours, so we switch to "1 jour" / "2 jours" / "3 jours" etc.
- * for any clean multiple. Falls back to "Xh" for awkward values
- * (e.g. 36, 60).
+ * Hours → human-friendly duration in the current app language.
+ * Pros think in days past 24 hours, so we switch to "1 jour" /
+ * "2 jours" (or "1 day" / "2 days") for any clean multiple.
+ * Falls back to "Xh" for awkward values (e.g. 36, 60).
+ * Module-level helper: i18n.t is called at the moment the string
+ * is produced, so it always follows the live language.
  */
 function formatHours(h: number): string {
   if (!Number.isFinite(h) || h <= 0) return '0h';
   if (h % 24 === 0) {
-    const days = h / 24;
-    return days === 1 ? '1 jour' : `${days} jours`;
+    return i18n.t('proPayments.deposit.days', { count: h / 24 });
   }
   return `${h}h`;
+}
+
+/**
+ * Cents → localized EUR amount, following the current app language
+ * (replaces the shared fr-FR-only formatPrice for the KPI strip).
+ */
+function formatAmount(cents: number): string {
+  const locale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(cents / 100);
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────
@@ -885,29 +898,30 @@ function HeroCard({
   spacing: any;
   onPressActivate: () => void;
 }) {
+  const { t } = useTranslation();
   // Three visual states keyed off how far the pro is into the
   // funnel. Distinct gradients so a glance tells you where you stand.
   const config = {
     'fully-active': {
       colors: ['#0F766E', '#14B8A6'] as [string, string],
       icon: 'sparkles' as const,
-      title: 'Acomptes activés',
-      subtitle: 'Votre vitrine demande un acompte à la réservation.',
+      title: t('proPayments.hero.fullyActiveTitle'),
+      subtitle: t('proPayments.hero.fullyActiveSubtitle'),
       cta: null,
     },
     'connect-only': {
       colors: ['#1D4ED8', '#3B82F6'] as [string, string],
       icon: 'card' as const,
-      title: 'Stripe prêt — il manque Sérénité',
-      subtitle: 'Souscrivez à Sérénité pour activer les acomptes.',
+      title: t('proPayments.hero.connectOnlyTitle'),
+      subtitle: t('proPayments.hero.connectOnlySubtitle'),
       cta: null,
     },
     inactive: {
       colors: ['#7C2D12', '#EA580C'] as [string, string],
       icon: 'alert-circle' as const,
-      title: 'Acomptes non disponibles',
-      subtitle: 'Activez Stripe Connect pour réduire les no-shows.',
-      cta: { label: 'Activer Stripe', onPress: onPressActivate },
+      title: t('proPayments.hero.inactiveTitle'),
+      subtitle: t('proPayments.hero.inactiveSubtitle'),
+      cta: { label: t('proPayments.hero.activateStripe'), onPress: onPressActivate },
     },
   }[state];
 

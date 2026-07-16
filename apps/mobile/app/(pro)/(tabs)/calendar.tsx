@@ -21,6 +21,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -28,6 +29,7 @@ import { memberService, schedulingService } from '@booking-app/firebase';
 import type { Member, BlockedSlot, Service } from '@booking-app/shared';
 import { ACTIVITY_CATEGORY_META } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+import i18n from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
 import { useProviderBookings, useServiceCategories, useServices } from '../../../hooks';
@@ -68,30 +70,32 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const WEEK_HOUR_HEIGHT = 48;
 const DEFAULT_WEEK_START_HOUR = 7;
 const DEFAULT_WEEK_END_HOUR = 21;
-const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-const FULL_DAY_NAMES = [
-  'Dimanche',
-  'Lundi',
-  'Mardi',
-  'Mercredi',
-  'Jeudi',
-  'Vendredi',
-  'Samedi',
-];
-const FULL_MONTH_NAMES = [
-  'Janvier',
-  'Février',
-  'Mars',
-  'Avril',
-  'Mai',
-  'Juin',
-  'Juillet',
-  'Août',
-  'Septembre',
-  'Octobre',
-  'Novembre',
-  'Décembre',
-];
+
+// ---------------------------------------------------------------------------
+// Locale-aware day/month names — derived from Intl on the app language
+// (i18n.language) instead of hardcoded French arrays. Same Intl-only
+// approach as lib/i18n.ts (no native module).
+// ---------------------------------------------------------------------------
+
+function dateLocale(): string {
+  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+}
+
+/** Narrow one-letter labels, Monday-first (FR: L M M J V S D). */
+function getNarrowDayLabels(): string[] {
+  const fmt = new Intl.DateTimeFormat(dateLocale(), { weekday: 'narrow' });
+  // 2024-01-01 is a Monday.
+  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2024, 0, 1 + i)));
+}
+
+/** Long month name of the given date ("juillet" / "July"). */
+function monthName(date: Date): string {
+  return new Intl.DateTimeFormat(dateLocale(), { month: 'long' }).format(date);
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -191,10 +195,13 @@ function isToday(date: Date): boolean {
 }
 
 function formatHeaderDate(date: Date): string {
-  const dayName = FULL_DAY_NAMES[date.getDay()];
-  const dayNum = date.getDate();
-  const monthName = FULL_MONTH_NAMES[date.getMonth()];
-  return `${dayName} ${dayNum} ${monthName}`;
+  return capitalize(
+    new Intl.DateTimeFormat(dateLocale(), {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }).format(date),
+  );
 }
 
 /**
@@ -311,6 +318,7 @@ interface ViewToggleProps {
 
 function ViewToggle({ mode, onChange }: ViewToggleProps) {
   const { colors, radius, shadows: themeShadows } = useTheme();
+  const { t } = useTranslation();
   const idx = mode === 'day' ? 0 : mode === 'week' ? 1 : 2;
   const slideAnim = useRef(new Animated.Value(idx)).current;
 
@@ -373,9 +381,9 @@ function ViewToggle({ mode, onChange }: ViewToggleProps) {
         ]}
       />
 
-      {item('day', 'Jour')}
-      {item('week', 'Semaine')}
-      {item('month', 'Mois')}
+      {item('day', t('proCalendar.viewToggle.day'))}
+      {item('week', t('proCalendar.viewToggle.week'))}
+      {item('month', t('proCalendar.viewToggle.month'))}
     </View>
   );
 }
@@ -416,10 +424,13 @@ function MonthCalendar({
   onDayPress,
 }: MonthCalendarProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   // null = service-agnostic occupancy mode (just statuses).
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [durationOverride, setDurationOverride] = useState<number | undefined>(undefined);
-  const [selLabel, setSelLabel] = useState('Vue générale');
+  // null = default "Vue générale" label, resolved through t() at render
+  // so it follows live language switches.
+  const [selLabel, setSelLabel] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [summary, setSummary] = useState<
     Record<string, { status: MonthDayStatus; capacity?: number }>
@@ -518,7 +529,7 @@ function MonthCalendar({
   const horizon = new Date(today);
   horizon.setDate(horizon.getDate() + maxBookingAdvance);
   horizon.setHours(23, 59, 59, 999);
-  const horizonLabel = horizon.toLocaleDateString('fr-FR', {
+  const horizonLabel = horizon.toLocaleDateString(dateLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -533,7 +544,7 @@ function MonthCalendar({
     full: '#f43f5e',
     closed: colors.border,
   };
-  const WEEK = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const WEEK = getNarrowDayLabels();
 
   return (
     <ScrollView
@@ -558,7 +569,7 @@ function MonthCalendar({
         }}
       >
         <Text variant="body" numberOfLines={1} style={{ flex: 1, color: colors.text }}>
-          {selLabel}
+          {selLabel ?? t('proCalendar.generalView')}
         </Text>
         <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
       </Pressable>
@@ -697,8 +708,7 @@ function MonthCalendar({
         >
           <Ionicons name="lock-closed" size={14} color={colors.textSecondary} style={{ marginTop: 1 }} />
           <Text variant="caption" color="textSecondary" style={{ flex: 1 }}>
-            Vos clients ne peuvent réserver que jusqu&apos;au {horizonLabel} (J+{maxBookingAdvance}),
-            selon vos paramètres de réservation. Au-delà, aucun créneau ne leur est proposé.
+            {t('proCalendar.horizonNotice', { date: horizonLabel, days: maxBookingAdvance })}
           </Text>
         </View>
       )}
@@ -706,10 +716,10 @@ function MonthCalendar({
       {/* Legend */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.md }}>
         {([
-          ['#10b981', 'Disponible'],
-          ['#f59e0b', serviceMode ? 'Bientôt complet' : 'Chargé'],
-          ['#f43f5e', 'Complet'],
-          [colors.border, 'Fermé'],
+          ['#10b981', t('proCalendar.legend.available')],
+          ['#f59e0b', serviceMode ? t('proCalendar.legend.almostFull') : t('proCalendar.legend.busy')],
+          ['#f43f5e', t('proCalendar.legend.full')],
+          [colors.border, t('proCalendar.legend.closed')],
         ] as [string, string][]).map(([c, l], i) => (
           <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c }} />
@@ -813,6 +823,9 @@ function WeekView({
   onNavigate,
 }: WeekViewProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t, i18n: i18nInstance } = useTranslation();
+  // Narrow Monday-first day letters — re-derived when the language changes.
+  const dayLabels = useMemo(() => getNarrowDayLabels(), [i18nInstance.language]);
 
   const weekTotalHours = endHour - startHour;
   const timeColumnWidth = 44;
@@ -1024,7 +1037,7 @@ function WeekView({
                 color={isSelected ? 'primary' : 'textMuted'}
                 style={styles.weekDayLabel}
               >
-                {DAY_LABELS[idx]}
+                {dayLabels[idx]}
               </Text>
               <View
                 style={[
@@ -1295,7 +1308,7 @@ function WeekView({
                             numberOfLines={1}
                             style={{ fontSize: 7, lineHeight: 9, fontWeight: '600', color: bsBarColor }}
                           >
-                            {bs.reason || 'Bloqué'}
+                            {bs.reason || t('proCalendar.blocked')}
                           </Text>
                         )}
                         {bsHeight > 20 && bs.members.length > 1 && (
@@ -1536,6 +1549,7 @@ function WeekView({
 
 export default function CalendarScreen() {
   const { colors, spacing, radius, shadows: themeShadows } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { providerId, provider } = useProvider();
@@ -1707,7 +1721,7 @@ export default function CalendarScreen() {
       }
       groups[key].ids.push(bs.id);
       groups[key].members.push({
-        name: memberNameMap[bs.memberId] || 'Membre',
+        name: memberNameMap[bs.memberId] || t('proCalendar.memberFallback'),
         color: memberColorMap[bs.memberId] || null,
       });
     }
@@ -1737,7 +1751,7 @@ export default function CalendarScreen() {
         amount: g.bs.amount ?? null,
       };
     });
-  }, [blockedSlots, viewMode, selectedMemberId, dayStart, dayEnd, memberNameMap, memberColorMap, members]);
+  }, [blockedSlots, viewMode, selectedMemberId, dayStart, dayEnd, memberNameMap, memberColorMap, members, t]);
 
   // ---- Transform bookings for Day View ----
   const dayBookings: DayScheduleBooking[] = useMemo(() => {
@@ -1755,7 +1769,7 @@ export default function CalendarScreen() {
         id: b.id,
         startTime: formatTime(dt),
         endTime: formatTime(endDt),
-        clientName: b.clientInfo?.name ?? 'Client',
+        clientName: b.clientInfo?.name ?? t('proCalendar.clientFallback'),
         serviceName: b.serviceName,
         status: b.status,
         memberName: (b.memberId && memberNameMap[b.memberId]) || undefined,
@@ -1764,7 +1778,7 @@ export default function CalendarScreen() {
         displayColor: serviceColor || memberColor,
       };
     });
-  }, [filteredBookings, viewMode, memberNameMap, memberColorMap, serviceColorMap]);
+  }, [filteredBookings, viewMode, memberNameMap, memberColorMap, serviceColorMap, t]);
 
   // ---- Transform bookings for Week View ----
   const weekBookings: WeekBooking[] = useMemo(() => {
@@ -1783,7 +1797,7 @@ export default function CalendarScreen() {
         id: b.id,
         datetime: dt,
         duration: b.duration,
-        clientName: b.clientInfo?.name ?? 'Client',
+        clientName: b.clientInfo?.name ?? t('proCalendar.clientFallback'),
         serviceName: b.serviceName,
         status: b.status,
         memberId: b.memberId ?? null,
@@ -1795,7 +1809,7 @@ export default function CalendarScreen() {
         displayColor: serviceColor || memberColor,
       };
     });
-  }, [filteredBookings, viewMode, memberColorMap, serviceColorMap]);
+  }, [filteredBookings, viewMode, memberColorMap, serviceColorMap, t]);
 
   // ---- Blocked slots for week view (grouped by same time + reason) ----
   const weekBlockedSlots = useMemo(() => {
@@ -1816,7 +1830,7 @@ export default function CalendarScreen() {
       }
       groups[key].slots.push(bs);
       groups[key].members.push({
-        name: memberNameMap[bs.memberId] || 'Membre',
+        name: memberNameMap[bs.memberId] || t('proCalendar.memberFallback'),
         color: memberColorMap[bs.memberId] || null,
       });
     }
@@ -1848,7 +1862,7 @@ export default function CalendarScreen() {
         amount: bs.amount ?? null,
       };
     });
-  }, [blockedSlots, viewMode, selectedMemberId, memberNameMap, memberColorMap, members]);
+  }, [blockedSlots, viewMode, selectedMemberId, memberNameMap, memberColorMap, members, t]);
 
   // ---- Compute effective hour range from bookings + activities ----
   // Walks both data sources so an activity / categorised blocked
@@ -1949,11 +1963,11 @@ export default function CalendarScreen() {
         return;
       }
 
-      const label = slot?.reason || 'Période bloquée';
-      Alert.alert(label, 'Voulez-vous supprimer cette période ?', [
-        { text: 'Annuler', style: 'cancel' },
+      const label = slot?.reason || t('proCalendar.blockedSlot.fallbackLabel');
+      Alert.alert(label, t('proCalendar.blockedSlot.deleteMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('proCalendar.blockedSlot.delete'),
           style: 'destructive',
           onPress: async () => {
             if (!providerId) return;
@@ -1964,15 +1978,15 @@ export default function CalendarScreen() {
               setBlockedSlots((prev) => prev.filter((s) => s.id !== id));
             } catch (err) {
               Alert.alert(
-                'Erreur',
-                err instanceof Error ? err.message : 'Impossible de supprimer',
+                t('proCalendar.blockedSlot.errorTitle'),
+                err instanceof Error ? err.message : t('proCalendar.blockedSlot.deleteError'),
               );
             }
           },
         },
       ]);
     },
-    [blockedSlots, providerId, router],
+    [blockedSlots, providerId, router, t],
   );
 
   const handleCreateBooking = useCallback(() => {
@@ -2098,14 +2112,14 @@ export default function CalendarScreen() {
   // ---- Header date display ----
   const headerDateText = useMemo(() => {
     if (viewMode === 'month') {
-      return `${FULL_MONTH_NAMES[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+      return `${capitalize(monthName(selectedDate))} ${selectedDate.getFullYear()}`;
     }
     if (viewMode === 'week') {
       const endDate = weekDays[weekDays.length - 1];
       const startDay = weekDays[0].getDate();
       const endDay = endDate.getDate();
-      const startMonth = FULL_MONTH_NAMES[weekDays[0].getMonth()];
-      const endMonth = FULL_MONTH_NAMES[endDate.getMonth()];
+      const startMonth = capitalize(monthName(weekDays[0]));
+      const endMonth = capitalize(monthName(endDate));
 
       if (weekDays[0].getMonth() === endDate.getMonth()) {
         return `${startDay} - ${endDay} ${startMonth}`;
@@ -2113,7 +2127,8 @@ export default function CalendarScreen() {
       return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
     }
     return formatHeaderDate(selectedDate);
-  }, [selectedDate, viewMode, weekDays]);
+    // t in deps: re-derive the Intl-based labels on language change.
+  }, [selectedDate, viewMode, weekDays, t]);
 
   // ---- Render ----
   return (
@@ -2132,7 +2147,7 @@ export default function CalendarScreen() {
             },
           ]}
         >
-          <Text variant="h2" style={{ color: '#FFFFFF' }}>Agenda</Text>
+          <Text variant="h2" style={{ color: '#FFFFFF' }}>{t('proCalendar.title')}</Text>
           {!isToday(selectedDate) && (
             <Pressable
               onPress={goToToday}
@@ -2152,7 +2167,7 @@ export default function CalendarScreen() {
                 variant="caption"
                 style={{ fontWeight: '600', color: '#FFFFFF' }}
               >
-                Aujourd'hui
+                {t('dates.today')}
               </Text>
             </Pressable>
           )}
@@ -2258,7 +2273,7 @@ export default function CalendarScreen() {
                 color="primary"
                 style={{ fontWeight: '600' }}
               >
-                {todayBookingCount} RDV
+                {t('proHome.countRdv', { count: todayBookingCount })}
               </Text>
             </View>
           )}
@@ -2352,8 +2367,8 @@ export default function CalendarScreen() {
               >
                 <EmptyState
                   icon="calendar-outline"
-                  title="Aucun rendez-vous"
-                  description="Vous n'avez pas de rendez-vous ce jour."
+                  title={t('proCalendar.emptyDay.title')}
+                  description={t('proCalendar.emptyDay.description')}
                 />
               </View>
             )}
@@ -2455,7 +2470,7 @@ export default function CalendarScreen() {
                 fontWeight: '700',
               }}
             >
-              Ajouter
+              {t('proCalendar.addSheet.title')}
             </Text>
 
             {/* Choice 1 — Réservation client */}
@@ -2488,10 +2503,10 @@ export default function CalendarScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="body" style={{ fontWeight: '600', color: colors.text }}>
-                  Réservation client
+                  {t('proCalendar.addSheet.booking')}
                 </Text>
                 <Text variant="caption" color="textSecondary">
-                  Nouveau RDV pour un client
+                  {t('proCalendar.addSheet.bookingDesc')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -2527,10 +2542,10 @@ export default function CalendarScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="body" style={{ fontWeight: '600', color: colors.text }}>
-                  Activité personnelle
+                  {t('proCalendar.addSheet.activity')}
                 </Text>
                 <Text variant="caption" color="textSecondary">
-                  Sport, RDV perso, admin…
+                  {t('proCalendar.addSheet.activityDesc')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -2565,10 +2580,10 @@ export default function CalendarScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="body" style={{ fontWeight: '600', color: colors.text }}>
-                  Bloquer une période
+                  {t('proCalendar.addSheet.block')}
                 </Text>
                 <Text variant="caption" color="textSecondary">
-                  Vacances, formation, absence
+                  {t('proCalendar.addSheet.blockDesc')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -2613,7 +2628,7 @@ export default function CalendarScreen() {
               ]}
             >
               <Text variant="body" style={{ fontWeight: '600' }}>
-                {disambiguationBookings?.length ?? 0} rendez-vous
+                {t('proCalendar.bookingsCount', { count: disambiguationBookings?.length ?? 0 })}
               </Text>
               <Pressable onPress={() => setDisambiguationBookings(null)}>
                 <Ionicons name="close" size={22} color={colors.textSecondary} />
@@ -2728,7 +2743,7 @@ export default function CalendarScreen() {
               ]}
             >
               <Text variant="body" style={{ fontWeight: '600' }}>
-                {disambiguationActivities?.length ?? 0} activités à ce créneau
+                {t('proCalendar.activitiesAtSlot', { count: disambiguationActivities?.length ?? 0 })}
               </Text>
               <Pressable onPress={() => setDisambiguationActivities(null)}>
                 <Ionicons name="close" size={22} color={colors.textSecondary} />
@@ -2752,7 +2767,7 @@ export default function CalendarScreen() {
                   const accent = meta?.color || colors.textMuted;
                   const timeStr =
                     activity.allDay
-                      ? 'Journée'
+                      ? t('proCalendar.allDay')
                       : `${activity.startTime ?? '—'} – ${activity.endTime ?? '—'}`;
                   return (
                     <Pressable
@@ -2801,7 +2816,7 @@ export default function CalendarScreen() {
                           numberOfLines={1}
                           style={{ fontWeight: '500' }}
                         >
-                          {activity.title || meta?.label || 'Activité'}
+                          {activity.title || meta?.label || t('proCalendar.activityFallback')}
                         </Text>
                         {meta && (
                           <Text
@@ -2873,11 +2888,11 @@ export default function CalendarScreen() {
               >
                 <Pressable onPress={() => setShowDatePicker(false)}>
                   <Text variant="body" color="textSecondary">
-                    Annuler
+                    {t('common.cancel')}
                   </Text>
                 </Pressable>
                 <Text variant="body" style={{ fontWeight: '600' }}>
-                  Choisir une date
+                  {t('proCalendar.pickDate')}
                 </Text>
                 <Pressable
                   onPress={() => {
@@ -2885,7 +2900,7 @@ export default function CalendarScreen() {
                   }}
                 >
                   <Text variant="body" color="primary" style={{ fontWeight: '600' }}>
-                    OK
+                    {t('proCalendar.ok')}
                   </Text>
                 </Pressable>
               </View>

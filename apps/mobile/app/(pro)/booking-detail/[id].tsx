@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -53,6 +54,7 @@ import type {
 } from '@booking-app/shared';
 import { ServiceChoicesPreview } from '../../../components/business/ServiceChoicesPreview';
 import type { WithId } from '@booking-app/firebase';
+import i18n from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 import {
   Text,
@@ -74,11 +76,10 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 // ---------- Date formatting helpers ----------
 
-const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-const months = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
+/** Locale for date/number formatting, following the current app language */
+function dateLocale(): string {
+  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+}
 
 function toDate(datetime: Date | any): Date {
   if (datetime instanceof Date) return datetime;
@@ -86,18 +87,20 @@ function toDate(datetime: Date | any): Date {
   return new Date(datetime);
 }
 
-function formatDateFr(datetime: Date | any): string {
+function formatDateLong(datetime: Date | any): string {
   const date = toDate(datetime);
-  const dayName = days[date.getDay()];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-  return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${day} ${month} ${year}`;
+  const label = date.toLocaleDateString(dateLocale(), {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 function formatTime(datetime: Date | any): string {
   const date = toDate(datetime);
-  return date.toLocaleTimeString('fr-FR', {
+  return date.toLocaleTimeString(dateLocale(), {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -106,14 +109,14 @@ function formatTime(datetime: Date | any): string {
 function formatEndTime(datetime: Date | any, durationMinutes: number): string {
   const date = toDate(datetime);
   const endDate = new Date(date.getTime() + durationMinutes * 60 * 1000);
-  return endDate.toLocaleTimeString('fr-FR', {
+  return endDate.toLocaleTimeString(dateLocale(), {
     hour: '2-digit',
     minute: '2-digit',
   });
 }
 
 function formatPrice(cents: number): string {
-  return (cents / 100).toLocaleString('fr-FR', {
+  return (cents / 100).toLocaleString(dateLocale(), {
     style: 'currency',
     currency: 'EUR',
   });
@@ -203,14 +206,14 @@ interface SlotWithMember {
 
 const PERIODS_CONFIG: {
   key: Period;
-  label: string;
+  labelKey: string;
   icon: keyof typeof Ionicons.glyphMap;
   backgroundColor: string;
   accentColor: string;
 }[] = [
-  { key: 'morning', label: 'Matin', icon: 'sunny', backgroundColor: '#FEF3C7', accentColor: '#D97706' },
-  { key: 'afternoon', label: 'Après-midi', icon: 'partly-sunny', backgroundColor: '#FFEDD5', accentColor: '#EA580C' },
-  { key: 'evening', label: 'Soir', icon: 'moon', backgroundColor: '#E0E7FF', accentColor: '#4F46E5' },
+  { key: 'morning', labelKey: 'proBookingDetail.periods.morning', icon: 'sunny', backgroundColor: '#FEF3C7', accentColor: '#D97706' },
+  { key: 'afternoon', labelKey: 'proBookingDetail.periods.afternoon', icon: 'partly-sunny', backgroundColor: '#FFEDD5', accentColor: '#EA580C' },
+  { key: 'evening', labelKey: 'proBookingDetail.periods.evening', icon: 'moon', backgroundColor: '#E0E7FF', accentColor: '#4F46E5' },
 ];
 
 function getHour(time: string): number {
@@ -392,6 +395,7 @@ const contactPillStyles = StyleSheet.create({
 
 export default function ProBookingDetailScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
   const { providerId } = useProvider();
@@ -405,7 +409,7 @@ export default function ProBookingDetailScreen() {
   // Load booking data
   const loadBooking = useCallback(async () => {
     if (!id) {
-      setError('ID de rendez-vous manquant');
+      setError(i18n.t('proBookingDetail.errors.missingId'));
       setLoading(false);
       return;
     }
@@ -416,13 +420,13 @@ export default function ProBookingDetailScreen() {
     try {
       const result = await bookingService.getById(id);
       if (!result) {
-        setError('Rendez-vous non trouvé');
+        setError(i18n.t('proBookingDetail.errors.notFound'));
       } else {
         setBooking(result);
       }
     } catch (err: any) {
       console.error('Error loading booking:', err);
-      setError(err.message || 'Erreur lors du chargement');
+      setError(err.message || i18n.t('proBookingDetail.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -438,12 +442,12 @@ export default function ProBookingDetailScreen() {
     if (!booking || !user?.uid) return;
 
     Alert.alert(
-      'Confirmer le rendez-vous',
-      'Voulez-vous confirmer ce rendez-vous ?',
+      i18n.t('proBookingDetail.confirmAlert.title'),
+      i18n.t('proBookingDetail.confirmAlert.message'),
       [
-        { text: 'Non', style: 'cancel' },
+        { text: i18n.t('proBookingDetail.alerts.no'), style: 'cancel' },
         {
-          text: 'Oui, confirmer',
+          text: i18n.t('proBookingDetail.confirmAlert.yes'),
           onPress: async () => {
             setActionLoading(true);
             try {
@@ -451,7 +455,10 @@ export default function ProBookingDetailScreen() {
               await loadBooking();
             } catch (err: any) {
               console.error('Error confirming booking:', err);
-              Alert.alert('Erreur', err.message || 'Impossible de confirmer le rendez-vous');
+              Alert.alert(
+                i18n.t('proBookingDetail.alerts.errorTitle'),
+                err.message || i18n.t('proBookingDetail.confirmAlert.error'),
+              );
             } finally {
               setActionLoading(false);
             }
@@ -465,12 +472,12 @@ export default function ProBookingDetailScreen() {
     if (!booking || !user?.uid) return;
 
     Alert.alert(
-      'Annuler le rendez-vous',
-      'Êtes-vous sûr de vouloir annuler ce rendez-vous ? Cette action est irréversible.',
+      i18n.t('proBookingDetail.cancelAlert.title'),
+      i18n.t('proBookingDetail.cancelAlert.message'),
       [
-        { text: 'Non', style: 'cancel' },
+        { text: i18n.t('proBookingDetail.alerts.no'), style: 'cancel' },
         {
-          text: 'Oui, annuler',
+          text: i18n.t('proBookingDetail.cancelAlert.yes'),
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
@@ -479,7 +486,10 @@ export default function ProBookingDetailScreen() {
               await loadBooking();
             } catch (err: any) {
               console.error('Error cancelling booking:', err);
-              Alert.alert('Erreur', err.message || 'Impossible d\'annuler le rendez-vous');
+              Alert.alert(
+                i18n.t('proBookingDetail.alerts.errorTitle'),
+                err.message || i18n.t('proBookingDetail.cancelAlert.error'),
+              );
             } finally {
               setActionLoading(false);
             }
@@ -493,12 +503,12 @@ export default function ProBookingDetailScreen() {
     if (!booking || !user?.uid) return;
 
     Alert.alert(
-      'Marquer comme absent',
-      'Voulez-vous marquer ce client comme absent ?',
+      i18n.t('proBookingDetail.noShowAlert.title'),
+      i18n.t('proBookingDetail.noShowAlert.message'),
       [
-        { text: 'Non', style: 'cancel' },
+        { text: i18n.t('proBookingDetail.alerts.no'), style: 'cancel' },
         {
-          text: 'Oui, marquer absent',
+          text: i18n.t('proBookingDetail.noShowAlert.yes'),
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
@@ -507,7 +517,10 @@ export default function ProBookingDetailScreen() {
               await loadBooking();
             } catch (err: any) {
               console.error('Error marking no-show:', err);
-              Alert.alert('Erreur', err.message || 'Impossible de marquer comme absent');
+              Alert.alert(
+                i18n.t('proBookingDetail.alerts.errorTitle'),
+                err.message || i18n.t('proBookingDetail.noShowAlert.error'),
+              );
             } finally {
               setActionLoading(false);
             }
@@ -628,7 +641,10 @@ export default function ProBookingDetailScreen() {
         setPendingConfirm(null);
         setShowAddService(false);
       } catch (e: any) {
-        Alert.alert("Impossible d'ajouter la prestation", e?.message || 'Veuillez réessayer.');
+        Alert.alert(
+          i18n.t('proBookingDetail.addService.errorTitle'),
+          e?.message || i18n.t('proBookingDetail.addService.errorRetry'),
+        );
       } finally {
         setAddingServiceId(null);
       }
@@ -640,14 +656,15 @@ export default function ProBookingDetailScreen() {
   const handleRemoveLastService = useCallback(() => {
     if (!booking || !user?.uid) return;
     const items = booking.items ?? [];
-    const lastName = items[items.length - 1]?.serviceName ?? 'cette prestation';
+    const lastName =
+      items[items.length - 1]?.serviceName ?? i18n.t('proBookingDetail.removeService.thisService');
     Alert.alert(
-      'Retirer la prestation',
-      `Retirer « ${lastName} » de ce rendez-vous ? La durée et le prix seront recalculés.`,
+      i18n.t('proBookingDetail.removeService.title'),
+      i18n.t('proBookingDetail.removeService.message', { name: lastName }),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: i18n.t('common.cancel'), style: 'cancel' },
         {
-          text: 'Retirer',
+          text: i18n.t('proBookingDetail.removeService.confirm'),
           style: 'destructive',
           onPress: async () => {
             setRemovingLast(true);
@@ -655,7 +672,10 @@ export default function ProBookingDetailScreen() {
               await bookingService.removeLastServiceFromBooking(booking.id, user.uid);
               await loadBooking();
             } catch (e: any) {
-              Alert.alert('Erreur', e?.message || 'Impossible de retirer la prestation.');
+              Alert.alert(
+                i18n.t('proBookingDetail.alerts.errorTitle'),
+                e?.message || i18n.t('proBookingDetail.removeService.error'),
+              );
             } finally {
               setRemovingLast(false);
             }
@@ -734,13 +754,13 @@ export default function ProBookingDetailScreen() {
             {!fits ? (
               <View style={{ backgroundColor: (colors.error || '#DC2626') + '18', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
                 <Text variant="caption" style={{ fontSize: 10, fontWeight: '600', color: colors.error || '#DC2626' }}>
-                  Pas assez de temps
+                  {t('proBookingDetail.addService.notEnoughTime')}
                 </Text>
               </View>
             ) : hasChoices ? (
               <View style={{ backgroundColor: colors.primaryLight || '#e4effa', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
                 <Text variant="caption" color="primary" style={{ fontSize: 10, fontWeight: '600' }}>
-                  Options
+                  {t('proBookingDetail.addService.optionsBadge')}
                 </Text>
               </View>
             ) : null}
@@ -875,20 +895,29 @@ export default function ProBookingDetailScreen() {
     setShowRescheduleModal(false);
 
     Alert.alert(
-      'Modifier l\'horaire',
-      `Reprogrammer au ${formatDateFr(newDatetime)} à ${formatTime(newDatetime)} ?`,
+      i18n.t('proBookingDetail.reschedule.title'),
+      i18n.t('proBookingDetail.reschedule.confirmMessage', {
+        date: formatDateLong(newDatetime),
+        time: formatTime(newDatetime),
+      }),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: i18n.t('common.cancel'), style: 'cancel' },
         {
-          text: 'Confirmer',
+          text: i18n.t('common.confirm'),
           onPress: async () => {
             setActionLoading(true);
             try {
               await bookingService.rescheduleBooking(booking.id, newDatetime, user.uid);
               await loadBooking();
-              Alert.alert('Succès', 'L\'horaire a été modifié avec succès.');
+              Alert.alert(
+                i18n.t('proBookingDetail.alerts.successTitle'),
+                i18n.t('proBookingDetail.reschedule.success'),
+              );
             } catch (err: any) {
-              Alert.alert('Erreur', err.message || 'Impossible de modifier l\'horaire');
+              Alert.alert(
+                i18n.t('proBookingDetail.alerts.errorTitle'),
+                err.message || i18n.t('proBookingDetail.reschedule.error'),
+              );
             } finally {
               setActionLoading(false);
             }
@@ -916,9 +945,15 @@ export default function ProBookingDetailScreen() {
     try {
       await bookingService.adjustBookingDuration(booking.id, durationDraft, user.uid);
       await loadBooking();
-      Alert.alert('Succès', 'La durée du rendez-vous a été mise à jour.');
+      Alert.alert(
+        i18n.t('proBookingDetail.alerts.successTitle'),
+        i18n.t('proBookingDetail.duration.updateSuccess'),
+      );
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || 'Impossible de modifier la durée');
+      Alert.alert(
+        i18n.t('proBookingDetail.alerts.errorTitle'),
+        err.message || i18n.t('proBookingDetail.duration.updateError'),
+      );
     } finally {
       setActionLoading(false);
     }
@@ -931,24 +966,35 @@ export default function ProBookingDetailScreen() {
     const delta = durationDraft - orig;
     const end = formatEndTime(booking.datetime, durationDraft);
     Alert.alert(
-      'Confirmer la durée',
-      `Vous passez ce rendez-vous de ${orig} min à ${durationDraft} min (${delta < 0 ? `−${-delta}` : `+${delta}`} min).\nNouvelle fin : ${end}.`,
+      i18n.t('proBookingDetail.duration.confirmTitle'),
+      i18n.t('proBookingDetail.duration.confirmMessage', {
+        from: orig,
+        to: durationDraft,
+        delta: delta < 0 ? `−${-delta}` : `+${delta}`,
+        end,
+      }),
       [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Confirmer', onPress: handleAdjustDurationConfirm },
+        { text: i18n.t('common.cancel'), style: 'cancel' },
+        { text: i18n.t('common.confirm'), onPress: handleAdjustDurationConfirm },
       ],
     );
   }, [booking, durationDraft, handleAdjustDurationConfirm]);
 
   const handleCallClient = useCallback((phone: string) => {
     Linking.openURL(`tel:${phone}`).catch(() => {
-      Alert.alert('Erreur', 'Impossible d\'ouvrir le téléphone');
+      Alert.alert(
+        i18n.t('proBookingDetail.alerts.errorTitle'),
+        i18n.t('proBookingDetail.contact.phoneError'),
+      );
     });
   }, []);
 
   const handleEmailClient = useCallback((email: string) => {
     Linking.openURL(`mailto:${email}`).catch(() => {
-      Alert.alert('Erreur', 'Impossible d\'ouvrir l\'application mail');
+      Alert.alert(
+        i18n.t('proBookingDetail.alerts.errorTitle'),
+        i18n.t('proBookingDetail.contact.emailError'),
+      );
     });
   }, []);
 
@@ -958,7 +1004,10 @@ export default function ProBookingDetailScreen() {
     } catch {
       // Fallback: noop
     }
-    Alert.alert('Copié', `"${text}" copié dans le presse-papier.`);
+    Alert.alert(
+      i18n.t('proBookingDetail.contact.copiedTitle'),
+      i18n.t('proBookingDetail.contact.copiedMessage', { text }),
+    );
   }, []);
 
   // ---------- Loading state ----------
@@ -993,7 +1042,7 @@ export default function ProBookingDetailScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
           <Text variant="h3" style={{ flex: 1, marginLeft: spacing.md }}>
-            Détail
+            {t('proBookingDetail.headerTitle')}
           </Text>
         </View>
         <View style={styles.errorContainer}>
@@ -1003,11 +1052,11 @@ export default function ProBookingDetailScreen() {
             color="error"
             style={{ marginTop: spacing.md, textAlign: 'center' }}
           >
-            {error || 'Rendez-vous non trouvé'}
+            {error || t('proBookingDetail.errors.notFound')}
           </Text>
           <Button
             variant="outline"
-            title="Retour"
+            title={t('common.back')}
             onPress={() => router.back()}
             style={{ marginTop: spacing.lg }}
           />
@@ -1038,26 +1087,26 @@ export default function ProBookingDetailScreen() {
     valueColor?: string;
     valueWeight?: '400' | '500' | '600' | '700';
   }[] = [
-    { icon: 'calendar-outline', label: 'Date', value: formatDateFr(booking.datetime) },
+    { icon: 'calendar-outline', label: t('proBookingDetail.details.date'), value: formatDateLong(booking.datetime) },
     {
       icon: 'time-outline',
-      label: 'Horaire',
+      label: t('proBookingDetail.details.time'),
       value: `${formatTime(booking.datetime)} - ${formatEndTime(booking.datetime, booking.duration)}`,
     },
-    { icon: 'hourglass-outline', label: 'Durée', value: `${booking.duration} min` },
+    { icon: 'hourglass-outline', label: t('proBookingDetail.details.duration'), value: `${booking.duration} min` },
   ];
 
   if (booking.locationName) {
     detailRows.push({
       icon: 'location-outline',
-      label: 'Lieu',
+      label: t('proBookingDetail.details.location'),
       value: booking.locationAddress || booking.locationName,
     });
   }
 
   detailRows.push({
     icon: 'cash-outline',
-    label: 'Prix',
+    label: t('proBookingDetail.details.price'),
     value: formatPrice(booking.price),
     valueColor: colors.primary,
     valueWeight: '700' as const,
@@ -1069,10 +1118,10 @@ export default function ProBookingDetailScreen() {
   if (booking.deposit && booking.deposit.amount > 0) {
     const status = booking.deposit.status;
     const statusLabel: Record<typeof status, string> = {
-      paid: 'payé',
-      refunded: 'remboursé',
-      failed: 'échec du paiement',
-      pending: 'en attente',
+      paid: t('proBookingDetail.deposit.status.paid'),
+      refunded: t('proBookingDetail.deposit.status.refunded'),
+      failed: t('proBookingDetail.deposit.status.failed'),
+      pending: t('proBookingDetail.deposit.status.pending'),
     };
     const statusColor: Record<typeof status, string> = {
       paid: colors.success,
@@ -1088,7 +1137,7 @@ export default function ProBookingDetailScreen() {
     };
     detailRows.push({
       icon: statusIcon[status],
-      label: 'Acompte',
+      label: t('proBookingDetail.details.deposit'),
       value: `${formatPrice(booking.deposit.amount)} · ${statusLabel[status]}`,
       valueColor: statusColor[status],
       valueWeight: '700' as const,
@@ -1099,7 +1148,7 @@ export default function ProBookingDetailScreen() {
     if (status === 'paid') {
       detailRows.push({
         icon: 'wallet-outline',
-        label: 'Reste à payer',
+        label: t('proBookingDetail.details.remainingBalance'),
         value: formatPrice(Math.max(0, booking.price - booking.deposit.amount)),
         valueColor: colors.text,
         valueWeight: '700' as const,
@@ -1110,7 +1159,7 @@ export default function ProBookingDetailScreen() {
   if ((booking as any).notes) {
     detailRows.push({
       icon: 'document-text-outline',
-      label: 'Notes',
+      label: t('proBookingDetail.details.notes'),
       value: (booking as any).notes,
     });
   }
@@ -1144,7 +1193,7 @@ export default function ProBookingDetailScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
           <Text variant="h3" style={{ flex: 1, marginLeft: spacing.md }}>
-            Détail
+            {t('proBookingDetail.headerTitle')}
           </Text>
         </View>
 
@@ -1213,7 +1262,7 @@ export default function ProBookingDetailScreen() {
               marginBottom: spacing.xs,
             }}
           >
-            {isMultiService ? 'Prestations' : 'Prestation'}
+            {t('proBookingDetail.serviceSectionTitle', { count: isMultiService ? bookingItems.length : 1 })}
           </Text>
           {isMultiService ? (
             <View>
@@ -1257,7 +1306,7 @@ export default function ProBookingDetailScreen() {
                           {item.serviceName}
                         </Text>
                         <Text variant="body" style={{ fontWeight: '700', flexShrink: 0 }}>
-                          {item.price > 0 ? formatPrice(item.price) : 'Gratuit'}
+                          {item.price > 0 ? formatPrice(item.price) : t('common.free')}
                         </Text>
                       </View>
                       <Text variant="caption" color="textMuted">{formatDuration(item.duration)}</Text>
@@ -1281,7 +1330,7 @@ export default function ProBookingDetailScreen() {
                             <Ionicons name="trash-outline" size={14} color={colors.error} />
                           )}
                           <Text variant="caption" style={{ color: colors.error, fontWeight: '600' }}>
-                            Retirer cette prestation
+                            {t('proBookingDetail.removeService.link')}
                           </Text>
                         </Pressable>
                       )}
@@ -1302,7 +1351,7 @@ export default function ProBookingDetailScreen() {
                   marginTop: spacing.xs,
                 }}
               >
-                <Text variant="body" style={{ fontWeight: '800' }}>Total</Text>
+                <Text variant="body" style={{ fontWeight: '800' }}>{t('proBookingDetail.total')}</Text>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text variant="body" style={{ fontWeight: '800' }}>{formatPrice(booking.price)}</Text>
                   <Text variant="caption" color="textMuted">{formatDuration(booking.duration)}</Text>
@@ -1383,7 +1432,7 @@ export default function ProBookingDetailScreen() {
               letterSpacing: 0.5,
             }}
           >
-            Détails du rendez-vous
+            {t('proBookingDetail.detailsSectionTitle')}
           </Text>
           <View>
             {detailRows.map((row, index) => (
@@ -1417,7 +1466,7 @@ export default function ProBookingDetailScreen() {
           >
             <View style={[styles.actionsRow, { gap: spacing.sm }]}>
               <Button
-                title="Confirmer"
+                title={t('common.confirm')}
                 variant="primary"
                 onPress={handleConfirm}
                 disabled={actionLoading}
@@ -1429,7 +1478,7 @@ export default function ProBookingDetailScreen() {
                 style={{ flex: 1 }}
               />
               <Button
-                title="Annuler"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={handleCancel}
                 disabled={actionLoading}
@@ -1444,7 +1493,7 @@ export default function ProBookingDetailScreen() {
               />
             </View>
             <Button
-              title="Modifier l'horaire"
+              title={t('proBookingDetail.actions.reschedule')}
               variant="outline"
               onPress={handleReschedule}
               disabled={actionLoading}
@@ -1454,7 +1503,7 @@ export default function ProBookingDetailScreen() {
               }
             />
             <Button
-              title="Ajuster la durée"
+              title={t('proBookingDetail.actions.adjustDuration')}
               variant="outline"
               onPress={handleOpenDuration}
               disabled={actionLoading}
@@ -1471,7 +1520,7 @@ export default function ProBookingDetailScreen() {
           booking.status === 'confirmed') && (
           <View style={[styles.actionsContainer, { paddingHorizontal: spacing.lg, marginTop: spacing.sm }]}>
             <Button
-              title="Ajouter une prestation"
+              title={t('proBookingDetail.actions.addService')}
               variant="outline"
               onPress={() => setShowAddService(true)}
               disabled={actionLoading}
@@ -1493,7 +1542,7 @@ export default function ProBookingDetailScreen() {
             ]}
           >
             <Button
-              title="Modifier l'horaire"
+              title={t('proBookingDetail.actions.reschedule')}
               variant="outline"
               onPress={handleReschedule}
               disabled={actionLoading}
@@ -1504,7 +1553,7 @@ export default function ProBookingDetailScreen() {
             />
             {!isPast && (
               <Button
-                title="Ajuster la durée"
+                title={t('proBookingDetail.actions.adjustDuration')}
                 variant="outline"
                 onPress={handleOpenDuration}
                 disabled={actionLoading}
@@ -1516,7 +1565,7 @@ export default function ProBookingDetailScreen() {
             )}
             {isPast && (
               <Button
-                title="Marquer absent"
+                title={t('proBookingDetail.actions.markNoShow')}
                 variant="outline"
                 onPress={handleMarkNoShow}
                 disabled={actionLoading}
@@ -1529,7 +1578,7 @@ export default function ProBookingDetailScreen() {
               />
             )}
             <Button
-              title="Annuler le RDV"
+              title={t('proBookingDetail.actions.cancelBooking')}
               variant="outline"
               onPress={handleCancel}
               disabled={actionLoading}
@@ -1565,11 +1614,11 @@ export default function ProBookingDetailScreen() {
           >
             <Pressable onPress={() => setShowRescheduleModal(false)}>
               <Text variant="body" color="textSecondary">
-                Fermer
+                {t('common.close')}
               </Text>
             </Pressable>
             <Text variant="body" style={{ fontWeight: '600' }}>
-              Modifier l'horaire
+              {t('proBookingDetail.reschedule.title')}
             </Text>
             <View style={{ width: 50 }} />
           </View>
@@ -1591,7 +1640,7 @@ export default function ProBookingDetailScreen() {
             showsVerticalScrollIndicator={false}
           >
             <Text variant="h3" style={{ marginBottom: spacing.md }}>
-              Horaires disponibles
+              {t('proBookingDetail.reschedule.availableSlots')}
             </Text>
 
             {loadingSlots ? (
@@ -1603,22 +1652,22 @@ export default function ProBookingDetailScreen() {
                     color="textSecondary"
                     style={{ marginTop: spacing.md }}
                   >
-                    Chargement des créneaux...
+                    {t('proBookingDetail.reschedule.loadingSlots')}
                   </Text>
                 </View>
               </Card>
             ) : rescheduleSlots.length === 0 ? (
               <EmptyState
                 icon="time-outline"
-                title="Aucun créneau disponible"
-                description="Aucun créneau n'est disponible pour cette date. Essayez une autre date."
+                title={t('proBookingDetail.reschedule.noSlotsTitle')}
+                description={t('proBookingDetail.reschedule.noSlotsDescription')}
               />
             ) : (
               <View>
                 {PERIODS_CONFIG.map((period) => (
                   <TimeSlotSection
                     key={period.key}
-                    title={period.label}
+                    title={t(period.labelKey)}
                     icon={period.icon}
                     backgroundColor={period.backgroundColor}
                     accentColor={period.accentColor}
@@ -1648,7 +1697,7 @@ export default function ProBookingDetailScreen() {
               ]}
             >
               <Button
-                title={`Confirmer — ${selectedRescheduleSlot.start}`}
+                title={t('proBookingDetail.reschedule.confirmWithTime', { time: selectedRescheduleSlot.start })}
                 variant="primary"
                 size="lg"
                 onPress={handleRescheduleConfirm}
@@ -1681,9 +1730,9 @@ export default function ProBookingDetailScreen() {
             onPress={() => Keyboard.dismiss()}
             style={{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg }}
           >
-            <Text variant="h3" align="center">Ajuster la durée</Text>
+            <Text variant="h3" align="center">{t('proBookingDetail.actions.adjustDuration')}</Text>
             <Text variant="caption" color="textSecondary" align="center" style={{ marginTop: 4 }}>
-              Modifie uniquement ce rendez-vous, pas la prestation.
+              {t('proBookingDetail.duration.subtitle')}
             </Text>
 
             {/* Direct editor: − / editable value / + */}
@@ -1755,28 +1804,32 @@ export default function ProBookingDetailScreen() {
                 }}
               >
                 {durationDraft === booking.duration
-                  ? `Durée inchangée (${booking.duration} min)`
-                  : `${booking.duration} min → ${durationDraft} min  ·  ${
-                      durationDraft < booking.duration
-                        ? `−${booking.duration - durationDraft}`
-                        : `+${durationDraft - booking.duration}`
-                    } min  ·  fin ${formatEndTime(booking.datetime, durationDraft)}`}
+                  ? t('proBookingDetail.duration.unchanged', { duration: booking.duration })
+                  : t('proBookingDetail.duration.recap', {
+                      from: booking.duration,
+                      to: durationDraft,
+                      delta:
+                        durationDraft < booking.duration
+                          ? `−${booking.duration - durationDraft}`
+                          : `+${durationDraft - booking.duration}`,
+                      end: formatEndTime(booking.datetime, durationDraft),
+                    })}
               </Text>
             </View>
 
             <Text variant="caption" color="textMuted" align="center" style={{ marginTop: spacing.md, lineHeight: 18 }}>
-              Raccourcir libère du temps pour un autre rendez-vous. Rallonger est refusé si ça chevauche le rendez-vous suivant.
+              {t('proBookingDetail.duration.hint')}
             </Text>
 
             <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
               <Button
-                title="Enregistrer"
+                title={t('common.save')}
                 onPress={handleSaveDuration}
                 disabled={actionLoading || durationDraft === booking.duration || durationDraft < 5}
                 fullWidth
               />
               <Pressable onPress={() => setShowDurationModal(false)} style={{ paddingVertical: 10 }}>
-                <Text variant="body" color="textSecondary" align="center">Annuler</Text>
+                <Text variant="body" color="textSecondary" align="center">{t('common.cancel')}</Text>
               </Pressable>
             </View>
 
@@ -1820,7 +1873,7 @@ export default function ProBookingDetailScreen() {
                   style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
                 >
                   <Ionicons name="chevron-back" size={22} color={colors.text} />
-                  <Text variant="h3">Confirmer l&apos;ajout</Text>
+                  <Text variant="h3">{t('proBookingDetail.addService.confirmTitle')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => {
@@ -1853,7 +1906,7 @@ export default function ProBookingDetailScreen() {
                             <Ionicons name="add" size={15} color="#FFFFFF" />
                           </View>
                           <Text variant="caption" color="primary" style={{ fontWeight: '800', letterSpacing: 0.5 }}>
-                            PRESTATION AJOUTÉE
+                            {t('proBookingDetail.addService.addedBadge')}
                           </Text>
                         </View>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm, marginTop: 2 }}>
@@ -1885,7 +1938,7 @@ export default function ProBookingDetailScreen() {
                       {/* Booking recap card */}
                       <Card padding="lg" shadow="sm">
                         <Text variant="bodySmall" style={{ fontWeight: '700', marginBottom: spacing.sm, color: colors.text }}>
-                          Récapitulatif du rendez-vous
+                          {t('proBookingDetail.addService.recapTitle')}
                         </Text>
                         {existing.map((it, idx) => (
                           <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 }}>
@@ -1906,7 +1959,7 @@ export default function ProBookingDetailScreen() {
                         <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.sm }} />
 
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text variant="body" style={{ fontWeight: '800' }}>Nouveau total</Text>
+                          <Text variant="body" style={{ fontWeight: '800' }}>{t('proBookingDetail.addService.newTotal')}</Text>
                           <Text variant="h2" color="primary" style={{ fontWeight: '800' }}>{formatPrice(newTotalPrice)}</Text>
                         </View>
 
@@ -1914,7 +1967,7 @@ export default function ProBookingDetailScreen() {
                           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md, borderRadius: 12, backgroundColor: colors.surfaceSecondary }}>
                             <Ionicons name="time-outline" size={16} color={colors.primary} />
                             <View style={{ flex: 1 }}>
-                              <Text variant="caption" color="textMuted">Horaire</Text>
+                              <Text variant="caption" color="textMuted">{t('proBookingDetail.details.time')}</Text>
                               <Text variant="bodySmall" style={{ fontWeight: '700' }} numberOfLines={1}>
                                 {formatTime(booking.datetime)} – {formatEndTime(booking.datetime, newTotalDuration)}
                               </Text>
@@ -1923,7 +1976,7 @@ export default function ProBookingDetailScreen() {
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md, borderRadius: 12, backgroundColor: colors.surfaceSecondary }}>
                             <Ionicons name="hourglass-outline" size={16} color={colors.primary} />
                             <View>
-                              <Text variant="caption" color="textMuted">Durée</Text>
+                              <Text variant="caption" color="textMuted">{t('proBookingDetail.details.duration')}</Text>
                               <Text variant="bodySmall" style={{ fontWeight: '700' }}>{formatDuration(newTotalDuration)}</Text>
                             </View>
                           </View>
@@ -1933,7 +1986,7 @@ export default function ProBookingDetailScreen() {
 
                     <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.divider }}>
                       <Button
-                        title="Confirmer l'ajout"
+                        title={t('proBookingDetail.addService.confirmTitle')}
                         variant="primary"
                         fullWidth
                         onPress={() => submitAddService(pendingConfirm.service.id, pendingConfirm.selections)}
@@ -1972,7 +2025,7 @@ export default function ProBookingDetailScreen() {
               </View>
               <ServiceChoicesPreview
                 mode="picker"
-                confirmLabel="Continuer"
+                confirmLabel={t('proBookingDetail.addService.continueLabel')}
                 confirmLoading={false}
                 onConfirm={(sel) => {
                   setPendingConfirm({ service: pendingChoiceService, selections: sel });
@@ -1993,14 +2046,14 @@ export default function ProBookingDetailScreen() {
             // ── Service list grouped by category ──
             <>
               <View style={[rescheduleStyles.header, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
-                <Text variant="h3">Ajouter une prestation</Text>
+                <Text variant="h3">{t('proBookingDetail.actions.addService')}</Text>
                 <Pressable onPress={() => setShowAddService(false)} hitSlop={8}>
                   <Ionicons name="close" size={24} color={colors.text} />
                 </Pressable>
               </View>
               <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xl }}>
                 <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: spacing.xs }}>
-                  Elle sera ajoutée à la suite de ce rendez-vous (même client). Le créneau juste après doit être libre.
+                  {t('proBookingDetail.addService.description')}
                 </Text>
                 {addServiceList.length === 0 ? (
                   <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
@@ -2025,7 +2078,7 @@ export default function ProBookingDetailScreen() {
                         ))}
                         {uncategorized.length > 0 && (
                           <View style={{ gap: spacing.sm }}>
-                            {grouped.length > 0 && renderAddServiceBand('Autres prestations', uncategorized.length)}
+                            {grouped.length > 0 && renderAddServiceBand(t('proBookingDetail.addService.otherServices'), uncategorized.length)}
                             {uncategorized.map(renderAddServiceRow)}
                           </View>
                         )}

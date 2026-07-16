@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Card, Input, useToast } from '../../components';
 import { Switch as RNSwitch, TextInput } from 'react-native';
@@ -28,38 +30,49 @@ import { useNewFeatures } from '../../hooks/useNewFeatures';
 // Options (mirrors web ReservationSettingsForm)
 // ---------------------------------------------------------------------------
 
-const MIN_BOOKING_NOTICE_OPTIONS = [
-  { value: 0, label: 'Pas de délai minimum' },
-  { value: 1, label: '1 heure' },
-  { value: 2, label: '2 heures' },
-  { value: 4, label: '4 heures' },
-  { value: 6, label: '6 heures' },
-  { value: 12, label: '12 heures' },
-  { value: 24, label: '24 heures (1 jour)' },
-  { value: 48, label: '48 heures (2 jours)' },
-  { value: 72, label: '72 heures (3 jours)' },
-  { value: 168, label: '168 heures (7 jours)' },
+interface OptionSpec {
+  value: number;
+  labelKey: string;
+  labelParams?: Record<string, number>;
+}
+
+const MIN_BOOKING_NOTICE_OPTIONS: OptionSpec[] = [
+  { value: 0, labelKey: 'proBookingSettings.options.noMinNotice' },
+  { value: 1, labelKey: 'proBookingSettings.options.hours', labelParams: { count: 1 } },
+  { value: 2, labelKey: 'proBookingSettings.options.hours', labelParams: { count: 2 } },
+  { value: 4, labelKey: 'proBookingSettings.options.hours', labelParams: { count: 4 } },
+  { value: 6, labelKey: 'proBookingSettings.options.hours', labelParams: { count: 6 } },
+  { value: 12, labelKey: 'proBookingSettings.options.hours', labelParams: { count: 12 } },
+  { value: 24, labelKey: 'proBookingSettings.options.hoursWithDays', labelParams: { hours: 24, count: 1 } },
+  { value: 48, labelKey: 'proBookingSettings.options.hoursWithDays', labelParams: { hours: 48, count: 2 } },
+  { value: 72, labelKey: 'proBookingSettings.options.hoursWithDays', labelParams: { hours: 72, count: 3 } },
+  { value: 168, labelKey: 'proBookingSettings.options.hoursWithDays', labelParams: { hours: 168, count: 7 } },
 ];
 
-const MAX_BOOKING_ADVANCE_OPTIONS = [
-  { value: 7, label: '7 jours' },
-  { value: 14, label: '14 jours' },
-  { value: 30, label: '30 jours (1 mois)' },
-  { value: 60, label: '60 jours (2 mois)' },
-  { value: 90, label: '90 jours (3 mois)' },
-  { value: 180, label: '180 jours (6 mois)' },
-  { value: 365, label: '365 jours (1 an)' },
+const MAX_BOOKING_ADVANCE_OPTIONS: OptionSpec[] = [
+  { value: 7, labelKey: 'proBookingSettings.options.days', labelParams: { count: 7 } },
+  { value: 14, labelKey: 'proBookingSettings.options.days', labelParams: { count: 14 } },
+  { value: 30, labelKey: 'proBookingSettings.options.daysWithMonths', labelParams: { days: 30, count: 1 } },
+  { value: 60, labelKey: 'proBookingSettings.options.daysWithMonths', labelParams: { days: 60, count: 2 } },
+  { value: 90, labelKey: 'proBookingSettings.options.daysWithMonths', labelParams: { days: 90, count: 3 } },
+  { value: 180, labelKey: 'proBookingSettings.options.daysWithMonths', labelParams: { days: 180, count: 6 } },
+  { value: 365, labelKey: 'proBookingSettings.options.daysWithYears', labelParams: { days: 365, count: 1 } },
 ];
 
-const SLOT_INTERVAL_OPTIONS = [
-  { value: 5, label: '5 minutes' },
-  { value: 10, label: '10 minutes' },
-  { value: 15, label: '15 minutes' },
-  { value: 20, label: '20 minutes' },
-  { value: 30, label: '30 minutes' },
-  { value: 45, label: '45 minutes' },
-  { value: 60, label: '1 heure' },
+const SLOT_INTERVAL_OPTIONS: OptionSpec[] = [
+  { value: 5, labelKey: 'proBookingSettings.options.minutes', labelParams: { count: 5 } },
+  { value: 10, labelKey: 'proBookingSettings.options.minutes', labelParams: { count: 10 } },
+  { value: 15, labelKey: 'proBookingSettings.options.minutes', labelParams: { count: 15 } },
+  { value: 20, labelKey: 'proBookingSettings.options.minutes', labelParams: { count: 20 } },
+  { value: 30, labelKey: 'proBookingSettings.options.minutes', labelParams: { count: 30 } },
+  { value: 45, labelKey: 'proBookingSettings.options.minutes', labelParams: { count: 45 } },
+  { value: 60, labelKey: 'proBookingSettings.options.hours', labelParams: { count: 1 } },
 ];
+
+/** Resolve an option's display label in the current language. */
+function optionLabel(option: OptionSpec): string {
+  return i18n.t(option.labelKey, option.labelParams);
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,27 +89,27 @@ interface SettingsData {
 type PickerField = 'minBookingNotice' | 'maxBookingAdvance' | 'slotInterval';
 
 const PICKER_CONFIG: Record<PickerField, {
-  title: string;
+  titleKey: string;
   icon: string;
-  description: string;
-  options: { value: number; label: string }[];
+  descriptionKey: string;
+  options: OptionSpec[];
 }> = {
   minBookingNotice: {
-    title: 'Délai minimum de réservation',
+    titleKey: 'proBookingSettings.minNotice.title',
     icon: 'time-outline',
-    description: 'Combien de temps à l\'avance un client doit réserver',
+    descriptionKey: 'proBookingSettings.minNotice.description',
     options: MIN_BOOKING_NOTICE_OPTIONS,
   },
   maxBookingAdvance: {
-    title: 'Délai maximum de réservation',
+    titleKey: 'proBookingSettings.maxAdvance.title',
     icon: 'calendar-outline',
-    description: 'Jusqu\'à combien de temps à l\'avance un client peut réserver',
+    descriptionKey: 'proBookingSettings.maxAdvance.description',
     options: MAX_BOOKING_ADVANCE_OPTIONS,
   },
   slotInterval: {
-    title: 'Intervalle entre les créneaux',
+    titleKey: 'proBookingSettings.slotInterval.title',
     icon: 'timer-outline',
-    description: 'Fréquence des créneaux proposés aux clients (ex : toutes les 15 min)',
+    descriptionKey: 'proBookingSettings.slotInterval.description',
     options: SLOT_INTERVAL_OPTIONS,
   },
 };
@@ -107,6 +120,7 @@ const PICKER_CONFIG: Record<PickerField, {
 
 export default function BookingSettingsScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
@@ -178,9 +192,9 @@ export default function BookingSettingsScreen() {
       });
       await refreshProvider();
       setOriginalSettings({ ...settings });
-      showToast({ variant: 'success', message: 'Paramètres mis à jour' });
+      showToast({ variant: 'success', message: i18n.t('proBookingSettings.toast.saved') });
     } catch (err: any) {
-      showToast({ variant: 'error', message: err.message || 'Erreur lors de l\'enregistrement' });
+      showToast({ variant: 'error', message: err.message || i18n.t('proBookingSettings.toast.saveError') });
     } finally {
       setSaving(false);
     }
@@ -188,7 +202,7 @@ export default function BookingSettingsScreen() {
 
   const getLabel = (field: PickerField, value: number): string => {
     const option = PICKER_CONFIG[field].options.find((o) => o.value === value);
-    return option?.label || String(value);
+    return option ? optionLabel(option) : String(value);
   };
 
   const settingsFields: PickerField[] = ['minBookingNotice', 'maxBookingAdvance', 'slotInterval'];
@@ -202,7 +216,7 @@ export default function BookingSettingsScreen() {
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </Pressable>
           <Text variant="h3" style={{ color: '#FFFFFF', flex: 1, marginLeft: spacing.sm }}>
-            Paramètres de réservation
+            {t('proBookingSettings.title')}
           </Text>
           {isDirty && (
             <Pressable
@@ -214,7 +228,7 @@ export default function BookingSettingsScreen() {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-                  Enregistrer
+                  {t('common.save')}
                 </Text>
               )}
             </Pressable>
@@ -244,10 +258,10 @@ export default function BookingSettingsScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text variant="body" style={{ fontWeight: '500' }}>
-                      {config.title}
+                      {t(config.titleKey)}
                     </Text>
                     <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                      {config.description}
+                      {t(config.descriptionKey)}
                     </Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -268,13 +282,13 @@ export default function BookingSettingsScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
             <Ionicons name="alert-circle-outline" size={18} color={colors.primary} />
             <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-              Avertissement avant réservation
+              {t('proBookingSettings.notice.title')}
             </Text>
           </View>
           <TextInput
             value={settings.bookingNotice}
             onChangeText={(t: string) => { if (t.length <= 1000) setSettings((p) => ({ ...p, bookingNotice: t })); }}
-            placeholder="Ex: Merci d'arriver 5 minutes avant votre rendez-vous."
+            placeholder={t('proBookingSettings.notice.placeholder')}
             multiline
             numberOfLines={3}
             style={{
@@ -293,7 +307,7 @@ export default function BookingSettingsScreen() {
             {settings.bookingNotice.length}/1000
           </Text>
           <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
-            Ce message sera affiché aux clients avant la confirmation de leur réservation.
+            {t('proBookingSettings.notice.hint')}
           </Text>
         </Card>
 
@@ -305,7 +319,7 @@ export default function BookingSettingsScreen() {
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                    Relance automatique des avis
+                    {t('proBookingSettings.autoReview.title')}
                   </Text>
                   {showAutoReviewNew && (
                     <View
@@ -325,13 +339,13 @@ export default function BookingSettingsScreen() {
                           letterSpacing: 0.4,
                         }}
                       >
-                        Nouveau
+                        {t('proBookingSettings.autoReview.newBadge')}
                       </Text>
                     </View>
                   )}
                 </View>
                 <Text variant="caption" color="textMuted">
-                  Email envoyé 1h après le RDV pour demander un avis. Ne fonctionne que pour les RDV confirmés.
+                  {t('proBookingSettings.autoReview.description')}
                 </Text>
               </View>
             </View>
@@ -363,11 +377,10 @@ export default function BookingSettingsScreen() {
           <Ionicons name="information-circle-outline" size={18} color="#3B82F6" />
           <View style={{ flex: 1, gap: 4 }}>
             <Text variant="caption" style={{ color: '#1D4ED8', fontWeight: '600' }}>
-              À propos de ces paramètres
+              {t('proBookingSettings.about.title')}
             </Text>
             <Text variant="caption" style={{ color: '#2563EB' }}>
-              Ces règles s'appliquent à toutes les nouvelles réservations.
-              Les réservations existantes ne sont pas affectées par ces changements.
+              {t('proBookingSettings.about.description')}
             </Text>
           </View>
         </View>
@@ -376,7 +389,7 @@ export default function BookingSettingsScreen() {
         {isDirty && (
           <View style={{ marginTop: spacing.lg }}>
             <Button
-              title="Enregistrer les modifications"
+              title={t('proBookingSettings.saveChanges')}
               onPress={handleSave}
               loading={saving}
               disabled={saving}
@@ -402,7 +415,7 @@ export default function BookingSettingsScreen() {
               <View style={[styles.handleBar, { backgroundColor: colors.border }]} />
             </View>
             <Text variant="h3" align="center" style={{ marginBottom: spacing.md }}>
-              {activePicker ? PICKER_CONFIG[activePicker].title : ''}
+              {activePicker ? t(PICKER_CONFIG[activePicker].titleKey) : ''}
             </Text>
             <ScrollView style={{ maxHeight: 350 }}>
               {activePicker && PICKER_CONFIG[activePicker].options.map((option) => {
@@ -431,7 +444,7 @@ export default function BookingSettingsScreen() {
                         fontWeight: isSelected ? '600' : '400',
                       }}
                     >
-                      {option.label}
+                      {optionLabel(option)}
                     </Text>
                     {isSelected && <Ionicons name="checkmark" size={20} color="#FFFFFF" />}
                   </Pressable>

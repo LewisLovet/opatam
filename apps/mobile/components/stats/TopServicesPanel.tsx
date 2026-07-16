@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text } from '../../components';
 import { useTheme } from '../../theme';
@@ -18,19 +19,20 @@ export function TopServicesPanel({
 }: {
   data: ProviderStatsServiceBreakdown[];
 }) {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const max = Math.max(...data.map((s) => s.revenue), 1);
   return (
     <Card padding="lg" shadow="sm" style={{ marginBottom: spacing.xl }}>
       <View style={{ marginBottom: spacing.md }}>
-        <Text variant="h3">Top prestations</Text>
+        <Text variant="h3">{t('proStats.topServices.title')}</Text>
         <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
-          Triées par CA sur la période
+          {t('proStats.topServices.subtitle')}
         </Text>
       </View>
       {data.length === 0 ? (
         <Text variant="caption" color="textMuted">
-          Aucune prestation sur la période.
+          {t('proStats.topServices.empty')}
         </Text>
       ) : (
         data.slice(0, 5).map((s, i) => (
@@ -47,7 +49,7 @@ export function TopServicesPanel({
                 {s.serviceName}
               </Text>
               <Text variant="caption" color="textMuted" style={{ fontSize: 11 }}>
-                {s.confirmedCount} RDV
+                {t('proStats.bookingsCount', { count: s.confirmedCount })}
               </Text>
               <Text variant="body" style={{ fontWeight: '700', minWidth: 64, textAlign: 'right' }}>
                 {formatPrice(s.revenue)}

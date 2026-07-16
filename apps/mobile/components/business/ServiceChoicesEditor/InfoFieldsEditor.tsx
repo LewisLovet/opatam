@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { View, Pressable } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { type ServiceInfoField, newInfoField, moveItem } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
@@ -20,14 +21,18 @@ export interface InfoFieldsEditorProps {
   onChange: (next: ServiceInfoField[]) => void;
 }
 
-const TYPE_OPTIONS: { type: ServiceInfoField['type']; label: string }[] = [
-  { type: 'text', label: 'Texte libre' },
-  { type: 'boolean', label: 'Oui/Non' },
-  { type: 'select', label: 'Liste de choix' },
+// Labels are i18n keys, resolved at render time (the displayed label is
+// translated; stored data values like 'Oui'/'Non' are a data contract and
+// never change).
+const TYPE_OPTIONS: { type: ServiceInfoField['type']; labelKey: string }[] = [
+  { type: 'text', labelKey: 'proServices.editor.typeText' },
+  { type: 'boolean', labelKey: 'proServices.editor.typeBoolean' },
+  { type: 'select', labelKey: 'proServices.editor.typeSelect' },
 ];
 
 export function InfoFieldsEditor({ fields, onChange }: InfoFieldsEditorProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   const updateField = (fi: number, patch: Partial<ServiceInfoField>) => {
     onChange(fields.map((f, i) => (i === fi ? { ...f, ...patch } : f)));
@@ -78,8 +83,8 @@ export function InfoFieldsEditor({ fields, onChange }: InfoFieldsEditorProps) {
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
             <View style={{ flex: 1 }}>
               <Input
-                label="Question"
-                placeholder="Question (ex : Allergies ?)"
+                label={t('proServices.editor.questionLabel')}
+                placeholder={t('proServices.editor.questionPlaceholder')}
                 value={field.name}
                 onChangeText={(t) => updateField(fi, { name: t })}
                 autoCapitalize="sentences"
@@ -123,7 +128,7 @@ export function InfoFieldsEditor({ fields, onChange }: InfoFieldsEditorProps) {
                       color: active ? colors.primary : colors.textSecondary,
                     }}
                   >
-                    {opt.label}
+                    {t(opt.labelKey)}
                   </Text>
                 </Pressable>
               );
@@ -140,7 +145,7 @@ export function InfoFieldsEditor({ fields, onChange }: InfoFieldsEditorProps) {
                 >
                   <View style={{ flex: 1 }}>
                     <Input
-                      placeholder="Choix"
+                      placeholder={t('proServices.editor.valuePlaceholder')}
                       value={value}
                       onChangeText={(t) => updateValue(fi, vi, t)}
                       autoCapitalize="sentences"
@@ -161,14 +166,14 @@ export function InfoFieldsEditor({ fields, onChange }: InfoFieldsEditorProps) {
               >
                 <Ionicons name="add" size={18} color={colors.primary} />
                 <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
-                  Ajouter un choix
+                  {t('proServices.editor.addChoice')}
                 </Text>
               </Pressable>
             </View>
           )}
 
           <Switch
-            label="Obligatoire"
+            label={t('proServices.editor.requiredLabel')}
             value={field.required}
             onValueChange={(v) => updateField(fi, { required: v })}
           />
@@ -191,7 +196,7 @@ export function InfoFieldsEditor({ fields, onChange }: InfoFieldsEditorProps) {
       >
         <Ionicons name="add" size={18} color={colors.textSecondary} />
         <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.textSecondary }}>
-          Ajouter une info
+          {t('proServices.editor.addInfoField')}
         </Text>
       </Pressable>
     </View>

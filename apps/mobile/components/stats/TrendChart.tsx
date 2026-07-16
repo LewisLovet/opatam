@@ -18,6 +18,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   GestureResponderEvent,
   LayoutChangeEvent,
@@ -75,6 +76,7 @@ export function TrendChart({
   formatYAxis,
   formatTooltipValue,
 }: Props) {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const [width, setWidth] = React.useState(0);
   const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
@@ -196,7 +198,7 @@ export function TrendChart({
         {!hasData ? (
           <View style={s.empty}>
             <Text variant="caption" color="textMuted">
-              Aucune donnée sur la période sélectionnée
+              {t('proStats.chart.empty')}
             </Text>
           </View>
         ) : width > 0 ? (
@@ -323,8 +325,8 @@ export function TrendChart({
           style={{ marginTop: spacing.xs, fontSize: 10 }}
         >
           {activeIndex === null
-            ? 'Touchez le graphique pour voir la valeur d’une journée'
-            : 'Glissez pour parcourir les autres jours'}
+            ? t('proStats.chart.tapHint')
+            : t('proStats.chart.dragHint')}
         </Text>
       )}
       {/* Suppress unused-var lint */}

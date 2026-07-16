@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Modal, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { computeServiceTotal, emptyServiceSelections } from '@booking-app/shared';
 import type { Service, ServiceSelections } from '@booking-app/shared';
@@ -37,6 +38,7 @@ export function ServicePickerModal({
   onApply,
 }: ServicePickerModalProps) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const [detail, setDetail] = useState<WithId<Service> | null>(null);
   const [selections, setSelections] = useState<ServiceSelections>(emptyServiceSelections());
   // Category accordion — collapsed by default to save space + speed up search.
@@ -108,8 +110,8 @@ export function ServicePickerModal({
           id: catId,
           name:
             catId === '__none__'
-              ? 'Autres'
-              : categories.find((c) => c.id === catId)?.name ?? 'Autres',
+              ? t('components.servicePickerModal.otherCategory')
+              : categories.find((c) => c.id === catId)?.name ?? t('components.servicePickerModal.otherCategory'),
           services: [],
         });
         order.push(catId);
@@ -162,7 +164,7 @@ export function ServicePickerModal({
               >
                 <Ionicons name="chevron-back" size={20} color={colors.primary} />
                 <Text variant="body" color="primary">
-                  Retour
+                  {t('common.back')}
                 </Text>
               </Pressable>
               <Text variant="h3" style={{ marginBottom: spacing.sm }}>
@@ -187,7 +189,7 @@ export function ServicePickerModal({
                             {o.name}
                           </Text>
                           <Text variant="caption" color="textSecondary">
-                            {o.duration} min
+                            {t('components.servicePickerModal.minutes', { count: o.duration })}
                           </Text>
                         </Pressable>
                       );
@@ -200,7 +202,7 @@ export function ServicePickerModal({
                     color="textSecondary"
                     style={{ marginTop: spacing.sm, marginBottom: spacing.xs }}
                   >
-                    Options
+                    {t('components.servicePickerModal.options')}
                   </Text>
                 )}
                 {(detail.options ?? []).map((opt) => {
@@ -216,7 +218,7 @@ export function ServicePickerModal({
                         {opt.name}
                       </Text>
                       <Text variant="caption" color="textSecondary">
-                        +{opt.duration} min
+                        {t('components.servicePickerModal.minutesAdd', { count: opt.duration })}
                       </Text>
                     </Pressable>
                   );
@@ -233,19 +235,19 @@ export function ServicePickerModal({
                 }}
               >
                 <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-                  Appliquer
+                  {t('components.servicePickerModal.apply')}
                 </Text>
               </Pressable>
             </>
           ) : (
             <>
               <Text variant="h3" style={{ marginBottom: spacing.md }}>
-                Choisir une prestation
+                {t('components.servicePickerModal.title')}
               </Text>
               <ScrollView style={{ maxHeight: 480 }} showsVerticalScrollIndicator={false}>
                 {/* Vue générale — carte mise en avant */}
                 <Pressable
-                  onPress={() => onApply(null, undefined, 'Vue générale')}
+                  onPress={() => onApply(null, undefined, t('components.servicePickerModal.overview'))}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -272,10 +274,10 @@ export function ServicePickerModal({
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text variant="body" style={{ fontWeight: '600' }}>
-                      Vue générale
+                      {t('components.servicePickerModal.overview')}
                     </Text>
                     <Text variant="caption" color="textSecondary">
-                      Occupation, toutes prestations confondues
+                      {t('components.servicePickerModal.overviewSubtitle')}
                     </Text>
                   </View>
                   {currentServiceId === null && (
@@ -288,7 +290,7 @@ export function ServicePickerModal({
                   const isOpen = expanded.has(group.id);
                   const headerName =
                     group.id === '__none__' && grouped.length === 1
-                      ? 'Toutes les prestations'
+                      ? t('components.servicePickerModal.allServices')
                       : group.name;
                   // Does this collapsed category hold the current selection?
                   const holdsSelection =
@@ -368,7 +370,7 @@ export function ServicePickerModal({
                                 </Text>
                                 {hasChoices(svc) && (
                                   <Text variant="caption" color="textSecondary">
-                                    Variations / options
+                                    {t('components.servicePickerModal.hasChoices')}
                                   </Text>
                                 )}
                               </View>

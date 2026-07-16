@@ -17,6 +17,7 @@ import {
   Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
@@ -105,17 +106,13 @@ async function fetchPlaceDetails(placeId: string): Promise<{
   };
 }
 
-const COUNTRY_OPTIONS = [
-  { code: 'FR', label: '🇫🇷 France' },
-  { code: 'BE', label: '🇧🇪 Belgique' },
-  { code: 'LU', label: '🇱🇺 Luxembourg' },
-  { code: 'CH', label: '🇨🇭 Suisse' },
-  { code: 'DE', label: '🇩🇪 Allemagne' },
-  { code: 'ES', label: '🇪🇸 Espagne' },
-  { code: 'IT', label: '🇮🇹 Italie' },
-  { code: 'NL', label: '🇳🇱 Pays-Bas' },
-  { code: 'PT', label: '🇵🇹 Portugal' },
-];
+// Libellés localisés via proLocations.countries.<code>
+const COUNTRY_CODES = ['FR', 'BE', 'LU', 'CH', 'DE', 'ES', 'IT', 'NL', 'PT'] as const;
+
+// Suggestions de noms de lieu — libellés localisés via proLocations.namePresets.<key>
+const LOCATION_NAME_PRESET_KEYS = [
+  'salon', 'office', 'studio', 'workshop', 'atHome', 'desk', 'online', 'phone', 'video',
+] as const;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -159,10 +156,14 @@ const DEFAULT_FORM: LocationFormData = {
 
 export default function LocationsScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
   const { providerId } = useProvider();
+
+  // Libellés localisés des suggestions de noms (le nom choisi reste du contenu du pro)
+  const namePresets = LOCATION_NAME_PRESET_KEYS.map((k) => t(`proLocations.namePresets.${k}`));
 
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
   const [members, setMembers] = useState<WithId<Member>[]>([]);
@@ -217,7 +218,7 @@ export default function LocationsScreen() {
       setLocations(locs);
       setMembers(mems);
     } catch (err) {
-      showToast({ variant: 'error', message: 'Erreur lors du chargement' });
+      showToast({ variant: 'error', message: t('proLocations.loadError') });
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -341,9 +342,9 @@ export default function LocationsScreen() {
   // Save
   const handleSave = async () => {
     if (!providerId) return;
-    if (!form.name.trim()) { showToast({ variant: 'error', message: 'Le nom est requis' }); return; }
-    if (!form.city.trim()) { showToast({ variant: 'error', message: 'La ville est requise' }); return; }
-    if (!form.cityOnly && !form.postalCode.trim()) { showToast({ variant: 'error', message: 'Le code postal est requis' }); return; }
+    if (!form.name.trim()) { showToast({ variant: 'error', message: t('proLocations.form.nameRequired') }); return; }
+    if (!form.city.trim()) { showToast({ variant: 'error', message: t('proLocations.form.cityRequired') }); return; }
+    if (!form.cityOnly && !form.postalCode.trim()) { showToast({ variant: 'error', message: t('proLocations.form.postalCodeRequired') }); return; }
 
     setIsSaving(true);
     try {
@@ -367,15 +368,15 @@ export default function LocationsScreen() {
 
       if (editingId) {
         await locationService.updateLocation(providerId, editingId, payload);
-        showToast({ variant: 'success', message: 'Lieu modifié' });
+        showToast({ variant: 'success', message: t('proLocations.form.updated') });
       } else {
         await locationService.createLocation(providerId, payload);
-        showToast({ variant: 'success', message: 'Lieu créé' });
+        showToast({ variant: 'success', message: t('proLocations.form.created') });
       }
       setShowModal(false);
       loadData();
     } catch (err: any) {
-      showToast({ variant: 'error', message: err?.message || 'Erreur' });
+      showToast({ variant: 'error', message: err?.message || t('common.error') });
     } finally {
       setIsSaving(false);
     }
@@ -384,22 +385,22 @@ export default function LocationsScreen() {
   // Delete
   const handleDelete = (loc: WithId<Location>) => {
     if (loc.isDefault) {
-      showToast({ variant: 'error', message: 'Impossible de supprimer le lieu principal' });
+      showToast({ variant: 'error', message: t('proLocations.delete.cannotDeleteDefault') });
       return;
     }
-    Alert.alert('Supprimer le lieu', `Supprimer "${loc.name}" ?`, [
-      { text: 'Annuler', style: 'cancel' },
+    Alert.alert(t('proLocations.delete.title'), t('proLocations.delete.message', { name: loc.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Supprimer',
+        text: t('proLocations.delete.confirm'),
         style: 'destructive',
         onPress: async () => {
           if (!providerId) return;
           try {
             await locationService.deleteLocation(providerId, loc.id);
-            showToast({ variant: 'success', message: 'Lieu supprimé' });
+            showToast({ variant: 'success', message: t('proLocations.delete.deleted') });
             loadData();
           } catch (err: any) {
-            showToast({ variant: 'error', message: err?.message || 'Erreur' });
+            showToast({ variant: 'error', message: err?.message || t('common.error') });
           }
         },
       },
@@ -411,10 +412,10 @@ export default function LocationsScreen() {
     if (!providerId || loc.isDefault) return;
     try {
       await locationService.setDefault(providerId, loc.id);
-      showToast({ variant: 'success', message: `${loc.name} est maintenant le lieu principal` });
+      showToast({ variant: 'success', message: t('proLocations.setDefaultSuccess', { name: loc.name }) });
       loadData();
     } catch (err: any) {
-      showToast({ variant: 'error', message: err?.message || 'Erreur' });
+      showToast({ variant: 'error', message: err?.message || t('common.error') });
     }
   };
 
@@ -459,12 +460,12 @@ export default function LocationsScreen() {
       }
       if (changes.length > 0) {
         await Promise.all(changes);
-        showToast({ variant: 'success', message: 'Membres mis à jour' });
+        showToast({ variant: 'success', message: t('proLocations.assign.updated') });
         loadData();
       }
       setAssignLocationId(null);
     } catch (err: any) {
-      showToast({ variant: 'error', message: err?.message || 'Erreur' });
+      showToast({ variant: 'error', message: err?.message || t('common.error') });
     } finally {
       setIsSavingAssign(false);
     }
@@ -486,7 +487,7 @@ export default function LocationsScreen() {
           <Pressable onPress={() => router.back()} hitSlop={12} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>Lieux</Text>
+          <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>{t('proLocations.title')}</Text>
           <Pressable onPress={openCreate} style={({ pressed }) => [styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
             <Ionicons name="add" size={22} color="#FFFFFF" />
           </Pressable>
@@ -503,11 +504,11 @@ export default function LocationsScreen() {
             <View style={[styles.emptyIcon, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="location-outline" size={32} color={colors.primary} />
             </View>
-            <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>Aucun lieu</Text>
+            <Text variant="h3" align="center" style={{ marginTop: spacing.md }}>{t('proLocations.empty.title')}</Text>
             <Text variant="body" color="textSecondary" align="center" style={{ marginTop: spacing.xs }}>
-              Ajoutez un lieu pour accueillir vos clients.
+              {t('proLocations.empty.description')}
             </Text>
-            <Button variant="primary" title="Ajouter un lieu" onPress={openCreate} style={{ marginTop: spacing.lg }} />
+            <Button variant="primary" title={t('proLocations.empty.addButton')} onPress={openCreate} style={{ marginTop: spacing.lg }} />
           </View>
         ) : (
           <View style={{ gap: spacing.md }}>
@@ -520,18 +521,18 @@ export default function LocationsScreen() {
                         <Text variant="body" style={{ fontWeight: '600' }}>{loc.name}</Text>
                         {loc.isDefault && (
                           <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
-                            <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 10 }}>Principal</Text>
+                            <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 10 }}>{t('proLocations.badges.default')}</Text>
                           </View>
                         )}
                         {!loc.isActive && (
                           <View style={[styles.badge, { backgroundColor: '#FEE2E2' }]}>
-                            <Text variant="caption" style={{ color: '#DC2626', fontWeight: '600', fontSize: 10 }}>Inactif</Text>
+                            <Text variant="caption" style={{ color: '#DC2626', fontWeight: '600', fontSize: 10 }}>{t('proLocations.badges.inactive')}</Text>
                           </View>
                         )}
                         {loc.protectAddress && (
                           <View style={[styles.badge, { backgroundColor: '#EFF6FF', flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
                             <Ionicons name="lock-closed" size={9} color="#1D4ED8" />
-                            <Text variant="caption" style={{ color: '#1D4ED8', fontWeight: '600', fontSize: 10 }}>Adresse masquée</Text>
+                            <Text variant="caption" style={{ color: '#1D4ED8', fontWeight: '600', fontSize: 10 }}>{t('proLocations.badges.protectedAddress')}</Text>
                           </View>
                         )}
                       </View>
@@ -539,7 +540,9 @@ export default function LocationsScreen() {
                         <Ionicons name={loc.type === 'mobile' ? 'car-outline' : 'business-outline'} size={14} color={colors.textMuted} />
                         <Text variant="caption" color="textSecondary">
                           {loc.type === 'mobile'
-                            ? `Déplacement ${loc.travelRadius ? `${loc.travelRadius} km` : ''} autour de ${loc.city}`
+                            ? loc.travelRadius
+                              ? t('proLocations.card.travelWithRadius', { radius: loc.travelRadius, city: loc.city })
+                              : t('proLocations.card.travelAround', { city: loc.city })
                             : loc.address
                               ? `${loc.address}, ${loc.postalCode} ${loc.city}`
                               : `${loc.postalCode} ${loc.city}`
@@ -548,7 +551,7 @@ export default function LocationsScreen() {
                       </View>
                       {!loc.isDefault && loc.isActive && (
                         <Pressable onPress={() => handleSetDefault(loc)} style={{ marginTop: spacing.xs }}>
-                          <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>Définir comme principal</Text>
+                          <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>{t('proLocations.card.setDefault')}</Text>
                         </Pressable>
                       )}
                     </View>
@@ -592,7 +595,7 @@ export default function LocationsScreen() {
                       </>
                     ) : (
                       <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
-                        Aucun membre assigné
+                        {t('proLocations.card.noMemberAssigned')}
                       </Text>
                     )}
                     <View style={[styles.assignButton, { backgroundColor: colors.primaryLight }]}>
@@ -611,7 +614,7 @@ export default function LocationsScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
             <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">{editingId ? 'Modifier le lieu' : 'Nouveau lieu'}</Text>
+              <Text variant="h3">{editingId ? t('proLocations.form.editTitle') : t('proLocations.form.newTitle')}</Text>
               <Pressable onPress={() => setShowModal(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
@@ -621,7 +624,7 @@ export default function LocationsScreen() {
                 <View style={{ gap: spacing.md }}>
                   {/* Location name — dropdown with presets + custom */}
                   <View>
-                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Nom du lieu</Text>
+                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>{t('proLocations.form.nameLabel')}</Text>
                     <Pressable
                       onPress={() => setShowLocationNamePicker((v) => !v)}
                       style={{
@@ -633,16 +636,16 @@ export default function LocationsScreen() {
                       }}
                     >
                       <Text variant="body" style={{ fontWeight: '500', color: form.name ? colors.text : colors.textMuted }}>
-                        {form.name || 'Choisir un nom'}
+                        {form.name || t('proLocations.form.chooseName')}
                       </Text>
                       <Ionicons name={showLocationNamePicker ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
                     </Pressable>
                     {showLocationNamePicker && (
                       <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, marginTop: spacing.xs, overflow: 'hidden' }}>
-                        {['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne', 'Consultation téléphonique', 'Consultation vidéo', 'Autre...'].map((opt) => {
-                          const isOther = opt === 'Autre...';
+                        {[...namePresets, t('proLocations.namePresets.other')].map((opt, optIdx) => {
+                          const isOther = optIdx === namePresets.length;
                           const isSelected = isOther
-                            ? !['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne'].includes(form.name)
+                            ? !namePresets.includes(form.name)
                             : form.name === opt;
                           return (
                             <Pressable
@@ -670,11 +673,11 @@ export default function LocationsScreen() {
                         })}
                       </View>
                     )}
-                    {!['Mon salon', 'Mon cabinet', 'Mon studio', 'Mon atelier', 'A domicile', 'Mon bureau', 'RDV en ligne', 'Consultation téléphonique', 'Consultation vidéo', ''].includes(form.name) || (form.name === '' && !showLocationNamePicker) ? (
+                    {![...namePresets, ''].includes(form.name) || (form.name === '' && !showLocationNamePicker) ? (
                       <Input
-                        placeholder="Nom personnalisé du lieu"
+                        placeholder={t('proLocations.form.customNamePlaceholder')}
                         value={form.name}
-                        onChangeText={(t) => setForm((p) => ({ ...p, name: t }))}
+                        onChangeText={(v) => setForm((p) => ({ ...p, name: v }))}
                         autoCapitalize="words"
                       />
                     ) : null}
@@ -682,7 +685,7 @@ export default function LocationsScreen() {
 
                   {/* Type */}
                   <View>
-                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>Type</Text>
+                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.sm, color: colors.text }}>{t('proLocations.form.typeLabel')}</Text>
                     <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                       {(['fixed', 'mobile'] as const).map((type) => (
                         <Pressable
@@ -701,7 +704,7 @@ export default function LocationsScreen() {
                         >
                           <Ionicons name={type === 'fixed' ? 'business-outline' : 'car-outline'} size={18} color={form.type === type ? colors.primary : colors.textMuted} />
                           <Text variant="bodySmall" color={form.type === type ? 'primary' : 'textSecondary'} style={{ marginLeft: spacing.xs, fontWeight: form.type === type ? '600' : '400' }}>
-                            {type === 'fixed' ? 'Fixe' : 'Mobile'}
+                            {type === 'fixed' ? t('proLocations.form.typeFixed') : t('proLocations.form.typeMobile')}
                           </Text>
                         </Pressable>
                       ))}
@@ -710,7 +713,7 @@ export default function LocationsScreen() {
 
                   {/* Country selector — inline expandable (Modal-in-Modal doesn't work on RN) */}
                   <View>
-                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Pays</Text>
+                    <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>{t('proLocations.form.countryLabel')}</Text>
                     <Pressable
                       onPress={() => setShowCountryPicker((v) => !v)}
                       style={{
@@ -722,19 +725,21 @@ export default function LocationsScreen() {
                       }}
                     >
                       <Text variant="body" style={{ fontWeight: '600' }}>
-                        {COUNTRY_OPTIONS.find((c) => c.code === form.countryCode)?.label || '🇫🇷 France'}
+                        {COUNTRY_CODES.includes(form.countryCode as (typeof COUNTRY_CODES)[number])
+                          ? t(`proLocations.countries.${form.countryCode}`)
+                          : t('proLocations.countries.FR')}
                       </Text>
                       <Ionicons name={showCountryPicker ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
                     </Pressable>
                     {showCountryPicker && (
                       <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, marginTop: spacing.xs, overflow: 'hidden' }}>
-                        {COUNTRY_OPTIONS.map((item) => {
-                          const isSelected = form.countryCode === item.code;
+                        {COUNTRY_CODES.map((code) => {
+                          const isSelected = form.countryCode === code;
                           return (
                             <Pressable
-                              key={item.code}
+                              key={code}
                               onPress={() => {
-                                setForm((p) => ({ ...p, countryCode: item.code, address: '', city: '', postalCode: '', region: '' }));
+                                setForm((p) => ({ ...p, countryCode: code, address: '', city: '', postalCode: '', region: '' }));
                                 setAddressQuery(''); setCityQuery('');
                                 setShowCountryPicker(false);
                               }}
@@ -745,7 +750,7 @@ export default function LocationsScreen() {
                               }}
                             >
                               <Text variant="bodySmall" style={{ fontWeight: isSelected ? '600' : '400', color: isSelected ? colors.primary : colors.text }}>
-                                {item.label}
+                                {t(`proLocations.countries.${code}`)}
                               </Text>
                               {isSelected && <Ionicons name="checkmark" size={18} color={colors.primary} />}
                             </Pressable>
@@ -758,7 +763,7 @@ export default function LocationsScreen() {
                   {/* Address type selector (fixed type) */}
                   {form.type === 'fixed' && (
                     <View>
-                      <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>Type de localisation</Text>
+                      <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>{t('proLocations.form.locationTypeLabel')}</Text>
                       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                         <Pressable
                           onPress={() => {
@@ -773,7 +778,7 @@ export default function LocationsScreen() {
                         >
                           <Ionicons name="location-outline" size={20} color={!form.cityOnly ? colors.primary : colors.textMuted} />
                           <Text variant="bodySmall" style={{ fontWeight: '600', marginTop: 4, color: !form.cityOnly ? colors.primary : colors.text }}>
-                            Adresse précise
+                            {t('proLocations.form.preciseAddress')}
                           </Text>
                         </Pressable>
                         <Pressable
@@ -789,7 +794,7 @@ export default function LocationsScreen() {
                         >
                           <Ionicons name="business-outline" size={20} color={form.cityOnly ? colors.primary : colors.textMuted} />
                           <Text variant="bodySmall" style={{ fontWeight: '600', marginTop: 4, color: form.cityOnly ? colors.primary : colors.text }}>
-                            Ville uniquement
+                            {t('proLocations.form.cityOnly')}
                           </Text>
                         </Pressable>
                       </View>
@@ -800,8 +805,8 @@ export default function LocationsScreen() {
                   {!form.cityOnly && (
                     <View style={{ zIndex: 10 }}>
                       <Input
-                        label="Adresse"
-                        placeholder="Saisissez une adresse..."
+                        label={t('proLocations.form.addressLabel')}
+                        placeholder={t('proLocations.form.addressPlaceholder')}
                         value={addressQuery || form.address}
                         onChangeText={handleAddressSearch}
                         autoCapitalize="words"
@@ -837,8 +842,8 @@ export default function LocationsScreen() {
                   {form.cityOnly && (
                     <View style={{ zIndex: 10 }}>
                       <Input
-                        label="Rechercher une ville"
-                        placeholder="Saisissez une ville..."
+                        label={t('proLocations.form.citySearchLabel')}
+                        placeholder={t('proLocations.form.citySearchPlaceholder')}
                         value={cityQuery}
                         onChangeText={handleCitySearch}
                         autoCapitalize="words"
@@ -873,16 +878,16 @@ export default function LocationsScreen() {
                   <View style={{ flexDirection: 'row', gap: spacing.md }}>
                     {!form.cityOnly && form.postalCode ? (
                       <View style={{ flex: 1 }}>
-                        <Input label="Code postal" placeholder="—" value={form.postalCode} disabled />
+                        <Input label={t('proLocations.form.postalCodeLabel')} placeholder="—" value={form.postalCode} disabled />
                       </View>
                     ) : null}
                     <View style={{ flex: form.cityOnly ? 1 : 2 }}>
-                      <Input label="Ville" placeholder="—" value={form.city} disabled />
+                      <Input label={t('proLocations.form.cityLabel')} placeholder="—" value={form.city} disabled />
                     </View>
                   </View>
 
                   {form.type === 'mobile' && (
-                    <Input label="Rayon de déplacement (km)" placeholder="20" value={form.travelRadius} onChangeText={(t) => setForm((p) => ({ ...p, travelRadius: t }))} keyboardType="number-pad" />
+                    <Input label={t('proLocations.form.travelRadiusLabel')} placeholder="20" value={form.travelRadius} onChangeText={(v) => setForm((p) => ({ ...p, travelRadius: v }))} keyboardType="number-pad" />
                   )}
 
                   {/* Address privacy — only for a fixed location with a precise address */}
@@ -890,9 +895,9 @@ export default function LocationsScreen() {
                     <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md }}>
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                         <View style={{ flex: 1, marginRight: spacing.md }}>
-                          <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>Protéger mon adresse</Text>
+                          <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>{t('proLocations.protect.title')}</Text>
                           <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                            Communiquée à la cliente ~48h avant le rendez-vous (email + app), une fois la réservation confirmée. Avant, elle ne voit que la zone.
+                            {t('proLocations.protect.description')}
                           </Text>
                         </View>
                         <Switch
@@ -904,16 +909,16 @@ export default function LocationsScreen() {
                       {form.protectAddress && (
                         <>
                           <Input
-                            label="Zone affichée avant révélation"
-                            placeholder="Ex: Batignolles, Paris 17e"
+                            label={t('proLocations.protect.areaLabel')}
+                            placeholder={t('proLocations.protect.areaPlaceholder')}
                             value={form.approxArea}
-                            onChangeText={(t) => setForm((p) => ({ ...p, approxArea: t }))}
+                            onChangeText={(v) => setForm((p) => ({ ...p, approxArea: v }))}
                           />
                           <Input
-                            label="Infos d'accès (révélées avec l'adresse)"
-                            placeholder="Ex: Interphone 1346, 2e étage, sonner à 203…"
+                            label={t('proLocations.protect.accessLabel')}
+                            placeholder={t('proLocations.protect.accessPlaceholder')}
                             value={form.accessInstructions}
-                            onChangeText={(t) => setForm((p) => ({ ...p, accessInstructions: t }))}
+                            onChangeText={(v) => setForm((p) => ({ ...p, accessInstructions: v }))}
                             multiline
                             numberOfLines={3}
                           />
@@ -922,12 +927,12 @@ export default function LocationsScreen() {
                     </View>
                   )}
 
-                  <Input label="Description (optionnel)" placeholder="Informations complémentaires" value={form.description} onChangeText={(t) => setForm((p) => ({ ...p, description: t }))} multiline numberOfLines={3} />
+                  <Input label={t('proLocations.form.descriptionLabel')} placeholder={t('proLocations.form.descriptionPlaceholder')} value={form.description} onChangeText={(v) => setForm((p) => ({ ...p, description: v }))} multiline numberOfLines={3} />
                 </View>
               </ScrollView>
 
             <View style={[styles.stickyFooter, { padding: spacing.lg, paddingBottom: insets.bottom + spacing.sm, borderTopColor: colors.border }]}>
-              <Button variant="primary" title={isSaving ? 'Enregistrement...' : 'Enregistrer'} onPress={handleSave} loading={isSaving} disabled={isSaving} fullWidth />
+              <Button variant="primary" title={isSaving ? t('proLocations.form.saving') : t('common.save')} onPress={handleSave} loading={isSaving} disabled={isSaving} fullWidth />
             </View>
           </View>
         </View>
@@ -944,7 +949,7 @@ export default function LocationsScreen() {
 
             <View style={[styles.assignModalHeader, { paddingHorizontal: spacing.lg, paddingBottom: spacing.md }]}>
               <View style={{ flex: 1 }}>
-                <Text variant="h3" style={{ fontWeight: '600' }}>Membres</Text>
+                <Text variant="h3" style={{ fontWeight: '600' }}>{t('proLocations.assign.title')}</Text>
                 <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>{assignLocationName}</Text>
               </View>
               <Pressable onPress={() => setAssignLocationId(null)} hitSlop={8}>
@@ -957,7 +962,7 @@ export default function LocationsScreen() {
                 <View style={{ alignItems: 'center', paddingVertical: spacing['2xl'] }}>
                   <Ionicons name="people-outline" size={40} color={colors.textMuted} />
                   <Text variant="body" color="textMuted" align="center" style={{ marginTop: spacing.sm }}>
-                    Aucun membre actif.{'\n'}Créez des membres depuis la page Équipe.
+                    {t('proLocations.assign.empty')}
                   </Text>
                 </View>
               ) : (
@@ -992,7 +997,7 @@ export default function LocationsScreen() {
                             {hasChanged
                               ? `${currentLoc?.name || '?'} → ${pendingLoc?.name || '?'}`
                               : isAssigned
-                                ? 'Ce lieu'
+                                ? t('proLocations.assign.thisLocation')
                                 : currentLoc?.name || '—'}
                           </Text>
                         </View>
@@ -1015,7 +1020,7 @@ export default function LocationsScreen() {
             <View style={[styles.stickyFooter, { padding: spacing.lg, paddingBottom: insets.bottom + spacing.sm, borderTopColor: colors.border }]}>
               <Button
                 variant="primary"
-                title={isSavingAssign ? 'Enregistrement...' : 'Confirmer'}
+                title={isSavingAssign ? t('proLocations.form.saving') : t('common.confirm')}
                 onPress={handleSaveAssignments}
                 loading={isSavingAssign}
                 disabled={isSavingAssign}
@@ -1031,18 +1036,18 @@ export default function LocationsScreen() {
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '60%' }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <Text variant="h3">Pays</Text>
+              <Text variant="h3">{t('proLocations.form.countryLabel')}</Text>
               <Pressable onPress={() => setShowCountryPicker(false)}>
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </Pressable>
             </View>
-            {COUNTRY_OPTIONS.map((item) => {
-              const isSelected = form.countryCode === item.code;
+            {COUNTRY_CODES.map((code) => {
+              const isSelected = form.countryCode === code;
               return (
                 <Pressable
-                  key={item.code}
+                  key={code}
                   onPress={() => {
-                    setForm((p) => ({ ...p, countryCode: item.code, address: '', city: '', postalCode: '' }));
+                    setForm((p) => ({ ...p, countryCode: code, address: '', city: '', postalCode: '' }));
                     setAddressQuery(''); setCityQuery('');
                     setShowCountryPicker(false);
                   }}
@@ -1053,7 +1058,7 @@ export default function LocationsScreen() {
                   }}
                 >
                   <Text variant="body" style={{ fontWeight: isSelected ? '600' : '400' }} color={isSelected ? 'primary' : 'text'}>
-                    {item.label}
+                    {t(`proLocations.countries.${code}`)}
                   </Text>
                   {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
                 </Pressable>

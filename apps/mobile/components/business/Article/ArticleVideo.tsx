@@ -18,6 +18,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, View, Linking, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../Text';
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export function ArticleVideo({ url, coverUrl }: Props) {
+  const { t } = useTranslation();
   const { colors, radius, spacing } = useTheme();
   const videoId = extractYouTubeId(url);
 
@@ -48,7 +50,7 @@ export function ArticleVideo({ url, coverUrl }: Props) {
       >
         <Ionicons name="videocam-off-outline" size={28} color={colors.textMuted} />
         <Text variant="bodySmall" color="textMuted" style={{ marginTop: 6 }}>
-          Vidéo indisponible
+          {t('components.article.videoUnavailable')}
         </Text>
       </View>
     );

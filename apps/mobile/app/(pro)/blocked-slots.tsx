@@ -13,7 +13,9 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Card, Loader, EmptyState } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
@@ -23,14 +25,13 @@ import { schedulingService, memberService } from '@booking-app/firebase';
 import type { BlockedSlot, Member } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
-const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-const months = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
+// Date localisée via Intl sur la langue de l'app (plus de tableaux FR en dur).
 function formatDate(date: Date): string {
-  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+  return new Intl.DateTimeFormat(i18n.language, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(date);
 }
 
 function formatTime(date: Date): string {
@@ -39,6 +40,7 @@ function formatTime(date: Date): string {
 
 export default function BlockedSlotsScreen() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { providerId } = useProvider();
   const { blockedSlots, isLoading, refresh } = useBlockedSlots(providerId);
@@ -106,15 +108,15 @@ export default function BlockedSlotsScreen() {
 
   const handleDeleteGroup = (group: SlotGroup) => {
     const label = group.slots.length > 1
-      ? `Supprimer ce blocage pour ${group.slots.length} membres ?`
-      : `Supprimer le blocage du ${formatDate(group.startDate)} ?`;
+      ? t('proBlockedSlots.delete.messageMulti', { count: group.slots.length })
+      : t('proBlockedSlots.delete.messageSingle', { date: formatDate(group.startDate) });
     Alert.alert(
-      'Supprimer le blocage',
+      t('proBlockedSlots.delete.title'),
       label,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('proBlockedSlots.delete.confirm'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -125,7 +127,7 @@ export default function BlockedSlotsScreen() {
                 refresh();
               }
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer le blocage');
+              Alert.alert(t('proBlockedSlots.delete.errorTitle'), t('proBlockedSlots.delete.error'));
             }
           },
         },
@@ -154,12 +156,12 @@ export default function BlockedSlotsScreen() {
             )}
             <Text variant={groupReason ? 'caption' : 'body'} color={groupReason ? 'textSecondary' : 'text'} style={groupReason ? undefined : { fontWeight: '600' }}>
               {isMultiDay
-                ? `Du ${formatDate(sd)} au ${formatDate(ed)}`
+                ? t('proBlockedSlots.range', { start: formatDate(sd), end: formatDate(ed) })
                 : formatDate(sd)}
             </Text>
             <Text variant="caption" color="textSecondary">
               {isAllDay
-                ? isMultiDay ? `${Math.round((ed.getTime() - sd.getTime()) / 86400000) + 1} jours` : 'Journée entière'
+                ? isMultiDay ? t('proBlockedSlots.days', { count: Math.round((ed.getTime() - sd.getTime()) / 86400000) + 1 }) : t('proBlockedSlots.allDay')
                 : `${formatTime(sd)} - ${formatTime(ed)}`}
             </Text>
             {/* Member badges */}
@@ -178,13 +180,13 @@ export default function BlockedSlotsScreen() {
                   >
                     <Ionicons name="people" size={12} color={colors.primary} style={{ marginRight: spacing.xs }} />
                     <Text variant="caption" style={{ fontWeight: '600', color: colors.primary }}>
-                      Tous
+                      {t('proBlockedSlots.all')}
                     </Text>
                   </View>
                 ) : (
                   memberIds.map((memberId) => {
                     const member = memberMap[memberId];
-                    const memberName = member?.name || 'Membre';
+                    const memberName = member?.name || t('proBlockedSlots.memberFallback');
                     const memberColor = member?.color || colors.primary;
                     return (
                       <View
@@ -240,11 +242,11 @@ export default function BlockedSlotsScreen() {
       {/* Branded blue header — the "+" lives in the right slot
           so the chrome matches the rest of the pro space. */}
       <BrandedHeader
-        title="Créneaux bloqués"
+        title={t('proBlockedSlots.title')}
         rightAction={{
           icon: 'add',
           onPress: () => router.push('/(pro)/block-slot'),
-          accessibilityLabel: 'Ajouter un créneau bloqué',
+          accessibilityLabel: t('proBlockedSlots.addA11y'),
         }}
       />
 
@@ -264,8 +266,8 @@ export default function BlockedSlotsScreen() {
           ListEmptyComponent={
             <EmptyState
               icon="ban-outline"
-              title="Aucun créneau bloqué"
-              description="Bloquez des créneaux pour indiquer vos indisponibilités"
+              title={t('proBlockedSlots.empty.title')}
+              description={t('proBlockedSlots.empty.description')}
             />
           }
         />

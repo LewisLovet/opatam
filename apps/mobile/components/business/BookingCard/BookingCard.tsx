@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Avatar } from '../../Avatar';
@@ -29,15 +30,12 @@ export interface BookingCardProps {
   onPress?: () => void;
 }
 
-function formatBookingDate(date: Date, time: string): string {
-  const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-  const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-
-  const dayName = days[date.getDay()];
-  const dayNum = date.getDate();
-  const monthName = months[date.getMonth()];
-
-  return `${dayName} ${dayNum} ${monthName} • ${time}`;
+function formatBookingDate(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
 }
 
 export function BookingCard({
@@ -51,6 +49,8 @@ export function BookingCard({
   onPress,
 }: BookingCardProps) {
   const { colors, spacing, radius, shadows } = useTheme();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
 
   const content = (
     <View
@@ -83,7 +83,10 @@ export function BookingCard({
             {serviceName}
           </Text>
           <Text variant="caption" color="textMuted">
-            {formatBookingDate(date, time)}
+            {t('components.bookingCard.dateAtTime', {
+              date: formatBookingDate(date, dateLocale),
+              time,
+            })}
           </Text>
         </View>
 
