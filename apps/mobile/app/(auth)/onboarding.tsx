@@ -21,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LanguagePill } from '../../components/LanguagePill';
 import { setOnboardingSeen } from '../../utils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -194,6 +195,13 @@ export default function OnboardingScreen() {
         end={{ x: 1, y: 1 }}
       />
 
+      {/* Language switch — mirrors the skip button, opposite corner.
+          First-launch visitors must be able to pick their language
+          before anything else. */}
+      <View style={[styles.languagePill, { top: insets.top + 12 }]}>
+        <LanguagePill variant="dark" />
+      </View>
+
       {/* Skip button */}
       <Pressable
         onPress={handleSkip}
@@ -278,6 +286,11 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  languagePill: {
+    position: 'absolute',
+    left: 24,
+    zIndex: 10,
   },
   skipButton: {
     position: 'absolute',

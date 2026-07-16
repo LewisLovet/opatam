@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text, Logo } from '../../components';
+import { LanguagePill } from '../../components/LanguagePill';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -138,6 +139,12 @@ export default function WelcomeScreen() {
         ))}
       </View>
 
+      {/* Language switch — visible before sign-in so the language can
+          be chosen from the very first screen. */}
+      <View style={[styles.languagePill, { top: insets.top + 12 }]}>
+        <LanguagePill />
+      </View>
+
       <View
         style={[
           styles.content,
@@ -225,6 +232,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   bubblesContainer: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
   bubble: { position: 'absolute' },
+  languagePill: { position: 'absolute', right: 24, zIndex: 10 },
   content: { flex: 1 },
   logoSection: {
     alignItems: 'center',
