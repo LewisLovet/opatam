@@ -184,13 +184,8 @@ export function SearchPageClient({
             </div>
           </div>
 
-          {!isLoading && sortedProviders.length > 0 && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {sortedProviders.length} prestataire{sortedProviders.length > 1 ? 's' : ''} trouvé
-              {sortedProviders.length > 1 ? 's' : ''}
-            </p>
-          )}
-
+          {/* Pas de compteur de résultats : tant que l'annuaire est jeune,
+              afficher « N prestataires trouvés » dessert le marketing. */}
           {!isLoading && sortedProviders.length === 0 ? (
             <SearchEmptyState
               query={query}
