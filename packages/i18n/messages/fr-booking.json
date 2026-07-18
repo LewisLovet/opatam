@@ -36,6 +36,8 @@
     "cartEmpty": "Votre rendez-vous est vide",
     "cartEmptyHint": "Ajoutez des prestations ci-dessous.",
     "removeService": "Retirer la prestation",
+    "addAnother": "Ajouter une autre prestation",
+    "cancelAdd": "Annuler",
     "continue": "Continuer",
     "continueWithCart": "Continuer · {count, plural, one {# prestation} other {# prestations}} · {total}",
     "configureSubtitle": "Composez votre prestation",

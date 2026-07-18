@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
-import { ArrowLeft, Check, CalendarCheck, Store, Info, ArrowRight, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, CalendarCheck, Store, Info, ArrowRight, Trash2, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { localizedPath } from '@/lib/localizedPath';
@@ -249,6 +249,12 @@ export function BookingFlow({
     initialHasChoices ? initialService!.id : null,
   );
 
+  // Whether the "add another prestation" service list is expanded. The list
+  // is always shown while the cart is empty (there is nothing to recap yet);
+  // once the cart has at least one prestation it collapses behind a
+  // "+ Ajouter une autre prestation" button so the recap reads clearly.
+  const [isAddingService, setIsAddingService] = useState(false);
+
   // Always start on the service step — even with a deep-link (?service=).
   // The preselected prestation is pre-loaded in the cart (or its choices
   // picker is opened), but we stay here so the client sees the
@@ -485,6 +491,8 @@ export function BookingFlow({
       locationId: null,
       slot: null,
     }));
+    // Collapse the service list → back to the cart recap.
+    setIsAddingService(false);
   };
 
   const removeFromCart = (index: number) => {
@@ -856,15 +864,39 @@ export function BookingFlow({
                   )}
                 </div>
 
-                {/* Service list — add more prestations. */}
-                <StepService
-                  services={services}
-                  categories={serviceCategories}
-                  selectedServiceId={null}
-                  onSelect={handleServiceSelect}
-                  cartCounts={cartCounts}
-                  globalDiscount={globalDiscount}
-                />
+                {/* Service list — shown while the cart is empty, or on demand
+                    via "+ Ajouter une autre prestation" once it has items, so
+                    the recap above stays front and centre. */}
+                {state.cart.length === 0 || isAddingService ? (
+                  <div>
+                    <StepService
+                      services={services}
+                      categories={serviceCategories}
+                      selectedServiceId={null}
+                      onSelect={handleServiceSelect}
+                      cartCounts={cartCounts}
+                      globalDiscount={globalDiscount}
+                    />
+                    {state.cart.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingService(false)}
+                        className="mt-4 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        {t('flow.cancelAdd')}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingService(true)}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-primary-300 dark:border-primary-700 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {t('flow.addAnother')}
+                  </button>
+                )}
 
                 {/* Continue — sticky bar pinned to the bottom of the screen
                     so it's reachable without scrolling past the whole list.

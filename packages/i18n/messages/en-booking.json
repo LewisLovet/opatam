@@ -36,6 +36,8 @@
     "cartEmpty": "Your appointment is empty",
     "cartEmptyHint": "Add services below.",
     "removeService": "Remove this service",
+    "addAnother": "Add another service",
+    "cancelAdd": "Cancel",
     "continue": "Continue",
     "continueWithCart": "Continue · {count, plural, one {# service} other {# services}} · {total}",
     "configureSubtitle": "Customise your service",
