@@ -1029,7 +1029,7 @@
     "home": "Home",
     "search": "Search",
     "bookings": "Bookings",
-    "more": "More"
+    "more": "Menu"
   },
   "home": {
     "greeting": "Hello",
@@ -1079,6 +1079,11 @@
       "nearYouInCity": "Near you · in {{city}}",
       "emptyTitle": "No suggestions",
       "emptyDescription": "No providers available at the moment"
+    },
+    "providers": {
+      "title": "Your providers",
+      "progress": "{{filled}}/{{threshold}} · {{reward}}",
+      "armed": "🎁 {{reward}} unlocked"
     }
   },
   "search": {
@@ -1724,7 +1729,7 @@
     "home": "Home",
     "agenda": "Calendar",
     "planning": "Schedule",
-    "more": "More"
+    "more": "Menu"
   },
   "proHome": {
     "defaultName": "Pro",

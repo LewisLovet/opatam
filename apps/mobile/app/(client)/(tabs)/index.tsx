@@ -31,6 +31,7 @@ import {
   EmptyState,
   Avatar,
 } from '../../../components';
+import { MyProvidersRow } from '../../../components/MyProvidersRow';
 import { useUserLocation, useNearbyProviders, useNavigateToProvider, useClientBookings } from '../../../hooks';
 import { useAuth } from '../../../contexts';
 
@@ -144,7 +145,7 @@ export default function HomeScreen() {
   const dateLocale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
   const { navigateToProvider, isLoading } = useNavigateToProvider();
   const { userData, isAuthenticated } = useAuth();
-  const { upcoming, past, loading: loadingBookings, refresh: refreshBookings } = useClientBookings();
+  const { bookings, upcoming, past, loading: loadingBookings, refresh: refreshBookings } = useClientBookings();
 
   // Refresh bookings when screen comes into focus
   useFocusEffect(
@@ -281,28 +282,6 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* ── Categories ── */}
-        <View style={{ marginBottom: spacing.xl }}>
-          <Text variant="h3" style={{ marginBottom: spacing.md, paddingHorizontal: spacing.lg }}>
-            {t('home.categoriesTitle')}
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
-          >
-            {categoryIds.map((categoryId) => (
-              <CategoryCard
-                key={categoryId}
-                id={categoryId}
-                label={t(`home.categories.${categoryId}`)}
-                imageUrl={categoryImages[categoryId]}
-                onPress={() => handleCategoryPress(categoryId)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
         {/* ── Prochain RDV ── */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
           <Text variant="h3" style={{ marginBottom: spacing.md }}>
@@ -385,6 +364,31 @@ export default function HomeScreen() {
               </LinearGradient>
             </Pressable>
           )}
+        </View>
+
+        {/* ── Vos prestataires ── */}
+        <MyProvidersRow bookings={bookings} loading={loadingBookings} />
+
+        {/* ── Categories ── */}
+        <View style={{ marginBottom: spacing.xl }}>
+          <Text variant="h3" style={{ marginBottom: spacing.md, paddingHorizontal: spacing.lg }}>
+            {t('home.categoriesTitle')}
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
+          >
+            {categoryIds.map((categoryId) => (
+              <CategoryCard
+                key={categoryId}
+                id={categoryId}
+                label={t(`home.categories.${categoryId}`)}
+                imageUrl={categoryImages[categoryId]}
+                onPress={() => handleCategoryPress(categoryId)}
+              />
+            ))}
+          </ScrollView>
         </View>
 
         {/* ── Derniers RDV ── */}
