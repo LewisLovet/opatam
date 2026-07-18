@@ -52,6 +52,13 @@ import type {
   ProviderClient,
 } from '@booking-app/shared';
 import {
+  hasLoyaltyAccess,
+  isLoyaltyConfigValid,
+  isLoyaltyRewardArmed,
+  loyaltyRemaining,
+  formatPrice,
+} from '@booking-app/shared';
+import {
   TAG_META_BY_VALUE,
   formatRevenue,
 } from '../../../components/business/Clients/tagMeta';
@@ -394,6 +401,58 @@ export default function ClientDetailScreen() {
           <KpiCard label={t('proClientDetail.kpi.lastVisit')} value={formatLongDate(client.lastBookingAt)} colors={colors} />
           <KpiCard label={t('proClientDetail.kpi.frequency')} value={frequencyLabel ?? '—'} colors={colors} />
         </View>
+
+        {/* Loyalty progression — only when the pro has access AND a valid,
+            enabled loyalty config. Derived from confirmedCount, same pure
+            helpers as the server-side reward application. */}
+        {(() => {
+          const loyalty = provider?.settings?.loyalty;
+          if (!hasLoyaltyAccess(provider) || !isLoyaltyConfigValid(loyalty)) return null;
+          const armed = isLoyaltyRewardArmed(client.confirmedCount, loyalty.threshold);
+          const remaining = loyaltyRemaining(client.confirmedCount, loyalty.threshold);
+          const rewardLabel =
+            loyalty.rewardType === 'percent'
+              ? t('proLoyalty.progress.rewardPercent', {
+                  percent: loyalty.rewardValue,
+                  threshold: loyalty.threshold,
+                })
+              : t('proLoyalty.progress.rewardAmount', {
+                  amount: formatPrice(loyalty.rewardValue, 'EUR', i18n.language === 'en' ? 'en-GB' : 'fr-FR'),
+                  threshold: loyalty.threshold,
+                });
+          return (
+            <Card padding="md" style={{ marginBottom: spacing.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: armed ? 'rgba(16,185,129,0.12)' : colors.primaryLight || '#e4effa',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons
+                    name={armed ? 'gift' : 'gift-outline'}
+                    size={16}
+                    color={armed ? '#10B981' : colors.primary}
+                  />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+                    {armed
+                      ? t('proLoyalty.progress.armed')
+                      : t('proLoyalty.progress.next', { count: remaining })}
+                  </Text>
+                  <Text variant="caption" color="textSecondary">
+                    {rewardLabel}
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          );
+        })()}
 
         {/* Services préférés */}
         <SectionTitle text={t('proClientDetail.favoriteServices')} colors={colors} spacing={spacing} />

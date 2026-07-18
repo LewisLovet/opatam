@@ -33,8 +33,10 @@ import {
   CalendarPlus,
   ShieldAlert,
   Sparkles,
+  Gift,
 } from 'lucide-react';
 import { Avatar, Badge, Button, useToast } from '@/components/ui';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   bookingRepository,
   providerClientRepository,
@@ -42,6 +44,10 @@ import {
 import {
   type ProviderClient,
   type Booking,
+  hasLoyaltyAccess,
+  isLoyaltyConfigValid,
+  isLoyaltyRewardArmed,
+  loyaltyRemaining,
 } from '@booking-app/shared';
 import { ClientHistoryList } from './ClientHistoryList';
 import { formatRevenue } from './format';
@@ -71,6 +77,14 @@ export function ClientDrawer({
 }: Props) {
   const router = useRouter();
   const toast = useToast();
+  const { provider } = useAuth();
+
+  // ── Carte de fidélité — progression du client, dérivée du compteur
+  //    de RDV honorés (confirmedCount) et des réglages du prestataire.
+  //    Affichée seulement quand la fidélité est active (gate + config valide).
+  const loyaltySettings = provider?.settings?.loyalty ?? null;
+  const loyaltyOn =
+    hasLoyaltyAccess(provider) && isLoyaltyConfigValid(loyaltySettings);
 
   // Local edit state — initialised from `client` whenever the drawer
   // opens for a different doc.
@@ -335,6 +349,74 @@ export function ClientDrawer({
               <Kpi label="Fréquence" value={frequencyLabel ?? '—'} />
             </div>
           </section>
+
+          {/* Carte de fidélité — progression vers la prochaine récompense.
+              Visible seulement quand la fidélité est configurée et active. */}
+          {loyaltyOn && loyaltySettings && (() => {
+            const armed = isLoyaltyRewardArmed(
+              client.confirmedCount,
+              loyaltySettings.threshold,
+            );
+            const remaining = loyaltyRemaining(
+              client.confirmedCount,
+              loyaltySettings.threshold,
+            );
+            const done = loyaltySettings.threshold - remaining;
+            return (
+              <section>
+                <h3 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold mb-3">
+                  Fidélité
+                </h3>
+                <div
+                  className={`rounded-lg border px-3 py-3 flex items-start gap-3 ${
+                    armed
+                      ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/10'
+                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                  }`}
+                >
+                  <span
+                    className={`inline-flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 ${
+                      armed
+                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+                    }`}
+                  >
+                    <Gift className="w-4 h-4" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    {armed ? (
+                      <>
+                        <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                          Récompense armée 🎁
+                        </p>
+                        <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                          La première prestation éligible de sa prochaine réservation sera
+                          automatiquement réduite.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                          Prochaine récompense dans {remaining} RDV
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {done} / {loyaltySettings.threshold} RDV honorés sur la carte en cours.
+                        </p>
+                        <div className="mt-2 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary-500 transition-all"
+                            style={{
+                              width: `${Math.round((done / loyaltySettings.threshold) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
 
           {/* Services préférés — top 3 booked services for this client.
               Hidden until the history finishes loading so we don't

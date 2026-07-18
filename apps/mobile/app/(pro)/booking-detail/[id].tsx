@@ -1112,6 +1112,24 @@ export default function ProBookingDetailScreen() {
     valueWeight: '700' as const,
   });
 
+  // Loyalty reward snapshotted at booking time — stays readable even if the
+  // pro changes the loyalty settings afterwards. Shown right under the price.
+  if (booking.loyalty && booking.loyalty.amountOff > 0) {
+    detailRows.push({
+      icon: 'gift-outline',
+      label: t('proLoyalty.badge.label'),
+      value:
+        booking.loyalty.rewardType === 'percent'
+          ? t('proLoyalty.badge.percent', {
+              percent: booking.loyalty.rewardValue,
+              amount: formatPrice(booking.loyalty.amountOff),
+            })
+          : t('proLoyalty.badge.amount', { amount: formatPrice(booking.loyalty.amountOff) }),
+      valueColor: colors.success,
+      valueWeight: '700' as const,
+    });
+  }
+
   // Deposit row — surfaces the Sérénité add-on benefit directly
   // on the booking. Status-specific colour so the pro instantly
   // sees whether the money has actually been collected.

@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
 import { catalogService, memberService } from '@booking-app/firebase';
-import { Plus, FolderPlus, Pencil, ChevronRight, Tag, Percent, Loader2 } from 'lucide-react';
+import { Plus, FolderPlus, Pencil, ChevronRight, Tag, Percent, Gift, Lock, Loader2 } from 'lucide-react';
 import { ServiceCard } from './ServiceCard';
 import { CategoryModal, type CategoryFormData } from './CategoryModal';
 import { GlobalPromoModal } from './GlobalPromoModal';
+import { LoyaltyModal } from './LoyaltyModal';
 import type { Service, ServiceCategory, Member } from '@booking-app/shared';
-import { hasDepositAccess } from '@booking-app/shared';
+import { hasDepositAccess, hasLoyaltyAccess, isLoyaltyConfigValid } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -27,6 +28,7 @@ export function PrestationsTab() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<WithId<ServiceCategory> | null>(null);
   const [globalPromoOpen, setGlobalPromoOpen] = useState(false);
+  const [loyaltyOpen, setLoyaltyOpen] = useState(false);
 
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
@@ -214,6 +216,10 @@ export function PrestationsTab() {
   const defaultDeposit = provider?.settings?.depositDefault ?? null;
   const globalDiscount = provider?.settings?.globalDiscount ?? null;
 
+  const loyaltyAccess = hasLoyaltyAccess(provider);
+  const loyaltyRaw = provider?.settings?.loyalty ?? null;
+  const loyaltyActive = loyaltyAccess && isLoyaltyConfigValid(loyaltyRaw);
+
   const renderServiceList = (list: WithId<Service>[]) => (
     <div className="space-y-3">
       {list.map((service, index) => (
@@ -354,6 +360,71 @@ export function PrestationsTab() {
         </Button>
       </div>
 
+      {/* Carte de fidélité — récompense automatique tous les X RDV honorés.
+          Gated par hasLoyaltyAccess : plan payant ou carte enregistrée. */}
+      {loyaltyAccess ? (
+        <div className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 px-4 py-3">
+          <div
+            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+              loyaltyActive
+                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+            }`}
+          >
+            <Gift className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            {loyaltyActive && loyaltyRaw ? (
+              <>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Carte de fidélité : {loyaltyRewardText(loyaltyRaw)} tous les{' '}
+                  {loyaltyRaw.threshold} RDV
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {(loyaltyRaw.excludedServiceIds ?? []).length === 0
+                    ? 'Toutes les prestations sont éligibles'
+                    : `${(loyaltyRaw.excludedServiceIds ?? []).length} prestation(s) exclue(s)`}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Carte de fidélité
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Récompensez automatiquement vos clients fidèles tous les X RDV honorés.
+                </p>
+              </>
+            )}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setLoyaltyOpen(true)}>
+            {loyaltyActive ? 'Modifier' : 'Configurer'}
+          </Button>
+        </div>
+      ) : (
+        // Pas d'accès → bloc grisé + upsell, même esprit que le verrou acomptes.
+        <div className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 px-4 py-3">
+          <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 flex items-center justify-center flex-shrink-0">
+            <Lock className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+              Carte de fidélité
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Réservée aux abonnés : récompensez automatiquement vos clients fidèles tous les
+              X RDV honorés.{' '}
+              <a
+                href="/pro/abonnement"
+                className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+              >
+                Voir les abonnements →
+              </a>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Services list */}
       {services.length === 0 ? (
         <EmptyState onAdd={handleCreate} />
@@ -398,8 +469,24 @@ export function PrestationsTab() {
         isOpen={globalPromoOpen}
         onClose={() => setGlobalPromoOpen(false)}
       />
+
+      <LoyaltyModal
+        isOpen={loyaltyOpen}
+        onClose={() => setLoyaltyOpen(false)}
+        services={services}
+      />
     </div>
   );
+}
+
+/** "−10 %" / "−5 €" — libellé compact de la récompense fidélité. */
+function loyaltyRewardText(l: { rewardType: 'percent' | 'amount'; rewardValue: number }): string {
+  if (l.rewardType === 'percent') return `−${l.rewardValue} %`;
+  const euros = l.rewardValue / 100;
+  const label = Number.isInteger(euros)
+    ? euros.toString()
+    : euros.toFixed(2).replace('.', ',');
+  return `−${label} €`;
 }
 
 /** "Du 01/06/2026 au 30/06/2026" / "Jusqu'au …" / "Permanente". */

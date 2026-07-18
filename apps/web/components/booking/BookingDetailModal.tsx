@@ -49,6 +49,7 @@ import {
   Sunset,
   Moon,
   Wallet,
+  Gift,
 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -615,6 +616,18 @@ export function BookingDetailModal({
               {formatBookingPrice(booking.price)}
             </span>
           </div>
+          {/* Récompense fidélité appliquée à cette résa (snapshot booking.loyalty) */}
+          {booking.loyalty && (
+            <div className="flex items-center gap-3 text-sm">
+              <Gift className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              <span className="text-gray-700 dark:text-gray-300">Récompense fidélité</span>
+              <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                {booking.loyalty.rewardType === 'percent'
+                  ? `Fidélité −${booking.loyalty.rewardValue} %`
+                  : `Fidélité −${formatBookingPrice(booking.loyalty.amountOff)}`}
+              </span>
+            </div>
+          )}
           {/* Paid deposit → show the acompte + the balance still to collect */}
           {booking.deposit && booking.deposit.amount > 0 && booking.deposit.status === 'paid' && (
             <>

@@ -42,6 +42,7 @@ import type {
   ServiceVariation,
   ServiceOption,
   ServiceInfoField,
+  LoyaltySettings,
 } from '@booking-app/shared/types';
 import {
   resolveDeposit,
@@ -50,6 +51,8 @@ import {
   resolveExcludedIds,
   getServiceMinPrice,
   hasDepositAccess,
+  hasLoyaltyAccess,
+  isLoyaltyConfigValid,
   SERVICE_COLORS,
   sanitizeVariations,
   sanitizeOptions,
@@ -431,6 +434,93 @@ export default function ServicesScreen() {
       showToast({ variant: 'error', message: t('common.error') });
     } finally {
       setGSaving(false);
+    }
+  };
+
+  // Carte de fidélité — settings sheet state. Gated by hasLoyaltyAccess
+  // (paid plan / registered card / comp): locked pros get an upsell card
+  // that routes to the paywall instead of the editor.
+  const loyaltyAccess = hasLoyaltyAccess(provider);
+  const [loyaltyOpen, setLoyaltyOpen] = useState(false);
+  const [lSaving, setLSaving] = useState(false);
+  const [lForm, setLForm] = useState({
+    enabled: false,
+    threshold: '5',
+    rewardType: 'percent' as LoyaltySettings['rewardType'],
+    rewardValue: '10',
+    /** Opt-out model — ids listed here are NOT eligible (same as promos). */
+    excludedServiceIds: [] as string[],
+  });
+
+  const openLoyalty = () => {
+    if (!loyaltyAccess) {
+      router.push('/(pro)/paywall' as any);
+      return;
+    }
+    const l = provider?.settings?.loyalty ?? null;
+    setLForm({
+      enabled: !!l?.enabled,
+      threshold: l ? String(l.threshold) : '5',
+      rewardType: l?.rewardType ?? 'percent',
+      // Amounts are stored in cents but edited in euros.
+      rewardValue: l
+        ? l.rewardType === 'amount'
+          ? String(l.rewardValue / 100)
+          : String(l.rewardValue)
+        : '10',
+      excludedServiceIds: l?.excludedServiceIds ?? [],
+    });
+    setLoyaltyOpen(true);
+  };
+
+  const saveLoyalty = async () => {
+    if (!providerId) return;
+    const existing = provider?.settings?.loyalty ?? null;
+    let loyalty: LoyaltySettings | null;
+    if (lForm.enabled) {
+      const threshold = Number(lForm.threshold);
+      if (!Number.isInteger(threshold) || threshold < 1) {
+        showToast({ variant: 'error', message: t('proLoyalty.errors.threshold') });
+        return;
+      }
+      let rewardValue: number;
+      if (lForm.rewardType === 'percent') {
+        rewardValue = Math.round(Number(lForm.rewardValue));
+        if (!Number.isFinite(rewardValue) || rewardValue < 1 || rewardValue > 100) {
+          showToast({ variant: 'error', message: t('proLoyalty.errors.percentRange') });
+          return;
+        }
+      } else {
+        rewardValue = Math.round(Number(lForm.rewardValue.replace(',', '.')) * 100);
+        if (!Number.isFinite(rewardValue) || rewardValue < 100) {
+          showToast({ variant: 'error', message: t('proLoyalty.errors.amountMin') });
+          return;
+        }
+      }
+      loyalty = {
+        enabled: true,
+        threshold,
+        rewardType: lForm.rewardType,
+        rewardValue,
+        excludedServiceIds: lForm.excludedServiceIds,
+      };
+    } else {
+      // Toggled off: keep the previous config (so re-enabling restores it)
+      // but flag it disabled. Never configured → stay null.
+      loyalty = existing ? { ...existing, enabled: false } : null;
+    }
+    setLSaving(true);
+    try {
+      await providerService.updateSettings(providerId, { loyalty });
+      showToast({
+        variant: 'success',
+        message: lForm.enabled ? t('proLoyalty.saved') : t('proLoyalty.disabledToast'),
+      });
+      setLoyaltyOpen(false);
+    } catch {
+      showToast({ variant: 'error', message: t('common.error') });
+    } finally {
+      setLSaving(false);
     }
   };
 
@@ -1222,6 +1312,58 @@ export default function ServicesScreen() {
                 </View>
                 <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
                   {g ? t('proServices.globalPromo.edit') : t('proServices.globalPromo.configure')}
+                </Text>
+              </Pressable>
+            );
+          })()}
+          {(() => {
+            const l = provider?.settings?.loyalty ?? null;
+            const lActive = loyaltyAccess && isLoyaltyConfigValid(l);
+            const summary = !loyaltyAccess
+              ? t('proLoyalty.card.lockedSummary')
+              : l
+                ? l.enabled
+                  ? l.rewardType === 'percent'
+                    ? t('proLoyalty.card.activeSummaryPercent', { percent: l.rewardValue, threshold: l.threshold })
+                    : t('proLoyalty.card.activeSummaryAmount', { amount: formatPrice(l.rewardValue), threshold: l.threshold })
+                  : t('proLoyalty.card.inactiveSummary')
+                : t('proLoyalty.card.promptSummary');
+            return (
+              <Pressable
+                onPress={openLoyalty}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.sm,
+                  backgroundColor: lActive ? 'rgba(124,58,237,0.10)' : colors.surface,
+                  borderWidth: 1,
+                  borderColor: lActive ? 'rgba(124,58,237,0.35)' : colors.border,
+                  borderRadius: radius.lg,
+                  padding: spacing.md,
+                  marginBottom: spacing.md,
+                }}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: lActive ? 'rgba(124,58,237,0.15)' : colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons
+                    name={loyaltyAccess ? 'gift-outline' : 'lock-closed'}
+                    size={18}
+                    color={lActive ? '#7C3AED' : colors.primary}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                    {t('proLoyalty.card.title')}
+                  </Text>
+                  <Text variant="caption" color="textSecondary" style={{ marginTop: 1 }}>
+                    {summary}
+                  </Text>
+                </View>
+                <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.primary }}>
+                  {!loyaltyAccess
+                    ? t('proLoyalty.card.unlock')
+                    : l
+                      ? t('proLoyalty.card.edit')
+                      : t('proLoyalty.card.configure')}
                 </Text>
               </Pressable>
             );
@@ -2424,6 +2566,158 @@ export default function ServicesScreen() {
             }}
           />
         )}
+      </Modal>
+
+      {/* ── Loyalty card settings sheet ── */}
+      <Modal visible={loyaltyOpen} transparent animationType="slide" onRequestClose={() => setLoyaltyOpen(false)}>
+        <KeyboardAvoidingSheet>
+          <Pressable style={{ flex: 1 }} onPress={() => setLoyaltyOpen(false)} />
+          <View style={{ backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md, maxHeight: '88%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text variant="h3">{t('proLoyalty.modal.title')}</Text>
+              <Pressable onPress={() => setLoyaltyOpen(false)} hitSlop={8}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <Text variant="caption" color="textSecondary">
+              {t('proLoyalty.modal.description', {
+                threshold: Number.isInteger(Number(lForm.threshold)) && Number(lForm.threshold) >= 1 ? Number(lForm.threshold) : 'X',
+              })}
+            </Text>
+
+            <Pressable
+              onPress={() => setLForm((f) => ({ ...f, enabled: !f.enabled }))}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}
+            >
+              <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text, flex: 1 }}>
+                {t('proLoyalty.modal.enable')}
+              </Text>
+              <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: lForm.enabled ? colors.primary : colors.border, justifyContent: 'center', padding: 2 }}>
+                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: lForm.enabled ? 'flex-end' : 'flex-start' }} />
+              </View>
+            </Pressable>
+
+            {lForm.enabled && (
+              <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ gap: spacing.sm }} showsVerticalScrollIndicator={false}>
+                <Input
+                  label={t('proLoyalty.modal.thresholdLabel')}
+                  placeholder="5"
+                  value={lForm.threshold}
+                  onChangeText={(v) => setLForm((f) => ({ ...f, threshold: v.replace(/[^0-9]/g, '') }))}
+                  keyboardType="number-pad"
+                />
+                <Text variant="caption" color="textSecondary">
+                  {t('proLoyalty.modal.rewardLabel')}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  {(['percent', 'amount'] as const).map((type) => {
+                    const selected = lForm.rewardType === type;
+                    return (
+                      <Pressable
+                        key={type}
+                        onPress={() =>
+                          setLForm((f) => (f.rewardType === type ? f : { ...f, rewardType: type, rewardValue: '' }))
+                        }
+                        style={{
+                          flex: 1,
+                          borderWidth: 1,
+                          borderColor: selected ? colors.primary : colors.border,
+                          backgroundColor: selected ? colors.primaryLight : 'transparent',
+                          borderRadius: radius.md,
+                          paddingVertical: spacing.sm,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text variant="bodySmall" style={{ fontWeight: '700', color: selected ? colors.primary : colors.textSecondary }}>
+                          {type === 'percent' ? '%' : '€'}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Input
+                  label={lForm.rewardType === 'percent' ? t('proLoyalty.modal.percentValueLabel') : t('proLoyalty.modal.amountValueLabel')}
+                  placeholder={lForm.rewardType === 'percent' ? '10' : '5'}
+                  value={lForm.rewardValue}
+                  onChangeText={(v) =>
+                    setLForm((f) => ({
+                      ...f,
+                      rewardValue:
+                        f.rewardType === 'percent'
+                          ? v.replace(/[^0-9]/g, '')
+                          : v.replace(/[^0-9.,]/g, ''),
+                    }))
+                  }
+                  keyboardType={lForm.rewardType === 'percent' ? 'number-pad' : 'decimal-pad'}
+                />
+
+                <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text, marginTop: spacing.xs }}>
+                  {t('proLoyalty.modal.eligibleTitle')}
+                </Text>
+                {services.length === 0 ? (
+                  <Text variant="caption" color="textSecondary">
+                    {t('proLoyalty.modal.noServices')}
+                  </Text>
+                ) : (
+                  <>
+                    <Text variant="caption" color="textSecondary">
+                      {t('proLoyalty.modal.eligibleHint')}
+                    </Text>
+                    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, overflow: 'hidden' }}>
+                      {services.map((s, idx) => {
+                        // Opt-out model: checked (default) = eligible.
+                        const checked = !lForm.excludedServiceIds.includes(s.id);
+                        return (
+                          <Pressable
+                            key={s.id}
+                            onPress={() =>
+                              setLForm((f) => ({
+                                ...f,
+                                excludedServiceIds: checked
+                                  ? [...f.excludedServiceIds, s.id]
+                                  : f.excludedServiceIds.filter((id) => id !== s.id),
+                              }))
+                            }
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: spacing.sm,
+                              paddingHorizontal: spacing.md,
+                              paddingVertical: spacing.sm,
+                              borderTopWidth: idx === 0 ? 0 : 1,
+                              borderTopColor: colors.border,
+                            }}
+                          >
+                            <Ionicons
+                              name={checked ? 'checkbox' : 'square-outline'}
+                              size={20}
+                              color={checked ? colors.primary : colors.textMuted}
+                            />
+                            <Text
+                              variant="bodySmall"
+                              numberOfLines={1}
+                              style={{ flex: 1, color: checked ? colors.text : colors.textMuted }}
+                            >
+                              {s.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
+              </ScrollView>
+            )}
+
+            <Button
+              variant="primary"
+              title={lSaving ? t('proServices.saving') : t('common.save')}
+              onPress={saveLoyalty}
+              disabled={lSaving}
+              fullWidth
+            />
+          </View>
+        </KeyboardAvoidingSheet>
       </Modal>
     </View>
   );
