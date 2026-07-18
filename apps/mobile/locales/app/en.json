@@ -2845,7 +2845,8 @@
     "reward": {
       "percent": "−{{value}}%",
       "amount": "−€{{value}}"
-    }
+    },
+    "publicBanner": "🎁 Loyalty: every {{threshold}} appointments, {{reward}} off your next booking"
   },
   "proLoyalty": {
     "card": {

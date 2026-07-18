@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
 import { useTranslations } from 'next-intl';
-import { Megaphone } from 'lucide-react';
-import type { ServiceDiscount } from '@booking-app/shared';
+import { Megaphone, Gift } from 'lucide-react';
+import type { ServiceDiscount, LoyaltySettings } from '@booking-app/shared';
+import { isLoyaltyConfigValid, hasLoyaltyAccess } from '@booking-app/shared';
 import { ProviderHero } from './ProviderHero';
 import { ProviderNav } from './ProviderNav';
 import { SocialLinks } from './SocialLinks';
@@ -43,7 +44,12 @@ interface SerializedProvider {
   settings?: {
     bookingNotice?: string | null;
     globalDiscount?: ServiceDiscount | null;
+    loyalty?: LoyaltySettings | null;
   };
+  /** Présents dans la sérialisation (spread du provider, dates → strings) —
+   *  consommés par le gate hasLoyaltyAccess (tolérant aux formes). */
+  accessOverride?: unknown;
+  subscription?: unknown;
   isPublished: boolean;
   isVerified: boolean;
   createdAt: string;
@@ -167,6 +173,7 @@ export function ProviderPageClient({
   isDemo = false,
 }: ProviderPageClientProps) {
   const t = useTranslations('provider');
+  const tLoyalty = useTranslations('provider.loyaltyBanner');
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('prestations');
   const [showNotice, setShowNotice] = useState(false);
@@ -257,6 +264,30 @@ export function ProviderPageClient({
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {activeTab === 'prestations' && (
           <>
+            {/* Programme de fidélité — visible par TOUS les visiteurs quand la
+                carte est active (et le gate d'accès du pro valide) : c'est un
+                argument pour réserver, pas seulement un suivi pour habitués. */}
+            {(() => {
+              const loyalty = provider.settings?.loyalty ?? null;
+              const gate = provider as Parameters<typeof hasLoyaltyAccess>[0];
+              if (!isLoyaltyConfigValid(loyalty) || !hasLoyaltyAccess(gate)) return null;
+              const t = tLoyalty;
+              return (
+                <div className="mt-6 flex items-center gap-3 rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-4 py-3">
+                  <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center flex-shrink-0">
+                    <Gift className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('title')}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {loyalty.rewardType === 'percent'
+                        ? t('percent', { threshold: loyalty.threshold, value: loyalty.rewardValue })
+                        : t('amount', { threshold: loyalty.threshold, value: loyalty.rewardValue / 100 })}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
             <ServicesSection services={services} categories={serviceCategories} slug={provider.slug} globalDiscount={provider.settings?.globalDiscount ?? null} onBookingClick={bookingNotice ? handleBookingClick : undefined} />
             {/* Portfolio shown below services if available */}
             {hasPortfolio && (

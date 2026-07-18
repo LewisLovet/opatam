@@ -68,7 +68,15 @@
     "title": "Practical information",
     "locationTitle": "{count, plural, one {Location} other {Locations}}",
     "openingHours": "Opening hours",
-    "days": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    "days": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ]
   },
   "location": {
     "fixed": "Salon",
@@ -106,5 +114,10 @@
     "title": "Provider not found",
     "description": "This provider doesn't exist or is no longer available. They may have deactivated their page or changed their address.",
     "backHome": "Back to home"
+  },
+  "loyaltyBanner": {
+    "title": "Loyalty program",
+    "percent": "Every {threshold} appointments, −{value}% off your next booking",
+    "amount": "Every {threshold} appointments, −€{value} off your next booking"
   }
 }

@@ -68,7 +68,15 @@
     "title": "Informations pratiques",
     "locationTitle": "{count, plural, one {Lieu} other {Lieux}}",
     "openingHours": "Horaires d'ouverture",
-    "days": ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+    "days": [
+      "Dimanche",
+      "Lundi",
+      "Mardi",
+      "Mercredi",
+      "Jeudi",
+      "Vendredi",
+      "Samedi"
+    ]
   },
   "location": {
     "fixed": "Salon",
@@ -106,5 +114,10 @@
     "title": "Prestataire introuvable",
     "description": "Ce prestataire n'existe pas ou n'est plus disponible. Il a peut-être désactivé sa page ou changé d'adresse.",
     "backHome": "Retour à l'accueil"
+  },
+  "loyaltyBanner": {
+    "title": "Programme de fidélité",
+    "percent": "Tous les {threshold} RDV, −{value} % sur votre réservation suivante",
+    "amount": "Tous les {threshold} RDV, −{value} € sur votre réservation suivante"
   }
 }

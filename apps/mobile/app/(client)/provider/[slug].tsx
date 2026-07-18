@@ -61,6 +61,8 @@ import {
   getDiscountDaysLeft,
   formatPromoCountdown,
   PROMO_URGENCY_DAYS,
+  isLoyaltyConfigValid,
+  hasLoyaltyAccess,
 } from '@booking-app/shared';
 import { analyticsService, type WithId } from '@booking-app/firebase';
 
@@ -142,6 +144,13 @@ export default function ProviderDetailScreen() {
   // avale les erreurs et rend simplement une liste vide).
   const { isAuthenticated } = useAuth();
   const { cards: loyaltyCards } = useLoyaltyCards(isAuthenticated && !isPreview);
+  // Programme de fidélité du pro (bandeau public) : réglages valides + gate.
+  const publicLoyalty =
+    provider &&
+    isLoyaltyConfigValid(provider.settings?.loyalty) &&
+    hasLoyaltyAccess(provider)
+      ? provider.settings!.loyalty!
+      : null;
   const loyaltyCard = provider
     ? loyaltyCards.find((c) => c.providerId === provider.id)
     : undefined;
@@ -450,6 +459,33 @@ export default function ProviderDetailScreen() {
                   <Ionicons name="open-outline" size={12} color="rgba(255,255,255,0.7)" />
                 </Pressable>
               )}
+            </View>
+          )}
+
+          {/* Programme de fidélité — bandeau PUBLIC quand la carte du pro est
+              active : visible par tous les visiteurs (argument pour réserver),
+              même déconnectés. La ligne de progression personnelle ci-dessous
+              prend le relais quand le client a une carte. */}
+          {!loyaltyCard && publicLoyalty && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                marginTop: spacing.md,
+                backgroundColor: colors.primaryLight,
+                borderRadius: radius.md,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.sm,
+              }}
+            >
+              <Ionicons name="gift-outline" size={16} color={colors.primary} />
+              <Text variant="caption" style={{ color: colors.primary, fontWeight: '600', flex: 1 }}>
+                {t('loyalty.publicBanner', {
+                  threshold: publicLoyalty.threshold,
+                  reward: formatLoyaltyReward(publicLoyalty.rewardType, publicLoyalty.rewardValue, t),
+                })}
+              </Text>
             </View>
           )}
 
