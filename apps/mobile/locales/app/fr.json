@@ -493,7 +493,8 @@
       "loginRequired": "Connexion requise",
       "loginRequiredDescription": "Connectez-vous pour confirmer votre réservation",
       "confirmButton": "Confirmer la réservation",
-      "loginButton": "Se connecter pour réserver"
+      "loginButton": "Se connecter pour réserver",
+      "loyaltyApplied": "Réduction fidélité de {{amount}} € appliquée 🎉"
     }
   },
   "bookingDetailScreen": {
@@ -2815,6 +2816,79 @@
     "empty": {
       "title": "Aucun créneau bloqué",
       "description": "Bloquez des créneaux pour indiquer vos indisponibilités"
+    }
+  },
+  "loyalty": {
+    "title": "Fidélité",
+    "notAuth": {
+      "title": "Connectez-vous",
+      "description": "Connectez-vous pour retrouver vos cartes de fidélité et vos récompenses.",
+      "action": "Se connecter"
+    },
+    "empty": {
+      "title": "Aucune carte pour le moment",
+      "description": "Vos cartes de fidélité apparaîtront ici après votre première réservation."
+    },
+    "error": {
+      "title": "Impossible de charger vos cartes",
+      "description": "Vérifiez votre connexion puis réessayez."
+    },
+    "card": {
+      "remaining_one": "Plus que {{count}} RDV avant {{reward}}",
+      "remaining_other": "Plus que {{count}} RDV avant {{reward}}",
+      "armed": "🎁 Votre prochaine réservation est réduite"
+    },
+    "provider": {
+      "progress": "Fidélité : {{done}}/{{threshold}} RDV — encore {{remaining}} avant {{reward}}",
+      "armed": "🎁 {{reward}} sur votre prochaine réservation"
+    },
+    "reward": {
+      "percent": "−{{value}} %",
+      "amount": "−{{value}} €"
+    }
+  },
+  "proLoyalty": {
+    "card": {
+      "title": "Carte de fidélité",
+      "promptSummary": "Récompensez vos clients réguliers",
+      "activeSummaryPercent": "−{{percent}} % tous les {{threshold}} RDV honorés",
+      "activeSummaryAmount": "−{{amount}} tous les {{threshold}} RDV honorés",
+      "inactiveSummary": "Carte désactivée",
+      "lockedSummary": "Réservée aux abonnés — passez à un plan payant pour l'activer",
+      "edit": "Modifier",
+      "configure": "Configurer",
+      "unlock": "Débloquer"
+    },
+    "modal": {
+      "title": "Carte de fidélité",
+      "description": "Tous les {{threshold}} RDV honorés, la première prestation éligible de la réservation suivante est réduite.",
+      "enable": "Activer la carte de fidélité",
+      "thresholdLabel": "Nombre de RDV honorés requis",
+      "rewardLabel": "Récompense",
+      "percentValueLabel": "Réduction (%)",
+      "amountValueLabel": "Réduction (€)",
+      "eligibleTitle": "Prestations concernées",
+      "eligibleHint": "Décochez les prestations non concernées par la récompense.",
+      "noServices": "Ajoutez d'abord des prestations pour les rendre éligibles."
+    },
+    "errors": {
+      "threshold": "Le nombre de RDV doit être d'au moins 1",
+      "percentRange": "Le pourcentage doit être compris entre 1 et 100",
+      "amountMin": "Le montant doit être d'au moins 1 €"
+    },
+    "saved": "Carte de fidélité enregistrée",
+    "disabledToast": "Carte de fidélité désactivée",
+    "badge": {
+      "label": "Fidélité",
+      "percent": "−{{percent}} % · −{{amount}}",
+      "amount": "−{{amount}}"
+    },
+    "progress": {
+      "next_one": "Prochaine récompense dans {{count}} RDV honoré",
+      "next_other": "Prochaine récompense dans {{count}} RDV honorés",
+      "armed": "Récompense armée — la prochaine réservation sera réduite",
+      "rewardPercent": "−{{percent}} % tous les {{threshold}} RDV",
+      "rewardAmount": "−{{amount}} tous les {{threshold}} RDV"
     }
   }
 }

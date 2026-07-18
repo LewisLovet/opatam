@@ -493,7 +493,8 @@
       "loginRequired": "Sign in required",
       "loginRequiredDescription": "Sign in to confirm your booking",
       "confirmButton": "Confirm booking",
-      "loginButton": "Sign in to book"
+      "loginButton": "Sign in to book",
+      "loyaltyApplied": "€{{amount}} loyalty discount applied 🎉"
     }
   },
   "bookingDetailScreen": {
@@ -2815,6 +2816,79 @@
     "empty": {
       "title": "No blocked slots",
       "description": "Block slots to mark when you're unavailable"
+    }
+  },
+  "loyalty": {
+    "title": "Loyalty",
+    "notAuth": {
+      "title": "Sign in",
+      "description": "Sign in to see your loyalty cards and rewards.",
+      "action": "Sign in"
+    },
+    "empty": {
+      "title": "No cards yet",
+      "description": "Your loyalty cards will appear here after your first booking."
+    },
+    "error": {
+      "title": "Couldn't load your cards",
+      "description": "Check your connection and try again."
+    },
+    "card": {
+      "remaining_one": "Only {{count}} more appointment before {{reward}}",
+      "remaining_other": "Only {{count}} more appointments before {{reward}}",
+      "armed": "🎁 Your next booking is discounted"
+    },
+    "provider": {
+      "progress": "Loyalty: {{done}}/{{threshold}} appointments — {{remaining}} more before {{reward}}",
+      "armed": "🎁 {{reward}} off your next booking"
+    },
+    "reward": {
+      "percent": "−{{value}}%",
+      "amount": "−€{{value}}"
+    }
+  },
+  "proLoyalty": {
+    "card": {
+      "title": "Loyalty card",
+      "promptSummary": "Reward your regular clients",
+      "activeSummaryPercent": "−{{percent}}% every {{threshold}} completed appointments",
+      "activeSummaryAmount": "−{{amount}} every {{threshold}} completed appointments",
+      "inactiveSummary": "Card disabled",
+      "lockedSummary": "Subscribers only — upgrade to a paid plan to enable it",
+      "edit": "Edit",
+      "configure": "Set up",
+      "unlock": "Unlock"
+    },
+    "modal": {
+      "title": "Loyalty card",
+      "description": "Every {{threshold}} completed appointments, the first eligible service of the next booking is discounted.",
+      "enable": "Enable the loyalty card",
+      "thresholdLabel": "Completed appointments required",
+      "rewardLabel": "Reward",
+      "percentValueLabel": "Discount (%)",
+      "amountValueLabel": "Discount (€)",
+      "eligibleTitle": "Eligible services",
+      "eligibleHint": "Untick the services not covered by the reward.",
+      "noServices": "Add services first to make them eligible."
+    },
+    "errors": {
+      "threshold": "The number of appointments must be at least 1",
+      "percentRange": "The percentage must be between 1 and 100",
+      "amountMin": "The amount must be at least €1"
+    },
+    "saved": "Loyalty card saved",
+    "disabledToast": "Loyalty card disabled",
+    "badge": {
+      "label": "Loyalty",
+      "percent": "−{{percent}}% · −{{amount}}",
+      "amount": "−{{amount}}"
+    },
+    "progress": {
+      "next_one": "Next reward in {{count}} completed appointment",
+      "next_other": "Next reward in {{count}} completed appointments",
+      "armed": "Reward ready — the next booking will be discounted",
+      "rewardPercent": "−{{percent}}% every {{threshold}} appointments",
+      "rewardAmount": "−{{amount}} every {{threshold}} appointments"
     }
   }
 }

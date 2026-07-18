@@ -460,6 +460,13 @@ export default function ProfileScreen() {
             />
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
+              icon="ribbon-outline"
+              label={t('loyalty.title')}
+              onPress={() => router.push('/(client)/loyalty' as any)}
+              colors={colors}
+            />
+            <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+            <MenuItem
               icon="notifications-outline"
               label={t('profile.menu.notifications')}
               onPress={() => router.push('/(client)/notification-settings')}

@@ -57,6 +57,12 @@ export default function ClientLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="loyalty"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
     </>
   );

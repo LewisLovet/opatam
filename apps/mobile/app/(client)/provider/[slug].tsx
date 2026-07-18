@@ -51,7 +51,8 @@ import {
   useOpeningHours,
   useMembers,
 } from '../../../hooks';
-import { useProvidersCache } from '../../../contexts';
+import { useProvidersCache, useAuth } from '../../../contexts';
+import { useLoyaltyCards, formatLoyaltyReward } from '../../../hooks/useLoyaltyCards';
 import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
 import { ASSETS } from '@booking-app/shared/constants';
 import {
@@ -135,6 +136,15 @@ export default function ProviderDetailScreen() {
   const { formattedDate: nextAvailableFormatted, loading: loadingAvailability, refresh: refreshAvailability } = useNextAvailableDate(provider?.id);
   const { weekSchedule, isCurrentlyOpen, loading: loadingHours, refresh: refreshHours } = useOpeningHours(provider?.id);
   const { members, refresh: refreshMembers } = useMembers(provider?.id);
+
+  // Carte de fidélité du client chez ce pro — ligne discrète sous le header.
+  // Silencieux si non connecté, pas de carte, ou erreur réseau (le hook
+  // avale les erreurs et rend simplement une liste vide).
+  const { isAuthenticated } = useAuth();
+  const { cards: loyaltyCards } = useLoyaltyCards(isAuthenticated && !isPreview);
+  const loyaltyCard = provider
+    ? loyaltyCards.find((c) => c.providerId === provider.id)
+    : undefined;
 
   // Team plan: per-member availability
   const isTeam = provider?.plan === 'team';
@@ -440,6 +450,36 @@ export default function ProviderDetailScreen() {
                   <Ionicons name="open-outline" size={12} color="rgba(255,255,255,0.7)" />
                 </Pressable>
               )}
+            </View>
+          )}
+
+          {/* Loyalty progress line (discreet, only when the client has a card) */}
+          {loyaltyCard && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md }}>
+              <Ionicons
+                name="ribbon-outline"
+                size={14}
+                color={loyaltyCard.armed ? colors.primary : colors.textSecondary}
+              />
+              <Text
+                variant="caption"
+                style={
+                  loyaltyCard.armed
+                    ? { color: colors.primary, fontWeight: '600', flex: 1 }
+                    : { color: colors.textSecondary, flex: 1 }
+                }
+              >
+                {loyaltyCard.armed
+                  ? t('loyalty.provider.armed', {
+                      reward: formatLoyaltyReward(loyaltyCard.rewardType, loyaltyCard.rewardValue, t),
+                    })
+                  : t('loyalty.provider.progress', {
+                      done: loyaltyCard.confirmedCount % loyaltyCard.threshold,
+                      threshold: loyaltyCard.threshold,
+                      remaining: loyaltyCard.remaining,
+                      reward: formatLoyaltyReward(loyaltyCard.rewardType, loyaltyCard.rewardValue, t),
+                    })}
+              </Text>
             </View>
           )}
 

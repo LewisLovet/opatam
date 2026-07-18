@@ -26,6 +26,7 @@ import { useBooking } from '../../../../contexts';
 import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
 import { computeDiscountedTotal } from '@booking-app/shared';
+import { bookingService } from '@booking-app/firebase';
 import { API_URL } from '../../../../lib/config';
 import i18n, { getAppLocale } from '../../../../lib/i18n';
 
@@ -70,6 +71,30 @@ function showAppUpgradeDialog(message: string): void {
       },
     },
   ]);
+}
+
+/**
+ * Révélation fidélité : POST /api/bookings ne renvoie que { bookingId } —
+ * pas la résa. La réduction fidélité éventuellement appliquée (snapshot
+ * booking.loyalty, posé côté serveur) se lit donc sur le doc créé, que le
+ * client peut lire (clientId stampé avant la réponse). Timeout court +
+ * best-effort : la fidélité ne doit jamais retarder ni casser le succès.
+ * Retourne la mention à accoler au toast de succès, ou null.
+ */
+async function getLoyaltyAppliedMessage(bookingId: string): Promise<string | null> {
+  try {
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+    const loyalty = await Promise.race([
+      bookingService.getById(bookingId).then((b) => b?.loyalty ?? null),
+      timeout,
+    ]);
+    if (!loyalty || !loyalty.amountOff) return null;
+    const euros = loyalty.amountOff / 100;
+    const amount = Number.isInteger(euros) ? String(euros) : euros.toFixed(2);
+    return i18n.t('bookingFlow.confirm.loyaltyApplied', { amount });
+  } catch {
+    return null;
+  }
 }
 
 // Format date in the app's current language
@@ -375,10 +400,13 @@ export default function ConfirmBookingScreen() {
 
         // Payment succeeded — webhook will flip status to confirmed.
         // The bookings tab will pick it up on next refresh.
+        const loyaltyMsgDeposit = await getLoyaltyAppliedMessage(data.bookingId);
         resetBooking();
         showToast({
           variant: 'success',
-          message: t('bookingFlow.confirm.depositPaidSuccess'),
+          message: loyaltyMsgDeposit
+            ? `${t('bookingFlow.confirm.depositPaidSuccess')} ${loyaltyMsgDeposit}`
+            : t('bookingFlow.confirm.depositPaidSuccess'),
         });
         router.replace('/(client)/(tabs)/bookings');
         return;
@@ -386,10 +414,13 @@ export default function ConfirmBookingScreen() {
 
       // No deposit → booking is already confirmed (or pending pro
       // confirmation depending on provider settings).
+      const loyaltyMsg = await getLoyaltyAppliedMessage(data.bookingId);
       resetBooking();
       showToast({
         variant: 'success',
-        message: t('bookingFlow.confirm.bookingConfirmed'),
+        message: loyaltyMsg
+          ? `${t('bookingFlow.confirm.bookingConfirmed')} ${loyaltyMsg}`
+          : t('bookingFlow.confirm.bookingConfirmed'),
       });
       router.replace('/(client)/(tabs)/bookings');
     } catch (error: any) {
