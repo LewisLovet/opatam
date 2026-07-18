@@ -12,6 +12,7 @@ import type {
   BookingDeposit,
   BookingStatus,
   BookingServiceItem,
+  LoyaltySettings,
   ServiceSelections,
 } from '@booking-app/shared';
 import {
@@ -26,6 +27,9 @@ import {
   isAccessOverrideActive,
   hasDepositAccess,
   getPublicAreaLabel,
+  isLoyaltyConfigValid,
+  isServiceLoyaltyEligible,
+  applyLoyaltyToLine,
   type CreateBookingInput,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
@@ -42,7 +46,12 @@ export class BookingService {
    */
   async createBooking(
     input: CreateBookingInput,
-    opts: { skipDeposit?: boolean } = {},
+    opts: {
+      skipDeposit?: boolean;
+      /** Réglages fidélité à appliquer — fournis par la route API UNIQUEMENT
+       *  quand le gate d'accès et l'armement du client sont vérifiés. */
+      loyalty?: LoyaltySettings | null;
+    } = {},
   ): Promise<WithId<Booking>> {
     // Validate input
     const validated = parseOrThrow(createBookingSchema, input);
@@ -139,6 +148,36 @@ export class BookingService {
       const effective = { price: eff.price, duration: eff.duration };
       const denorm = buildBookingSelections(svc, sel);
       resolvedItems.push({ service: svc, effective, denorm, originalPrice: eff.original });
+    }
+
+    // ── Carte de fidélité ─────────────────────────────────────────
+    // `opts.loyalty` n'arrive que si la route API a vérifié le gate
+    // (hasLoyaltyAccess) ET l'armement (confirmedCount multiple du seuil,
+    // lu via l'Admin SDK). Ici on applique la récompense à LA PREMIÈRE
+    // prestation éligible du panier — avant resolveDeposit, pour que
+    // l'acompte, Stripe, les emails et les stats suivent le prix réduit,
+    // exactement comme les promos.
+    let loyaltySnapshot: Booking['loyalty'] = null;
+    if (opts.loyalty && isLoyaltyConfigValid(opts.loyalty)) {
+      const target = resolvedItems.find((r) =>
+        isServiceLoyaltyEligible(r.service.id, opts.loyalty!),
+      );
+      if (target) {
+        const applied = applyLoyaltyToLine(
+          target.effective.price,
+          target.originalPrice,
+          opts.loyalty,
+        );
+        if (applied) {
+          target.effective.price = applied.price;
+          loyaltySnapshot = {
+            rewardType: opts.loyalty.rewardType,
+            rewardValue: opts.loyalty.rewardValue,
+            amountOff: applied.amountOff,
+            threshold: opts.loyalty.threshold,
+          };
+        }
+      }
     }
 
     const firstService = resolvedItems[0].service;
@@ -290,6 +329,8 @@ export class BookingService {
       // Pre-discount total when a promo applied — lets emails/récap show the
       // crossed-out price + savings. null when no promo.
       ...(totalOriginal > totalPrice ? { originalPrice: totalOriginal } : {}),
+      // Snapshot fidélité (réduction déjà incluse dans `price`).
+      ...(loyaltySnapshot ? { loyalty: loyaltySnapshot } : {}),
       priceMax: isMulti ? null : firstService.priceMax ?? null,
       // Denormalised choices of the first prestation (back-compat); the
       // full per-prestation detail lives in `items` for multi bookings.

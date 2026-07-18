@@ -29,6 +29,9 @@ export * from './markdown';
 // system. Used by the admin wizard preview, the booking picker, and
 // the public fiche's "À partir de" display.
 export * from './service-pricing';
+
+// Carte de fidélité (éligibilité, application, progression)
+export * from './loyalty';
 // Article freshness — the "Nouveau" pill recency check used by both
 // the web blog cards and the mobile in-app tutoriels list.
 export * from './articles';

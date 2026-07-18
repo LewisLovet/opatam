@@ -56,6 +56,38 @@ export function isBaseTrialActive(
  * Collecting still ALWAYS requires an active Stripe Connect account on top —
  * that guardrail is checked separately and never bypassed.
  */
+/**
+ * Fidélité — gate d'accès : le pro peut configurer/servir la carte de
+ * fidélité seulement si
+ *   - un plan payant est en cours (`status: 'active'`), OU
+ *   - une carte est enregistrée : abonnement réel (Stripe ou RevenueCat)
+ *     encore en période d'essai — par opposition à l'essai gratuit LOCAL
+ *     seedé à l'inscription, qui n'a aucun moyen de paiement derrière, OU
+ *   - un accès offert (comp) est actif.
+ *
+ * Comme les autres gates : calculé à la lecture, jamais matérialisé.
+ */
+export function hasLoyaltyAccess(
+  provider:
+    | {
+        accessOverride?: AccessOverride | null;
+        subscription?: {
+          status?: string | null;
+          stripeSubscriptionId?: string | null;
+          revenuecatAppUserId?: string | null;
+        } | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  if (!provider) return false;
+  if (isAccessOverrideActive(provider.accessOverride)) return true;
+  const sub = provider.subscription;
+  if (!sub) return false;
+  if (sub.status === 'active') return true;
+  return sub.status === 'trialing' && !!(sub.stripeSubscriptionId || sub.revenuecatAppUserId);
+}
+
 export function hasDepositAccess(
   provider:
     | {

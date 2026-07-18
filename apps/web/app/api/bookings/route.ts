@@ -3,7 +3,14 @@ process.env.TZ = 'Europe/Paris';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingService, providerService } from '@booking-app/firebase';
-import { createBookingSchema, isAccessOverrideActive } from '@booking-app/shared';
+import {
+  createBookingSchema,
+  isAccessOverrideActive,
+  isLoyaltyConfigValid,
+  isLoyaltyRewardArmed,
+  hasLoyaltyAccess,
+  getClientKey,
+} from '@booking-app/shared';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
 import { getAdminFirestore } from '@/lib/firebase-admin';
@@ -105,11 +112,48 @@ export async function POST(request: NextRequest) {
     // create a PaymentIntent + ephemeral key the SDK can consume.
     const isMobileClient = body.source === 'mobile';
 
+    // ── Carte de fidélité ────────────────────────────────────────
+    // Armée quand le compteur de RDV honorés du client chez ce pro est un
+    // multiple du seuil. Le compteur vit dans providerClients/{providerId}_
+    // {clientKey} (tenu par le trigger onBookingWrite) — lecture via l'Admin
+    // SDK : la route n'a pas de contexte auth et les rules réservent ces
+    // docs au pro. Jamais sur les résas créées par le pro lui-même
+    // (isProSource) : la fidélité récompense les réservations du client.
+    let loyaltySettings = null;
+    if (
+      !isProSource &&
+      isLoyaltyConfigValid(providerData.settings?.loyalty) &&
+      hasLoyaltyAccess(providerData)
+    ) {
+      // MÊME clé que le trigger qui tient les compteurs (email prioritaire,
+      // id: en secours) — sinon on lirait un doc qui n'existe pas.
+      const clientKey = getClientKey({
+        clientId: clientUid,
+        clientInfo: validated.clientInfo ?? null,
+      } as Parameters<typeof getClientKey>[0]);
+      if (clientKey !== 'anonymous') {
+        try {
+          const snap = await getAdminFirestore()
+            .collection('providerClients')
+            .doc(`${validated.providerId}_${clientKey}`)
+            .get();
+          const confirmedCount = (snap.data()?.confirmedCount as number | undefined) ?? 0;
+          if (isLoyaltyRewardArmed(confirmedCount, providerData.settings!.loyalty!.threshold)) {
+            loyaltySettings = providerData.settings!.loyalty!;
+          }
+        } catch (e) {
+          // La fidélité ne doit JAMAIS bloquer une réservation.
+          console.error('[bookings] loyalty lookup failed:', e);
+        }
+      }
+    }
+
     // Create booking
     // Emails (client confirmation + provider notification) are sent automatically
     // by the onBookingWrite Cloud Function trigger via handleBookingEmails()
     const booking = await bookingService.createBooking(validated, {
       skipDeposit,
+      loyalty: loyaltySettings,
     });
 
     // ─────────────────────────────────────────────────────────────────

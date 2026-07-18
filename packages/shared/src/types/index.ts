@@ -527,6 +527,28 @@ export interface ProviderSettings {
   /** Shop-wide promotion applied to every service that doesn't have its own
    *  `discount`. null/absent = no global promo. */
   globalDiscount?: ServiceDiscount | null;
+
+  /** Carte de fidélité. null/absent = désactivée. Gated par
+   *  hasLoyaltyAccess() (plan payant en cours ou carte enregistrée). */
+  loyalty?: LoyaltySettings | null;
+}
+
+/**
+ * Carte de fidélité du prestataire : tous les `threshold` RDV honorés
+ * (ProviderClient.confirmedCount multiple du seuil), la PREMIÈRE prestation
+ * éligible de la réservation suivante est réduite. Aucun état supplémentaire :
+ * l'éligibilité se déduit du compteur existant au moment de réserver.
+ */
+export interface LoyaltySettings {
+  enabled: boolean;
+  /** Nombre de RDV honorés qui arment la récompense (>= 1). */
+  threshold: number;
+  /** 'percent' = pourcentage 1-100 ; 'amount' = montant fixe en centimes. */
+  rewardType: 'percent' | 'amount';
+  rewardValue: number;
+  /** Prestations NON éligibles à la réduction fidélité (même modèle opt-out
+   *  que ServiceDiscount.excludedIds). Absent ou [] = toutes éligibles. */
+  excludedServiceIds?: string[];
 }
 
 /** Resolved deposit amount + refund policy for a specific (service, provider) pair. */
@@ -968,6 +990,17 @@ export interface Booking {
   /** Pre-discount total in cents, snapshotted when a promotion was applied at
    *  booking time (so emails / récap can show "économie"). null = no promo. */
   originalPrice?: number | null;
+  /** Récompense fidélité appliquée à cette résa (sur la première prestation
+   *  éligible uniquement). Snapshot au moment de la création — le badge côté
+   *  pro et la mention côté client restent lisibles même si le pro change ses
+   *  réglages ensuite. Absent = pas de fidélité appliquée. */
+  loyalty?: {
+    rewardType: 'percent' | 'amount';
+    rewardValue: number;
+    /** Réduction effectivement obtenue en centimes (déjà incluse dans `price`). */
+    amountOff: number;
+    threshold: number;
+  } | null;
   priceMax: number | null;
   clientInfo: ClientInfo;
   /** UI language the client booked in ('fr' | 'en'…). Every transactional
