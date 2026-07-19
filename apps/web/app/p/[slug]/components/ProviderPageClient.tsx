@@ -16,7 +16,6 @@ import { ReviewsSection } from './ReviewsSection';
 import { InfosSection } from './InfosSection';
 import { MobileBookingBar } from './MobileBookingBar';
 import { DemoBanner } from './DemoBanner';
-import { AppStoreBadges } from '@/components/common/AppStoreBadges';
 
 // Serialized types (dates as strings from server)
 interface SerializedProvider {
@@ -314,12 +313,28 @@ export function ProviderPageClient({
                     <p className="mt-2 pl-12 text-xs text-gray-600 dark:text-gray-300">{infoText}</p>
                   )}
                   {/* Incitation invités : les points ne se cumulent qu'en
-                      réservant depuis l'app — le programme est l'argument
-                      de téléchargement. */}
-                  <div className="mt-2 pl-12 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                    <p className="text-xs text-gray-600 dark:text-gray-300">{t('appNudge')}</p>
-                    <AppStoreBadges size="sm" />
-                  </div>
+                      réservant depuis l'app — liens discrets, le bandeau
+                      reste lisible. */}
+                  <p className="mt-1.5 pl-12 text-xs text-gray-600 dark:text-gray-300">
+                    {t('appNudge')}{' '}
+                    <a
+                      href="https://apps.apple.com/app/opatam/id6759246218"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+                    >
+                      App Store
+                    </a>
+                    {' · '}
+                    <a
+                      href="https://play.google.com/store/apps/details?id=com.kamerleontech.opatam"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+                    >
+                      Google Play
+                    </a>
+                  </p>
                 </div>
               );
             })()}

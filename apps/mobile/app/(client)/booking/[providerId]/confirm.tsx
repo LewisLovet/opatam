@@ -22,6 +22,7 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { useTheme } from '../../../../theme';
 import { Text, Card, Button, EmptyState, Avatar, Input, useToast } from '../../../../components';
 import { BookingStepHeader } from '../../../../components/business/BookingStepHeader';
+import { useLoyaltyPreview } from '../../../../hooks/useLoyaltyPreview';
 import { useBooking } from '../../../../contexts';
 import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
@@ -145,10 +146,14 @@ export default function ConfirmBookingScreen() {
   const globalDiscount = provider?.settings?.globalDiscount ?? null;
 
   // Whole-visit totals across the cart (discount applied).
-  const cartPrice = cart.reduce(
+  const cartPriceBase = cart.reduce(
     (sum, c) => sum + computeDiscountedTotal(c.service, c.selections, globalDiscount).price,
     0,
   );
+  // Réduction fidélité armée : le récap doit afficher le prix qui sera
+  // réellement facturé (même calcul que le serveur — useLoyaltyPreview).
+  const loyaltyPreview = useLoyaltyPreview(provider, cart, globalDiscount, t);
+  const cartPrice = cartPriceBase - loyaltyPreview.amountOff;
   const cartOriginal = cart.reduce(
     (sum, c) => sum + computeDiscountedTotal(c.service, c.selections, globalDiscount).original,
     0,
@@ -670,6 +675,11 @@ export default function ConfirmBookingScreen() {
           {cartHasPromo && (
             <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600', marginTop: spacing.xs }}>
               {t('bookingFlow.confirm.youSave', { amount: ((cartOriginal - cartPrice) / 100).toFixed(2) })}
+            </Text>
+          )}
+          {loyaltyPreview.rewardLabel && (
+            <Text variant="caption" style={{ color: colors.primary, fontWeight: '600', marginTop: spacing.xs }}>
+              {t('bookingFlow.confirm.loyaltyLine', { reward: loyaltyPreview.rewardLabel })}
             </Text>
           )}
           <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>

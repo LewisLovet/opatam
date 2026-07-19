@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../../theme';
 import { Text, Card, EmptyState, ServiceCategory, useToast } from '../../../../components';
+import { useLoyaltyPreview } from '../../../../hooks/useLoyaltyPreview';
 import { useBooking } from '../../../../contexts';
 import { useProviderById, useServices, useServiceCategories, useMembers, useLocations } from '../../../../hooks';
 import {
@@ -110,7 +111,11 @@ export default function MemberSelectionScreen() {
       ),
     [cart, globalDiscount],
   );
-  const cartHasPromo = cartTotalOriginal > cartTotalPrice;
+  // Réduction fidélité armée : visible sur le prix DÈS CETTE ÉTAPE (même
+  // calcul que le serveur — voir useLoyaltyPreview).
+  const loyaltyPreview = useLoyaltyPreview(provider, cart, globalDiscount, t);
+  const cartTotalPriceFinal = cartTotalPrice - loyaltyPreview.amountOff;
+  const cartHasPromo = cartTotalOriginal > cartTotalPriceFinal;
 
   // Proceed to date for the chosen member.
   const handleSelectMember = (member: WithId<Member>) => {
@@ -298,7 +303,7 @@ export default function MemberSelectionScreen() {
                   variant="body"
                   style={{ fontWeight: '700', color: cartHasPromo ? '#E11D48' : colors.primary }}
                 >
-                  {(cartTotalPrice / 100).toFixed(2)} €
+                  {(cartTotalPriceFinal / 100).toFixed(2)} €
                 </Text>
               </View>
             </View>

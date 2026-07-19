@@ -494,7 +494,8 @@
       "loginRequiredDescription": "Connectez-vous pour confirmer votre réservation",
       "confirmButton": "Confirmer la réservation",
       "loginButton": "Se connecter pour réserver",
-      "loyaltyApplied": "Réduction fidélité de {{amount}} € appliquée 🎉"
+      "loyaltyApplied": "Réduction fidélité de {{amount}} € appliquée 🎉",
+      "loyaltyLine": "🎁 Fidélité {{reward}} appliquée"
     }
   },
   "bookingDetailScreen": {

@@ -26,6 +26,7 @@ import {
   TimeSlotSection,
   StickyConfirmButton,
 } from '../../../../components';
+import { useLoyaltyPreview } from '../../../../hooks/useLoyaltyPreview';
 import { useBooking } from '../../../../contexts';
 import { computeServiceTotal, computeDiscountedTotal } from '@booking-app/shared';
 import { useAvailabilitySummary, type TimeSlot } from '../../../../hooks';
@@ -114,10 +115,13 @@ export default function DateSelectionScreen() {
 
   // Whole-visit effective totals across the cart (variations chosen) — with the
   // active promo applied, so the summary price matches what the client pays.
-  const cartPrice = cart.reduce(
+  const cartPriceBase = cart.reduce(
     (sum, c) => sum + computeDiscountedTotal(c.service, c.selections, globalDiscount).price,
     0,
   );
+  // Réduction fidélité armée — le prix affiché en haut suit dès cette étape.
+  const loyaltyPreview = useLoyaltyPreview(provider, cart, globalDiscount, t);
+  const cartPrice = cartPriceBase - loyaltyPreview.amountOff;
   const cartDuration = cart.reduce(
     (sum, c) => sum + computeServiceTotal(c.service, c.selections).duration,
     0,

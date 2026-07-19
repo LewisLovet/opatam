@@ -494,7 +494,8 @@
       "loginRequiredDescription": "Sign in to confirm your booking",
       "confirmButton": "Confirm booking",
       "loginButton": "Sign in to book",
-      "loyaltyApplied": "€{{amount}} loyalty discount applied 🎉"
+      "loyaltyApplied": "€{{amount}} loyalty discount applied 🎉",
+      "loyaltyLine": "🎁 Loyalty {{reward}} applied"
     }
   },
   "bookingDetailScreen": {
