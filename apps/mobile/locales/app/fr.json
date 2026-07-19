@@ -662,7 +662,8 @@
       "today": "Aujourd'hui",
       "tomorrow": "Demain",
       "fromPrice": "À partir de {{price}} €",
-      "priceOnRequest": "Prix sur demande"
+      "priceOnRequest": "Prix sur demande",
+      "loyalty": "Programme de fidélité"
     },
     "serviceCard": {
       "fromPrefix": "à partir de",
@@ -1083,7 +1084,8 @@
     "providers": {
       "title": "Vos prestataires",
       "progress": "{{filled}}/{{threshold}} · {{reward}}",
-      "armed": "🎁 {{reward}} offert"
+      "armed": "🎁 {{reward}} offert",
+      "seeLoyalty": "Mes cartes →"
     }
   },
   "search": {
@@ -2851,7 +2853,8 @@
       "percent": "−{{value}} %",
       "amount": "−{{value}} €"
     },
-    "publicBanner": "🎁 Fidélité : tous les {{threshold}} RDV, {{reward}} sur votre réservation suivante"
+    "publicTitle": "Programme de fidélité",
+    "publicDetail": "Tous les {{threshold}} RDV honorés, {{reward}} sur votre réservation suivante"
   },
   "proLoyalty": {
     "card": {

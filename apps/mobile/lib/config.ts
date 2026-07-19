@@ -25,8 +25,33 @@ const PROD_STRIPE_PUBLISHABLE_KEY =
 const envApiUrl = process.env.EXPO_PUBLIC_APP_URL;
 const envStripeKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
+/**
+ * En dev, l'IP du Mac change au gré du DHCP et `.env.local` devient stale
+ * (source récurrente de « ça charge indéfiniment »). Le téléphone connaît
+ * forcément l'hôte du Mac : il y charge le bundle Metro. On dérive donc
+ * l'URL d'API de `hostUri` (ex. « 192.168.1.147:8083 » → port 3000), avec
+ * `.env.local` en secours (simulateur/cas exotiques). Jamais utilisé en
+ * production (`__DEV__ === false`).
+ */
+function deriveDevApiUrl(): string | null {
+  try {
+    // Import à l'exécution : expo-constants est toujours présent dans
+    // l'app, mais on reste défensif (tests node, etc.).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Constants = require('expo-constants').default;
+    const hostUri: string | undefined =
+      Constants?.expoConfig?.hostUri ?? Constants?.expoGoConfig?.debuggerHost;
+    const host = hostUri?.split(':')[0];
+    return host ? `http://${host}:3000` : null;
+  } catch {
+    return null;
+  }
+}
+
 /** URL de base de l'API web. Toujours opatam.com en production. */
-export const API_URL = __DEV__ && envApiUrl ? envApiUrl : PROD_API_URL;
+export const API_URL = __DEV__
+  ? deriveDevApiUrl() ?? envApiUrl ?? PROD_API_URL
+  : PROD_API_URL;
 
 /** Clé publishable Stripe. Toujours la clé LIVE en production. */
 export const STRIPE_PUBLISHABLE_KEY =

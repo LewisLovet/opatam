@@ -32,6 +32,8 @@ export interface ProviderCardProps {
   distance?: number;
   /** Whether the provider is verified */
   isVerified?: boolean;
+  /** true = le pro propose un programme de fidélité actif (badge 🎁). */
+  hasLoyalty?: boolean;
   /** Press handler */
   onPress: () => void;
   /** Show loading overlay (for navigation preloading) */
@@ -86,6 +88,7 @@ export function ProviderCard({
   nextAvailableSlot,
   distance,
   isVerified = false,
+  hasLoyalty = false,
   onPress,
   isLoading = false,
 }: ProviderCardProps) {
@@ -207,6 +210,29 @@ export function ProviderCard({
         <Text variant="caption" color="textSecondary" numberOfLines={1}>
           {getCategoryLabel(category)} • {capitalizeWords(city)}{distance != null && distance !== Infinity ? ` • ${formatDistance(distance)}` : ''}
         </Text>
+
+        {/* Programme de fidélité — l'existence du programme est un critère de
+            choix dès la liste de résultats. */}
+        {hasLoyalty && (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              alignSelf: 'flex-start',
+              gap: 4,
+              backgroundColor: colors.primaryLight,
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              marginTop: 6,
+            }}
+          >
+            <Ionicons name="gift-outline" size={12} color={colors.primary} />
+            <Text variant="caption" style={{ color: colors.primary, fontWeight: '600', fontSize: 11 }}>
+              {t('components.providerCard.loyalty')}
+            </Text>
+          </View>
+        )}
 
         <View style={[styles.footer, { marginTop: spacing.sm }]}>
           {hasValidPrice ? (

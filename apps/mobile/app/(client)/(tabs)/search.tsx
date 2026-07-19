@@ -37,6 +37,8 @@ import {
   CATEGORIES,
   getCityRegion,
   getRegionFromCoords,
+  isLoyaltyConfigValid,
+  hasLoyaltyAccess,
 } from '@booking-app/shared';
 
 // Names resolved at render time via t(`search.countries.${code}`)
@@ -220,6 +222,7 @@ export default function SearchScreen() {
         minPrice={item.minPrice}
         nextAvailableSlot={item.nextAvailableSlot}
         isVerified={item.isVerified}
+        hasLoyalty={isLoyaltyConfigValid(item.settings?.loyalty) && hasLoyaltyAccess(item)}
         onPress={() => navigateToProvider(item.slug)}
         isLoading={isLoading(item.slug)}
       />

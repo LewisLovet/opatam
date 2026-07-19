@@ -134,31 +134,36 @@ function ProviderMiniCard({
           {name}
         </Text>
         {loyalty && reward && (
-          <>
-            {loyalty.armed ? (
-              <Text
-                variant="caption"
-                numberOfLines={1}
-                style={{ color: colors.primary, fontWeight: '700', fontSize: 11, marginTop: 2 }}
-              >
-                {t('home.providers.armed', { reward })}
-              </Text>
-            ) : (
-              <Text
-                variant="caption"
-                color="textSecondary"
-                numberOfLines={1}
-                style={{ fontSize: 11, marginTop: 2 }}
-              >
-                {t('home.providers.progress', {
-                  filled,
-                  threshold: loyalty.threshold,
-                  reward,
-                })}
-              </Text>
-            )}
+          // Pastille colorée : la présence d'une carte de fidélité doit se
+          // voir AU PREMIER COUP D'ŒIL, pas se deviner dans du texte gris.
+          <View
+            style={[
+              styles.loyaltyPill,
+              {
+                backgroundColor: loyalty.armed ? colors.primary : colors.primaryLight,
+                marginTop: 6,
+              },
+            ]}
+          >
+            <Text
+              variant="caption"
+              numberOfLines={1}
+              style={{
+                color: loyalty.armed ? '#FFFFFF' : colors.primary,
+                fontWeight: '700',
+                fontSize: 11,
+              }}
+            >
+              {loyalty.armed
+                ? t('home.providers.armed', { reward })
+                : t('home.providers.progress', {
+                    filled,
+                    threshold: loyalty.threshold,
+                    reward,
+                  })}
+            </Text>
             <MiniStampRow filled={filled} threshold={loyalty.threshold} />
-          </>
+          </View>
         )}
       </Card>
     </Pressable>
@@ -170,9 +175,10 @@ function ProviderMiniCard({
 // ---------------------------------------------------------------------------
 
 export function MyProvidersRow({ bookings, loading }: MyProvidersRowProps) {
-  const { spacing } = useTheme();
+  const { spacing, colors } = useTheme();
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
+  const router = useRouter();
 
   // Cartes de fidélité — best-effort (les erreurs sont silencieuses ici,
   // l'écran dédié /loyalty gère l'affichage d'erreur).
@@ -245,9 +251,23 @@ export function MyProvidersRow({ bookings, loading }: MyProvidersRowProps) {
 
   return (
     <View style={{ marginBottom: spacing.xl }}>
-      <Text variant="h3" style={{ marginBottom: spacing.md, paddingHorizontal: spacing.lg }}>
-        {t('home.providers.title')}
-      </Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: spacing.md,
+          paddingHorizontal: spacing.lg,
+        }}
+      >
+        <Text variant="h3">{t('home.providers.title')}</Text>
+        {/* Accès direct à l'espace fidélité depuis l'accueil. */}
+        <Pressable onPress={() => router.push('/(client)/loyalty' as any)} hitSlop={8}>
+          <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+            {t('home.providers.seeLoyalty')}
+          </Text>
+        </Pressable>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -288,6 +308,13 @@ export function MyProvidersRow({ bookings, loading }: MyProvidersRowProps) {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
+  loyaltyPill: {
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    maxWidth: '100%',
+  },
   miniCard: {
     width: 140,
     alignItems: 'center',

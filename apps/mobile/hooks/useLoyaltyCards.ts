@@ -60,9 +60,14 @@ export function useLoyaltyCards(enabled = true): UseLoyaltyCardsResult {
     setError(false);
     try {
       const token = await user.getIdToken();
+      // Timeout dur : un serveur injoignable (IP LAN périmée, coupure) ne
+      // doit JAMAIS laisser l'écran en chargement infini.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
       const res = await fetch(`${API_URL}/api/loyalty/me`, {
         headers: { Authorization: `Bearer ${token}` },
-      });
+        signal: ctrl.signal,
+      }).finally(() => clearTimeout(timer));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCards(Array.isArray(data.cards) ? (data.cards as LoyaltyCard[]) : []);

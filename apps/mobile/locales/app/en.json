@@ -662,7 +662,8 @@
       "today": "Today",
       "tomorrow": "Tomorrow",
       "fromPrice": "From {{price}} €",
-      "priceOnRequest": "Price on request"
+      "priceOnRequest": "Price on request",
+      "loyalty": "Loyalty program"
     },
     "serviceCard": {
       "fromPrefix": "from",
@@ -1083,7 +1084,8 @@
     "providers": {
       "title": "Your providers",
       "progress": "{{filled}}/{{threshold}} · {{reward}}",
-      "armed": "🎁 {{reward}} unlocked"
+      "armed": "🎁 {{reward}} unlocked",
+      "seeLoyalty": "My cards →"
     }
   },
   "search": {
@@ -2851,7 +2853,8 @@
       "percent": "−{{value}}%",
       "amount": "−€{{value}}"
     },
-    "publicBanner": "🎁 Loyalty: every {{threshold}} appointments, {{reward}} off your next booking"
+    "publicTitle": "Loyalty program",
+    "publicDetail": "Every {{threshold}} completed appointments, {{reward}} off your next booking"
   },
   "proLoyalty": {
     "card": {

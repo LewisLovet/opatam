@@ -471,21 +471,39 @@ export default function ProviderDetailScreen() {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: spacing.sm,
+                gap: spacing.md,
                 marginTop: spacing.md,
                 backgroundColor: colors.primaryLight,
-                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: colors.primary + '40',
+                borderRadius: radius.lg,
                 paddingHorizontal: spacing.md,
-                paddingVertical: spacing.sm,
+                paddingVertical: spacing.md,
               }}
             >
-              <Ionicons name="gift-outline" size={16} color={colors.primary} />
-              <Text variant="caption" style={{ color: colors.primary, fontWeight: '600', flex: 1 }}>
-                {t('loyalty.publicBanner', {
-                  threshold: publicLoyalty.threshold,
-                  reward: formatLoyaltyReward(publicLoyalty.rewardType, publicLoyalty.rewardValue, t),
-                })}
-              </Text>
+              <View
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 19,
+                  backgroundColor: colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="gift" size={19} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="body" style={{ fontWeight: '700', color: colors.primary }}>
+                  {t('loyalty.publicTitle')}
+                </Text>
+                <Text variant="caption" style={{ color: colors.textSecondary, marginTop: 1 }}>
+                  {t('loyalty.publicDetail', {
+                    threshold: publicLoyalty.threshold,
+                    reward: formatLoyaltyReward(publicLoyalty.rewardType, publicLoyalty.rewardValue, t),
+                  })}
+                </Text>
+              </View>
             </View>
           )}
 
