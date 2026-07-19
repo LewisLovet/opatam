@@ -129,23 +129,26 @@ export default function LoyaltyScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          { paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.md },
-        ]}
-      >
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.7 : 1 }]}
+      {/* Header — fond primary jusque sous la status bar, comme les autres
+          écrans (bookings, etc.) : la safe area ne doit jamais rester blanche. */}
+      <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+        <View
+          style={[
+            styles.header,
+            { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
+          ]}
         >
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text variant="h2" style={styles.headerTitle}>
-          {t('loyalty.title')}
-        </Text>
-        <View style={styles.headerSpacer} />
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+          </Pressable>
+          <Text variant="h2" style={[styles.headerTitle, { color: '#FFFFFF' }]}>
+            {t('loyalty.title')}
+          </Text>
+          <View style={styles.headerSpacer} />
+        </View>
       </View>
 
       {/* Not authenticated */}

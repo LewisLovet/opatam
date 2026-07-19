@@ -62,26 +62,28 @@ function toTime(dt: any): number {
   return Number.isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
-/** Rangée de mini-tampons (version réduite de loyalty.tsx). */
-function MiniStampRow({ filled, threshold }: { filled: number; threshold: number }) {
+/** Jauge de progression — hauteur FIXE quel que soit le seuil, pour que
+ *  toutes les cartes de la rangée fassent la même taille (les tampons
+ *  passaient à la ligne au-delà de ~8 RDV et déformaient les cartes). */
+function MiniGauge({ filled, threshold, onPrimary }: { filled: number; threshold: number; onPrimary?: boolean }) {
   const { colors } = useTheme();
+  const pct = threshold > 0 ? Math.min(100, Math.round((filled / threshold) * 100)) : 0;
   return (
-    <View style={styles.miniStampRow}>
-      {Array.from({ length: threshold }, (_, i) => (
-        <View
-          key={i}
-          style={[
-            styles.miniStamp,
-            i < filled
-              ? { backgroundColor: colors.primary }
-              : {
-                  backgroundColor: colors.surfaceSecondary,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                },
-          ]}
-        />
-      ))}
+    <View
+      style={[
+        styles.gaugeTrack,
+        { backgroundColor: onPrimary ? 'rgba(255,255,255,0.35)' : colors.border },
+      ]}
+    >
+      <View
+        style={[
+          styles.gaugeFill,
+          {
+            width: `${pct}%`,
+            backgroundColor: onPrimary ? '#FFFFFF' : colors.primary,
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -162,7 +164,7 @@ function ProviderMiniCard({
                     reward,
                   })}
             </Text>
-            <MiniStampRow filled={filled} threshold={loyalty.threshold} />
+            <MiniGauge filled={filled} threshold={loyalty.threshold} onPrimary={loyalty.armed} />
           </View>
         )}
       </Card>
@@ -316,20 +318,21 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   miniCard: {
+    // Dimensions FIXES : toutes les cartes de la rangée font la même
+    // taille, avec ou sans programme de fidélité, quel que soit le seuil.
     width: 140,
+    height: 148,
     alignItems: 'center',
   },
-  miniStampRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 3,
+  gaugeTrack: {
+    width: 100,
+    height: 5,
+    borderRadius: 2.5,
     marginTop: 6,
-    maxWidth: 110,
+    overflow: 'hidden',
   },
-  miniStamp: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+  gaugeFill: {
+    height: '100%',
+    borderRadius: 2.5,
   },
 });
