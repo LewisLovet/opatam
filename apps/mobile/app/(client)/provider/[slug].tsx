@@ -15,6 +15,7 @@ import {
   Linking,
   Animated,
   Modal,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -151,6 +152,21 @@ export default function ProviderDetailScreen() {
     hasLoyaltyAccess(provider)
       ? provider.settings!.loyalty!
       : null;
+  // Alerte « prestations concernées » : formulation la plus courte —
+  // rien d'exclu → toutes ; peu d'exclues → « toutes sauf… » ; sinon la liste.
+  const showLoyaltyInfo = () => {
+    if (!publicLoyalty) return;
+    const excludedIds = new Set(publicLoyalty.excludedServiceIds ?? []);
+    const eligible = services.filter((s) => !excludedIds.has(s.id));
+    const excluded = services.filter((s) => excludedIds.has(s.id));
+    const msg =
+      excluded.length === 0
+        ? t('loyalty.info.all')
+        : excluded.length < eligible.length
+          ? t('loyalty.info.except', { list: excluded.map((s) => s.name).join(', ') })
+          : t('loyalty.info.only', { list: eligible.map((s) => s.name).join(', ') });
+    Alert.alert(t('loyalty.publicTitle'), msg);
+  };
   const loyaltyCard = provider
     ? loyaltyCards.find((c) => c.providerId === provider.id)
     : undefined;
@@ -504,6 +520,9 @@ export default function ProviderDetailScreen() {
                   })}
                 </Text>
               </View>
+              <Pressable onPress={showLoyaltyInfo} hitSlop={8}>
+                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+              </Pressable>
             </View>
           )}
 
@@ -561,6 +580,7 @@ export default function ProviderDetailScreen() {
                   </Text>
                 )}
                 {/* Jauge de progression (pleine et blanche quand armée) */}
+                {/* (le bouton ⓘ des prestations concernées est ci-dessous) */}
                 <View
                   style={{
                     height: 5,
@@ -580,6 +600,15 @@ export default function ProviderDetailScreen() {
                   />
                 </View>
               </View>
+              {publicLoyalty && (
+                <Pressable onPress={showLoyaltyInfo} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={20}
+                    color={loyaltyCard.armed ? '#FFFFFF' : colors.primary}
+                  />
+                </Pressable>
+              )}
             </View>
           )}
 

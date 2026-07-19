@@ -2855,7 +2855,12 @@
       "amount": "−€{{value}}"
     },
     "publicTitle": "Loyalty program",
-    "publicDetail": "Every {{threshold}} completed appointments, {{reward}} off your next booking"
+    "publicDetail": "Every {{threshold}} completed appointments, {{reward}} off your next booking",
+    "info": {
+      "all": "All services are eligible.",
+      "except": "All services except: {{list}}.",
+      "only": "Eligible services: {{list}}."
+    }
   },
   "proLoyalty": {
     "card": {

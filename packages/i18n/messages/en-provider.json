@@ -118,6 +118,10 @@
   "loyaltyBanner": {
     "title": "Loyalty program",
     "percent": "Every {threshold} appointments, −{value}% off your next booking",
-    "amount": "Every {threshold} appointments, −€{value} off your next booking"
+    "amount": "Every {threshold} appointments, −€{value} off your next booking",
+    "infoAria": "See eligible services",
+    "infoAll": "All services are eligible.",
+    "infoExcept": "All services except: {list}.",
+    "infoOnly": "Eligible services: {list}."
   }
 }

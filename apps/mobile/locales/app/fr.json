@@ -2855,7 +2855,12 @@
       "amount": "−{{value}} €"
     },
     "publicTitle": "Programme de fidélité",
-    "publicDetail": "Tous les {{threshold}} RDV honorés, {{reward}} sur votre réservation suivante"
+    "publicDetail": "Tous les {{threshold}} RDV honorés, {{reward}} sur votre réservation suivante",
+    "info": {
+      "all": "Toutes les prestations y ouvrent droit.",
+      "except": "Toutes les prestations sauf : {{list}}.",
+      "only": "Prestations concernées : {{list}}."
+    }
   },
   "proLoyalty": {
     "card": {

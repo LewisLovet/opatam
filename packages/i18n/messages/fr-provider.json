@@ -118,6 +118,10 @@
   "loyaltyBanner": {
     "title": "Programme de fidélité",
     "percent": "Tous les {threshold} RDV, −{value} % sur votre réservation suivante",
-    "amount": "Tous les {threshold} RDV, −{value} € sur votre réservation suivante"
+    "amount": "Tous les {threshold} RDV, −{value} € sur votre réservation suivante",
+    "infoAria": "Voir les prestations concernées",
+    "infoAll": "Toutes les prestations y ouvrent droit.",
+    "infoExcept": "Toutes les prestations sauf : {list}.",
+    "infoOnly": "Prestations concernées : {list}."
   }
 }

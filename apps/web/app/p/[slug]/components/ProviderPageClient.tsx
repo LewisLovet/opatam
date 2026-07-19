@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
 import { useTranslations } from 'next-intl';
-import { Megaphone, Gift } from 'lucide-react';
+import { Megaphone, Gift, Info } from 'lucide-react';
 import type { ServiceDiscount, LoyaltySettings } from '@booking-app/shared';
 import { isLoyaltyConfigValid, hasLoyaltyAccess } from '@booking-app/shared';
 import { ProviderHero } from './ProviderHero';
@@ -174,6 +174,7 @@ export function ProviderPageClient({
 }: ProviderPageClientProps) {
   const t = useTranslations('provider');
   const tLoyalty = useTranslations('provider.loyaltyBanner');
+  const [showLoyaltyInfo, setShowLoyaltyInfo] = useState(false);
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('prestations');
   const [showNotice, setShowNotice] = useState(false);
@@ -272,19 +273,45 @@ export function ProviderPageClient({
               const gate = provider as Parameters<typeof hasLoyaltyAccess>[0];
               if (!isLoyaltyConfigValid(loyalty) || !hasLoyaltyAccess(gate)) return null;
               const t = tLoyalty;
+              // Prestations concernées — formulation la plus courte :
+              // rien d'exclu → « toutes » ; peu d'exclues → « toutes sauf… » ;
+              // sinon la liste des éligibles.
+              const excludedIds = new Set(loyalty.excludedServiceIds ?? []);
+              const eligible = services.filter((s) => !excludedIds.has(s.id));
+              const excluded = services.filter((s) => excludedIds.has(s.id));
+              const infoText =
+                excluded.length === 0
+                  ? t('infoAll')
+                  : excluded.length < eligible.length
+                    ? t('infoExcept', { list: excluded.map((s) => s.name).join(', ') })
+                    : t('infoOnly', { list: eligible.map((s) => s.name).join(', ') });
               return (
-                <div className="mt-6 flex items-center gap-3 rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-4 py-3">
-                  <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center flex-shrink-0">
-                    <Gift className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                <div className="mt-6 rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center flex-shrink-0">
+                      <Gift className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('title')}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        {loyalty.rewardType === 'percent'
+                          ? t('percent', { threshold: loyalty.threshold, value: loyalty.rewardValue })
+                          : t('amount', { threshold: loyalty.threshold, value: loyalty.rewardValue / 100 })}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowLoyaltyInfo((v) => !v)}
+                      aria-expanded={showLoyaltyInfo}
+                      aria-label={t('infoAria')}
+                      className="p-1.5 rounded-full text-primary-500 hover:text-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors flex-shrink-0"
+                    >
+                      <Info className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('title')}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      {loyalty.rewardType === 'percent'
-                        ? t('percent', { threshold: loyalty.threshold, value: loyalty.rewardValue })
-                        : t('amount', { threshold: loyalty.threshold, value: loyalty.rewardValue / 100 })}
-                    </p>
-                  </div>
+                  {showLoyaltyInfo && (
+                    <p className="mt-2 pl-12 text-xs text-gray-600 dark:text-gray-300">{infoText}</p>
+                  )}
                 </div>
               );
             })()}
