@@ -122,6 +122,7 @@
     "infoAria": "Voir les prestations concernées",
     "infoAll": "Toutes les prestations y ouvrent droit.",
     "infoExcept": "Toutes les prestations sauf : {list}.",
-    "infoOnly": "Prestations concernées : {list}."
+    "infoOnly": "Prestations concernées : {list}.",
+    "appNudge": "Cumulez vos points en réservant depuis l'app :"
   }
 }

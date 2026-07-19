@@ -122,6 +122,7 @@
     "infoAria": "See eligible services",
     "infoAll": "All services are eligible.",
     "infoExcept": "All services except: {list}.",
-    "infoOnly": "Eligible services: {list}."
+    "infoOnly": "Eligible services: {list}.",
+    "appNudge": "Collect your points by booking from the app:"
   }
 }
