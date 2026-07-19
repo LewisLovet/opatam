@@ -77,8 +77,29 @@
     "nextAvailability": "Prochaine dispo",
     "prevMonth": "Mois précédent",
     "nextMonth": "Mois suivant",
-    "days": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
-    "months": ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"],
+    "days": [
+      "Dim",
+      "Lun",
+      "Mar",
+      "Mer",
+      "Jeu",
+      "Ven",
+      "Sam"
+    ],
+    "months": [
+      "Janvier",
+      "Février",
+      "Mars",
+      "Avril",
+      "Mai",
+      "Juin",
+      "Juillet",
+      "Août",
+      "Septembre",
+      "Octobre",
+      "Novembre",
+      "Décembre"
+    ],
     "loadError": "Erreur lors du chargement des disponibilités",
     "noAvailabilityTitle": "Aucune disponibilité pour cette prestation",
     "noAvailabilityHint": "dans les {days} prochains jours. Revenez plus tard ou contactez directement le professionnel.",
@@ -168,7 +189,9 @@
   },
   "appCta": {
     "title": "Téléchargez l'app Opatam",
-    "subtitle": "Retrouvez vos rendez-vous, recevez des rappels et réservez en un clic."
+    "subtitle": "Retrouvez vos rendez-vous, recevez des rappels et réservez en un clic.",
+    "loyaltyPercent": "🎁 Votre carte de fidélité se remplit : tous les {threshold} RDV, −{value} %. Suivez vos points dans l'app.",
+    "loyaltyAmount": "🎁 Votre carte de fidélité se remplit : tous les {threshold} RDV, −{value} €. Suivez vos points dans l'app."
   },
   "proCta": {
     "title": "Vous êtes aussi professionnel ?",

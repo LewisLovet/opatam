@@ -77,8 +77,29 @@
     "nextAvailability": "Next availability",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
-    "days": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "days": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "months": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
     "loadError": "Failed to load availability",
     "noAvailabilityTitle": "No availability for this service",
     "noAvailabilityHint": "within the next {days} days. Please check back later or contact the professional directly.",
@@ -168,7 +189,9 @@
   },
   "appCta": {
     "title": "Download the Opatam app",
-    "subtitle": "Keep track of your appointments, get reminders and book in one tap."
+    "subtitle": "Keep track of your appointments, get reminders and book in one tap.",
+    "loyaltyPercent": "🎁 Your loyalty card is filling up: every {threshold} appointments, −{value}%. Track your points in the app.",
+    "loyaltyAmount": "🎁 Your loyalty card is filling up: every {threshold} appointments, −€{value}. Track your points in the app."
   },
   "proCta": {
     "title": "Are you a professional too?",

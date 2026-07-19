@@ -52,6 +52,9 @@ interface Booking {
 
 interface ConfirmationClientProps {
   booking: Booking;
+  /** Programme de fidélité actif du pro (null = pas de programme) — rend le
+   *  bloc « Téléchargez l'app » loyalty-aware pour les invités. */
+  providerLoyalty?: { threshold: number; rewardType: 'percent' | 'amount'; rewardValue: number } | null;
 }
 
 function formatDuration(minutes: number): string {
@@ -163,7 +166,7 @@ function downloadIcs(booking: Booking, address: string, eventTitle: string, even
   URL.revokeObjectURL(url);
 }
 
-export function ConfirmationClient({ booking }: ConfirmationClientProps) {
+export function ConfirmationClient({ booking, providerLoyalty = null }: ConfirmationClientProps) {
   const t = useTranslations('booking');
   const locale = useLocale();
   const formatPrice = (cents: number, centsMax?: number | null): string => {
@@ -574,6 +577,22 @@ export function ConfirmationClient({ booking }: ConfirmationClientProps) {
               <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
                 {t('appCta.subtitle')}
               </p>
+              {providerLoyalty && (
+                <p className="text-xs mb-3 -mt-2 font-medium" style={{ color: '#16578e' }}>
+                  {t(
+                    providerLoyalty.rewardType === 'percent'
+                      ? 'appCta.loyaltyPercent'
+                      : 'appCta.loyaltyAmount',
+                    {
+                      threshold: providerLoyalty.threshold,
+                      value:
+                        providerLoyalty.rewardType === 'percent'
+                          ? providerLoyalty.rewardValue
+                          : providerLoyalty.rewardValue / 100,
+                    },
+                  )}
+                </p>
+              )}
               <div className="flex gap-2">
                 <a
                   href="https://apps.apple.com/app/opatam/id6759246218"

@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
-import { bookingService } from '@booking-app/firebase';
+import { bookingService, providerRepository } from '@booking-app/firebase';
+import { isLoyaltyConfigValid, hasLoyaltyAccess } from '@booking-app/shared';
 import { ConfirmationClient } from './ConfirmationClient';
 
 interface PageProps {
@@ -60,5 +61,24 @@ export default async function ConfirmationPage({ params }: PageProps) {
       : null,
   };
 
-  return <ConfirmationClient booking={serializedBooking} />;
+  // Programme de fidélité du pro — quand il est actif, le bloc « Téléchargez
+  // l'app » devient un argument fidélité pour les invités : les points se
+  // cumulent déjà par email, l'app sert à les SUIVRE. Best-effort, jamais
+  // bloquant pour la page de confirmation.
+  let providerLoyalty: { threshold: number; rewardType: 'percent' | 'amount'; rewardValue: number } | null = null;
+  try {
+    const provider = await providerRepository.getById(booking.providerId);
+    const loyalty = provider?.settings?.loyalty ?? null;
+    if (isLoyaltyConfigValid(loyalty) && hasLoyaltyAccess(provider)) {
+      providerLoyalty = {
+        threshold: loyalty.threshold,
+        rewardType: loyalty.rewardType,
+        rewardValue: loyalty.rewardValue,
+      };
+    }
+  } catch {
+    /* page de confirmation toujours servie */
+  }
+
+  return <ConfirmationClient booking={serializedBooking} providerLoyalty={providerLoyalty} />;
 }
