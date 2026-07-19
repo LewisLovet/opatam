@@ -2847,7 +2847,8 @@
     },
     "provider": {
       "progress": "Fidélité : {{done}}/{{threshold}} RDV — encore {{remaining}} avant {{reward}}",
-      "armed": "🎁 {{reward}} sur votre prochaine réservation"
+      "armed": "🎁 {{reward}} sur votre prochaine réservation",
+      "cardTitle": "Votre carte de fidélité"
     },
     "reward": {
       "percent": "−{{value}} %",

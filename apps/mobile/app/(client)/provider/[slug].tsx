@@ -508,32 +508,78 @@ export default function ProviderDetailScreen() {
           )}
 
           {/* Loyalty progress line (discreet, only when the client has a card) */}
+          {/* Carte de fidélité PERSONNELLE — encore plus visible que le
+              bandeau public : le client a des RDV ici, sa progression est un
+              levier de re-réservation. Version pleine couleur quand la
+              récompense est armée. */}
           {loyaltyCard && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md }}>
-              <Ionicons
-                name="ribbon-outline"
-                size={14}
-                color={loyaltyCard.armed ? colors.primary : colors.textSecondary}
-              />
-              <Text
-                variant="caption"
-                style={
-                  loyaltyCard.armed
-                    ? { color: colors.primary, fontWeight: '600', flex: 1 }
-                    : { color: colors.textSecondary, flex: 1 }
-                }
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.md,
+                marginTop: spacing.md,
+                backgroundColor: loyaltyCard.armed ? colors.primary : colors.primaryLight,
+                borderWidth: 1,
+                borderColor: loyaltyCard.armed ? colors.primary : colors.primary + '40',
+                borderRadius: radius.lg,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.md,
+              }}
+            >
+              <View
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 19,
+                  backgroundColor: loyaltyCard.armed ? 'rgba(255,255,255,0.25)' : colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                {loyaltyCard.armed
-                  ? t('loyalty.provider.armed', {
-                      reward: formatLoyaltyReward(loyaltyCard.rewardType, loyaltyCard.rewardValue, t),
-                    })
-                  : t('loyalty.provider.progress', {
+                <Ionicons name="gift" size={19} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  variant="body"
+                  style={{ fontWeight: '700', color: loyaltyCard.armed ? '#FFFFFF' : colors.primary }}
+                >
+                  {loyaltyCard.armed
+                    ? t('loyalty.provider.armed', {
+                        reward: formatLoyaltyReward(loyaltyCard.rewardType, loyaltyCard.rewardValue, t),
+                      })
+                    : t('loyalty.provider.cardTitle')}
+                </Text>
+                {!loyaltyCard.armed && (
+                  <Text variant="caption" style={{ color: colors.textSecondary, marginTop: 1 }}>
+                    {t('loyalty.provider.progress', {
                       done: loyaltyCard.confirmedCount % loyaltyCard.threshold,
                       threshold: loyaltyCard.threshold,
                       remaining: loyaltyCard.remaining,
                       reward: formatLoyaltyReward(loyaltyCard.rewardType, loyaltyCard.rewardValue, t),
                     })}
-              </Text>
+                  </Text>
+                )}
+                {/* Jauge de progression (pleine et blanche quand armée) */}
+                <View
+                  style={{
+                    height: 5,
+                    borderRadius: 2.5,
+                    marginTop: 6,
+                    overflow: 'hidden',
+                    backgroundColor: loyaltyCard.armed ? 'rgba(255,255,255,0.35)' : colors.border,
+                  }}
+                >
+                  <View
+                    style={{
+                      height: '100%',
+                      borderRadius: 2.5,
+                      width: `${loyaltyCard.armed ? 100 : Math.min(100, Math.round(((loyaltyCard.confirmedCount % loyaltyCard.threshold) / loyaltyCard.threshold) * 100))}%`,
+                      backgroundColor: loyaltyCard.armed ? '#FFFFFF' : colors.primary,
+                    }}
+                  />
+                </View>
+              </View>
             </View>
           )}
 

@@ -2847,7 +2847,8 @@
     },
     "provider": {
       "progress": "Loyalty: {{done}}/{{threshold}} appointments — {{remaining}} more before {{reward}}",
-      "armed": "🎁 {{reward}} off your next booking"
+      "armed": "🎁 {{reward}} off your next booking",
+      "cardTitle": "Your loyalty card"
     },
     "reward": {
       "percent": "−{{value}}%",
