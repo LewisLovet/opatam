@@ -408,8 +408,10 @@ export default function ClientDetailScreen() {
         {(() => {
           const loyalty = provider?.settings?.loyalty;
           if (!hasLoyaltyAccess(provider) || !isLoyaltyConfigValid(loyalty)) return null;
-          const armed = isLoyaltyRewardArmed(client.confirmedCount, loyalty.threshold);
-          const remaining = loyaltyRemaining(client.confirmedCount, loyalty.threshold);
+          // Compteur FIDÉLITÉ (connecté + post-lancement), pas confirmedCount.
+          const loyaltyCount = client.loyaltyConfirmedCount ?? 0;
+          const armed = isLoyaltyRewardArmed(loyaltyCount, loyalty.threshold);
+          const remaining = loyaltyRemaining(loyaltyCount, loyalty.threshold);
           const rewardLabel =
             loyalty.rewardType === 'percent'
               ? t('proLoyalty.progress.rewardPercent', {

@@ -444,6 +444,11 @@ export interface ProviderClient {
   confirmedCount: number;
   cancelledCount: number;
   noshowCount: number;
+  /** RDV qui remplissent la carte de fidélité : confirmés, faits CONNECTÉ
+   *  (clientId présent) et créés après LOYALTY_LAUNCH_AT — aucune
+   *  rétroactivité, les invités ne cumulent pas. Absent sur les docs
+   *  antérieurs au lancement (lire avec `?? 0`). */
+  loyaltyConfirmedCount?: number;
   /** Sum of `price` over confirmed bookings (cents). */
   totalRevenue: number;
 

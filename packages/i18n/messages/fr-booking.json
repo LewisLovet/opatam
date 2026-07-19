@@ -190,8 +190,8 @@
   "appCta": {
     "title": "Téléchargez l'app Opatam",
     "subtitle": "Retrouvez vos rendez-vous, recevez des rappels et réservez en un clic.",
-    "loyaltyPercent": "🎁 Votre carte de fidélité se remplit : tous les {threshold} RDV, −{value} %. Suivez vos points dans l'app.",
-    "loyaltyAmount": "🎁 Votre carte de fidélité se remplit : tous les {threshold} RDV, −{value} €. Suivez vos points dans l'app."
+    "loyaltyPercent": "🎁 Programme de fidélité : tous les {threshold} RDV réservés depuis l'app, −{value} %. Téléchargez-la pour cumuler vos points.",
+    "loyaltyAmount": "🎁 Programme de fidélité : tous les {threshold} RDV réservés depuis l'app, −{value} €. Téléchargez-la pour cumuler vos points."
   },
   "proCta": {
     "title": "Vous êtes aussi professionnel ?",

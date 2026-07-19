@@ -190,8 +190,8 @@
   "appCta": {
     "title": "Download the Opatam app",
     "subtitle": "Keep track of your appointments, get reminders and book in one tap.",
-    "loyaltyPercent": "🎁 Your loyalty card is filling up: every {threshold} appointments, −{value}%. Track your points in the app.",
-    "loyaltyAmount": "🎁 Your loyalty card is filling up: every {threshold} appointments, −€{value}. Track your points in the app."
+    "loyaltyPercent": "🎁 Loyalty program: every {threshold} appointments booked from the app, −{value}%. Download it to collect your points.",
+    "loyaltyAmount": "🎁 Loyalty program: every {threshold} appointments booked from the app, −€{value}. Download it to collect your points."
   },
   "proCta": {
     "title": "Are you a professional too?",

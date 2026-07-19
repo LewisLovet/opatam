@@ -353,12 +353,15 @@ export function ClientDrawer({
           {/* Carte de fidélité — progression vers la prochaine récompense.
               Visible seulement quand la fidélité est configurée et active. */}
           {loyaltyOn && loyaltySettings && (() => {
+            // Compteur FIDÉLITÉ : RDV connectés post-lancement uniquement
+            // (les invités et l'historique d'avant ne remplissent pas la carte).
+            const loyaltyCount = client.loyaltyConfirmedCount ?? 0;
             const armed = isLoyaltyRewardArmed(
-              client.confirmedCount,
+              loyaltyCount,
               loyaltySettings.threshold,
             );
             const remaining = loyaltyRemaining(
-              client.confirmedCount,
+              loyaltyCount,
               loyaltySettings.threshold,
             );
             const done = loyaltySettings.threshold - remaining;

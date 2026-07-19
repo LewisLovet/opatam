@@ -12,6 +12,32 @@ import type { LoyaltySettings } from '../types';
  * jamais la récompense (le compteur n'a pas bougé).
  */
 
+/**
+ * Date de lancement du système de fidélité — AUCUNE rétroactivité :
+ * seules les résas créées APRÈS cette date remplissent les cartes
+ * (décision produit 2026-07-20). Les invités ne cumulent pas : seules
+ * les résas faites CONNECTÉ (clientId présent) comptent — à
+ * l'inscription, un trigger crédite uniquement la résa qui a mené à
+ * l'inscription (la plus récente), pas le reste de l'historique.
+ *
+ * ⚠️ Dupliquée dans functions/src/lib/providerStatsAgg.ts (le miroir
+ * functions n'importe pas les packages workspace) — garder en phase.
+ */
+export const LOYALTY_LAUNCH_AT = new Date('2026-07-20T00:00:00+02:00');
+
+/** Cette résa remplit-elle la carte ? (connectée + confirmée + post-lancement) */
+export function countsTowardLoyalty(b: {
+  status: string;
+  clientId: string | null;
+  createdAt: Date;
+}): boolean {
+  return (
+    b.status === 'confirmed' &&
+    !!b.clientId &&
+    b.createdAt.getTime() >= LOYALTY_LAUNCH_AT.getTime()
+  );
+}
+
 /** Réglages exploitables ? (garde-fou contre des docs partiels/legacy) */
 export function isLoyaltyConfigValid(s: LoyaltySettings | null | undefined): s is LoyaltySettings {
   if (!s || !s.enabled) return false;

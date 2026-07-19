@@ -120,8 +120,13 @@ export async function POST(request: NextRequest) {
     // docs au pro. Jamais sur les résas créées par le pro lui-même
     // (isProSource) : la fidélité récompense les réservations du client.
     let loyaltySettings = null;
+    // `clientUid` requis : la fidélité vit dans l'app — les invités ne
+    // cumulent NI ne consomment (politique 2026-07-20). Sans ce garde, un
+    // client armé pourrait consommer sa récompense en boucle via des résas
+    // invitées (qui n'incrémentent pas le compteur).
     if (
       !isProSource &&
+      clientUid &&
       isLoyaltyConfigValid(providerData.settings?.loyalty) &&
       hasLoyaltyAccess(providerData)
     ) {
@@ -137,7 +142,8 @@ export async function POST(request: NextRequest) {
             .collection('providerClients')
             .doc(`${validated.providerId}_${clientKey}`)
             .get();
-          const confirmedCount = (snap.data()?.confirmedCount as number | undefined) ?? 0;
+          // Compteur FIDÉLITÉ (pas confirmedCount) : connecté + post-lancement.
+          const confirmedCount = (snap.data()?.loyaltyConfirmedCount as number | undefined) ?? 0;
           if (isLoyaltyRewardArmed(confirmedCount, providerData.settings!.loyalty!.threshold)) {
             loyaltySettings = providerData.settings!.loyalty!;
           }

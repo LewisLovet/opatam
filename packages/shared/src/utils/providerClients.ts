@@ -36,6 +36,7 @@ import type {
   ProviderClientTag,
 } from '../types';
 import { getClientKey } from './providerStats';
+import { countsTowardLoyalty } from './loyalty';
 
 // ────────────────────────────────────────────────────────────────
 // Tag thresholds — surfaced as constants so the marketing/CRM
@@ -221,6 +222,10 @@ export function aggregateBookingsToClients(
       case 'confirmed':
         client.confirmedCount += 1;
         client.totalRevenue += booking.price ?? 0;
+        // Carte de fidélité : connecté + post-lancement uniquement.
+        if (countsTowardLoyalty(booking)) {
+          client.loyaltyConfirmedCount = (client.loyaltyConfirmedCount ?? 0) + 1;
+        }
         break;
       case 'cancelled':
         client.cancelledCount += 1;

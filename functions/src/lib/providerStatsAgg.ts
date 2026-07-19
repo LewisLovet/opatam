@@ -188,6 +188,8 @@ export interface ProviderClient {
   confirmedCount: number;
   cancelledCount: number;
   noshowCount: number;
+  /** RDV fidélité : confirmés + connectés + post-lancement (voir countsTowardLoyalty). */
+  loyaltyConfirmedCount: number;
   totalRevenue: number;
   firstBookingAt: Date;
   lastBookingAt: Date;
@@ -594,6 +596,22 @@ export interface AggregateClientsOptions {
   registeredUsers?: Record<string, { displayName: string; photoURL: string | null; phone: string | null }>;
 }
 
+/**
+ * Fidélité — MIROIR de packages/shared/src/utils/loyalty.ts (les functions
+ * n'importent pas les packages workspace) : aucune rétroactivité (résas
+ * créées après le lancement uniquement) et les invités ne cumulent pas
+ * (clientId requis). Garder les deux copies en phase.
+ */
+const LOYALTY_LAUNCH_AT = new Date('2026-07-20T00:00:00+02:00');
+
+function countsTowardLoyalty(b: Pick<BookingLike, 'status' | 'clientId' | 'createdAt'>): boolean {
+  return (
+    b.status === 'confirmed' &&
+    !!b.clientId &&
+    b.createdAt.getTime() >= LOYALTY_LAUNCH_AT.getTime()
+  );
+}
+
 export function aggregateBookingsToClients(
   bookings: BookingLike[],
   opts: AggregateClientsOptions,
@@ -616,6 +634,7 @@ export function aggregateBookingsToClients(
         email: null, phone: null, name: '',
         clientId: null, photoURL: null,
         bookingsCount: 0, confirmedCount: 0, cancelledCount: 0, noshowCount: 0,
+        loyaltyConfirmedCount: 0,
         totalRevenue: 0,
         firstBookingAt: b.datetime, lastBookingAt: b.datetime,
         tags: [], notes: null, preferences: null,
@@ -643,6 +662,7 @@ export function aggregateBookingsToClients(
     if (b.status === 'confirmed') {
       c.confirmedCount += 1;
       c.totalRevenue += b.price ?? 0;
+      if (countsTowardLoyalty(b)) c.loyaltyConfirmedCount += 1;
     } else if (b.status === 'cancelled') {
       c.cancelledCount += 1;
     } else if (b.status === 'noshow') {

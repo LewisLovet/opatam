@@ -57,7 +57,9 @@ export async function GET(request: NextRequest) {
       if (!p || !p.isPublished) return [];
       const loyalty = (p.settings?.loyalty ?? null) as LoyaltySettings | null;
       if (!isLoyaltyConfigValid(loyalty) || !hasLoyaltyAccess(p)) return [];
-      const confirmedCount = (client.confirmedCount as number | undefined) ?? 0;
+      // Compteur FIDÉLITÉ : seuls les RDV faits connecté après le lancement
+      // remplissent la carte (le champ API garde son nom pour le mobile).
+      const confirmedCount = (client.loyaltyConfirmedCount as number | undefined) ?? 0;
       return [
         {
           providerId: providers[i].id,
