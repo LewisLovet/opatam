@@ -1512,7 +1512,8 @@
       "cardsInProgress_one": "{{count}} card in progress",
       "cardsInProgress_other": "{{count}} cards in progress",
       "rewardsReady_one": "{{count}} reward ready",
-      "rewardsReady_other": "{{count}} rewards ready"
+      "rewardsReady_other": "{{count}} rewards ready",
+      "readyBadge": "Ready"
     },
     "tags": {
       "new": {

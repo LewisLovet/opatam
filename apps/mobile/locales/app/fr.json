@@ -1512,7 +1512,8 @@
       "cardsInProgress_one": "{{count}} carte en cours",
       "cardsInProgress_other": "{{count}} cartes en cours",
       "rewardsReady_one": "{{count}} récompense prête",
-      "rewardsReady_other": "{{count}} récompenses prêtes"
+      "rewardsReady_other": "{{count}} récompenses prêtes",
+      "readyBadge": "Prête"
     },
     "tags": {
       "new": {

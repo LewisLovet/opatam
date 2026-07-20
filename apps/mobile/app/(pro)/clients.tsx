@@ -345,6 +345,7 @@ export default function ClientsScreen() {
           renderItem={({ item }) => (
             <ClientRow
               client={item}
+              loyaltyThreshold={loyaltyThreshold}
               onPress={() =>
                 router.push({
                   pathname: '/(pro)/client-detail/[key]',
@@ -434,11 +435,14 @@ export default function ClientsScreen() {
 
 function ClientRow({
   client,
+  loyaltyThreshold,
   onPress,
   colors,
   spacing,
 }: {
   client: WithId<ProviderClient>;
+  /** Seuil du programme fidélité actif — null = programme inactif. */
+  loyaltyThreshold: number | null;
   onPress: () => void;
   colors: any;
   spacing: any;
@@ -446,6 +450,17 @@ function ClientRow({
   const { t } = useTranslation();
   const fullName = client.name || t('proClients.unnamedClient');
   const lastVisitLabel = formatLastVisitLabel(client.lastBookingAt);
+
+  // Carte de fidélité — visible d'un coup d'œil dans la liste : badge
+  // « Prête » ou « 3/10 » + fine jauge de progression sous le résumé.
+  const loyaltyCount = client.loyaltyConfirmedCount ?? 0;
+  const showLoyalty = loyaltyThreshold != null && loyaltyCount > 0;
+  const loyaltyArmed = showLoyalty && isLoyaltyRewardArmed(loyaltyCount, loyaltyThreshold!);
+  const loyaltyPos = showLoyalty
+    ? loyaltyArmed
+      ? loyaltyThreshold!
+      : loyaltyCount % loyaltyThreshold!
+    : 0;
 
   // Inline KPI string — much more readable than the previous
   // 3-column layout with "RDV / CA / VU" labels (the bare "VU"
@@ -474,6 +489,17 @@ function ClientRow({
                 <Text variant="body" style={{ fontWeight: '600' }} numberOfLines={1}>
                   {fullName}
                 </Text>
+                {showLoyalty && (
+                  <Badge
+                    label={
+                      loyaltyArmed
+                        ? t('proClients.loyalty.readyBadge')
+                        : `${loyaltyPos}/${loyaltyThreshold}`
+                    }
+                    variant={loyaltyArmed ? 'success' : 'info'}
+                    size="sm"
+                  />
+                )}
                 {client.tags.slice(0, 2).map((tag) => {
                   const meta = TAG_META_BY_VALUE[tag];
                   return (
@@ -500,6 +526,26 @@ function ClientRow({
               >
                 {summary}
               </Text>
+              {showLoyalty && (
+                <View
+                  style={{
+                    height: 4,
+                    borderRadius: 2,
+                    marginTop: 6,
+                    overflow: 'hidden',
+                    backgroundColor: colors.border,
+                  }}
+                >
+                  <View
+                    style={{
+                      height: '100%',
+                      borderRadius: 2,
+                      width: `${Math.min(100, Math.round((loyaltyPos / loyaltyThreshold!) * 100))}%`,
+                      backgroundColor: loyaltyArmed ? '#16a34a' : colors.primary,
+                    }}
+                  />
+                </View>
+              )}
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </View>
