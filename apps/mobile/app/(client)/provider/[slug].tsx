@@ -878,7 +878,14 @@ export default function ProviderDetailScreen() {
                   if (md.original === 0) {
                     return <Text variant="h3" color="primary">{t('common.free')}</Text>;
                   }
-                  const promo = md.discountPercent != null && md.price < md.original;
+                  // Fidélité armée sur presta éligible : le récap du footer
+                  // affiche le prix après récompense (barré = prix actuel).
+                  const loy = armedLoyalty && isServiceLoyaltyEligible(selectedService.id, armedLoyalty)
+                    ? applyLoyaltyToLine(md.price, md.original, armedLoyalty)
+                    : null;
+                  const shown = loy ? loy.price : md.price;
+                  const crossed = loy ? md.price : md.original;
+                  const reduced = shown < crossed;
                   const priceFrom =
                     (selectedService.variations?.length ?? 0) > 0 ||
                     (selectedService.options?.length ?? 0) > 0;
@@ -887,13 +894,13 @@ export default function ProviderDetailScreen() {
                       {priceFrom && (
                         <Text variant="caption" style={{ color: colors.textMuted }}>{t('providerScreen.footer.from')}</Text>
                       )}
-                      {promo && (
+                      {reduced && (
                         <Text variant="body" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
-                          {(md.original / 100).toFixed(2)} €
+                          {(crossed / 100).toFixed(2)} €
                         </Text>
                       )}
-                      <Text variant="h3" style={{ color: promo ? '#E11D48' : colors.primary }}>
-                        {(md.price / 100).toFixed(2)} €
+                      <Text variant="h3" style={{ color: reduced ? '#E11D48' : colors.primary }}>
+                        {(shown / 100).toFixed(2)} €
                       </Text>
                     </View>
                   );

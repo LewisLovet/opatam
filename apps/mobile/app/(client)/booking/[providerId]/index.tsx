@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../../theme';
 import { Text, Card, EmptyState, ServiceCategory, useToast } from '../../../../components';
+import { isServiceLoyaltyEligible } from '@booking-app/shared';
 import { useLoyaltyPreview } from '../../../../hooks/useLoyaltyPreview';
 import { useBooking } from '../../../../contexts';
 import { useProviderById, useServices, useServiceCategories, useMembers, useLocations } from '../../../../hooks';
@@ -186,6 +187,12 @@ export default function MemberSelectionScreen() {
           confirmLabel={t('bookingFlow.members.add')}
           safeAreaBottom
           discount={resolveServiceDiscount(pendingChoiceService, globalDiscount)}
+          loyaltyReward={
+            loyaltyPreview.armedSettings &&
+            isServiceLoyaltyEligible(pendingChoiceService.id, loyaltyPreview.armedSettings)
+              ? loyaltyPreview.armedSettings
+              : null
+          }
           onConfirm={(sel) => {
             addToCart(pendingChoiceService, sel);
             setPendingChoiceService(null);

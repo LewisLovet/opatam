@@ -43,9 +43,13 @@ export interface LoyaltyPreview {
   amountOff: number;
   /** Libellé de la récompense (« −10 % » / « −5 € ») — null si inactif. */
   rewardLabel: string | null;
+  /** Réglages fidélité quand la récompense du client est ARMÉE chez ce pro
+   *  (gate + config valides) — indépendant du panier ; sert aux aperçus de
+   *  prix hors panier (picker de prestation, footer). */
+  armedSettings: import('@booking-app/shared').LoyaltySettings | null;
 }
 
-const NONE: LoyaltyPreview = { amountOff: 0, rewardLabel: null };
+const NONE: LoyaltyPreview = { amountOff: 0, rewardLabel: null, armedSettings: null };
 
 export function useLoyaltyPreview(
   provider: ProviderLike | null | undefined,
@@ -57,7 +61,7 @@ export function useLoyaltyPreview(
   const { cards } = useLoyaltyCards(isAuthenticated);
 
   return useMemo(() => {
-    if (!provider || cart.length === 0) return NONE;
+    if (!provider) return NONE;
     const settings = provider.settings?.loyalty ?? null;
     if (
       !isLoyaltyConfigValid(settings) ||
@@ -68,16 +72,20 @@ export function useLoyaltyPreview(
     const card = cards.find((c) => c.providerId === provider.id);
     if (!card?.armed) return NONE;
 
+    // Armée : disponible même panier vide (aperçus hors panier).
+    const base = { ...NONE, armedSettings: settings };
+
     // Même règle que le serveur : LA PREMIÈRE prestation éligible du panier.
     const target = cart.find((c) => isServiceLoyaltyEligible(c.service.id, settings));
-    if (!target) return NONE;
+    if (!target) return base;
     const eff = computeDiscountedTotal(target.service, target.selections, globalDiscount);
     const applied = applyLoyaltyToLine(eff.price, eff.original, settings);
-    if (!applied) return NONE; // la promo en place fait déjà mieux
+    if (!applied) return base; // la promo en place fait déjà mieux
 
     return {
       amountOff: applied.amountOff,
       rewardLabel: formatLoyaltyReward(settings.rewardType, settings.rewardValue, t),
+      armedSettings: settings,
     };
   }, [provider, cart, globalDiscount, cards, t]);
 }

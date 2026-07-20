@@ -29,6 +29,7 @@
 
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
+import { sendNotificationToUser } from '../utils/expoPushService';
 import {
   aggregateBookingsToClients,
   bookingFromFirestore,
@@ -172,6 +173,9 @@ async function recomputeClientDoc(
     //   write — read-modify-write here costs us 1 extra read per
     //   client update, negligible at our scale.
     const existingSnap = await ref.get();
+    const previousLoyaltyCount = existingSnap.exists
+      ? ((existingSnap.data()?.loyaltyConfirmedCount as number | undefined) ?? 0)
+      : 0;
     if (existingSnap.exists) {
       const existing = existingSnap.data() as Partial<{
         notes: string | null;
@@ -181,6 +185,22 @@ async function recomputeClientDoc(
       if (existing.preferences !== undefined) client.preferences = existing.preferences;
     }
     await ref.set(client, { merge: false });
+
+    // ── Notifications de jalons fidélité ─────────────────────
+    // Langue = celle de la dernière résa comptée du client (clientLocale).
+    const latestLocale = snap.docs
+      .map((d) => d.data())
+      .filter((b) => b.clientId === client.clientId)
+      .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))[0]
+      ?.clientLocale as string | undefined;
+    await maybeSendLoyaltyMilestone(
+      providerId,
+      client.clientId,
+      previousLoyaltyCount,
+      client.loyaltyConfirmedCount,
+      latestLocale === 'en' ? 'en' : 'fr',
+      ctx.providerName,
+    ).catch((e) => console.error('[loyaltyMilestone] échec (non bloquant):', e));
   } else {
     await ref.delete().catch(() => undefined);
   }
@@ -189,4 +209,102 @@ async function recomputeClientDoc(
   // with the daily/monthly path even though clients don't need
   // per-member denormalisation (yet).
   void ctx;
+}
+
+// ────────────────────────────────────────────────────────────────
+// Jalons fidélité — push au client quand sa carte atteint 50 % puis
+// le seuil (récompense prête). Best-effort, jamais bloquant.
+// ────────────────────────────────────────────────────────────────
+
+async function maybeSendLoyaltyMilestone(
+  providerId: string,
+  clientId: string | null,
+  oldCount: number,
+  newCount: number,
+  locale: 'fr' | 'en',
+  providerName: string,
+): Promise<void> {
+  if (!clientId || newCount <= oldCount) return;
+
+  const db = admin.firestore();
+  const p = (await db.doc(`providers/${providerId}`).get()).data();
+  const loyalty = p?.settings?.loyalty as
+    | { enabled?: boolean; threshold?: number; rewardType?: string; rewardValue?: number }
+    | undefined;
+  if (
+    !loyalty?.enabled ||
+    !Number.isInteger(loyalty.threshold) ||
+    (loyalty.threshold as number) < 1 ||
+    !loyalty.rewardValue
+  ) {
+    return;
+  }
+
+  // Gate d'accès du pro — miroir de hasLoyaltyAccess (shared).
+  const sub = (p?.subscription ?? {}) as {
+    status?: string;
+    stripeSubscriptionId?: string | null;
+    revenuecatAppUserId?: string | null;
+  };
+  const ov = p?.accessOverride as { active?: boolean; until?: { toDate?: () => Date } | string | null } | undefined;
+  const ovUntil = ov?.until
+    ? typeof (ov.until as { toDate?: () => Date }).toDate === 'function'
+      ? (ov.until as { toDate: () => Date }).toDate()
+      : new Date(ov.until as string)
+    : null;
+  const ovActive = !!ov?.active && (!ov.until || (ovUntil !== null && ovUntil.getTime() > Date.now()));
+  const gate =
+    ovActive ||
+    sub.status === 'active' ||
+    (sub.status === 'trialing' && !!(sub.stripeSubscriptionId || sub.revenuecatAppUserId));
+  if (!gate) return;
+
+  const T = loyalty.threshold as number;
+  const pos = newCount % T;
+  const armed = pos === 0 && newCount > 0;
+  const half = T >= 2 ? Math.ceil(T / 2) : 0;
+  const isHalf = !armed && half > 0 && pos === half;
+  if (!armed && !isHalf) return;
+
+  const reward =
+    loyalty.rewardType === 'percent'
+      ? locale === 'en'
+        ? `−${loyalty.rewardValue}%`
+        : `−${loyalty.rewardValue} %`
+      : locale === 'en'
+        ? `−€${(loyalty.rewardValue as number) / 100}`
+        : `−${(loyalty.rewardValue as number) / 100} €`;
+
+  const remaining = T - pos;
+  const payload = armed
+    ? locale === 'en'
+      ? {
+          title: 'Your reward is ready!',
+          body: `At ${providerName}: ${reward} off your next booking in the app.`,
+        }
+      : {
+          title: 'Votre récompense est prête !',
+          body: `Chez ${providerName} : ${reward} sur votre prochaine réservation dans l'app.`,
+        }
+    : locale === 'en'
+      ? {
+          title: 'Loyalty card halfway there',
+          body: `Only ${remaining} more appointment${remaining > 1 ? 's' : ''} at ${providerName} to get ${reward}.`,
+        }
+      : {
+          title: 'Carte de fidélité à mi-chemin',
+          body: `Plus que ${remaining} RDV chez ${providerName} pour obtenir ${reward}.`,
+        };
+
+  const userSnap = await db.doc(`users/${clientId}`).get();
+  const tokens = (userSnap.data()?.pushTokens as string[] | undefined) ?? [];
+  if (tokens.length === 0) return;
+
+  await sendNotificationToUser(tokens, {
+    ...payload,
+    data: { type: armed ? 'loyalty_armed' : 'loyalty_half', providerId },
+  });
+  console.log(
+    `[loyaltyMilestone] ${armed ? 'armed' : 'half'} → client ${clientId} chez ${providerId} (${newCount}/${T})`,
+  );
 }

@@ -19,6 +19,8 @@ import {
   type ServiceInfoField,
   type ServiceSelections,
   type ServiceDiscount,
+  type LoyaltySettings,
+  applyLoyaltyToLine,
   emptyServiceSelections,
   computeServiceTotal,
   computeDiscountedTotal,
@@ -47,6 +49,7 @@ export interface PreviewService {
 export function ServiceChoicesPreview({
   service,
   discount = null,
+  loyaltyReward = null,
   mode = 'preview',
   onConfirm,
   confirmLabel,
@@ -57,6 +60,8 @@ export function ServiceChoicesPreview({
   /** Active promo to reflect in the prices (effective = per-service or global).
    *  null = no promo. */
   discount?: ServiceDiscount | null;
+  /** Réglages fidélité ARMÉS pour cette prestation (null = pas d'aperçu). */
+  loyaltyReward?: LoyaltySettings | null;
   /** 'preview' = read-only illustration ; 'picker' = the bottom CTA confirms
    *  the current selections (used when adding a prestation to a booking). */
   mode?: 'preview' | 'picker';
@@ -102,8 +107,15 @@ export function ServiceChoicesPreview({
 
   // Before all required choices are made, show the reachable minimum
   // ("À partir de") rather than a misleading partial total.
-  const displayPrice = complete ? eff.price : minD.price;
+  const preLoyaltyPrice = complete ? eff.price : minD.price;
   const displayOriginal = complete ? eff.original : minD.original;
+  // Récompense fidélité armée pour CETTE prestation (éligibilité déjà
+  // vérifiée par l'appelant) : le total du picker la reflète, meilleure
+  // des deux face à la promo — même règle que le serveur.
+  const loyAdj = loyaltyReward
+    ? applyLoyaltyToLine(preLoyaltyPrice, displayOriginal, loyaltyReward)
+    : null;
+  const displayPrice = loyAdj ? loyAdj.price : preLoyaltyPrice;
   const displayDuration = complete ? total.duration : getServiceMinDuration(service);
 
   /** A "12 € → 9,60 €" inline price (struck original when reduced). */
