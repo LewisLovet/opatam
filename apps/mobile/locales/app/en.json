@@ -1507,6 +1507,13 @@
     "emptyTitle": "No clients yet",
     "emptyDescription": "As soon as you get your first booking, your client book will start filling up automatically.",
     "noResults": "No clients match your search.",
+    "loyalty": {
+      "readyFilter": "Reward ready",
+      "cardsInProgress_one": "{{count}} card in progress",
+      "cardsInProgress_other": "{{count}} cards in progress",
+      "rewardsReady_one": "{{count}} reward ready",
+      "rewardsReady_other": "{{count}} rewards ready"
+    },
     "tags": {
       "new": {
         "label": "New",
@@ -1753,12 +1760,33 @@
     "last7Days": "Last 7 days",
     "last30Days": "Last 30 days",
     "completionRate": "{{rate}}% completed",
-    "deposits": {
-      "title": "Deposits collected",
+    "clientsCard": {
+      "title": "Clients",
+      "unit_one": "client",
+      "unit_other": "clients",
+      "newThisMonth_one": "{{count}} new this month",
+      "newThisMonth_other": "{{count}} new this month"
+    },
+    "depositsCard": {
+      "title": "Deposits 30d",
       "subtitle": "Last 30 days · Sérénité",
-      "onBookings": "across {{count}} appts",
-      "topServices": "Services involved",
-      "empty": "No deposits collected over this period. Set up a default or per-service deposit to get started."
+      "onBookings_one": "across {{count}} appt",
+      "onBookings_other": "across {{count}} appts",
+      "empty": "Set up a deposit on your services to secure your bookings"
+    },
+    "loyalty": {
+      "title": "Loyalty",
+      "seeClients": "See clients →",
+      "inviteTitle": "Create your loyalty program",
+      "inviteSubtitle": "Reward your regular clients",
+      "readyShort": "Ready",
+      "remaining_one": "{{count}} more appt",
+      "remaining_other": "{{count}} more appts",
+      "cardsInProgress_one": "{{count}} card in progress",
+      "cardsInProgress_other": "{{count}} cards in progress",
+      "cardsReady_one": "{{count}} ready",
+      "cardsReady_other": "{{count}} ready",
+      "empty": "No cards in progress yet. Completed appointments from signed-in clients fill their card automatically."
     },
     "features": {
       "clients": "Clients",
@@ -1805,9 +1833,9 @@
     },
     "quick": {
       "qr": "QR code",
-      "preview": "Preview",
-      "online": "Online",
-      "edit": "Edit"
+      "services": "Services",
+      "shop": "My shop",
+      "viewPage": "View my page"
     },
     "team": {
       "title": "My team",

@@ -20,11 +20,21 @@ import type {
   BookingSelectedInfo,
 } from '@booking-app/shared';
 import { resolveRevealedAddress } from '../utils/addressReveal';
+import {
+  countsTowardLoyalty,
+  isLoyaltyConfigValidMirror,
+  hasLoyaltyAccessMirror,
+  loyaltyRewardLabel,
+} from '../utils/loyaltyMirror';
+import { resolveEmailLocale } from '../utils/emailI18n';
 
 // Types for booking data from Firestore
 interface BookingData {
   providerId: string;
   clientId: string | null;
+  createdAt?: admin.firestore.Timestamp;
+  /** Snapshot serveur quand la récompense a réduit cette résa. */
+  loyalty?: { rewardType: string; rewardValue: number; amountOff: number; threshold: number } | null;
   serviceName: string;
   datetime: admin.firestore.Timestamp;
   duration?: number;
@@ -275,7 +285,16 @@ export async function emailClientBookingConfirmed(
   const emailData = await toEmailData(booking, bookingId);
   if (!emailData) return;
 
-  const result = await sendConfirmationEmail({ ...emailData, updateContext });
+  // Bloc « carte de fidélité » : uniquement quand CETTE résa est comptée
+  // (connectée + confirmée + post-lancement) chez un pro au programme actif.
+  // Le compteur affiché est recalculé depuis les résas (même règle que
+  // l'agrégateur) — pas de course avec le recompute asynchrone de la fiche.
+  const loyalty = await computeLoyaltyEmailContext(booking).catch((e) => {
+    console.error('[EMAIL] loyalty context failed (non bloquant):', e);
+    return null;
+  });
+
+  const result = await sendConfirmationEmail({ ...emailData, updateContext, loyalty });
   console.log('[EMAIL] Confirmation email result:', result);
 }
 
@@ -615,3 +634,60 @@ export async function handleBookingEmails(
     }
   }
 }
+
+/**
+ * Contexte fidélité de l'email de confirmation — état de la carte APRÈS
+ * cette résa. null quand la résa ne compte pas (invité, annulée, pré-
+ * lancement) ou que le programme du pro est inactif/non gated.
+ */
+async function computeLoyaltyEmailContext(
+  booking: BookingData & { status?: string; clientInfo: { email: string } },
+): Promise<{ count: number; threshold: number; rewardLabel: string; appliedAmountOff: number } | null> {
+  const createdAt = booking.createdAt?.toDate?.() ?? null;
+  if (
+    !booking.clientId ||
+    booking.status !== 'confirmed' ||
+    !createdAt ||
+    !countsTowardLoyalty({ status: 'confirmed', clientId: booking.clientId, createdAt })
+  ) {
+    return null;
+  }
+
+  const db = admin.firestore();
+  const p = (await db.doc(`providers/${booking.providerId}`).get()).data();
+  const loyalty = p?.settings?.loyalty as
+    | { enabled?: boolean; threshold?: number; rewardType?: string; rewardValue?: number }
+    | undefined;
+  if (!isLoyaltyConfigValidMirror(loyalty) || !hasLoyaltyAccessMirror(p)) return null;
+
+  // Même requête et même filtre que le recompute de la fiche client —
+  // déterministe, indépendant du timing du trigger de stats.
+  const email = booking.clientInfo.email.toLowerCase().trim();
+  const snap = await db
+    .collection('bookings')
+    .where('providerId', '==', booking.providerId)
+    .where('clientInfo.email', '==', email)
+    .get();
+  const count = snap.docs.filter((d) => {
+    const b = d.data();
+    const c = b.createdAt?.toDate?.() ?? null;
+    return (
+      c !== null &&
+      countsTowardLoyalty({
+        status: (b.status as string) ?? '',
+        clientId: (b.clientId as string | null) ?? null,
+        createdAt: c,
+      })
+    );
+  }).length;
+  if (count === 0) return null;
+
+  const locale = resolveEmailLocale((booking as { clientLocale?: string | null }).clientLocale);
+  return {
+    count,
+    threshold: loyalty.threshold as number,
+    rewardLabel: loyaltyRewardLabel(loyalty.rewardType as string, loyalty.rewardValue as number, locale),
+    appliedAmountOff: booking.loyalty?.amountOff ?? 0,
+  };
+}
+

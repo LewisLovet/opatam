@@ -34,7 +34,13 @@ import { Text, Card, Avatar, Badge } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useProviderClients } from '../../hooks';
-import type { ProviderClient, ProviderClientTag } from '@booking-app/shared';
+import {
+  hasLoyaltyAccess,
+  isLoyaltyConfigValid,
+  isLoyaltyRewardArmed,
+  type ProviderClient,
+  type ProviderClientTag,
+} from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import {
   TAG_META,
@@ -71,6 +77,25 @@ export default function ClientsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
   const [legendSheetOpen, setLegendSheetOpen] = useState(false);
+  const [loyaltyOnly, setLoyaltyOnly] = useState(false);
+
+  // Loyalty program — the "Récompense prête" filter chip and the
+  // stats line only exist while a valid program is active AND the
+  // plan gate passes (mirrors the home-screen block).
+  const loyaltySettings = provider?.settings?.loyalty ?? null;
+  const loyaltyActive =
+    hasLoyaltyAccess(provider) && isLoyaltyConfigValid(loyaltySettings);
+  const loyaltyThreshold =
+    loyaltyActive && loyaltySettings ? loyaltySettings.threshold : null;
+
+  const loyaltyStats = useMemo(() => {
+    if (loyaltyThreshold == null) return null;
+    const withCards = clients.filter((c) => (c.loyaltyConfirmedCount ?? 0) > 0);
+    const ready = withCards.filter((c) =>
+      isLoyaltyRewardArmed(c.loyaltyConfirmedCount ?? 0, loyaltyThreshold),
+    ).length;
+    return { inProgress: withCards.length, ready };
+  }, [clients, loyaltyThreshold]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -85,8 +110,15 @@ export default function ClientsScreen() {
   };
 
   const filtered = useMemo(
-    () => applyFilters(clients, search, activeTags, sort),
-    [clients, search, activeTags, sort],
+    () =>
+      applyFilters(
+        clients,
+        search,
+        activeTags,
+        sort,
+        loyaltyOnly ? loyaltyThreshold : null,
+      ),
+    [clients, search, activeTags, sort, loyaltyOnly, loyaltyThreshold],
   );
 
   const sortLabelKey = SORT_OPTIONS.find((o) => o.value === sort)?.labelKey;
@@ -183,6 +215,38 @@ export default function ClientsScreen() {
               </Pressable>
             );
           })}
+          {loyaltyActive && (
+            <Pressable
+              onPress={() => setLoyaltyOnly((v) => !v)}
+              style={[
+                styles.chip,
+                {
+                  borderColor: loyaltyOnly ? colors.primary : colors.border,
+                  backgroundColor: loyaltyOnly
+                    ? colors.primary
+                    : colors.surfaceSecondary,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                },
+              ]}
+            >
+              <Ionicons
+                name="gift-outline"
+                size={13}
+                color={loyaltyOnly ? '#fff' : colors.text}
+              />
+              <Text
+                variant="caption"
+                style={{
+                  color: loyaltyOnly ? '#fff' : colors.text,
+                  fontWeight: '600',
+                }}
+              >
+                {t('proClients.loyalty.readyFilter')}
+              </Text>
+            </Pressable>
+          )}
           <Pressable
             onPress={() => setLegendSheetOpen(true)}
             style={[
@@ -205,6 +269,25 @@ export default function ClientsScreen() {
             </Text>
           </Pressable>
         </ScrollView>
+
+        {/* Loyalty stats — compact one-liner at the head of the list */}
+        {loyaltyStats && (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              marginTop: spacing.sm,
+            }}
+          >
+            <Ionicons name="gift-outline" size={13} color={colors.primary} />
+            <Text variant="caption" color="textSecondary">
+              {t('proClients.loyalty.cardsInProgress', { count: loyaltyStats.inProgress })}
+              {' · '}
+              {t('proClients.loyalty.rewardsReady', { count: loyaltyStats.ready })}
+            </Text>
+          </View>
+        )}
 
         {/* Sort + count */}
         <View style={styles.toolbar}>
@@ -533,6 +616,9 @@ function applyFilters(
   search: string,
   tags: ProviderClientTag[],
   sort: SortKey,
+  /** Loyalty threshold when the "Récompense prête" chip is active —
+   *  keeps only clients whose reward is armed. null = filter off. */
+  armedThreshold: number | null,
 ): WithId<ProviderClient>[] {
   const needle = search.trim().toLowerCase();
   let out = base;
@@ -548,6 +634,12 @@ function applyFilters(
 
   if (tags.length > 0) {
     out = out.filter((c) => c.tags.some((t) => tags.includes(t)));
+  }
+
+  if (armedThreshold != null) {
+    out = out.filter((c) =>
+      isLoyaltyRewardArmed(c.loyaltyConfirmedCount ?? 0, armedThreshold),
+    );
   }
 
   out = [...out];

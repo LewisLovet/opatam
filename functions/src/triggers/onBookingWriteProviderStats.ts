@@ -30,6 +30,12 @@
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import { sendNotificationToUser } from '../utils/expoPushService';
+import { sendLoyaltyRewardEmail } from '../utils/resendService';
+import {
+  isLoyaltyConfigValidMirror,
+  hasLoyaltyAccessMirror,
+  loyaltyRewardLabel,
+} from '../utils/loyaltyMirror';
 import {
   aggregateBookingsToClients,
   bookingFromFirestore,
@@ -200,6 +206,8 @@ async function recomputeClientDoc(
       client.loyaltyConfirmedCount,
       latestLocale === 'en' ? 'en' : 'fr',
       ctx.providerName,
+      client.email,
+      client.name,
     ).catch((e) => console.error('[loyaltyMilestone] échec (non bloquant):', e));
   } else {
     await ref.delete().catch(() => undefined);
@@ -223,6 +231,8 @@ async function maybeSendLoyaltyMilestone(
   newCount: number,
   locale: 'fr' | 'en',
   providerName: string,
+  clientEmail: string | null,
+  clientName: string,
 ): Promise<void> {
   if (!clientId || newCount <= oldCount) return;
 
@@ -231,33 +241,7 @@ async function maybeSendLoyaltyMilestone(
   const loyalty = p?.settings?.loyalty as
     | { enabled?: boolean; threshold?: number; rewardType?: string; rewardValue?: number }
     | undefined;
-  if (
-    !loyalty?.enabled ||
-    !Number.isInteger(loyalty.threshold) ||
-    (loyalty.threshold as number) < 1 ||
-    !loyalty.rewardValue
-  ) {
-    return;
-  }
-
-  // Gate d'accès du pro — miroir de hasLoyaltyAccess (shared).
-  const sub = (p?.subscription ?? {}) as {
-    status?: string;
-    stripeSubscriptionId?: string | null;
-    revenuecatAppUserId?: string | null;
-  };
-  const ov = p?.accessOverride as { active?: boolean; until?: { toDate?: () => Date } | string | null } | undefined;
-  const ovUntil = ov?.until
-    ? typeof (ov.until as { toDate?: () => Date }).toDate === 'function'
-      ? (ov.until as { toDate: () => Date }).toDate()
-      : new Date(ov.until as string)
-    : null;
-  const ovActive = !!ov?.active && (!ov.until || (ovUntil !== null && ovUntil.getTime() > Date.now()));
-  const gate =
-    ovActive ||
-    sub.status === 'active' ||
-    (sub.status === 'trialing' && !!(sub.stripeSubscriptionId || sub.revenuecatAppUserId));
-  if (!gate) return;
+  if (!isLoyaltyConfigValidMirror(loyalty) || !hasLoyaltyAccessMirror(p)) return;
 
   const T = loyalty.threshold as number;
   const pos = newCount % T;
@@ -266,14 +250,11 @@ async function maybeSendLoyaltyMilestone(
   const isHalf = !armed && half > 0 && pos === half;
   if (!armed && !isHalf) return;
 
-  const reward =
-    loyalty.rewardType === 'percent'
-      ? locale === 'en'
-        ? `−${loyalty.rewardValue}%`
-        : `−${loyalty.rewardValue} %`
-      : locale === 'en'
-        ? `−€${(loyalty.rewardValue as number) / 100}`
-        : `−${(loyalty.rewardValue as number) / 100} €`;
+  const reward = loyaltyRewardLabel(
+    loyalty.rewardType as string,
+    loyalty.rewardValue as number,
+    locale,
+  );
 
   const remaining = T - pos;
   const payload = armed
@@ -298,12 +279,25 @@ async function maybeSendLoyaltyMilestone(
 
   const userSnap = await db.doc(`users/${clientId}`).get();
   const tokens = (userSnap.data()?.pushTokens as string[] | undefined) ?? [];
-  if (tokens.length === 0) return;
+  if (tokens.length > 0) {
+    await sendNotificationToUser(tokens, {
+      ...payload,
+      data: { type: armed ? 'loyalty_armed' : 'loyalty_half', providerId },
+    });
+  }
 
-  await sendNotificationToUser(tokens, {
-    ...payload,
-    data: { type: armed ? 'loyalty_armed' : 'loyalty_half', providerId },
-  });
+  // Email UNIQUEMENT au seuil atteint (le jalon 50 % reste push seul) —
+  // filet pour les clients qui ont refusé les notifications.
+  if (armed && clientEmail) {
+    await sendLoyaltyRewardEmail({
+      clientEmail,
+      clientName,
+      locale,
+      businessName: providerName,
+      providerSlug: (p?.slug as string | undefined) ?? null,
+      rewardLabel: reward,
+    });
+  }
   console.log(
     `[loyaltyMilestone] ${armed ? 'armed' : 'half'} → client ${clientId} chez ${providerId} (${newCount}/${T})`,
   );

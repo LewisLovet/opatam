@@ -227,6 +227,35 @@ export const EMAIL_TEXTS = {
     },
   },
 
+  loyalty: {
+    fr: {
+      cardTitle: (businessName: string) => `Votre carte de fidélité chez ${businessName}`,
+      counted: (count: number, threshold: number, remaining: number, reward: string) =>
+        `${count}/${threshold} RDV — ce rendez-vous compte ! Plus que ${remaining} avant ${reward}.`,
+      applied: (reward: string) => `Fidélité ${reward} appliquée sur ce rendez-vous.`,
+      readyForNext: (reward: string) =>
+        `Carte complète : ${reward} sur votre prochaine réservation dans l'app.`,
+      // Email « récompense prête »
+      rewardSubject: (businessName: string) => `Votre récompense est prête chez ${businessName}`,
+      rewardTitle: 'Votre récompense est prête !',
+      rewardBody: (businessName: string, reward: string) =>
+        `Votre carte de fidélité chez ${businessName} est complète : ${reward} sera appliqué automatiquement sur votre prochaine réservation dans l'app.`,
+      rewardCta: 'Réserver et utiliser ma réduction',
+    },
+    en: {
+      cardTitle: (businessName: string) => `Your loyalty card at ${businessName}`,
+      counted: (count: number, threshold: number, remaining: number, reward: string) =>
+        `${count}/${threshold} appointments — this one counts! Only ${remaining} left before ${reward}.`,
+      applied: (reward: string) => `Loyalty ${reward} applied to this appointment.`,
+      readyForNext: (reward: string) =>
+        `Card complete: ${reward} off your next booking in the app.`,
+      rewardSubject: (businessName: string) => `Your reward is ready at ${businessName}`,
+      rewardTitle: 'Your reward is ready!',
+      rewardBody: (businessName: string, reward: string) =>
+        `Your loyalty card at ${businessName} is complete: ${reward} will be applied automatically to your next booking in the app.`,
+      rewardCta: 'Book and use my reward',
+    },
+  },
   confirmation: {
     fr: {
       subject: (serviceName: string) => `Confirmation de votre rendez-vous - ${serviceName}`,

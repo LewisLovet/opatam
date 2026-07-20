@@ -1507,6 +1507,13 @@
     "emptyTitle": "Pas encore de client",
     "emptyDescription": "Dès la première réservation, votre carnet de clients commencera à se remplir automatiquement.",
     "noResults": "Aucun client ne correspond à votre recherche.",
+    "loyalty": {
+      "readyFilter": "Récompense prête",
+      "cardsInProgress_one": "{{count}} carte en cours",
+      "cardsInProgress_other": "{{count}} cartes en cours",
+      "rewardsReady_one": "{{count}} récompense prête",
+      "rewardsReady_other": "{{count}} récompenses prêtes"
+    },
     "tags": {
       "new": {
         "label": "Nouveau",
@@ -1753,12 +1760,33 @@
     "last7Days": "7 derniers jours",
     "last30Days": "30 derniers jours",
     "completionRate": "{{rate}}% réussite",
-    "deposits": {
-      "title": "Acomptes encaissés",
+    "clientsCard": {
+      "title": "Clients",
+      "unit_one": "client",
+      "unit_other": "clients",
+      "newThisMonth_one": "{{count}} nouveau ce mois",
+      "newThisMonth_other": "{{count}} nouveaux ce mois"
+    },
+    "depositsCard": {
+      "title": "Acomptes 30 j",
       "subtitle": "30 derniers jours · Sérénité",
-      "onBookings": "sur {{count}} RDV",
-      "topServices": "Prestations concernées",
-      "empty": "Aucun acompte encaissé sur la période. Configurez un acompte par défaut ou par prestation pour commencer."
+      "onBookings_one": "sur {{count}} RDV",
+      "onBookings_other": "sur {{count}} RDV",
+      "empty": "Configurez un acompte sur vos prestations pour sécuriser vos RDV"
+    },
+    "loyalty": {
+      "title": "Fidélité",
+      "seeClients": "Voir les clients →",
+      "inviteTitle": "Créez votre programme de fidélité",
+      "inviteSubtitle": "Récompensez vos clients réguliers",
+      "readyShort": "Prête",
+      "remaining_one": "encore {{count}} RDV",
+      "remaining_other": "encore {{count}} RDV",
+      "cardsInProgress_one": "{{count}} carte en cours",
+      "cardsInProgress_other": "{{count}} cartes en cours",
+      "cardsReady_one": "{{count}} prête",
+      "cardsReady_other": "{{count}} prêtes",
+      "empty": "Aucune carte en cours pour l'instant. Les RDV honorés de vos clients connectés remplissent leur carte automatiquement."
     },
     "features": {
       "clients": "Clients",
@@ -1805,9 +1833,9 @@
     },
     "quick": {
       "qr": "QR Code",
-      "preview": "Aperçu",
-      "online": "En ligne",
-      "edit": "Modifier"
+      "services": "Prestations",
+      "shop": "Mon enseigne",
+      "viewPage": "Voir ma page"
     },
     "team": {
       "title": "Mon équipe",

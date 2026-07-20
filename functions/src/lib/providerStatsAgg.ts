@@ -21,6 +21,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import { countsTowardLoyalty } from '../utils/loyaltyMirror';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -594,22 +595,6 @@ export function computeClientTags(
 export interface AggregateClientsOptions {
   providerId: string;
   registeredUsers?: Record<string, { displayName: string; photoURL: string | null; phone: string | null }>;
-}
-
-/**
- * Fidélité — MIROIR de packages/shared/src/utils/loyalty.ts (les functions
- * n'importent pas les packages workspace) : aucune rétroactivité (résas
- * créées après le lancement uniquement) et les invités ne cumulent pas
- * (clientId requis). Garder les deux copies en phase.
- */
-const LOYALTY_LAUNCH_AT = new Date('2026-07-20T00:00:00+02:00');
-
-function countsTowardLoyalty(b: Pick<BookingLike, 'status' | 'clientId' | 'createdAt'>): boolean {
-  return (
-    b.status === 'confirmed' &&
-    !!b.clientId &&
-    b.createdAt.getTime() >= LOYALTY_LAUNCH_AT.getTime()
-  );
 }
 
 export function aggregateBookingsToClients(

@@ -303,6 +303,16 @@ export interface BookingEmailData {
    * states what happened instead of a plain "confirmé".
    */
   updateContext?: { type: 'added' | 'removed'; serviceName: string };
+  /** Carte de fidélité — bloc affiché UNIQUEMENT quand la résa est comptée
+   *  (connectée + post-lancement) chez un pro au programme actif. `count`
+   *  est l'état APRÈS cette résa. `appliedAmountOff` > 0 quand la récompense
+   *  a réduit cette résa. */
+  loyalty?: {
+    count: number;
+    threshold: number;
+    rewardLabel: string;
+    appliedAmountOff: number;
+  } | null;
 }
 
 /**
@@ -1305,6 +1315,42 @@ interface ConfirmationTemplateData extends BookingEmailData {
   googleCalendarUrl: string;
 }
 
+
+/** Bloc « carte de fidélité » de l'email de confirmation (état APRÈS la résa). */
+function loyaltyBlockHtml(
+  loyalty: BookingEmailData['loyalty'],
+  businessName: string,
+  locale: EmailLocale,
+): string {
+  if (!loyalty) return '';
+  const lt = EMAIL_TEXTS.loyalty[locale];
+  const armed = loyalty.count > 0 && loyalty.count % loyalty.threshold === 0;
+  const pos = armed ? loyalty.threshold : loyalty.count % loyalty.threshold;
+  const stamps = Array.from({ length: loyalty.threshold }, (_, i) =>
+    i < pos
+      ? '<span style="color: #1a6daf; font-size: 16px;">&#9679;</span>'
+      : '<span style="color: #c9d2dc; font-size: 16px;">&#9675;</span>',
+  ).join(' ');
+  const line = armed
+    ? lt.readyForNext(loyalty.rewardLabel)
+    : lt.counted(loyalty.count, loyalty.threshold, loyalty.threshold - pos, loyalty.rewardLabel);
+  const appliedLine =
+    loyalty.appliedAmountOff > 0
+      ? `<p style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #e11d48;">${lt.applied(loyalty.rewardLabel)}</p>`
+      : '';
+  return `
+    <div style="background-color: #f2f8fd; border: 1px solid #c2def5; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
+      <p style="margin: 0 0 8px; font-size: 13px; font-weight: 700; color: #16578e;">${loyaltyBlockEscape(EMAIL_TEXTS.loyalty[locale].cardTitle(businessName))}</p>
+      ${appliedLine}
+      <p style="margin: 0 0 6px; letter-spacing: 3px;">${stamps}</p>
+      <p style="margin: 0; font-size: 13px; color: #3f3f46;">${line}</p>
+    </div>`;
+}
+
+function loyaltyBlockEscape(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function generateConfirmationHtml(data: ConfirmationTemplateData): string {
   const l = data.emailLocale;
   const c = EMAIL_TEXTS.common[l];
@@ -1363,6 +1409,7 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} ${c.onSite}</td></tr>` : ''}
                     </table>
                   </div>
+                  ${loyaltyBlockHtml(data.loyalty ?? null, data.businessName, l)}
                   ${addressPendingNoticeHtml(data, l)}
                   ${accessInstructionsBlockHtml(data, l)}
                   ${data.bookingNotice ? `<div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
@@ -1422,6 +1469,9 @@ ${data.memberName ? `- ${c.labels.with}${c.colon} ${data.memberName}` : ''}
 - ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l)}
 ${data.depositPaid ? `- ${c.labels.depositPaid}${c.colon} ${formatEmailPrice(data.depositPaid.amount, l)}` : ''}
 ${data.depositPaid ? `- ${c.labels.remainingOnSite}${c.colon} ${formatEmailPrice(Math.max(0, data.price - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)}` : ''}
+${data.loyalty ? `
+${EMAIL_TEXTS.loyalty[l].cardTitle(data.businessName)}
+${data.loyalty.appliedAmountOff > 0 ? EMAIL_TEXTS.loyalty[l].applied(data.loyalty.rewardLabel) + '\n' : ''}${data.loyalty.count > 0 && data.loyalty.count % data.loyalty.threshold === 0 ? EMAIL_TEXTS.loyalty[l].readyForNext(data.loyalty.rewardLabel) : EMAIL_TEXTS.loyalty[l].counted(data.loyalty.count, data.loyalty.threshold, data.loyalty.threshold - (data.loyalty.count % data.loyalty.threshold), data.loyalty.rewardLabel)}` : ''}
 
 ${c.addToCalendarText}
 - ${c.calendarGoogleText}${c.colon} ${data.googleCalendarUrl}
@@ -2350,3 +2400,61 @@ L'équipe ${appConfig.name}
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
+
+/**
+ * Email « Votre récompense est prête » — filet des notifications push pour
+ * les jalons fidélité (envoyé quand la carte atteint le seuil). Le CTA pointe
+ * vers la page publique du pro (lien universel : ouvre l'app si installée).
+ */
+export async function sendLoyaltyRewardEmail(data: {
+  clientEmail: string;
+  clientName: string;
+  locale?: string | null;
+  businessName: string;
+  providerSlug: string | null;
+  rewardLabel: string;
+}): Promise<EmailResult> {
+  const l = resolveEmailLocale(data.locale);
+  const lt = EMAIL_TEXTS.loyalty[l];
+  const url = data.providerSlug ? `${appConfig.url}/p/${data.providerSlug}` : appConfig.url;
+  const html = `
+    <!DOCTYPE html>
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+      <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr><td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 480px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <tr><td style="padding: 32px 32px 24px; text-align: center;"><img src="${assets.logos.email}" alt="${appConfig.name}" style="max-height: 48px; max-width: 200px;" /></td></tr>
+          <tr><td style="padding: 0 32px 8px;">
+            <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${EMAIL_TEXTS.common[l].greeting(data.clientName)}</p>
+            <div style="background-color: #1a6daf; border-radius: 10px; padding: 22px; margin-bottom: 20px; text-align: center;">
+              <p style="margin: 0 0 6px; font-size: 18px; font-weight: 800; color: #ffffff;">${lt.rewardTitle}</p>
+              <p style="margin: 0; font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.92);">${loyaltyBlockEscape(lt.rewardBody(data.businessName, data.rewardLabel))}</p>
+            </div>
+            <p style="margin: 0 0 28px; text-align: center;">
+              <a href="${url}" target="_blank" style="display: inline-block; background-color: #1a6daf; color: #ffffff; border-radius: 10px; padding: 13px 26px; font-weight: 700; font-size: 14px; text-decoration: none;">${lt.rewardCta}</a>
+            </p>
+          </td></tr>
+        </table>
+      </td></tr></table>
+    </body></html>`;
+  const text = `${EMAIL_TEXTS.common[l].greeting(data.clientName)}
+
+${lt.rewardTitle}
+${lt.rewardBody(data.businessName, data.rewardLabel)}
+
+${lt.rewardCta} : ${url}`;
+  try {
+    const { error } = await getResend().emails.send({
+      from: emailConfig.from,
+      to: data.clientEmail,
+      subject: lt.rewardSubject(data.businessName),
+      html,
+      text,
+    });
+    if (error) return { success: false, error: String(error) };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'unknown' };
+  }
+}
+

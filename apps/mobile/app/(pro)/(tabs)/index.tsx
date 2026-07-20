@@ -4,8 +4,18 @@
  * quick actions, and recent reviews.
  */
 
-import { analyticsService, bookingService, providerService } from '@booking-app/firebase';
-import { deltaPercent, hasDepositAccess, type PageViewStats, type TrendPoint } from '@booking-app/shared';
+import { analyticsService, bookingService, providerService, type WithId } from '@booking-app/firebase';
+import {
+  deltaPercent,
+  hasDepositAccess,
+  hasLoyaltyAccess,
+  isLoyaltyConfigValid,
+  isLoyaltyRewardArmed,
+  loyaltyRemaining,
+  type PageViewStats,
+  type ProviderClient,
+  type TrendPoint,
+} from '@booking-app/shared';
 import { Sparkline } from '../../../components/stats/Sparkline';
 import { WelcomeOverlay } from '../../../components/WelcomeOverlay';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +42,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Avatar,
+  Badge,
   Button,
   Card,
   EmptyState,
@@ -75,6 +86,7 @@ class NativeModuleBoundary extends React.Component<
 import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
 import {
   useDepositsSummary,
+  useProviderClients,
   useProviderDashboard,
   useProviderNotifications,
   useProviderStats,
@@ -534,23 +546,18 @@ function StatCardMonth({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Deposits card — visible only when the Sérénité add-on is active.
-// Surfaces the 30-day "Acomptes encaissés" total + top services so
-// the pro understands the value of what they pay 5 €/mois for, and
-// can spot trends at a glance from the dashboard.
-// ---------------------------------------------------------------------------
-function DepositsCard({
-  totalAmount,
-  bookingsCount,
-  topServices,
-  loading,
+/**
+ * "Clients" carousel card — total client base + new clients this
+ * month (firstBookingAt within the current calendar month). Tap
+ * deep-links into the CRM-lite list.
+ */
+function StatCardClients({
+  total,
+  newThisMonth,
   onPress,
 }: {
-  totalAmount: number;
-  bookingsCount: number;
-  topServices: { serviceId: string; serviceName: string; bookingsCount: number }[];
-  loading: boolean;
+  total: number;
+  newThisMonth: number;
   onPress?: () => void;
 }) {
   const { colors, spacing, radius } = useTheme();
@@ -560,99 +567,243 @@ function DepositsCard({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        {
-          marginHorizontal: spacing.lg,
-          marginBottom: spacing.lg,
-          padding: spacing.lg,
-          borderRadius: radius.xl,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.surface,
-          opacity: pressed && onPress ? 0.92 : 1,
-        },
+        styles.statCard,
+        { borderColor: colors.border, borderRadius: radius.xl, opacity: pressed && onPress ? 0.85 : 1 },
       ]}
     >
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+      <View style={[styles.statCardHeader, { marginBottom: spacing.md }]}>
+        <Ionicons name="people-outline" size={18} color={colors.primary} />
+        <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500', flex: 1 }}>
+          {t('proHome.clientsCard.title')}
+        </Text>
+      </View>
+      <Text variant="h2" style={{ fontWeight: '800' }}>
+        {total} <Text variant="bodySmall" color="textMuted">{t('proHome.clientsCard.unit', { count: total })}</Text>
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm }}>
         <View
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            backgroundColor: colors.success + '20',
+            width: 22,
+            height: 22,
+            borderRadius: 11,
+            backgroundColor: colors.primaryLight,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Ionicons name="shield-checkmark" size={16} color={colors.success} />
+          <Ionicons name="person-add-outline" size={12} color={colors.primary} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text variant="body" style={{ fontWeight: '700' }}>
-            {t('proHome.deposits.title')}
-          </Text>
-          <Text variant="caption" color="textMuted">
-            {t('proHome.deposits.subtitle')}
-          </Text>
-        </View>
-        {onPress && (
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-        )}
-      </View>
-
-      {/* Big amount + booking count */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginTop: spacing.xs }}>
-        <Text variant="h1" style={{ fontWeight: '800' }}>
-          {formatPrice(totalAmount)}
-        </Text>
-        <Text variant="bodySmall" color="textMuted" style={{ marginBottom: 6 }}>
-          {t('proHome.deposits.onBookings', { count: bookingsCount })}
+        <Text variant="caption" color="textSecondary" style={{ fontWeight: '600' }}>
+          {t('proHome.clientsCard.newThisMonth', { count: newThisMonth })}
         </Text>
       </View>
-
-      {/* Top services */}
-      {!loading && topServices.length > 0 && (
-        <View style={{ marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
-          <Text
-            variant="caption"
-            color="textMuted"
-            style={{
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              fontWeight: '600',
-              marginBottom: spacing.xs,
-            }}
-          >
-            {t('proHome.deposits.topServices')}
-          </Text>
-          {topServices.map((svc) => (
-            <View
-              key={svc.serviceId}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 4,
-              }}
-            >
-              <Text variant="bodySmall" numberOfLines={1} style={{ flex: 1 }}>
-                {svc.serviceName}
-              </Text>
-              <Text variant="caption" color="textMuted">
-                {t('proHome.countRdv', { count: svc.bookingsCount })}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Empty state — Sérénité active but no deposits collected yet */}
-      {!loading && bookingsCount === 0 && (
-        <View style={{ marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
-          <Text variant="caption" color="textSecondary">
-            {t('proHome.deposits.empty')}
-          </Text>
-        </View>
-      )}
+      <View style={{ flex: 1 }} />
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+      </View>
     </Pressable>
+  );
+}
+
+/**
+ * "Acomptes 30 j" carousel card — same data as the former big
+ * "Acomptes encaissés" block (30-day deposits summary, Sérénité
+ * gate), condensed into the swipeable stats format. The old
+ * block's "configure a deposit" upsell survives as the card's
+ * subtext when nothing has been collected yet.
+ */
+function StatCardDeposits({
+  totalAmount,
+  bookingsCount,
+  onPress,
+}: {
+  totalAmount: number;
+  bookingsCount: number;
+  onPress?: () => void;
+}) {
+  const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.statCard,
+        { borderColor: colors.border, borderRadius: radius.xl, opacity: pressed && onPress ? 0.85 : 1 },
+      ]}
+    >
+      <View style={[styles.statCardHeader, { marginBottom: spacing.md }]}>
+        <Ionicons name="shield-checkmark-outline" size={18} color={colors.success} />
+        <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs, fontWeight: '500', flex: 1 }}>
+          {t('proHome.depositsCard.title')}
+        </Text>
+      </View>
+      <Text variant="h2" style={{ fontWeight: '800' }}>{formatPrice(totalAmount)}</Text>
+      <Text variant="caption" color="textMuted" style={{ marginTop: 2 }} numberOfLines={2}>
+        {bookingsCount > 0
+          ? `${t('proHome.depositsCard.onBookings', { count: bookingsCount })} · ${t('proHome.depositsCard.subtitle')}`
+          : t('proHome.depositsCard.empty')}
+      </Text>
+      <View style={{ flex: 1 }} />
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+      </View>
+    </Pressable>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Loyalty home block — lives where the big deposits block used to.
+// Two states:
+//   - program NOT active (but the pro's plan gives loyalty access):
+//     invitation card → /pro/services where the settings sheet lives.
+//   - program active: compact list of the clients closest to their
+//     reward (armed first), with a one-line "X cartes en cours ·
+//     Y prêtes" stat and a link to the full client list.
+// ---------------------------------------------------------------------------
+
+function LoyaltyInviteCard({ onPress }: { onPress: () => void }) {
+  const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        marginHorizontal: spacing.lg,
+        marginBottom: spacing.xl,
+        padding: spacing.lg,
+        borderRadius: radius.xl,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        opacity: pressed ? 0.9 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: colors.primaryLight,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons name="gift-outline" size={20} color={colors.primary} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text variant="body" style={{ fontWeight: '700' }}>
+          {t('proHome.loyalty.inviteTitle')}
+        </Text>
+        <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+          {t('proHome.loyalty.inviteSubtitle')}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+    </Pressable>
+  );
+}
+
+function LoyaltyHomeCard({
+  clients,
+  threshold,
+  onSeeClients,
+  onClientPress,
+}: {
+  clients: WithId<ProviderClient>[];
+  threshold: number;
+  onSeeClients: () => void;
+  onClientPress: (clientKey: string) => void;
+}) {
+  const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
+
+  // Only clients whose loyalty card has started filling (the
+  // loyalty counter excludes guests and pre-launch history).
+  const { rows, inProgressCount, readyCount } = useMemo(() => {
+    const withCards = clients.filter((c) => (c.loyaltyConfirmedCount ?? 0) > 0);
+    const ready = withCards.filter((c) =>
+      isLoyaltyRewardArmed(c.loyaltyConfirmedCount ?? 0, threshold),
+    ).length;
+    // Armed clients have remaining === 0, so the single ascending
+    // sort on `loyaltyRemaining` puts them first, then the closest.
+    const sorted = [...withCards].sort(
+      (a, b) =>
+        loyaltyRemaining(a.loyaltyConfirmedCount ?? 0, threshold) -
+        loyaltyRemaining(b.loyaltyConfirmedCount ?? 0, threshold),
+    );
+    return { rows: sorted.slice(0, 4), inProgressCount: withCards.length, readyCount: ready };
+  }, [clients, threshold]);
+
+  return (
+    <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
+      <View style={[styles.sectionHeader, { marginBottom: spacing.md }]}>
+        <View style={styles.sectionTitleRow}>
+          <Text variant="h3">{t('proHome.loyalty.title')}</Text>
+          <View style={{ marginLeft: spacing.sm }}>
+            <Ionicons name="gift-outline" size={16} color={colors.primary} />
+          </View>
+        </View>
+        <Pressable onPress={onSeeClients} hitSlop={8}>
+          <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>
+            {t('proHome.loyalty.seeClients')}
+          </Text>
+        </Pressable>
+      </View>
+
+      <Card padding="md" shadow="sm">
+        {/* Stat line */}
+        <Text variant="caption" color="textSecondary" style={{ fontWeight: '600' }}>
+          {t('proHome.loyalty.cardsInProgress', { count: inProgressCount })} · {t('proHome.loyalty.cardsReady', { count: readyCount })}
+        </Text>
+
+        {rows.length === 0 ? (
+          <Text variant="caption" color="textMuted" style={{ marginTop: spacing.sm }}>
+            {t('proHome.loyalty.empty')}
+          </Text>
+        ) : (
+          <View style={{ marginTop: spacing.sm }}>
+            {rows.map((client, idx) => {
+              const count = client.loyaltyConfirmedCount ?? 0;
+              const armed = isLoyaltyRewardArmed(count, threshold);
+              const remaining = loyaltyRemaining(count, threshold);
+              const name = client.name || t('proClients.unnamedClient');
+              return (
+                <Pressable
+                  key={client.clientKey}
+                  onPress={() => onClientPress(client.clientKey)}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.sm,
+                    paddingVertical: spacing.sm,
+                    borderTopWidth: idx === 0 ? 0 : StyleSheet.hairlineWidth,
+                    borderTopColor: colors.border,
+                    borderRadius: radius.sm,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Avatar imageUrl={client.photoURL || undefined} name={name} size="sm" />
+                  <Text variant="bodySmall" style={{ flex: 1, fontWeight: '500' }} numberOfLines={1}>
+                    {name}
+                  </Text>
+                  {armed ? (
+                    <Badge label={t('proHome.loyalty.readyShort')} variant="success" size="sm" />
+                  ) : (
+                    <Text variant="caption" color="textMuted">
+                      {t('proHome.loyalty.remaining', { count: remaining })}
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+      </Card>
+    </View>
   );
 }
 
@@ -756,6 +907,26 @@ export default function ProDashboardScreen() {
     depositsAddonActive ? providerId ?? undefined : undefined,
   );
 
+  // Client base — powers the "Clients" carousel card and the
+  // loyalty block (same dataset as /pro/clients, fetched once).
+  const { clients: providerClients } = useProviderClients(providerId ?? undefined);
+  const clientsTotal = providerClients.length;
+  const newClientsThisMonth = useMemo(() => {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    return providerClients.filter(
+      (c) => toDate(c.firstBookingAt).getTime() >= startOfMonth.getTime(),
+    ).length;
+  }, [providerClients]);
+
+  // Loyalty program — gate (plan) + config validity drive which of
+  // the two home blocks renders. No access → nothing at all (the
+  // upsell already lives on /pro/services).
+  const loyaltySettings = provider?.settings?.loyalty ?? null;
+  const loyaltyAccess = hasLoyaltyAccess(provider);
+  const loyaltyActive = loyaltyAccess && isLoyaltyConfigValid(loyaltySettings);
+
   // Discovery banner — surfaces a prominent "Nouveautés" card on
   // the home tab while at least one feature behind /Plus hasn't
   // been opened yet. Tap navigates to the More tab; the dismiss
@@ -796,12 +967,14 @@ export default function ProDashboardScreen() {
 
   const liveViews = pageViews ? analyticsService.computeLiveStats(pageViews) : null;
 
-  // Carousel pagination
+  // Carousel pagination — the deposits card only exists when the
+  // Sérénité gate passes, so the card count (and dot count) varies.
+  const statCardCount = depositsAddonActive ? 5 : 4;
   const [activeStatCard, setActiveStatCard] = useState(0);
   const onStatScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / (STAT_CARD_WIDTH + STAT_CARD_MARGIN));
-    setActiveStatCard(Math.max(0, Math.min(2, idx)));
-  }, []);
+    setActiveStatCard(Math.max(0, Math.min(statCardCount - 1, idx)));
+  }, [statCardCount]);
 
   // -- Booking actions -------------------------------------------------------
 
@@ -864,11 +1037,6 @@ export default function ProDashboardScreen() {
     if (!provider?.slug) return;
     router.push({ pathname: '/(client)/provider/[slug]', params: { slug: provider.slug, preview: '1' } });
   }, [provider?.slug, router]);
-
-  const handleViewOnline = useCallback(() => {
-    if (!shopUrl) return;
-    Linking.openURL(shopUrl);
-  }, [shopUrl]);
 
   const handleEditShop = useCallback(() => {
     router.push('/(pro)/profile');
@@ -1464,29 +1632,54 @@ export default function ProDashboardScreen() {
                 onPress={() => router.push('/(pro)/stats')}
               />
             </View>
+            <View style={{ width: STAT_CARD_WIDTH, marginRight: STAT_CARD_MARGIN }}>
+              <StatCardClients
+                total={clientsTotal}
+                newThisMonth={newClientsThisMonth}
+                onPress={() => router.push('/(pro)/clients')}
+              />
+            </View>
+            {depositsAddonActive && (
+              <View style={{ width: STAT_CARD_WIDTH, marginRight: STAT_CARD_MARGIN }}>
+                <StatCardDeposits
+                  totalAmount={depositsSummary.totalAmount}
+                  bookingsCount={depositsSummary.bookingsCount}
+                  onPress={() => router.push('/(pro)/payments')}
+                />
+              </View>
+            )}
           </ScrollView>
-          <PaginationDots count={3} active={activeStatCard} />
+          <PaginationDots count={statCardCount} active={activeStatCard} />
         </View>
 
         {/* ── Quick Actions ── */}
         {provider?.slug && (
           <View style={[styles.quickActions, { paddingHorizontal: spacing.lg, marginBottom: spacing.xl }]}>
             <QuickAction icon="qr-code-outline" label={t('proHome.quick.qr')} onPress={() => setShowQRModal(true)} />
-            <QuickAction icon="storefront-outline" label={t('proHome.quick.preview')} onPress={handleViewShop} />
-            <QuickAction icon="globe-outline" label={t('proHome.quick.online')} onPress={handleViewOnline} />
-            <QuickAction icon="create-outline" label={t('proHome.quick.edit')} onPress={handleEditShop} />
+            <QuickAction icon="pricetags-outline" label={t('proHome.quick.services')} onPress={() => router.push('/(pro)/services')} />
+            <QuickAction icon="storefront-outline" label={t('proHome.quick.shop')} onPress={handleEditShop} />
+            <QuickAction icon="eye-outline" label={t('proHome.quick.viewPage')} onPress={handleViewShop} />
           </View>
         )}
 
-        {/* ── Acomptes encaissés (Sérénité add-on subscribers only) ── */}
-        {depositsAddonActive && (
-          <DepositsCard
-            totalAmount={depositsSummary.totalAmount}
-            bookingsCount={depositsSummary.bookingsCount}
-            topServices={depositsSummary.topServices}
-            loading={depositsSummary.loading}
-            onPress={() => router.push('/(pro)/payments')}
-          />
+        {/* ── Fidélité — invitation (no active program) or live
+              progress of the closest cards. Gate fails → nothing. ── */}
+        {loyaltyAccess && (
+          loyaltyActive && loyaltySettings ? (
+            <LoyaltyHomeCard
+              clients={providerClients}
+              threshold={loyaltySettings.threshold}
+              onSeeClients={() => router.push('/(pro)/clients')}
+              onClientPress={(clientKey) =>
+                router.push({
+                  pathname: '/(pro)/client-detail/[key]',
+                  params: { key: clientKey },
+                } as any)
+              }
+            />
+          ) : (
+            <LoyaltyInviteCard onPress={() => router.push('/(pro)/services')} />
+          )
         )}
 
         {/* ── Team Section ── */}
@@ -2126,7 +2319,9 @@ const styles = StyleSheet.create({
   },
   quickAction: {
     alignItems: 'center',
-    width: 60,
+    // Wide enough for the longer labels ("Mon enseigne",
+    // "Voir ma page") without truncation at caption size.
+    width: 80,
   },
   quickActionIcon: {
     width: 48,
