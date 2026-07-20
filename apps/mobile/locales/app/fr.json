@@ -1776,17 +1776,12 @@
     },
     "loyalty": {
       "title": "Fidélité",
-      "seeClients": "Voir les clients →",
       "inviteTitle": "Créez votre programme de fidélité",
       "inviteSubtitle": "Récompensez vos clients réguliers",
-      "readyShort": "Prête",
-      "remaining_one": "encore {{count}} RDV",
-      "remaining_other": "encore {{count}} RDV",
       "cardsInProgress_one": "{{count}} carte en cours",
       "cardsInProgress_other": "{{count}} cartes en cours",
       "cardsReady_one": "{{count}} prête",
-      "cardsReady_other": "{{count}} prêtes",
-      "empty": "Aucune carte en cours pour l'instant. Les RDV honorés de vos clients connectés remplissent leur carte automatiquement."
+      "cardsReady_other": "{{count}} prêtes"
     },
     "features": {
       "clients": "Clients",
@@ -2933,6 +2928,23 @@
       "armed": "Récompense armée — la prochaine réservation sera réduite",
       "rewardPercent": "−{{percent}} % tous les {{threshold}} RDV",
       "rewardAmount": "−{{amount}} tous les {{threshold}} RDV"
+    }
+  },
+  "proLoyaltyPage": {
+    "title": "Fidélité",
+    "edit": "Modifier",
+    "eligibleAll": "Toutes les prestations",
+    "eligibleSome_one": "{{count}} prestation sur {{total}}",
+    "eligibleSome_other": "{{count}} prestations sur {{total}}",
+    "statsInProgress": "Cartes en cours",
+    "statsReady": "Récompenses prêtes",
+    "listTitle": "Clients du programme",
+    "ready": "Prête",
+    "remaining_one": "encore {{count}} RDV",
+    "remaining_other": "encore {{count}} RDV",
+    "empty": {
+      "title": "Aucune carte pour l'instant",
+      "description": "Les cartes de vos clients apparaîtront ici dès leur premier RDV compté."
     }
   }
 }

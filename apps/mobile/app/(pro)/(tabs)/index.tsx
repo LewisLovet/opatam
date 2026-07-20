@@ -4,16 +4,14 @@
  * quick actions, and recent reviews.
  */
 
-import { analyticsService, bookingService, providerService, type WithId } from '@booking-app/firebase';
+import { analyticsService, bookingService, providerService } from '@booking-app/firebase';
 import {
   deltaPercent,
   hasDepositAccess,
   hasLoyaltyAccess,
   isLoyaltyConfigValid,
   isLoyaltyRewardArmed,
-  loyaltyRemaining,
   type PageViewStats,
-  type ProviderClient,
   type TrendPoint,
 } from '@booking-app/shared';
 import { Sparkline } from '../../../components/stats/Sparkline';
@@ -42,7 +40,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Avatar,
-  Badge,
   Button,
   Card,
   EmptyState,
@@ -653,16 +650,14 @@ function StatCardDeposits({
 }
 
 // ---------------------------------------------------------------------------
-// Loyalty home block — lives where the big deposits block used to.
-// Two states:
-//   - program NOT active (but the pro's plan gives loyalty access):
-//     invitation card → /pro/services where the settings sheet lives.
-//   - program active: compact list of the clients closest to their
-//     reward (armed first), with a one-line "X cartes en cours ·
-//     Y prêtes" stat and a link to the full client list.
+// Loyalty entry card — the home tab no longer hosts the full loyalty
+// block (stats + client list): that now lives on /pro/loyalty. The
+// dashboard keeps a single compact card whose subtitle is either the
+// live stat line ("5 cartes en cours · 1 prête") or the short
+// invitation when no program is configured. Tap → /pro/loyalty.
 // ---------------------------------------------------------------------------
 
-function LoyaltyInviteCard({ onPress }: { onPress: () => void }) {
+function LoyaltyCompactCard({ subtitle, onPress }: { subtitle: string; onPress: () => void }) {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
   return (
@@ -696,114 +691,14 @@ function LoyaltyInviteCard({ onPress }: { onPress: () => void }) {
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text variant="body" style={{ fontWeight: '700' }}>
-          {t('proHome.loyalty.inviteTitle')}
+          {t('proHome.loyalty.title')}
         </Text>
-        <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-          {t('proHome.loyalty.inviteSubtitle')}
+        <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }} numberOfLines={1}>
+          {subtitle}
         </Text>
       </View>
       <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
     </Pressable>
-  );
-}
-
-function LoyaltyHomeCard({
-  clients,
-  threshold,
-  onSeeClients,
-  onClientPress,
-}: {
-  clients: WithId<ProviderClient>[];
-  threshold: number;
-  onSeeClients: () => void;
-  onClientPress: (clientKey: string) => void;
-}) {
-  const { colors, spacing, radius } = useTheme();
-  const { t } = useTranslation();
-
-  // Only clients whose loyalty card has started filling (the
-  // loyalty counter excludes guests and pre-launch history).
-  const { rows, inProgressCount, readyCount } = useMemo(() => {
-    const withCards = clients.filter((c) => (c.loyaltyConfirmedCount ?? 0) > 0);
-    const ready = withCards.filter((c) =>
-      isLoyaltyRewardArmed(c.loyaltyConfirmedCount ?? 0, threshold),
-    ).length;
-    // Armed clients have remaining === 0, so the single ascending
-    // sort on `loyaltyRemaining` puts them first, then the closest.
-    const sorted = [...withCards].sort(
-      (a, b) =>
-        loyaltyRemaining(a.loyaltyConfirmedCount ?? 0, threshold) -
-        loyaltyRemaining(b.loyaltyConfirmedCount ?? 0, threshold),
-    );
-    return { rows: sorted.slice(0, 4), inProgressCount: withCards.length, readyCount: ready };
-  }, [clients, threshold]);
-
-  return (
-    <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
-      <View style={[styles.sectionHeader, { marginBottom: spacing.md }]}>
-        <View style={styles.sectionTitleRow}>
-          <Text variant="h3">{t('proHome.loyalty.title')}</Text>
-          <View style={{ marginLeft: spacing.sm }}>
-            <Ionicons name="gift-outline" size={16} color={colors.primary} />
-          </View>
-        </View>
-        <Pressable onPress={onSeeClients} hitSlop={8}>
-          <Text variant="bodySmall" color="primary" style={{ fontWeight: '500' }}>
-            {t('proHome.loyalty.seeClients')}
-          </Text>
-        </Pressable>
-      </View>
-
-      <Card padding="md" shadow="sm">
-        {/* Stat line */}
-        <Text variant="caption" color="textSecondary" style={{ fontWeight: '600' }}>
-          {t('proHome.loyalty.cardsInProgress', { count: inProgressCount })} · {t('proHome.loyalty.cardsReady', { count: readyCount })}
-        </Text>
-
-        {rows.length === 0 ? (
-          <Text variant="caption" color="textMuted" style={{ marginTop: spacing.sm }}>
-            {t('proHome.loyalty.empty')}
-          </Text>
-        ) : (
-          <View style={{ marginTop: spacing.sm }}>
-            {rows.map((client, idx) => {
-              const count = client.loyaltyConfirmedCount ?? 0;
-              const armed = isLoyaltyRewardArmed(count, threshold);
-              const remaining = loyaltyRemaining(count, threshold);
-              const name = client.name || t('proClients.unnamedClient');
-              return (
-                <Pressable
-                  key={client.clientKey}
-                  onPress={() => onClientPress(client.clientKey)}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: spacing.sm,
-                    paddingVertical: spacing.sm,
-                    borderTopWidth: idx === 0 ? 0 : StyleSheet.hairlineWidth,
-                    borderTopColor: colors.border,
-                    borderRadius: radius.sm,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <Avatar imageUrl={client.photoURL || undefined} name={name} size="sm" />
-                  <Text variant="bodySmall" style={{ flex: 1, fontWeight: '500' }} numberOfLines={1}>
-                    {name}
-                  </Text>
-                  {armed ? (
-                    <Badge label={t('proHome.loyalty.readyShort')} variant="success" size="sm" />
-                  ) : (
-                    <Text variant="caption" color="textMuted">
-                      {t('proHome.loyalty.remaining', { count: remaining })}
-                    </Text>
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
-      </Card>
-    </View>
   );
 }
 
@@ -926,6 +821,20 @@ export default function ProDashboardScreen() {
   const loyaltySettings = provider?.settings?.loyalty ?? null;
   const loyaltyAccess = hasLoyaltyAccess(provider);
   const loyaltyActive = loyaltyAccess && isLoyaltyConfigValid(loyaltySettings);
+
+  // Stat line for the compact loyalty card — clients whose card has
+  // started filling, and how many rewards are armed. The full list
+  // lives on /pro/loyalty.
+  const { loyaltyInProgressCount, loyaltyReadyCount } = useMemo(() => {
+    if (!loyaltyActive || !loyaltySettings) {
+      return { loyaltyInProgressCount: 0, loyaltyReadyCount: 0 };
+    }
+    const withCards = providerClients.filter((c) => (c.loyaltyConfirmedCount ?? 0) > 0);
+    const ready = withCards.filter((c) =>
+      isLoyaltyRewardArmed(c.loyaltyConfirmedCount ?? 0, loyaltySettings.threshold),
+    ).length;
+    return { loyaltyInProgressCount: withCards.length, loyaltyReadyCount: ready };
+  }, [loyaltyActive, loyaltySettings, providerClients]);
 
   // Discovery banner — surfaces a prominent "Nouveautés" card on
   // the home tab while at least one feature behind /Plus hasn't
@@ -1662,24 +1571,19 @@ export default function ProDashboardScreen() {
           </View>
         )}
 
-        {/* ── Fidélité — invitation (no active program) or live
-              progress of the closest cards. Gate fails → nothing. ── */}
+        {/* ── Fidélité — single compact entry card (the full stats +
+              client list moved to /pro/loyalty). Subtitle = live stat
+              line when the program is active, short invitation
+              otherwise. Gate fails → nothing. ── */}
         {loyaltyAccess && (
-          loyaltyActive && loyaltySettings ? (
-            <LoyaltyHomeCard
-              clients={providerClients}
-              threshold={loyaltySettings.threshold}
-              onSeeClients={() => router.push('/(pro)/clients')}
-              onClientPress={(clientKey) =>
-                router.push({
-                  pathname: '/(pro)/client-detail/[key]',
-                  params: { key: clientKey },
-                } as any)
-              }
-            />
-          ) : (
-            <LoyaltyInviteCard onPress={() => router.push('/(pro)/services')} />
-          )
+          <LoyaltyCompactCard
+            subtitle={
+              loyaltyActive
+                ? `${t('proHome.loyalty.cardsInProgress', { count: loyaltyInProgressCount })} · ${t('proHome.loyalty.cardsReady', { count: loyaltyReadyCount })}`
+                : t('proHome.loyalty.inviteTitle')
+            }
+            onPress={() => router.push('/(pro)/loyalty' as any)}
+          />
         )}
 
         {/* ── Team Section ── */}

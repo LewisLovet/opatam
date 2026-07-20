@@ -1776,17 +1776,12 @@
     },
     "loyalty": {
       "title": "Loyalty",
-      "seeClients": "See clients →",
       "inviteTitle": "Create your loyalty program",
       "inviteSubtitle": "Reward your regular clients",
-      "readyShort": "Ready",
-      "remaining_one": "{{count}} more appt",
-      "remaining_other": "{{count}} more appts",
       "cardsInProgress_one": "{{count}} card in progress",
       "cardsInProgress_other": "{{count}} cards in progress",
       "cardsReady_one": "{{count}} ready",
-      "cardsReady_other": "{{count}} ready",
-      "empty": "No cards in progress yet. Completed appointments from signed-in clients fill their card automatically."
+      "cardsReady_other": "{{count}} ready"
     },
     "features": {
       "clients": "Clients",
@@ -2933,6 +2928,23 @@
       "armed": "Reward ready — the next booking will be discounted",
       "rewardPercent": "−{{percent}}% every {{threshold}} appointments",
       "rewardAmount": "−{{amount}} every {{threshold}} appointments"
+    }
+  },
+  "proLoyaltyPage": {
+    "title": "Loyalty",
+    "edit": "Edit",
+    "eligibleAll": "All services",
+    "eligibleSome_one": "{{count}} of {{total}} services",
+    "eligibleSome_other": "{{count}} of {{total}} services",
+    "statsInProgress": "Cards in progress",
+    "statsReady": "Rewards ready",
+    "listTitle": "Program clients",
+    "ready": "Ready",
+    "remaining_one": "{{count}} more appt",
+    "remaining_other": "{{count}} more appts",
+    "empty": {
+      "title": "No cards yet",
+      "description": "Your clients' cards will appear here as soon as their first appointment is counted."
     }
   }
 }

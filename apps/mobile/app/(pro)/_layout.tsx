@@ -46,6 +46,7 @@ export default function ProLayout() {
           <Stack.Screen name="stats" options={{ headerShown: false }} />
           <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
           <Stack.Screen name="services" options={{ headerShown: false }} />
+          <Stack.Screen name="loyalty" options={{ headerShown: false }} />
           <Stack.Screen name="locations" options={{ headerShown: false }} />
           <Stack.Screen name="members" options={{ headerShown: false }} />
           <Stack.Screen name="availability" options={{ headerShown: false }} />
