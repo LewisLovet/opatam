@@ -495,7 +495,7 @@
       "confirmButton": "Confirm booking",
       "loginButton": "Sign in to book",
       "loyaltyApplied": "€{{amount}} loyalty discount applied 🎉",
-      "loyaltyLine": "🎁 Loyalty {{reward}} applied"
+      "loyaltyLine": "Loyalty {{reward}} applied"
     }
   },
   "bookingDetailScreen": {
@@ -1085,8 +1085,8 @@
     "providers": {
       "title": "Your providers",
       "progress": "{{filled}}/{{threshold}} · {{reward}}",
-      "armed": "🎁 {{reward}} unlocked",
-      "seeLoyalty": "My cards →"
+      "seeLoyalty": "My cards →",
+      "useReward": "Use my {{reward}}"
     }
   },
   "search": {
@@ -2844,11 +2844,11 @@
     "card": {
       "remaining_one": "Only {{count}} more appointment before {{reward}}",
       "remaining_other": "Only {{count}} more appointments before {{reward}}",
-      "armed": "🎁 Your next booking is discounted"
+      "armed": "Your next booking is discounted"
     },
     "provider": {
       "progress": "Loyalty: {{done}}/{{threshold}} appointments — {{remaining}} more before {{reward}}",
-      "armed": "🎁 {{reward}} off your next booking",
+      "armed": "{{reward}} off your next booking",
       "cardTitle": "Your loyalty card"
     },
     "reward": {

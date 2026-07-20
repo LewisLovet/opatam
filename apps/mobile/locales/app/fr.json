@@ -495,7 +495,7 @@
       "confirmButton": "Confirmer la réservation",
       "loginButton": "Se connecter pour réserver",
       "loyaltyApplied": "Réduction fidélité de {{amount}} € appliquée 🎉",
-      "loyaltyLine": "🎁 Fidélité {{reward}} appliquée"
+      "loyaltyLine": "Fidélité {{reward}} appliquée"
     }
   },
   "bookingDetailScreen": {
@@ -1085,8 +1085,8 @@
     "providers": {
       "title": "Vos prestataires",
       "progress": "{{filled}}/{{threshold}} · {{reward}}",
-      "armed": "🎁 {{reward}} offert",
-      "seeLoyalty": "Mes cartes →"
+      "seeLoyalty": "Mes cartes →",
+      "useReward": "Utiliser mon {{reward}}"
     }
   },
   "search": {
@@ -2844,11 +2844,11 @@
     "card": {
       "remaining_one": "Plus que {{count}} RDV avant {{reward}}",
       "remaining_other": "Plus que {{count}} RDV avant {{reward}}",
-      "armed": "🎁 Votre prochaine réservation est réduite"
+      "armed": "Votre prochaine réservation est réduite"
     },
     "provider": {
       "progress": "Fidélité : {{done}}/{{threshold}} RDV — encore {{remaining}} avant {{reward}}",
-      "armed": "🎁 {{reward}} sur votre prochaine réservation",
+      "armed": "{{reward}} sur votre prochaine réservation",
       "cardTitle": "Votre carte de fidélité"
     },
     "reward": {

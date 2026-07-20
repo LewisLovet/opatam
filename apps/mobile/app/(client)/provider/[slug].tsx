@@ -64,6 +64,8 @@ import {
   PROMO_URGENCY_DAYS,
   isLoyaltyConfigValid,
   hasLoyaltyAccess,
+  isServiceLoyaltyEligible,
+  applyLoyaltyToLine,
 } from '@booking-app/shared';
 import { analyticsService, type WithId } from '@booking-app/firebase';
 
@@ -170,6 +172,10 @@ export default function ProviderDetailScreen() {
   const loyaltyCard = provider
     ? loyaltyCards.find((c) => c.providerId === provider.id)
     : undefined;
+  // Récompense ARMÉE : la réduction s'affiche sur les prix des prestations
+  // éligibles dès la page publique (avant même d'appuyer sur Réserver) —
+  // même calcul que le serveur, meilleure-des-deux face aux promos.
+  const armedLoyalty = loyaltyCard?.armed && publicLoyalty ? publicLoyalty : null;
 
   // Team plan: per-member availability
   const isTeam = provider?.plan === 'team';
@@ -741,6 +747,12 @@ export default function ProviderDetailScreen() {
                         const daysLeft = getDiscountDaysLeft(active);
                         const priceFrom =
                           (s.variations?.length ?? 0) > 0 || (s.options?.length ?? 0) > 0;
+                        // Fidélité armée sur une presta éligible : prix barré =
+                        // prix actuel (promo comprise), prix affiché = après
+                        // récompense. null si la promo fait déjà mieux.
+                        const loy = armedLoyalty && isServiceLoyaltyEligible(s.id, armedLoyalty)
+                          ? applyLoyaltyToLine(md.price, md.original, armedLoyalty)
+                          : null;
                         return {
                           id: s.id,
                           name: s.name,
@@ -749,10 +761,12 @@ export default function ProviderDetailScreen() {
                           duration: s.duration,
                           // Discounted "à partir de" (cheapest reachable combo) — correct
                           // for variation/option services, not just the dropped base.
-                          price: md.price / 100,
-                          priceMax: hasPromo || priceFrom ? null : s.priceMax ? s.priceMax / 100 : null,
-                          originalPrice: hasPromo ? md.original / 100 : null,
-                          discountPercent: hasPromo ? md.discountPercent : null,
+                          price: (loy ? loy.price : md.price) / 100,
+                          priceMax: loy || hasPromo || priceFrom ? null : s.priceMax ? s.priceMax / 100 : null,
+                          originalPrice: loy ? md.price / 100 : hasPromo ? md.original / 100 : null,
+                          discountPercent: loy
+                            ? armedLoyalty!.rewardType === 'percent' ? armedLoyalty!.rewardValue : null
+                            : hasPromo ? md.discountPercent : null,
                           promoCountdown:
                             hasPromo && daysLeft != null && daysLeft <= PROMO_URGENCY_DAYS
                               ? formatPromoCountdown(daysLeft, i18n.language)

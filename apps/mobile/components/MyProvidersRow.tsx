@@ -136,36 +136,52 @@ function ProviderMiniCard({
           {name}
         </Text>
         {loyalty && reward && (
-          // Pastille colorée : la présence d'une carte de fidélité doit se
-          // voir AU PREMIER COUP D'ŒIL, pas se deviner dans du texte gris.
-          <View
-            style={[
-              styles.loyaltyPill,
-              {
-                backgroundColor: loyalty.armed ? colors.primary : colors.primaryLight,
-                marginTop: 6,
-              },
-            ]}
-          >
-            <Text
-              variant="caption"
-              numberOfLines={1}
-              style={{
-                color: loyalty.armed ? '#FFFFFF' : colors.primary,
-                fontWeight: '700',
-                fontSize: 11,
-              }}
+          loyalty.armed ? (
+            // Récompense prête : un bouton d'ACTION incite bien plus qu'une
+            // jauge pleine — il mène à la page du pro pour réserver.
+            <Pressable
+              onPress={onPress}
+              disabled={!onPress}
+              style={({ pressed }) => [
+                styles.loyaltyPill,
+                {
+                  backgroundColor: colors.primary,
+                  marginTop: 6,
+                  paddingVertical: 7,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
             >
-              {loyalty.armed
-                ? t('home.providers.armed', { reward })
-                : t('home.providers.progress', {
-                    filled,
-                    threshold: loyalty.threshold,
-                    reward,
-                  })}
-            </Text>
-            <MiniGauge filled={filled} threshold={loyalty.threshold} onPrimary={loyalty.armed} />
-          </View>
+              <Text
+                variant="caption"
+                numberOfLines={1}
+                style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 11 }}
+              >
+                {t('home.providers.useReward', { reward })}
+              </Text>
+            </Pressable>
+          ) : (
+            // En cours : pastille + jauge de progression.
+            <View
+              style={[
+                styles.loyaltyPill,
+                { backgroundColor: colors.primaryLight, marginTop: 6 },
+              ]}
+            >
+              <Text
+                variant="caption"
+                numberOfLines={1}
+                style={{ color: colors.primary, fontWeight: '700', fontSize: 11 }}
+              >
+                {t('home.providers.progress', {
+                  filled,
+                  threshold: loyalty.threshold,
+                  reward,
+                })}
+              </Text>
+              <MiniGauge filled={filled} threshold={loyalty.threshold} />
+            </View>
+          )
         )}
       </Card>
     </Pressable>
