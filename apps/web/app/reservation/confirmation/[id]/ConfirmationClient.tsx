@@ -605,7 +605,7 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
                   App Store
                 </a>
                 <a
-                  href="https://play.google.com/store/apps/details?id=com.opatam.app"
+                  href="https://play.google.com/store/apps/details?id=com.kamerleontech.opatam"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"

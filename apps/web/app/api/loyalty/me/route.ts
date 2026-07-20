@@ -52,17 +52,18 @@ export async function GET(request: NextRequest) {
       entries.map((c) => db.collection('providers').doc(c.providerId as string).get()),
     );
 
-    const cards = entries.flatMap((client, i) => {
+    const rawCards = entries.flatMap((client, i) => {
       const p = providers[i].data();
       if (!p || !p.isPublished) return [];
       const loyalty = (p.settings?.loyalty ?? null) as LoyaltySettings | null;
       if (!isLoyaltyConfigValid(loyalty) || !hasLoyaltyAccess(p)) return [];
       // Compteur FIDÉLITÉ : seuls les RDV faits connecté après le lancement
-      // remplissent la carte (le champ API garde son nom pour le mobile).
+      // ET passés remplissent la carte (champ API inchangé pour le mobile).
       const confirmedCount = (client.loyaltyConfirmedCount as number | undefined) ?? 0;
       return [
         {
           providerId: providers[i].id,
+          clientKey: client.clientKey as string,
           businessName: (p.businessName as string) ?? '',
           slug: (p.slug as string) ?? null,
           photoURL: (p.photoURL as string) ?? null,
@@ -70,12 +71,26 @@ export async function GET(request: NextRequest) {
           threshold: loyalty.threshold,
           rewardType: loyalty.rewardType,
           rewardValue: loyalty.rewardValue,
-          /** RDV restants avant récompense (0 = la prochaine résa est réduite). */
           remaining: loyaltyRemaining(confirmedCount, loyalty.threshold),
           armed: isLoyaltyRewardArmed(confirmedCount, loyalty.threshold),
         },
       ];
     });
+
+    // Récompense déjà consommée ce cycle (ticket de rédemption existant,
+    // résa réduite pas encore passée) → la carte redémarre côté affichage.
+    const cards = await Promise.all(
+      rawCards.map(async ({ clientKey, ...card }) => {
+        if (!card.armed) return card;
+        const cycle = card.confirmedCount / card.threshold;
+        const ticket = await db
+          .collection('loyaltyRedemptions')
+          .doc(`${card.providerId}_${clientKey}_c${cycle}`)
+          .get();
+        if (!ticket.exists) return card;
+        return { ...card, armed: false, remaining: card.threshold };
+      }),
+    );
 
     // Cartes armées d'abord, puis les plus proches de la récompense.
     cards.sort((a, b) => Number(b.armed) - Number(a.armed) || a.remaining - b.remaining);

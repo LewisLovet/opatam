@@ -231,7 +231,7 @@ export const EMAIL_TEXTS = {
     fr: {
       cardTitle: (businessName: string) => `Votre carte de fidélité chez ${businessName}`,
       counted: (count: number, threshold: number, remaining: number, reward: string) =>
-        `${count}/${threshold} RDV — ce rendez-vous compte ! Plus que ${remaining} avant ${reward}.`,
+        `${count}/${threshold} RDV honorés — celui-ci s'ajoutera après votre venue. Plus que ${remaining} avant ${reward}.`,
       applied: (reward: string) => `Fidélité ${reward} appliquée sur ce rendez-vous.`,
       readyForNext: (reward: string) =>
         `Carte complète : ${reward} sur votre prochaine réservation dans l'app.`,
@@ -245,7 +245,7 @@ export const EMAIL_TEXTS = {
     en: {
       cardTitle: (businessName: string) => `Your loyalty card at ${businessName}`,
       counted: (count: number, threshold: number, remaining: number, reward: string) =>
-        `${count}/${threshold} appointments — this one counts! Only ${remaining} left before ${reward}.`,
+        `${count}/${threshold} completed appointments — this one will be added after your visit. Only ${remaining} left before ${reward}.`,
       applied: (reward: string) => `Loyalty ${reward} applied to this appointment.`,
       readyForNext: (reward: string) =>
         `Card complete: ${reward} off your next booking in the app.`,

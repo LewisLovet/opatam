@@ -13,7 +13,7 @@ import {
 } from '@booking-app/shared';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
-import { getAdminFirestore } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { sendDepositPaymentRequestEmail } from '@/lib/emails/depositPaymentRequest';
 
 // Stripe Checkout Sessions require expires_at to be at least 30 minutes
@@ -42,15 +42,38 @@ export async function POST(request: NextRequest) {
       // Variations/options chosen by the client. The booking service
       // recomputes price + duration from these server-side.
       selections: body.selections,
+      // Langue de l'app/du site au moment de la résa — pilote les emails
+      // client (fix audit P2.4 : le champ était accepté par le schéma mais
+      // jamais transmis, cassant la chaîne bilingue web ET mobile).
+      clientLocale: body.clientLocale,
       // Multi-prestation cart: when present, the booking spans all items
       // (price/duration aggregated server-side). Without this the booking
       // would silently fall back to the single top-level serviceId.
       items: body.items,
     });
-    const clientUid: string | null =
-      typeof body.clientId === 'string' && body.clientId.length > 0
-        ? body.clientId
-        : null;
+    // ── Identité client (audit P1.1) ─────────────────────────────
+    // `clientUid` = uid VÉRIFIÉ via le Firebase ID token (Authorization:
+    // Bearer). C'est LA seule identité utilisée par la fidélité (cumul +
+    // consommation). `legacyClientId` = body.clientId non vérifié, conservé
+    // UNIQUEMENT pour rattacher la résa à « Mes rendez-vous » sur les
+    // anciens builds mobile qui n'envoient pas encore le token.
+    // TODO(loyalty-adoption) : supprimer legacyClientId quand les builds
+    // pré-fidélité auront disparu.
+    let verifiedUid: string | null = null;
+    const authHeader = request.headers.get('authorization') || '';
+    if (authHeader.startsWith('Bearer ')) {
+      try {
+        const decoded = await getAdminAuth().verifyIdToken(authHeader.slice('Bearer '.length));
+        verifiedUid = decoded.uid;
+      } catch {
+        // Token invalide/expiré → on traite la requête comme invitée
+        // (jamais bloquant : le tunnel web n'envoie pas de token).
+        verifiedUid = null;
+      }
+    }
+    const legacyClientId: string | null =
+      typeof body.clientId === 'string' && body.clientId.length > 0 ? body.clientId : null;
+    const clientUid: string | null = verifiedUid ?? legacyClientId;
 
     // Check provider subscription is active before accepting booking
     const providerData = await providerService.getById(validated.providerId);
@@ -120,32 +143,71 @@ export async function POST(request: NextRequest) {
     // docs au pro. Jamais sur les résas créées par le pro lui-même
     // (isProSource) : la fidélité récompense les réservations du client.
     let loyaltySettings = null;
-    // `clientUid` requis : la fidélité vit dans l'app — les invités ne
-    // cumulent NI ne consomment (politique 2026-07-20). Sans ce garde, un
-    // client armé pourrait consommer sa récompense en boucle via des résas
-    // invitées (qui n'incrémentent pas le compteur).
+    let loyaltyRedemptionRef: FirebaseFirestore.DocumentReference | null = null;
+    // Fidélité : uid VÉRIFIÉ requis (audit P1.1 — jamais legacyClientId).
+    // Comptage LIVE depuis les résas (règle « confirmé ET passé » : le
+    // compteur stocké peut retarder d'un jour), et consommation ATOMIQUE
+    // par ticket de cycle (audit P1.2 — une carte pleine = UNE réduction,
+    // quels que soient le timing ou le statut des résas suivantes).
     if (
       !isProSource &&
-      clientUid &&
+      verifiedUid &&
       isLoyaltyConfigValid(providerData.settings?.loyalty) &&
       hasLoyaltyAccess(providerData)
     ) {
-      // MÊME clé que le trigger qui tient les compteurs (email prioritaire,
-      // id: en secours) — sinon on lirait un doc qui n'existe pas.
       const clientKey = getClientKey({
-        clientId: clientUid,
+        clientId: verifiedUid,
         clientInfo: validated.clientInfo ?? null,
       } as Parameters<typeof getClientKey>[0]);
       if (clientKey !== 'anonymous') {
         try {
-          const snap = await getAdminFirestore()
-            .collection('providerClients')
-            .doc(`${validated.providerId}_${clientKey}`)
+          const adminDb = getAdminFirestore();
+          const threshold = providerData.settings!.loyalty!.threshold;
+          // Comptage live : mêmes conditions que l'agrégateur (confirmée +
+          // connectée + post-lancement + RDV passé).
+          const now = Date.now();
+          const launch = new Date('2026-07-20T00:00:00+02:00').getTime();
+          const bookingsSnap = await adminDb
+            .collection('bookings')
+            .where('providerId', '==', validated.providerId)
+            .where('clientInfo.email', '==', validated.clientInfo!.email.trim().toLowerCase())
             .get();
-          // Compteur FIDÉLITÉ (pas confirmedCount) : connecté + post-lancement.
-          const confirmedCount = (snap.data()?.loyaltyConfirmedCount as number | undefined) ?? 0;
-          if (isLoyaltyRewardArmed(confirmedCount, providerData.settings!.loyalty!.threshold)) {
-            loyaltySettings = providerData.settings!.loyalty!;
+          const count = bookingsSnap.docs.filter((d) => {
+            const b = d.data();
+            const createdAt = b.createdAt?.toDate?.()?.getTime?.() ?? 0;
+            const datetime = b.datetime?.toDate?.()?.getTime?.() ?? Number.MAX_SAFE_INTEGER;
+            return (
+              b.status === 'confirmed' && !!b.clientId && createdAt >= launch && datetime <= now
+            );
+          }).length;
+
+          if (isLoyaltyRewardArmed(count, threshold)) {
+            // Ticket de rédemption — un par cycle de carte. Transaction :
+            // si le ticket existe déjà (résa réduite en cours, même pas
+            // encore passée), la récompense est déjà consommée → pas de
+            // deuxième réduction.
+            const cycle = count / threshold;
+            const ref = adminDb
+              .collection('loyaltyRedemptions')
+              .doc(`${validated.providerId}_${clientKey}_c${cycle}`);
+            const created = await adminDb.runTransaction(async (tx) => {
+              const existing = await tx.get(ref);
+              if (existing.exists) return false;
+              tx.set(ref, {
+                providerId: validated.providerId,
+                clientKey,
+                clientId: verifiedUid,
+                cycle,
+                threshold,
+                createdAt: new Date(),
+                bookingId: null,
+              });
+              return true;
+            });
+            if (created) {
+              loyaltySettings = providerData.settings!.loyalty!;
+              loyaltyRedemptionRef = ref;
+            }
           }
         } catch (e) {
           // La fidélité ne doit JAMAIS bloquer une réservation.
@@ -157,10 +219,27 @@ export async function POST(request: NextRequest) {
     // Create booking
     // Emails (client confirmation + provider notification) are sent automatically
     // by the onBookingWrite Cloud Function trigger via handleBookingEmails()
-    const booking = await bookingService.createBooking(validated, {
-      skipDeposit,
-      loyalty: loyaltySettings,
-    });
+    let booking;
+    try {
+      booking = await bookingService.createBooking(validated, {
+        skipDeposit,
+        loyalty: loyaltySettings,
+      });
+    } catch (e) {
+      // Résa refusée après réservation du ticket → on le libère pour que
+      // la récompense reste disponible.
+      if (loyaltyRedemptionRef) await loyaltyRedemptionRef.delete().catch(() => undefined);
+      throw e;
+    }
+    if (loyaltyRedemptionRef) {
+      if (booking.loyalty) {
+        await loyaltyRedemptionRef.update({ bookingId: booking.id }).catch(() => undefined);
+      } else {
+        // La réduction n'a finalement pas été appliquée (ex. promo meilleure
+        // sur toutes les lignes, aucune presta éligible) → ticket libéré.
+        await loyaltyRedemptionRef.delete().catch(() => undefined);
+      }
+    }
 
     // ─────────────────────────────────────────────────────────────────
     // Backward-compat guard for old mobile builds.
@@ -209,6 +288,8 @@ export async function POST(request: NextRequest) {
     // note above the schema parse). Without this the booking is invisible
     // to "Mes rendez-vous" since useClientBookings queries by clientId.
     if (clientUid) {
+      // verifiedUid en priorité ; legacyClientId (non vérifié) seulement en
+      // secours pour « Mes rendez-vous » des anciens builds — voir P1.1.
       await getAdminFirestore()
         .collection('bookings')
         .doc(booking.id)

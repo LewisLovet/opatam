@@ -1089,7 +1089,7 @@ export function BookingFlow({
                           App Store
                         </a>
                         <a
-                          href="https://play.google.com/store/apps/details?id=com.opatam.app"
+                          href="https://play.google.com/store/apps/details?id=com.kamerleontech.opatam"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"

@@ -2457,4 +2457,3 @@ ${lt.rewardCta} : ${url}`;
     return { success: false, error: e instanceof Error ? e.message : 'unknown' };
   }
 }
-

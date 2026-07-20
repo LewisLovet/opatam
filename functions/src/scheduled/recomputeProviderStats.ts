@@ -24,6 +24,13 @@
  */
 
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import {
+  isLoyaltyConfigValidMirror,
+  hasLoyaltyAccessMirror,
+  LOYALTY_LAUNCH_AT,
+} from '../utils/loyaltyMirror';
+import { recomputeClientDoc } from '../triggers/onBookingWriteProviderStats';
+import { loadProviderContext } from '../lib/providerStatsRecompute';
 import * as admin from 'firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import {
@@ -68,6 +75,7 @@ export const recomputeProviderStats = onSchedule(
         await Promise.all([
           refreshRollingFor(db, providerId, now),
           refreshClientTagsFor(db, providerId, now),
+          refreshLoyaltyCountersFor(db, providerId, now, providerDoc.data()),
         ]);
         processed += 1;
       } catch (err) {
@@ -189,4 +197,54 @@ async function refreshClientTagsFor(
 
   // Helper: silence linter for unused param when no docs.
   void clientDocId;
+}
+
+/**
+ * Fidélité — règle « confirmé ET passé » : les tampons se gagnent quand le
+ * RDV passe, pas à la réservation. Aucun write de résa ne se produit à ce
+ * moment-là, donc ce job quotidien recompte les fiches des clients dont un
+ * RDV comptable vient de passer (fenêtre 26 h pour absorber les retards),
+ * via recomputeClientDoc — qui met le compteur à jour ET déclenche les
+ * notifications de jalons (50 %, récompense prête + email).
+ */
+async function refreshLoyaltyCountersFor(
+  db: admin.firestore.Firestore,
+  providerId: string,
+  now: Date,
+  provider: admin.firestore.DocumentData | undefined,
+): Promise<void> {
+  const loyalty = provider?.settings?.loyalty;
+  if (!isLoyaltyConfigValidMirror(loyalty) || !hasLoyaltyAccessMirror(provider)) return;
+
+  const windowStart = new Date(now.getTime() - 26 * 60 * 60 * 1000);
+  const snap = await db
+    .collection('bookings')
+    .where('providerId', '==', providerId)
+    .where('datetime', '>=', windowStart)
+    .where('datetime', '<=', now)
+    .get();
+
+  const clientKeys = new Set<string>();
+  for (const d of snap.docs) {
+    const b = d.data();
+    const createdAt = b.createdAt?.toDate?.() ?? null;
+    if (
+      b.status === 'confirmed' &&
+      b.clientId &&
+      createdAt &&
+      createdAt.getTime() >= LOYALTY_LAUNCH_AT.getTime()
+    ) {
+      const email = (b.clientInfo?.email as string | undefined)?.toLowerCase().trim();
+      clientKeys.add(email ? `email:${email}` : `id:${b.clientId}`);
+    }
+  }
+  if (clientKeys.size === 0) return;
+
+  const ctx = await loadProviderContext(providerId);
+  if (!ctx) return;
+  for (const clientKey of clientKeys) {
+    await recomputeClientDoc(providerId, clientKey, ctx).catch((e) =>
+      console.error(`[loyalty-cron] recompute ${clientKey} @ ${providerId} failed`, e),
+    );
+  }
 }

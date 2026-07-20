@@ -25,6 +25,7 @@ import {
   isLoyaltyConfigValidMirror,
   hasLoyaltyAccessMirror,
   loyaltyRewardLabel,
+  LOYALTY_LAUNCH_AT,
 } from '../utils/loyaltyMirror';
 import { resolveEmailLocale } from '../utils/emailI18n';
 
@@ -644,11 +645,14 @@ async function computeLoyaltyEmailContext(
   booking: BookingData & { status?: string; clientInfo: { email: string } },
 ): Promise<{ count: number; threshold: number; rewardLabel: string; appliedAmountOff: number } | null> {
   const createdAt = booking.createdAt?.toDate?.() ?? null;
+  // La résa qui vient d'être créée est FUTURE : elle ne compte pas encore
+  // (règle « confirmé ET passé »). On vérifie seulement qu'elle COMPTERA
+  // une fois honorée : connectée + confirmée + post-lancement.
   if (
     !booking.clientId ||
     booking.status !== 'confirmed' ||
     !createdAt ||
-    !countsTowardLoyalty({ status: 'confirmed', clientId: booking.clientId, createdAt })
+    createdAt.getTime() < LOYALTY_LAUNCH_AT.getTime()
   ) {
     return null;
   }
@@ -668,19 +672,27 @@ async function computeLoyaltyEmailContext(
     .where('providerId', '==', booking.providerId)
     .where('clientInfo.email', '==', email)
     .get();
+  const now = new Date();
   const count = snap.docs.filter((d) => {
     const b = d.data();
     const c = b.createdAt?.toDate?.() ?? null;
+    const dt = b.datetime?.toDate?.() ?? null;
     return (
       c !== null &&
-      countsTowardLoyalty({
-        status: (b.status as string) ?? '',
-        clientId: (b.clientId as string | null) ?? null,
-        createdAt: c,
-      })
+      dt !== null &&
+      countsTowardLoyalty(
+        {
+          status: (b.status as string) ?? '',
+          clientId: (b.clientId as string | null) ?? null,
+          createdAt: c,
+          datetime: dt,
+        },
+        now,
+      )
     );
   }).length;
-  if (count === 0) return null;
+  // count = tampons DÉJÀ gagnés (RDV passés). 0 est valide : on montre la
+  // carte qui démarre (« 0/10 — ce rendez-vous s'ajoutera après votre venue »).
 
   const locale = resolveEmailLocale((booking as { clientLocale?: string | null }).clientLocale);
   return {
@@ -690,4 +702,3 @@ async function computeLoyaltyEmailContext(
     appliedAmountOff: booking.loyalty?.amountOff ?? 0,
   };
 }
-

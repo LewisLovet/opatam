@@ -232,9 +232,15 @@ export default function ConfirmBookingScreen() {
       // bookings on legacy mobile builds (which would otherwise leave
       // the doc in pending_payment forever). Add new entries here when
       // shipping new payment flows (apple-pay, paypal, etc.).
+      // Identité VÉRIFIÉE côté serveur (audit P1.1) : le token Firebase
+      // prouve l'uid — la fidélité (cumul + consommation) n'accepte que ça.
+      const idToken = await user.getIdToken();
       const res = await fetch(`${API_URL}/api/bookings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           providerId: provider.id,
           serviceId: service.id,

@@ -25,16 +25,26 @@ import type { LoyaltySettings } from '../types';
  */
 export const LOYALTY_LAUNCH_AT = new Date('2026-07-20T00:00:00+02:00');
 
-/** Cette résa remplit-elle la carte ? (connectée + confirmée + post-lancement) */
-export function countsTowardLoyalty(b: {
-  status: string;
-  clientId: string | null;
-  createdAt: Date;
-}): boolean {
+/**
+ * Cette résa remplit-elle la carte ? Quatre conditions (décision produit
+ * 2026-07-21) : confirmée, faite CONNECTÉ, créée après le lancement, et
+ * dont le rendez-vous est PASSÉ — le tampon se gagne en honorant le RDV,
+ * pas en le réservant.
+ */
+export function countsTowardLoyalty(
+  b: {
+    status: string;
+    clientId: string | null;
+    createdAt: Date;
+    datetime: Date;
+  },
+  now: Date = new Date(),
+): boolean {
   return (
     b.status === 'confirmed' &&
     !!b.clientId &&
-    b.createdAt.getTime() >= LOYALTY_LAUNCH_AT.getTime()
+    b.createdAt.getTime() >= LOYALTY_LAUNCH_AT.getTime() &&
+    b.datetime.getTime() <= now.getTime()
   );
 }
 

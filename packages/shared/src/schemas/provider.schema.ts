@@ -11,6 +11,26 @@ export const socialLinksSchema = z.object({
 });
 
 // Provider settings schema
+// Carte de fidélité (provider.settings.loyalty) — mêmes bornes que le
+// helper isLoyaltyConfigValid de utils/loyalty.ts.
+export const loyaltySettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    threshold: z.number().int().min(1),
+    rewardType: z.enum(['percent', 'amount']),
+    rewardValue: z.number().int().min(1),
+    excludedServiceIds: z.array(z.string()).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.rewardType === 'percent' && v.rewardValue > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['rewardValue'],
+        message: 'Le pourcentage doit être compris entre 1 et 100',
+      });
+    }
+  });
+
 export const providerSettingsSchema = z.object({
   reminderTimes: z.array(z.number().int().positive()),
   requiresConfirmation: z.boolean(),
@@ -90,6 +110,10 @@ export const providerSettingsSchema = z.object({
   // Shop-wide promotion (percentage), applied to services without their own
   // discount. Reuses the per-service discount shape.
   globalDiscount: serviceDiscountSchema.optional(),
+  // Carte de fidélité — DOIT être déclarée ici : sans ça, tout écran qui
+  // sauve les settings via updateProvider (spread) la ferait STRIPPER par
+  // Zod et effacerait silencieusement la config (audit P2.3).
+  loyalty: loyaltySettingsSchema.nullable().optional(),
 });
 
 // Create provider schema - MINIMUM requis pour creer un provider

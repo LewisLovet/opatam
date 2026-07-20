@@ -17,16 +17,22 @@ export interface LoyaltySettingsMirror {
   excludedServiceIds?: string[];
 }
 
-/** Cette résa remplit-elle la carte ? (connectée + confirmée + post-lancement) */
-export function countsTowardLoyalty(b: {
-  status: string;
-  clientId: string | null;
-  createdAt: Date;
-}): boolean {
+/** Cette résa remplit-elle la carte ? Confirmée + connectée + post-lancement
+ *  + RDV PASSÉ (le tampon se gagne en honorant le RDV, pas en réservant). */
+export function countsTowardLoyalty(
+  b: {
+    status: string;
+    clientId: string | null;
+    createdAt: Date;
+    datetime: Date;
+  },
+  now: Date = new Date(),
+): boolean {
   return (
     b.status === 'confirmed' &&
     !!b.clientId &&
-    b.createdAt.getTime() >= LOYALTY_LAUNCH_AT.getTime()
+    b.createdAt.getTime() >= LOYALTY_LAUNCH_AT.getTime() &&
+    b.datetime.getTime() <= now.getTime()
   );
 }
 

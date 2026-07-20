@@ -63,6 +63,29 @@ export const onBookingWriteProviderStats = onDocumentWritten(
     const providerId = (after?.providerId ?? before?.providerId) as string | undefined;
     if (!providerId) return;
 
+    // ── Fidélité : libérer le ticket de rédemption si la résa réduite
+    // est annulée (la récompense n'est pas « brûlée » — un no-show, lui,
+    // la consomme définitivement). Best-effort, jamais bloquant.
+    if (
+      before?.status !== 'cancelled' &&
+      after?.status === 'cancelled' &&
+      after?.loyalty
+    ) {
+      try {
+        const redemptions = await admin
+          .firestore()
+          .collection('loyaltyRedemptions')
+          .where('bookingId', '==', event.params.bookingId)
+          .get();
+        await Promise.all(redemptions.docs.map((d) => d.ref.delete()));
+        if (!redemptions.empty) {
+          console.log(`[loyalty] ticket libéré (annulation ${event.params.bookingId})`);
+        }
+      } catch (e) {
+        console.error('[loyalty] libération ticket échouée:', e);
+      }
+    }
+
     try {
       // ── Identify affected days + months + clients ────────────
       const beforeBooking = before ? bookingFromFirestore(before) : null;
@@ -123,7 +146,7 @@ export const onBookingWriteProviderStats = onDocumentWritten(
 // The day/month recomputes are imported from providerStatsRecompute.
 // ────────────────────────────────────────────────────────────────
 
-async function recomputeClientDoc(
+export async function recomputeClientDoc(
   providerId: string,
   clientKey: string,
   ctx: ProviderContext,
