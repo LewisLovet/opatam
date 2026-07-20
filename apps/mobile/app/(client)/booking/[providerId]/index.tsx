@@ -227,7 +227,19 @@ export default function MemberSelectionScreen() {
             <View style={{ gap: spacing.sm }}>
               {cart.map((item, idx) => {
                 const eff = computeDiscountedTotal(item.service, item.selections, globalDiscount);
-                const itemHasPromo = eff.discountPercent != null && eff.original > eff.price;
+                // Fidélité armée : appliquée à la PREMIÈRE prestation éligible
+                // du panier (même règle que le serveur) — la ligne montre le
+                // prix barré + prix après récompense.
+                const isLoyaltyTarget =
+                  loyaltyPreview.amountOff > 0 &&
+                  loyaltyPreview.armedSettings != null &&
+                  cart.findIndex((c) =>
+                    isServiceLoyaltyEligible(c.service.id, loyaltyPreview.armedSettings!),
+                  ) === idx;
+                const linePrice = isLoyaltyTarget ? eff.price - loyaltyPreview.amountOff : eff.price;
+                const lineOriginal = isLoyaltyTarget && eff.original <= eff.price ? eff.price : eff.original;
+                const itemHasPromo =
+                  (eff.discountPercent != null && eff.original > eff.price) || isLoyaltyTarget;
                 return (
                   <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                     <View style={{ flex: 1 }}>
@@ -242,11 +254,11 @@ export default function MemberSelectionScreen() {
                               variant="caption"
                               style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
                             >
-                              {(eff.original / 100).toFixed(2)} €
+                              {(lineOriginal / 100).toFixed(2)} €
                             </Text>
                             <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
                               {'  '}
-                              {(eff.price / 100).toFixed(2)} €
+                              {(linePrice / 100).toFixed(2)} €
                             </Text>
                           </Text>
                         ) : (
