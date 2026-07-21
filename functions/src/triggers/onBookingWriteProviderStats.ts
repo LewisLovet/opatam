@@ -229,7 +229,7 @@ export async function recomputeClientDoc(
       client.clientId,
       previousLoyaltyCount,
       client.loyaltyConfirmedCount,
-      latestLocale === 'en' ? 'en' : 'fr',
+      latestLocale === 'en' || latestLocale === 'it' ? latestLocale : 'fr',
       ctx.providerName,
       client.email,
       client.name,
@@ -254,7 +254,7 @@ async function maybeSendLoyaltyMilestone(
   clientId: string | null,
   oldCount: number,
   newCount: number,
-  locale: 'fr' | 'en',
+  locale: 'fr' | 'en' | 'it',
   providerName: string,
   clientEmail: string | null,
   clientName: string,
@@ -288,19 +288,29 @@ async function maybeSendLoyaltyMilestone(
           title: 'Your reward is ready!',
           body: `At ${providerName}: ${reward} off your next booking in the app.`,
         }
-      : {
-          title: 'Votre récompense est prête !',
-          body: `Chez ${providerName} : ${reward} sur votre prochaine réservation dans l'app.`,
-        }
+      : locale === 'it'
+        ? {
+            title: 'Il Suo premio è pronto!',
+            body: `Da ${providerName}: ${reward} sulla Sua prossima prenotazione nell'app.`,
+          }
+        : {
+            title: 'Votre récompense est prête !',
+            body: `Chez ${providerName} : ${reward} sur votre prochaine réservation dans l'app.`,
+          }
     : locale === 'en'
       ? {
           title: 'Loyalty card halfway there',
           body: `Only ${remaining} more appointment${remaining > 1 ? 's' : ''} at ${providerName} to get ${reward}.`,
         }
-      : {
-          title: 'Carte de fidélité à mi-chemin',
-          body: `Plus que ${remaining} RDV chez ${providerName} pour obtenir ${reward}.`,
-        };
+      : locale === 'it'
+        ? {
+            title: 'Carta fedeltà a metà strada',
+            body: `Ancora ${remaining} appuntament${remaining > 1 ? 'i' : 'o'} da ${providerName} per ottenere ${reward}.`,
+          }
+        : {
+            title: 'Carte de fidélité à mi-chemin',
+            body: `Plus que ${remaining} RDV chez ${providerName} pour obtenir ${reward}.`,
+          };
 
   const userSnap = await db.doc(`users/${clientId}`).get();
   const tokens = (userSnap.data()?.pushTokens as string[] | undefined) ?? [];

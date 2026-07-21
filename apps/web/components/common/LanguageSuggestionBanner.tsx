@@ -32,6 +32,7 @@ export function LanguageSuggestionBanner() {
   const locale = useLocale();
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
+  const [suggested, setSuggested] = useState<'en' | 'it'>('en');
 
   useEffect(() => {
     if (locale !== 'fr') return; // already on a non-default locale
@@ -49,11 +50,19 @@ export function LanguageSuggestionBanner() {
       navigator.languages && navigator.languages.length > 0
         ? navigator.languages
         : [navigator.language];
-    const wantsEnglish = preferred.some((l) => l?.toLowerCase().startsWith('en'));
-    // QA hook: ?lang-suggest=1 forces the card so it can be tested from a
-    // French browser (it only ever shows a suggestion — harmless).
-    const forced = new URLSearchParams(window.location.search).get('lang-suggest') === '1';
-    if (wantsEnglish || forced) setVisible(true);
+    // Première langue supportée préférée par le navigateur (en OU it).
+    const match = preferred
+      .map((l) => l?.toLowerCase().slice(0, 2))
+      .find((l) => l === 'en' || l === 'it') as 'en' | 'it' | undefined;
+    // QA hook: ?lang-suggest=en|it|1 forces the card so it can be tested from
+    // a French browser (it only ever shows a suggestion — harmless).
+    const qa = new URLSearchParams(window.location.search).get('lang-suggest');
+    const forced = qa === '1' ? 'en' : qa === 'en' || qa === 'it' ? qa : undefined;
+    const target = forced ?? match;
+    if (target) {
+      setSuggested(target);
+      setVisible(true);
+    }
   }, [locale, pathname]);
 
   const choose = (next: AppLocale) => {
@@ -85,15 +94,17 @@ export function LanguageSuggestionBanner() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 dark:text-white">
-              This page is also available in English
+              {suggested === 'it'
+                ? 'Questa pagina è disponibile anche in italiano'
+                : 'This page is also available in English'}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => choose('en')}
+                onClick={() => choose(suggested)}
                 className="px-3.5 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors"
               >
-                View in English
+                {suggested === 'it' ? 'Vedi in italiano' : 'View in English'}
               </button>
               <button
                 type="button"

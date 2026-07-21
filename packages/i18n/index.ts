@@ -13,14 +13,18 @@ import frProvider from './messages/fr-provider.json';
 import enProvider from './messages/en-provider.json';
 import frBooking from './messages/fr-booking.json';
 import enBooking from './messages/en-booking.json';
+import it from './messages/it.json';
+import itProvider from './messages/it-provider.json';
+import itBooking from './messages/it-booking.json';
 
-export const LOCALES = ['fr', 'en'] as const;
+export const LOCALES = ['fr', 'en', 'it'] as const;
 export type AppLocale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: AppLocale = 'fr';
 
 export const MESSAGES: Record<AppLocale, Record<string, unknown>> = {
   fr: { ...fr, provider: frProvider, booking: frBooking },
   en: { ...en, provider: enProvider, booking: enBooking },
+  it: { ...it, provider: itProvider, booking: itBooking },
 };
 
 export function isAppLocale(value: string | undefined | null): value is AppLocale {

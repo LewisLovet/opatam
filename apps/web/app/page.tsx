@@ -14,6 +14,7 @@ const BASE_URL = 'https://opatam.com';
 const LANGUAGE_ALTERNATES = {
   fr: BASE_URL,
   en: `${BASE_URL}/en`,
+  it: `${BASE_URL}/it`,
   'x-default': BASE_URL,
 };
 
@@ -21,7 +22,7 @@ const LANGUAGE_ALTERNATES = {
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations('seo.home');
-  const canonical = locale === 'en' ? `${BASE_URL}/en` : BASE_URL;
+  const canonical = locale === 'fr' ? BASE_URL : `${BASE_URL}/${locale}`;
 
   return {
     // absolute: the title already carries the brand — and the layout's

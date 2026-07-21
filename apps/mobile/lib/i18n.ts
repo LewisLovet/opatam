@@ -17,14 +17,17 @@ import { initReactI18next } from 'react-i18next';
 import { getStoredLocale, setStoredLocale } from '../utils/storage';
 import fr from '../locales/app/fr.json';
 import en from '../locales/app/en.json';
+import it from '../locales/app/it.json';
 
-export type AppLocale = 'fr' | 'en';
-export const APP_LOCALES: AppLocale[] = ['fr', 'en'];
+export type AppLocale = 'fr' | 'en' | 'it';
+export const APP_LOCALES: AppLocale[] = ['fr', 'en', 'it'];
 
 function deviceLocale(): AppLocale {
   try {
-    const resolved = Intl.DateTimeFormat().resolvedOptions().locale || '';
-    return resolved.toLowerCase().startsWith('en') ? 'en' : 'fr';
+    const resolved = (Intl.DateTimeFormat().resolvedOptions().locale || '').toLowerCase();
+    if (resolved.startsWith('en')) return 'en';
+    if (resolved.startsWith('it')) return 'it';
+    return 'fr';
   } catch {
     return 'fr';
   }
@@ -36,6 +39,7 @@ i18n.use(initReactI18next).init({
   resources: {
     fr: { translation: fr },
     en: { translation: en },
+    it: { translation: it },
   },
   lng: deviceLocale(),
   fallbackLng: 'fr',

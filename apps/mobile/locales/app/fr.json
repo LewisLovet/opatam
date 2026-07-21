@@ -39,7 +39,8 @@
     "language": {
       "title": "Langue",
       "french": "Français",
-      "english": "English"
+      "english": "English",
+      "italian": "Italiano"
     },
     "logout": {
       "title": "Déconnexion",

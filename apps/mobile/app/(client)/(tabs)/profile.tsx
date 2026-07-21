@@ -492,6 +492,7 @@ export default function ProfileScreen() {
             {([
               { locale: 'fr' as AppLocale, label: t('profile.language.french') },
               { locale: 'en' as AppLocale, label: t('profile.language.english') },
+              { locale: 'it' as AppLocale, label: t('profile.language.italian') },
             ]).map((option, idx) => (
               <React.Fragment key={option.locale}>
                 {idx > 0 && <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />}

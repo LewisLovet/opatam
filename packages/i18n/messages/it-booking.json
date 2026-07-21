@@ -1,0 +1,298 @@
+{
+  "common": {
+    "back": "Indietro",
+    "backHome": "Torna alla home",
+    "error": "Si è verificato un errore",
+    "free": "Gratuito",
+    "priceRange": "Da {min} a {max}",
+    "total": "Totale",
+    "service": "Servizio",
+    "services": "Servizi",
+    "professional": "Professionista",
+    "location": "Luogo",
+    "dateTime": "Data e ora",
+    "date": "Data",
+    "dateAtTime": "{date} alle {time}",
+    "reference": "Riferimento: {id}",
+    "cancelAndHome": "Annulla e torna alla home",
+    "yes": "Sì",
+    "no": "No"
+  },
+  "steps": {
+    "service": "Servizio",
+    "member": "Professionista",
+    "slot": "Data e ora",
+    "confirm": "Conferma"
+  },
+  "page": {
+    "noServicesTitle": "Nessun servizio disponibile",
+    "noServicesText": "Questo professionista non ha ancora configurato i suoi servizi."
+  },
+  "flow": {
+    "errorMissingInfo": "Informazioni mancanti",
+    "title": "Componi il tuo appuntamento",
+    "subtitle": "Aggiungi uno o più servizi.",
+    "cartTitle": "Il tuo appuntamento",
+    "cartEmpty": "Il tuo appuntamento è vuoto",
+    "cartEmptyHint": "Aggiungi dei servizi qui sotto.",
+    "removeService": "Rimuovi il servizio",
+    "addAnother": "Aggiungi un altro servizio",
+    "cancelAdd": "Annulla",
+    "continue": "Continua",
+    "continueWithCart": "Continua · {count, plural, one {# servizio} other {# servizi}} · {total}",
+    "configureSubtitle": "Componi il tuo servizio",
+    "addToCart": "Aggiungi all'appuntamento",
+    "missingChoices": "Da scegliere: {items}",
+    "servicesCount": "{count, plural, one {# servizio} other {# servizi}}",
+    "notice": {
+      "title": "Informazione importante",
+      "accept": "Ho capito, continua"
+    },
+    "demo": {
+      "confirmedTitle": "Prenotazione confermata!",
+      "confirmedText": "È esattamente quello che vedranno i tuoi clienti dopo aver prenotato da te.",
+      "with": "con {name}",
+      "trialNote": "{days} giorni gratis, senza carta di credito",
+      "backToShop": "← Torna al negozio demo"
+    }
+  },
+  "service": {
+    "title": "Aggiungi i servizi",
+    "from": "a partire da",
+    "added": "{count, plural, =1 {Aggiunto} other {Aggiunto ×#}}",
+    "add": "Aggiungi",
+    "moreDetails": "Più dettagli",
+    "less": "Meno",
+    "others": "Altri"
+  },
+  "member": {
+    "title": "Scegli un professionista"
+  },
+  "memberPicker": {
+    "any": "Indifferente",
+    "firstAvailable": "Primo disponibile"
+  },
+  "slot": {
+    "title": "Scegli una data e un orario",
+    "nextAvailability": "Prossima disponibilità",
+    "prevMonth": "Mese precedente",
+    "nextMonth": "Mese successivo",
+    "days": [
+      "Dom",
+      "Lun",
+      "Mar",
+      "Mer",
+      "Gio",
+      "Ven",
+      "Sab"
+    ],
+    "months": [
+      "Gennaio",
+      "Febbraio",
+      "Marzo",
+      "Aprile",
+      "Maggio",
+      "Giugno",
+      "Luglio",
+      "Agosto",
+      "Settembre",
+      "Ottobre",
+      "Novembre",
+      "Dicembre"
+    ],
+    "loadError": "Errore durante il caricamento delle disponibilità",
+    "noAvailabilityTitle": "Nessuna disponibilità per questo servizio",
+    "noAvailabilityHint": "nei prossimi {days} giorni. Riprova più tardi o contatta direttamente il professionista.",
+    "spotsShort": "{count} posti",
+    "full": "Completo",
+    "closed": "Chiuso",
+    "available": "Disponibile",
+    "almostFull": "Quasi completo",
+    "almostFullBadge": "Quasi completo · {count, plural, one {# orario} other {# orari}}",
+    "dayFull": "Tutto pieno in questo giorno per questo servizio.",
+    "seeNextAvailability": "Vedi la prossima disponibilità"
+  },
+  "slotPicker": {
+    "prevDays": "Giorni precedenti",
+    "nextDays": "Giorni successivi",
+    "noSlot": "Nessun orario",
+    "emptyTitle": "Nessun orario disponibile",
+    "emptyText": "Nessun orario disponibile per il periodo selezionato.",
+    "selectedSlot": "Orario:"
+  },
+  "confirm": {
+    "title": "I tuoi dati",
+    "nameLabel": "Nome e cognome",
+    "namePlaceholder": "Mario Rossi",
+    "nameError": "Il nome deve contenere almeno 2 caratteri",
+    "emailLabel": "Email",
+    "emailPlaceholder": "mario@esempio.com",
+    "emailError": "Formato email non valido",
+    "phoneLabel": "Telefono",
+    "phonePlaceholder": "06 12 34 56 78 o +33 6 12 34 56 78",
+    "phoneError": "Numero di telefono non valido",
+    "pendingInfo": "La tua prenotazione resterà in attesa di conferma da parte del professionista. Riceverai un'email non appena sarà confermata.",
+    "submitting": "Prenotazione in corso...",
+    "submit": "Conferma la prenotazione",
+    "terms": "Confermando, accetti le nostre condizioni generali e la nostra informativa sulla privacy."
+  },
+  "clientForm": {
+    "firstNameLabel": "Nome",
+    "firstNamePlaceholder": "Mario",
+    "firstNameRequired": "Il nome è obbligatorio",
+    "lastNameLabel": "Cognome",
+    "lastNamePlaceholder": "Rossi",
+    "lastNameRequired": "Il cognome è obbligatorio",
+    "emailLabel": "Email",
+    "emailPlaceholder": "mario.rossi@example.com",
+    "emailRequired": "L'email è obbligatoria",
+    "emailInvalid": "Email non valida",
+    "phoneLabel": "Telefono",
+    "phonePlaceholder": "06 12 34 56 78",
+    "phoneRequired": "Il telefono è obbligatorio",
+    "phoneInvalid": "Numero di telefono non valido",
+    "notesLabel": "Note (facoltativo)",
+    "notesPlaceholder": "Informazioni aggiuntive...",
+    "terms": "Confermando, accetti le nostre <cgv>condizioni generali</cgv> e la nostra <privacy>informativa sulla privacy</privacy>."
+  },
+  "choicesPicker": {
+    "noChoices": "Nessuna variante, opzione o info — la cliente vedrà direttamente il prezzo base.",
+    "optionFallback": "Opzione",
+    "variationFallback": "Variante",
+    "choiceFallback": "Scelta",
+    "infoFallback": "Informazione",
+    "selectPlaceholder": "Scegli…",
+    "answerPlaceholder": "La tua risposta"
+  },
+  "recap": {
+    "title": "Riepilogo",
+    "selectService": "Seleziona un servizio",
+    "detail": "Dettaglio",
+    "duration": "Durata",
+    "addressAfterConfirmation": "Indirizzo esatto comunicato dopo la conferma",
+    "promoUntil": "fino al {date}",
+    "promoValid": "Offerta valida {datePart}",
+    "promoSavings": "Promozione −{percent}% · risparmi {amount}"
+  },
+  "summary": {
+    "title": "Riepilogo",
+    "atTime": "alle {time}"
+  },
+  "serviceCard": {
+    "selected": "Selezionato",
+    "select": "Seleziona",
+    "selectedIndicator": "Servizio selezionato"
+  },
+  "serviceList": {
+    "emptyTitle": "Nessun servizio",
+    "emptyText": "Nessun servizio disponibile al momento."
+  },
+  "appCta": {
+    "title": "Scarica l'app Opatam",
+    "subtitle": "Ritrova i tuoi appuntamenti, ricevi i promemoria e prenota in un clic.",
+    "loyaltyPercent": "Programma fedeltà: ogni {threshold} appuntamenti prenotati dall'app, −{value} %. Scaricala per accumulare i tuoi punti.",
+    "loyaltyAmount": "Programma fedeltà: ogni {threshold} appuntamenti prenotati dall'app, −{value} €. Scaricala per accumulare i tuoi punti."
+  },
+  "proCta": {
+    "title": "Sei anche tu un professionista?",
+    "subtitle": "Crea la tua pagina di prenotazione in 5 minuti e ricevi i tuoi primi clienti già oggi.",
+    "subtitleOnline": "Crea la tua pagina di prenotazione online in 5 minuti e ricevi i tuoi primi clienti già oggi.",
+    "button": "Crea la tua pagina gratuitamente"
+  },
+  "confirmation": {
+    "pendingPaymentTitle": "Pagamento in fase di verifica…",
+    "pendingTitle": "Richiesta inviata!",
+    "confirmedTitle": "Prenotazione confermata!",
+    "pendingPaymentText": "Il tuo pagamento è stato appena effettuato ed è in fase di verifica. Questa pagina si aggiornerà tra qualche secondo.",
+    "pendingText": "La tua richiesta di prenotazione è stata inviata. Riceverai un'email non appena il professionista l'avrà confermata.",
+    "depositPaidText": "La tua prenotazione è confermata e il tuo acconto di {amount} è stato registrato. Ti abbiamo inviato un'email di conferma.",
+    "confirmedText": "La tua prenotazione è stata registrata. Ti abbiamo inviato un'email di conferma.",
+    "awaitingConfirmation": "In attesa di conferma",
+    "addressRevealLater": "Indirizzo esatto comunicato ~48 ore prima dell'appuntamento.",
+    "savings": "Hai risparmiato {amount}",
+    "depositPaid": "Acconto pagato",
+    "remainingDue": "Da saldare sul posto",
+    "addToCalendar": "Aggiungi al tuo calendario",
+    "emailSentTo": "Un'email di conferma è stata inviata a <email>{address}</email>",
+    "calendarTitle": "Appuntamento - {service} da {provider}",
+    "calendarWith": "Con {name}",
+    "calendarAt": "Da {name}"
+  },
+  "cancel": {
+    "notFoundTitle": "Link non valido o scaduto",
+    "notFoundText": "Questo link di annullamento non è più valido. L'appuntamento potrebbe essere già stato annullato o il link è scaduto.",
+    "alreadyCancelledTitle": "Appuntamento già annullato",
+    "alreadyCancelledText": "Questo appuntamento è già stato annullato.",
+    "cancelledOn": "Annullato il {date} alle {time}",
+    "pastTitle": "Appuntamento passato",
+    "pastText": "Questo appuntamento è già passato e non può più essere annullato.",
+    "successTitle": "Appuntamento annullato",
+    "successText": "Il tuo appuntamento è stato annullato.",
+    "refunded": "Il tuo acconto di {amount} è stato rimborsato sul tuo metodo di pagamento. Considera da 5 a 10 giorni lavorativi perché appaia.",
+    "refundDeadlinePassed": "Il termine per il rimborso dell'acconto è scaduto. Per qualsiasi richiesta, contatta direttamente {name}.",
+    "providerNotified": "Il professionista è stato informato di questo annullamento.",
+    "rebook": "Prenota di nuovo",
+    "orBackHome": "Oppure torna alla home",
+    "formTitle": "Annulla il tuo appuntamento",
+    "formSubtitle": "Sei sicuro di voler annullare questo appuntamento?",
+    "reasonLabel": "Motivo dell'annullamento (facoltativo)",
+    "reasonPlaceholder": "Es: imprevisto, cambio di programma...",
+    "refundEligible": "Il tuo acconto di <strong>{amount}</strong> sarà rimborsato automaticamente.",
+    "refundNotEligible": "Il termine per il rimborso è scaduto. Il tuo acconto di <strong>{amount}</strong> non sarà rimborsato automaticamente. Contatta {name} per qualsiasi richiesta.",
+    "warning": "Questa azione è irreversibile. Il professionista sarà informato del tuo annullamento.",
+    "cancelling": "Annullamento in corso...",
+    "confirmCancel": "Conferma l'annullamento"
+  },
+  "review": {
+    "selectRatingError": "Seleziona un voto",
+    "notFoundTitle": "Prenotazione non trovata",
+    "notFoundText": "Questa prenotazione non esiste o il link non è valido.",
+    "notYetPassedTitle": "Appuntamento in arrivo",
+    "notYetPassedText": "Potrai lasciare la tua recensione dopo l'appuntamento.",
+    "scheduledFor": "Appuntamento previsto il {date} alle {time}",
+    "alreadyReviewedTitle": "Recensione già inviata",
+    "alreadyReviewedText": "Hai già lasciato una recensione per questo appuntamento.",
+    "updatedTitle": "Recensione aggiornata!",
+    "thanksTitle": "Grazie per la tua recensione!",
+    "updatedText": "La tua recensione è stata aggiornata.",
+    "savedText": "La tua recensione è stata registrata e sarà visibile sulla pagina del professionista.",
+    "updateFormTitle": "Modifica la tua recensione",
+    "formTitle": "Lascia una recensione",
+    "updateFormSubtitle": "Hai già lasciato una recensione per {name}. Puoi modificarla qui sotto.",
+    "formSubtitle": "Com'è andato il tuo appuntamento da {name}?",
+    "ratingLabel": "Il tuo voto *",
+    "rating1": "Molto insoddisfatto",
+    "rating2": "Insoddisfatto",
+    "rating3": "Nella media",
+    "rating4": "Soddisfatto",
+    "rating5": "Molto soddisfatto",
+    "commentLabel": "Il tuo commento (facoltativo)",
+    "commentPlaceholder": "Racconta la tua esperienza...",
+    "updating": "Aggiornamento in corso...",
+    "sending": "Invio in corso...",
+    "updateSubmit": "Modifica la recensione",
+    "submit": "Invia la recensione"
+  },
+  "embed": {
+    "common": {
+      "with": "con {name}"
+    },
+    "recap": {
+      "title": "La tua prenotazione",
+      "with": "con <b>{name}</b>"
+    },
+    "services": {
+      "title": "Scegli un servizio",
+      "others": "Altri servizi"
+    },
+    "success": {
+      "emailSent": "Ti abbiamo appena inviato un'email di conferma.",
+      "appTitle": "Gestisci il tuo appuntamento nell'app Opatam",
+      "appSubtitle": "Promemoria automatici, modifiche, nuove prenotazioni in un clic.",
+      "newBooking": "Nuova prenotazione"
+    },
+    "footer": {
+      "poweredBy": "Prenotazione gestita da <b>Opatam</b>"
+    }
+  }
+}

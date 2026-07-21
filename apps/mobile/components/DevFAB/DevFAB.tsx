@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
 import { ThemeConfigurator } from './ThemeConfigurator';
-import { setAppLocale, type AppLocale } from '../../lib/i18n';
+import { APP_LOCALES, setAppLocale, type AppLocale } from '../../lib/i18n';
 import {
   resetAllOpatamStorage,
   resetNewFeaturesSeen,
@@ -47,7 +47,7 @@ export function DevFAB() {
   // useTranslation pour la réactivité : le label FR ⇄ EN se met à jour
   // quand la langue change (menu dev volontairement non traduit).
   const { i18n } = useTranslation();
-  const devLocale: AppLocale = i18n.language === 'en' ? 'en' : 'fr';
+  const devLocale: AppLocale = APP_LOCALES.includes(i18n.language as AppLocale) ? (i18n.language as AppLocale) : 'fr';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isConfiguratorOpen, setIsConfiguratorOpen] = useState(false);
 
@@ -208,9 +208,9 @@ export function DevFAB() {
       // profil : setAppLocale persiste le choix dans @opatam/app_locale —
       // « Purger @opatam/* » ramène donc à la langue système).
       icon: 'language-outline',
-      label: devLocale === 'fr' ? 'Langue : FR → EN' : 'Langue : EN → FR',
+      label: `Langue : ${devLocale.toUpperCase()} → ${APP_LOCALES[(APP_LOCALES.indexOf(devLocale) + 1) % APP_LOCALES.length].toUpperCase()}`,
       action: () => {
-        void setAppLocale(devLocale === 'fr' ? 'en' : 'fr');
+        void setAppLocale(APP_LOCALES[(APP_LOCALES.indexOf(devLocale) + 1) % APP_LOCALES.length]);
         setIsMenuOpen(false);
       },
     },

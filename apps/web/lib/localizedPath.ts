@@ -19,10 +19,15 @@ export function isTranslatedSurface(pathname: string): boolean {
   return TRANSLATED_PREFIXES.some((p) => clean.startsWith(p));
 }
 
-/** '/en/p/x' → '/p/x' ; '/en' → '/' ; anything else unchanged. */
+/** Préfixes de locale gérés en URL (le français vit à la racine). */
+const URL_LOCALES = ['en', 'it'] as const;
+
+/** '/en/p/x' → '/p/x' ; '/it' → '/' ; anything else unchanged. */
 export function stripEnPrefix(pathname: string): string {
-  if (pathname === '/en') return '/';
-  if (pathname.startsWith('/en/')) return pathname.slice(3);
+  for (const l of URL_LOCALES) {
+    if (pathname === `/${l}`) return '/';
+    if (pathname.startsWith(`/${l}/`)) return pathname.slice(l.length + 1);
+  }
   return pathname;
 }
 
@@ -41,7 +46,7 @@ export function localizedPath(pathname: string, locale: AppLocale | string): str
   const suffix = suffixStart === -1 ? '' : pathname.slice(suffixStart);
 
   const clean = stripEnPrefix(path);
-  if (locale !== 'en') return clean + suffix;
+  if (!(URL_LOCALES as readonly string[]).includes(locale)) return clean + suffix;
   if (!isTranslatedSurface(clean)) return clean + suffix;
-  return (clean === '/' ? '/en' : `/en${clean}`) + suffix;
+  return (clean === '/' ? `/${locale}` : `/${locale}${clean}`) + suffix;
 }

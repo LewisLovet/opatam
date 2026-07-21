@@ -5,7 +5,7 @@ import { Globe } from 'lucide-react';
 import { LOCALES, type AppLocale } from '@booking-app/i18n';
 import { localizedPath, isTranslatedSurface } from '@/lib/localizedPath';
 
-const LABELS: Record<AppLocale, string> = { fr: 'FR', en: 'EN' };
+const LABELS: Record<AppLocale, string> = { fr: 'FR', en: 'EN', it: 'IT' };
 
 /**
  * FR/EN pill switcher. Stores the explicit choice in the `NEXT_LOCALE`

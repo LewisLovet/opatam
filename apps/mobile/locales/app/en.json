@@ -39,7 +39,8 @@
     "language": {
       "title": "Language",
       "french": "Français",
-      "english": "English"
+      "english": "English",
+      "italian": "Italiano"
     },
     "logout": {
       "title": "Log out",

@@ -1,5 +1,5 @@
 /**
- * Email i18n — FR/EN texts for the CLIENT-facing transactional emails.
+ * Email i18n — FR/EN/IT texts for the CLIENT-facing transactional emails.
  *
  * DEPLOY CONSTRAINT (why this file exists): Cloud Functions never import
  * workspace packages at RUNTIME — only `import type` from @booking-app/* is
@@ -13,26 +13,26 @@
  * reschedule, review request, deposit reminder. Pro & system emails
  * (provider notifications, welcome, password reset…) stay 100% French.
  *
- * Locale source: `booking.clientLocale` ('fr' | 'en', absent = fr) — the
- * language the client booked in. Anything that isn't exactly 'en' falls
- * back to 'fr'.
+ * Locale source: `booking.clientLocale` ('fr' | 'en' | 'it', absent = fr) —
+ * the language the client booked in. Anything that isn't exactly 'en' or
+ * 'it' falls back to 'fr'.
  */
 
-export type EmailLocale = 'fr' | 'en';
+export type EmailLocale = 'fr' | 'en' | 'it';
 
 /** Resolve a raw locale value (booking.clientLocale) to a supported email locale. */
 export function resolveEmailLocale(raw: string | null | undefined): EmailLocale {
-  return raw === 'en' ? 'en' : 'fr';
+  return raw === 'en' || raw === 'it' ? raw : 'fr';
 }
 
 // ---------------------------------------------------------------------------
 // Locale-aware formatters
 // ---------------------------------------------------------------------------
 // Same rendering rules as formatDateFr / formatTimeFr / formatPriceFr in
-// resendService, plus an English variant. Times stay 24h and Europe/Paris in
-// BOTH languages — the appointment physically happens in France.
+// resendService, plus English and Italian variants. Times stay 24h and
+// Europe/Paris in ALL languages — the appointment physically happens in France.
 
-const INTL_LOCALE: Record<EmailLocale, string> = { fr: 'fr-FR', en: 'en-GB' };
+const INTL_LOCALE: Record<EmailLocale, string> = { fr: 'fr-FR', en: 'en-GB', it: 'it-IT' };
 
 export function formatEmailDate(date: Date, locale: EmailLocale = 'fr'): string {
   return date.toLocaleDateString(INTL_LOCALE[locale], {
@@ -49,9 +49,9 @@ export function formatEmailTime(date: Date, locale: EmailLocale = 'fr'): string 
     hour: '2-digit',
     minute: '2-digit',
     timeZone: 'Europe/Paris',
-    // Keep 24h in English too — French salon hours, and it matches the
-    // fr-FR default so both languages read the same clock.
-    ...(locale === 'en' ? { hour12: false } : {}),
+    // Keep 24h in English (and Italian) too — French salon hours, and it
+    // matches the fr-FR default so every language reads the same clock.
+    ...(locale !== 'fr' ? { hour12: false } : {}),
   });
 }
 
@@ -67,9 +67,9 @@ export function formatEmailPrice(
       currency: 'EUR',
     }).format(v / 100);
   if (priceMaxInCentimes && priceMaxInCentimes > priceInCentimes) {
-    return locale === 'en'
-      ? `From ${fmt(priceInCentimes)} to ${fmt(priceMaxInCentimes)}`
-      : `De ${fmt(priceInCentimes)} à ${fmt(priceMaxInCentimes)}`;
+    if (locale === 'en') return `From ${fmt(priceInCentimes)} to ${fmt(priceMaxInCentimes)}`;
+    if (locale === 'it') return `Da ${fmt(priceInCentimes)} a ${fmt(priceMaxInCentimes)}`;
+    return `De ${fmt(priceInCentimes)} à ${fmt(priceMaxInCentimes)}`;
   }
   return fmt(priceInCentimes);
 }
@@ -89,6 +89,18 @@ export function formatEmailTimeUntil(minutesUntil: number, locale: EmailLocale =
       return hours === 1 ? 'in 1 hour' : `in ${hours} hours`;
     }
     return `in ${hours}h${mins.toString().padStart(2, '0')}`;
+  }
+  if (locale === 'it') {
+    if (minutesUntil < 60) {
+      return minutesUntil <= 1 ? 'tra 1 minuto' : `tra ${minutesUntil} minuti`;
+    }
+    const hours = Math.floor(minutesUntil / 60);
+    const mins = Math.round(minutesUntil % 60);
+    if (hours >= 24) return 'domani';
+    if (mins === 0) {
+      return hours === 1 ? 'tra 1 ora' : `tra ${hours} ore`;
+    }
+    return `tra ${hours}h${mins.toString().padStart(2, '0')}`;
   }
   if (minutesUntil < 60) {
     const mins = minutesUntil;
@@ -225,6 +237,63 @@ export const EMAIL_TEXTS = {
         cancelLine: (url: string) => `To cancel: ${url}`,
       },
     },
+    it: {
+      greeting: (name: string) => `Buongiorno ${name},`,
+      signoff: 'A presto,',
+      footerAuto: (appName: string) =>
+        `Questa email è stata inviata automaticamente da ${appName}.`,
+      footerIgnore: 'Se questo messaggio non La riguarda, La preghiamo di ignorarlo.',
+      colon: ':',
+      labels: {
+        service: 'Prestazione',
+        date: 'Data',
+        time: 'Ora',
+        duration: 'Durata',
+        location: 'Luogo',
+        address: 'Indirizzo',
+        area: 'Zona',
+        directions: 'Itinerario',
+        with: 'Con',
+        price: 'Prezzo',
+        deposit: 'Acconto',
+        depositPaid: 'Acconto versato',
+        remaining: 'Saldo da pagare',
+        remainingOnSite: 'Saldo da pagare in loco',
+        reason: 'Motivo',
+        at: 'Presso',
+      },
+      onSite: 'in loco',
+      addToCalendar: 'Aggiungi al calendario',
+      updateCalendar: 'Aggiorna il calendario',
+      addToCalendarText: 'Aggiungi al calendario:',
+      updateCalendarText: 'Aggiorna il calendario:',
+      calendarGoogle: 'Google',
+      calendarGoogleText: 'Google Calendar',
+      calendarApple: 'Apple / Outlook',
+      cancelCta: "Annulla l'appuntamento",
+      cancelLineText: (url: string) => `Annulla l'appuntamento: ${url}`,
+      rebookCta: 'Prenota di nuovo',
+      // HTML-entity encoded on purpose — mirrors the historical markup.
+      directionsCta: 'Vedi l&#39;itinerario',
+      accessInfoTitleHtml: 'Informazioni di accesso',
+      accessInfoTitleText: 'Informazioni di accesso',
+      addressPendingHtml: (when: string) =>
+        `L&#39;indirizzo esatto e le informazioni di accesso Le saranno comunicati${when} insieme al promemoria, prima dell&#39;appuntamento.`,
+      addressPendingText: (when: string) =>
+        `L'indirizzo esatto e le informazioni di accesso Le saranno comunicati${when} insieme al promemoria, prima dell'appuntamento.`,
+      onDate: (formattedDate: string) => ` il ${formattedDate}`,
+      promoWas: (formattedOriginal: string, pct: number) =>
+        ` (anziché ${formattedOriginal}, −${pct}%)`,
+      providerNoticeTitle: (businessName: string) => `Comunicazione di ${businessName}`,
+      ics: {
+        filename: 'appuntamento.ics',
+        summary: (serviceName: string, businessName: string) =>
+          `Appuntamento - ${serviceName} presso ${businessName}`,
+        withMember: (memberName: string) => `Con ${memberName}`,
+        atBusiness: (businessName: string) => `Presso ${businessName}`,
+        cancelLine: (url: string) => `Per annullare: ${url}`,
+      },
+    },
   },
 
   loyalty: {
@@ -254,6 +323,20 @@ export const EMAIL_TEXTS = {
       rewardBody: (businessName: string, reward: string) =>
         `Your loyalty card at ${businessName} is complete: ${reward} will be applied automatically to your next booking in the app.`,
       rewardCta: 'Book and use my reward',
+    },
+    it: {
+      cardTitle: (businessName: string) => `La Sua carta fedeltà presso ${businessName}`,
+      counted: (count: number, threshold: number, remaining: number, reward: string) =>
+        `${count}/${threshold} appuntamenti effettuati — questo si aggiungerà dopo la Sua visita. Ne mancano solo ${remaining} per ottenere ${reward}.`,
+      applied: (reward: string) => `Sconto fedeltà ${reward} applicato a questo appuntamento.`,
+      readyForNext: (reward: string) =>
+        `Carta completa: ${reward} sulla Sua prossima prenotazione nell'app.`,
+      // Email « récompense prête »
+      rewardSubject: (businessName: string) => `Il Suo premio è pronto presso ${businessName}`,
+      rewardTitle: 'Il Suo premio è pronto!',
+      rewardBody: (businessName: string, reward: string) =>
+        `La Sua carta fedeltà presso ${businessName} è completa: ${reward} verrà applicato automaticamente alla Sua prossima prenotazione nell'app.`,
+      rewardCta: 'Prenota e usa lo sconto',
     },
   },
   confirmation: {
@@ -302,6 +385,29 @@ export const EMAIL_TEXTS = {
         `After your appointment, <a href="${url}" style="color: #6366f1; text-decoration: underline;">leave us a review</a>`,
       reviewFooterText: (url: string) => `After your appointment, leave us a review: ${url}`,
     },
+    it: {
+      subject: (serviceName: string) => `Conferma del Suo appuntamento - ${serviceName}`,
+      subjectUpdated: (businessName: string) =>
+        `Il Suo appuntamento è stato aggiornato - ${businessName}`,
+      introHtml:
+        'Il Suo appuntamento è stato <strong style="color: #16a34a;">confermato</strong>.',
+      introText: 'Il Suo appuntamento è stato confermato.',
+      updateAddedHtml: (serviceName: string) =>
+        `Una prestazione è stata <strong style="color: #16a34a;">aggiunta al</strong> Suo appuntamento: <strong>${serviceName}</strong>.`,
+      updateRemovedHtml: (serviceName: string) =>
+        `Una prestazione è stata <strong style="color: #dc2626;">rimossa dal</strong> Suo appuntamento: <strong>${serviceName}</strong>.`,
+      updateAddedText: (serviceName: string) =>
+        `Una prestazione è stata aggiunta al Suo appuntamento: ${serviceName}.`,
+      updateRemovedText: (serviceName: string) =>
+        `Una prestazione è stata rimossa dal Suo appuntamento: ${serviceName}.`,
+      updatedSub: 'Ecco il Suo appuntamento aggiornato.',
+      boxTitleMulti: 'Le Sue prestazioni',
+      boxTitleSingle: 'Il Suo appuntamento',
+      detailsHeading: 'Dettagli del Suo appuntamento:',
+      reviewFooterHtml: (url: string) =>
+        `Dopo l'appuntamento, <a href="${url}" style="color: #6366f1; text-decoration: underline;">ci lasci una recensione</a>`,
+      reviewFooterText: (url: string) => `Dopo l'appuntamento, ci lasci una recensione: ${url}`,
+    },
   },
 
   reminder: {
@@ -330,6 +436,19 @@ export const EMAIL_TEXTS = {
       tomorrow: 'tomorrow',
       inTwoDays: 'in 2 days',
       inTwoHours: 'in 2 hours',
+    },
+    it: {
+      subject: (timeLabel: string, serviceName: string) =>
+        `Promemoria: il Suo appuntamento ${timeLabel} - ${serviceName}`,
+      introHtml: (timeLabel: string) =>
+        `Le ricordiamo che il Suo appuntamento è previsto <strong style="color: #2563eb;">${timeLabel}</strong>.`,
+      introText: (timeLabel: string) =>
+        `Le ricordiamo che il Suo appuntamento è previsto ${timeLabel}.`,
+      boxTitle: 'Promemoria appuntamento',
+      detailsHeading: 'Dettagli del Suo appuntamento:',
+      tomorrow: 'domani',
+      inTwoDays: 'tra 2 giorni',
+      inTwoHours: 'tra 2 ore',
     },
   },
 
@@ -384,6 +503,31 @@ export const EMAIL_TEXTS = {
         `If you'd like to book a new appointment, you can book online at ${url}`,
       apology: 'We apologise for the inconvenience.',
     },
+    it: {
+      subject: (serviceName: string) => `Annullamento del Suo appuntamento - ${serviceName}`,
+      introHtml:
+        'La informiamo che il Suo appuntamento è stato <strong style="color: #dc2626;">annullato</strong>.',
+      introText: 'La informiamo che il Suo appuntamento è stato annullato.',
+      boxTitle: 'Appuntamento annullato',
+      detailsHeading: "Dettagli dell'appuntamento annullato:",
+      refundedTitle: '✓ Acconto rimborsato',
+      refundedBodyHtml: (formattedAmount: string) =>
+        `Il Suo acconto di <strong>${formattedAmount}</strong> è in fase di rimborso sul Suo metodo di pagamento. Sono necessari da 5 a 10 giorni lavorativi perché risulti visibile.`,
+      refundedText: (formattedAmount: string) =>
+        `✓ Il Suo acconto di ${formattedAmount} è in fase di rimborso (da 5 a 10 giorni lavorativi).`,
+      unrefundedTitle: 'Acconto non rimborsato',
+      unrefundedBodyHtml: (formattedAmount: string, businessName: string) =>
+        `Il Suo acconto di <strong>${formattedAmount}</strong> non è rimborsabile perché la richiesta di annullamento è avvenuta dopo il termine di rimborso stabilito da ${businessName}.`,
+      unrefundedContactHtml: (businessName: string) =>
+        `Per qualsiasi richiesta eccezionale, contatti direttamente ${businessName}.`,
+      unrefundedText: (formattedAmount: string, businessName: string) =>
+        `⚠ Il Suo acconto di ${formattedAmount} non è rimborsabile perché la richiesta di annullamento è avvenuta dopo il termine stabilito da ${businessName}.`,
+      rebookPromptHtml:
+        'Se desidera fissare un nuovo appuntamento, non esiti a contattarci o a prenotare online.',
+      rebookPromptText: (url: string) =>
+        `Se desidera fissare un nuovo appuntamento, può prenotare online su ${url}`,
+      apology: 'Ci scusiamo per il disagio.',
+    },
   },
 
   reschedule: {
@@ -408,6 +552,17 @@ export const EMAIL_TEXTS = {
       oldSlotLineText: (formattedDate: string, formattedTime: string) =>
         `Previous slot: ${formattedDate} at ${formattedTime}`,
       newSlotHeadingText: 'New slot:',
+    },
+    it: {
+      subject: (serviceName: string) => `Modifica del Suo appuntamento - ${serviceName}`,
+      introHtml: 'Il Suo appuntamento è stato <strong style="color: #2563eb;">modificato</strong>.',
+      introText: 'Il Suo appuntamento è stato modificato.',
+      oldSlotTitle: 'Orario precedente',
+      newSlotTitle: 'Nuovo orario',
+      atJoiner: 'alle',
+      oldSlotLineText: (formattedDate: string, formattedTime: string) =>
+        `Orario precedente: ${formattedDate} alle ${formattedTime}`,
+      newSlotHeadingText: 'Nuovo orario:',
     },
   },
 
@@ -440,6 +595,20 @@ export const EMAIL_TEXTS = {
       visibleNote: (providerName: string) =>
         `Your review will appear on ${providerName}'s page.`,
       sentBy: 'Email sent by',
+    },
+    it: {
+      subject: (serviceName: string) => `Com'è andato il Suo appuntamento? - ${serviceName}`,
+      htmlLang: 'it',
+      eyebrow: 'La Sua opinione conta',
+      heading: "Com'è andato il Suo appuntamento?",
+      body: 'Ci auguriamo che il Suo appuntamento sia andato bene. La Sua recensione aiuta altri clienti a scegliere e ci aiuta a migliorare i nostri servizi.',
+      boxTitle: 'Il Suo appuntamento',
+      boxTitleText: 'Il Suo appuntamento:',
+      cta: 'Lascia una recensione',
+      ctaLineText: 'Lasci qui la Sua recensione:',
+      visibleNote: (providerName: string) =>
+        `La Sua recensione sarà visibile sulla pagina di ${providerName}.`,
+      sentBy: 'Email inviata da',
     },
   },
 
@@ -481,6 +650,25 @@ export const EMAIL_TEXTS = {
         `Can't make this appointment? <a href="${url}" style="color: #dc2626; text-decoration: underline;">Cancel the booking</a>.`,
       cancelLineText: (url: string) => `Cancel the booking: ${url}`,
       signoff: 'See you very soon,',
+    },
+    it: {
+      subject: (serviceName: string, providerName: string) =>
+        `Acconto in attesa — ${serviceName} presso ${providerName}`,
+      introHtml: (providerName: string) =>
+        `Il Suo appuntamento presso <strong>${providerName}</strong> è <strong style="color: #d97706;">in attesa del pagamento dell'acconto</strong>.`,
+      introText: (providerName: string) =>
+        `Il Suo appuntamento presso ${providerName} è in attesa del pagamento dell'acconto.`,
+      boxTitle: 'Appuntamento in attesa',
+      deadlineHtml: (minutesLeft: number) =>
+        `Se l'acconto non viene pagato entro <strong>${minutesLeft} minuti</strong>, il Suo posto verrà liberato automaticamente.`,
+      deadlineText: (minutesLeft: number) =>
+        `Se l'acconto non viene pagato entro ${minutesLeft} minuti, il Suo posto verrà liberato automaticamente.`,
+      payCta: "Paga subito l'acconto",
+      payLineText: (url: string) => `Paga l'acconto: ${url}`,
+      cancelQuestionHtml: (url: string) =>
+        `Non può presentarsi all'appuntamento? <a href="${url}" style="color: #dc2626; text-decoration: underline;">Annulla la prenotazione</a>.`,
+      cancelLineText: (url: string) => `Annulla la prenotazione: ${url}`,
+      signoff: 'A prestissimo,',
     },
   },
 } as const;

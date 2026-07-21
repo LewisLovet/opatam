@@ -75,12 +75,14 @@ export function hasLoyaltyAccessMirror(p: FirebaseFirestore.DocumentData | undef
 export function loyaltyRewardLabel(
   rewardType: string,
   rewardValue: number,
-  locale: 'fr' | 'en',
+  locale: 'fr' | 'en' | 'it',
 ): string {
   if (rewardType === 'percent') {
-    return locale === 'en' ? `−${rewardValue}%` : `−${rewardValue} %`;
+    // fr : espace fine avant % ; en/it : pas d'espace.
+    return locale === 'fr' ? `−${rewardValue} %` : `−${rewardValue}%`;
   }
   const euros = rewardValue / 100;
   const v = Number.isInteger(euros) ? String(euros) : euros.toFixed(2);
+  // en : symbole avant ; fr/it : symbole après avec espace.
   return locale === 'en' ? `−€${v}` : `−${v} €`;
 }

@@ -14,10 +14,12 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-app-locale', 'en');
+  // Locale déduite du préfixe d'URL (/en/... → en, /it/... → it).
+  const seg = request.nextUrl.pathname.split('/')[1];
+  requestHeaders.set('x-app-locale', seg === 'it' ? 'it' : 'en');
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
-  matcher: ['/en', '/en/:path*'],
+  matcher: ['/en', '/en/:path*', '/it', '/it/:path*'],
 };

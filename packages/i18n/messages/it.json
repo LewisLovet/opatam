@@ -1,0 +1,494 @@
+{
+  "common": {
+    "appStore": "App Store",
+    "googlePlay": "Google Play",
+    "language": "Lingua",
+    "french": "Français",
+    "english": "English"
+  },
+  "layout": {
+    "header": {
+      "features": "Funzionalità",
+      "pricing": "Prezzi",
+      "testimonials": "Testimonianze",
+      "faq": "FAQ",
+      "login": "Accedi",
+      "createPage": "Crea la tua pagina",
+      "start": "Inizia",
+      "menu": "Menu",
+      "openMenu": "Apri il menu",
+      "closeMenu": "Chiudi il menu"
+    },
+    "footer": {
+      "product": "Prodotto",
+      "explore": "Esplora",
+      "forWho": "Per chi",
+      "support": "Supporto",
+      "legal": "Legale",
+      "allProviders": "Tutti i professionisti",
+      "nailArtists": "Nail artist",
+      "contact": "Contatti",
+      "careers": "Lavora con noi",
+      "downloadApp": "Scarica l'app",
+      "legalNotice": "Note legali",
+      "terms": "Termini d'uso",
+      "salesTerms": "Condizioni di vendita",
+      "privacy": "Privacy",
+      "allRights": "Tutti i diritti riservati."
+    },
+    "appBadges": {
+      "downloadOn": "Scarica su",
+      "soonOn": "Presto su",
+      "ariaAppStore": "Scarica sull'App Store",
+      "ariaPlaySoon": "Google Play — Presto disponibile"
+    }
+  },
+  "blog": {
+    "video": "Video",
+    "read": "Leggi",
+    "new": "Nuovo"
+  },
+  "seo": {
+    "home": {
+      "title": "Opatam — Prenotazioni online per professionisti | Senza commissioni",
+      "description": "Opatam è la piattaforma di prenotazione online senza commissioni per i professionisti di bellezza, benessere, coaching e servizi. Agenda online, promemoria automatici, pagina di prenotazione. Prova gratuita.",
+      "ogTitle": "Opatam — Prenotazioni online senza commissioni",
+      "ogDescription": "Gestisci i tuoi appuntamenti online, attira nuovi clienti e fai crescere la tua attività. 0% di commissioni. Prova gratuita.",
+      "orgDescription": "Piattaforma di prenotazione online senza commissioni per i professionisti dei servizi."
+    },
+    "booking": {
+      "title": "Prenota da {businessName}",
+      "description": "Prenota il tuo appuntamento da {businessName} - {category}",
+      "demoTitle": "Demo — Prenota da Studio Beauté Élégance",
+      "demoDescription": "Prova il percorso di prenotazione OPATAM con questo negozio dimostrativo."
+    },
+    "provider": {
+      "demoTitle": "Demo — Studio Beauté Élégance",
+      "demoDescription": "Scopri come si presenta una pagina di prenotazione OPATAM. Esempio con un salone di parrucchiere ed estetica.",
+      "notFound": "Professionista non trovato",
+      "inCity": " a {city}",
+      "fallbackDescription": "Prenota i tuoi appuntamenti da {businessName}{cityPart} — {category}. Prenotazione online su Opatam."
+    },
+    "confirmation": {
+      "title": "Prenotazione confermata",
+      "description": "La tua prenotazione è stata registrata"
+    },
+    "cancel": {
+      "title": "Annulla il tuo appuntamento",
+      "description": "Annulla il tuo appuntamento in pochi clic"
+    },
+    "review": {
+      "title": "Lascia una recensione",
+      "description": "Condividi la tua esperienza e aiuta gli altri clienti"
+    }
+  },
+  "consent": {
+    "title": "Aiutaci a far crescere Opatam",
+    "body": "Accettando i cookie di misurazione ci aiuti a capire cosa ti ha portato qui e a investire meglio nelle nostre campagne su Instagram e Facebook. Rifiutare non ha alcun impatto sulla tua esperienza.",
+    "learnMore": "Scopri di più",
+    "refuse": "Rifiuta",
+    "accept": "Accetta"
+  },
+  "playStore": {
+    "title": "Presto su Android!",
+    "body": "Lascia la tua email per essere avvisato non appena l'app sarà disponibile su Google Play.",
+    "webNote": "Nel frattempo, tutte le funzionalità sono disponibili nella versione web: ricerca, prenotazione e gestione dei tuoi appuntamenti.",
+    "continueWeb": "Continua sul web",
+    "emailPlaceholder": "tua@email.com",
+    "notifyMe": "Avvisami",
+    "sending": "Invio in corso...",
+    "successTitle": "Fatto!",
+    "successBody": "Riceverai un'email non appena l'app sarà disponibile su Google Play.",
+    "close": "Chiudi",
+    "genericError": "Si è verificato un errore"
+  },
+  "home": {
+    "hero": {
+      "title": "I tuoi appuntamenti non dovrebbero più vivere nei tuoi DM.",
+      "subtitle": "Il software di prenotazione online per i liberi professionisti. I tuoi clienti prenotano 24 ore su 24, i promemoria partono in automatico e tu tieni il 100% dei tuoi guadagni. Pronto in 5 minuti.",
+      "pillReady": "Pronto in 5 min",
+      "pillCommission": "0% di commissioni",
+      "pillPrice": "Da {price} €/mese",
+      "ctaCreate": "Crea la tua pagina",
+      "ctaDemo": "Guarda una demo",
+      "disclaimer": "{days} giorni gratis, senza carta di credito, senza vincoli"
+    },
+    "appStrip": {
+      "caption": "Disponibile anche su mobile",
+      "downloadOn": "Scarica sull'",
+      "soonOn": "Presto su",
+      "soonBadge": "Presto"
+    },
+    "stats": {
+      "items": [
+        {
+          "value": "15+",
+          "label": "Settori di attività"
+        },
+        {
+          "value": "24/7",
+          "label": "Prenotazioni online"
+        },
+        {
+          "value": "0%",
+          "label": "Commissioni"
+        },
+        {
+          "value": "5 min",
+          "label": "Per iniziare"
+        }
+      ]
+    },
+    "features": {
+      "title": "Riprendi il controllo delle tue giornate",
+      "subtitle": "Basta DM su Instagram alle 22, agende di carta, SMS di promemoria. {app} si occupa della parte amministrativa così tu resti concentrato sul tuo mestiere.",
+      "items": [
+        {
+          "title": "Un'agenda che si riempie da sola",
+          "description": "I tuoi orari disponibili, le tue pause, i tuoi giorni liberi — tutto visibile a colpo d'occhio. I promemoria partono automaticamente ai tuoi clienti. Mai più SMS di promemoria da scrivere alle 22."
+        },
+        {
+          "title": "I tuoi clienti prenotano mentre dormi",
+          "description": "La tua pagina di prenotazione è online 24 ore su 24. I tuoi clienti scelgono il servizio e l'orario in tre clic — senza creare un account, senza scriverti in DM. Al risveglio, la tua agenda è piena."
+        },
+        {
+          "title": "Tutta la tua agenda in tasca",
+          "description": "Configuri i tuoi servizi e i tuoi orari dal computer. Ogni giorno segui il tuo planning, confermi i nuovi appuntamenti e ricevi gli avvisi direttamente nell'app mobile."
+        },
+        {
+          "title": "Tutto il team sincronizzato",
+          "description": "Ogni membro ha il proprio planning, i propri servizi, il proprio codice di accesso. Tu mantieni la visione d'insieme. Niente più quaderno condiviso, niente più sovrapposizioni."
+        }
+      ]
+    },
+    "mockups": {
+      "myAgenda": "La mia agenda",
+      "weekOf": "Settimana del 3 febbraio",
+      "days": [
+        "Lun",
+        "Mar",
+        "Mer",
+        "Gio",
+        "Ven"
+      ],
+      "chooseService": "Scegli un servizio",
+      "services": [
+        "Taglio donna — 35 €",
+        "Piega — 25 €",
+        "Colore — 55 €"
+      ],
+      "book": "Prenota",
+      "today": "Oggi",
+      "todayCount": "4 appuntamenti",
+      "nextIn": "Prossimo tra 25 min",
+      "newBooking": "Nuova prenotazione",
+      "newBookingDetail": "Alice M. — Taglio + Piega — 14:00",
+      "myTeam": "Il mio team",
+      "teamMembers": [
+        {
+          "name": "Marie D.",
+          "role": "Parrucchiera",
+          "rdv": "6 appuntamenti oggi"
+        },
+        {
+          "name": "Julie K.",
+          "role": "Colorista",
+          "rdv": "4 appuntamenti oggi"
+        },
+        {
+          "name": "Thomas R.",
+          "role": "Barbiere",
+          "rdv": "5 appuntamenti oggi"
+        }
+      ],
+      "sampleBookings": [
+        {
+          "time": "10:00",
+          "name": "Marie L.",
+          "service": "Piega"
+        },
+        {
+          "time": "11:30",
+          "name": "Thomas R.",
+          "service": "Barba"
+        }
+      ]
+    },
+    "secondaryFeatures": {
+      "title": "E tutto il resto, già incluso",
+      "subtitle": "Nessun modulo da sbloccare, nessuna opzione a pagamento nascosta. Quello che vedi è quello che hai.",
+      "items": [
+        {
+          "title": "La tua vetrina online",
+          "description": "Una vera pagina professionale con i tuoi servizi, le tue recensioni e le tue foto — da condividere con un link"
+        },
+        {
+          "title": "QR Code da esporre",
+          "description": "Un QR Code da attaccare al bancone o sui tuoi biglietti. Le tue clienti scansionano e prenotano"
+        },
+        {
+          "title": "Mai più dimenticanze",
+          "description": "Promemoria automatico 24 ore e 2 ore prima di ogni appuntamento. I no-show calano, la tua giornata regge"
+        },
+        {
+          "title": "I tuoi numeri, chiari",
+          "description": "Prenotazioni, visite alla tua pagina, attività della settimana — tutto su un unico schermo, aggiornato in tempo reale"
+        },
+        {
+          "title": "Più indirizzi, un'unica agenda",
+          "description": "Salone, domicilio, trasferta — fino a 10 sedi con disponibilità diverse per ciascuna"
+        },
+        {
+          "title": "Il riepilogo di domani, già stasera",
+          "description": "Ogni sera ricevi via email l'agenda del giorno dopo. Niente più sorprese al risveglio"
+        },
+        {
+          "title": "L'app iOS e Android",
+          "description": "La tua agenda in tasca, notifiche in tempo reale a ogni prenotazione"
+        },
+        {
+          "title": "Ospitato in Europa",
+          "description": "Conforme al GDPR, dati ospitati in Francia. Tutto resta di tua proprietà"
+        }
+      ]
+    },
+    "sectors": {
+      "title": "Pensato per i liberi professionisti. Tutti i liberi professionisti.",
+      "subtitle": "Dalla parrucchiera a domicilio al tatuatore in studio, dal personal trainer al terapeuta — {app} si adatta al tuo mestiere, non il contrario.",
+      "items": [
+        {
+          "title": "Bellezza & Estetica",
+          "examples": "Parrucchieri, estetiste, barbieri, onicotecniche"
+        },
+        {
+          "title": "Benessere",
+          "examples": "Massaggiatori, sofrologi, naturopati, osteopati"
+        },
+        {
+          "title": "Sport & Coaching",
+          "examples": "Coach sportivi, personal trainer, palestre"
+        },
+        {
+          "title": "Coaching",
+          "examples": "Life coach, terapeuti, consulenti di crescita personale"
+        },
+        {
+          "title": "Artigiani",
+          "examples": "Idraulici, elettricisti, fabbri, imbianchini"
+        },
+        {
+          "title": "Audiovisivo",
+          "examples": "Fotografi, videomaker, creator di contenuti"
+        }
+      ]
+    },
+    "testimonials": {
+      "title": "Cosa dicono i professionisti che lo usano",
+      "items": [
+        {
+          "name": "Marie L.",
+          "role": "Parrucchiera indipendente",
+          "city": "Lione",
+          "initials": "ML",
+          "text": "Lo 0% di commissioni è quello che mi ha convinta. Tengo il 100% di quello che guadagno. E lo strumento è così semplice che sono stata online in 10 minuti."
+        },
+        {
+          "name": "Karim B.",
+          "role": "Barbiere",
+          "city": "Parigi",
+          "initials": "KB",
+          "text": "La sera stessa dell'iscrizione avevo già tre prenotazioni dal link nella mia bio di Instagram. Non devo più rispondere ai DM alle 22 per fissare un orario."
+        },
+        {
+          "name": "Sophie D.",
+          "role": "Titolare di un istituto di bellezza",
+          "city": "Marsiglia",
+          "initials": "SD",
+          "text": "Siamo in tre nell'istituto, ognuna ha la sua agenda sul proprio telefono. Alla metà di quanto pagavamo prima — e pensato meglio per il nostro mestiere."
+        }
+      ]
+    },
+    "comparison": {
+      "title": "Perché {app}, e non gli altri",
+      "subtitle": "Un prezzo chiaro, zero commissioni, tutte le funzionalità essenziali dal primo giorno. Niente asterischi, niente piani nascosti.",
+      "criterion": "Criterio",
+      "others": "Altre applicazioni",
+      "rows": [
+        {
+          "label": "Prezzo mensile",
+          "opatam": "19,90 €",
+          "others": "Da 0 €* a 90 €/mese"
+        },
+        {
+          "label": "Commissioni sulle tue prenotazioni",
+          "opatam": "0%",
+          "others": "Fino al 20% o 1 € per appuntamento"
+        },
+        {
+          "label": "Periodo di prova",
+          "opatam": "30 giorni gratis",
+          "others": "Spesso limitato o assente"
+        },
+        {
+          "label": "Promemoria automatici",
+          "opatam": "Inclusi",
+          "others": "A volte come opzione a pagamento"
+        },
+        {
+          "label": "Vetrina online personalizzata",
+          "opatam": "Inclusa",
+          "others": "Inclusa ma con modelli limitati"
+        },
+        {
+          "label": "Vincolo contrattuale",
+          "opatam": "Nessun vincolo",
+          "others": "Variabile a seconda dell'offerta"
+        },
+        {
+          "label": "Costo reale annuo (esempio)",
+          "opatam": "199,00 €",
+          "others": "Da 300 € a 1.080 €**"
+        }
+      ],
+      "footnote": "* I piani « gratuiti » includono in genere commissioni trattenute su ogni prenotazione, funzionalità limitate o assistenza ridotta. ** Stima basata su un prezzo medio da 25 € a 90 €/mese, escluse le commissioni aggiuntive."
+    },
+    "pricing": {
+      "title": "Un prezzo giusto, senza sorprese",
+      "subtitle": "Due piani. Nessuna commissione. Disdici quando vuoi.",
+      "launchOffer": "Offerta di lancio",
+      "guaranteedPrefix": "Prezzo garantito",
+      "guaranteedHighlight": "a vita",
+      "guaranteeText": "Iscriviti ora: il tuo prezzo è bloccato a vita. Anche se domani aumentassimo i prezzi, tu resti a 19,90 €.",
+      "trustLocked": "Prezzo bloccato a vita",
+      "trustNoIncrease": "Nessun aumento",
+      "trustEarly": "Solo per i primi iscritti",
+      "monthly": "Mensile",
+      "yearly": "Annuale",
+      "toggleAria": "Passa da mensile ad annuale",
+      "save": "Risparmia il 17%",
+      "perMonth": "/mese",
+      "billedYearly": "Fatturati {total} €/anno",
+      "noCommitment": "Nessun vincolo",
+      "popular": "Popolare",
+      "upTo10": "Fino a 10 membri inclusi",
+      "ctaCreate": "Crea la tua pagina",
+      "trialNote": "{days} giorni di prova gratuita su tutti i piani. Nessuna carta di credito richiesta.",
+      "pro": {
+        "name": "Pro",
+        "description": "L'essenziale per i liberi professionisti. Gestisci i tuoi appuntamenti e fai crescere la tua attività — senza commissioni.",
+        "features": [
+          "Prenotazioni illimitate, 0% di commissioni",
+          "La tua vetrina online professionale",
+          "Promemoria automatici via email e push",
+          "Agenda accessibile ovunque, 24 ore su 24",
+          "Pronto in 5 minuti, senza formazione"
+        ]
+      },
+      "studio": {
+        "name": "Studio",
+        "description": "La soluzione completa per i team. Coordina le agende, gestisci più sedi e offri un'esperienza professionale.",
+        "features": [
+          "Fino a 10 agende sincronizzate",
+          "0% di commissioni, anche in team",
+          "Assegnazione dei servizi per membro",
+          "Multi-sede (fino a 10 indirizzi)",
+          "Pagina pubblica del team professionale",
+          "Tutto il piano Pro incluso"
+        ]
+      }
+    },
+    "faq": {
+      "title": "Domande frequenti",
+      "items": [
+        {
+          "question": "Qual è il miglior software di prenotazione online per liberi professionisti?",
+          "answer": "OPATAM è progettato appositamente per i liberi professionisti e i piccoli team: agenda online, pagina di prenotazione personalizzata, promemoria automatici 24 e 2 ore prima, app mobile — senza commissioni, pronto in 5 minuti. Professionisti di oltre 15 settori lo usano ogni giorno."
+        },
+        {
+          "question": "Come far prenotare online i miei clienti senza fargli creare un account?",
+          "answer": "I tuoi clienti inseriscono nome, email e telefono — tutto qui. Nessun account da creare, nessuna password. Tu ottieni un link personalizzato e un QR code da mettere nella bio di Instagram, sui volantini o da esporre in negozio. Prenotazione completata in 3 clic."
+        },
+        {
+          "question": "Come gestire gli appuntamenti del mio team da un unico strumento?",
+          "answer": "Il piano Studio (29,90 €/mese) gestisce fino a 10 agende sincronizzate. Ogni membro ha il proprio planning e i propri servizi. Puoi notificargli ogni nuovo appuntamento, inviargli il riepilogo giornaliero la sera prima e mantenere la visione d'insieme su tutto il team."
+        },
+        {
+          "question": "Come ridurre gli appuntamenti mancati e le dimenticanze dei clienti?",
+          "answer": "OPATAM invia automaticamente un promemoria 24 ore prima dell'appuntamento e un secondo 2 ore prima. I tuoi clienti ricevono anche una conferma immediata al momento della prenotazione. In concreto: meno dimenticanze, più appuntamenti che reggono, più incassi a fine mese."
+        },
+        {
+          "question": "Quanto costa un software di prenotazione online professionale?",
+          "answer": "Due piani senza vincoli: Pro a 19,90 €/mese (o 199 €/anno) per i liberi professionisti, Studio a 29,90 €/mese (o 299 €/anno) per i team fino a 10 persone. Prova gratuita di 30 giorni, senza carta di credito. E zero commissioni sulle tue prenotazioni — tieni il 100% di quello che incassi."
+        },
+        {
+          "question": "Si può usare un'agenda di prenotazione online dal telefono?",
+          "answer": "Sì. L'app mobile per iOS e Android ti permette di consultare l'agenda, confermare i nuovi appuntamenti e ricevere le notifiche in tempo reale. Configuri tutto dal computer e gestisci la giornata dalla tasca — tra un appuntamento e l'altro, in metro, dove vuoi."
+        },
+        {
+          "question": "OPATAM è adatto ai mestieri della bellezza, del benessere e del coaching?",
+          "answer": "Parrucchieri, estetiste, barbieri, onicotecniche, massaggiatori, sofrologi, coach sportivi, terapeuti, fotografi, artigiani, formatori… Ogni professionista personalizza i suoi servizi, le durate, i prezzi e la sua agenda come preferisce."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Riprenditi la tua serata.",
+      "subtitle": "La tua prima pagina di prenotazione è online in 5 minuti. 30 giorni di prova gratuita, senza carta di credito, senza vincoli.",
+      "cta": "Crea la tua pagina",
+      "disclaimer": "{days} giorni gratis — Senza carta di credito — Senza vincoli",
+      "availableOn": "Disponibile sull'",
+      "soonOn": "Presto su",
+      "soonBadge": "Presto",
+      "followUs": "Seguici"
+    },
+    "marketplace": {
+      "lookingFor": "Cerchi un professionista vicino a te?",
+      "searchPro": "Trova un professionista"
+    },
+    "stickyCta": "Prova gratuita di {days} giorni",
+    "heroLoaderTagline": "La prenotazione online, senza commissioni",
+    "howItWorks": {
+      "title": "Pronto in 5 minuti, in 3 passaggi",
+      "subtitle": "Nessuna formazione, nessun tecnico da chiamare. Crei la tua pagina e ricevi le prime prenotazioni oggi stesso.",
+      "steps": [
+        {
+          "title": "Crea il tuo profilo",
+          "description": "Inserisci la tua attività, i tuoi servizi e i tuoi orari. Il nostro assistente ti guida passo dopo passo."
+        },
+        {
+          "title": "Pubblica la tua vetrina",
+          "description": "La tua pagina professionale è online in un clic. Condividi il link con i tuoi clienti via SMS, email o social."
+        },
+        {
+          "title": "Ricevi le prenotazioni",
+          "description": "I tuoi clienti prenotano in autonomia, 24 ore su 24. Ricevi una notifica a ogni nuovo appuntamento."
+        }
+      ],
+      "cta": "Crea il tuo profilo gratuitamente",
+      "note": "Prova gratuita di {days} giorni — Nessuna carta di credito richiesta"
+    },
+    "story": {
+      "badge": "Instagram & Snapchat",
+      "title": "Una story su Instagram. Orari riempiti.",
+      "titleAccent": "In 30 secondi.",
+      "body": "Hai un buco questo pomeriggio? Genera una story con le tue disponibilità e il tuo QR Code in un tap. Le tue follower vedono, scansionano, prenotano. Compatibile con Instagram, Snapchat e tutti i social con story verticali.",
+      "steps": [
+        "Hai un buco martedì alle 14.",
+        "Un tap. Opatam genera la tua story con le tue disponibilità e il tuo QR Code.",
+        "La pubblichi su Instagram. Le tue clienti scansionano e prenotano."
+      ],
+      "twoFormats": "Due formati",
+      "day": "Giorno",
+      "week": "Settimana",
+      "sendMessage": "Invia un messaggio...",
+      "storyAlt": "Story {label} — Opatam"
+    },
+    "tutorials": {
+      "badge": "Tutorial",
+      "title": "Impara a usare Opatam in pochi minuti",
+      "subtitle": "Video brevi per prendere confidenza con la piattaforma e sfruttare ogni funzionalità.",
+      "seeAll": "Vedi tutti i tutorial",
+      "carouselAria": "Selezione del tutorial",
+      "carouselItemAria": "Tutorial {index} di {total}"
+    }
+  }
+}

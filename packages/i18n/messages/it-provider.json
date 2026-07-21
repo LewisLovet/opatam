@@ -1,0 +1,128 @@
+{
+  "common": {
+    "close": "Chiudi",
+    "seeMore": "Vedi di più",
+    "seeLess": "Vedi meno"
+  },
+  "hero": {
+    "verified": "Verificato",
+    "today": "Oggi",
+    "tomorrow": "Domani",
+    "nextAvailability": "Prossima disponibilità: {date}",
+    "memberAvailabilityTitle": "Disponibilità per professionista",
+    "membersWithoutAvailability": "{count, plural, one {# professionista senza disponibilità a breve} other {# professionisti senza disponibilità a breve}}"
+  },
+  "nav": {
+    "services": "Servizi",
+    "reviews": "Recensioni",
+    "hours": "Orari"
+  },
+  "services": {
+    "title": "Servizi",
+    "empty": "Nessun servizio disponibile al momento.",
+    "otherCategory": "Altri",
+    "free": "Gratuito",
+    "from": "a partire da",
+    "priceRange": "Da {min} a {max}",
+    "book": "Prenota",
+    "showMore": "Più dettagli",
+    "showLess": "Meno",
+    "promo": {
+      "lastDay": "Ultimo giorno",
+      "endsTomorrow": "Termina domani",
+      "daysLeft": "Ancora {days} giorni"
+    }
+  },
+  "mobileBar": {
+    "from": "A partire da",
+    "book": "Prenota"
+  },
+  "about": {
+    "title": "Chi sono",
+    "portfolioTitle": "Portfolio",
+    "findMeOn": "Mi trovi su"
+  },
+  "portfolio": {
+    "title": "Portfolio",
+    "photoCount": "{count, plural, one {# foto} other {# foto}}",
+    "photoAlt": "Portfolio {index}",
+    "previousPhoto": "Foto precedente",
+    "nextPhoto": "Foto successiva"
+  },
+  "reviews": {
+    "title": "Recensioni dei clienti",
+    "basedOn": "Basato su <strong>{count}</strong> recensioni",
+    "noReviews": "Nessuna recensione",
+    "distribution": "Distribuzione dei voti",
+    "latest": "Ultime recensioni",
+    "anonymousClient": "Cliente",
+    "beFirst": "Lascia tu la prima recensione!"
+  },
+  "hours": {
+    "title": "Orari",
+    "open": "Aperto",
+    "closed": "Chiuso",
+    "today": "Oggi"
+  },
+  "infos": {
+    "title": "Informazioni utili",
+    "locationTitle": "{count, plural, one {Sede} other {Sedi}}",
+    "openingHours": "Orari di apertura",
+    "days": [
+      "Domenica",
+      "Lunedì",
+      "Martedì",
+      "Mercoledì",
+      "Giovedì",
+      "Venerdì",
+      "Sabato"
+    ]
+  },
+  "location": {
+    "fixed": "In sede",
+    "mobile": "A domicilio",
+    "maskedAddress": "Indirizzo esatto comunicato dopo la conferma",
+    "viewOnMaps": "Vedi su Google Maps",
+    "homeService": "Si sposta a domicilio",
+    "travelRadius": "Raggio di {radius} km"
+  },
+  "team": {
+    "title": "Il team"
+  },
+  "share": {
+    "share": "Condividi",
+    "shareText": "Scopri {name}",
+    "copyLink": "Copia il link"
+  },
+  "socials": {
+    "website": "Sito web"
+  },
+  "demo": {
+    "title": "Benvenuto nel negozio demo",
+    "intro": "Questa pagina è un <strong>esempio concreto</strong> di quello che vedranno i tuoi clienti quando prenoteranno da te.",
+    "walkthrough": "Sfoglia i servizi, seleziona un professionista e scegli un orario — esattamente come faranno i tuoi futuri clienti.",
+    "highlight": "La tua pagina di prenotazione può essere pronta in 5 minuti, senza alcuna competenza tecnica.",
+    "explore": "Esplora la demo",
+    "createPage": "Crea la tua pagina gratuitamente ({days} giorni di prova)"
+  },
+  "notice": {
+    "title": "Informazione importante",
+    "back": "Indietro",
+    "accept": "Ho capito, continua"
+  },
+  "notFound": {
+    "title": "Professionista non trovato",
+    "description": "Questo professionista non esiste o non è più disponibile. Forse ha disattivato la sua pagina o ha cambiato indirizzo.",
+    "backHome": "Torna alla home"
+  },
+  "loyaltyBanner": {
+    "title": "Programma fedeltà",
+    "percent": "Ogni {threshold} appuntamenti, −{value} % sulla tua prenotazione successiva",
+    "amount": "Ogni {threshold} appuntamenti, −{value} € sulla tua prenotazione successiva",
+    "infoAria": "Vedi i servizi inclusi",
+    "infoAll": "Vale su tutti i servizi.",
+    "infoExcept": "Tutti i servizi tranne: {list}.",
+    "infoOnly": "Servizi inclusi: {list}.",
+    "appNudge": "Accumula i tuoi punti prenotando dall'app:"
+  }
+}

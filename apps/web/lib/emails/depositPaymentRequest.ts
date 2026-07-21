@@ -14,7 +14,7 @@ import {
  * in functions/) which fires from a cron at T+15min. This is the
  * inaugural message.
  *
- * Bilingual: `locale` comes from `booking.clientLocale` (the language the
+ * Localized (fr/en/it): `locale` comes from `booking.clientLocale` (the language the
  * client booked in). Absent — e.g. provider-created bookings where the
  * client never expressed a language — falls back to French.
  */
@@ -33,7 +33,7 @@ export interface DepositPaymentRequestEmailData {
   /** When set, the email shows a "Annuler la réservation" link so the
    *  client can release the slot without waiting for the timeout. */
   cancelToken?: string | null;
-  /** Client language ('fr' | 'en'…). Absent = French. */
+  /** Client language ('fr' | 'en' | 'it'…). Absent = French. */
   locale?: string | null;
 }
 
@@ -89,15 +89,42 @@ const TEXTS = {
     cancelLink: 'Cancel the booking',
     signoff: 'See you soon,',
   },
+  it: {
+    subject: (service: string, provider: string) =>
+      `Acconto da pagare — ${service} presso ${provider}`,
+    hello: (name: string) => `Buongiorno ${name},`,
+    intro: (provider: string, deposit: string) =>
+      `<strong>${provider}</strong> ha fissato un appuntamento per Lei. Per confermarlo, La preghiamo di pagare l'acconto di <strong>${deposit}</strong>.`,
+    introText: (provider: string, deposit: string) =>
+      `${provider} ha fissato un appuntamento per Lei. La preghiamo di pagare l'acconto di ${deposit} per confermarlo.`,
+    yourBooking: 'Il Suo appuntamento',
+    service: 'Prestazione',
+    date: 'Data',
+    time: 'Ora',
+    deposit: 'Acconto',
+    holdNotice: (minutes: number) =>
+      `Il posto è riservato per Lei per <strong>${minutes} minuti</strong>. Senza pagamento, verrà liberato automaticamente.`,
+    holdNoticeText: (minutes: number) =>
+      `Il posto è riservato per ${minutes} minuti. Senza pagamento, verrà liberato.`,
+    payCta: "Paga l'acconto",
+    securePayment: 'Pagamento sicuro tramite Stripe.',
+    cantMakeIt: "Non può presentarsi all'appuntamento?",
+    cancelLink: 'Annulla la prenotazione',
+    signoff: 'A prestissimo,',
+  },
 } as const;
 
-function resolveLocale(raw: string | null | undefined): 'fr' | 'en' {
-  return raw === 'en' ? 'en' : 'fr';
+type Locale = 'fr' | 'en' | 'it';
+
+const INTL_LOCALE: Record<Locale, string> = { fr: 'fr-FR', en: 'en-GB', it: 'it-IT' };
+
+function resolveLocale(raw: string | null | undefined): Locale {
+  return raw === 'en' || raw === 'it' ? raw : 'fr';
 }
 
-/** Paris-anchored formats in the recipient's language (24h clock for both). */
-function formatDate(d: Date, l: 'fr' | 'en'): string {
-  return d.toLocaleDateString(l === 'en' ? 'en-GB' : 'fr-FR', {
+/** Paris-anchored formats in the recipient's language (24h clock for all). */
+function formatDate(d: Date, l: Locale): string {
+  return d.toLocaleDateString(INTL_LOCALE[l], {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -106,8 +133,8 @@ function formatDate(d: Date, l: 'fr' | 'en'): string {
   });
 }
 
-function formatTime(d: Date, l: 'fr' | 'en'): string {
-  return d.toLocaleTimeString(l === 'en' ? 'en-GB' : 'fr-FR', {
+function formatTime(d: Date, l: Locale): string {
+  return d.toLocaleTimeString(INTL_LOCALE[l], {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -115,8 +142,8 @@ function formatTime(d: Date, l: 'fr' | 'en'): string {
   });
 }
 
-function formatPrice(cents: number, l: 'fr' | 'en'): string {
-  return new Intl.NumberFormat(l === 'en' ? 'en-GB' : 'fr-FR', {
+function formatPrice(cents: number, l: Locale): string {
+  return new Intl.NumberFormat(INTL_LOCALE[l], {
     style: 'currency',
     currency: 'EUR',
   }).format(cents / 100);

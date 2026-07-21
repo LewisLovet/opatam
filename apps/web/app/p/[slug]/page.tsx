@@ -118,12 +118,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (slug === 'demo') {
     const frDemo = 'https://opatam.com/p/demo';
     const enDemo = 'https://opatam.com/en/p/demo';
+    const itDemo = 'https://opatam.com/it/p/demo';
     return {
       title: t('demoTitle'),
       description: t('demoDescription'),
       alternates: {
-        canonical: locale === 'en' ? enDemo : frDemo,
-        languages: { fr: frDemo, en: enDemo, 'x-default': frDemo },
+        canonical: locale === 'en' ? enDemo : locale === 'it' ? itDemo : frDemo,
+        languages: { fr: frDemo, en: enDemo, it: itDemo, 'x-default': frDemo },
       },
     };
   }
@@ -149,8 +150,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const frUrl = `https://opatam.com/p/${slug}`;
   const enUrl = `https://opatam.com/en/p/${slug}`;
-  const pageUrl = locale === 'en' ? enUrl : frUrl;
-  const languages = { fr: frUrl, en: enUrl, 'x-default': frUrl };
+  const itUrl = `https://opatam.com/it/p/${slug}`;
+  const pageUrl = locale === 'en' ? enUrl : locale === 'it' ? itUrl : frUrl;
+  const languages = { fr: frUrl, en: enUrl, it: itUrl, 'x-default': frUrl };
 
   // Social/preview image = the PROVIDER's own identity: cover photo
   // first, then their logo. We deliberately do NOT fall back to the

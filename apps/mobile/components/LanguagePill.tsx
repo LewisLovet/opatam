@@ -12,9 +12,9 @@ import React from 'react';
 import { Pressable, StyleSheet, View, Text as RNText } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { setAppLocale, type AppLocale } from '../lib/i18n';
+import { APP_LOCALES, setAppLocale, type AppLocale } from '../lib/i18n';
 
-const LOCALES: AppLocale[] = ['fr', 'en'];
+const LOCALES: AppLocale[] = APP_LOCALES;
 
 interface LanguagePillProps {
   /** 'dark' = on a colored/gradient background (white translucent pill),
@@ -24,7 +24,7 @@ interface LanguagePillProps {
 
 export function LanguagePill({ variant = 'light' }: LanguagePillProps) {
   const { i18n } = useTranslation();
-  const current: AppLocale = i18n.language === 'en' ? 'en' : 'fr';
+  const current: AppLocale = APP_LOCALES.includes(i18n.language as AppLocale) ? (i18n.language as AppLocale) : 'fr';
 
   const onDark = variant === 'dark';
   const pillBg = onDark ? 'rgba(255,255,255,0.18)' : 'rgba(17,24,39,0.06)';
@@ -54,7 +54,7 @@ export function LanguagePill({ variant = 'light' }: LanguagePillProps) {
             }}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
-            accessibilityLabel={l === 'fr' ? 'Français' : 'English'}
+            accessibilityLabel={l === 'fr' ? 'Français' : l === 'it' ? 'Italiano' : 'English'}
             hitSlop={6}
             style={[styles.segment, active && { backgroundColor: activeBg }]}
           >
