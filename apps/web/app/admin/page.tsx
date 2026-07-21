@@ -35,6 +35,7 @@ export default function AdminDashboardPage() {
   const [pageViewsTrend, setPageViewsTrend] = useState<TrendData[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [recentSignups, setRecentSignups] = useState<RecentSignups | null>(null);
+  const [signupsTab, setSignupsTab] = useState<'providers' | 'clients'>('providers');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [recomputing, setRecomputing] = useState(false);
@@ -211,18 +212,76 @@ export default function AdminDashboardPage() {
       {/* Recent signups */}
       {recentSignups && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent providers */}
+          {/* Derniers inscrits — onglets Prestataires / Clients */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Briefcase className="w-4 h-4" />
-                Derniers prestataires inscrits
+                Derniers inscrits
               </h3>
-              <Link href="/admin/providers" className="text-xs text-red-500 hover:text-red-600 transition-colors">
-                Voir tous
-              </Link>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setSignupsTab('providers')}
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                      signupsTab === 'providers'
+                        ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}
+                  >
+                    Prestataires
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSignupsTab('clients')}
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                      signupsTab === 'clients'
+                        ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}
+                  >
+                    Clients
+                  </button>
+                </div>
+                <Link
+                  href={signupsTab === 'providers' ? '/admin/providers' : '/admin/users'}
+                  className="text-xs text-red-500 hover:text-red-600 transition-colors"
+                >
+                  Voir tous
+                </Link>
+              </div>
             </div>
-            {recentSignups.providers.length === 0 ? (
+            {signupsTab === 'clients' ? (
+              recentSignups.clients.length === 0 ? (
+                <div className="p-5 text-center text-gray-400 text-sm">Aucun client</div>
+              ) : (
+                <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                  {recentSignups.clients.map((c) => (
+                    <div key={c.id} className="flex items-center gap-3 px-5 py-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                        {c.photoURL ? (
+                          <img src={c.photoURL} alt={c.displayName || ''} className="w-8 h-8 rounded-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                            {(c.displayName || c.email || '?').charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {c.displayName || 'Sans nom'}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{c.email}</p>
+                      </div>
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        {c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : recentSignups.providers.length === 0 ? (
               <div className="p-5 text-center text-gray-400 text-sm">Aucun prestataire</div>
             ) : (
               <div className="divide-y divide-gray-50 dark:divide-gray-700/50">

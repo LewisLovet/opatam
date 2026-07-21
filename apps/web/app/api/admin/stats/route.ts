@@ -688,11 +688,16 @@ async function getActivityFeed(db: FirebaseFirestore.Firestore): Promise<Activit
 
 async function getRecentSignups(db: FirebaseFirestore.Firestore) {
   // Fetch last 10 providers and last 30 users (filter clients in-memory to avoid composite index)
-  const [providersSnap, bookingsSnap] = await Promise.all([
+  const [providersSnap, usersSnap, bookingsSnap] = await Promise.all([
     db.collection('providers')
       .orderBy('createdAt', 'desc')
       .limit(10)
       .select('businessName', 'category', 'photoURL', 'subscription', 'cities', 'createdAt')
+      .get(),
+    db.collection('users')
+      .orderBy('createdAt', 'desc')
+      .limit(30)
+      .select('displayName', 'email', 'photoURL', 'role', 'createdAt')
       .get(),
     db.collection('bookings')
       .orderBy('createdAt', 'desc')
@@ -735,7 +740,21 @@ async function getRecentSignups(db: FirebaseFirestore.Firestore) {
       };
     });
 
-  return { providers, bookings };
+  const clients = usersSnap.docs
+    .filter((doc) => doc.data().role === 'client')
+    .slice(0, 10)
+    .map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        displayName: d.displayName || null,
+        email: d.email || null,
+        photoURL: d.photoURL || null,
+        createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+      };
+    });
+
+  return { providers, clients, bookings };
 }
 
 async function getRevenueStats(): Promise<RevenueStats> {

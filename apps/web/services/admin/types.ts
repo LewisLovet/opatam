@@ -207,6 +207,7 @@ export interface RecentBookingRow {
 
 export interface RecentSignups {
   providers: RecentProvider[];
+  clients: RecentSignup[];
   bookings: RecentBookingRow[];
 }
 
