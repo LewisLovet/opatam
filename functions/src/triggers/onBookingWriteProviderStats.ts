@@ -64,13 +64,15 @@ export const onBookingWriteProviderStats = onDocumentWritten(
     if (!providerId) return;
 
     // ── Fidélité : libérer le ticket de rédemption si la résa réduite
-    // est annulée (la récompense n'est pas « brûlée » — un no-show, lui,
-    // la consomme définitivement). Best-effort, jamais bloquant.
-    if (
-      before?.status !== 'cancelled' &&
-      after?.status === 'cancelled' &&
-      after?.loyalty
-    ) {
+    // est ANNULÉE ou SUPPRIMÉE (la récompense n'est pas « brûlée » — un
+    // no-show, lui, la consomme définitivement). La suppression couvre en
+    // un seul point tous les chemins d'acompte impayé : échec
+    // PaymentIntent/Checkout, abandon volontaire, purge cron
+    // (audit P1 « ticket bloqué »). Best-effort, jamais bloquant.
+    const loyaltyCancelled =
+      before?.status !== 'cancelled' && after?.status === 'cancelled' && !!after?.loyalty;
+    const loyaltyDeleted = !after && !!before?.loyalty;
+    if (loyaltyCancelled || loyaltyDeleted) {
       try {
         const redemptions = await admin
           .firestore()
