@@ -55,9 +55,14 @@ getStoredLocale().then((stored) => {
   }
 });
 
+/** Ramène n'importe quelle valeur i18n.language sur une locale supportée. */
+export function normalizeAppLocale(lang: string | undefined): AppLocale {
+  return APP_LOCALES.includes(lang as AppLocale) ? (lang as AppLocale) : 'fr';
+}
+
 /** Langue courante de l'app — à snapshotter en `clientLocale` sur les résas. */
 export function getAppLocale(): AppLocale {
-  return i18n.language === 'en' ? 'en' : 'fr';
+  return normalizeAppLocale(i18n.language);
 }
 
 /** Choix explicite depuis le sélecteur du profil : bascule + persiste. */

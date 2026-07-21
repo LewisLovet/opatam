@@ -30,7 +30,8 @@ import {
   useNewFeatures,
   useProviderClientsCount,
 } from '../../../hooks';
-import i18n, { setAppLocale, type AppLocale } from '../../../lib/i18n';
+import i18n from '../../../lib/i18n';
+import { LanguageSettingRow } from '../../../components/LanguageSettingRow';
 import { useTheme } from '../../../theme';
 
 /** Map internal plan IDs to their i18n label keys. "Pro"/"Studio"/"Test"
@@ -402,8 +403,7 @@ function MenuItem({
 
 export default function MoreScreen() {
   const { colors, spacing } = useTheme();
-  const { t, i18n: i18nInstance } = useTranslation();
-  const currentLocale: AppLocale = i18nInstance.language === 'en' ? 'en' : 'fr';
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
@@ -458,12 +458,6 @@ export default function MoreScreen() {
         },
       ],
     );
-  };
-
-  const handleLocaleChange = (next: AppLocale) => {
-    if (next === currentLocale) return;
-    // Choix explicite : bascule immédiate + persistance AsyncStorage.
-    void setAppLocale(next);
   };
 
   return (
@@ -791,32 +785,7 @@ export default function MoreScreen() {
             {t('profile.sections.preferences')}
           </Text>
           <Card padding="none" shadow="sm">
-            {([
-              { locale: 'fr' as AppLocale, label: t('profile.language.french') },
-              { locale: 'en' as AppLocale, label: t('profile.language.english') },
-              { locale: 'it' as AppLocale, label: t('profile.language.italian') },
-            ]).map((option, idx) => (
-              <React.Fragment key={option.locale}>
-                {idx > 0 && <View style={[s.menuDivider, { backgroundColor: colors.border }]} />}
-                <Pressable
-                  onPress={() => handleLocaleChange(option.locale)}
-                  style={({ pressed }) => [
-                    s.menuItem,
-                    { backgroundColor: pressed ? colors.surfaceSecondary : 'transparent' },
-                  ]}
-                >
-                  <View style={[s.menuIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
-                    <Ionicons name="language-outline" size={20} color={colors.primary} />
-                  </View>
-                  <Text variant="body" style={s.menuLabel}>
-                    {option.label}
-                  </Text>
-                  {currentLocale === option.locale && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </Pressable>
-              </React.Fragment>
-            ))}
+            <LanguageSettingRow />
           </Card>
         </View>
 

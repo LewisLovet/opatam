@@ -114,7 +114,8 @@
             "2": "Avis vérifiés par la communauté"
           }
         }
-      }
+      },
+      "chooseLanguage": "Choisissez votre langue"
     },
     "login": {
       "title": "Connexion",

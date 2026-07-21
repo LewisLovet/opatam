@@ -70,12 +70,12 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
   const theme = parseTheme(sp.theme);
   const showHeader = sp.mode === 'modal';
   const preselectedServiceId = sp.service || null;
-  // Explicit widget language: ?lang=en → English, anything else → French.
+  // Explicit widget language: ?lang=en|it, anything else → French.
   // ALWAYS wrapped in a scoped provider — without it the embed would fall
   // through to the root layout provider and inherit the visitor's
   // NEXT_LOCALE cookie, showing English on a widget whose integrator chose
   // the default (French).
-  const embedLocale = sp.lang === 'en' ? ('en' as const) : ('fr' as const);
+  const embedLocale = sp.lang === 'en' || sp.lang === 'it' ? sp.lang : ('fr' as const);
   const withLocale = (children: ReactNode) => (
     <NextIntlClientProvider locale={embedLocale} messages={MESSAGES[embedLocale] as never}>
       {children}

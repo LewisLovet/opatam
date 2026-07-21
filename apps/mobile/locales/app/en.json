@@ -114,7 +114,8 @@
             "2": "Community-verified reviews"
           }
         }
-      }
+      },
+      "chooseLanguage": "Choose your language"
     },
     "login": {
       "title": "Sign in",

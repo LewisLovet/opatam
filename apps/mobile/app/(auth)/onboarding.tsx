@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LanguagePill } from '../../components/LanguagePill';
+import { APP_LOCALES, setAppLocale, type AppLocale } from '../../lib/i18n';
 import { setOnboardingSeen } from '../../utils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -145,9 +146,16 @@ function AnimatedFeature({
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Premier lancement : on DEMANDE la langue avant les slides (choix
+  // explicite, persisté par setAppLocale — la pastille reste dispo ensuite
+  // pour changer d'avis). L'option pré-sélectionnée = langue du téléphone.
+  const [languageChosen, setLanguageChosen] = useState(false);
+  const currentLocale: AppLocale = APP_LOCALES.includes(i18n.language as AppLocale)
+    ? (i18n.language as AppLocale)
+    : 'fr';
 
   const slides: Slide[] = SLIDE_ICONS.map((slideIcons, index) => ({
     icon: slideIcons.icon,
@@ -194,6 +202,35 @@ export default function OnboardingScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
+
+      {/* Étape 0 — choix de langue explicite au premier lancement. */}
+      {!languageChosen && (
+        <View style={[StyleSheet.absoluteFill, styles.langStep, { paddingTop: insets.top + 48 }]}>
+          <Ionicons name="globe-outline" size={44} color="rgba(255,255,255,0.9)" />
+          <RNText style={styles.langTitle}>{t('auth.onboarding.chooseLanguage')}</RNText>
+          <View style={styles.langList}>
+            {APP_LOCALES.map((l) => {
+              const selected = l === currentLocale;
+              const label = l === 'fr' ? 'Français' : l === 'en' ? 'English' : 'Italiano';
+              return (
+                <Pressable
+                  key={l}
+                  onPress={() => void setAppLocale(l)}
+                  style={[styles.langOption, selected && styles.langOptionSelected]}
+                >
+                  <RNText style={[styles.langOptionText, selected && styles.langOptionTextSelected]}>
+                    {label}
+                  </RNText>
+                  {selected && <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />}
+                </Pressable>
+              );
+            })}
+          </View>
+          <Pressable style={styles.langContinue} onPress={() => setLanguageChosen(true)}>
+            <RNText style={styles.langContinueText}>{t('auth.onboarding.continue')}</RNText>
+          </Pressable>
+        </View>
+      )}
 
       {/* Language switch — mirrors the skip button, opposite corner.
           First-launch visitors must be able to pick their language
@@ -291,6 +328,59 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 24,
     zIndex: 10,
+  },
+  langStep: {
+    zIndex: 20,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  langTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 28,
+  },
+  langList: {
+    width: '100%',
+    gap: 12,
+  },
+  langOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  langOptionSelected: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderColor: '#FFFFFF',
+  },
+  langOptionText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  langOptionTextSelected: {
+    color: '#FFFFFF',
+  },
+  langContinue: {
+    marginTop: 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+  },
+  langContinueText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: PRIMARY,
   },
   skipButton: {
     position: 'absolute',

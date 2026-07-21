@@ -20,7 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, EmptyState, Input, Text, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
-import { setAppLocale, type AppLocale } from '../../../lib/i18n';
+import { LanguageSettingRow } from '../../../components/LanguageSettingRow';
 import { useTheme } from '../../../theme';
 
 // Delete account confirmation modal
@@ -291,8 +291,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
-  const { t, i18n } = useTranslation();
-  const currentLocale: AppLocale = i18n.language === 'en' ? 'en' : 'fr';
+  const { t } = useTranslation();
   const { userData, isAuthenticated, signOut, deleteAccount } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -348,12 +347,6 @@ export default function ProfileScreen() {
       variant: 'info',
       message: t('profile.comingSoon', { feature }),
     });
-  };
-
-  const handleLocaleChange = (next: AppLocale) => {
-    if (next === currentLocale) return;
-    // Choix explicite : bascule immédiate + persistance AsyncStorage.
-    void setAppLocale(next);
   };
 
   // Not authenticated
@@ -489,32 +482,7 @@ export default function ProfileScreen() {
             {t('profile.sections.preferences')}
           </Text>
           <Card padding="none" shadow="sm">
-            {([
-              { locale: 'fr' as AppLocale, label: t('profile.language.french') },
-              { locale: 'en' as AppLocale, label: t('profile.language.english') },
-              { locale: 'it' as AppLocale, label: t('profile.language.italian') },
-            ]).map((option, idx) => (
-              <React.Fragment key={option.locale}>
-                {idx > 0 && <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />}
-                <Pressable
-                  onPress={() => handleLocaleChange(option.locale)}
-                  style={({ pressed }) => [
-                    styles.menuItem,
-                    { backgroundColor: pressed ? colors.surfaceSecondary : 'transparent' },
-                  ]}
-                >
-                  <View style={[styles.menuIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
-                    <Ionicons name="language-outline" size={20} color={colors.primary} />
-                  </View>
-                  <Text variant="body" style={styles.menuLabel}>
-                    {option.label}
-                  </Text>
-                  {currentLocale === option.locale && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </Pressable>
-              </React.Fragment>
-            ))}
+            <LanguageSettingRow />
           </Card>
         </View>
 
