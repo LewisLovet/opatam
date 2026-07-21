@@ -256,43 +256,57 @@ export default function AdminDashboardPage() {
             )}
           </div>
 
-          {/* Recent clients */}
+          {/* Dernières réservations — qui réserve chez qui : signal direct
+              des prestataires qui travaillent. */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Derniers clients inscrits
+                <Calendar className="w-4 h-4" />
+                Dernières réservations
               </h3>
-              <Link href="/admin/users" className="text-xs text-red-500 hover:text-red-600 transition-colors">
-                Voir tous
+              <Link href="/admin/bookings" className="text-xs text-red-500 hover:text-red-600 transition-colors">
+                Voir toutes
               </Link>
             </div>
-            {recentSignups.clients.length === 0 ? (
-              <div className="p-5 text-center text-gray-400 text-sm">Aucun client</div>
+            {recentSignups.bookings.length === 0 ? (
+              <div className="p-5 text-center text-gray-400 text-sm">Aucune réservation</div>
             ) : (
               <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                {recentSignups.clients.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center gap-3 px-5 py-3"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-                      {c.photoURL ? (
-                        <img src={c.photoURL} alt={c.displayName || ''} className="w-8 h-8 rounded-full object-cover" />
-                      ) : (
-                        <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                          {(c.displayName || c.email || '?').charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
+                {recentSignups.bookings.map((b) => (
+                  <div key={b.id} className="flex items-center gap-3 px-5 py-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {c.displayName || 'Sans nom'}
+                        {b.clientName}
+                        <span className="font-normal text-gray-500 dark:text-gray-400"> chez </span>
+                        {b.providerId ? (
+                          <Link
+                            href={`/admin/providers/${b.providerId}`}
+                            className="hover:underline"
+                          >
+                            {b.providerName}
+                          </Link>
+                        ) : (
+                          b.providerName
+                        )}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{c.email}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {b.serviceName}
+                        {b.price > 0 ? ` · ${(b.price / 100).toLocaleString('fr-FR')} €` : ''}
+                        {b.datetime
+                          ? ` · RDV ${new Date(b.datetime).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+                          : ''}
+                      </p>
                     </div>
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : ''}
+                    <span
+                      className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        b.status === 'confirmed'
+                          ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                          : b.status === 'cancelled'
+                            ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300'
+                            : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {b.status === 'confirmed' ? 'Confirmée' : b.status === 'cancelled' ? 'Annulée' : b.status}
                     </span>
                   </div>
                 ))}

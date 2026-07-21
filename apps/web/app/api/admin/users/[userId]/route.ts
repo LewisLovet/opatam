@@ -31,16 +31,35 @@ export async function GET(
 
     const userData = userDoc.data()!;
 
-    // Get bookings — select only needed fields to reduce bandwidth
-    const bookingsSnap = await db.collection('bookings')
-      .where('clientId', '==', userId)
-      .select('providerId', 'providerName', 'serviceName', 'datetime', 'status', 'price', 'createdAt')
-      .get();
+    // Get bookings — par clientId ET par email : les résas faites en INVITÉ
+    // (tunnel web, avant inscription) portent le même email mais un clientId
+    // nul. Sans la seconde requête, la fiche affichait « Aucune réservation »
+    // pour la plupart des clients.
+    const email = (userData.email as string | undefined)?.toLowerCase().trim();
+    const SELECT = ['providerId', 'providerName', 'serviceName', 'datetime', 'status', 'price', 'createdAt'] as const;
+    const [byIdSnap, byEmailSnap] = await Promise.all([
+      db.collection('bookings')
+        .where('clientId', '==', userId)
+        .select(...SELECT)
+        .get(),
+      email
+        ? db.collection('bookings')
+            .where('clientInfo.email', '==', email)
+            .select(...SELECT)
+            .get()
+        : Promise.resolve(null),
+    ]);
+    const seen = new Set<string>();
+    const allDocs = [...byIdSnap.docs, ...(byEmailSnap?.docs ?? [])].filter((d) => {
+      if (seen.has(d.id)) return false;
+      seen.add(d.id);
+      return true;
+    });
 
-    const bookingsCount = bookingsSnap.size;
+    const bookingsCount = allDocs.length;
 
     // Sort in memory and take 20 most recent
-    const recentBookings = bookingsSnap.docs
+    const recentBookings = allDocs
       .map((doc) => {
         const data = doc.data();
         return {

@@ -193,9 +193,21 @@ export interface RecentProvider {
   createdAt: string | null;
 }
 
+export interface RecentBookingRow {
+  id: string;
+  clientName: string;
+  providerName: string;
+  providerId: string | null;
+  serviceName: string;
+  price: number;
+  status: string;
+  datetime: string | null;
+  createdAt: string | null;
+}
+
 export interface RecentSignups {
   providers: RecentProvider[];
-  clients: RecentSignup[];
+  bookings: RecentBookingRow[];
 }
 
 // ── Provider Detail ──

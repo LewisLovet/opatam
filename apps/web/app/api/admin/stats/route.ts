@@ -688,16 +688,16 @@ async function getActivityFeed(db: FirebaseFirestore.Firestore): Promise<Activit
 
 async function getRecentSignups(db: FirebaseFirestore.Firestore) {
   // Fetch last 10 providers and last 30 users (filter clients in-memory to avoid composite index)
-  const [providersSnap, usersSnap] = await Promise.all([
+  const [providersSnap, bookingsSnap] = await Promise.all([
     db.collection('providers')
       .orderBy('createdAt', 'desc')
       .limit(10)
       .select('businessName', 'category', 'photoURL', 'subscription', 'cities', 'createdAt')
       .get(),
-    db.collection('users')
+    db.collection('bookings')
       .orderBy('createdAt', 'desc')
-      .limit(30)
-      .select('displayName', 'email', 'photoURL', 'role', 'createdAt')
+      .limit(15)
+      .select('clientInfo', 'providerName', 'providerId', 'serviceName', 'price', 'status', 'datetime', 'createdAt')
       .get(),
   ]);
 
@@ -714,21 +714,28 @@ async function getRecentSignups(db: FirebaseFirestore.Firestore) {
     };
   });
 
-  const clients = usersSnap.docs
-    .filter((doc) => doc.data().role === 'client')
+  // Dernières réservations (remplace « derniers clients inscrits ») :
+  // l'admin voit QUI a réservé CHEZ QUI — signal direct des prestataires
+  // qui travaillent. pending_payment exclu (transitoire).
+  const bookings = bookingsSnap.docs
+    .filter((doc) => doc.data().status !== 'pending_payment')
     .slice(0, 10)
     .map((doc) => {
       const d = doc.data();
       return {
         id: doc.id,
-        displayName: d.displayName || null,
-        email: d.email || null,
-        photoURL: d.photoURL || null,
+        clientName: d.clientInfo?.name || 'Client',
+        providerName: d.providerName || '—',
+        providerId: d.providerId || null,
+        serviceName: d.serviceName || '',
+        price: d.price ?? 0,
+        status: d.status || '',
+        datetime: d.datetime?.toDate?.()?.toISOString() || null,
         createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
       };
     });
 
-  return { providers, clients };
+  return { providers, bookings };
 }
 
 async function getRevenueStats(): Promise<RevenueStats> {
