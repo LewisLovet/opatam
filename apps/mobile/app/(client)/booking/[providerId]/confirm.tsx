@@ -30,6 +30,7 @@ import { computeDiscountedTotal } from '@booking-app/shared';
 import { bookingService } from '@booking-app/firebase';
 import { API_URL } from '../../../../lib/config';
 import i18n, { getAppLocale, getIntlLocale, normalizeAppLocale } from '../../../../lib/i18n';
+import { recordPositiveMomentAndMaybeAskReview } from '../../../../lib/appReview';
 
 /** App Store / Play Store URLs for the "update" CTA. iOS app id +
  *  Android package come from app.json. The `itms-apps://` /
@@ -420,6 +421,7 @@ export default function ConfirmBookingScreen() {
             : t('bookingFlow.confirm.depositPaidSuccess'),
         });
         router.replace('/(client)/(tabs)/bookings');
+      void recordPositiveMomentAndMaybeAskReview();
         return;
       }
 
@@ -434,6 +436,7 @@ export default function ConfirmBookingScreen() {
           : t('bookingFlow.confirm.bookingConfirmed'),
       });
       router.replace('/(client)/(tabs)/bookings');
+      void recordPositiveMomentAndMaybeAskReview();
     } catch (error: any) {
       console.error('Booking error:', error);
       showToast({

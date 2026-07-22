@@ -25,6 +25,7 @@ import { useTheme } from '../../../theme';
 import { Text, Card, Button, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
+import { recordPositiveMomentAndMaybeAskReview } from '../../../lib/appReview';
 
 // Helper to convert datetime
 function toDate(datetime: Date | any): Date {
@@ -191,6 +192,9 @@ export default function ReviewScreen() {
         variant: 'success',
         message: isUpdate ? t('review.toastUpdated') : t('review.toastThanks'),
       });
+      // Un client qui vient de laisser 4-5 étoiles à son prestataire est
+      // le bon moment pour proposer de noter l'app elle-même.
+      if (!isUpdate && rating >= 4) void recordPositiveMomentAndMaybeAskReview();
     } catch (err: any) {
       console.error('Error submitting review:', err);
       showToast({

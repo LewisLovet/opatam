@@ -983,6 +983,10 @@
     "memberSelect": {
       "allMembers": "Tutti i membri",
       "title": "Scegli un membro"
+    },
+    "otaGate": {
+      "title": "Aggiornamento in corso…",
+      "subtitle": "Solo qualche secondo, stiamo preparando l’ultima versione."
     }
   },
   "errors": {

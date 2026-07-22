@@ -15,6 +15,7 @@ import {
   MetaAuthSync,
   TrackingInitializer,
   UpdateGate,
+  OtaUpdateGate,
 } from '../components';
 import { DevFAB } from '../components/DevFAB';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
@@ -109,6 +110,11 @@ export default function RootLayout() {
             Rendered last so it sits on top of the entire app, incl.
             the DevFAB. Fails open on any read error. */}
         <UpdateGate />
+        {/* Splash OTA — visible uniquement quand une mise à jour est en
+            cours de téléchargement au boot (voir OtaUpdateGate). Rendu
+            après l'UpdateGate mais zIndex inférieur : le gate bloquant
+            garde la priorité visuelle. */}
+        <OtaUpdateGate />
       </View>
     </SafeAreaProvider>
   );
