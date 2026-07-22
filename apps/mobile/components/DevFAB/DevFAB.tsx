@@ -22,6 +22,7 @@ import { useTheme } from '../../theme';
 import { Text } from '../Text';
 import { ThemeConfigurator } from './ThemeConfigurator';
 import { APP_LOCALES, setAppLocale, type AppLocale } from '../../lib/i18n';
+import { previewOtaSplash } from '../OtaUpdateGate';
 import {
   resetAllOpatamStorage,
   resetNewFeaturesSeen,
@@ -212,6 +213,16 @@ export function DevFAB() {
       action: () => {
         void setAppLocale(APP_LOCALES[(APP_LOCALES.indexOf(devLocale) + 1) % APP_LOCALES.length]);
         setIsMenuOpen(false);
+      },
+    },
+    {
+      // Montre le splash de mise à jour OTA pendant 6 s (rendu réel,
+      // animations comprises) — impossible à déclencher autrement en dev.
+      icon: 'cloud-download-outline',
+      label: 'Splash OTA (aperçu 6 s)',
+      action: () => {
+        setIsMenuOpen(false);
+        previewOtaSplash();
       },
     },
     {

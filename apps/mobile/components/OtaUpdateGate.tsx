@@ -25,6 +25,15 @@ const APP_ICON = require('../assets/splash-icon.png');
 const CHECK_TIMEOUT_MS = 5000; // check silencieux — au-delà, on laisse démarrer
 const FETCH_TIMEOUT_MS = 15000; // téléchargement visible — au-delà, on s'efface
 
+// ── Aperçu dev-only ──────────────────────────────────────────────────
+// Le gate ne se déclenche JAMAIS en dev (Updates désactivé) ; ce hook
+// permet au DevFAB d'afficher le splash quelques secondes pour valider
+// le rendu sur un vrai écran. Aucun effet en production.
+let previewListener: ((ms: number) => void) | null = null;
+export function previewOtaSplash(ms = 6000): void {
+  previewListener?.(ms);
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
@@ -119,8 +128,24 @@ export function OtaUpdateGate() {
   const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Jamais en dev / dev-client : Updates n'y est pas actif.
-    if (__DEV__ || !Updates.isEnabled) return;
+    // Aperçu dev-only déclenché depuis le DevFAB.
+    if (__DEV__) {
+      previewListener = (ms) => {
+        setDownloading(true);
+        Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+        setTimeout(() => {
+          Animated.timing(fade, { toValue: 0, duration: 300, useNativeDriver: true }).start(
+            ({ finished }) => finished && setDownloading(false)
+          );
+        }, ms);
+      };
+      return () => {
+        previewListener = null;
+      };
+    }
+
+    // Jamais hors prod : Updates n'y est pas actif.
+    if (!Updates.isEnabled) return;
 
     let cancelled = false;
 
