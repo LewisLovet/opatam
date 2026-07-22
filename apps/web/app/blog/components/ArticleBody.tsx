@@ -31,7 +31,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { ChevronLeft, Clock, Sparkles } from 'lucide-react';
+import { ChevronLeft, Clock, Megaphone } from 'lucide-react';
 import {
   ARTICLE_CATEGORY_LABELS,
   isArticleNew,
@@ -166,7 +166,7 @@ export function ArticleBody({ article, related, context }: Props) {
                 </Link>
                 {isArticleNew(article.publishedAt) && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-600 text-white text-[10px] font-bold uppercase tracking-wide">
-                    <Sparkles className="w-3 h-3" />
+                    <Megaphone className="w-3 h-3" />
                     Nouveau
                   </span>
                 )}

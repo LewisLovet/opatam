@@ -189,7 +189,7 @@ function buildReferralLabel(discount: number, duration?: string | null): string 
 
 // Map Lucide icon names to Ionicons equivalents
 const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  sparkles: 'sparkles-outline',
+  sparkles: 'star-outline',
   heart: 'heart-outline',
   dumbbell: 'barbell-outline',
   lightbulb: 'bulb-outline',

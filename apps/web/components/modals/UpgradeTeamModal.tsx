@@ -5,11 +5,11 @@ import {
   Users,
   MapPin,
   Calendar,
-  Sparkles,
   ArrowRight,
   X,
   Check,
   Zap,
+  LayoutTemplate,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
@@ -52,7 +52,7 @@ const STUDIO_HIGHLIGHTS = [
     description: 'Assignez les services à chaque professionnel',
   },
   {
-    icon: Sparkles,
+    icon: LayoutTemplate,
     title: 'Page d\'équipe',
     description: 'Vitrine professionnelle avec tous vos membres',
   },

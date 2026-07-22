@@ -12,8 +12,8 @@ import {
   ChevronDown,
   ChevronRight,
   ImageIcon,
-  Sparkles,
   Youtube,
+  Send,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui';
@@ -242,7 +242,7 @@ export function ArticleEditor({ initial }: Props) {
             disabled={saving || deleting}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-50"
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {isPublished ? 'Mettre à jour' : 'Publier'}
           </button>
         </div>

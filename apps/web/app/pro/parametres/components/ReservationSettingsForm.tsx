@@ -12,7 +12,7 @@ import {
   Timer,
   MessageSquareWarning,
   Star,
-  Sparkles,
+  Megaphone,
 } from 'lucide-react';
 import { useNewFeatures } from '@/hooks/useNewFeatures';
 
@@ -216,7 +216,7 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
                 </label>
                 {showAutoReviewNew && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-500 text-white shadow-sm">
-                    <Sparkles className="w-3 h-3" />
+                    <Megaphone className="w-3 h-3" />
                     Nouveau
                   </span>
                 )}

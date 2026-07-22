@@ -227,7 +227,7 @@ export default function HelpScreen() {
                             { backgroundColor: colors.primary },
                           ]}
                         >
-                          <Ionicons name="sparkles" size={9} color="#FFFFFF" />
+                          <Ionicons name="megaphone" size={9} color="#FFFFFF" />
                           <Text
                             variant="caption"
                             style={{

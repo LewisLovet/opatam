@@ -32,8 +32,8 @@ import {
   Trash2,
   CalendarPlus,
   ShieldAlert,
-  Sparkles,
   Gift,
+  Trophy,
 } from 'lucide-react';
 import { Avatar, Badge, Button, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
@@ -444,7 +444,7 @@ export function ClientDrawer({
                     className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
                   >
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
-                      {i === 0 ? <Sparkles className="w-3.5 h-3.5" /> : (
+                      {i === 0 ? <Trophy className="w-3.5 h-3.5" /> : (
                         <span className="text-[11px] font-mono">{i + 1}</span>
                       )}
                     </span>

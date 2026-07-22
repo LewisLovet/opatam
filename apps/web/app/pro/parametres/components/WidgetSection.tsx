@@ -10,11 +10,11 @@ import {
   Square,
   Laptop,
   MousePointerClick,
-  Sparkles,
   ExternalLink,
   QrCode,
   ArrowRight,
   AlertCircle,
+  Lightbulb,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -54,7 +54,7 @@ const MODE_OPTIONS: { id: WidgetMode; label: string; description: string; icon: 
     id: 'floating',
     label: 'Flottant',
     description: 'Un bouton toujours visible dans un coin de votre site.',
-    icon: Sparkles,
+    icon: MousePointerClick,
   },
 ];
 
@@ -460,7 +460,7 @@ export function WidgetSection() {
       {/* Tips */}
       <div className="bg-primary-50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-800 rounded-xl p-4">
         <h4 className="text-sm font-semibold text-primary-700 dark:text-primary-400 mb-2 flex items-center gap-1.5">
-          <Sparkles className="w-4 h-4" />
+          <Lightbulb className="w-4 h-4" />
           Conseils d&apos;intégration
         </h4>
         <ul className="text-sm text-primary-600/80 dark:text-primary-400/70 space-y-1.5 list-disc list-inside">

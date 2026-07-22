@@ -10,8 +10,8 @@ import {
   Globe,
   GlobeLock,
   QrCode,
-  Sparkles,
   X as XIcon,
+  Megaphone,
 } from 'lucide-react';
 import {
   FEATURE_DISPLAY_LABELS,
@@ -392,7 +392,7 @@ export default function DashboardPage() {
       {showDiscoveryBanner && discoveryUnseen.length > 0 && (
         <div className="rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 p-4 text-white shadow-lg shadow-primary-600/20 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5" />
+            <Megaphone className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm">Nouvelles fonctionnalités !</p>

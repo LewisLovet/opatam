@@ -482,7 +482,7 @@ export default function ClientDetailScreen() {
                     }}
                   >
                     {i === 0 ? (
-                      <Ionicons name="sparkles" size={14} color={colors.primary} />
+                      <Ionicons name="trophy" size={14} color={colors.primary} />
                     ) : (
                       <Text variant="caption" style={{ color: colors.primary, fontWeight: '700' }}>
                         {i + 1}

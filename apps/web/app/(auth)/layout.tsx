@@ -9,8 +9,9 @@ import {
   MapPin,
   Rocket,
   ShieldCheck,
-  Sparkles,
   Tag,
+  BadgeCheck,
+  Pencil,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -55,7 +56,7 @@ const REGISTER_STEP_CONTENT = [
         description: 'Votre vitrine en ligne',
       },
       {
-        icon: Sparkles,
+        icon: BadgeCheck,
         title: 'Profil professionnel',
         description: 'Inspirez confiance',
       },
@@ -97,7 +98,7 @@ const REGISTER_STEP_CONTENT = [
         description: 'Modifiez à tout moment',
       },
       {
-        icon: Sparkles,
+        icon: ShieldCheck,
         title: 'Zéro conflit',
         description: 'Fini les doubles réservations',
       },
@@ -113,7 +114,7 @@ const REGISTER_STEP_CONTENT = [
         description: 'En ligne en 2 minutes',
       },
       {
-        icon: Sparkles,
+        icon: Pencil,
         title: 'Modifiable à tout moment',
         description: 'Évoluez avec votre activité',
       },

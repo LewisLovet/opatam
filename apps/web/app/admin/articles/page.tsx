@@ -9,8 +9,8 @@ import {
   Eye,
   Loader2,
   AlertCircle,
-  Sparkles,
   PlayCircle,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -230,7 +230,7 @@ export default function AdminArticlesPage() {
                           </p>
                           {a.isFeatured && (
                             <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">
-                              <Sparkles className="w-2.5 h-2.5" />À LA UNE
+                              <Star className="w-2.5 h-2.5" />À LA UNE
                             </span>
                           )}
                         </div>

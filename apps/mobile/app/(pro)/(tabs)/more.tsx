@@ -369,7 +369,7 @@ function MenuItem({
               elevation: 3,
             }}
           >
-            <Ionicons name="sparkles" size={11} color="#FFF" />
+            <Ionicons name="megaphone" size={11} color="#FFF" />
             <Text
               variant="caption"
               style={{

@@ -165,7 +165,7 @@ export function ShareFAB({ shopUrl, businessName, onCreateStory }: ShareFABProps
   const options = [
     { key: 'share', icon: 'share-outline' as const, bg: '#8B5CF6', iconColor: '#fff', onPress: handleShare },
     { key: 'copy', icon: 'copy-outline' as const, bg: '#3B82F6', iconColor: '#fff', onPress: handleCopyLink },
-    { key: 'story', icon: 'sparkles' as const, bg: '#E1306C', iconColor: '#fff', label: t('storyShare.fab.createStory'), onPress: onCreateStory },
+    { key: 'story', icon: 'camera' as const, bg: '#E1306C', iconColor: '#fff', label: t('storyShare.fab.createStory'), onPress: onCreateStory },
   ];
 
   const rotate = rotateAnim.interpolate({
@@ -309,7 +309,7 @@ export function ShareFAB({ shopUrl, businessName, onCreateStory }: ShareFABProps
                   },
                 ]}
               >
-                <Ionicons name="sparkles" size={9} color="#fff" />
+                <Ionicons name="camera" size={9} color="#fff" />
               </View>
             </View>
           )}

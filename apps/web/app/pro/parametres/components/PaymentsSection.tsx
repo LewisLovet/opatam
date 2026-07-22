@@ -10,10 +10,10 @@ import {
   Loader2,
   ExternalLink,
   Lock,
-  Sparkles,
   Percent,
   Clock,
   Save,
+  Zap,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input, useToast } from '@/components/ui';
@@ -397,7 +397,7 @@ export function PaymentsSection() {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
+                    <Zap className="w-4 h-4" />
                     Activer les paiements
                   </>
                 )}

@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { APP_CONFIG, SUBSCRIPTION_PLANS } from '@booking-app/shared';
 import {
   Check,
-  Sparkles,
   Crown,
   Users,
   Zap,
@@ -22,6 +21,8 @@ import {
   CheckCircle2,
   XCircle,
   Settings,
+  BadgePercent,
+  PiggyBank,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -344,7 +345,7 @@ function PlanCard({
           <div className="flex flex-wrap gap-2 mt-3">
             {savingPercent > 0 && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <BadgePercent className="w-3.5 h-3.5 text-emerald-600" />
                 <span className="text-xs font-semibold text-emerald-700">
                   -{savingPercent}%
                 </span>
@@ -812,7 +813,7 @@ function PricingPageContent() {
             </div>
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-violet-50 mb-3">
-                <Sparkles className="w-6 h-6 text-violet-600" />
+                <PiggyBank className="w-6 h-6 text-violet-600" />
               </div>
               <h4 className="font-semibold text-gray-900 mb-1">0% de commission</h4>
               <p className="text-sm text-gray-500">

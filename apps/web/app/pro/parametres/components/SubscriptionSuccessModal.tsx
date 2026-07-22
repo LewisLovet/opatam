@@ -10,10 +10,10 @@ import {
 import { createPortal } from 'react-dom';
 import {
   PartyPopper,
-  Sparkles,
   Users,
   CheckCircle2,
   ArrowRight,
+  Crown,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -135,7 +135,7 @@ export function SubscriptionSuccessModal({
 
   // Determine icons based on plan
   const isPro = planName === 'Pro';
-  const PlanIcon = isPro ? Sparkles : Users;
+  const PlanIcon = isPro ? Crown : Users;
 
   // ---------- Lifecycle ----------
 

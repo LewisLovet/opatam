@@ -904,7 +904,7 @@ function HeroCard({
   const config = {
     'fully-active': {
       colors: ['#0F766E', '#14B8A6'] as [string, string],
-      icon: 'sparkles' as const,
+      icon: 'checkmark-circle' as const,
       title: t('proPayments.hero.fullyActiveTitle'),
       subtitle: t('proPayments.hero.fullyActiveSubtitle'),
       cta: null,

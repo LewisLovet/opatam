@@ -1329,7 +1329,7 @@ export default function ProDashboardScreen() {
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+                <Ionicons name="megaphone" size={20} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text

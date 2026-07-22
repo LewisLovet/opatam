@@ -37,7 +37,7 @@ import type {
   ProviderStatsServiceBreakdown,
 } from '@booking-app/shared';
 import { Loader } from '@/components/ui';
-import { Sparkles } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import {
   PERIOD_LABELS,
   activityBreakdownFromDailies,
@@ -443,7 +443,7 @@ function EmptyState() {
   return (
     <div className="rounded-xl bg-gradient-to-br from-primary-50 to-primary-100/40 dark:from-primary-900/20 dark:to-primary-900/5 border border-primary-200/60 dark:border-primary-800/40 p-8 sm:p-10 text-center">
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-600 text-white mb-4 shadow-lg shadow-primary-600/20">
-        <Sparkles className="w-7 h-7" />
+        <TrendingUp className="w-7 h-7" />
       </div>
       <h2 className="text-xl font-bold text-gray-900 dark:text-white">
         Vos statistiques arriveront ici
