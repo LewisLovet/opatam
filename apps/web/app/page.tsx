@@ -51,7 +51,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: t('ogDescription'),
       url: canonical,
       type: 'website',
-      locale: locale === 'en' ? 'en_GB' : 'fr_FR',
+      locale: locale === 'en' ? 'en_GB' : locale === 'it' ? 'it_IT' : 'fr_FR',
       siteName: 'Opatam',
     },
     twitter: {

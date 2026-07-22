@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from '../../../lib/config';
-import i18n from '../../../lib/i18n';
+import i18n, { getIntlLocale } from '../../../lib/i18n';
 import {
   View,
   StyleSheet,
@@ -42,7 +42,7 @@ function toDate(datetime: Date | any): Date {
 
 // Locale for date/number formatting, following the current app language
 function dateLocale(): string {
-  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  return getIntlLocale(i18n.language);
 }
 
 // Helper to format date

@@ -29,7 +29,7 @@ import { memberService, schedulingService } from '@booking-app/firebase';
 import type { Member, BlockedSlot, Service } from '@booking-app/shared';
 import { ACTIVITY_CATEGORY_META } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
-import i18n from '../../../lib/i18n';
+import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
 import { useProviderBookings, useServiceCategories, useServices } from '../../../hooks';
@@ -78,7 +78,7 @@ const DEFAULT_WEEK_END_HOUR = 21;
 // ---------------------------------------------------------------------------
 
 function dateLocale(): string {
-  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  return getIntlLocale(i18n.language);
 }
 
 /** Narrow one-letter labels, Monday-first (FR: L M M J V S D). */

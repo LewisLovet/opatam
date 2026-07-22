@@ -626,12 +626,18 @@ export function getActivePromoPercentFromWindows(
 }
 
 /** Short urgency label from a day count (see getDiscountDaysLeft).
- *  Inline fr/en map — a dictionary lookup would drag react/i18n into shared. */
+ *  Inline fr/en/it map — a dictionary lookup would drag react/i18n into shared. */
 export function formatPromoCountdown(daysLeft: number, locale = 'fr'): string {
-  const en = locale.startsWith('en');
-  if (daysLeft <= 0) return en ? 'Last day' : 'Dernier jour';
-  if (daysLeft === 1) return en ? 'Ends tomorrow' : 'Se termine demain';
-  return en ? `Only ${daysLeft} days left` : `Plus que ${daysLeft} jours`;
+  const lang = locale.startsWith('en') ? 'en' : locale.startsWith('it') ? 'it' : 'fr';
+  if (daysLeft <= 0) {
+    return lang === 'en' ? 'Last day' : lang === 'it' ? 'Ultimo giorno' : 'Dernier jour';
+  }
+  if (daysLeft === 1) {
+    return lang === 'en' ? 'Ends tomorrow' : lang === 'it' ? 'Termina domani' : 'Se termine demain';
+  }
+  if (lang === 'en') return `Only ${daysLeft} days left`;
+  if (lang === 'it') return `Ancora ${daysLeft} giorni`;
+  return `Plus que ${daysLeft} jours`;
 }
 
 // Re-export the variation / option shapes by reference so callers

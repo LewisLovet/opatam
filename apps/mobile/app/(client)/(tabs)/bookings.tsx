@@ -24,6 +24,7 @@ import { useClientBookings } from '../../../hooks';
 import { useAuth } from '../../../contexts';
 import type { Booking, BookingStatus } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
+import { getIntlLocale } from '../../../lib/i18n';
 
 type TabType = 'upcoming' | 'past';
 
@@ -85,7 +86,7 @@ function BookingCard({
 }) {
   const { t, i18n } = useTranslation();
   // Locale for date/time rendering (24h clock in both languages)
-  const dateLocale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const dateLocale = getIntlLocale(i18n.language);
   const statusConfig = getStatusConfig(booking.status, t);
 
   return (

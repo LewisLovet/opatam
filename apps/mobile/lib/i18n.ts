@@ -60,6 +60,13 @@ export function normalizeAppLocale(lang: string | undefined): AppLocale {
   return APP_LOCALES.includes(lang as AppLocale) ? (lang as AppLocale) : 'fr';
 }
 
+/** Tag BCP 47 pour Intl/toLocaleDateString — couvre les 3 langues (le
+ *  ternaire binaire `'en' ? 'en-GB' : 'fr-FR'` mappait l'italien sur fr-FR). */
+export function getIntlLocale(lang?: string): 'fr-FR' | 'en-GB' | 'it-IT' {
+  const l = normalizeAppLocale(lang ?? i18n.language);
+  return l === 'en' ? 'en-GB' : l === 'it' ? 'it-IT' : 'fr-FR';
+}
+
 /** Langue courante de l'app — à snapshotter en `clientLocale` sur les résas. */
 export function getAppLocale(): AppLocale {
   return normalizeAppLocale(i18n.language);

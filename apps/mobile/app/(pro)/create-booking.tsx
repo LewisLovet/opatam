@@ -31,7 +31,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import i18n from '../../lib/i18n';
+import i18n, { getIntlLocale } from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import {
   Text,
@@ -292,7 +292,7 @@ const PERIODS_CONFIG: PeriodConfig[] = [
 
 /** Locale for date/number formatting, following the current app language */
 function dateLocale(): string {
-  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  return getIntlLocale(i18n.language);
 }
 
 function formatLongDate(date: Date): string {

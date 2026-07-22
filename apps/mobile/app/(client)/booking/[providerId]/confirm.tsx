@@ -29,7 +29,7 @@ import { useLocations } from '../../../../hooks';
 import { computeDiscountedTotal } from '@booking-app/shared';
 import { bookingService } from '@booking-app/firebase';
 import { API_URL } from '../../../../lib/config';
-import i18n, { getAppLocale } from '../../../../lib/i18n';
+import i18n, { getAppLocale, getIntlLocale, normalizeAppLocale } from '../../../../lib/i18n';
 
 /** App Store / Play Store URLs for the "update" CTA. iOS app id +
  *  Android package come from app.json. The `itms-apps://` /
@@ -100,7 +100,7 @@ async function getLoyaltyAppliedMessage(bookingId: string): Promise<string | nul
 
 // Format date in the app's current language
 function formatDate(date: Date): string {
-  const locale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const locale = getIntlLocale(i18n.language);
   const formatted = date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
@@ -111,9 +111,9 @@ function formatDate(date: Date): string {
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
-// Format time — "14h30" in French, "14:30" in English
+// Format time — "14h30" in French only; English AND Italian use "14:30"
 function formatTime(timeStr: string): string {
-  return i18n.language === 'en' ? timeStr : timeStr.replace(':', 'h');
+  return normalizeAppLocale(i18n.language) === 'fr' ? timeStr.replace(':', 'h') : timeStr;
 }
 
 export default function ConfirmBookingScreen() {

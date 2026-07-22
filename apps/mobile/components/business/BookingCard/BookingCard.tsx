@@ -10,6 +10,7 @@ import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Avatar } from '../../Avatar';
 import { BookingStatusBadge, type BookingStatus } from '../BookingStatusBadge';
+import { getIntlLocale } from '../../../lib/i18n';
 
 export interface BookingCardProps {
   /** Booking date */
@@ -50,7 +51,7 @@ export function BookingCard({
 }: BookingCardProps) {
   const { colors, spacing, radius, shadows } = useTheme();
   const { t, i18n } = useTranslation();
-  const dateLocale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const dateLocale = getIntlLocale(i18n.language);
 
   const content = (
     <View

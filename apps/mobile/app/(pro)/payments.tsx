@@ -40,7 +40,7 @@ import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useDepositsSummary, useServices } from '../../hooks';
 import { hasDepositAccess, isBaseTrialActive } from '@booking-app/shared';
-import i18n from '../../lib/i18n';
+import i18n, { getIntlLocale } from '../../lib/i18n';
 import { API_URL as BASE_URL } from '../../lib/config';
 
 /** Preset chips for the default deposit percentage — 90% of pros
@@ -881,7 +881,7 @@ function formatHours(h: number): string {
  * (replaces the shared fr-FR-only formatPrice for the KPI strip).
  */
 function formatAmount(cents: number): string {
-  const locale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const locale = getIntlLocale(i18n.language);
   return new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(cents / 100);
 }
 

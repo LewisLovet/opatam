@@ -178,7 +178,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: 'Opatam',
       images: ogImages,
       type: 'website',
-      locale: locale === 'en' ? 'en_GB' : 'fr_FR',
+      locale: locale === 'en' ? 'en_GB' : locale === 'it' ? 'it_IT' : 'fr_FR',
     },
     twitter: {
       card: ogImage ? 'summary_large_image' : 'summary',

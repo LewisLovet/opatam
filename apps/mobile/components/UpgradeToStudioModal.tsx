@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Text, Button } from './index';
 import { useTheme } from '../theme';
 import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
-import i18n from '../lib/i18n';
+import i18n, { getIntlLocale } from '../lib/i18n';
 
 interface UpgradeToStudioModalProps {
   visible: boolean;
@@ -35,7 +35,7 @@ export function UpgradeToStudioModal({ visible, onClose, context }: UpgradeToStu
   };
 
   // EUR amounts localized to the current app language (no hardcoded fr-FR).
-  const locale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const locale = getIntlLocale(i18n.language);
   const formatEur = (amount: number, digits = 2) =>
     new Intl.NumberFormat(locale, {
       style: 'currency',

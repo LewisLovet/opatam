@@ -23,7 +23,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
-import i18n from '../../lib/i18n';
+import i18n, { getIntlLocale } from '../../lib/i18n';
 import { Text, Button, Input, Card, useToast } from '../../components';
 import { useProvider } from '../../contexts';
 import {
@@ -158,7 +158,7 @@ function dateToYmd(d: Date): string {
 }
 // Locale for date/number formatting, following the current app language.
 function dateLocale(): string {
-  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  return getIntlLocale(i18n.language);
 }
 function formatPromoDate(ymd: string): string {
   return ymdToDate(ymd).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });

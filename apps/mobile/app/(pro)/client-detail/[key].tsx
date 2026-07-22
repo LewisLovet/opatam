@@ -38,7 +38,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
-import i18n from '../../../lib/i18n';
+import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { Text, Card, Avatar, Badge, Button, useToast } from '../../../components';
 import { useProvider } from '../../../contexts';
 import {
@@ -419,7 +419,7 @@ export default function ClientDetailScreen() {
                   threshold: loyalty.threshold,
                 })
               : t('proLoyalty.progress.rewardAmount', {
-                  amount: formatPrice(loyalty.rewardValue, 'EUR', i18n.language === 'en' ? 'en-GB' : 'fr-FR'),
+                  amount: formatPrice(loyalty.rewardValue, 'EUR', getIntlLocale(i18n.language)),
                   threshold: loyalty.threshold,
                 });
           return (

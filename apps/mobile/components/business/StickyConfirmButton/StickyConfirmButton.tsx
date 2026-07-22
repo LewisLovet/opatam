@@ -8,6 +8,7 @@ import { View, StyleSheet, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme';
+import { normalizeAppLocale } from '../../../lib/i18n';
 import { Text } from '../../Text';
 
 export interface StickyConfirmButtonProps {
@@ -28,11 +29,15 @@ export function StickyConfirmButton({
   loading = false,
 }: StickyConfirmButtonProps) {
   const { colors, spacing, radius } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
 
-  // Format time for display (14:30 -> 14h30)
-  const formattedTime = selectedTime?.replace(':', 'h') || null;
+  // Format time for display — French shows 14h30, English/Italian keep 14:30
+  const formattedTime = selectedTime
+    ? normalizeAppLocale(i18n.language) === 'fr'
+      ? selectedTime.replace(':', 'h')
+      : selectedTime
+    : null;
 
   const isDisabled = disabled || loading || !selectedTime;
 

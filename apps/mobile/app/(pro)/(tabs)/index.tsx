@@ -94,7 +94,7 @@ import {
   useNewFeatures,
   type NewFeatureKey,
 } from '../../../hooks/useNewFeatures';
-import i18n from '../../../lib/i18n';
+import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -115,7 +115,7 @@ function toDate(dt: any): Date {
 /** Locale-aware "Vendredi 11 juillet" — driven by the app language (Intl,
  *  no native module; same pattern as the client screens). */
 function formatDashboardDate(date: Date): string {
-  const locale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const locale = getIntlLocale(i18n.language);
   const formatted = new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     day: 'numeric',

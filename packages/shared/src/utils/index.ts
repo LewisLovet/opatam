@@ -47,7 +47,11 @@ export * from './articles';
 export function formatPrice(cents: number, currency = 'EUR', locale = 'fr-FR'): string {
   // "Free" is the only translated word here — a full dictionary lookup would
   // drag react/i18n into shared, so a tiny inline map does the job.
-  if (cents === 0) return locale.startsWith('en') ? 'Free' : 'Gratuit';
+  if (cents === 0) {
+    if (locale.startsWith('en')) return 'Free';
+    if (locale.startsWith('it')) return 'Gratis';
+    return 'Gratuit';
+  }
   const amount = cents / 100;
   return new Intl.NumberFormat(locale, {
     style: 'currency',

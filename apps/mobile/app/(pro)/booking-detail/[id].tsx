@@ -54,7 +54,7 @@ import type {
 } from '@booking-app/shared';
 import { ServiceChoicesPreview } from '../../../components/business/ServiceChoicesPreview';
 import type { WithId } from '@booking-app/firebase';
-import i18n from '../../../lib/i18n';
+import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 import {
   Text,
@@ -78,7 +78,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 /** Locale for date/number formatting, following the current app language */
 function dateLocale(): string {
-  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  return getIntlLocale(i18n.language);
 }
 
 function toDate(datetime: Date | any): Date {

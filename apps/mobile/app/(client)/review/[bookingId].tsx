@@ -24,7 +24,7 @@ import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../../theme';
 import { Text, Card, Button, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
-import i18n from '../../../lib/i18n';
+import i18n, { getIntlLocale } from '../../../lib/i18n';
 
 // Helper to convert datetime
 function toDate(datetime: Date | any): Date {
@@ -35,7 +35,7 @@ function toDate(datetime: Date | any): Date {
 
 // Locale for date formatting, following the current app language
 function dateLocale(): string {
-  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  return getIntlLocale(i18n.language);
 }
 
 function formatDate(datetime: Date | any): string {

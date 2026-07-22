@@ -57,7 +57,7 @@ import {
 } from '../../../components';
 import { useAuth, useProvider } from '../../../contexts';
 import { API_URL } from '../../../lib/config';
-import i18n from '../../../lib/i18n';
+import i18n, { getIntlLocale } from '../../../lib/i18n';
 import {
   useProviderBookings,
   useProviderActivities,
@@ -250,7 +250,7 @@ function formatDuration(minutes: number): string {
 
 /** Locale for date formatting, following the current app language */
 function dateLocale(): string {
-  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  return getIntlLocale(i18n.language);
 }
 
 /** Format a date into a section header label */

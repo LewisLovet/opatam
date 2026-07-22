@@ -23,14 +23,14 @@ import { Text, Button } from '../../components';
 import { useTheme } from '../../theme';
 import { useAuth, useProvider, useRevenueCat } from '../../contexts';
 import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
-import i18n from '../../lib/i18n';
+import i18n, { getIntlLocale } from '../../lib/i18n';
 import type { PurchasesPackage } from 'react-native-purchases';
 
 type BillingCycle = 'monthly' | 'annual';
 
 /** Locale for number/currency formatting, following the app language. */
 function numberLocale(): string {
-  return i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  return getIntlLocale(i18n.language);
 }
 
 /** Amount (in currency units, not cents) → localized currency string. */

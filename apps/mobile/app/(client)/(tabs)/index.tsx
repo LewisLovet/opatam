@@ -34,6 +34,7 @@ import {
 import { MyProvidersRow } from '../../../components/MyProvidersRow';
 import { useUserLocation, useNearbyProviders, useNavigateToProvider, useClientBookings } from '../../../hooks';
 import { useAuth } from '../../../contexts';
+import { getIntlLocale } from '../../../lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -142,7 +143,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   // Locale for date/time rendering (24h clock in both languages)
-  const dateLocale = i18n.language === 'en' ? 'en-GB' : 'fr-FR';
+  const dateLocale = getIntlLocale(i18n.language);
   const { navigateToProvider, isLoading } = useNavigateToProvider();
   const { userData, isAuthenticated } = useAuth();
   const { bookings, upcoming, past, loading: loadingBookings, refresh: refreshBookings } = useClientBookings();
