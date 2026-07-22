@@ -985,8 +985,9 @@
       "title": "Choose a member"
     },
     "otaGate": {
-      "title": "Updating…",
-      "subtitle": "Just a few seconds — getting you the very latest version."
+      "phrase1": "Setting up your space…",
+      "phrase2": "Just a few more moments…",
+      "phrase3": "Polishing the final details…"
     }
   },
   "errors": {

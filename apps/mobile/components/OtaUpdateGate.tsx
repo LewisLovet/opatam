@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Updates from 'expo-updates';
 import { useTranslation } from 'react-i18next';
@@ -122,8 +122,40 @@ function LoadingDots() {
   );
 }
 
-export function OtaUpdateGate() {
+const PHRASE_ROTATE_MS = 2600;
+
+/** Phrase d'ambiance qui tourne en fondu — on crée une atmosphère
+ *  (« Nous préparons votre espace… ») plutôt que d'annoncer une MAJ. */
+function RotatingPhrase() {
   const { t } = useTranslation();
+  const phrases = [
+    t('components.otaGate.phrase1'),
+    t('components.otaGate.phrase2'),
+    t('components.otaGate.phrase3'),
+  ];
+  const [index, setIndex] = useState(0);
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(opacity, { toValue: 0, duration: 350, useNativeDriver: true }).start(
+        ({ finished }) => {
+          if (!finished) return;
+          setIndex((i) => (i + 1) % phrases.length);
+          Animated.timing(opacity, { toValue: 1, duration: 350, useNativeDriver: true }).start();
+        }
+      );
+    }, PHRASE_ROTATE_MS);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Animated.Text style={[styles.title, { opacity }]}>{phrases[index]}</Animated.Text>
+  );
+}
+
+export function OtaUpdateGate() {
   const [downloading, setDownloading] = useState(false);
   const fade = useRef(new Animated.Value(0)).current;
 
@@ -190,8 +222,7 @@ export function OtaUpdateGate() {
         end={{ x: 1, y: 1 }}
       />
       <PulsingLogo />
-      <Text style={styles.title}>{t('components.otaGate.title')}</Text>
-      <Text style={styles.subtitle}>{t('components.otaGate.subtitle')}</Text>
+      <RotatingPhrase />
       <LoadingDots />
     </Animated.View>
   );
@@ -241,13 +272,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
-    marginTop: 10,
   },
   dotsRow: {
     flexDirection: 'row',

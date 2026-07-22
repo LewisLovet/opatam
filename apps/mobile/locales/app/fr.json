@@ -985,8 +985,9 @@
       "title": "Choisir un membre"
     },
     "otaGate": {
-      "title": "Mise à jour en cours…",
-      "subtitle": "Quelques secondes, on vous prépare la toute dernière version."
+      "phrase1": "Nous préparons votre espace…",
+      "phrase2": "Encore quelques instants…",
+      "phrase3": "On peaufine les derniers détails…"
     }
   },
   "errors": {
