@@ -166,6 +166,9 @@ export const sendReviewRequests = onSchedule(
         const data = doc.data();
         const bookingId = doc.id;
 
+        // Résa de démo seedée : pas de demande d'avis (clients fictifs).
+        if (data.demoSeed) continue;
+
         // Skip if already sent — the dedup check.
         if (data.reviewRequestSentAt) {
           continue;

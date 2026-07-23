@@ -536,6 +536,12 @@ export async function handleBookingNotifications(
   afterData: admin.firestore.DocumentData | undefined,
   bookingId: string
 ): Promise<void> {
+  // Données de démo seedées (captures store) : jamais de push.
+  if ((afterData ?? beforeData)?.demoSeed) {
+    console.log('demoSeed booking, skipping all notifications');
+    return;
+  }
+
   // Creation - no push notification needed (client is already using the app)
   // Email confirmation is sent separately via bookingEmails
   if (!beforeData && afterData) {

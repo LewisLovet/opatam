@@ -76,6 +76,8 @@ export const sendBookingReminders = onSchedule(
 
       for (const doc of snapshot.docs) {
         const data = doc.data();
+        // Résa de démo seedée : pas de rappel (clients fictifs).
+        if (data.demoSeed) continue;
         const bookingDatetime = data.datetime.toDate();
         const minutesUntil = (bookingDatetime.getTime() - now.getTime()) / (1000 * 60);
         const hoursUntil = minutesUntil / 60;

@@ -526,6 +526,13 @@ export async function handleBookingEmails(
   afterData: admin.firestore.DocumentData | undefined,
   bookingId: string
 ): Promise<void> {
+  // Données de démo seedées (captures store) : jamais d'email — ni création,
+  // ni annulation. Le champ demoSeed est posé par scripts/seed-demo-*.mjs.
+  if ((afterData ?? beforeData)?.demoSeed) {
+    console.log('[EMAIL] demoSeed booking, skipping all emails');
+    return;
+  }
+
   // Creation - send confirmation email to client + notification email to provider
   if (!beforeData && afterData) {
     const booking = afterData as BookingData;
