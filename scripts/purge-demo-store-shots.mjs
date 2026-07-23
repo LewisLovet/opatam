@@ -89,6 +89,30 @@ for (const d of pcSnap.docs) {
 }
 console.log(`providerClients de démo supprimés : ${pcDeleted}`);
 
+// ── 5b. Vues de page seedées ────────────────────────────────────────
+// Docs quotidiens/mensuels taggés : suppression, sauf si un compte
+// préexistant a été sauvegardé (pageViewsPriors) → restauration.
+const backup2 = backupSnap.exists ? backupSnap.data() : {};
+const priors = backup2.pageViewsPriors ?? { daily: {}, monthly: {} };
+for (const col of ['pageViewsDaily', 'pageViewsMonthly']) {
+  const snap = await db.collection(col).where('demoSeed', '==', TAG).where('providerId', '==', PID).get();
+  for (const d of snap.docs) {
+    const data = d.data();
+    const key = col === 'pageViewsDaily' ? data.date : data.month;
+    const prior = (col === 'pageViewsDaily' ? priors.daily : priors.monthly)?.[key];
+    if (prior != null) {
+      await d.ref.set({ providerId: PID, [col === 'pageViewsDaily' ? 'date' : 'month']: key, count: prior });
+    } else {
+      await d.ref.delete();
+    }
+  }
+  console.log(`${col} nettoyé (${snap.size} docs)`);
+}
+if (backupSnap.exists) {
+  await providerRef.update({ 'stats.pageViews': backup2.pageViews ?? FieldValue.delete() });
+  console.log('stats.pageViews restauré');
+}
+
 // ── 6. Rolling recalculé ────────────────────────────────────────────
 const agg = require('../functions/dist/lib/providerStatsAgg.js');
 const cutoff90 = new Date(NOW.getTime() - 90 * 24 * 3600 * 1000);
