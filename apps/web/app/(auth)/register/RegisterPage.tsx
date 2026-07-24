@@ -32,7 +32,7 @@ import {
   schedulingService,
   memberService,
 } from '@booking-app/firebase';
-import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, formatPrice } from '@booking-app/shared';
+import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, formatPrice, suggestEmailDomain, EMAIL_REGEX } from '@booking-app/shared';
 import type { ServiceVariation, ServiceOption, ServiceInfoField } from '@booking-app/shared';
 import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
@@ -1548,6 +1548,15 @@ export default function RegisterPage() {
             className="pl-10"
           />
           <Mail className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
+          {EMAIL_REGEX.test(data.email.trim()) && suggestEmailDomain(data.email) && (
+            <button
+              type="button"
+              onClick={() => updateData({ email: suggestEmailDomain(data.email)! })}
+              className="mt-1 text-sm text-primary-600 hover:underline"
+            >
+              Vouliez-vous dire {suggestEmailDomain(data.email)} ?
+            </button>
+          )}
         </div>
 
         <div className="relative">
@@ -1557,6 +1566,7 @@ export default function RegisterPage() {
             placeholder="vous@exemple.com"
             value={data.confirmEmail}
             onChange={(e) => updateData({ confirmEmail: e.target.value })}
+            onPaste={(e) => e.preventDefault()}
             disabled={loading}
             className="pl-10"
           />

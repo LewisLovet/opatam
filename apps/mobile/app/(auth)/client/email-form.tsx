@@ -18,11 +18,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import { Text, Button, Input, useToast } from '../../../components';
+import { EMAIL_REGEX, suggestEmailDomain } from '@booking-app/shared';
 import { useAuth } from '../../../contexts';
 
 interface FormErrors {
   firstName?: string;
   email?: string;
+  confirmEmail?: string;
   password?: string;
   phone?: string;
 }
@@ -38,6 +40,7 @@ export default function EmailFormScreen() {
   // Form state
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -58,8 +61,16 @@ export default function EmailFormScreen() {
     // Email validation
     if (!email.trim()) {
       newErrors.email = t('auth.register.errors.emailRequired');
-    } else if (!email.includes('@') || !email.includes('.')) {
+    } else if (!EMAIL_REGEX.test(email.trim())) {
       newErrors.email = t('auth.register.errors.emailInvalid');
+    }
+
+    // Confirmation d'email : attrape les fautes de frappe AVANT la création
+    // du compte (l'email est le canal des confirmations + la clé fidélité).
+    if (!confirmEmail.trim()) {
+      newErrors.confirmEmail = t('auth.register.errors.confirmEmailRequired');
+    } else if (confirmEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      newErrors.confirmEmail = t('auth.register.errors.emailMismatch');
     }
 
     // Password validation
@@ -88,6 +99,9 @@ export default function EmailFormScreen() {
     }
   };
 
+  // « lea@gmial.com » → propose « lea@gmail.com » d'un tap.
+  const emailSuggestion = EMAIL_REGEX.test(email.trim()) ? suggestEmailDomain(email) : null;
+
   // Handle submit
   const handleSubmit = async () => {
     if (!validateForm()) return;
@@ -100,7 +114,7 @@ export default function EmailFormScreen() {
 
       showToast({
         variant: 'success',
-        message: t('auth.register.successToast'),
+        message: t('auth.register.successToastWithEmail', { email: email.trim() }),
       });
 
       // Navigation is handled reactively by the auth layout guard
@@ -175,6 +189,35 @@ export default function EmailFormScreen() {
             autoCapitalize="none"
             autoComplete="email"
             error={errors.email}
+          />
+          {emailSuggestion && (
+            <Pressable
+              onPress={() => {
+                setEmail(emailSuggestion);
+                clearError('email');
+              }}
+              style={{ marginTop: -spacing.sm }}
+            >
+              <Text variant="bodySmall" style={{ color: colors.primary }}>
+                {t('auth.register.emailSuggestion', { suggestion: emailSuggestion })}
+              </Text>
+            </Pressable>
+          )}
+
+          <Input
+            label={t('auth.register.confirmEmailLabel')}
+            placeholder={t('auth.register.emailPlaceholder')}
+            value={confirmEmail}
+            onChangeText={(text) => {
+              setConfirmEmail(text);
+              clearError('confirmEmail');
+            }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="off"
+            // Coller la même faute rendrait la confirmation inutile.
+            contextMenuHidden
+            error={errors.confirmEmail}
           />
 
           <Input

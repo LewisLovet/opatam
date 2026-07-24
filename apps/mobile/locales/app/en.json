@@ -203,8 +203,13 @@
         "passwordRequired": "Password is required",
         "passwordTooShort": "Password must be at least 6 characters",
         "phoneInvalid": "Invalid format (e.g. 06 12 34 56 78)",
-        "signUpError": "Could not create your account"
-      }
+        "signUpError": "Could not create your account",
+        "confirmEmailRequired": "Confirm your email address",
+        "emailMismatch": "Email addresses do not match"
+      },
+      "confirmEmailLabel": "Confirm your email",
+      "emailSuggestion": "Did you mean {{suggestion}}?",
+      "successToastWithEmail": "Account created! Your booking confirmations will be sent to {{email}}"
     },
     "pro": {
       "steps": {
@@ -289,7 +294,8 @@
         "phoneRequired": "Phone number is required",
         "phoneInvalid": "Invalid phone number",
         "passwordTooShort": "Password must be at least 6 characters",
-        "passwordMismatch": "Passwords do not match"
+        "passwordMismatch": "Passwords do not match",
+        "emailMismatch": "Email addresses do not match"
       },
       "registerError": "Error during registration",
       "finalizing": "Creating your space…",
@@ -371,7 +377,8 @@
         "passwordLabel": "Password",
         "passwordPlaceholder": "Min. 6 characters",
         "confirmPasswordLabel": "Confirm password",
-        "confirmPasswordPlaceholder": "Confirm your password"
+        "confirmPasswordPlaceholder": "Confirm your password",
+        "confirmEmailLabel": "Confirm your email"
       },
       "legal": "By creating an account, you agree to our Terms of Service and Privacy Policy.",
       "alreadyAccount": "Already have an account?",

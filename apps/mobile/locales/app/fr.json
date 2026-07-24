@@ -203,8 +203,13 @@
         "passwordRequired": "Le mot de passe est requis",
         "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
         "phoneInvalid": "Format invalide (ex: 06 12 34 56 78)",
-        "signUpError": "Erreur lors de l'inscription"
-      }
+        "signUpError": "Erreur lors de l'inscription",
+        "confirmEmailRequired": "Confirmez votre adresse email",
+        "emailMismatch": "Les adresses email ne correspondent pas"
+      },
+      "confirmEmailLabel": "Confirmez votre email",
+      "emailSuggestion": "Vouliez-vous dire {{suggestion}} ?",
+      "successToastWithEmail": "Compte créé ! Vos confirmations de RDV seront envoyées à {{email}}"
     },
     "pro": {
       "steps": {
@@ -289,7 +294,8 @@
         "phoneRequired": "Le téléphone est requis",
         "phoneInvalid": "Numero de telephone invalide",
         "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
-        "passwordMismatch": "Les mots de passe ne correspondent pas"
+        "passwordMismatch": "Les mots de passe ne correspondent pas",
+        "emailMismatch": "Les adresses email ne correspondent pas"
       },
       "registerError": "Erreur lors de l'inscription",
       "finalizing": "Création de votre espace…",
@@ -371,7 +377,8 @@
         "passwordLabel": "Mot de passe",
         "passwordPlaceholder": "Min. 6 caractères",
         "confirmPasswordLabel": "Confirmer le mot de passe",
-        "confirmPasswordPlaceholder": "Confirmez votre mot de passe"
+        "confirmPasswordPlaceholder": "Confirmez votre mot de passe",
+        "confirmEmailLabel": "Confirmez votre email"
       },
       "legal": "En créant un compte, vous acceptez nos CGU et notre Politique de confidentialité.",
       "alreadyAccount": "Déjà un compte ?",

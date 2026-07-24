@@ -203,8 +203,13 @@
         "passwordRequired": "La password è obbligatoria",
         "passwordTooShort": "La password deve contenere almeno 6 caratteri",
         "phoneInvalid": "Formato non valido (es.: 06 12 34 56 78)",
-        "signUpError": "Errore durante la registrazione"
-      }
+        "signUpError": "Errore durante la registrazione",
+        "confirmEmailRequired": "Conferma il tuo indirizzo email",
+        "emailMismatch": "Gli indirizzi email non corrispondono"
+      },
+      "confirmEmailLabel": "Conferma la tua email",
+      "emailSuggestion": "Intendevi {{suggestion}}?",
+      "successToastWithEmail": "Account creato! Le conferme delle prenotazioni saranno inviate a {{email}}"
     },
     "pro": {
       "steps": {
@@ -289,7 +294,8 @@
         "phoneRequired": "Il telefono è obbligatorio",
         "phoneInvalid": "Numero di telefono non valido",
         "passwordTooShort": "La password deve contenere almeno 6 caratteri",
-        "passwordMismatch": "Le password non corrispondono"
+        "passwordMismatch": "Le password non corrispondono",
+        "emailMismatch": "Gli indirizzi email non corrispondono"
       },
       "registerError": "Errore durante la registrazione",
       "finalizing": "Creazione del tuo spazio…",
@@ -371,7 +377,8 @@
         "passwordLabel": "Password",
         "passwordPlaceholder": "Min. 6 caratteri",
         "confirmPasswordLabel": "Conferma la password",
-        "confirmPasswordPlaceholder": "Conferma la tua password"
+        "confirmPasswordPlaceholder": "Conferma la tua password",
+        "confirmEmailLabel": "Conferma la tua email"
       },
       "legal": "Creando un account accetti i nostri Termini di utilizzo e la nostra Informativa sulla privacy.",
       "alreadyAccount": "Hai già un account?",

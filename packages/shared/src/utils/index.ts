@@ -32,6 +32,7 @@ export * from './service-pricing';
 
 // Carte de fidélité (éligibilité, application, progression)
 export * from './loyalty';
+export * from './email';
 // Article freshness — the "Nouveau" pill recency check used by both
 // the web blog cards and the mobile in-app tutoriels list.
 export * from './articles';

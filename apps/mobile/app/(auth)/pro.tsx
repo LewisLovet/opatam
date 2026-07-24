@@ -54,6 +54,7 @@ import {
   sanitizeOptions,
   sanitizeInfoFields,
 } from '@booking-app/shared';
+import { EMAIL_REGEX as SHARED_EMAIL_REGEX, suggestEmailDomain } from '@booking-app/shared';
 import {
   VariationsEditor,
   OptionsEditor,
@@ -121,6 +122,7 @@ interface WizardData {
   phone: string;
   password: string;
   confirmPassword: string;
+  confirmEmail: string;
 }
 
 const DEFAULT_AVAILABILITY: Record<number, DayAvailability> = {
@@ -156,6 +158,7 @@ const DEFAULT_DATA: WizardData = {
   phone: '',
   password: '',
   confirmPassword: '',
+  confirmEmail: '',
 };
 
 // Labels/subtitles resolved at render via t(`auth.pro.steps.${key}.label|subtitle`).
@@ -704,6 +707,8 @@ export default function ProRegisterScreen() {
         if (!data.displayName.trim()) return t('auth.pro.validation.nameRequired');
         if (!data.email.trim()) return t('auth.pro.validation.emailRequired');
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) return t('auth.pro.validation.emailInvalid');
+        if (data.confirmEmail.trim().toLowerCase() !== data.email.trim().toLowerCase())
+          return t('auth.pro.validation.emailMismatch');
         if (!data.phone.trim()) return t('auth.pro.validation.phoneRequired');
         const cleanPhone = data.phone.replace(/[\s.\-]/g, '');
         if (cleanPhone.length < 8 || !/^(\+\d{8,15}|0\d{8,10})$/.test(cleanPhone))
@@ -1898,6 +1903,24 @@ export default function ProRegisterScreen() {
         keyboardType="email-address"
         autoCapitalize="none"
         autoComplete="email"
+      />
+      {SHARED_EMAIL_REGEX.test(data.email.trim()) && suggestEmailDomain(data.email) && (
+        <Pressable onPress={() => updateField('email', suggestEmailDomain(data.email)!)} style={{ marginTop: -spacing.sm }}>
+          <Text variant="bodySmall" style={{ color: colors.primary }}>
+            {t('auth.register.emailSuggestion', { suggestion: suggestEmailDomain(data.email) })}
+          </Text>
+        </Pressable>
+      )}
+      <Input
+        label={t('auth.pro.step6.confirmEmailLabel')}
+        placeholder={t('auth.pro.step6.emailPlaceholder')}
+        value={data.confirmEmail}
+        onChangeText={(v) => updateField('confirmEmail', v)}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="off"
+        // Coller la même faute rendrait la confirmation inutile.
+        contextMenuHidden
       />
       <Input
         label={t('auth.pro.step6.phoneLabel')}
