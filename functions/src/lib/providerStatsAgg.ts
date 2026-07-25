@@ -191,6 +191,13 @@ export interface ProviderClient {
   noshowCount: number;
   /** RDV fidélité : confirmés + connectés + post-lancement (voir countsTowardLoyalty). */
   loyaltyConfirmedCount: number;
+  /** Fidélité v2 — champs PRÉSERVÉS par le recompute (jamais recalculés ici) :
+   *  delta manuel, journal, activation de carte, opt-in promos, locale. */
+  loyaltyAdjustment?: number;
+  loyaltyAdjustmentLog?: { at: Date; delta: number; reason: string; note: string | null }[];
+  loyaltyActivatedAt?: Date | null;
+  promoEmailsOptIn?: boolean;
+  clientLocale?: string | null;
   totalRevenue: number;
   firstBookingAt: Date;
   lastBookingAt: Date;

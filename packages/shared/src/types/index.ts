@@ -449,6 +449,19 @@ export interface ProviderClient {
    *  rétroactivité, les invités ne cumulent pas. Absent sur les docs
    *  antérieurs au lancement (lire avec `?? 0`). */
   loyaltyConfirmedCount?: number;
+  /** Delta manuel posé par le pro (fidélité v2) — préservé par le recompute.
+   *  Compte effectif = loyaltyConfirmedCount + loyaltyAdjustment (plancher 0). */
+  loyaltyAdjustment?: number;
+  /** Historique des ajustements manuels (les ~50 derniers). */
+  loyaltyAdjustmentLog?: { at: Date; delta: number; reason: string; note: string | null }[];
+  /** Carte activée par le client (null = pas encore activée — la jauge et la
+   *  récompense ne s'affichent/arment qu'après activation). */
+  loyaltyActivatedAt?: Date | null;
+  /** Consentement « recevoir les promos de CE prestataire par email »
+   *  (coché à l'activation de la carte, révocable). */
+  promoEmailsOptIn?: boolean;
+  /** Locale de la dernière résa du client — langue des emails CRM/fidélité. */
+  clientLocale?: string | null;
   /** Sum of `price` over confirmed bookings (cents). */
   totalRevenue: number;
 

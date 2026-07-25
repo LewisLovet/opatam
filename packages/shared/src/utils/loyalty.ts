@@ -110,3 +110,35 @@ export function isServiceLoyaltyEligible(
 ): boolean {
   return !(settings.excludedServiceIds ?? []).includes(serviceId);
 }
+
+// ── Ajustement manuel de points (fidélité v2) ────────────────────────
+// Le pro peut ajouter/retirer des points depuis sa fiche client. Le delta
+// est stocké sur ProviderClient.loyaltyAdjustment (préservé par le
+// recompute) ; le compte EFFECTIF = loyaltyConfirmedCount + ajustement,
+// plancher 0. Chaque mouvement est journalisé et emailé au client.
+
+/** Justifications proposées au pro (slugs stockés, labels traduits). */
+export const LOYALTY_ADJUSTMENT_REASONS = [
+  'geste_commercial',
+  'compensation_retard',
+  'parrainage',
+  'evenement',
+  'erreur_correction',
+  'autre',
+] as const;
+export type LoyaltyAdjustmentReason = (typeof LOYALTY_ADJUSTMENT_REASONS)[number];
+
+export interface LoyaltyAdjustmentEntry {
+  /** Date du mouvement. */
+  at: Date;
+  /** Points ajoutés (>0) ou retirés (<0). */
+  delta: number;
+  reason: LoyaltyAdjustmentReason;
+  /** Champ libre (obligatoire quand reason === 'autre'). */
+  note: string | null;
+}
+
+/** Compte effectif affiché/armé partout : calculé + ajustement, plancher 0. */
+export function effectiveLoyaltyCount(confirmedCount: number, adjustment: number | null | undefined): number {
+  return Math.max(0, confirmedCount + (adjustment ?? 0));
+}

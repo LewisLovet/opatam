@@ -43,6 +43,7 @@ import {
   dateKeyInTz,
   getClientKey,
   type BookingLike,
+  type ProviderClient,
 } from '../lib/providerStatsAgg';
 import {
   DEFAULT_TIMEZONE,
@@ -204,31 +205,59 @@ export async function recomputeClientDoc(
     //   write — read-modify-write here costs us 1 extra read per
     //   client update, negligible at our scale.
     const existingSnap = await ref.get();
-    const previousLoyaltyCount = existingSnap.exists
-      ? ((existingSnap.data()?.loyaltyConfirmedCount as number | undefined) ?? 0)
+    // Fidélité v2 : le delta manuel fait partie du compte EFFECTIF — les
+    // jalons doivent comparer calculé+ajustement avant/après, sinon un
+    // client ajusté à 5/6 ne serait jamais notifié « récompense prête »
+    // quand son 1er RDV calculé arrive.
+    const existingAdjustment = existingSnap.exists
+      ? ((existingSnap.data()?.loyaltyAdjustment as number | undefined) ?? 0)
       : 0;
+    const previousLoyaltyCount = Math.max(
+      0,
+      (existingSnap.exists
+        ? ((existingSnap.data()?.loyaltyConfirmedCount as number | undefined) ?? 0)
+        : 0) + existingAdjustment,
+    );
     if (existingSnap.exists) {
       const existing = existingSnap.data() as Partial<{
         notes: string | null;
         preferences: Record<string, string> | null;
+        loyaltyAdjustment: number;
+        loyaltyAdjustmentLog: unknown[];
+        loyaltyActivatedAt: unknown;
+        promoEmailsOptIn: boolean;
       }>;
       if (existing.notes !== undefined) client.notes = existing.notes;
       if (existing.preferences !== undefined) client.preferences = existing.preferences;
+      // ★ Fidélité v2 — champs possédés par l'API d'ajustement/activation,
+      //   jamais par l'agrégation : à préserver sous peine d'effacement.
+      if (existing.loyaltyAdjustment !== undefined) client.loyaltyAdjustment = existing.loyaltyAdjustment;
+      if (existing.loyaltyAdjustmentLog !== undefined)
+        client.loyaltyAdjustmentLog = existing.loyaltyAdjustmentLog as ProviderClient['loyaltyAdjustmentLog'];
+      if (existing.loyaltyActivatedAt !== undefined)
+        client.loyaltyActivatedAt = existing.loyaltyActivatedAt as ProviderClient['loyaltyActivatedAt'];
+      if (existing.promoEmailsOptIn !== undefined) client.promoEmailsOptIn = existing.promoEmailsOptIn;
     }
-    await ref.set(client, { merge: false });
-
-    // ── Notifications de jalons fidélité ─────────────────────
-    // Langue = celle de la dernière résa comptée du client (clientLocale).
+    // Langue mémorisée = celle de la dernière résa du client — sert aux
+    // emails CRM (ajustements de points, promos) qui n'ont pas de résa
+    // porteuse de clientLocale sous la main.
     const latestLocale = snap.docs
       .map((d) => d.data())
       .filter((b) => b.clientId === client.clientId)
       .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))[0]
       ?.clientLocale as string | undefined;
+    client.clientLocale =
+      latestLocale === 'en' || latestLocale === 'it'
+        ? latestLocale
+        : ((existingSnap.data()?.clientLocale as string | undefined) ?? 'fr');
+    await ref.set(client, { merge: false });
+
+    // ── Notifications de jalons fidélité ─────────────────────
     await maybeSendLoyaltyMilestone(
       providerId,
       client.clientId,
       previousLoyaltyCount,
-      client.loyaltyConfirmedCount,
+      Math.max(0, client.loyaltyConfirmedCount + existingAdjustment),
       latestLocale === 'en' || latestLocale === 'it' ? latestLocale : 'fr',
       ctx.providerName,
       client.email,
