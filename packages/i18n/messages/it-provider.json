@@ -123,6 +123,8 @@
     "infoAll": "Vale su tutti i servizi.",
     "infoExcept": "Tutti i servizi tranne: {list}.",
     "infoOnly": "Servizi inclusi: {list}.",
-    "appNudge": "Accumula i tuoi punti prenotando dall'app:"
+    "appCta": "Scarica l'app Opatam per attivare la tua carta con il tuo account e accumulare i tuoi appuntamenti.",
+    "appCtaAppStoreAria": "Scarica Opatam sull'App Store",
+    "appCtaPlayAria": "Scarica Opatam su Google Play"
   }
 }

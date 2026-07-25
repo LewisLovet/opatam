@@ -123,6 +123,8 @@
     "infoAll": "Toutes les prestations y ouvrent droit.",
     "infoExcept": "Toutes les prestations sauf : {list}.",
     "infoOnly": "Prestations concernées : {list}.",
-    "appNudge": "Cumulez vos points en réservant depuis l'app :"
+    "appCta": "Téléchargez l'app Opatam pour activer votre carte avec votre compte et cumuler vos rendez-vous.",
+    "appCtaAppStoreAria": "Télécharger Opatam sur l'App Store",
+    "appCtaPlayAria": "Télécharger Opatam sur Google Play"
   }
 }

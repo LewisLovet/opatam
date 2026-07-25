@@ -123,6 +123,8 @@
     "infoAll": "All services are eligible.",
     "infoExcept": "All services except: {list}.",
     "infoOnly": "Eligible services: {list}.",
-    "appNudge": "Collect your points by booking from the app:"
+    "appCta": "Download the Opatam app to activate your card with your account and collect your appointments.",
+    "appCtaAppStoreAria": "Download Opatam on the App Store",
+    "appCtaPlayAria": "Download Opatam on Google Play"
   }
 }
