@@ -26,7 +26,22 @@
  * and that's the end of it — analytics is best-effort.
  */
 
-import { AppEventsLogger, Settings } from 'react-native-fbsdk-next';
+import { Platform } from 'react-native';
+
+// react-native-fbsdk-next n'a pas d'implémentation web : require paresseux
+// pour que l'aperçu `expo start --web` ne crashe pas au chargement du module.
+// Sur web, les helpers deviennent des no-op (chaque appel est déjà sous
+// try/catch — AppEventsLogger null → warn silencieux).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let AppEventsLogger: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Settings: any = null;
+if (Platform.OS !== 'web') {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fbsdk = require('react-native-fbsdk-next');
+  AppEventsLogger = fbsdk.AppEventsLogger;
+  Settings = fbsdk.Settings;
+}
 
 /** Mirror of the web `MetaStandardEvent` union — same names so the
  *  two surfaces look like one API at the call site. Each maps to

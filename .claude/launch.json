@@ -4,15 +4,21 @@
     {
       "name": "web",
       "runtimeExecutable": "/bin/bash",
-      "runtimeArgs": ["-c", "export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && pnpm --filter @booking-app/web exec next dev --hostname 0.0.0.0 --port 3000"],
-      "port": 3000,
-      "autoPort": false
+      "runtimeArgs": ["-c", "cd '/Users/lewislovet/Desktop/KamerleonTech/booking app/booking-app' && export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && pnpm --filter @booking-app/web exec next dev --hostname 0.0.0.0 --port ${PORT:-3100}"],
+      "port": 3100,
+      "autoPort": true
+    },
+    {
+      "name": "mobile-web",
+      "url": "http://localhost:8081",
+      "port": 8081
     },
     {
       "name": "mobile",
       "runtimeExecutable": "/bin/bash",
       "runtimeArgs": ["-c", "export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && pnpm dev:mobile"],
-      "port": 8081
+      "port": 8081,
+      "autoPort": false
     },
     {
       "name": "firebase-emulators",

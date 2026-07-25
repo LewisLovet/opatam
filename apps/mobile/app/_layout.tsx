@@ -2,11 +2,20 @@
 // moindre écran (import à effet de bord, résolution de langue incluse).
 import '../lib/i18n';
 import { View } from 'react-native';
+import React from 'react';
+import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StripeProvider } from '@stripe/stripe-react-native';
+// Stripe n'a pas de module web : sur l'aperçu `expo start --web`, on rend
+// les enfants directement (les écrans de paiement restent natifs only).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const StripeProvider: any =
+  Platform.OS === 'web'
+    ? ({ children }: { children: React.ReactNode }) => children
+    : // eslint-disable-next-line @typescript-eslint/no-var-requires
+      require('@stripe/stripe-react-native').StripeProvider;
 import { ThemeProvider } from '../theme';
 import {
   ToastProvider,
