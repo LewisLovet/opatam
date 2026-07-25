@@ -58,8 +58,15 @@ export async function GET(request: NextRequest) {
       const loyalty = (p.settings?.loyalty ?? null) as LoyaltySettings | null;
       if (!isLoyaltyConfigValid(loyalty) || !hasLoyaltyAccess(p)) return [];
       // Compteur FIDÉLITÉ : seuls les RDV faits connecté après le lancement
-      // ET passés remplissent la carte (champ API inchangé pour le mobile).
-      const confirmedCount = (client.loyaltyConfirmedCount as number | undefined) ?? 0;
+      // ET passés remplissent la carte — PLUS le delta manuel du pro
+      // (fidélité v2). Le champ API `confirmedCount` reste le compte
+      // effectif affiché, inchangé pour le mobile.
+      const confirmedCount = Math.max(
+        0,
+        ((client.loyaltyConfirmedCount as number | undefined) ?? 0) +
+          ((client.loyaltyAdjustment as number | undefined) ?? 0),
+      );
+      const activated = !!client.loyaltyActivatedAt;
       return [
         {
           providerId: providers[i].id,
@@ -72,7 +79,12 @@ export async function GET(request: NextRequest) {
           rewardType: loyalty.rewardType,
           rewardValue: loyalty.rewardValue,
           remaining: loyaltyRemaining(confirmedCount, loyalty.threshold),
-          armed: isLoyaltyRewardArmed(confirmedCount, loyalty.threshold),
+          // Fidélité v2 : pas de récompense armée tant que la carte n'est
+          // pas activée (même gate que la route de réservation).
+          armed: activated && isLoyaltyRewardArmed(confirmedCount, loyalty.threshold),
+          // Nouveaux champs pour le bouton « Activer ma carte » + opt-in.
+          activated,
+          promoEmailsOptIn: (client.promoEmailsOptIn as boolean | undefined) ?? false,
         },
       ];
     });
