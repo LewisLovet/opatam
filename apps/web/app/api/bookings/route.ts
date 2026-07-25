@@ -163,6 +163,16 @@ export async function POST(request: NextRequest) {
         try {
           const adminDb = getAdminFirestore();
           const threshold = providerData.settings!.loyalty!.threshold;
+          // Fidélité v2 : la carte doit être ACTIVÉE par le client pour
+          // consommer une récompense, et le compte effectif inclut le
+          // delta manuel posé par le pro (les deux vivent sur le doc
+          // providerClients, préservés par le recompute).
+          const clientDoc = await adminDb
+            .collection('providerClients')
+            .doc(`${validated.providerId}_${clientKey}`)
+            .get();
+          const cardActivated = !!clientDoc.data()?.loyaltyActivatedAt;
+          const manualAdjustment = (clientDoc.data()?.loyaltyAdjustment as number | undefined) ?? 0;
           // Comptage live : mêmes conditions que l'agrégateur (confirmée +
           // connectée + post-lancement + RDV passé).
           const now = Date.now();
@@ -172,7 +182,7 @@ export async function POST(request: NextRequest) {
             .where('providerId', '==', validated.providerId)
             .where('clientInfo.email', '==', validated.clientInfo!.email.trim().toLowerCase())
             .get();
-          const count = bookingsSnap.docs.filter((d) => {
+          const computed = bookingsSnap.docs.filter((d) => {
             const b = d.data();
             const createdAt = b.createdAt?.toDate?.()?.getTime?.() ?? 0;
             const datetime = b.datetime?.toDate?.()?.getTime?.() ?? Number.MAX_SAFE_INTEGER;
@@ -180,8 +190,9 @@ export async function POST(request: NextRequest) {
               b.status === 'confirmed' && !!b.clientId && createdAt >= launch && datetime <= now
             );
           }).length;
+          const count = Math.max(0, computed + manualAdjustment);
 
-          if (isLoyaltyRewardArmed(count, threshold)) {
+          if (cardActivated && isLoyaltyRewardArmed(count, threshold)) {
             // Ticket de rédemption — un par cycle de carte. Transaction :
             // si le ticket existe déjà (résa réduite en cours, même pas
             // encore passée), la récompense est déjà consommée → pas de
