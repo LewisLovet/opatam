@@ -33,6 +33,18 @@ function getResend(): Resend {
   return resendInstance;
 }
 
+/** Envoi générique — pour les triggers qui construisent leur propre HTML
+ *  (ex. emails promo fidélité v2). Best-effort : throw sur erreur Resend. */
+export async function sendRawEmail(params: { to: string; subject: string; html: string }): Promise<void> {
+  const { error } = await getResend().emails.send({
+    from: emailConfig.from,
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+  });
+  if (error) throw new Error(String(error.message ?? error));
+}
+
 // Email configuration
 export const emailConfig = {
   from: 'Opatam <noreply@kamerleontech.com>',

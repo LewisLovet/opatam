@@ -26,6 +26,7 @@ export { purgeProviderStats } from './callable/purgeProviderStats';
 export { onBookingWrite } from './triggers/onBookingWrite';
 export { onBookingCancelledRefund } from './triggers/onBookingCancelledRefund';
 export { onUserCreateClaimLoyaltyBooking } from './triggers/onUserCreateClaimLoyaltyBooking';
+export { onServiceDiscountPromoEmail } from './triggers/onServiceDiscountPromoEmail';
 export { onUserWrite, onProviderWrite, onBookingWriteStats, onReviewWrite } from './triggers/onStatsUpdate';
 export { onBookingWriteProviderStats } from './triggers/onBookingWriteProviderStats';
 export { onBlockedSlotWriteProviderStats } from './triggers/onBlockedSlotWriteProviderStats';
