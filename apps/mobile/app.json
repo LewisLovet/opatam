@@ -82,6 +82,11 @@
               "scheme": "https",
               "host": "opatam.com",
               "pathPrefix": "/reservation/confirmation/"
+            },
+            {
+              "scheme": "https",
+              "host": "opatam.com",
+              "pathPrefix": "/fidelite"
             }
           ],
           "category": [

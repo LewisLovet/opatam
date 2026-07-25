@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { localizedPath } from '@/lib/localizedPath';
 import { Megaphone, Gift, Info } from 'lucide-react';
 import type { ServiceDiscount, LoyaltySettings } from '@booking-app/shared';
 import { isLoyaltyConfigValid, hasLoyaltyAccess } from '@booking-app/shared';
@@ -173,6 +174,7 @@ export function ProviderPageClient({
   isDemo = false,
 }: ProviderPageClientProps) {
   const t = useTranslations('provider');
+  const locale = useLocale();
   const tLoyalty = useTranslations('provider.loyaltyBanner');
   // Libellés « Télécharger sur » des badges stores — même namespace que le
   // composant AppStoreBadges (layout.appBadges), déjà traduit fr/en/it.
@@ -319,9 +321,16 @@ export function ProviderPageClient({
                   {/* CTA app — la carte ne se cumule qu'en réservant connecté
                       depuis l'app : encart badges stores sous le bandeau. */}
                   <div className="mt-3 pt-3 border-t border-primary-200/60 dark:border-primary-800/60 flex flex-col sm:flex-row sm:items-center gap-3">
-                    <p className="flex-1 min-w-0 text-xs text-gray-600 dark:text-gray-300">
+                    {/* Lien intelligent : sur mobile avec l'app installée,
+                        /fidelite est intercepté (universal link / app link) et
+                        ouvre directement l'espace fidélité ; sinon la page
+                        explique et renvoie vers les stores. */}
+                    <a
+                      href={localizedPath('/fidelite', locale)}
+                      className="flex-1 min-w-0 text-xs text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 underline decoration-dotted underline-offset-2"
+                    >
                       {t('appCta')}
-                    </p>
+                    </a>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <a
                         href="https://apps.apple.com/app/opatam/id6759246218"

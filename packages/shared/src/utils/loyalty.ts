@@ -142,3 +142,36 @@ export interface LoyaltyAdjustmentEntry {
 export function effectiveLoyaltyCount(confirmedCount: number, adjustment: number | null | undefined): number {
   return Math.max(0, confirmedCount + (adjustment ?? 0));
 }
+
+// ── Activation de carte (fidélité v2) ────────────────────────────────
+// Date de bascule v2. Toute fiche client CRÉÉE AVANT cette date est
+// considérée comme activée d'office (« cartes entamées auto-activées »,
+// décision produit 2026-07-24) : ces clients cumulaient déjà sous le
+// régime automatique, leur récompense ne doit jamais cesser de s'armer.
+//
+// Ce grandfathering vit DANS LE CODE et pas seulement dans la migration :
+// il rend le déploiement insensible à l'ordre des opérations (push web
+// avant ou après le script de migration, peu importe) et couvre les
+// fiches créées entre les deux. La migration reste utile pour rendre
+// l'état explicite côté UI.
+export const LOYALTY_V2_AT = new Date('2026-07-25T00:00:00+02:00');
+
+export interface LoyaltyActivationLike {
+  loyaltyActivatedAt?: Date | { toDate?: () => Date } | null;
+  createdAt?: Date | { toDate?: () => Date } | null;
+}
+
+function toDate(v: unknown): Date | null {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  const maybe = v as { toDate?: () => Date };
+  return typeof maybe.toDate === 'function' ? maybe.toDate() : null;
+}
+
+/** Carte utilisable (jauge visible, récompense armable) ? */
+export function isLoyaltyCardActivated(client: LoyaltyActivationLike | null | undefined): boolean {
+  if (!client) return false;
+  if (toDate(client.loyaltyActivatedAt)) return true;
+  const created = toDate(client.createdAt);
+  return !!created && created.getTime() < LOYALTY_V2_AT.getTime();
+}

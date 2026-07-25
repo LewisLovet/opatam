@@ -1,6 +1,15 @@
 {
   "applinks": {
     "apps": [],
-    "details": []
+    "details": [
+      {
+        "appID": "REMPLACER_TEAM_ID.com.kamerleontech.opatam",
+        "paths": [
+          "/fidelite",
+          "/avis/*",
+          "/reservation/confirmation/*"
+        ]
+      }
+    ]
   }
 }

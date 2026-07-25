@@ -6,6 +6,7 @@ import {
   hasLoyaltyAccess,
   isLoyaltyConfigValid,
   isLoyaltyRewardArmed,
+  isLoyaltyCardActivated,
   loyaltyRemaining,
   type LoyaltySettings,
 } from '@booking-app/shared';
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
         ((client.loyaltyConfirmedCount as number | undefined) ?? 0) +
           ((client.loyaltyAdjustment as number | undefined) ?? 0),
       );
-      const activated = !!client.loyaltyActivatedAt;
+      const activated = isLoyaltyCardActivated(client);
       return [
         {
           providerId: providers[i].id,

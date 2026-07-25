@@ -113,7 +113,8 @@ export const onServiceDiscountPromoEmail = onDocumentWritten(
       .get();
     const recipients = clientsSnap.docs.filter((d) => {
       const c = d.data();
-      return !!c.loyaltyActivatedAt && c.promoEmailsOptIn === true && !!c.email && !c.demoSeed;
+      // opt-in explicite requis (jamais de consentement implicite, RGPD)
+      return c.promoEmailsOptIn === true && !!c.email && !c.demoSeed;
     });
     if (recipients.length === 0) {
       console.log(`[promoEmail] ${providerId}: aucun destinataire opt-in`);

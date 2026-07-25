@@ -10,6 +10,7 @@ import {
   isLoyaltyRewardArmed,
   hasLoyaltyAccess,
   getClientKey,
+  isLoyaltyCardActivated,
 } from '@booking-app/shared';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
             .collection('providerClients')
             .doc(`${validated.providerId}_${clientKey}`)
             .get();
-          const cardActivated = !!clientDoc.data()?.loyaltyActivatedAt;
+          const cardActivated = isLoyaltyCardActivated(clientDoc.data());
           const manualAdjustment = (clientDoc.data()?.loyaltyAdjustment as number | undefined) ?? 0;
           // Comptage live : mêmes conditions que l'agrégateur (confirmée +
           // connectée + post-lancement + RDV passé).

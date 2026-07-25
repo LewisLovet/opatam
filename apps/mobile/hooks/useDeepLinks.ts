@@ -5,6 +5,7 @@
  * Provider pages (/p/*) are NOT intercepted — they stay in the browser.
  *
  * URL mapping:
+ *   opatam.com/fidelite                    → /(client)/loyalty
  *   opatam.com/avis/{bookingId}            → /(client)/review/{bookingId}
  *   opatam.com/reservation/confirmation/{id} → /(client)/booking-detail/{id}
  */
@@ -35,6 +36,14 @@ export function useDeepLinks() {
         const confirmMatch = path.match(/^\/reservation\/confirmation\/([^/]+)$/);
         if (confirmMatch) {
           router.push(`/(client)/booking-detail/${confirmMatch[1]}`);
+          return;
+        }
+
+        // /fidelite → espace fidélité du client (lien « ouvrir ma carte
+        // dans l'app » depuis le web). Le guard (auth) redirige vers la
+        // connexion si besoin, puis l'écran s'affiche.
+        if (path === '/fidelite' || path === '/en/fidelite' || path === '/it/fidelite') {
+          router.push('/(client)/loyalty');
           return;
         }
 
