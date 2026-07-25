@@ -26,8 +26,12 @@ export interface LoyaltyCard {
   rewardValue: number;
   /** RDV honorés restants avant récompense (0 = armée). */
   remaining: number;
-  /** true = la prochaine réservation est réduite. */
+  /** true = la prochaine réservation est réduite (gated par l'activation). */
   armed: boolean;
+  /** false = le client n'a pas encore activé sa carte (jauge voilée). */
+  activated: boolean;
+  /** Opt-in emails promos du prestataire (révocable). */
+  promoEmailsOptIn: boolean;
 }
 
 export interface UseLoyaltyCardsResult {
@@ -89,6 +93,36 @@ export function useLoyaltyCards(enabled = true): UseLoyaltyCardsResult {
   }, [active, refresh]);
 
   return { cards, loading, error, refresh };
+}
+
+/**
+ * POST /api/loyalty/activate — active la carte, OU met à jour l'opt-in seul
+ * si elle l'est déjà (le serveur est idempotent). Retourne `true` si le
+ * serveur a accepté ; jamais de throw (le réseau LAN peut être injoignable).
+ */
+export async function postLoyaltyActivation(
+  user: { getIdToken: () => Promise<string> },
+  providerId: string,
+  promoEmailsOptIn: boolean,
+): Promise<boolean> {
+  try {
+    const token = await user.getIdToken();
+    // Même timeout dur que le GET : pas d'attente infinie sur un POST.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(`${API_URL}/api/loyalty/activate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ providerId, promoEmailsOptIn }),
+      signal: ctrl.signal,
+    }).finally(() => clearTimeout(timer));
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**

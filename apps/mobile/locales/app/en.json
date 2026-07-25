@@ -2901,6 +2901,20 @@
       "only": "Eligible services: {{list}}."
     }
   },
+  "clientLoyalty": {
+    "activation": {
+      "teaser": "Activate your card to unlock your rewards",
+      "activateButton": "Activate my card",
+      "sheetTitle": "Your card is waiting for you",
+      "sheetDescription": "Activate your loyalty card at {{businessName}}: your past appointments already count.",
+      "optInLabel": "Receive {{businessName}}'s discounts by email",
+      "optInHint": "You can change your mind at any time.",
+      "confirmButton": "Activate",
+      "error": "Activation failed. Check your connection and try again.",
+      "emailsOn": "Promo emails: on",
+      "emailsOff": "Promo emails: off"
+    }
+  },
   "proLoyalty": {
     "card": {
       "title": "Loyalty card",

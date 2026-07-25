@@ -2901,6 +2901,20 @@
       "only": "Prestations concernées : {{list}}."
     }
   },
+  "clientLoyalty": {
+    "activation": {
+      "teaser": "Activez votre carte pour découvrir vos avantages",
+      "activateButton": "Activer ma carte",
+      "sheetTitle": "Votre carte vous attend",
+      "sheetDescription": "Activez votre carte de fidélité chez {{businessName}} : vos rendez-vous passés comptent déjà.",
+      "optInLabel": "Recevoir les réductions de {{businessName}} par email",
+      "optInHint": "Vous pourrez changer d'avis à tout moment.",
+      "confirmButton": "Activer",
+      "error": "L'activation a échoué. Vérifiez votre connexion puis réessayez.",
+      "emailsOn": "Emails promos : activés",
+      "emailsOff": "Emails promos : désactivés"
+    }
+  },
   "proLoyalty": {
     "card": {
       "title": "Carte de fidélité",

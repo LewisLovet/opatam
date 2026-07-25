@@ -2901,6 +2901,20 @@
       "only": "Servizi inclusi: {{list}}."
     }
   },
+  "clientLoyalty": {
+    "activation": {
+      "teaser": "Attiva la tua carta per scoprire i tuoi vantaggi",
+      "activateButton": "Attiva la mia carta",
+      "sheetTitle": "La tua carta ti aspetta",
+      "sheetDescription": "Attiva la tua carta fedeltà da {{businessName}}: i tuoi appuntamenti passati contano già.",
+      "optInLabel": "Ricevi le riduzioni di {{businessName}} via email",
+      "optInHint": "Potrai cambiare idea in qualsiasi momento.",
+      "confirmButton": "Attiva",
+      "error": "Attivazione non riuscita. Controlla la connessione e riprova.",
+      "emailsOn": "Email promo: attive",
+      "emailsOff": "Email promo: disattivate"
+    }
+  },
   "proLoyalty": {
     "card": {
       "title": "Carta fedeltà",
