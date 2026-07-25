@@ -108,6 +108,22 @@ function hydrate(snap: DocumentSnapshot): WithId<ProviderClient> {
     marketingOptOutAt: ts(data.marketingOptOutAt),
     createdAt: ts(data.createdAt) ?? new Date(0),
     updatedAt: ts(data.updatedAt) ?? new Date(0),
+    // Fidélité v2 — les entrées du journal d'ajustement portent un
+    // Timestamp Firestore qu'il faut réhydrater en Date (le type partagé
+    // promet `at: Date`, l'UI appelle toLocaleDateString dessus).
+    loyaltyActivatedAt: ts(data.loyaltyActivatedAt),
+    ...(Array.isArray(data.loyaltyAdjustmentLog)
+      ? {
+          loyaltyAdjustmentLog: (
+            data.loyaltyAdjustmentLog as Array<Record<string, unknown>>
+          ).map((e) => ({
+            at: ts(e.at) ?? new Date(0),
+            delta: (e.delta as number) ?? 0,
+            reason: (e.reason as string) ?? 'autre',
+            note: (e.note as string | null) ?? null,
+          })),
+        }
+      : {}),
   };
 }
 

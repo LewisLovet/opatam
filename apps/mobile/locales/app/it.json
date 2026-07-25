@@ -2959,6 +2959,31 @@
       "rewardAmount": "−{{amount}} ogni {{threshold}} app.ti"
     }
   },
+  "proLoyaltyAdjust": {
+    "button": "Regola i punti",
+    "title": "Regola i punti",
+    "subtitle": "Aggiungi o togli punti sulla carta di questo cliente — riceverà un'email riepilogativa.",
+    "deltaLabel": "Punti da aggiungere o togliere",
+    "reasonLabel": "Motivo",
+    "reasons": {
+      "geste_commercial": "Gesto commerciale",
+      "compensation_retard": "Compensazione per un ritardo",
+      "parrainage": "Passaparola",
+      "evenement": "Evento speciale",
+      "erreur_correction": "Correzione di un errore",
+      "autre": "Altro"
+    },
+    "noteLabelOptional": "Nota (facoltativa)",
+    "noteLabelRequired": "Precisazione (obbligatoria)",
+    "notePlaceholder": "Visibile al cliente nell'email…",
+    "noteRequiredPlaceholder": "Precisa il motivo della modifica…",
+    "noteRequiredError": "Una precisazione è obbligatoria per « Altro ».",
+    "submit": "Conferma la modifica",
+    "success": "Punti aggiornati — il cliente è stato avvisato via email",
+    "error": "Impossibile aggiornare i punti. Riprova.",
+    "manualDelta": "Modifica manuale: {{delta}}",
+    "historyTitle": "Cronologia delle modifiche"
+  },
   "proLoyaltyPage": {
     "title": "Fedeltà",
     "edit": "Modifica",

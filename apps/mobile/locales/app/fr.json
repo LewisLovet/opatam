@@ -2959,6 +2959,31 @@
       "rewardAmount": "−{{amount}} tous les {{threshold}} RDV"
     }
   },
+  "proLoyaltyAdjust": {
+    "button": "Ajuster les points",
+    "title": "Ajuster les points",
+    "subtitle": "Ajoutez ou retirez des points sur la carte de ce client — il recevra un email récapitulatif.",
+    "deltaLabel": "Points à ajouter ou retirer",
+    "reasonLabel": "Justification",
+    "reasons": {
+      "geste_commercial": "Geste commercial",
+      "compensation_retard": "Compensation pour un retard",
+      "parrainage": "Parrainage",
+      "evenement": "Événement",
+      "erreur_correction": "Correction d'une erreur",
+      "autre": "Autre"
+    },
+    "noteLabelOptional": "Note (optionnelle)",
+    "noteLabelRequired": "Précision (obligatoire)",
+    "notePlaceholder": "Visible par le client dans l'email…",
+    "noteRequiredPlaceholder": "Précisez la raison de l'ajustement…",
+    "noteRequiredError": "Une précision est obligatoire pour « Autre ».",
+    "submit": "Valider l'ajustement",
+    "success": "Points mis à jour — le client a été prévenu par email",
+    "error": "Impossible de mettre à jour les points. Réessayez.",
+    "manualDelta": "Ajustement manuel : {{delta}}",
+    "historyTitle": "Historique des ajustements"
+  },
   "proLoyaltyPage": {
     "title": "Fidélité",
     "edit": "Modifier",

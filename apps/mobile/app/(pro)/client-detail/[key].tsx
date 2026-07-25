@@ -57,7 +57,13 @@ import {
   isLoyaltyRewardArmed,
   loyaltyRemaining,
   formatPrice,
+  effectiveLoyaltyCount,
+  LOYALTY_ADJUSTMENT_REASONS,
+  type LoyaltyAdjustmentReason,
 } from '@booking-app/shared';
+import { OverlaySheet } from '../../../components/OverlaySheet';
+import { useAuth } from '../../../contexts';
+import { API_URL } from '../../../lib/config';
 import {
   TAG_META_BY_VALUE,
   formatRevenue,
@@ -120,6 +126,10 @@ export default function ClientDetailScreen() {
     notes: '',
     prefs: '[]',
   });
+
+  // Fidélité v2 — ajustement manuel de points.
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustLogOpen, setAdjustLogOpen] = useState(false);
 
   // ── Load doc + history when the route mounts ───────────────────
   useEffect(() => {
@@ -408,8 +418,14 @@ export default function ClientDetailScreen() {
         {(() => {
           const loyalty = provider?.settings?.loyalty;
           if (!hasLoyaltyAccess(provider) || !isLoyaltyConfigValid(loyalty)) return null;
-          // Compteur FIDÉLITÉ (connecté + post-lancement), pas confirmedCount.
-          const loyaltyCount = client.loyaltyConfirmedCount ?? 0;
+          // Compteur EFFECTIF (fidélité v2) : RDV honorés connectés
+          // post-lancement + ajustement manuel du pro, plancher 0 —
+          // même formule que le serveur au moment d'armer la récompense.
+          const adjustment = client.loyaltyAdjustment ?? 0;
+          const loyaltyCount = effectiveLoyaltyCount(
+            client.loyaltyConfirmedCount ?? 0,
+            adjustment,
+          );
           const armed = isLoyaltyRewardArmed(loyaltyCount, loyalty.threshold);
           const remaining = loyaltyRemaining(loyaltyCount, loyalty.threshold);
           const rewardLabel =
@@ -422,6 +438,7 @@ export default function ClientDetailScreen() {
                   amount: formatPrice(loyalty.rewardValue, 'EUR', getIntlLocale(i18n.language)),
                   threshold: loyalty.threshold,
                 });
+          const log = client.loyaltyAdjustmentLog ?? [];
           return (
             <Card padding="md" style={{ marginBottom: spacing.md }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
@@ -450,8 +467,99 @@ export default function ClientDetailScreen() {
                   <Text variant="caption" color="textSecondary">
                     {rewardLabel}
                   </Text>
+                  {adjustment !== 0 && (
+                    <Text variant="caption" color="textSecondary">
+                      {t('proLoyaltyAdjust.manualDelta', {
+                        delta: formatSignedDelta(adjustment),
+                      })}
+                    </Text>
+                  )}
                 </View>
               </View>
+
+              {/* Ajuster les points */}
+              <Pressable
+                onPress={() => setAdjustOpen(true)}
+                style={({ pressed }) => ({
+                  marginTop: spacing.sm,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+                hitSlop={4}
+              >
+                <Ionicons name="options-outline" size={15} color={colors.primary} />
+                <Text variant="bodySmall" style={{ color: colors.primary, fontWeight: '600' }}>
+                  {t('proLoyaltyAdjust.button')}
+                </Text>
+              </Pressable>
+
+              {/* Historique des ajustements — dépliable */}
+              {log.length > 0 && (
+                <View style={{ marginTop: spacing.sm }}>
+                  <Pressable
+                    onPress={() => setAdjustLogOpen((v) => !v)}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      opacity: pressed ? 0.6 : 1,
+                    })}
+                    hitSlop={6}
+                  >
+                    <Ionicons
+                      name={adjustLogOpen ? 'chevron-down' : 'chevron-forward'}
+                      size={14}
+                      color={colors.textMuted}
+                    />
+                    <Text variant="caption" color="textSecondary" style={{ fontWeight: '600' }}>
+                      {t('proLoyaltyAdjust.historyTitle')} ({log.length})
+                    </Text>
+                  </Pressable>
+                  {adjustLogOpen && (
+                    <View style={{ marginTop: 6, gap: 6 }}>
+                      {log.map((entry, idx) => (
+                        <View
+                          key={idx}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'flex-start',
+                            gap: 8,
+                            paddingLeft: 18,
+                          }}
+                        >
+                          <Text
+                            variant="caption"
+                            style={{
+                              fontWeight: '700',
+                              minWidth: 28,
+                              color: entry.delta > 0 ? '#10B981' : '#EF4444',
+                            }}
+                          >
+                            {formatSignedDelta(entry.delta)}
+                          </Text>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text variant="caption" color="textSecondary">
+                              {formatLongDate(entry.at)} · {adjustReasonLabel(entry.reason)}
+                            </Text>
+                            {entry.note ? (
+                              <Text variant="caption" color="textSecondary" numberOfLines={2}>
+                                « {entry.note} »
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
             </Card>
           );
         })()}
@@ -720,11 +828,345 @@ export default function ClientDetailScreen() {
           style={{ flex: 1 }}
         />
       </View>
+
+      {/* Bottom sheet — ajustement manuel de points (fidélité v2) */}
+      <AdjustPointsSheet
+        visible={adjustOpen}
+        clientKey={client.clientKey}
+        onClose={() => setAdjustOpen(false)}
+        onSuccess={({ delta, reason, note, adjustment }) => {
+          setAdjustOpen(false);
+          // Mise à jour locale : nouveau delta cumulé + entrée en tête du
+          // journal — même forme que ce que le serveur vient d'écrire.
+          setClient((c) =>
+            c
+              ? {
+                  ...c,
+                  loyaltyAdjustment: adjustment,
+                  loyaltyAdjustmentLog: [
+                    { at: new Date(), delta, reason, note },
+                    ...(c.loyaltyAdjustmentLog ?? []),
+                  ],
+                }
+              : c,
+          );
+          showToast({ message: t('proLoyaltyAdjust.success'), variant: 'success' });
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 // ─── Sub-components ──────────────────────────────────────────────
+
+/** « +2 » / « −3 » — signe explicite, tiret typographique. */
+function formatSignedDelta(delta: number): string {
+  return delta > 0 ? `+${delta}` : `−${Math.abs(delta)}`;
+}
+
+/** Label traduit d'un slug de justification (fallback : « Autre »). */
+function adjustReasonLabel(reason: string): string {
+  const known = (LOYALTY_ADJUSTMENT_REASONS as readonly string[]).includes(reason)
+    ? reason
+    : 'autre';
+  return i18n.t(`proLoyaltyAdjust.reasons.${known}`);
+}
+
+const ADJUST_DELTA_MIN = -50;
+const ADJUST_DELTA_MAX = 50;
+
+/**
+ * Bottom sheet d'ajustement manuel de points (fidélité v2).
+ *
+ * Stepper −/+ (borné −50..50, saute le 0 — un delta nul est refusé par
+ * l'API), 6 justifications (slugs stockés, labels traduits), note libre
+ * OBLIGATOIRE pour « autre », optionnelle sinon. POST /api/loyalty/adjust
+ * avec le Bearer token du pro — le serveur journalise ET prévient le
+ * client par email ; ici on ne fait que remonter le résultat au parent.
+ */
+function AdjustPointsSheet({
+  visible,
+  clientKey,
+  onClose,
+  onSuccess,
+}: {
+  visible: boolean;
+  clientKey: string;
+  onClose: () => void;
+  onSuccess: (r: {
+    delta: number;
+    reason: LoyaltyAdjustmentReason;
+    note: string | null;
+    adjustment: number;
+  }) => void;
+}) {
+  const { t } = useTranslation();
+  const { colors, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { showToast } = useToast();
+  const { user } = useAuth();
+
+  const [delta, setDelta] = useState(1);
+  const [reason, setReason] = useState<LoyaltyAdjustmentReason>('geste_commercial');
+  const [note, setNote] = useState('');
+  const [noteError, setNoteError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Reset à chaque ouverture — le sheet reste monté pendant l'animation
+  // de sortie, on ne peut donc pas compter sur un remontage.
+  useEffect(() => {
+    if (visible) {
+      setDelta(1);
+      setReason('geste_commercial');
+      setNote('');
+      setNoteError(false);
+      setSubmitting(false);
+    }
+  }, [visible]);
+
+  /** Incrémente/décrémente en sautant 0 (delta nul interdit). */
+  const step = (dir: 1 | -1) => {
+    setDelta((d) => {
+      let next = d + dir;
+      if (next === 0) next = dir; // 1 → −1 et −1 → 1 sans passer par 0
+      return Math.max(ADJUST_DELTA_MIN, Math.min(ADJUST_DELTA_MAX, next));
+    });
+  };
+
+  const noteRequired = reason === 'autre';
+  const trimmedNote = note.trim();
+  const canSubmit =
+    !submitting && delta !== 0 && (!noteRequired || trimmedNote.length > 0);
+
+  const handleSubmit = async () => {
+    if (noteRequired && !trimmedNote) {
+      setNoteError(true);
+      return;
+    }
+    if (!canSubmit || !user) return;
+    setSubmitting(true);
+    try {
+      const token = await user.getIdToken();
+      // Timeout dur — même pattern que useLoyaltyCards : un serveur
+      // injoignable ne doit jamais bloquer le sheet en « … » infini.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const res = await fetch(`${API_URL}/api/loyalty/adjust`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clientKey,
+          delta,
+          reason,
+          note: trimmedNote ? trimmedNote : null,
+        }),
+        signal: ctrl.signal,
+      }).finally(() => clearTimeout(timer));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { adjustment?: number };
+      onSuccess({
+        delta,
+        reason,
+        note: trimmedNote ? trimmedNote : null,
+        adjustment: typeof data.adjustment === 'number' ? data.adjustment : delta,
+      });
+    } catch (err) {
+      console.error('[AdjustPointsSheet] submit:', err);
+      showToast({ message: t('proLoyaltyAdjust.error'), variant: 'error' });
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <OverlaySheet visible={visible} onClose={onClose} heightPct={0.85}>
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: spacing.lg,
+          paddingBottom: insets.bottom + spacing.xl,
+        }}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
+        <Text variant="h3" style={{ fontWeight: '700', marginBottom: 4 }}>
+          {t('proLoyaltyAdjust.title')}
+        </Text>
+        <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: spacing.lg }}>
+          {t('proLoyaltyAdjust.subtitle')}
+        </Text>
+
+        {/* Stepper delta */}
+        <Text
+          variant="label"
+          color="textSecondary"
+          style={{ textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs }}
+        >
+          {t('proLoyaltyAdjust.deltaLabel')}
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing.lg,
+            marginBottom: spacing.lg,
+          }}
+        >
+          <Pressable
+            onPress={() => step(-1)}
+            disabled={delta <= ADJUST_DELTA_MIN}
+            style={({ pressed }) => [
+              styles.stepBtn,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                opacity: delta <= ADJUST_DELTA_MIN ? 0.35 : pressed ? 0.6 : 1,
+              },
+            ]}
+            hitSlop={6}
+          >
+            <Ionicons name="remove" size={22} color={colors.text} />
+          </Pressable>
+          <Text
+            variant="h2"
+            style={{
+              fontWeight: '700',
+              minWidth: 84,
+              textAlign: 'center',
+              color: delta > 0 ? '#10B981' : '#EF4444',
+            }}
+          >
+            {formatSignedDelta(delta)}
+          </Text>
+          <Pressable
+            onPress={() => step(1)}
+            disabled={delta >= ADJUST_DELTA_MAX}
+            style={({ pressed }) => [
+              styles.stepBtn,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                opacity: delta >= ADJUST_DELTA_MAX ? 0.35 : pressed ? 0.6 : 1,
+              },
+            ]}
+            hitSlop={6}
+          >
+            <Ionicons name="add" size={22} color={colors.text} />
+          </Pressable>
+        </View>
+
+        {/* Justification */}
+        <Text
+          variant="label"
+          color="textSecondary"
+          style={{ textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs }}
+        >
+          {t('proLoyaltyAdjust.reasonLabel')}
+        </Text>
+        <View style={{ gap: 6, marginBottom: spacing.lg }}>
+          {LOYALTY_ADJUSTMENT_REASONS.map((slug) => {
+            const selected = reason === slug;
+            return (
+              <Pressable
+                key={slug}
+                onPress={() => {
+                  setReason(slug);
+                  setNoteError(false);
+                }}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: selected ? colors.primary : colors.border,
+                  backgroundColor: selected
+                    ? colors.primaryLight || '#e4effa'
+                    : colors.surface,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Ionicons
+                  name={selected ? 'radio-button-on' : 'radio-button-off'}
+                  size={18}
+                  color={selected ? colors.primary : colors.textMuted}
+                />
+                <Text
+                  variant="bodySmall"
+                  style={{ flex: 1, fontWeight: selected ? '600' : '400' }}
+                >
+                  {t(`proLoyaltyAdjust.reasons.${slug}`)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Note — obligatoire pour « autre », optionnelle sinon */}
+        <Text
+          variant="label"
+          color="textSecondary"
+          style={{ textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs }}
+        >
+          {noteRequired
+            ? t('proLoyaltyAdjust.noteLabelRequired')
+            : t('proLoyaltyAdjust.noteLabelOptional')}
+        </Text>
+        <TextInput
+          value={note}
+          onChangeText={(v) => {
+            setNote(v);
+            if (noteError && v.trim()) setNoteError(false);
+          }}
+          placeholder={
+            noteRequired
+              ? t('proLoyaltyAdjust.noteRequiredPlaceholder')
+              : t('proLoyaltyAdjust.notePlaceholder')
+          }
+          placeholderTextColor={colors.textMuted}
+          multiline
+          maxLength={200}
+          style={{
+            borderWidth: 1,
+            borderColor: noteError ? '#EF4444' : colors.border,
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            minHeight: 64,
+            textAlignVertical: 'top',
+            color: colors.text,
+            fontSize: 14,
+            backgroundColor: colors.surface,
+          }}
+        />
+        {noteError && (
+          <Text variant="caption" style={{ color: '#EF4444', marginTop: 4 }}>
+            {t('proLoyaltyAdjust.noteRequiredError')}
+          </Text>
+        )}
+
+        <Button
+          variant="primary"
+          onPress={handleSubmit}
+          disabled={!canSubmit}
+          title={submitting ? '…' : t('proLoyaltyAdjust.submit')}
+          style={{ marginTop: spacing.lg }}
+        />
+        <Button
+          variant="ghost"
+          onPress={onClose}
+          disabled={submitting}
+          title={t('common.cancel')}
+          style={{ marginTop: spacing.xs }}
+        />
+      </ScrollView>
+    </OverlaySheet>
+  );
+}
 
 function SectionTitle({
   text,
@@ -884,5 +1326,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     fontSize: 14,
+  },
+  stepBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

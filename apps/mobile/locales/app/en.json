@@ -2959,6 +2959,31 @@
       "rewardAmount": "−{{amount}} every {{threshold}} appointments"
     }
   },
+  "proLoyaltyAdjust": {
+    "button": "Adjust points",
+    "title": "Adjust points",
+    "subtitle": "Add or remove points on this client's card — they will receive a summary email.",
+    "deltaLabel": "Points to add or remove",
+    "reasonLabel": "Reason",
+    "reasons": {
+      "geste_commercial": "Goodwill gesture",
+      "compensation_retard": "Compensation for a delay",
+      "parrainage": "Referral",
+      "evenement": "Special event",
+      "erreur_correction": "Error correction",
+      "autre": "Other"
+    },
+    "noteLabelOptional": "Note (optional)",
+    "noteLabelRequired": "Details (required)",
+    "notePlaceholder": "Visible to the client in the email…",
+    "noteRequiredPlaceholder": "Explain the reason for the adjustment…",
+    "noteRequiredError": "Details are required for “Other”.",
+    "submit": "Confirm adjustment",
+    "success": "Points updated — the client has been notified by email",
+    "error": "Could not update the points. Please try again.",
+    "manualDelta": "Manual adjustment: {{delta}}",
+    "historyTitle": "Adjustment history"
+  },
   "proLoyaltyPage": {
     "title": "Loyalty",
     "edit": "Edit",

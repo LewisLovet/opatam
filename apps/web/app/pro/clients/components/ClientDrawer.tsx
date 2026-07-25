@@ -29,31 +29,67 @@ import {
   Phone,
   Save,
   Plus,
+  Minus,
   Trash2,
   CalendarPlus,
   ShieldAlert,
   Gift,
   Trophy,
+  SlidersHorizontal,
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import { Avatar, Badge, Button, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  auth as firebaseAuth,
   bookingRepository,
   providerClientRepository,
 } from '@booking-app/firebase';
 import {
   type ProviderClient,
   type Booking,
+  type LoyaltyAdjustmentReason,
+  LOYALTY_ADJUSTMENT_REASONS,
   hasLoyaltyAccess,
   isLoyaltyConfigValid,
   isLoyaltyRewardArmed,
   loyaltyRemaining,
+  effectiveLoyaltyCount,
 } from '@booking-app/shared';
 import { ClientHistoryList } from './ClientHistoryList';
 import { formatRevenue } from './format';
 import { TAG_META_BY_VALUE } from './tagMeta';
 
 type WithId<T> = { id: string } & T;
+
+// ── Ajustement manuel de points (fidélité v2) ────────────────────
+// L'espace pro web n'est pas i18n-isé : labels français en dur,
+// mêmes slugs que le serveur (LOYALTY_ADJUSTMENT_REASONS).
+const ADJUST_REASON_LABELS: Record<LoyaltyAdjustmentReason, string> = {
+  geste_commercial: 'Geste commercial',
+  compensation_retard: 'Compensation pour un retard',
+  parrainage: 'Parrainage',
+  evenement: 'Événement',
+  erreur_correction: "Correction d'une erreur",
+  autre: 'Autre',
+};
+
+const ADJUST_DELTA_MIN = -50;
+const ADJUST_DELTA_MAX = 50;
+
+/** « +2 » / « −3 » — signe explicite, tiret typographique. */
+function formatSignedDelta(delta: number): string {
+  return delta > 0 ? `+${delta}` : `−${Math.abs(delta)}`;
+}
+
+/** Label d'un slug de justification (fallback « Autre » pour un slug inconnu). */
+function adjustReasonLabel(reason: string): string {
+  return (
+    ADJUST_REASON_LABELS[reason as LoyaltyAdjustmentReason] ??
+    ADJUST_REASON_LABELS.autre
+  );
+}
 
 interface Props {
   isOpen: boolean;
@@ -85,6 +121,34 @@ export function ClientDrawer({
   const loyaltySettings = provider?.settings?.loyalty ?? null;
   const loyaltyOn =
     hasLoyaltyAccess(provider) && isLoyaltyConfigValid(loyaltySettings);
+
+  // ── Ajustement manuel de points (fidélité v2) ─────────────────
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustDelta, setAdjustDelta] = useState(1);
+  const [adjustReason, setAdjustReason] =
+    useState<LoyaltyAdjustmentReason>('geste_commercial');
+  const [adjustNote, setAdjustNote] = useState('');
+  const [adjustNoteError, setAdjustNoteError] = useState(false);
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
+  const [adjustLogOpen, setAdjustLogOpen] = useState(false);
+
+  const openAdjustModal = () => {
+    setAdjustDelta(1);
+    setAdjustReason('geste_commercial');
+    setAdjustNote('');
+    setAdjustNoteError(false);
+    setAdjustSubmitting(false);
+    setAdjustOpen(true);
+  };
+
+  /** Incrémente/décrémente le delta en sautant 0 (l'API refuse un delta nul). */
+  const stepAdjustDelta = (dir: 1 | -1) => {
+    setAdjustDelta((d) => {
+      let next = d + dir;
+      if (next === 0) next = dir; // 1 → −1 et −1 → 1 sans passer par 0
+      return Math.max(ADJUST_DELTA_MIN, Math.min(ADJUST_DELTA_MAX, next));
+    });
+  };
 
   // Local edit state — initialised from `client` whenever the drawer
   // opens for a different doc.
@@ -232,6 +296,63 @@ export function ClientDrawer({
     }
   };
 
+  // ── Ajustement de points → POST /api/loyalty/adjust ─────────────
+  const handleAdjustSubmit = async () => {
+    const trimmedNote = adjustNote.trim();
+    if (adjustReason === 'autre' && !trimmedNote) {
+      setAdjustNoteError(true);
+      return;
+    }
+    if (adjustSubmitting || adjustDelta === 0) return;
+    if (!firebaseAuth.currentUser) {
+      toast.error("Erreur d'authentification");
+      return;
+    }
+    setAdjustSubmitting(true);
+    try {
+      const token = await firebaseAuth.currentUser.getIdToken();
+      const res = await fetch('/api/loyalty/adjust', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clientKey: client.clientKey,
+          delta: adjustDelta,
+          reason: adjustReason,
+          note: trimmedNote ? trimmedNote : null,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { adjustment?: number };
+      // Patch local : nouveau delta cumulé + entrée en tête du journal —
+      // même forme que ce que le serveur vient d'écrire en transaction.
+      onPatched({
+        loyaltyAdjustment:
+          typeof data.adjustment === 'number'
+            ? data.adjustment
+            : (client.loyaltyAdjustment ?? 0) + adjustDelta,
+        loyaltyAdjustmentLog: [
+          {
+            at: new Date(),
+            delta: adjustDelta,
+            reason: adjustReason,
+            note: trimmedNote ? trimmedNote : null,
+          },
+          ...(client.loyaltyAdjustmentLog ?? []),
+        ],
+      });
+      toast.success('Points mis à jour — le client a été prévenu par email');
+      setAdjustOpen(false);
+    } catch (err) {
+      console.error('[ClientDrawer] adjust error:', err);
+      toast.error('Impossible de mettre à jour les points. Réessayez.');
+    } finally {
+      setAdjustSubmitting(false);
+    }
+  };
+
   // ── Pré-rempli "Nouveau RDV" → calendar ─────────────────────────
   const handleCreateBooking = () => {
     const params = new URLSearchParams({ action: 'createBooking' });
@@ -353,9 +474,14 @@ export function ClientDrawer({
           {/* Carte de fidélité — progression vers la prochaine récompense.
               Visible seulement quand la fidélité est configurée et active. */}
           {loyaltyOn && loyaltySettings && (() => {
-            // Compteur FIDÉLITÉ : RDV connectés post-lancement uniquement
-            // (les invités et l'historique d'avant ne remplissent pas la carte).
-            const loyaltyCount = client.loyaltyConfirmedCount ?? 0;
+            // Compteur EFFECTIF (fidélité v2) : RDV connectés post-lancement
+            // + ajustement manuel du pro, plancher 0 — même formule que le
+            // serveur au moment d'armer la récompense.
+            const adjustment = client.loyaltyAdjustment ?? 0;
+            const loyaltyCount = effectiveLoyaltyCount(
+              client.loyaltyConfirmedCount ?? 0,
+              adjustment,
+            );
             const armed = isLoyaltyRewardArmed(
               loyaltyCount,
               loyaltySettings.threshold,
@@ -365,11 +491,22 @@ export function ClientDrawer({
               loyaltySettings.threshold,
             );
             const done = loyaltySettings.threshold - remaining;
+            const adjustLog = client.loyaltyAdjustmentLog ?? [];
             return (
               <section>
-                <h3 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold mb-3">
-                  Fidélité
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">
+                    Fidélité
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={openAdjustModal}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    Ajuster les points
+                  </button>
+                </div>
                 <div
                   className={`rounded-lg border px-3 py-3 flex items-start gap-3 ${
                     armed
@@ -415,8 +552,57 @@ export function ClientDrawer({
                         </div>
                       </>
                     )}
+                    {adjustment !== 0 && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
+                        Ajustement manuel : {formatSignedDelta(adjustment)}
+                      </p>
+                    )}
                   </div>
                 </div>
+
+                {/* Historique des ajustements manuels — dépliable */}
+                {adjustLog.length > 0 && (
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setAdjustLogOpen((v) => !v)}
+                      aria-expanded={adjustLogOpen}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    >
+                      {adjustLogOpen ? (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      )}
+                      Historique des ajustements ({adjustLog.length})
+                    </button>
+                    {adjustLogOpen && (
+                      <ul className="mt-2 space-y-1.5 pl-5">
+                        {adjustLog.map((entry, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs">
+                            <span
+                              className={`font-semibold tabular-nums flex-shrink-0 min-w-[28px] ${
+                                entry.delta > 0
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}
+                            >
+                              {formatSignedDelta(entry.delta)}
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400 min-w-0">
+                              {formatLongDate(entry.at)} · {adjustReasonLabel(entry.reason)}
+                              {entry.note ? (
+                                <span className="block text-gray-400 dark:text-gray-500 truncate">
+                                  « {entry.note} »
+                                </span>
+                              ) : null}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </section>
             );
           })()}
@@ -599,6 +785,148 @@ export function ClientDrawer({
           </Button>
         </div>
       </aside>
+
+      {/* Modale — ajustement manuel de points (fidélité v2) */}
+      {adjustOpen && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ajuster les points de fidélité"
+        >
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !adjustSubmitting && setAdjustOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-sm rounded-xl bg-white dark:bg-gray-900 shadow-xl p-5">
+            <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+              Ajuster les points
+            </h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Ajoutez ou retirez des points sur la carte de ce client — il
+              recevra un email récapitulatif.
+            </p>
+
+            {/* Stepper delta */}
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold mt-4 mb-2">
+              Points à ajouter ou retirer
+            </p>
+            <div className="flex items-center justify-center gap-5">
+              <button
+                type="button"
+                onClick={() => stepAdjustDelta(-1)}
+                disabled={adjustDelta <= ADJUST_DELTA_MIN}
+                aria-label="Retirer un point"
+                className="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <span
+                className={`text-2xl font-bold tabular-nums min-w-[64px] text-center ${
+                  adjustDelta > 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-red-600 dark:text-red-400'
+                }`}
+              >
+                {formatSignedDelta(adjustDelta)}
+              </span>
+              <button
+                type="button"
+                onClick={() => stepAdjustDelta(1)}
+                disabled={adjustDelta >= ADJUST_DELTA_MAX}
+                aria-label="Ajouter un point"
+                className="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Justification */}
+            <label
+              htmlFor="adjust-reason"
+              className="block text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold mt-4 mb-1.5"
+            >
+              Justification
+            </label>
+            <select
+              id="adjust-reason"
+              value={adjustReason}
+              onChange={(e) => {
+                setAdjustReason(e.target.value as LoyaltyAdjustmentReason);
+                setAdjustNoteError(false);
+              }}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              {LOYALTY_ADJUSTMENT_REASONS.map((slug) => (
+                <option key={slug} value={slug}>
+                  {ADJUST_REASON_LABELS[slug]}
+                </option>
+              ))}
+            </select>
+
+            {/* Note — obligatoire pour « autre », optionnelle sinon */}
+            <label
+              htmlFor="adjust-note"
+              className="block text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold mt-4 mb-1.5"
+            >
+              {adjustReason === 'autre'
+                ? 'Précision (obligatoire)'
+                : 'Note (optionnelle)'}
+            </label>
+            <textarea
+              id="adjust-note"
+              value={adjustNote}
+              onChange={(e) => {
+                setAdjustNote(e.target.value);
+                if (adjustNoteError && e.target.value.trim()) {
+                  setAdjustNoteError(false);
+                }
+              }}
+              rows={2}
+              maxLength={200}
+              placeholder={
+                adjustReason === 'autre'
+                  ? "Précisez la raison de l'ajustement…"
+                  : "Visible par le client dans l'email…"
+              }
+              className={`w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none ${
+                adjustNoteError
+                  ? 'border-red-500 dark:border-red-500'
+                  : 'border-gray-300 dark:border-gray-600'
+              }`}
+            />
+            {adjustNoteError && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                Une précision est obligatoire pour « Autre ».
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setAdjustOpen(false)}
+                disabled={adjustSubmitting}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleAdjustSubmit}
+                disabled={
+                  adjustSubmitting ||
+                  adjustDelta === 0 ||
+                  (adjustReason === 'autre' && adjustNote.trim().length === 0)
+                }
+              >
+                {adjustSubmitting ? 'Envoi…' : "Valider l'ajustement"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
