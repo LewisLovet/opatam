@@ -100,13 +100,8 @@ function stampsRow(count: number, threshold: number): string {
   ).join('');
 }
 
-export async function sendLoyaltyAdjustmentEmail(
-  params: LoyaltyAdjustmentEmailParams,
-): Promise<void> {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('[loyaltyAdjustment] RESEND_API_KEY not set — email skipped');
-    return;
-  }
+/** Corps HTML de l'email — exporté pour l'aperçu /dev/loyalty-v2-preview. */
+export function buildLoyaltyAdjustmentEmailBody(params: LoyaltyAdjustmentEmailParams): { subject: string; body: string } {
   const l = resolveLocale(params.locale);
   const t = TEXTS[l];
   const { delta, newCount, threshold, providerName } = params;
@@ -132,10 +127,21 @@ export async function sendLoyaltyAdjustmentEmail(
     <p style="font-size:15px;color:#374151;">${t.signoff}<br/>${providerName}</p>
   `;
 
+  return { subject: delta > 0 ? t.subjectAdd(providerName) : t.subjectRemove(providerName), body };
+}
+
+export async function sendLoyaltyAdjustmentEmail(
+  params: LoyaltyAdjustmentEmailParams,
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[loyaltyAdjustment] RESEND_API_KEY not set — email skipped');
+    return;
+  }
+  const { subject, body } = buildLoyaltyAdjustmentEmailBody(params);
   await resend.emails.send({
     from: emailConfig.from,
     to: params.to,
-    subject: delta > 0 ? t.subjectAdd(providerName) : t.subjectRemove(providerName),
+    subject,
     html: getEmailWrapperHtml(body),
   });
 }
