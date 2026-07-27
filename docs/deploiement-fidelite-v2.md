@@ -73,7 +73,7 @@ jamais concernés (grandfathering).
 (`details: []`) : les liens `opatam.com/avis/…` et
 `/reservation/confirmation/…` n'ouvraient donc **jamais** l'app sur iOS
 depuis le début. Le fichier déclare désormais `/fidelite`, `/avis/*` et
-`/reservation/confirmation/*` avec l'appID réel
+seulement (voir ci-dessous) avec l'appID réel
 `9KX5T72C3J.com.kamerleontech.opatam` (Team ID relevé dans le journal de
 build EAS — `eas build` l'affiche dans le récapitulatif des credentials).
 
@@ -86,3 +86,23 @@ n'est pas instantanée sur les appareils existants.
 Android était correctement configuré (assetlinks.json) ; le chemin
 `/fidelite` a été ajouté aux `intentFilters` — c'est **baké dans le
 binaire**, donc actif seulement à partir du build 1.6.0.
+
+### Pourquoi SEUL `/fidelite` est déclaré
+
+Les pages web `/avis/{id}` et `/reservation/confirmation/{id}` fonctionnent
+**sans compte** : le document est chargé par son id, et `POST
+/api/reviews/submit` n'exige aucune authentification. Les écrans mobiles
+correspondants, eux, exigent un utilisateur connecté
+(`apps/mobile/app/(client)/review/[bookingId].tsx` : `if (!bookingId ||
+!user?.uid)` → erreur « données manquantes »).
+
+Router ces liens vers l'app **dégraderait** donc l'expérience des clients
+invités — majoritaires sur les réservations. On les laisse au web, qui
+marche pour tout le monde.
+
+**Dette connue (antérieure)** : les `intentFilters` Android incluent déjà
+`/avis/` et `/reservation/confirmation/` depuis avril 2026. Sur Android, un
+client déconnecté ayant l'app installée tombe donc sur l'écran d'erreur.
+Le bon correctif est de faire fonctionner ces écrans SANS compte (charger la
+résa par son id, comme le web) — c'est du JS, donc livrable en OTA sans
+rebuild. À traiter avant de compter sur ces liens.
