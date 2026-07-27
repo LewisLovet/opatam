@@ -1580,7 +1580,9 @@
       "noshow": "No-show",
       "firstVisit": "First visit",
       "lastVisit": "Last visit",
-      "frequency": "Frequency"
+      "frequency": "Frequency",
+      "honored": "Visits attended",
+      "missed": "Cancelled / no-show"
     },
     "favoriteServices": "Favorite services",
     "computing": "Calculating…",
@@ -1618,7 +1620,15 @@
       "months_other": "Every {{count}} months",
       "years_one": "Every year",
       "years_other": "Every {{count}} years"
-    }
+    },
+    "contact": {
+      "call": "Call",
+      "sms": "Text",
+      "email": "Email",
+      "error": "This action isn't available on this device."
+    },
+    "details": "Details",
+    "loyaltyTitle": "Loyalty"
   },
   "proStats": {
     "title": "Statistics",
@@ -2988,7 +2998,19 @@
     "success": "Points updated — the client has been notified by email",
     "error": "Could not update the points. Please try again.",
     "manualDelta": "Manual adjustment: {{delta}}",
-    "historyTitle": "Adjustment history"
+    "historyTitle": "Adjustment history",
+    "cardTitle": "Loyalty card",
+    "cardHint": "Tap a slot to set the new total.",
+    "rewardReached": "Reward unlocked at this total.",
+    "deltaAdd_one": "+{{count}} point",
+    "deltaAdd_other": "+{{count}} points",
+    "deltaRemove_one": "−{{count}} point",
+    "deltaRemove_other": "−{{count}} points",
+    "deltaNone": "No change",
+    "newTotal_one": "New total: {{count}} point",
+    "newTotal_other": "New total: {{count}} points",
+    "effectiveCount_one": "{{count}} point earned",
+    "effectiveCount_other": "{{count}} points earned"
   },
   "proLoyaltyPage": {
     "title": "Loyalty",

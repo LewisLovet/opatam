@@ -5,24 +5,25 @@
  * UI prefers a top-level screen with native back over a slide-in
  * panel that competes with the OS's swipe-back gesture.
  *
- * Sections (top to bottom):
- *   - Identity card (avatar lg + name + tags + email + phone)
- *   - KPIs grid + dates + fréquence
- *   - Services préférés (top 3, derived from history)
- *   - Notes privées (TextInput multiline, save with the footer
- *     "Enregistrer" CTA)
- *   - Préférences key/value (add / edit / remove rows inline)
- *   - Marketing placeholder ("en cours de développement")
- *   - Historique des RDV (each row taps into booking-detail)
+ * Refonte 2026-07 — la fiche doit se lire en 3 secondes : QUI est ce
+ * client, COMBIEN il vaut, OÙ il en est de sa fidélité, QUAND il
+ * revient. D'où la hiérarchie :
  *
- * Sticky footer:
- *   - "Nouveau RDV" → opens create-booking pre-filled with
- *     name/email/phone via expo-router params
- *   - "Enregistrer" → patches notes + preferences via the
- *     repository; shown disabled when nothing changed.
+ *   1. Héro identitaire (avatar xl, nom, tags, actions appel/SMS/email)
+ *   2. 4 tuiles de chiffres clés (honorés · CA · ratés · dernière venue)
+ *   3. Détails secondaires en lignes discrètes (1ʳᵉ visite, fréquence…)
+ *   4. Fidélité — pièce maîtresse : carte à tampons + ajustement manuel
+ *   5. Services préférés / Notes privées / Préférences / Marketing
+ *   6. Sections repliables : historique des RDV, historique des
+ *      ajustements (le pro déplie ce qu'il cherche)
+ *
+ * Sticky footer :
+ *   - « Nouveau RDV » → create-booking pré-rempli (name/email/phone)
+ *   - « Enregistrer » → patch notes + préférences via le repository ;
+ *     désactivé tant que rien n'a changé.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -32,11 +33,14 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Linking,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../theme';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { Text, Card, Avatar, Badge, Button, useToast } from '../../../components';
@@ -78,17 +82,21 @@ const STATUS_I18N_KEY: Record<BookingStatus, string> = {
   noshow: 'noshow',
 };
 
-const STATUS_COLOR: Record<BookingStatus, string> = {
-  pending: '#F59E0B',
-  pending_payment: '#F59E0B',
-  confirmed: '#10B981',
-  cancelled: '#9CA3AF',
-  noshow: '#EF4444',
+/**
+ * Statut → clé de couleur du thème (jamais de hex en dur : le mode
+ * sombre et le configurateur de thème doivent pouvoir tout repeindre).
+ */
+const STATUS_COLOR_KEY: Record<BookingStatus, 'warning' | 'success' | 'textMuted' | 'error'> = {
+  pending: 'warning',
+  pending_payment: 'warning',
+  confirmed: 'success',
+  cancelled: 'textMuted',
+  noshow: 'error',
 };
 
 export default function ClientDetailScreen() {
   const { t } = useTranslation();
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
@@ -130,6 +138,10 @@ export default function ClientDetailScreen() {
   // Fidélité v2 — ajustement manuel de points.
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustLogOpen, setAdjustLogOpen] = useState(false);
+  // Sections repliables — l'historique des RDV est fermé par défaut :
+  // c'est la section la plus longue et la moins consultée au premier
+  // coup d'œil.
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // ── Load doc + history when the route mounts ───────────────────
   useEffect(() => {
@@ -215,6 +227,38 @@ export default function ClientDetailScreen() {
     [bookings],
   );
 
+  /**
+   * Vue fidélité — calculée une seule fois pour la section ET pour la
+   * feuille d'ajustement (qui a besoin du seuil et du compte effectif
+   * pour dessiner la carte à tampons). `null` = pas d'accès fidélité
+   * ou config invalide → aucune UI fidélité.
+   */
+  const loyaltyView = useMemo(() => {
+    const loyalty = provider?.settings?.loyalty;
+    if (!client) return null;
+    if (!hasLoyaltyAccess(provider) || !isLoyaltyConfigValid(loyalty)) return null;
+    // Compteur EFFECTIF (fidélité v2) : RDV honorés connectés
+    // post-lancement + ajustement manuel du pro, plancher 0 —
+    // même formule que le serveur au moment d'armer la récompense.
+    const adjustment = client.loyaltyAdjustment ?? 0;
+    const count = effectiveLoyaltyCount(client.loyaltyConfirmedCount ?? 0, adjustment);
+    return {
+      threshold: loyalty.threshold,
+      rewardType: loyalty.rewardType,
+      rewardValue: loyalty.rewardValue,
+      adjustment,
+      count,
+      armed: isLoyaltyRewardArmed(count, loyalty.threshold),
+      remaining: loyaltyRemaining(count, loyalty.threshold),
+      log: client.loyaltyAdjustmentLog ?? [],
+    };
+  }, [
+    provider,
+    client?.loyaltyAdjustment,
+    client?.loyaltyConfirmedCount,
+    client?.loyaltyAdjustmentLog,
+  ]);
+
   // ── Save ────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!isDirty || !client || !provider?.id) return;
@@ -262,6 +306,13 @@ export default function ClientDetailScreen() {
     } as any);
   };
 
+  /** tel: / sms: / mailto: — toast d'erreur si l'appareil ne sait pas ouvrir. */
+  const openContact = (url: string) => {
+    Linking.openURL(url).catch(() => {
+      showToast({ message: t('proClientDetail.contact.error'), variant: 'error' });
+    });
+  };
+
   // ── Render ─────────────────────────────────────────────────────
   if (docLoading) {
     return (
@@ -291,6 +342,7 @@ export default function ClientDetailScreen() {
     client.bookingsCount > 0
       ? Math.round((client.noshowCount / client.bookingsCount) * 100)
       : null;
+  const missedCount = client.cancelledCount + client.noshowCount;
 
   return (
     <KeyboardAvoidingView
@@ -319,7 +371,7 @@ export default function ClientDetailScreen() {
           >
             <Ionicons name="chevron-back" size={26} color={colors.text} />
           </Pressable>
-          <Text variant="h3" style={{ fontWeight: '600' }} numberOfLines={1}>
+          <Text variant="h3" style={{ flex: 1, fontWeight: '600' }} numberOfLines={1}>
             {fullName}
           </Text>
           <View style={{ width: 40 }} />
@@ -329,7 +381,7 @@ export default function ClientDetailScreen() {
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
-          paddingTop: spacing.md,
+          paddingTop: spacing.lg,
           paddingBottom: spacing.xl + 80,
         }}
         keyboardShouldPersistTaps="handled"
@@ -344,16 +396,22 @@ export default function ClientDetailScreen() {
         // matches Mail / Notes behaviour on iOS.
         keyboardDismissMode="interactive"
       >
-        {/* Identity */}
-        <Card padding="md" style={{ marginBottom: spacing.md }}>
+        {/* ── 1. Héro identitaire ─────────────────────────────── */}
+        <View
+          style={{
+            backgroundColor: colors.primaryLight,
+            borderRadius: radius.xl,
+            padding: spacing.lg,
+          }}
+        >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <Avatar imageUrl={client.photoURL} name={fullName} size="lg" />
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text variant="h3" style={{ fontWeight: '700' }} numberOfLines={1}>
+              <Text variant="h2" style={{ fontWeight: '700' }} numberOfLines={2}>
                 {fullName}
               </Text>
               {client.tags.length > 0 && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.sm }}>
                   {client.tags.map((tag) => {
                     const meta = TAG_META_BY_VALUE[tag];
                     return (
@@ -371,175 +429,194 @@ export default function ClientDetailScreen() {
           </View>
 
           {(client.email || client.phone) && (
-            <View style={{ marginTop: spacing.md, gap: 6 }}>
+            <View style={{ marginTop: spacing.md, gap: 4 }}>
               {client.email && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="mail-outline" size={16} color={colors.textMuted} />
-                  <Text variant="bodySmall" style={{ color: colors.text, flex: 1 }} numberOfLines={1}>
-                    {client.email}
-                  </Text>
-                </View>
+                <Text variant="caption" color="textSecondary" numberOfLines={1}>
+                  {client.email}
+                </Text>
               )}
               {client.phone && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="call-outline" size={16} color={colors.textMuted} />
-                  <Text variant="bodySmall" style={{ color: colors.text }}>
-                    {client.phone}
-                  </Text>
-                </View>
+                <Text variant="caption" color="textSecondary">
+                  {client.phone}
+                </Text>
               )}
             </View>
           )}
-        </Card>
 
-        {/* KPIs */}
-        <SectionTitle text={t('proClientDetail.overview')} colors={colors} spacing={spacing} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md }}>
-          <KpiCard label={t('proClientDetail.kpi.bookings')} value={client.bookingsCount.toString()} colors={colors} />
-          <KpiCard label={t('proClientDetail.kpi.revenue')} value={formatRevenue(client.totalRevenue)} colors={colors} />
-          <KpiCard
-            label={t('proClientDetail.kpi.confirmation')}
-            value={confirmRate != null ? `${confirmRate}%` : '—'}
-            colors={colors}
-          />
-          <KpiCard
-            label={t('proClientDetail.kpi.noshow')}
-            value={noshowRate != null ? `${noshowRate}%` : '—'}
-            colors={colors}
-          />
-          <KpiCard label={t('proClientDetail.kpi.firstVisit')} value={formatLongDate(client.firstBookingAt)} colors={colors} />
-          <KpiCard label={t('proClientDetail.kpi.lastVisit')} value={formatLongDate(client.lastBookingAt)} colors={colors} />
-          <KpiCard label={t('proClientDetail.kpi.frequency')} value={frequencyLabel ?? '—'} colors={colors} />
+          {/* Actions de contact — appel / SMS / email */}
+          {(client.email || client.phone) && (
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+              {client.phone && (
+                <ContactAction
+                  icon="call-outline"
+                  label={t('proClientDetail.contact.call')}
+                  onPress={() => openContact(`tel:${client.phone}`)}
+                />
+              )}
+              {client.phone && (
+                <ContactAction
+                  icon="chatbubble-outline"
+                  label={t('proClientDetail.contact.sms')}
+                  onPress={() => openContact(`sms:${client.phone}`)}
+                />
+              )}
+              {client.email && (
+                <ContactAction
+                  icon="mail-outline"
+                  label={t('proClientDetail.contact.email')}
+                  onPress={() => openContact(`mailto:${client.email}`)}
+                />
+              )}
+            </View>
+          )}
         </View>
 
-        {/* Loyalty progression — only when the pro has access AND a valid,
-            enabled loyalty config. Derived from confirmedCount, same pure
-            helpers as the server-side reward application. */}
-        {(() => {
-          const loyalty = provider?.settings?.loyalty;
-          if (!hasLoyaltyAccess(provider) || !isLoyaltyConfigValid(loyalty)) return null;
-          // Compteur EFFECTIF (fidélité v2) : RDV honorés connectés
-          // post-lancement + ajustement manuel du pro, plancher 0 —
-          // même formule que le serveur au moment d'armer la récompense.
-          const adjustment = client.loyaltyAdjustment ?? 0;
-          const loyaltyCount = effectiveLoyaltyCount(
-            client.loyaltyConfirmedCount ?? 0,
-            adjustment,
-          );
-          const armed = isLoyaltyRewardArmed(loyaltyCount, loyalty.threshold);
-          const remaining = loyaltyRemaining(loyaltyCount, loyalty.threshold);
-          const rewardLabel =
-            loyalty.rewardType === 'percent'
-              ? t('proLoyalty.progress.rewardPercent', {
-                  percent: loyalty.rewardValue,
-                  threshold: loyalty.threshold,
-                })
-              : t('proLoyalty.progress.rewardAmount', {
-                  amount: formatPrice(loyalty.rewardValue, 'EUR', getIntlLocale(i18n.language)),
-                  threshold: loyalty.threshold,
-                });
-          const log = client.loyaltyAdjustmentLog ?? [];
-          return (
-            <Card padding="md" style={{ marginBottom: spacing.md }}>
+        {/* ── 2. Chiffres clés (grille 2×2) ───────────────────── */}
+        <SectionTitle text={t('proClientDetail.overview')} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          <StatTile
+            icon="checkmark-circle"
+            tint={colors.success}
+            label={t('proClientDetail.kpi.honored')}
+            value={client.confirmedCount.toString()}
+          />
+          <StatTile
+            icon="wallet-outline"
+            tint={colors.primary}
+            label={t('proClientDetail.kpi.revenue')}
+            value={formatRevenue(client.totalRevenue)}
+          />
+          <StatTile
+            icon="close-circle-outline"
+            tint={missedCount > 0 ? colors.error : colors.textMuted}
+            label={t('proClientDetail.kpi.missed')}
+            value={missedCount.toString()}
+          />
+          <StatTile
+            icon="time-outline"
+            tint={colors.textSecondary}
+            label={t('proClientDetail.kpi.lastVisit')}
+            value={formatLongDate(client.lastBookingAt)}
+          />
+        </View>
+
+        {/* ── 3. Détails secondaires ──────────────────────────── */}
+        <SectionTitle text={t('proClientDetail.details')} />
+        <Card padding="md">
+          <DetailRow
+            label={t('proClientDetail.kpi.firstVisit')}
+            value={formatLongDate(client.firstBookingAt)}
+          />
+          <DetailRow
+            label={t('proClientDetail.kpi.frequency')}
+            value={frequencyLabel ?? '—'}
+          />
+          <DetailRow
+            label={t('proClientDetail.kpi.bookings')}
+            value={client.bookingsCount.toString()}
+          />
+          <DetailRow
+            label={t('proClientDetail.kpi.confirmation')}
+            value={confirmRate != null ? `${confirmRate}%` : '—'}
+          />
+          <DetailRow
+            label={t('proClientDetail.kpi.noshow')}
+            value={noshowRate != null ? `${noshowRate}%` : '—'}
+            last
+          />
+        </Card>
+
+        {/* ── 4. Fidélité — pièce maîtresse ───────────────────── */}
+        {loyaltyView && (
+          <>
+            <SectionTitle text={t('proClientDetail.loyaltyTitle')} />
+            <Card padding="md">
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
                 <View
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    backgroundColor: armed ? 'rgba(16,185,129,0.12)' : colors.primaryLight || '#e4effa',
+                    width: 40,
+                    height: 40,
+                    borderRadius: radius.md,
+                    backgroundColor: loyaltyView.armed ? colors.successLight : colors.primaryLight,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
                   <Ionicons
-                    name={armed ? 'gift' : 'gift-outline'}
-                    size={16}
-                    color={armed ? '#10B981' : colors.primary}
+                    name={loyaltyView.armed ? 'gift' : 'gift-outline'}
+                    size={20}
+                    color={loyaltyView.armed ? colors.successDark : colors.primary}
                   />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text variant="bodySmall" style={{ fontWeight: '600' }}>
-                    {armed
+                  <Text variant="body" style={{ fontWeight: '700' }}>
+                    {loyaltyView.armed
                       ? t('proLoyalty.progress.armed')
-                      : t('proLoyalty.progress.next', { count: remaining })}
+                      : t('proLoyalty.progress.next', { count: loyaltyView.remaining })}
                   </Text>
                   <Text variant="caption" color="textSecondary">
-                    {rewardLabel}
+                    {formatRewardLabel(loyaltyView, t)}
                   </Text>
-                  {adjustment !== 0 && (
-                    <Text variant="caption" color="textSecondary">
-                      {t('proLoyaltyAdjust.manualDelta', {
-                        delta: formatSignedDelta(adjustment),
-                      })}
-                    </Text>
-                  )}
                 </View>
               </View>
 
-              {/* Ajuster les points */}
-              <Pressable
-                onPress={() => setAdjustOpen(true)}
-                style={({ pressed }) => ({
-                  marginTop: spacing.sm,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.6 : 1,
-                })}
-                hitSlop={4}
-              >
-                <Ionicons name="options-outline" size={15} color={colors.primary} />
-                <Text variant="bodySmall" style={{ color: colors.primary, fontWeight: '600' }}>
-                  {t('proLoyaltyAdjust.button')}
+              {/* Jauge à tampons — la progression se lit d'un coup d'œil */}
+              <View style={{ marginTop: spacing.md }}>
+                <StampRow
+                  filled={
+                    loyaltyView.armed
+                      ? loyaltyView.threshold
+                      : loyaltyView.count % loyaltyView.threshold
+                  }
+                  total={loyaltyView.threshold}
+                />
+                <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.sm }}>
+                  {t('proLoyaltyAdjust.effectiveCount', { count: loyaltyView.count })}
+                  {loyaltyView.adjustment !== 0
+                    ? ` · ${t('proLoyaltyAdjust.manualDelta', {
+                        delta: formatSignedDelta(loyaltyView.adjustment),
+                      })}`
+                    : ''}
                 </Text>
-              </Pressable>
+              </View>
 
-              {/* Historique des ajustements — dépliable */}
-              {log.length > 0 && (
-                <View style={{ marginTop: spacing.sm }}>
-                  <Pressable
-                    onPress={() => setAdjustLogOpen((v) => !v)}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      opacity: pressed ? 0.6 : 1,
-                    })}
-                    hitSlop={6}
-                  >
-                    <Ionicons
-                      name={adjustLogOpen ? 'chevron-down' : 'chevron-forward'}
-                      size={14}
-                      color={colors.textMuted}
-                    />
-                    <Text variant="caption" color="textSecondary" style={{ fontWeight: '600' }}>
-                      {t('proLoyaltyAdjust.historyTitle')} ({log.length})
-                    </Text>
-                  </Pressable>
+              {/* Ajuster les points */}
+              <Button
+                variant="outline"
+                size="sm"
+                fullWidth
+                onPress={() => setAdjustOpen(true)}
+                title={t('proLoyaltyAdjust.button')}
+                leftIcon={<Ionicons name="options-outline" size={15} color={colors.primary} />}
+                style={{ marginTop: spacing.md }}
+              />
+
+              {/* Historique des ajustements — repliable */}
+              {loyaltyView.log.length > 0 && (
+                <View style={{ marginTop: spacing.md }}>
+                  <CollapsibleHeader
+                    title={t('proLoyaltyAdjust.historyTitle')}
+                    count={loyaltyView.log.length}
+                    open={adjustLogOpen}
+                    onToggle={() => setAdjustLogOpen((v) => !v)}
+                  />
                   {adjustLogOpen && (
-                    <View style={{ marginTop: 6, gap: 6 }}>
-                      {log.map((entry, idx) => (
+                    <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
+                      {loyaltyView.log.map((entry, idx) => (
                         <View
                           key={idx}
                           style={{
                             flexDirection: 'row',
                             alignItems: 'flex-start',
-                            gap: 8,
-                            paddingLeft: 18,
+                            gap: spacing.sm,
                           }}
                         >
                           <Text
                             variant="caption"
                             style={{
                               fontWeight: '700',
-                              minWidth: 28,
-                              color: entry.delta > 0 ? '#10B981' : '#EF4444',
+                              minWidth: 30,
+                              color: entry.delta > 0 ? colors.success : colors.error,
                             }}
                           >
                             {formatSignedDelta(entry.delta)}
@@ -549,7 +626,7 @@ export default function ClientDetailScreen() {
                               {formatLongDate(entry.at)} · {adjustReasonLabel(entry.reason)}
                             </Text>
                             {entry.note ? (
-                              <Text variant="caption" color="textSecondary" numberOfLines={2}>
+                              <Text variant="caption" color="textMuted" numberOfLines={2}>
                                 « {entry.note} »
                               </Text>
                             ) : null}
@@ -561,11 +638,11 @@ export default function ClientDetailScreen() {
                 </View>
               )}
             </Card>
-          );
-        })()}
+          </>
+        )}
 
-        {/* Services préférés */}
-        <SectionTitle text={t('proClientDetail.favoriteServices')} colors={colors} spacing={spacing} />
+        {/* ── 5. Services préférés ────────────────────────────── */}
+        <SectionTitle text={t('proClientDetail.favoriteServices')} />
         {historyLoading ? (
           <Text variant="bodySmall" color="textSecondary">
             {t('proClientDetail.computing')}
@@ -575,43 +652,51 @@ export default function ClientDetailScreen() {
             {t('proClientDetail.notEnoughData')}
           </Text>
         ) : (
-          <View style={{ gap: 8, marginBottom: spacing.md }}>
+          <Card padding="md">
             {topServices.map((s, i) => (
-              <Card key={s.name} padding="md">
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-                  <View
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 6,
-                      backgroundColor: colors.primaryLight || '#e4effa',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {i === 0 ? (
-                      <Ionicons name="trophy" size={14} color={colors.primary} />
-                    ) : (
-                      <Text variant="caption" style={{ color: colors.primary, fontWeight: '700' }}>
-                        {i + 1}
-                      </Text>
-                    )}
-                  </View>
-                  <Text variant="body" style={{ flex: 1, fontWeight: '500' }} numberOfLines={1}>
-                    {s.name}
-                  </Text>
-                  <Text variant="bodySmall" color="textSecondary">
-                    {t('proClientDetail.timesCount', { count: s.count })}
-                  </Text>
+              <View
+                key={s.name}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderBottomWidth: i === topServices.length - 1 ? 0 : StyleSheet.hairlineWidth,
+                  borderBottomColor: colors.divider,
+                }}
+              >
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: radius.sm,
+                    backgroundColor: colors.primaryLight,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {i === 0 ? (
+                    <Ionicons name="trophy" size={14} color={colors.primary} />
+                  ) : (
+                    <Text variant="caption" style={{ color: colors.primary, fontWeight: '700' }}>
+                      {i + 1}
+                    </Text>
+                  )}
                 </View>
-              </Card>
+                <Text variant="bodySmall" style={{ flex: 1, fontWeight: '600' }} numberOfLines={1}>
+                  {s.name}
+                </Text>
+                <Text variant="caption" color="textSecondary">
+                  {t('proClientDetail.timesCount', { count: s.count })}
+                </Text>
+              </View>
             ))}
-          </View>
+          </Card>
         )}
 
-        {/* Notes */}
-        <SectionTitle text={t('proClientDetail.privateNotes')} colors={colors} spacing={spacing} />
-        <Card padding="md" style={{ marginBottom: spacing.md }}>
+        {/* ── 6. Notes privées ────────────────────────────────── */}
+        <SectionTitle text={t('proClientDetail.privateNotes')} />
+        <Card padding="md">
           <TextInput
             value={notes}
             onChangeText={setNotes}
@@ -626,27 +711,25 @@ export default function ClientDetailScreen() {
               paddingVertical: 0,
             }}
           />
-          <Text variant="caption" color="textSecondary" style={{ marginTop: 6 }}>
+          <Text variant="caption" color="textMuted" style={{ marginTop: spacing.sm }}>
             {t('proClientDetail.notesPrivacy')}
           </Text>
         </Card>
 
-        {/* Preferences */}
+        {/* ── 7. Préférences ──────────────────────────────────── */}
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: spacing.xs,
+            marginTop: spacing.xl,
+            marginBottom: spacing.sm,
           }}
         >
           <Text
             variant="label"
             color="textSecondary"
-            style={{
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-            }}
+            style={{ textTransform: 'uppercase', letterSpacing: 0.6 }}
           >
             {t('proClientDetail.preferences')}
           </Text>
@@ -667,11 +750,11 @@ export default function ClientDetailScreen() {
           </Pressable>
         </View>
         {prefs.length === 0 ? (
-          <Text variant="bodySmall" color="textSecondary" style={{ marginBottom: spacing.md }}>
+          <Text variant="bodySmall" color="textSecondary">
             {t('proClientDetail.noPreferences')}
           </Text>
         ) : (
-          <View style={{ gap: 6, marginBottom: spacing.md }}>
+          <View style={{ gap: spacing.sm }}>
             {prefs.map((p, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <TextInput
@@ -687,7 +770,12 @@ export default function ClientDetailScreen() {
                   placeholderTextColor={colors.textMuted}
                   style={[
                     styles.prefInput,
-                    { borderColor: colors.border, color: colors.text, flex: 1 },
+                    {
+                      borderColor: colors.border,
+                      color: colors.text,
+                      backgroundColor: colors.surface,
+                      flex: 1,
+                    },
                   ]}
                 />
                 <TextInput
@@ -703,7 +791,12 @@ export default function ClientDetailScreen() {
                   placeholderTextColor={colors.textMuted}
                   style={[
                     styles.prefInput,
-                    { borderColor: colors.border, color: colors.text, flex: 2 },
+                    {
+                      borderColor: colors.border,
+                      color: colors.text,
+                      backgroundColor: colors.surface,
+                      flex: 2,
+                    },
                   ]}
                 />
                 <Pressable
@@ -723,14 +816,86 @@ export default function ClientDetailScreen() {
           </View>
         )}
 
-        {/* Marketing placeholder */}
+        {/* ── 8. Historique des RDV — repliable ───────────────── */}
+        <View style={{ marginTop: spacing.xl }}>
+          <CollapsibleHeader
+            title={t('proClientDetail.historyTitle')}
+            count={historyLoading ? undefined : bookings.length}
+            open={historyOpen}
+            onToggle={() => setHistoryOpen((v) => !v)}
+            uppercase
+          />
+        </View>
+        {historyOpen && (
+          <View style={{ marginTop: spacing.sm }}>
+            {historyLoading ? (
+              <Text variant="bodySmall" color="textSecondary">
+                {t('common.loading')}
+              </Text>
+            ) : bookings.length === 0 ? (
+              <Text variant="bodySmall" color="textSecondary">
+                {t('proClientDetail.historyEmpty')}
+              </Text>
+            ) : (
+              <View style={{ gap: spacing.sm }}>
+                {bookings.map((b) => (
+                  <Pressable
+                    key={b.id}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(pro)/booking-detail/[id]',
+                        params: { id: b.id },
+                      } as any)
+                    }
+                  >
+                    {({ pressed }) => (
+                      <Card padding="md" style={{ opacity: pressed ? 0.85 : 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
+                          <View
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 4,
+                              marginTop: 6,
+                              backgroundColor: colors[STATUS_COLOR_KEY[b.status]],
+                            }}
+                          />
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text variant="bodySmall" style={{ fontWeight: '600' }} numberOfLines={1}>
+                              {b.serviceName}
+                            </Text>
+                            <Text variant="caption" color="textSecondary">
+                              {formatBookingDate(b.datetime)}
+                              {b.memberName ? ` · ${b.memberName}` : ''}
+                            </Text>
+                            <Text
+                              variant="caption"
+                              style={{ color: colors[STATUS_COLOR_KEY[b.status]], fontWeight: '600' }}
+                            >
+                              {t(`proClientDetail.status.${STATUS_I18N_KEY[b.status]}`)}
+                            </Text>
+                          </View>
+                          <Text variant="bodySmall" style={{ fontWeight: '700' }}>
+                            {b.price > 0 ? formatRevenue(b.price) : '—'}
+                          </Text>
+                        </View>
+                      </Card>
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ── 9. Marketing (à venir) ──────────────────────────── */}
         <Card
           padding="md"
+          shadow="none"
           style={{
-            marginBottom: spacing.md,
+            marginTop: spacing.xl,
             borderStyle: 'dashed',
-            borderWidth: 1,
-            borderColor: colors.border,
+            backgroundColor: colors.surfaceSecondary,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
@@ -745,60 +910,6 @@ export default function ClientDetailScreen() {
             </View>
           </View>
         </Card>
-
-        {/* History */}
-        <SectionTitle text={t('proClientDetail.historyTitle')} colors={colors} spacing={spacing} />
-        {historyLoading ? (
-          <Text variant="bodySmall" color="textSecondary">
-            {t('common.loading')}
-          </Text>
-        ) : bookings.length === 0 ? (
-          <Text variant="bodySmall" color="textSecondary">
-            {t('proClientDetail.historyEmpty')}
-          </Text>
-        ) : (
-          <View style={{ gap: 8 }}>
-            {bookings.map((b) => (
-              <Pressable
-                key={b.id}
-                onPress={() =>
-                  router.push({
-                    pathname: '/(pro)/booking-detail/[id]',
-                    params: { id: b.id },
-                  } as any)
-                }
-              >
-                {({ pressed }) => (
-                  <Card padding="md" style={{ opacity: pressed ? 0.85 : 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
-                      <Ionicons name="calendar-outline" size={16} color={colors.textMuted} style={{ marginTop: 2 }} />
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <Text variant="bodySmall" style={{ fontWeight: '600' }} numberOfLines={1}>
-                            {b.serviceName}
-                          </Text>
-                          <Text
-                            variant="caption"
-                            style={{ color: STATUS_COLOR[b.status] }}
-                          >
-                            · {t(`proClientDetail.status.${STATUS_I18N_KEY[b.status]}`)}
-                          </Text>
-                        </View>
-                        <Text variant="caption" color="textSecondary">
-                          {formatBookingDate(b.datetime)}
-                          {b.memberName ? ` · ${b.memberName}` : ''}
-                        </Text>
-                      </View>
-                      <Text variant="bodySmall" style={{ fontWeight: '600' }}>
-                        {b.price > 0 ? formatRevenue(b.price) : '—'}
-                      </Text>
-                    </View>
-                  </Card>
-                )}
-              </Pressable>
-            ))}
-          </View>
-        )}
       </ScrollView>
 
       {/* Sticky footer */}
@@ -833,6 +944,8 @@ export default function ClientDetailScreen() {
       <AdjustPointsSheet
         visible={adjustOpen}
         clientKey={client.clientKey}
+        baseCount={loyaltyView?.count ?? 0}
+        threshold={loyaltyView?.threshold ?? 0}
         onClose={() => setAdjustOpen(false)}
         onSuccess={({ delta, reason, note, adjustment }) => {
           setAdjustOpen(false);
@@ -872,26 +985,53 @@ function adjustReasonLabel(reason: string): string {
   return i18n.t(`proLoyaltyAdjust.reasons.${known}`);
 }
 
+/** « −10 % tous les 6 RDV » / « −5 € tous les 6 RDV ». */
+function formatRewardLabel(
+  loyalty: { rewardType: 'percent' | 'amount'; rewardValue: number; threshold: number },
+  t: (k: string, o?: Record<string, unknown>) => string,
+): string {
+  return loyalty.rewardType === 'percent'
+    ? t('proLoyalty.progress.rewardPercent', {
+        percent: loyalty.rewardValue,
+        threshold: loyalty.threshold,
+      })
+    : t('proLoyalty.progress.rewardAmount', {
+        amount: formatPrice(loyalty.rewardValue, 'EUR', getIntlLocale(i18n.language)),
+        threshold: loyalty.threshold,
+      });
+}
+
 const ADJUST_DELTA_MIN = -50;
 const ADJUST_DELTA_MAX = 50;
 
 /**
  * Bottom sheet d'ajustement manuel de points (fidélité v2).
  *
- * Stepper −/+ (borné −50..50, saute le 0 — un delta nul est refusé par
- * l'API), 6 justifications (slugs stockés, labels traduits), note libre
- * OBLIGATOIRE pour « autre », optionnelle sinon. POST /api/loyalty/adjust
- * avec le Bearer token du pro — le serveur journalise ET prévient le
- * client par email ; ici on ne fait que remonter le résultat au parent.
+ * Le choix du nombre de points est VISUEL : une carte de fidélité à
+ * tampons (voir StampCardPicker) où le pro tape l'emplacement
+ * correspondant au nouveau total. Le delta se déduit de l'écart avec
+ * le compte effectif actuel, borné à ±50 (limite de l'API).
+ *
+ * Le reste ne change pas : 6 justifications (slugs stockés, labels
+ * traduits), note libre OBLIGATOIRE pour « autre », POST
+ * /api/loyalty/adjust avec le Bearer token du pro — le serveur
+ * journalise ET prévient le client par email ; ici on ne fait que
+ * remonter le résultat au parent.
  */
 function AdjustPointsSheet({
   visible,
   clientKey,
+  baseCount,
+  threshold,
   onClose,
   onSuccess,
 }: {
   visible: boolean;
   clientKey: string;
+  /** Compte EFFECTIF actuel du client (point de départ de la carte). */
+  baseCount: number;
+  /** Seuil du programme = nombre d'emplacements sur la carte. */
+  threshold: number;
   onClose: () => void;
   onSuccess: (r: {
     delta: number;
@@ -906,7 +1046,10 @@ function AdjustPointsSheet({
   const { showToast } = useToast();
   const { user } = useAuth();
 
-  const [delta, setDelta] = useState(1);
+  // Le pro choisit un NOUVEAU TOTAL ; le delta s'en déduit. Bien plus
+  // parlant qu'un stepper : « je tape le 5ᵉ tampon » = « le client en
+  // aura 5 ».
+  const [target, setTarget] = useState(baseCount);
   const [reason, setReason] = useState<LoyaltyAdjustmentReason>('geste_commercial');
   const [note, setNote] = useState('');
   const [noteError, setNoteError] = useState(false);
@@ -916,22 +1059,19 @@ function AdjustPointsSheet({
   // de sortie, on ne peut donc pas compter sur un remontage.
   useEffect(() => {
     if (visible) {
-      setDelta(1);
+      setTarget(baseCount);
       setReason('geste_commercial');
       setNote('');
       setNoteError(false);
       setSubmitting(false);
     }
-  }, [visible]);
+  }, [visible, baseCount]);
 
-  /** Incrémente/décrémente en sautant 0 (delta nul interdit). */
-  const step = (dir: 1 | -1) => {
-    setDelta((d) => {
-      let next = d + dir;
-      if (next === 0) next = dir; // 1 → −1 et −1 → 1 sans passer par 0
-      return Math.max(ADJUST_DELTA_MIN, Math.min(ADJUST_DELTA_MAX, next));
-    });
-  };
+  const delta = target - baseCount;
+  // Bornes API (±50) + plancher 0 sur le total.
+  const minTarget = Math.max(0, baseCount + ADJUST_DELTA_MIN);
+  const maxTarget = baseCount + ADJUST_DELTA_MAX;
+  const clampTarget = (n: number) => Math.max(minTarget, Math.min(maxTarget, n));
 
   const noteRequired = reason === 'autre';
   const trimmedNote = note.trim();
@@ -981,7 +1121,7 @@ function AdjustPointsSheet({
   };
 
   return (
-    <OverlaySheet visible={visible} onClose={onClose} heightPct={0.85}>
+    <OverlaySheet visible={visible} onClose={onClose} heightPct={0.9}>
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
@@ -997,71 +1137,33 @@ function AdjustPointsSheet({
           {t('proLoyaltyAdjust.subtitle')}
         </Text>
 
-        {/* Stepper delta */}
+        {/* Carte à tampons — choix visuel du nouveau total */}
         <Text
           variant="label"
           color="textSecondary"
-          style={{ textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs }}
+          style={{ textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm }}
         >
           {t('proLoyaltyAdjust.deltaLabel')}
         </Text>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: spacing.lg,
-            marginBottom: spacing.lg,
-          }}
-        >
-          <Pressable
-            onPress={() => step(-1)}
-            disabled={delta <= ADJUST_DELTA_MIN}
-            style={({ pressed }) => [
-              styles.stepBtn,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                opacity: delta <= ADJUST_DELTA_MIN ? 0.35 : pressed ? 0.6 : 1,
-              },
-            ]}
-            hitSlop={6}
-          >
-            <Ionicons name="remove" size={22} color={colors.text} />
-          </Pressable>
-          <Text
-            variant="h2"
-            style={{
-              fontWeight: '700',
-              minWidth: 84,
-              textAlign: 'center',
-              color: delta > 0 ? '#10B981' : '#EF4444',
-            }}
-          >
-            {formatSignedDelta(delta)}
-          </Text>
-          <Pressable
-            onPress={() => step(1)}
-            disabled={delta >= ADJUST_DELTA_MAX}
-            style={({ pressed }) => [
-              styles.stepBtn,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                opacity: delta >= ADJUST_DELTA_MAX ? 0.35 : pressed ? 0.6 : 1,
-              },
-            ]}
-            hitSlop={6}
-          >
-            <Ionicons name="add" size={22} color={colors.text} />
-          </Pressable>
-        </View>
+        <StampCardPicker
+          baseCount={baseCount}
+          target={target}
+          threshold={threshold}
+          minTarget={minTarget}
+          maxTarget={maxTarget}
+          onChange={(n) => setTarget(clampTarget(n))}
+        />
 
         {/* Justification */}
         <Text
           variant="label"
           color="textSecondary"
-          style={{ textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs }}
+          style={{
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+            marginTop: spacing.xl,
+            marginBottom: spacing.xs,
+          }}
         >
           {t('proLoyaltyAdjust.reasonLabel')}
         </Text>
@@ -1084,9 +1186,7 @@ function AdjustPointsSheet({
                   borderRadius: 10,
                   borderWidth: 1,
                   borderColor: selected ? colors.primary : colors.border,
-                  backgroundColor: selected
-                    ? colors.primaryLight || '#e4effa'
-                    : colors.surface,
+                  backgroundColor: selected ? colors.primaryLight : colors.surface,
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
@@ -1132,7 +1232,7 @@ function AdjustPointsSheet({
           maxLength={200}
           style={{
             borderWidth: 1,
-            borderColor: noteError ? '#EF4444' : colors.border,
+            borderColor: noteError ? colors.error : colors.border,
             borderRadius: 10,
             paddingHorizontal: 12,
             paddingVertical: 10,
@@ -1144,7 +1244,7 @@ function AdjustPointsSheet({
           }}
         />
         {noteError && (
-          <Text variant="caption" style={{ color: '#EF4444', marginTop: 4 }}>
+          <Text variant="caption" style={{ color: colors.error, marginTop: 4 }}>
             {t('proLoyaltyAdjust.noteRequiredError')}
           </Text>
         )}
@@ -1168,23 +1268,321 @@ function AdjustPointsSheet({
   );
 }
 
-function SectionTitle({
-  text,
-  colors,
-  spacing,
+/**
+ * Carte de fidélité virtuelle interactive.
+ *
+ * Le pro tape un emplacement pour fixer le NOUVEAU TOTAL : taper le
+ * 5ᵉ quand le client en a 3 ⇒ « +2 ». Retaper un tampon déjà acquis
+ * retire les suivants ; retaper le dernier tampon posé le retire lui
+ * aussi (permet de revenir à 0 sur le cycle).
+ *
+ * La carte affiche TOUJOURS le cycle du total visé — les ±1 sous la
+ * carte permettent donc de franchir un cycle entier (offrir une carte
+ * complète) sans quitter la métaphore.
+ */
+function StampCardPicker({
+  baseCount,
+  target,
+  threshold,
+  minTarget,
+  maxTarget,
+  onChange,
 }: {
-  text: string;
-  colors: any;
-  spacing: any;
+  baseCount: number;
+  target: number;
+  threshold: number;
+  minTarget: number;
+  maxTarget: number;
+  onChange: (next: number) => void;
 }) {
+  const { t } = useTranslation();
+  const { colors, spacing, radius, shadows } = useTheme();
+
+  // Un seuil invalide ne devrait pas arriver (le bouton n'existe que
+  // sous une config valide) mais on ne veut ni division par zéro ni
+  // boucle infinie de rendu.
+  const size = Number.isInteger(threshold) && threshold >= 1 ? threshold : 1;
+
+  /** Début du cycle contenant `n` (un multiple exact clôt son cycle). */
+  const cycleStartOf = (n: number) =>
+    n > 0 && n % size === 0 ? n - size : Math.floor(n / size) * size;
+
+  const cycleStart = cycleStartOf(target);
+  const posInCycle = target - cycleStart;
+  const delta = target - baseCount;
+  const rewardReached = target > 0 && target % size === 0;
+
+  // Une Animated.Value par emplacement — le « tamponnage » est un
+  // simple ressort de scale, natif (pas de re-render par frame).
+  const anims = useMemo(
+    () => Array.from({ length: size }, () => new Animated.Value(1)),
+    [size],
+  );
+  // Le cycle affiché peut changer sous les pieds des animations ; on
+  // garde la dernière position connue pour n'animer que les tampons
+  // réellement ajoutés.
+  const prevRef = useRef({ cycleStart, posInCycle });
+
+  useEffect(() => {
+    const prev = prevRef.current;
+    prevRef.current = { cycleStart, posInCycle };
+    // Changement de cycle ou retrait : pas d'animation d'apposition.
+    if (prev.cycleStart !== cycleStart || posInCycle <= prev.posInCycle) return;
+    const added: number[] = [];
+    for (let i = prev.posInCycle; i < posInCycle; i++) added.push(i);
+    if (added.length === 0) return;
+    added.forEach((i) => anims[i]?.setValue(0.4));
+    Animated.stagger(
+      60,
+      added.map((i) =>
+        Animated.spring(anims[i], {
+          toValue: 1,
+          useNativeDriver: true,
+          damping: 10,
+          stiffness: 260,
+        }),
+      ),
+    ).start();
+  }, [cycleStart, posInCycle, anims]);
+
+  /** Tap sur l'emplacement `i` (0-based) du cycle affiché. */
+  const handleSlot = (i: number) => {
+    const value = cycleStart + i + 1;
+    // Retaper le dernier tampon posé le retire (sinon on ne pourrait
+    // jamais revenir au début du cycle).
+    onChange(value === target ? value - 1 : value);
+  };
+
+  const deltaLabel =
+    delta > 0
+      ? t('proLoyaltyAdjust.deltaAdd', { count: delta })
+      : delta < 0
+        ? t('proLoyaltyAdjust.deltaRemove', { count: Math.abs(delta) })
+        : t('proLoyaltyAdjust.deltaNone');
+
+  return (
+    <View>
+      {/* La carte */}
+      <View
+        style={[
+          {
+            borderRadius: radius.xl,
+            overflow: 'hidden',
+            borderWidth: 2,
+            borderColor: rewardReached ? colors.success : 'transparent',
+          },
+          shadows.md,
+        ]}
+      >
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ padding: spacing.lg }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: spacing.md,
+            }}
+          >
+            <Text
+              variant="label"
+              style={{
+                color: colors.textInverse,
+                fontWeight: '700',
+                textTransform: 'uppercase',
+                letterSpacing: 0.8,
+              }}
+            >
+              {t('proLoyaltyAdjust.cardTitle')}
+            </Text>
+            <View
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 3,
+                borderRadius: radius.full,
+                backgroundColor: colors.overlay,
+              }}
+            >
+              <Text variant="caption" style={{ color: colors.textInverse, fontWeight: '700' }}>
+                {posInCycle}/{size}
+              </Text>
+            </View>
+          </View>
+
+          {/* Emplacements */}
+          <View style={styles.slotRow}>
+            {Array.from({ length: size }, (_, i) => {
+              const value = cycleStart + i + 1;
+              const filled = value <= target;
+              const isNew = value > baseCount && value <= target;
+              const isRemoved = value > target && value <= baseCount;
+              // Hors des bornes de l'API (±50 autour du compte actuel) :
+              // l'emplacement reste visible mais n'est plus cliquable.
+              const disabled = value > maxTarget || value < minTarget;
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => handleSlot(i)}
+                  disabled={disabled}
+                  hitSlop={4}
+                  style={({ pressed }) => ({ opacity: disabled ? 0.35 : pressed ? 0.7 : 1 })}
+                >
+                  <Animated.View
+                    style={[
+                      styles.slot,
+                      { borderRadius: radius.full, transform: [{ scale: anims[i] ?? 1 }] },
+                      filled
+                        ? {
+                            backgroundColor: isNew ? colors.success : colors.textInverse,
+                            borderWidth: 0,
+                          }
+                        : {
+                            borderWidth: 2,
+                            borderStyle: 'dashed',
+                            borderColor: isRemoved ? colors.error : colors.textInverse,
+                            backgroundColor: colors.palette.transparent,
+                          },
+                    ]}
+                  >
+                    {filled ? (
+                      <Ionicons
+                        name="checkmark"
+                        size={18}
+                        color={isNew ? colors.textInverse : colors.primary}
+                      />
+                    ) : isRemoved ? (
+                      <Ionicons name="remove" size={16} color={colors.error} />
+                    ) : (
+                      <Text variant="caption" style={{ color: colors.textInverse, opacity: 0.6 }}>
+                        {value}
+                      </Text>
+                    )}
+                  </Animated.View>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text
+            variant="caption"
+            style={{ color: colors.textInverse, opacity: 0.85, marginTop: spacing.md }}
+          >
+            {rewardReached
+              ? t('proLoyaltyAdjust.rewardReached')
+              : t('proLoyaltyAdjust.cardHint')}
+          </Text>
+        </LinearGradient>
+      </View>
+
+      {/* Delta + réglage fin ±1 (pour dépasser un cycle) */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: spacing.md,
+          marginTop: spacing.md,
+        }}
+      >
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            variant="body"
+            style={{
+              fontWeight: '700',
+              color: delta > 0 ? colors.success : delta < 0 ? colors.error : colors.textMuted,
+            }}
+          >
+            {deltaLabel}
+          </Text>
+          <Text variant="caption" color="textSecondary">
+            {t('proLoyaltyAdjust.newTotal', { count: target })}
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <Pressable
+            onPress={() => onChange(target - 1)}
+            disabled={target <= minTarget}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.stepBtn,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                borderRadius: radius.full,
+                opacity: target <= minTarget ? 0.35 : pressed ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Ionicons name="remove" size={20} color={colors.text} />
+          </Pressable>
+          <Pressable
+            onPress={() => onChange(target + 1)}
+            disabled={target >= maxTarget}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.stepBtn,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                borderRadius: radius.full,
+                opacity: target >= maxTarget ? 0.35 : pressed ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Ionicons name="add" size={20} color={colors.text} />
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** Jauge à tampons en lecture seule (section fidélité de la fiche). */
+function StampRow({ filled, total }: { filled: number; total: number }) {
+  const { colors } = useTheme();
+  const count = Number.isInteger(total) && total >= 1 ? total : 0;
+  return (
+    <View style={styles.stampRow}>
+      {Array.from({ length: count }, (_, i) => {
+        const isFilled = i < filled;
+        return (
+          <View
+            key={i}
+            style={[
+              styles.stamp,
+              isFilled
+                ? { backgroundColor: colors.primary }
+                : {
+                    backgroundColor: colors.surfaceSecondary,
+                    borderWidth: 1.5,
+                    borderColor: colors.border,
+                  },
+            ]}
+          >
+            {isFilled && <Ionicons name="checkmark" size={13} color={colors.textInverse} />}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Titre de section — majuscules discrètes, respiration au-dessus. */
+function SectionTitle({ text }: { text: string }) {
+  const { spacing } = useTheme();
   return (
     <Text
       variant="label"
       color="textSecondary"
       style={{
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: spacing.xs,
+        letterSpacing: 0.6,
+        marginTop: spacing.xl,
+        marginBottom: spacing.sm,
       }}
     >
       {text}
@@ -1192,43 +1590,152 @@ function SectionTitle({
   );
 }
 
-function KpiCard({
+/** Tuile de chiffre clé — gros nombre, petit libellé (grille 2×2). */
+function StatTile({
+  icon,
+  tint,
   label,
   value,
-  colors,
 }: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  tint: string;
   label: string;
   value: string;
-  colors: any;
 }) {
+  const { colors, spacing, radius } = useTheme();
   return (
     <View
       style={{
-        flexBasis: '48%',
+        flexBasis: '47%',
         flexGrow: 1,
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 10,
-        backgroundColor: colors.surface,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
+        borderRadius: radius.lg,
+        backgroundColor: colors.surfaceSecondary,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.md,
       }}
     >
-      <Text
-        variant="caption"
-        color="textSecondary"
-        style={{
-          textTransform: 'uppercase',
-          letterSpacing: 0.4,
-          fontSize: 10,
-        }}
-      >
+      <Ionicons name={icon} size={18} color={tint} />
+      <Text variant="h3" style={{ fontWeight: '700', marginTop: spacing.sm }} numberOfLines={1}>
+        {value}
+      </Text>
+      <Text variant="caption" color="textSecondary" numberOfLines={1}>
         {label}
       </Text>
-      <Text variant="body" style={{ fontWeight: '700', marginTop: 2 }}>
+    </View>
+  );
+}
+
+/** Ligne libellé → valeur, séparateur hairline (bloc « Détails »). */
+function DetailRow({
+  label,
+  value,
+  last,
+}: {
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
+  const { colors, spacing } = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.md,
+        paddingVertical: spacing.sm,
+        borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth,
+        borderBottomColor: colors.divider,
+      }}
+    >
+      <Text variant="bodySmall" color="textSecondary" style={{ flex: 1 }} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text variant="bodySmall" style={{ fontWeight: '600' }} numberOfLines={1}>
         {value}
       </Text>
     </View>
+  );
+}
+
+/** Bouton pilule de contact (appel / SMS / email). */
+function ContactAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+}) {
+  const { colors, spacing, radius } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.md,
+        backgroundColor: colors.surface,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Ionicons name={icon} size={16} color={colors.primary} />
+      <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** En-tête de section repliable (chevron + compteur optionnel). */
+function CollapsibleHeader({
+  title,
+  count,
+  open,
+  onToggle,
+  uppercase,
+}: {
+  title: string;
+  count?: number;
+  open: boolean;
+  onToggle: () => void;
+  uppercase?: boolean;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={onToggle}
+      hitSlop={6}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Text
+        variant="label"
+        color="textSecondary"
+        style={
+          uppercase
+            ? { textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: '600' }
+            : { fontWeight: '600' }
+        }
+      >
+        {title}
+        {count != null ? ` (${count})` : ''}
+      </Text>
+      <Ionicons
+        name={open ? 'chevron-up' : 'chevron-down'}
+        size={16}
+        color={colors.textMuted}
+      />
+    </Pressable>
   );
 }
 
@@ -1330,8 +1837,30 @@ const styles = StyleSheet.create({
   stepBtn: {
     width: 44,
     height: 44,
-    borderRadius: 22,
     borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stampRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  stamp: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  slotRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  slot: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },

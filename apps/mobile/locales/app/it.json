@@ -1580,7 +1580,9 @@
       "noshow": "No-show",
       "firstVisit": "Prima visita",
       "lastVisit": "Ultima visita",
-      "frequency": "Frequenza"
+      "frequency": "Frequenza",
+      "honored": "Appunt. onorati",
+      "missed": "Annullati / assenti"
     },
     "favoriteServices": "Servizi preferiti",
     "computing": "Calcolo in corso…",
@@ -1618,7 +1620,15 @@
       "months_other": "Ogni {{count}} mesi",
       "years_one": "Ogni anno",
       "years_other": "Ogni {{count}} anni"
-    }
+    },
+    "contact": {
+      "call": "Chiama",
+      "sms": "SMS",
+      "email": "Email",
+      "error": "Azione non disponibile su questo dispositivo."
+    },
+    "details": "Dettagli",
+    "loyaltyTitle": "Fedeltà"
   },
   "proStats": {
     "title": "Statistiche",
@@ -2988,7 +2998,19 @@
     "success": "Punti aggiornati — il cliente è stato avvisato via email",
     "error": "Impossibile aggiornare i punti. Riprova.",
     "manualDelta": "Modifica manuale: {{delta}}",
-    "historyTitle": "Cronologia delle modifiche"
+    "historyTitle": "Cronologia delle modifiche",
+    "cardTitle": "Carta fedeltà",
+    "cardHint": "Tocca una casella per impostare il nuovo totale.",
+    "rewardReached": "Premio raggiunto con questo totale.",
+    "deltaAdd_one": "+{{count}} punto",
+    "deltaAdd_other": "+{{count}} punti",
+    "deltaRemove_one": "−{{count}} punto",
+    "deltaRemove_other": "−{{count}} punti",
+    "deltaNone": "Nessuna modifica",
+    "newTotal_one": "Nuovo totale: {{count}} punto",
+    "newTotal_other": "Nuovo totale: {{count}} punti",
+    "effectiveCount_one": "{{count}} punto accumulato",
+    "effectiveCount_other": "{{count}} punti accumulati"
   },
   "proLoyaltyPage": {
     "title": "Fedeltà",
