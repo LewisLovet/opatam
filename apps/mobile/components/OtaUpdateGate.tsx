@@ -20,7 +20,9 @@ import { useTranslation } from 'react-i18next';
 
 const PRIMARY = '#1a6daf';
 const PRIMARY_DARK = '#145a8f';
-const APP_ICON = require('../assets/splash-icon.png');
+// Même asset que le splash natif (app.json) : la reprise se fait sans
+// couture — l'utilisateur perçoit une seule animation continue.
+const APP_ICON = require('../assets/splash-icon-white.png');
 
 const CHECK_TIMEOUT_MS = 5000; // check silencieux — au-delà, on laisse démarrer
 const FETCH_TIMEOUT_MS = 15000; // téléchargement visible — au-delà, on s'efface
@@ -72,15 +74,13 @@ function PulsingLogo() {
           style={[
             styles.ring,
             {
-              opacity: v.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.4, 0] }),
+              opacity: v.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.22, 0] }),
               transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 2.2] }) }],
             },
           ]}
         />
       ))}
-      <View style={styles.logoCard}>
-        <Image source={APP_ICON} style={styles.logoImg} resizeMode="contain" />
-      </View>
+      <Image source={APP_ICON} style={styles.logoImg} resizeMode="contain" />
     </View>
   );
 }
@@ -250,22 +250,9 @@ const styles = StyleSheet.create({
     borderRadius: 52,
     backgroundColor: '#FFFFFF',
   },
-  logoCard: {
-    width: 100,
-    height: 100,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#0B2A6B',
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
-  },
   logoImg: {
-    width: 78,
-    height: 78,
+    width: 120,
+    height: 120,
   },
   title: {
     fontSize: 21,

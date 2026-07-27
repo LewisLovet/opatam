@@ -18,9 +18,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-icon-white.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1a6daf",
+      "imageWidth": 220
     },
     "primaryLanguage": "fr-FR",
     "locales": {
@@ -94,7 +95,13 @@
             "DEFAULT"
           ]
         }
-      ]
+      ],
+      "splash": {
+        "image": "./assets/splash-icon-white.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#1a6daf",
+        "imageWidth": 200
+      }
     },
     "notification": {
       "icon": "./assets/notification-icon.png",
