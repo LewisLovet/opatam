@@ -154,7 +154,18 @@ export function effectiveLoyaltyCount(confirmedCount: number, adjustment: number
 // avant ou après le script de migration, peu importe) et couvre les
 // fiches créées entre les deux. La migration reste utile pour rendre
 // l'état explicite côté UI.
-export const LOYALTY_V2_AT = new Date('2026-07-25T00:00:00+02:00');
+//
+// ⚠ CETTE DATE DOIT SUIVRE LA SORTIE DE L'APP, PAS CELLE DU SERVEUR.
+// Le serveur part avant le build mobile 1.6.0 (revue Apple) : pendant tout
+// cet intervalle, AUCUN client ne dispose du bouton « Activer ma carte ».
+// Une date passée bloquerait donc silencieusement la récompense de tous les
+// clients acquis entre-temps. On la place volontairement APRÈS la sortie
+// prévue de l'app : tout le monde reste grandfathered d'ici là, et la
+// cérémonie d'activation ne s'imposera qu'aux fiches créées ensuite.
+// À réajuster (en avance ou en retard) quand la date de sortie est connue —
+// se tromper en la mettant trop TARD est sans conséquence, trop TÔT prive
+// des clients de leur réduction.
+export const LOYALTY_V2_AT = new Date('2026-09-30T00:00:00+02:00');
 
 export interface LoyaltyActivationLike {
   loyaltyActivatedAt?: Date | { toDate?: () => Date } | null;
