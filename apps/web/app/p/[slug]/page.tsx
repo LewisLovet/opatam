@@ -173,6 +173,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       canonical: pageUrl,
       languages,
     },
+    // « Ouvrir » du bandeau Safari → l'écran presta de l'app (useDeepLinks
+    // route /p/{slug}) au lieu de l'accueil.
+    other: { 'apple-itunes-app': `app-id=6759246218, app-argument=${pageUrl}` },
     openGraph: {
       title: `${provider.businessName}${city ? ` — ${city}` : ''}`,
       description,

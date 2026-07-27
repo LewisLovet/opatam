@@ -5,7 +5,11 @@
       {
         "appID": "9KX5T72C3J.com.kamerleontech.opatam",
         "paths": [
-          "/fidelite"
+          "/fidelite",
+          "/p/*",
+          "/en/p/*",
+          "/it/p/*",
+          "/pt/p/*"
         ]
       }
     ]

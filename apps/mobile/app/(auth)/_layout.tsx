@@ -7,6 +7,7 @@
 import { Stack, Redirect } from 'expo-router';
 import { useTheme } from '../../theme';
 import { useAuth } from '../../contexts';
+import { consumePendingRoute } from '../../lib/pendingRoute';
 
 export default function AuthLayout() {
   const { colors } = useTheme();
@@ -15,6 +16,12 @@ export default function AuthLayout() {
   // If authenticated and userData loaded → redirect out of auth flow
   // This handles the post-login redirect reactively (no race condition)
   if (!isLoading && isAuthenticated && userData) {
+    // Un lien profond a pu viser un écran réservé aux comptes : on y
+    // retourne au lieu de retomber sur l'accueil.
+    const pending = consumePendingRoute();
+    if (pending) {
+      return <Redirect href={pending as never} />;
+    }
     if (userData.role === 'provider') {
       return <Redirect href={'/(pro)' as never} />;
     }

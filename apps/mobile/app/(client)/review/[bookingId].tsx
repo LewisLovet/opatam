@@ -26,6 +26,7 @@ import { Text, Card, Button, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { recordPositiveMomentAndMaybeAskReview } from '../../../lib/appReview';
+import { setPendingRoute } from '../../../lib/pendingRoute';
 
 // Helper to convert datetime
 function toDate(datetime: Date | any): Date {
@@ -121,9 +122,17 @@ export default function ReviewScreen() {
 
   // Load booking and check for existing review
   const loadData = useCallback(async () => {
-    if (!bookingId || !user?.uid) {
+    if (!bookingId) {
       setError(i18n.t('review.errors.missingData'));
       setLoading(false);
+      return;
+    }
+    // Déposer un avis exige un compte (l'avis est nominatif). Plutôt que
+    // de bloquer sur une erreur, on met l'écran de côté et on repasse par
+    // la connexion — la garde (auth) ramène ici ensuite.
+    if (!user?.uid) {
+      setPendingRoute(`/(client)/review/${bookingId}`);
+      router.replace('/(auth)/login');
       return;
     }
 

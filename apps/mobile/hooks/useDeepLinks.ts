@@ -2,10 +2,12 @@
  * useDeepLinks Hook
  * Handles incoming universal links and redirects to the correct screen.
  * Only handles notification-related links (reviews, booking confirmations).
- * Provider pages (/p/*) are NOT intercepted — they stay in the browser.
+ * Les pages prestataire (/p/*) ouvrent l'écran presta de l'app : elles ne
+ * demandent pas de compte, et le filtre Android les routait déjà ici.
  *
  * URL mapping:
  *   opatam.com/fidelite                    → /(client)/loyalty
+ *   opatam.com/p/{slug}                    → /(client)/provider/{slug}
  *   opatam.com/avis/{bookingId}            → /(client)/review/{bookingId}
  *   opatam.com/reservation/confirmation/{id} → /(client)/booking-detail/{id}
  */
@@ -42,8 +44,18 @@ export function useDeepLinks() {
         // /fidelite → espace fidélité du client (lien « ouvrir ma carte
         // dans l'app » depuis le web). Le guard (auth) redirige vers la
         // connexion si besoin, puis l'écran s'affiche.
-        if (path === '/fidelite' || path === '/en/fidelite' || path === '/it/fidelite') {
+        if (/^(?:\/(?:en|it|pt))?\/fidelite$/.test(path)) {
           router.push('/(client)/loyalty');
+          return;
+        }
+
+        // /p/{slug} → page du prestataire dans l'app. Le filtre Android
+        // ouvrait DÉJÀ l'app sur ces liens (autoVerify sur /p/ depuis
+        // avril) sans que rien ne les traite : l'utilisateur atterrissait
+        // sur l'accueil. L'écran presta ne demande pas de compte.
+        const providerMatch = path.match(/^(?:\/(?:en|it|pt))?\/p\/([^/]+)$/);
+        if (providerMatch) {
+          router.push(`/(client)/provider/${providerMatch[1]}`);
           return;
         }
 

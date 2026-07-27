@@ -34,6 +34,11 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  // Bandeau natif Safari « Ouvrir dans l'app » (affiché seulement si l'app
+  // est installée — c'est iOS qui le sait, pas nous). Les pages qui ont un
+  // équivalent dans l'app y ajoutent `app-argument` pour ouvrir le BON
+  // écran ; sans lui, le bandeau ouvre l'app sur son accueil.
+  other: { 'apple-itunes-app': 'app-id=6759246218' },
   metadataBase: new URL(BASE_URL),
   title: {
     template: `%s | ${SITE_NAME}`,
@@ -76,9 +81,6 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} className={inter.variable}>
-      <head>
-        <meta name="apple-itunes-app" content="app-id=6759246218" />
-      </head>
       <body className="antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
         <Providers>
