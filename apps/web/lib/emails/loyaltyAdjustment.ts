@@ -6,9 +6,9 @@
 
 import { resend, emailConfig, getEmailWrapperHtml } from '@/lib/resend';
 
-type Locale = 'fr' | 'en' | 'it';
+type Locale = 'fr' | 'en' | 'it' | 'pt';
 const resolveLocale = (raw: string | null | undefined): Locale =>
-  raw === 'en' || raw === 'it' ? raw : 'fr';
+  raw === 'en' || raw === 'it' || raw === 'pt' ? raw : 'fr';
 
 const REASON_LABELS: Record<Locale, Record<string, string>> = {
   fr: {
@@ -34,6 +34,14 @@ const REASON_LABELS: Record<Locale, Record<string, string>> = {
     evenement: 'Evento speciale',
     erreur_correction: 'Correzione di un errore',
     autre: 'Attenzione speciale',
+  },
+  pt: {
+    geste_commercial: 'Gesto comercial',
+    compensation_retard: 'Compensação por um atraso',
+    parrainage: 'Recomendação',
+    evenement: 'Evento especial',
+    erreur_correction: 'Correção de um erro',
+    autre: 'Atenção especial',
   },
 };
 
@@ -76,6 +84,19 @@ const TEXTS = {
     remaining: (r: number) => `Ancora ${r} appuntament${r > 1 ? 'i' : 'o'} prima della tua ricompensa.`,
     openApp: "Vedi la mia carta nell'app",
     signoff: 'A prestissimo,',
+  },
+  pt: {
+    subjectAdd: (p: string) => `${p} adicionou pontos ao seu cartão de fidelização`,
+    subjectRemove: (p: string) => `O seu cartão de fidelização em ${p} foi atualizado`,
+    hello: (n: string) => `Olá ${n},`,
+    added: (d: number, p: string) => `Boas notícias! <strong>${p}</strong> acabou de adicionar <strong>${d} ponto${d > 1 ? 's' : ''}</strong> ao seu cartão de fidelização.`,
+    removed: (d: number, p: string) => `<strong>${p}</strong> atualizou o seu cartão de fidelização (${d} ponto${d < -1 ? 's' : ''}).`,
+    yourCard: 'O seu cartão',
+    progress: (c: number, t: number) => `${c} / ${t} marcações`,
+    armed: 'A sua recompensa está pronta! Será aplicada automaticamente na sua próxima marcação elegível.',
+    remaining: (r: number) => `${r > 1 ? `Faltam apenas ${r} marcações` : 'Falta apenas 1 marcação'} para a sua recompensa.`,
+    openApp: 'Ver o meu cartão na app',
+    signoff: 'Até breve,',
   },
 } as const;
 

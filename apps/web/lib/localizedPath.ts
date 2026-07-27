@@ -20,7 +20,7 @@ export function isTranslatedSurface(pathname: string): boolean {
 }
 
 /** Préfixes de locale gérés en URL (le français vit à la racine). */
-const URL_LOCALES = ['en', 'it'] as const;
+const URL_LOCALES = ['en', 'it', 'pt'] as const;
 
 /** '/en/p/x' → '/p/x' ; '/it' → '/' ; anything else unchanged. */
 export function stripEnPrefix(pathname: string): string {

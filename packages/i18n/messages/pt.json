@@ -1,0 +1,494 @@
+{
+  "common": {
+    "appStore": "App Store",
+    "googlePlay": "Google Play",
+    "language": "Idioma",
+    "french": "Français",
+    "english": "English"
+  },
+  "layout": {
+    "header": {
+      "features": "Funcionalidades",
+      "pricing": "Preços",
+      "testimonials": "Testemunhos",
+      "faq": "FAQ",
+      "login": "Iniciar sessão",
+      "createPage": "Criar a minha página",
+      "start": "Começar",
+      "menu": "Menu",
+      "openMenu": "Abrir o menu",
+      "closeMenu": "Fechar o menu"
+    },
+    "footer": {
+      "product": "Produto",
+      "explore": "Explorar",
+      "forWho": "Para quem",
+      "support": "Apoio",
+      "legal": "Legal",
+      "allProviders": "Todos os profissionais",
+      "nailArtists": "Nail artists",
+      "contact": "Contacto",
+      "careers": "Recrutamento",
+      "downloadApp": "Descarregar a app",
+      "legalNotice": "Avisos legais",
+      "terms": "Termos de utilização",
+      "salesTerms": "Condições de venda",
+      "privacy": "Privacidade",
+      "allRights": "Todos os direitos reservados."
+    },
+    "appBadges": {
+      "downloadOn": "Descarregar",
+      "soonOn": "Brevemente no",
+      "ariaAppStore": "Descarregar na App Store",
+      "ariaPlaySoon": "Google Play — Brevemente disponível"
+    }
+  },
+  "blog": {
+    "video": "Vídeo",
+    "read": "Ler",
+    "new": "Novo"
+  },
+  "seo": {
+    "home": {
+      "title": "Opatam — Marcações online para profissionais | Sem comissões",
+      "description": "O Opatam é a plataforma de marcações online sem comissões para profissionais de beleza, bem-estar, coaching e serviços. Agenda online, lembretes automáticos, página de marcações. Teste grátis.",
+      "ogTitle": "Opatam — Marcações online sem comissões",
+      "ogDescription": "Faça a gestão das suas marcações online, atraia novos clientes e faça crescer o seu negócio. 0% de comissão. Teste grátis.",
+      "orgDescription": "Plataforma de marcações online sem comissões para profissionais de serviços."
+    },
+    "booking": {
+      "title": "Marcar em {businessName}",
+      "description": "Faça a sua marcação em {businessName} - {category}",
+      "demoTitle": "Demo — Marcar em Studio Beauté Élégance",
+      "demoDescription": "Experimente o percurso de marcação OPATAM com esta loja de demonstração."
+    },
+    "provider": {
+      "demoTitle": "Demo — Studio Beauté Élégance",
+      "demoDescription": "Veja como é uma página de marcações OPATAM. Exemplo com um salão de cabeleireiro e estética.",
+      "notFound": "Profissional não encontrado",
+      "inCity": " em {city}",
+      "fallbackDescription": "Faça a sua marcação com {businessName}{cityPart} — {category}. Marcações online no Opatam."
+    },
+    "confirmation": {
+      "title": "Marcação confirmada",
+      "description": "A sua marcação foi registada"
+    },
+    "cancel": {
+      "title": "Cancelar a sua marcação",
+      "description": "Cancele a sua marcação em poucos cliques"
+    },
+    "review": {
+      "title": "Deixar a sua avaliação",
+      "description": "Partilhe a sua experiência e ajude outros clientes"
+    }
+  },
+  "consent": {
+    "title": "Ajude-nos a fazer crescer o Opatam",
+    "body": "Ao aceitar os cookies de medição, ajuda-nos a saber o que o trouxe até aqui e a investir melhor nas nossas campanhas no Instagram e no Facebook. Recusar não tem qualquer impacto na sua experiência.",
+    "learnMore": "Saber mais",
+    "refuse": "Recusar",
+    "accept": "Aceitar"
+  },
+  "playStore": {
+    "title": "Brevemente no Android!",
+    "body": "Deixe o seu email para ser avisado assim que a aplicação estiver disponível no Google Play.",
+    "webNote": "Entretanto, todas as funcionalidades estão disponíveis na versão web: pesquisa, marcação e gestão das suas marcações.",
+    "continueWeb": "Continuar na web",
+    "emailPlaceholder": "oseu@email.com",
+    "notifyMe": "Avisar-me",
+    "sending": "A enviar...",
+    "successTitle": "Ficou registado!",
+    "successBody": "Vai receber um email assim que a aplicação estiver disponível no Google Play.",
+    "close": "Fechar",
+    "genericError": "Ocorreu um erro"
+  },
+  "home": {
+    "hero": {
+      "title": "As suas marcações não deviam continuar a viver nas DM.",
+      "subtitle": "O software de marcações online para profissionais independentes. Os seus clientes marcam 24 horas por dia, os lembretes são enviados automaticamente e fica com 100% dos seus ganhos. Pronto em 5 minutos.",
+      "pillReady": "Pronto em 5 min",
+      "pillCommission": "0% de comissão",
+      "pillPrice": "Desde {price} €/mês",
+      "ctaCreate": "Criar a minha página",
+      "ctaDemo": "Ver uma demo",
+      "disclaimer": "{days} dias grátis, sem cartão de crédito, sem compromisso"
+    },
+    "appStrip": {
+      "caption": "Também disponível no telemóvel",
+      "downloadOn": "Descarregar na",
+      "soonOn": "Brevemente no",
+      "soonBadge": "Brevemente"
+    },
+    "stats": {
+      "items": [
+        {
+          "value": "15+",
+          "label": "Setores de atividade"
+        },
+        {
+          "value": "24/7",
+          "label": "Marcações online"
+        },
+        {
+          "value": "0%",
+          "label": "Comissão"
+        },
+        {
+          "value": "5 min",
+          "label": "Para começar"
+        }
+      ]
+    },
+    "features": {
+      "title": "Retome o controlo do seu dia a dia",
+      "subtitle": "Acabaram-se as DM do Instagram às 22h, as agendas em papel, os SMS de lembrete. O {app} trata da parte administrativa para que se mantenha concentrado na sua profissão.",
+      "items": [
+        {
+          "title": "Uma agenda que se enche sozinha",
+          "description": "Os seus horários livres, as suas pausas, os seus dias de folga — está tudo visível num relance. Os lembretes seguem automaticamente para os seus clientes. Nunca mais escreve SMS de lembrete às 22h."
+        },
+        {
+          "title": "Os seus clientes marcam enquanto dorme",
+          "description": "A sua página de marcações está online 24 horas por dia. Os seus clientes escolhem o serviço e o horário em três cliques — sem criar conta, sem lhe mandar DM. Ao acordar, a sua agenda está cheia."
+        },
+        {
+          "title": "Toda a sua agenda no bolso",
+          "description": "Configura os seus serviços e os seus horários a partir do computador. No dia a dia, acompanha a sua agenda, confirma as novas marcações e recebe os alertas diretamente na aplicação móvel."
+        },
+        {
+          "title": "Toda a equipa sincronizada",
+          "description": "Cada membro tem a sua própria agenda, os seus próprios serviços, o seu próprio código de acesso. Mantém a visão de conjunto. Acabou o caderno partilhado, acabaram as marcações sobrepostas."
+        }
+      ]
+    },
+    "mockups": {
+      "myAgenda": "A minha agenda",
+      "weekOf": "Semana de 3 de fevereiro",
+      "days": [
+        "Seg",
+        "Ter",
+        "Qua",
+        "Qui",
+        "Sex"
+      ],
+      "chooseService": "Escolher um serviço",
+      "services": [
+        "Corte senhora — 35 €",
+        "Brushing — 25 €",
+        "Coloração — 55 €"
+      ],
+      "book": "Marcar",
+      "today": "Hoje",
+      "todayCount": "4 marcações",
+      "nextIn": "Próxima daqui a 25 min",
+      "newBooking": "Nova marcação",
+      "newBookingDetail": "Alice M. — Corte + Brushing — 14h00",
+      "myTeam": "A minha equipa",
+      "teamMembers": [
+        {
+          "name": "Marie D.",
+          "role": "Cabeleireira",
+          "rdv": "6 marcações hoje"
+        },
+        {
+          "name": "Julie K.",
+          "role": "Colorista",
+          "rdv": "4 marcações hoje"
+        },
+        {
+          "name": "Thomas R.",
+          "role": "Barbeiro",
+          "rdv": "5 marcações hoje"
+        }
+      ],
+      "sampleBookings": [
+        {
+          "time": "10:00",
+          "name": "Marie L.",
+          "service": "Brushing"
+        },
+        {
+          "time": "11:30",
+          "name": "Thomas R.",
+          "service": "Barba"
+        }
+      ]
+    },
+    "secondaryFeatures": {
+      "title": "E tudo o resto, já incluído",
+      "subtitle": "Sem módulos para desbloquear, sem opções pagas escondidas. O que vê é o que tem.",
+      "items": [
+        {
+          "title": "A sua montra online",
+          "description": "Uma verdadeira página profissional com os seus serviços, as suas avaliações e as suas fotos — para partilhar com um link"
+        },
+        {
+          "title": "QR Code para afixar",
+          "description": "Um QR Code para colar no balcão ou nos seus cartões. As suas clientes digitalizam e marcam"
+        },
+        {
+          "title": "Nunca mais se esquecem",
+          "description": "Lembrete automático 24h e 2h antes de cada marcação. As faltas descem, o seu dia mantém-se de pé"
+        },
+        {
+          "title": "Os seus números, claros",
+          "description": "Marcações, visitas à sua página, atividade da semana — tudo num só ecrã, atualizado em direto"
+        },
+        {
+          "title": "Vários locais, uma só agenda",
+          "description": "Salão, domicílio, deslocação — até 10 locais com disponibilidades diferentes para cada um"
+        },
+        {
+          "title": "O resumo de amanhã, logo hoje à noite",
+          "description": "Todas as noites recebe por email a agenda do dia seguinte. Acabaram as surpresas ao acordar"
+        },
+        {
+          "title": "A app iOS e Android",
+          "description": "A sua agenda no bolso, notificações em tempo real a cada marcação"
+        },
+        {
+          "title": "Alojado na Europa",
+          "description": "Em conformidade com o RGPD, dados alojados em França. Continua a ser dono de tudo"
+        }
+      ]
+    },
+    "sectors": {
+      "title": "Pensado para independentes. Todos os independentes.",
+      "subtitle": "Da cabeleireira ao domicílio ao tatuador de estúdio, do personal trainer ao terapeuta — o {app} adapta-se à sua profissão, e não o contrário.",
+      "items": [
+        {
+          "title": "Beleza & Estética",
+          "examples": "Cabeleireiros, esteticistas, barbeiros, manicures"
+        },
+        {
+          "title": "Bem-estar",
+          "examples": "Massagistas, sofrologistas, naturopatas, osteopatas"
+        },
+        {
+          "title": "Desporto & Coaching",
+          "examples": "Treinadores desportivos, personal trainers, ginásios"
+        },
+        {
+          "title": "Coaching",
+          "examples": "Life coaches, terapeutas, consultores de desenvolvimento"
+        },
+        {
+          "title": "Artesãos",
+          "examples": "Canalizadores, eletricistas, serralheiros, pintores"
+        },
+        {
+          "title": "Audiovisual",
+          "examples": "Fotógrafos, videógrafos, criadores de conteúdo"
+        }
+      ]
+    },
+    "testimonials": {
+      "title": "O que dizem os independentes que o utilizam",
+      "items": [
+        {
+          "name": "Marie L.",
+          "role": "Cabeleireira independente",
+          "city": "Lyon",
+          "initials": "ML",
+          "text": "0% de comissão, foi isso que me convenceu. Fico com 100% do que ganho. E a ferramenta é tão simples que estive online em 10 minutos."
+        },
+        {
+          "name": "Karim B.",
+          "role": "Barbeiro",
+          "city": "Paris",
+          "initials": "KB",
+          "text": "Na noite em que me inscrevi já tinha três marcações através do link na minha bio do Instagram. Deixei de responder a DM às 22h para arranjar um horário."
+        },
+        {
+          "name": "Sophie D.",
+          "role": "Gerente de um instituto de beleza",
+          "city": "Marselha",
+          "initials": "SD",
+          "text": "Somos três no instituto, cada uma tem a sua agenda no seu telemóvel. Por metade do que pagávamos antes — e mais bem pensado para a nossa profissão."
+        }
+      ]
+    },
+    "comparison": {
+      "title": "Porquê o {app}, e não os outros",
+      "subtitle": "Um preço claro, zero comissões, todas as funcionalidades essenciais desde o primeiro dia. Sem letras pequenas, sem planos escondidos.",
+      "criterion": "Critério",
+      "others": "Outras aplicações",
+      "rows": [
+        {
+          "label": "Preço mensal",
+          "opatam": "19,90 €",
+          "others": "De 0 €* a 90 €/mês"
+        },
+        {
+          "label": "Comissões sobre as suas marcações",
+          "opatam": "0%",
+          "others": "Até 20% ou 1 € por marcação"
+        },
+        {
+          "label": "Período de teste",
+          "opatam": "30 dias grátis",
+          "others": "Muitas vezes limitado ou inexistente"
+        },
+        {
+          "label": "Lembretes automáticos",
+          "opatam": "Incluídos",
+          "others": "Por vezes como opção paga"
+        },
+        {
+          "label": "Montra online personalizada",
+          "opatam": "Incluída",
+          "others": "Incluída mas com modelos limitados"
+        },
+        {
+          "label": "Fidelização contratual",
+          "opatam": "Sem compromisso",
+          "others": "Variável consoante a oferta"
+        },
+        {
+          "label": "Custo real anual (exemplo)",
+          "opatam": "199,00 €",
+          "others": "De 300 € a 1 080 €**"
+        }
+      ],
+      "footnote": "* As ofertas «gratuitas» incluem normalmente comissões cobradas sobre cada marcação, funcionalidades limitadas ou apoio reduzido. ** Estimativa baseada num preço médio de 25 € a 90 €/mês, sem contar com comissões adicionais."
+    },
+    "pricing": {
+      "title": "Um preço justo, sem surpresas",
+      "subtitle": "Dois planos. Zero comissões. Cancele quando quiser.",
+      "launchOffer": "Oferta de lançamento",
+      "guaranteedPrefix": "Preço garantido",
+      "guaranteedHighlight": "para sempre",
+      "guaranteeText": "Inscreva-se agora: o seu preço fica bloqueado para sempre. Mesmo que amanhã aumentemos os nossos preços, continua a pagar 19,90 €.",
+      "trustLocked": "Preço bloqueado para sempre",
+      "trustNoIncrease": "Sem aumentos",
+      "trustEarly": "Só para os primeiros inscritos",
+      "monthly": "Mensal",
+      "yearly": "Anual",
+      "toggleAria": "Alternar entre mensal e anual",
+      "save": "Poupe 17%",
+      "perMonth": "/mês",
+      "billedYearly": "Faturado {total} €/ano",
+      "noCommitment": "Sem compromisso",
+      "popular": "Popular",
+      "upTo10": "Até 10 membros incluídos",
+      "ctaCreate": "Criar a minha página",
+      "trialNote": "{days} dias de teste grátis em todos os planos. Não é necessário cartão de crédito.",
+      "pro": {
+        "name": "Pro",
+        "description": "O essencial para independentes. Faça a gestão das suas marcações e faça crescer o seu negócio — sem comissões.",
+        "features": [
+          "Marcações ilimitadas, 0% de comissão",
+          "A sua montra online profissional",
+          "Lembretes automáticos por email e push",
+          "Agenda acessível em qualquer lado, 24 horas por dia",
+          "Pronto em 5 minutos, sem formação"
+        ]
+      },
+      "studio": {
+        "name": "Studio",
+        "description": "A solução completa para equipas. Coordene as agendas, faça a gestão de vários locais e ofereça uma experiência profissional.",
+        "features": [
+          "Até 10 agendas sincronizadas",
+          "0% de comissão, mesmo em equipa",
+          "Atribuição dos serviços por membro",
+          "Vários locais (até 10 moradas)",
+          "Página pública de equipa profissional",
+          "Todo o plano Pro incluído"
+        ]
+      }
+    },
+    "faq": {
+      "title": "Perguntas frequentes",
+      "items": [
+        {
+          "question": "Qual é o melhor software de marcações online para independentes?",
+          "answer": "O OPATAM foi concebido especificamente para independentes e pequenas equipas: agenda online, página de marcações personalizada, lembretes automáticos 24h e 2h antes, aplicação móvel — sem comissões, pronto em 5 minutos. Mais de 15 profissões de serviços já lhe dão uso."
+        },
+        {
+          "question": "Como permitir que os meus clientes marquem online sem criar conta?",
+          "answer": "Os seus clientes escrevem o nome, o email e o telemóvel — é tudo. Sem conta para criar, sem palavra-passe. Recebe um link personalizado e um QR code para pôr na bio do Instagram, nos seus flyers ou para afixar na loja. Marcação concluída em 3 cliques."
+        },
+        {
+          "question": "Como gerir as marcações da minha equipa a partir de uma só ferramenta?",
+          "answer": "O plano Studio (29,90 €/mês) gere até 10 agendas sincronizadas. Cada membro tem a sua própria agenda e os seus próprios serviços. Pode notificá-los de cada nova marcação, enviar-lhes o resumo diário na véspera à noite e manter a visão de conjunto sobre toda a equipa."
+        },
+        {
+          "question": "Como reduzir as faltas e os esquecimentos dos meus clientes?",
+          "answer": "O OPATAM envia automaticamente um lembrete 24h antes da marcação e um segundo 2h antes. Os seus clientes recebem ainda uma confirmação imediata no momento da marcação. Na prática: menos esquecimentos, mais horários cumpridos, mais receita ao fim do mês."
+        },
+        {
+          "question": "Quanto custa um software de marcações online profissional?",
+          "answer": "Dois planos sem compromisso: Pro a 19,90 €/mês (ou 199 €/ano) para independentes, Studio a 29,90 €/mês (ou 299 €/ano) para equipas até 10 pessoas. Teste grátis de 30 dias, sem cartão de crédito. E zero comissões sobre as suas marcações — fica com 100% do que fatura."
+        },
+        {
+          "question": "É possível usar uma agenda de marcações online no telemóvel?",
+          "answer": "Sim. A aplicação móvel para iOS e Android permite-lhe consultar a agenda, confirmar as novas marcações e receber notificações em tempo real. Configura tudo no computador e gere o dia a dia a partir do bolso — entre duas marcações, no metro, onde quiser."
+        },
+        {
+          "question": "O OPATAM é adequado às profissões de beleza, bem-estar e coaching?",
+          "answer": "Cabeleireiros, esteticistas, barbeiros, manicures, massagistas, sofrologistas, treinadores desportivos, terapeutas, fotógrafos, artesãos, formadores… Cada profissional personaliza os seus serviços, as durações, os preços e a agenda como entender."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Recupere as suas noites.",
+      "subtitle": "A sua primeira página de marcações fica online em 5 minutos. 30 dias de teste grátis, sem cartão de crédito, sem compromisso.",
+      "cta": "Criar a minha página",
+      "disclaimer": "{days} dias grátis — Sem cartão de crédito — Sem compromisso",
+      "availableOn": "Disponível na",
+      "soonOn": "Brevemente no",
+      "soonBadge": "Brevemente",
+      "followUs": "Siga-nos"
+    },
+    "marketplace": {
+      "lookingFor": "Procura um profissional perto de si?",
+      "searchPro": "Procurar um profissional"
+    },
+    "stickyCta": "Teste grátis de {days} dias",
+    "heroLoaderTagline": "As marcações online, sem comissões",
+    "howItWorks": {
+      "title": "Pronto em 5 minutos, em 3 passos",
+      "subtitle": "Sem formação, sem técnicos para chamar. Cria a sua página e recebe as primeiras marcações ainda hoje.",
+      "steps": [
+        {
+          "title": "Crie o seu perfil",
+          "description": "Indique a sua atividade, os seus serviços e os seus horários. O nosso assistente guia-o passo a passo."
+        },
+        {
+          "title": "Publique a sua montra",
+          "description": "A sua página profissional fica online com um clique. Partilhe o link com os seus clientes por SMS, email ou redes sociais."
+        },
+        {
+          "title": "Receba marcações",
+          "description": "Os seus clientes marcam de forma autónoma, 24 horas por dia. Recebe uma notificação a cada nova marcação."
+        }
+      ],
+      "cta": "Criar o meu perfil gratuitamente",
+      "note": "Teste grátis de {days} dias — Não é necessário cartão de crédito"
+    },
+    "story": {
+      "badge": "Instagram & Snapchat",
+      "title": "Uma story no Instagram. Horários preenchidos.",
+      "titleAccent": "Em 30 segundos.",
+      "body": "Tem um buraco esta tarde? Gere uma story com as suas disponibilidades e o seu QR Code num só toque. As suas seguidoras veem, digitalizam, marcam. Compatível com Instagram, Snapchat e todas as redes com stories verticais.",
+      "steps": [
+        "Tem um buraco na terça às 14h.",
+        "Um toque. O Opatam gera a sua story com as suas disponibilidades e o seu QR Code.",
+        "Publica no Instagram. As suas clientes digitalizam e marcam."
+      ],
+      "twoFormats": "Dois formatos",
+      "day": "Dia",
+      "week": "Semana",
+      "sendMessage": "Enviar uma mensagem...",
+      "storyAlt": "Story {label} — Opatam"
+    },
+    "tutorials": {
+      "badge": "Tutoriais",
+      "title": "Aprenda a usar o Opatam em poucos minutos",
+      "subtitle": "Vídeos curtos para dominar a plataforma e tirar partido de cada funcionalidade.",
+      "seeAll": "Ver todos os tutoriais",
+      "carouselAria": "Seleção do tutorial",
+      "carouselItemAria": "Tutorial {index} de {total}"
+    }
+  }
+}

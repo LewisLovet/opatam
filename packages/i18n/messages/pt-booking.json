@@ -1,0 +1,298 @@
+{
+  "common": {
+    "back": "Voltar",
+    "backHome": "Voltar à página inicial",
+    "error": "Ocorreu um erro",
+    "free": "Grátis",
+    "priceRange": "De {min} a {max}",
+    "total": "Total",
+    "service": "Serviço",
+    "services": "Serviços",
+    "professional": "Profissional",
+    "location": "Local",
+    "dateTime": "Data e hora",
+    "date": "Data",
+    "dateAtTime": "{date} às {time}",
+    "reference": "Referência: {id}",
+    "cancelAndHome": "Cancelar e voltar à página inicial",
+    "yes": "Sim",
+    "no": "Não"
+  },
+  "steps": {
+    "service": "Serviço",
+    "member": "Profissional",
+    "slot": "Data e hora",
+    "confirm": "Confirmação"
+  },
+  "page": {
+    "noServicesTitle": "Nenhum serviço disponível",
+    "noServicesText": "Este profissional ainda não configurou os seus serviços."
+  },
+  "flow": {
+    "errorMissingInfo": "Informações em falta",
+    "title": "Componha a sua marcação",
+    "subtitle": "Adicione um ou mais serviços.",
+    "cartTitle": "A sua marcação",
+    "cartEmpty": "A sua marcação está vazia",
+    "cartEmptyHint": "Adicione serviços abaixo.",
+    "removeService": "Remover o serviço",
+    "addAnother": "Adicionar outro serviço",
+    "cancelAdd": "Cancelar",
+    "continue": "Continuar",
+    "continueWithCart": "Continuar · {count, plural, one {# serviço} other {# serviços}} · {total}",
+    "configureSubtitle": "Componha o seu serviço",
+    "addToCart": "Adicionar à marcação",
+    "missingChoices": "A escolher: {items}",
+    "servicesCount": "{count, plural, one {# serviço} other {# serviços}}",
+    "notice": {
+      "title": "Informação importante",
+      "accept": "Compreendi, continuar"
+    },
+    "demo": {
+      "confirmedTitle": "Marcação confirmada!",
+      "confirmedText": "É exatamente isto que os seus clientes verão depois de marcarem consigo.",
+      "with": "com {name}",
+      "trialNote": "{days} dias grátis, sem cartão de crédito",
+      "backToShop": "← Voltar à loja de demonstração"
+    }
+  },
+  "service": {
+    "title": "Adicione serviços",
+    "from": "a partir de",
+    "added": "{count, plural, =1 {Adicionado} other {Adicionado ×#}}",
+    "add": "Adicionar",
+    "moreDetails": "Mais detalhes",
+    "less": "Menos",
+    "others": "Outros"
+  },
+  "member": {
+    "title": "Escolha um profissional"
+  },
+  "memberPicker": {
+    "any": "Indiferente",
+    "firstAvailable": "Primeiro disponível"
+  },
+  "slot": {
+    "title": "Escolha uma data e um horário",
+    "nextAvailability": "Próxima disponibilidade",
+    "prevMonth": "Mês anterior",
+    "nextMonth": "Mês seguinte",
+    "days": [
+      "Dom",
+      "Seg",
+      "Ter",
+      "Qua",
+      "Qui",
+      "Sex",
+      "Sáb"
+    ],
+    "months": [
+      "Janeiro",
+      "Fevereiro",
+      "Março",
+      "Abril",
+      "Maio",
+      "Junho",
+      "Julho",
+      "Agosto",
+      "Setembro",
+      "Outubro",
+      "Novembro",
+      "Dezembro"
+    ],
+    "loadError": "Erro ao carregar as disponibilidades",
+    "noAvailabilityTitle": "Nenhuma disponibilidade para este serviço",
+    "noAvailabilityHint": "nos próximos {days} dias. Volte mais tarde ou contacte diretamente o profissional.",
+    "spotsShort": "{count} lug.",
+    "full": "Completo",
+    "closed": "Fechado",
+    "available": "Disponível",
+    "almostFull": "Quase completo",
+    "almostFullBadge": "Quase completo · {count, plural, one {# horário} other {# horários}}",
+    "dayFull": "Completo nesse dia para este serviço.",
+    "seeNextAvailability": "Ver a próxima disponibilidade"
+  },
+  "slotPicker": {
+    "prevDays": "Dias anteriores",
+    "nextDays": "Dias seguintes",
+    "noSlot": "Sem horários",
+    "emptyTitle": "Nenhum horário disponível",
+    "emptyText": "Nenhum horário disponível para o período selecionado.",
+    "selectedSlot": "Horário:"
+  },
+  "confirm": {
+    "title": "Os seus dados",
+    "nameLabel": "Nome completo",
+    "namePlaceholder": "João Silva",
+    "nameError": "O nome deve ter pelo menos 2 caracteres",
+    "emailLabel": "Email",
+    "emailPlaceholder": "joao@exemplo.com",
+    "emailError": "Formato de email inválido",
+    "phoneLabel": "Telemóvel",
+    "phonePlaceholder": "912 345 678 ou +351 912 345 678",
+    "phoneError": "Número de telefone inválido",
+    "pendingInfo": "A sua marcação ficará a aguardar confirmação do profissional. Receberá um email assim que for confirmada.",
+    "submitting": "A marcar...",
+    "submit": "Confirmar a marcação",
+    "terms": "Ao confirmar, aceita as nossas condições gerais e a nossa política de privacidade."
+  },
+  "clientForm": {
+    "firstNameLabel": "Nome",
+    "firstNamePlaceholder": "João",
+    "firstNameRequired": "O nome é obrigatório",
+    "lastNameLabel": "Apelido",
+    "lastNamePlaceholder": "Silva",
+    "lastNameRequired": "O apelido é obrigatório",
+    "emailLabel": "Email",
+    "emailPlaceholder": "joao.silva@exemplo.com",
+    "emailRequired": "O email é obrigatório",
+    "emailInvalid": "Email inválido",
+    "phoneLabel": "Telemóvel",
+    "phonePlaceholder": "912 345 678",
+    "phoneRequired": "O telemóvel é obrigatório",
+    "phoneInvalid": "Número de telefone inválido",
+    "notesLabel": "Notas (opcional)",
+    "notesPlaceholder": "Informações adicionais...",
+    "terms": "Ao confirmar, aceita as nossas <cgv>condições gerais</cgv> e a nossa <privacy>política de privacidade</privacy>."
+  },
+  "choicesPicker": {
+    "noChoices": "Sem variações, opções ou informações — a cliente verá diretamente o preço base.",
+    "optionFallback": "Opção",
+    "variationFallback": "Variação",
+    "choiceFallback": "Escolha",
+    "infoFallback": "Informação",
+    "selectPlaceholder": "Escolher…",
+    "answerPlaceholder": "A sua resposta"
+  },
+  "recap": {
+    "title": "Resumo",
+    "selectService": "Selecione um serviço",
+    "detail": "Detalhe",
+    "duration": "Duração",
+    "addressAfterConfirmation": "Morada exata comunicada após confirmação",
+    "promoUntil": "até {date}",
+    "promoValid": "Oferta válida {datePart}",
+    "promoSavings": "Promoção −{percent}% · poupa {amount}"
+  },
+  "summary": {
+    "title": "Resumo",
+    "atTime": "às {time}"
+  },
+  "serviceCard": {
+    "selected": "Selecionado",
+    "select": "Selecionar",
+    "selectedIndicator": "Serviço selecionado"
+  },
+  "serviceList": {
+    "emptyTitle": "Nenhum serviço",
+    "emptyText": "Nenhum serviço disponível de momento."
+  },
+  "appCta": {
+    "title": "Descarregue a app Opatam",
+    "subtitle": "Encontre as suas marcações, receba lembretes e marque com um clique.",
+    "loyaltyPercent": "Programa de fidelização: a cada {threshold} marcações feitas na app, −{value} %. Descarregue-a para acumular os seus pontos.",
+    "loyaltyAmount": "Programa de fidelização: a cada {threshold} marcações feitas na app, −{value} €. Descarregue-a para acumular os seus pontos."
+  },
+  "proCta": {
+    "title": "Também é profissional?",
+    "subtitle": "Crie a sua página de marcações em 5 minutos e receba os primeiros clientes ainda hoje.",
+    "subtitleOnline": "Crie a sua página de marcações online em 5 minutos e receba os primeiros clientes ainda hoje.",
+    "button": "Criar a minha página gratuitamente"
+  },
+  "confirmation": {
+    "pendingPaymentTitle": "Pagamento em validação…",
+    "pendingTitle": "Pedido enviado!",
+    "confirmedTitle": "Marcação confirmada!",
+    "pendingPaymentText": "O seu pagamento acabou de ser efetuado e está a ser validado. Esta página será atualizada dentro de alguns segundos.",
+    "pendingText": "O seu pedido de marcação foi enviado. Receberá um email assim que o profissional confirmar.",
+    "depositPaidText": "A sua marcação está confirmada e o seu sinal de {amount} foi registado. Foi-lhe enviado um email de confirmação.",
+    "confirmedText": "A sua marcação foi registada. Foi-lhe enviado um email de confirmação.",
+    "awaitingConfirmation": "A aguardar confirmação",
+    "addressRevealLater": "Morada exata comunicada ~48h antes da marcação.",
+    "savings": "Poupou {amount}",
+    "depositPaid": "Sinal pago",
+    "remainingDue": "Restante a pagar no local",
+    "addToCalendar": "Adicionar ao seu calendário",
+    "emailSentTo": "Foi enviado um email de confirmação para <email>{address}</email>",
+    "calendarTitle": "Marcação - {service} em {provider}",
+    "calendarWith": "Com {name}",
+    "calendarAt": "Em {name}"
+  },
+  "cancel": {
+    "notFoundTitle": "Link inválido ou expirado",
+    "notFoundText": "Este link de cancelamento já não é válido. A marcação pode já ter sido cancelada ou o link expirou.",
+    "alreadyCancelledTitle": "Marcação já cancelada",
+    "alreadyCancelledText": "Esta marcação já foi cancelada.",
+    "cancelledOn": "Cancelada a {date} às {time}",
+    "pastTitle": "Marcação já passada",
+    "pastText": "Esta marcação já passou e não pode ser cancelada.",
+    "successTitle": "Marcação cancelada",
+    "successText": "A sua marcação foi cancelada.",
+    "refunded": "O seu sinal de {amount} foi reembolsado no seu meio de pagamento. Conte com 5 a 10 dias úteis até o ver aparecer.",
+    "refundDeadlinePassed": "O prazo de reembolso do sinal já passou. Para qualquer pedido, contacte diretamente {name}.",
+    "providerNotified": "O profissional foi notificado deste cancelamento.",
+    "rebook": "Marcar de novo",
+    "orBackHome": "Ou voltar à página inicial",
+    "formTitle": "Cancelar a sua marcação",
+    "formSubtitle": "Tem a certeza de que quer cancelar esta marcação?",
+    "reasonLabel": "Motivo do cancelamento (opcional)",
+    "reasonPlaceholder": "Ex.: imprevisto, mudança de planos...",
+    "refundEligible": "O seu sinal de <strong>{amount}</strong> será reembolsado automaticamente.",
+    "refundNotEligible": "O prazo de reembolso já passou. O seu sinal de <strong>{amount}</strong> não será reembolsado automaticamente. Contacte {name} para qualquer pedido.",
+    "warning": "Esta ação é irreversível. O profissional será notificado do seu cancelamento.",
+    "cancelling": "A cancelar...",
+    "confirmCancel": "Confirmar o cancelamento"
+  },
+  "review": {
+    "selectRatingError": "Selecione uma nota",
+    "notFoundTitle": "Marcação não encontrada",
+    "notFoundText": "Esta marcação não existe ou o link é inválido.",
+    "notYetPassedTitle": "Marcação por realizar",
+    "notYetPassedText": "Poderá deixar a sua avaliação depois da marcação.",
+    "scheduledFor": "Marcação prevista para {date} às {time}",
+    "alreadyReviewedTitle": "Avaliação já enviada",
+    "alreadyReviewedText": "Já deixou a sua avaliação para esta marcação.",
+    "updatedTitle": "Avaliação atualizada!",
+    "thanksTitle": "Obrigado pela sua avaliação!",
+    "updatedText": "A sua avaliação foi atualizada.",
+    "savedText": "A sua avaliação foi registada e ficará visível na página do profissional.",
+    "updateFormTitle": "Alterar a sua avaliação",
+    "formTitle": "Deixar a sua avaliação",
+    "updateFormSubtitle": "Já deixou uma avaliação para {name}. Pode alterá-la abaixo.",
+    "formSubtitle": "Como correu a sua marcação em {name}?",
+    "ratingLabel": "A sua nota *",
+    "rating1": "Muito insatisfeito",
+    "rating2": "Insatisfeito",
+    "rating3": "Razoável",
+    "rating4": "Satisfeito",
+    "rating5": "Muito satisfeito",
+    "commentLabel": "O seu comentário (opcional)",
+    "commentPlaceholder": "Partilhe a sua experiência...",
+    "updating": "A atualizar...",
+    "sending": "A enviar...",
+    "updateSubmit": "Alterar a minha avaliação",
+    "submit": "Enviar a minha avaliação"
+  },
+  "embed": {
+    "common": {
+      "with": "com {name}"
+    },
+    "recap": {
+      "title": "A sua marcação",
+      "with": "com <b>{name}</b>"
+    },
+    "services": {
+      "title": "Escolha um serviço",
+      "others": "Outros serviços"
+    },
+    "success": {
+      "emailSent": "Acabámos de lhe enviar um email de confirmação.",
+      "appTitle": "Faça a gestão da sua marcação na app Opatam",
+      "appSubtitle": "Lembretes automáticos, alterações, novas marcações com um clique.",
+      "newBooking": "Nova marcação"
+    },
+    "footer": {
+      "poweredBy": "Marcações com tecnologia <b>Opatam</b>"
+    }
+  }
+}

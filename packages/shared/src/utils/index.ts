@@ -33,6 +33,7 @@ export * from './service-pricing';
 // Carte de fidélité (éligibilité, application, progression)
 export * from './loyalty';
 export * from './email';
+export * from './phone';
 // Article freshness — the "Nouveau" pill recency check used by both
 // the web blog cards and the mobile in-app tutoriels list.
 export * from './articles';
@@ -51,6 +52,7 @@ export function formatPrice(cents: number, currency = 'EUR', locale = 'fr-FR'): 
   if (cents === 0) {
     if (locale.startsWith('en')) return 'Free';
     if (locale.startsWith('it')) return 'Gratis';
+    if (locale.startsWith('pt')) return 'Grátis';
     return 'Gratuit';
   }
   const amount = cents / 100;

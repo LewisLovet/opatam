@@ -1,5 +1,5 @@
 /**
- * Email i18n — FR/EN/IT texts for the CLIENT-facing transactional emails.
+ * Email i18n — FR/EN/IT/PT texts for the CLIENT-facing transactional emails.
  *
  * DEPLOY CONSTRAINT (why this file exists): Cloud Functions never import
  * workspace packages at RUNTIME — only `import type` from @booking-app/* is
@@ -13,26 +13,32 @@
  * reschedule, review request, deposit reminder. Pro & system emails
  * (provider notifications, welcome, password reset…) stay 100% French.
  *
- * Locale source: `booking.clientLocale` ('fr' | 'en' | 'it', absent = fr) —
- * the language the client booked in. Anything that isn't exactly 'en' or
- * 'it' falls back to 'fr'.
+ * Locale source: `booking.clientLocale` ('fr' | 'en' | 'it' | 'pt', absent = fr) —
+ * the language the client booked in. Anything that isn't exactly 'en', 'it'
+ * or 'pt' falls back to 'fr'. Portuguese is pt-PT (Portugal), not pt-BR.
  */
 
-export type EmailLocale = 'fr' | 'en' | 'it';
+export type EmailLocale = 'fr' | 'en' | 'it' | 'pt';
 
 /** Resolve a raw locale value (booking.clientLocale) to a supported email locale. */
 export function resolveEmailLocale(raw: string | null | undefined): EmailLocale {
-  return raw === 'en' || raw === 'it' ? raw : 'fr';
+  return raw === 'en' || raw === 'it' || raw === 'pt' ? raw : 'fr';
 }
 
 // ---------------------------------------------------------------------------
 // Locale-aware formatters
 // ---------------------------------------------------------------------------
 // Same rendering rules as formatDateFr / formatTimeFr / formatPriceFr in
-// resendService, plus English and Italian variants. Times stay 24h and
-// Europe/Paris in ALL languages — the appointment physically happens in France.
+// resendService, plus English, Italian and Portuguese variants. Times stay 24h
+// and Europe/Paris in ALL languages — the appointment physically happens in
+// France.
 
-const INTL_LOCALE: Record<EmailLocale, string> = { fr: 'fr-FR', en: 'en-GB', it: 'it-IT' };
+const INTL_LOCALE: Record<EmailLocale, string> = {
+  fr: 'fr-FR',
+  en: 'en-GB',
+  it: 'it-IT',
+  pt: 'pt-PT',
+};
 
 export function formatEmailDate(date: Date, locale: EmailLocale = 'fr'): string {
   return date.toLocaleDateString(INTL_LOCALE[locale], {
@@ -49,8 +55,8 @@ export function formatEmailTime(date: Date, locale: EmailLocale = 'fr'): string 
     hour: '2-digit',
     minute: '2-digit',
     timeZone: 'Europe/Paris',
-    // Keep 24h in English (and Italian) too — French salon hours, and it
-    // matches the fr-FR default so every language reads the same clock.
+    // Keep 24h in English (and Italian / Portuguese) too — French salon hours,
+    // and it matches the fr-FR default so every language reads the same clock.
     ...(locale !== 'fr' ? { hour12: false } : {}),
   });
 }
@@ -69,6 +75,7 @@ export function formatEmailPrice(
   if (priceMaxInCentimes && priceMaxInCentimes > priceInCentimes) {
     if (locale === 'en') return `From ${fmt(priceInCentimes)} to ${fmt(priceMaxInCentimes)}`;
     if (locale === 'it') return `Da ${fmt(priceInCentimes)} a ${fmt(priceMaxInCentimes)}`;
+    if (locale === 'pt') return `De ${fmt(priceInCentimes)} a ${fmt(priceMaxInCentimes)}`;
     return `De ${fmt(priceInCentimes)} à ${fmt(priceMaxInCentimes)}`;
   }
   return fmt(priceInCentimes);
@@ -101,6 +108,18 @@ export function formatEmailTimeUntil(minutesUntil: number, locale: EmailLocale =
       return hours === 1 ? 'tra 1 ora' : `tra ${hours} ore`;
     }
     return `tra ${hours}h${mins.toString().padStart(2, '0')}`;
+  }
+  if (locale === 'pt') {
+    if (minutesUntil < 60) {
+      return minutesUntil <= 1 ? 'daqui a 1 minuto' : `daqui a ${minutesUntil} minutos`;
+    }
+    const hours = Math.floor(minutesUntil / 60);
+    const mins = Math.round(minutesUntil % 60);
+    if (hours >= 24) return 'amanhã';
+    if (mins === 0) {
+      return hours === 1 ? 'daqui a 1 hora' : `daqui a ${hours} horas`;
+    }
+    return `daqui a ${hours}h${mins.toString().padStart(2, '0')}`;
   }
   if (minutesUntil < 60) {
     const mins = minutesUntil;
@@ -294,6 +313,61 @@ export const EMAIL_TEXTS = {
         cancelLine: (url: string) => `Per annullare: ${url}`,
       },
     },
+    pt: {
+      greeting: (name: string) => `Olá ${name},`,
+      signoff: 'Até breve,',
+      footerAuto: (appName: string) => `Este email foi enviado automaticamente por ${appName}.`,
+      footerIgnore: 'Se esta mensagem não lhe diz respeito, ignore-a.',
+      colon: ':',
+      labels: {
+        service: 'Serviço',
+        date: 'Data',
+        time: 'Hora',
+        duration: 'Duração',
+        location: 'Local',
+        address: 'Morada',
+        area: 'Zona',
+        directions: 'Como chegar',
+        with: 'Com',
+        price: 'Preço',
+        deposit: 'Sinal',
+        depositPaid: 'Sinal pago',
+        remaining: 'Restante a pagar',
+        remainingOnSite: 'Restante a pagar no local',
+        reason: 'Motivo',
+        at: 'Em',
+      },
+      onSite: 'no local',
+      addToCalendar: 'Adicionar ao seu calendário',
+      updateCalendar: 'Atualizar o seu calendário',
+      addToCalendarText: 'Adicionar ao seu calendário:',
+      updateCalendarText: 'Atualizar o seu calendário:',
+      calendarGoogle: 'Google',
+      calendarGoogleText: 'Google Calendar',
+      calendarApple: 'Apple / Outlook',
+      cancelCta: 'Anular a marcação',
+      cancelLineText: (url: string) => `Anular a marcação: ${url}`,
+      rebookCta: 'Marcar de novo',
+      directionsCta: 'Ver como chegar',
+      accessInfoTitleHtml: 'Informações de acesso',
+      accessInfoTitleText: 'Informações de acesso',
+      addressPendingHtml: (when: string) =>
+        `A morada exata e as informações de acesso ser-lhe-ão comunicadas${when} juntamente com o lembrete, antes da marcação.`,
+      addressPendingText: (when: string) =>
+        `A morada exata e as informações de acesso ser-lhe-ão comunicadas${when} juntamente com o lembrete, antes da marcação.`,
+      onDate: (formattedDate: string) => ` em ${formattedDate}`,
+      promoWas: (formattedOriginal: string, pct: number) =>
+        ` (em vez de ${formattedOriginal}, −${pct}%)`,
+      providerNoticeTitle: (businessName: string) => `Informação de ${businessName}`,
+      ics: {
+        filename: 'marcacao.ics',
+        summary: (serviceName: string, businessName: string) =>
+          `Marcação - ${serviceName} em ${businessName}`,
+        withMember: (memberName: string) => `Com ${memberName}`,
+        atBusiness: (businessName: string) => `Em ${businessName}`,
+        cancelLine: (url: string) => `Para anular: ${url}`,
+      },
+    },
   },
 
   loyalty: {
@@ -337,6 +411,20 @@ export const EMAIL_TEXTS = {
       rewardBody: (businessName: string, reward: string) =>
         `La Sua carta fedeltà presso ${businessName} è completa: ${reward} verrà applicato automaticamente alla Sua prossima prenotazione nell'app.`,
       rewardCta: 'Prenota e usa lo sconto',
+    },
+    pt: {
+      cardTitle: (businessName: string) => `O seu cartão de fidelização em ${businessName}`,
+      counted: (count: number, threshold: number, remaining: number, reward: string) =>
+        `${count}/${threshold} marcações cumpridas — esta será adicionada após a sua visita. Faltam apenas ${remaining} para ${reward}.`,
+      applied: (reward: string) => `Desconto de fidelização ${reward} aplicado a esta marcação.`,
+      readyForNext: (reward: string) =>
+        `Cartão completo: ${reward} na sua próxima marcação na app.`,
+      // Email « récompense prête »
+      rewardSubject: (businessName: string) => `A sua recompensa está pronta em ${businessName}`,
+      rewardTitle: 'A sua recompensa está pronta!',
+      rewardBody: (businessName: string, reward: string) =>
+        `O seu cartão de fidelização em ${businessName} está completo: ${reward} será aplicado automaticamente na sua próxima marcação na app.`,
+      rewardCta: 'Marcar e usar o meu desconto',
     },
   },
   confirmation: {
@@ -408,6 +496,28 @@ export const EMAIL_TEXTS = {
         `Dopo l'appuntamento, <a href="${url}" style="color: #6366f1; text-decoration: underline;">ci lasci una recensione</a>`,
       reviewFooterText: (url: string) => `Dopo l'appuntamento, ci lasci una recensione: ${url}`,
     },
+    pt: {
+      subject: (serviceName: string) => `Confirmação da sua marcação - ${serviceName}`,
+      subjectUpdated: (businessName: string) =>
+        `A sua marcação foi atualizada - ${businessName}`,
+      introHtml: 'A sua marcação foi <strong style="color: #16a34a;">confirmada</strong>.',
+      introText: 'A sua marcação foi confirmada.',
+      updateAddedHtml: (serviceName: string) =>
+        `Foi <strong style="color: #16a34a;">adicionado à</strong> sua marcação um serviço: <strong>${serviceName}</strong>.`,
+      updateRemovedHtml: (serviceName: string) =>
+        `Foi <strong style="color: #dc2626;">retirado da</strong> sua marcação um serviço: <strong>${serviceName}</strong>.`,
+      updateAddedText: (serviceName: string) =>
+        `Foi adicionado à sua marcação um serviço: ${serviceName}.`,
+      updateRemovedText: (serviceName: string) =>
+        `Foi retirado da sua marcação um serviço: ${serviceName}.`,
+      updatedSub: 'Aqui está a sua marcação atualizada.',
+      boxTitleMulti: 'Os seus serviços',
+      boxTitleSingle: 'A sua marcação',
+      detailsHeading: 'Detalhes da sua marcação:',
+      reviewFooterHtml: (url: string) =>
+        `Após a sua marcação, <a href="${url}" style="color: #6366f1; text-decoration: underline;">deixe-nos a sua opinião</a>`,
+      reviewFooterText: (url: string) => `Após a sua marcação, deixe-nos a sua opinião: ${url}`,
+    },
   },
 
   reminder: {
@@ -449,6 +559,18 @@ export const EMAIL_TEXTS = {
       tomorrow: 'domani',
       inTwoDays: 'tra 2 giorni',
       inTwoHours: 'tra 2 ore',
+    },
+    pt: {
+      subject: (timeLabel: string, serviceName: string) =>
+        `Lembrete: a sua marcação ${timeLabel} - ${serviceName}`,
+      introHtml: (timeLabel: string) =>
+        `Lembramos que a sua marcação é <strong style="color: #2563eb;">${timeLabel}</strong>.`,
+      introText: (timeLabel: string) => `Lembramos que a sua marcação é ${timeLabel}.`,
+      boxTitle: 'Lembrete de marcação',
+      detailsHeading: 'Detalhes da sua marcação:',
+      tomorrow: 'amanhã',
+      inTwoDays: 'daqui a 2 dias',
+      inTwoHours: 'daqui a 2 horas',
     },
   },
 
@@ -528,6 +650,31 @@ export const EMAIL_TEXTS = {
         `Se desidera fissare un nuovo appuntamento, può prenotare online su ${url}`,
       apology: 'Ci scusiamo per il disagio.',
     },
+    pt: {
+      subject: (serviceName: string) => `Anulação da sua marcação - ${serviceName}`,
+      introHtml:
+        'Informamos que a sua marcação foi <strong style="color: #dc2626;">anulada</strong>.',
+      introText: 'Informamos que a sua marcação foi anulada.',
+      boxTitle: 'Marcação anulada',
+      detailsHeading: 'Detalhes da marcação anulada:',
+      refundedTitle: '✓ Sinal reembolsado',
+      refundedBodyHtml: (formattedAmount: string) =>
+        `O seu sinal de <strong>${formattedAmount}</strong> está a ser reembolsado no seu meio de pagamento. Conte com 5 a 10 dias úteis até que apareça.`,
+      refundedText: (formattedAmount: string) =>
+        `✓ O seu sinal de ${formattedAmount} está a ser reembolsado (5 a 10 dias úteis).`,
+      unrefundedTitle: 'Sinal não reembolsado',
+      unrefundedBodyHtml: (formattedAmount: string, businessName: string) =>
+        `O seu sinal de <strong>${formattedAmount}</strong> não é reembolsável porque o pedido de anulação ocorreu depois do prazo de reembolso definido por ${businessName}.`,
+      unrefundedContactHtml: (businessName: string) =>
+        `Para qualquer pedido excecional, contacte diretamente ${businessName}.`,
+      unrefundedText: (formattedAmount: string, businessName: string) =>
+        `⚠ O seu sinal de ${formattedAmount} não é reembolsável porque o pedido de anulação ocorreu depois do prazo definido por ${businessName}.`,
+      rebookPromptHtml:
+        'Se desejar fazer uma nova marcação, não hesite em contactar-nos ou marcar online.',
+      rebookPromptText: (url: string) =>
+        `Se desejar fazer uma nova marcação, pode marcar online em ${url}`,
+      apology: 'Pedimos desculpa pelo incómodo.',
+    },
   },
 
   reschedule: {
@@ -563,6 +710,17 @@ export const EMAIL_TEXTS = {
       oldSlotLineText: (formattedDate: string, formattedTime: string) =>
         `Orario precedente: ${formattedDate} alle ${formattedTime}`,
       newSlotHeadingText: 'Nuovo orario:',
+    },
+    pt: {
+      subject: (serviceName: string) => `Alteração da sua marcação - ${serviceName}`,
+      introHtml: 'A sua marcação foi <strong style="color: #2563eb;">alterada</strong>.',
+      introText: 'A sua marcação foi alterada.',
+      oldSlotTitle: 'Horário anterior',
+      newSlotTitle: 'Novo horário',
+      atJoiner: 'às',
+      oldSlotLineText: (formattedDate: string, formattedTime: string) =>
+        `Horário anterior: ${formattedDate} às ${formattedTime}`,
+      newSlotHeadingText: 'Novo horário:',
     },
   },
 
@@ -609,6 +767,20 @@ export const EMAIL_TEXTS = {
       visibleNote: (providerName: string) =>
         `La Sua recensione sarà visibile sulla pagina di ${providerName}.`,
       sentBy: 'Email inviata da',
+    },
+    pt: {
+      subject: (serviceName: string) => `Como correu a sua marcação? - ${serviceName}`,
+      htmlLang: 'pt',
+      eyebrow: 'A sua opinião conta',
+      heading: 'Como correu a sua marcação?',
+      body: 'Esperamos que a sua marcação tenha corrido bem. A sua opinião ajuda outros clientes a escolher e ajuda-nos a melhorar os nossos serviços.',
+      boxTitle: 'A sua marcação',
+      boxTitleText: 'A sua marcação:',
+      cta: 'Deixar a minha opinião',
+      ctaLineText: 'Deixe aqui a sua opinião:',
+      visibleNote: (providerName: string) =>
+        `A sua opinião ficará visível na página de ${providerName}.`,
+      sentBy: 'Email enviado por',
     },
   },
 
@@ -669,6 +841,25 @@ export const EMAIL_TEXTS = {
         `Non può presentarsi all'appuntamento? <a href="${url}" style="color: #dc2626; text-decoration: underline;">Annulla la prenotazione</a>.`,
       cancelLineText: (url: string) => `Annulla la prenotazione: ${url}`,
       signoff: 'A prestissimo,',
+    },
+    pt: {
+      subject: (serviceName: string, providerName: string) =>
+        `Sinal pendente — ${serviceName} em ${providerName}`,
+      introHtml: (providerName: string) =>
+        `A sua marcação em <strong>${providerName}</strong> está <strong style="color: #d97706;">a aguardar o pagamento do sinal</strong>.`,
+      introText: (providerName: string) =>
+        `A sua marcação em ${providerName} está a aguardar o pagamento do sinal.`,
+      boxTitle: 'Marcação pendente',
+      deadlineHtml: (minutesLeft: number) =>
+        `Sem o pagamento do sinal nos próximos <strong>${minutesLeft} minutos</strong>, o seu horário será libertado automaticamente.`,
+      deadlineText: (minutesLeft: number) =>
+        `Sem o pagamento do sinal nos próximos ${minutesLeft} minutos, o seu horário será libertado automaticamente.`,
+      payCta: 'Pagar o meu sinal agora',
+      payLineText: (url: string) => `Pagar o meu sinal: ${url}`,
+      cancelQuestionHtml: (url: string) =>
+        `Não vai poder comparecer? <a href="${url}" style="color: #dc2626; text-decoration: underline;">Anular a marcação</a>.`,
+      cancelLineText: (url: string) => `Anular a marcação: ${url}`,
+      signoff: 'Até já,',
     },
   },
 } as const;

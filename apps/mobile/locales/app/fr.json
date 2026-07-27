@@ -202,7 +202,7 @@
         "emailInvalid": "Format d'email invalide",
         "passwordRequired": "Le mot de passe est requis",
         "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
-        "phoneInvalid": "Format invalide (ex: 06 12 34 56 78)",
+        "phoneInvalid": "Numéro de téléphone invalide",
         "signUpError": "Erreur lors de l'inscription",
         "confirmEmailRequired": "Confirmez votre adresse email",
         "emailMismatch": "Les adresses email ne correspondent pas"
@@ -629,7 +629,7 @@
       "nameRequired": "Le prénom est requis",
       "nameTooShort": "Le prénom doit contenir au moins 2 caractères",
       "phoneRequired": "Le numéro de téléphone est requis",
-      "phoneInvalid": "Format invalide (ex: 06 12 34 56 78)"
+      "phoneInvalid": "Numéro de téléphone invalide"
     }
   },
   "notifSettings": {

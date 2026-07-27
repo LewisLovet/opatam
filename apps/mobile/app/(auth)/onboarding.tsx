@@ -28,6 +28,14 @@ import { setOnboardingSeen } from '../../utils';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const PRIMARY = '#1a6daf';
+
+/** Nom de chaque langue dans sa propre langue (aucune traduction requise). */
+const NATIVE_LABEL: Record<AppLocale, string> = {
+  fr: 'Français',
+  en: 'English',
+  it: 'Italiano',
+  pt: 'Português',
+};
 const PRIMARY_DARK = '#145a8f';
 
 interface Slide {
@@ -211,7 +219,7 @@ export default function OnboardingScreen() {
           <View style={styles.langList}>
             {APP_LOCALES.map((l) => {
               const selected = l === currentLocale;
-              const label = l === 'fr' ? 'Français' : l === 'en' ? 'English' : 'Italiano';
+              const label = NATIVE_LABEL[l];
               return (
                 <Pressable
                   key={l}

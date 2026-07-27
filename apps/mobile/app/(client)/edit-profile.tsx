@@ -20,6 +20,7 @@ import { userService } from '@booking-app/firebase';
 import { useTheme } from '../../theme';
 import { Text, Button, Input, useToast } from '../../components';
 import { useAuth } from '../../contexts';
+import { isValidInternationalPhone } from '@booking-app/shared';
 
 interface FormErrors {
   displayName?: string;
@@ -57,8 +58,10 @@ export default function EditProfileScreen() {
     if (!phone.trim()) {
       newErrors.phone = t('editProfile.errors.phoneRequired');
     } else {
-      const cleanedPhone = phone.replace(/\s/g, '');
-      if (!/^0[67]\d{8}$/.test(cleanedPhone)) {
+      // Validation internationale : un client italien/portugais doit
+      // pouvoir saisir SON numéro (l'ancien /^0[67]\d{8}$/ n'acceptait
+      // que les mobiles français).
+      if (!isValidInternationalPhone(phone)) {
         newErrors.phone = t('editProfile.errors.phoneInvalid');
       }
     }

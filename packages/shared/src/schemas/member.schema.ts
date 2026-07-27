@@ -1,7 +1,5 @@
 import { z } from 'zod';
-
-// French phone regex: starts with 0, then 6 or 7, then 8 digits
-const frenchPhoneRegex = /^0[67]\d{8}$/;
+import { isValidInternationalPhone } from '../utils/phone';
 
 // Create member schema - MINIMUM requis
 // 1 membre = 1 lieu (pas de tableau locationIds)
@@ -15,7 +13,7 @@ export const createMemberSchema = z.object({
     .email({ message: 'Format d\'email invalide' }),
   phone: z
     .string()
-    .regex(frenchPhoneRegex, { message: 'Numéro de téléphone invalide (format: 06/07 + 8 chiffres)' })
+    .refine((v) => !v || isValidInternationalPhone(v), { message: 'Numéro de téléphone invalide' })
     .nullable()
     .optional(),
   role: z
@@ -56,7 +54,7 @@ export const updateMemberSchema = z.object({
     .optional(),
   phone: z
     .string()
-    .regex(frenchPhoneRegex, { message: 'Numéro de téléphone invalide (format: 06/07 + 8 chiffres)' })
+    .refine((v) => !v || isValidInternationalPhone(v), { message: 'Numéro de téléphone invalide' })
     .nullable()
     .optional(),
   role: z

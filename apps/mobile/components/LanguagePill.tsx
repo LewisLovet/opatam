@@ -16,6 +16,14 @@ import { APP_LOCALES, setAppLocale, type AppLocale } from '../lib/i18n';
 
 const LOCALES: AppLocale[] = APP_LOCALES;
 
+/** Nom de chaque langue dans sa propre langue — universel, pas de clé i18n. */
+const NATIVE_LABEL: Record<AppLocale, string> = {
+  fr: 'Français',
+  en: 'English',
+  it: 'Italiano',
+  pt: 'Português',
+};
+
 interface LanguagePillProps {
   /** 'dark' = on a colored/gradient background (white translucent pill),
    *  'light' = on a light background (gray translucent pill). */
@@ -54,7 +62,7 @@ export function LanguagePill({ variant = 'light' }: LanguagePillProps) {
             }}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
-            accessibilityLabel={l === 'fr' ? 'Français' : l === 'it' ? 'Italiano' : 'English'}
+            accessibilityLabel={NATIVE_LABEL[l]}
             hitSlop={6}
             style={[styles.segment, active && { backgroundColor: activeBg }]}
           >

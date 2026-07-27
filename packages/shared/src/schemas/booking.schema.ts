@@ -1,24 +1,6 @@
 import { z } from 'zod';
 
-// Phone validation: accepts international formats
-// - Minimum 8 digits, maximum 15 digits (E.164 standard)
-// - Allows: +, spaces, dots, dashes, parentheses as formatting
-// Examples: 0612345678, +33612345678, +33 6 12 34 56 78, +1 (555) 123-4567
-const isValidPhone = (phone: string): boolean => {
-  // Remove all formatting characters
-  const cleaned = phone.replace(/[\s.\-()]/g, '');
-  
-  // Check if it starts with + or digits only
-  if (!/^(\+)?[0-9]+$/.test(cleaned)) {
-    return false;
-  }
-  
-  // Count only digits (exclude +)
-  const digitCount = cleaned.replace(/\D/g, '').length;
-  
-  // E.164 standard: 8-15 digits
-  return digitCount >= 8 && digitCount <= 15;
-};
+import { isValidInternationalPhone } from '../utils/phone';
 
 // Client info schema (for non-logged-in users)
 export const clientInfoSchema = z.object({
@@ -31,7 +13,7 @@ export const clientInfoSchema = z.object({
     .email({ message: 'Format d\'email invalide' }),
   phone: z
     .string({ required_error: 'Le numéro de téléphone est requis' })
-    .refine((val) => isValidPhone(val), { message: 'Numéro de téléphone invalide' }),
+    .refine((val) => isValidInternationalPhone(val), { message: 'Numéro de téléphone invalide' }),
 });
 
 /**

@@ -119,12 +119,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const frDemo = 'https://opatam.com/p/demo';
     const enDemo = 'https://opatam.com/en/p/demo';
     const itDemo = 'https://opatam.com/it/p/demo';
+    const ptDemo = 'https://opatam.com/pt/p/demo';
     return {
       title: t('demoTitle'),
       description: t('demoDescription'),
       alternates: {
-        canonical: locale === 'en' ? enDemo : locale === 'it' ? itDemo : frDemo,
-        languages: { fr: frDemo, en: enDemo, it: itDemo, 'x-default': frDemo },
+        canonical: locale === 'en' ? enDemo : locale === 'it' ? itDemo : locale === 'pt' ? ptDemo : frDemo,
+        languages: { fr: frDemo, en: enDemo, it: itDemo, pt: ptDemo, 'x-default': frDemo },
       },
     };
   }
@@ -151,8 +152,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const frUrl = `https://opatam.com/p/${slug}`;
   const enUrl = `https://opatam.com/en/p/${slug}`;
   const itUrl = `https://opatam.com/it/p/${slug}`;
-  const pageUrl = locale === 'en' ? enUrl : locale === 'it' ? itUrl : frUrl;
-  const languages = { fr: frUrl, en: enUrl, it: itUrl, 'x-default': frUrl };
+  const ptUrl = `https://opatam.com/pt/p/${slug}`;
+  const pageUrl = locale === 'en' ? enUrl : locale === 'it' ? itUrl : locale === 'pt' ? ptUrl : frUrl;
+  const languages = { fr: frUrl, en: enUrl, it: itUrl, pt: ptUrl, 'x-default': frUrl };
 
   // Social/preview image = the PROVIDER's own identity: cover photo
   // first, then their logo. We deliberately do NOT fall back to the
@@ -178,7 +180,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: 'Opatam',
       images: ogImages,
       type: 'website',
-      locale: locale === 'en' ? 'en_GB' : locale === 'it' ? 'it_IT' : 'fr_FR',
+      locale: locale === 'en' ? 'en_GB' : locale === 'it' ? 'it_IT' : locale === 'pt' ? 'pt_PT' : 'fr_FR',
     },
     twitter: {
       card: ogImage ? 'summary_large_image' : 'summary',

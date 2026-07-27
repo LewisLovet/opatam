@@ -18,15 +18,17 @@ import { getStoredLocale, setStoredLocale } from '../utils/storage';
 import fr from '../locales/app/fr.json';
 import en from '../locales/app/en.json';
 import it from '../locales/app/it.json';
+import pt from '../locales/app/pt.json';
 
-export type AppLocale = 'fr' | 'en' | 'it';
-export const APP_LOCALES: AppLocale[] = ['fr', 'en', 'it'];
+export type AppLocale = 'fr' | 'en' | 'it' | 'pt';
+export const APP_LOCALES: AppLocale[] = ['fr', 'en', 'it', 'pt'];
 
 function deviceLocale(): AppLocale {
   try {
     const resolved = (Intl.DateTimeFormat().resolvedOptions().locale || '').toLowerCase();
     if (resolved.startsWith('en')) return 'en';
     if (resolved.startsWith('it')) return 'it';
+    if (resolved.startsWith('pt')) return 'pt';
     return 'fr';
   } catch {
     return 'fr';
@@ -40,6 +42,7 @@ i18n.use(initReactI18next).init({
     fr: { translation: fr },
     en: { translation: en },
     it: { translation: it },
+    pt: { translation: pt },
   },
   lng: deviceLocale(),
   fallbackLng: 'fr',
@@ -62,9 +65,9 @@ export function normalizeAppLocale(lang: string | undefined): AppLocale {
 
 /** Tag BCP 47 pour Intl/toLocaleDateString — couvre les 3 langues (le
  *  ternaire binaire `'en' ? 'en-GB' : 'fr-FR'` mappait l'italien sur fr-FR). */
-export function getIntlLocale(lang?: string): 'fr-FR' | 'en-GB' | 'it-IT' {
+export function getIntlLocale(lang?: string): 'fr-FR' | 'en-GB' | 'it-IT' | 'pt-PT' {
   const l = normalizeAppLocale(lang ?? i18n.language);
-  return l === 'en' ? 'en-GB' : l === 'it' ? 'it-IT' : 'fr-FR';
+  return l === 'en' ? 'en-GB' : l === 'it' ? 'it-IT' : l === 'pt' ? 'pt-PT' : 'fr-FR';
 }
 
 /** Langue courante de l'app — à snapshotter en `clientLocale` sur les résas. */

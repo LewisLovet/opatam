@@ -626,17 +626,30 @@ export function getActivePromoPercentFromWindows(
 }
 
 /** Short urgency label from a day count (see getDiscountDaysLeft).
- *  Inline fr/en/it map — a dictionary lookup would drag react/i18n into shared. */
+ *  Inline fr/en/it/pt map — a dictionary lookup would drag react/i18n into shared. */
 export function formatPromoCountdown(daysLeft: number, locale = 'fr'): string {
-  const lang = locale.startsWith('en') ? 'en' : locale.startsWith('it') ? 'it' : 'fr';
+  const lang = locale.startsWith('en')
+    ? 'en'
+    : locale.startsWith('it')
+      ? 'it'
+      : locale.startsWith('pt')
+        ? 'pt'
+        : 'fr';
   if (daysLeft <= 0) {
-    return lang === 'en' ? 'Last day' : lang === 'it' ? 'Ultimo giorno' : 'Dernier jour';
+    if (lang === 'en') return 'Last day';
+    if (lang === 'it') return 'Ultimo giorno';
+    if (lang === 'pt') return 'Último dia';
+    return 'Dernier jour';
   }
   if (daysLeft === 1) {
-    return lang === 'en' ? 'Ends tomorrow' : lang === 'it' ? 'Termina domani' : 'Se termine demain';
+    if (lang === 'en') return 'Ends tomorrow';
+    if (lang === 'it') return 'Termina domani';
+    if (lang === 'pt') return 'Termina amanhã';
+    return 'Se termine demain';
   }
   if (lang === 'en') return `Only ${daysLeft} days left`;
   if (lang === 'it') return `Ancora ${daysLeft} giorni`;
+  if (lang === 'pt') return `Faltam ${daysLeft} dias`;
   return `Plus que ${daysLeft} jours`;
 }
 

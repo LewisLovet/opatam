@@ -46,6 +46,16 @@ const TEXTS = {
     back: 'Torna alla home',
     badge: 'Scarica su',
   },
+  pt: {
+    title: 'O seu cartão de fidelização',
+    subtitle:
+      'Os seus cartões de fidelização estão na aplicação Opatam: instale-a, inicie sessão e encontre as marcações acumuladas em cada um dos seus profissionais.',
+    step1: 'Descarregue a aplicação',
+    step2: 'Inicie sessão com a sua conta',
+    step3: 'Ative o seu cartão — as marcações já realizadas são contabilizadas',
+    back: 'Voltar ao início',
+    badge: 'Descarregar na',
+  },
 } as const;
 
 export const metadata: Metadata = {
@@ -54,7 +64,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LoyaltyLandingPage() {
-  const locale = (await getLocale()) as 'fr' | 'en' | 'it';
+  const locale = (await getLocale()) as 'fr' | 'en' | 'it' | 'pt';
   const t = TEXTS[locale] ?? TEXTS.fr;
 
   return (

@@ -189,7 +189,7 @@
       "passwordPlaceholder": "Your password",
       "passwordHelper": "At least 6 characters",
       "phoneLabel": "Phone (optional)",
-      "phonePlaceholder": "06 12 34 56 78",
+      "phonePlaceholder": "+33 6 12 34 56 78",
       "submit": "Create my account",
       "legal": "By creating an account, you agree to our Terms of Use and Privacy Policy",
       "alreadyAccount": "Already have an account?",
@@ -202,7 +202,7 @@
         "emailInvalid": "Invalid email format",
         "passwordRequired": "Password is required",
         "passwordTooShort": "Password must be at least 6 characters",
-        "phoneInvalid": "Invalid format (e.g. 06 12 34 56 78)",
+        "phoneInvalid": "Invalid phone number",
         "signUpError": "Could not create your account",
         "confirmEmailRequired": "Confirm your email address",
         "emailMismatch": "Email addresses do not match"
@@ -495,7 +495,7 @@
       "addressAfterConfirmation": "Exact address shared after confirmation",
       "contactDetails": "Your contact details",
       "phoneLabel": "Phone",
-      "phonePlaceholder": "06 12 34 56 78",
+      "phonePlaceholder": "+33 6 12 34 56 78",
       "invalidPhone": "Invalid phone number",
       "youSave": "You save {{amount}} €",
       "payOnSite": "Payment on site",
@@ -620,7 +620,7 @@
     "firstNameLabel": "First name",
     "firstNamePlaceholder": "Your first name",
     "phoneLabel": "Phone",
-    "phonePlaceholder": "06 12 34 56 78",
+    "phonePlaceholder": "+33 6 12 34 56 78",
     "cityLabel": "City",
     "cityPlaceholder": "Your city (optional)",
     "success": "Profile updated",
@@ -629,7 +629,7 @@
       "nameRequired": "First name is required",
       "nameTooShort": "First name must be at least 2 characters",
       "phoneRequired": "Phone number is required",
-      "phoneInvalid": "Invalid format (e.g. 06 12 34 56 78)"
+      "phoneInvalid": "Invalid phone number"
     }
   },
   "notifSettings": {
@@ -1414,7 +1414,7 @@
       "emailLabel": "Email *",
       "emailPlaceholder": "email@example.com",
       "phoneLabel": "Phone *",
-      "phonePlaceholder": "06 12 34 56 78",
+      "phonePlaceholder": "+33 6 12 34 56 78",
       "emailConfirmationHint": "The client will receive a confirmation by email",
       "notesLabel": "Notes",
       "notesPlaceholder": "Optional notes..."
@@ -2597,7 +2597,7 @@
       "emailLabel": "Email",
       "emailPlaceholder": "email@example.com",
       "phoneLabel": "Phone (optional)",
-      "phonePlaceholder": "06 12 34 56 78",
+      "phonePlaceholder": "+33 6 12 34 56 78",
       "colorLabel": "Color",
       "locationLabel": "Assigned location",
       "chooseLocation": "Choose a location",

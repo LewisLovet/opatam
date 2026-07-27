@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import { Text, Button, Input, useToast } from '../../../components';
-import { EMAIL_REGEX, suggestEmailDomain } from '@booking-app/shared';
+import { EMAIL_REGEX, suggestEmailDomain, isValidInternationalPhone } from '@booking-app/shared';
 import { useAuth } from '../../../contexts';
 
 interface FormErrors {
@@ -82,8 +82,10 @@ export default function EmailFormScreen() {
 
     // Phone validation (optional)
     if (phone.trim()) {
-      const cleanedPhone = phone.replace(/\s/g, '');
-      if (!/^0[67]\d{8}$/.test(cleanedPhone)) {
+      // Validation internationale : un client italien/portugais doit
+      // pouvoir saisir SON numéro (l'ancien /^0[67]\d{8}$/ n'acceptait
+      // que les mobiles français).
+      if (!isValidInternationalPhone(phone)) {
         newErrors.phone = t('auth.register.errors.phoneInvalid');
       }
     }

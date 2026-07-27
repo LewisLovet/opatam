@@ -1,0 +1,130 @@
+{
+  "common": {
+    "close": "Fechar",
+    "seeMore": "Ver mais",
+    "seeLess": "Ver menos"
+  },
+  "hero": {
+    "verified": "Verificado",
+    "today": "Hoje",
+    "tomorrow": "Amanhã",
+    "nextAvailability": "Próxima disponibilidade: {date}",
+    "memberAvailabilityTitle": "Disponibilidades por profissional",
+    "membersWithoutAvailability": "{count, plural, one {# profissional sem disponibilidade próxima} other {# profissionais sem disponibilidade próxima}}"
+  },
+  "nav": {
+    "services": "Serviços",
+    "reviews": "Avaliações",
+    "hours": "Horários"
+  },
+  "services": {
+    "title": "Serviços",
+    "empty": "Nenhum serviço disponível de momento.",
+    "otherCategory": "Outros",
+    "free": "Grátis",
+    "from": "a partir de",
+    "priceRange": "De {min} a {max}",
+    "book": "Marcar",
+    "showMore": "Mais detalhes",
+    "showLess": "Menos",
+    "promo": {
+      "lastDay": "Último dia",
+      "endsTomorrow": "Termina amanhã",
+      "daysLeft": "Faltam {days} dias"
+    }
+  },
+  "mobileBar": {
+    "from": "A partir de",
+    "book": "Marcar"
+  },
+  "about": {
+    "title": "Sobre",
+    "portfolioTitle": "Portefólio",
+    "findMeOn": "Encontre-me em"
+  },
+  "portfolio": {
+    "title": "Portefólio",
+    "photoCount": "{count, plural, one {# foto} other {# fotos}}",
+    "photoAlt": "Portefólio {index}",
+    "previousPhoto": "Foto anterior",
+    "nextPhoto": "Foto seguinte"
+  },
+  "reviews": {
+    "title": "Avaliações de clientes",
+    "basedOn": "Com base em <strong>{count}</strong> avaliações",
+    "noReviews": "Sem avaliações",
+    "distribution": "Distribuição das notas",
+    "latest": "Últimas avaliações",
+    "anonymousClient": "Cliente",
+    "beFirst": "Seja o primeiro a deixar a sua avaliação!"
+  },
+  "hours": {
+    "title": "Horários",
+    "open": "Aberto",
+    "closed": "Fechado",
+    "today": "Hoje"
+  },
+  "infos": {
+    "title": "Informações úteis",
+    "locationTitle": "{count, plural, one {Local} other {Locais}}",
+    "openingHours": "Horário de funcionamento",
+    "days": [
+      "Domingo",
+      "Segunda-feira",
+      "Terça-feira",
+      "Quarta-feira",
+      "Quinta-feira",
+      "Sexta-feira",
+      "Sábado"
+    ]
+  },
+  "location": {
+    "fixed": "Salão",
+    "mobile": "Móvel",
+    "maskedAddress": "Morada exata comunicada após confirmação",
+    "viewOnMaps": "Ver no Google Maps",
+    "homeService": "Deslocação ao domicílio",
+    "travelRadius": "Raio de {radius} km"
+  },
+  "team": {
+    "title": "A equipa"
+  },
+  "share": {
+    "share": "Partilhar",
+    "shareText": "Descubra {name}",
+    "copyLink": "Copiar o link"
+  },
+  "socials": {
+    "website": "Site"
+  },
+  "demo": {
+    "title": "Bem-vindo à loja de demonstração",
+    "intro": "Esta página é um <strong>exemplo concreto</strong> do que os seus clientes verão quando marcarem consigo.",
+    "walkthrough": "Percorra os serviços, selecione um profissional e escolha um horário — exatamente como os seus futuros clientes vão fazer.",
+    "highlight": "A sua página de marcações pode estar pronta em 5 minutos, sem quaisquer conhecimentos técnicos.",
+    "explore": "Explorar a demo",
+    "createPage": "Criar a minha página gratuitamente ({days} dias de teste)"
+  },
+  "notice": {
+    "title": "Informação importante",
+    "back": "Voltar",
+    "accept": "Compreendi, continuar"
+  },
+  "notFound": {
+    "title": "Profissional não encontrado",
+    "description": "Este profissional não existe ou já não está disponível. Pode ter desativado a página ou mudado de morada.",
+    "backHome": "Voltar à página inicial"
+  },
+  "loyaltyBanner": {
+    "title": "Programa de fidelização",
+    "percent": "A cada {threshold} marcações, −{value} % na sua marcação seguinte",
+    "amount": "A cada {threshold} marcações, −{value} € na sua marcação seguinte",
+    "infoAria": "Ver os serviços abrangidos",
+    "infoAll": "Todos os serviços dão direito.",
+    "infoExcept": "Todos os serviços exceto: {list}.",
+    "infoOnly": "Serviços abrangidos: {list}.",
+    "appCta": "Descarregue a app Opatam para ativar o seu cartão com a sua conta e acumular as suas marcações.",
+    "appCtaAppStoreAria": "Descarregar o Opatam na App Store",
+    "appCtaPlayAria": "Descarregar o Opatam no Google Play"
+  }
+}

@@ -14,7 +14,7 @@ import {
  * in functions/) which fires from a cron at T+15min. This is the
  * inaugural message.
  *
- * Localized (fr/en/it): `locale` comes from `booking.clientLocale` (the language the
+ * Localized (fr/en/it/pt): `locale` comes from `booking.clientLocale` (the language the
  * client booked in). Absent — e.g. provider-created bookings where the
  * client never expressed a language — falls back to French.
  */
@@ -33,7 +33,7 @@ export interface DepositPaymentRequestEmailData {
   /** When set, the email shows a "Annuler la réservation" link so the
    *  client can release the slot without waiting for the timeout. */
   cancelToken?: string | null;
-  /** Client language ('fr' | 'en' | 'it'…). Absent = French. */
+  /** Client language ('fr' | 'en' | 'it' | 'pt'…). Absent = French. */
   locale?: string | null;
 }
 
@@ -112,14 +112,42 @@ const TEXTS = {
     cancelLink: 'Annulla la prenotazione',
     signoff: 'A prestissimo,',
   },
+  pt: {
+    subject: (service: string, provider: string) =>
+      `Sinal a pagar — ${service} em ${provider}`,
+    hello: (name: string) => `Olá ${name},`,
+    intro: (provider: string, deposit: string) =>
+      `<strong>${provider}</strong> criou uma marcação para si. Para a confirmar, pedimos que pague o sinal de <strong>${deposit}</strong>.`,
+    introText: (provider: string, deposit: string) =>
+      `${provider} criou uma marcação para si. Pague o sinal de ${deposit} para a confirmar.`,
+    yourBooking: 'A sua marcação',
+    service: 'Serviço',
+    date: 'Data',
+    time: 'Hora',
+    deposit: 'Sinal',
+    holdNotice: (minutes: number) =>
+      `O horário fica reservado para si durante <strong>${minutes} minutos</strong>. Sem pagamento, será libertado automaticamente.`,
+    holdNoticeText: (minutes: number) =>
+      `O horário fica reservado durante ${minutes} minutos. Sem pagamento, será libertado.`,
+    payCta: 'Pagar o meu sinal',
+    securePayment: 'Pagamento seguro através da Stripe.',
+    cantMakeIt: 'Não vai poder comparecer a esta marcação?',
+    cancelLink: 'Anular a marcação',
+    signoff: 'Até breve,',
+  },
 } as const;
 
-type Locale = 'fr' | 'en' | 'it';
+type Locale = 'fr' | 'en' | 'it' | 'pt';
 
-const INTL_LOCALE: Record<Locale, string> = { fr: 'fr-FR', en: 'en-GB', it: 'it-IT' };
+const INTL_LOCALE: Record<Locale, string> = {
+  fr: 'fr-FR',
+  en: 'en-GB',
+  it: 'it-IT',
+  pt: 'pt-PT',
+};
 
 function resolveLocale(raw: string | null | undefined): Locale {
-  return raw === 'en' || raw === 'it' ? raw : 'fr';
+  return raw === 'en' || raw === 'it' || raw === 'pt' ? raw : 'fr';
 }
 
 /** Paris-anchored formats in the recipient's language (24h clock for all). */

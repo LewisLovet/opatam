@@ -41,12 +41,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const frDemo = 'https://opatam.com/p/demo/reserver';
     const enDemo = 'https://opatam.com/en/p/demo/reserver';
     const itDemo = 'https://opatam.com/it/p/demo/reserver';
+    const ptDemo = 'https://opatam.com/pt/p/demo/reserver';
     return {
       title: t('demoTitle'),
       description: t('demoDescription'),
       alternates: {
-        canonical: locale === 'en' ? enDemo : locale === 'it' ? itDemo : frDemo,
-        languages: { fr: frDemo, en: enDemo, it: itDemo, 'x-default': frDemo },
+        canonical: locale === 'en' ? enDemo : locale === 'it' ? itDemo : locale === 'pt' ? ptDemo : frDemo,
+        languages: { fr: frDemo, en: enDemo, it: itDemo, pt: ptDemo, 'x-default': frDemo },
       },
     };
   }
@@ -62,6 +63,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const frUrl = `https://opatam.com/p/${slug}/reserver`;
   const enUrl = `https://opatam.com/en/p/${slug}/reserver`;
   const itUrl = `https://opatam.com/it/p/${slug}/reserver`;
+  const ptUrl = `https://opatam.com/pt/p/${slug}/reserver`;
 
   return {
     title: t('title', { businessName: provider.businessName }),
@@ -70,8 +72,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       category: provider.category,
     }),
     alternates: {
-      canonical: locale === 'en' ? enUrl : locale === 'it' ? itUrl : frUrl,
-      languages: { fr: frUrl, en: enUrl, it: itUrl, 'x-default': frUrl },
+      canonical: locale === 'en' ? enUrl : locale === 'it' ? itUrl : locale === 'pt' ? ptUrl : frUrl,
+      languages: { fr: frUrl, en: enUrl, it: itUrl, pt: ptUrl, 'x-default': frUrl },
     },
   };
 }

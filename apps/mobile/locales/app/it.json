@@ -189,7 +189,7 @@
       "passwordPlaceholder": "La tua password",
       "passwordHelper": "Min. 6 caratteri",
       "phoneLabel": "Telefono (facoltativo)",
-      "phonePlaceholder": "06 12 34 56 78",
+      "phonePlaceholder": "320 123 4567",
       "submit": "Crea il mio account",
       "legal": "Creando un account accetti i nostri Termini di utilizzo e l'Informativa sulla privacy",
       "alreadyAccount": "Hai già un account?",
@@ -202,7 +202,7 @@
         "emailInvalid": "Formato email non valido",
         "passwordRequired": "La password è obbligatoria",
         "passwordTooShort": "La password deve contenere almeno 6 caratteri",
-        "phoneInvalid": "Formato non valido (es.: 06 12 34 56 78)",
+        "phoneInvalid": "Numero di telefono non valido",
         "signUpError": "Errore durante la registrazione",
         "confirmEmailRequired": "Conferma il tuo indirizzo email",
         "emailMismatch": "Gli indirizzi email non corrispondono"
@@ -495,7 +495,7 @@
       "addressAfterConfirmation": "Indirizzo esatto comunicato dopo la conferma",
       "contactDetails": "I tuoi recapiti",
       "phoneLabel": "Telefono",
-      "phonePlaceholder": "06 12 34 56 78",
+      "phonePlaceholder": "320 123 4567",
       "invalidPhone": "Numero di telefono non valido",
       "youSave": "Risparmi {{amount}} €",
       "payOnSite": "Pagamento sul posto",
@@ -620,7 +620,7 @@
     "firstNameLabel": "Nome",
     "firstNamePlaceholder": "Il tuo nome",
     "phoneLabel": "Telefono",
-    "phonePlaceholder": "06 12 34 56 78",
+    "phonePlaceholder": "320 123 4567",
     "cityLabel": "Città",
     "cityPlaceholder": "La tua città (facoltativo)",
     "success": "Profilo aggiornato",
@@ -629,7 +629,7 @@
       "nameRequired": "Il nome è obbligatorio",
       "nameTooShort": "Il nome deve contenere almeno 2 caratteri",
       "phoneRequired": "Il numero di telefono è obbligatorio",
-      "phoneInvalid": "Formato non valido (es.: 06 12 34 56 78)"
+      "phoneInvalid": "Numero di telefono non valido"
     }
   },
   "notifSettings": {
@@ -1414,7 +1414,7 @@
       "emailLabel": "Email *",
       "emailPlaceholder": "email@esempio.com",
       "phoneLabel": "Telefono *",
-      "phonePlaceholder": "06 12 34 56 78",
+      "phonePlaceholder": "320 123 4567",
       "emailConfirmationHint": "Il cliente riceverà una conferma via email",
       "notesLabel": "Note",
       "notesPlaceholder": "Note facoltative..."
@@ -2597,7 +2597,7 @@
       "emailLabel": "Email",
       "emailPlaceholder": "email@esempio.com",
       "phoneLabel": "Telefono (facoltativo)",
-      "phonePlaceholder": "06 12 34 56 78",
+      "phonePlaceholder": "320 123 4567",
       "colorLabel": "Colore",
       "locationLabel": "Sede assegnata",
       "chooseLocation": "Scegli una sede",

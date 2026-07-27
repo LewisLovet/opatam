@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import { Text, Button, Input, useToast } from '../../../components';
 import { useAuth } from '../../../contexts';
+import { isValidInternationalPhone } from '@booking-app/shared';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -201,8 +202,10 @@ export default function ClientRegisterScreen() {
     }
 
     if (phone.trim()) {
-      const cleanedPhone = phone.replace(/\s/g, '');
-      if (!/^0[67]\d{8}$/.test(cleanedPhone)) {
+      // Validation internationale : un client italien/portugais doit
+      // pouvoir saisir SON numéro (l'ancien /^0[67]\d{8}$/ n'acceptait
+      // que les mobiles français).
+      if (!isValidInternationalPhone(phone)) {
         newErrors.phone = t('auth.register.errors.phoneInvalid');
       }
     }

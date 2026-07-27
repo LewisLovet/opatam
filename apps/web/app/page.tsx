@@ -15,6 +15,7 @@ const LANGUAGE_ALTERNATES = {
   fr: BASE_URL,
   en: `${BASE_URL}/en`,
   it: `${BASE_URL}/it`,
+  pt: `${BASE_URL}/pt`,
   'x-default': BASE_URL,
 };
 
@@ -51,7 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: t('ogDescription'),
       url: canonical,
       type: 'website',
-      locale: locale === 'en' ? 'en_GB' : locale === 'it' ? 'it_IT' : 'fr_FR',
+      locale: locale === 'en' ? 'en_GB' : locale === 'it' ? 'it_IT' : locale === 'pt' ? 'pt_PT' : 'fr_FR',
       siteName: 'Opatam',
     },
     twitter: {

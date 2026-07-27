@@ -28,11 +28,22 @@ import { localizedPath, isTranslatedSurface } from '@/lib/localizedPath';
  * button) rather than living in the dictionaries: its audience is by
  * definition English-speaking visitors on a French page.
  */
+/** Langues proposables par détection navigateur (le français est le défaut). */
+const SUGGESTABLE = ['en', 'it', 'pt'] as const;
+type SuggestableLocale = (typeof SUGGESTABLE)[number];
+
+/** Copie de la carte, dans la langue proposée (jamais en français). */
+const SUGGESTION_COPY: Record<SuggestableLocale, { headline: string; cta: string }> = {
+  en: { headline: 'This page is also available in English', cta: 'View in English' },
+  it: { headline: 'Questa pagina è disponibile anche in italiano', cta: 'Vedi in italiano' },
+  pt: { headline: 'Esta página também está disponível em português', cta: 'Ver em português' },
+};
+
 export function LanguageSuggestionBanner() {
   const locale = useLocale();
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
-  const [suggested, setSuggested] = useState<'en' | 'it'>('en');
+  const [suggested, setSuggested] = useState<SuggestableLocale>('en');
 
   useEffect(() => {
     if (locale !== 'fr') return; // already on a non-default locale
@@ -50,14 +61,21 @@ export function LanguageSuggestionBanner() {
       navigator.languages && navigator.languages.length > 0
         ? navigator.languages
         : [navigator.language];
-    // Première langue supportée préférée par le navigateur (en OU it).
+    // Première langue supportée préférée par le navigateur.
     const match = preferred
       .map((l) => l?.toLowerCase().slice(0, 2))
-      .find((l) => l === 'en' || l === 'it') as 'en' | 'it' | undefined;
-    // QA hook: ?lang-suggest=en|it|1 forces the card so it can be tested from
-    // a French browser (it only ever shows a suggestion — harmless).
+      .find((l): l is SuggestableLocale =>
+        (SUGGESTABLE as readonly string[]).includes(l ?? ''),
+      );
+    // QA hook: ?lang-suggest=en|it|pt|1 forces the card so it can be tested
+    // from a French browser (it only ever shows a suggestion — harmless).
     const qa = new URLSearchParams(window.location.search).get('lang-suggest');
-    const forced = qa === '1' ? 'en' : qa === 'en' || qa === 'it' ? qa : undefined;
+    const forced =
+      qa === '1'
+        ? 'en'
+        : (SUGGESTABLE as readonly string[]).includes(qa ?? '')
+          ? (qa as SuggestableLocale)
+          : undefined;
     const target = forced ?? match;
     if (target) {
       setSuggested(target);
@@ -94,9 +112,7 @@ export function LanguageSuggestionBanner() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 dark:text-white">
-              {suggested === 'it'
-                ? 'Questa pagina è disponibile anche in italiano'
-                : 'This page is also available in English'}
+              {SUGGESTION_COPY[suggested].headline}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
@@ -104,7 +120,7 @@ export function LanguageSuggestionBanner() {
                 onClick={() => choose(suggested)}
                 className="px-3.5 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors"
               >
-                {suggested === 'it' ? 'Vedi in italiano' : 'View in English'}
+                {SUGGESTION_COPY[suggested].cta}
               </button>
               <button
                 type="button"

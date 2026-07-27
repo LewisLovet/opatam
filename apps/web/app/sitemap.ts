@@ -7,7 +7,12 @@ const BASE_URL = 'https://opatam.com';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // fr ↔ en pairing declared on every entry that exists in both languages
   // (Google reads hreflang from the sitemap too, not only from <link> tags).
-  const homeLanguages = { fr: BASE_URL, en: `${BASE_URL}/en`, it: `${BASE_URL}/it` };
+  const homeLanguages = {
+    fr: BASE_URL,
+    en: `${BASE_URL}/en`,
+    it: `${BASE_URL}/it`,
+    pt: `${BASE_URL}/pt`,
+  };
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
@@ -29,6 +34,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Italian homepage.
     {
       url: `${BASE_URL}/it`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+      alternates: { languages: homeLanguages },
+    },
+    // Portuguese homepage.
+    {
+      url: `${BASE_URL}/pt`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
@@ -98,6 +111,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           fr: `${BASE_URL}/p/${p.slug}`,
           en: `${BASE_URL}/en/p/${p.slug}`,
           it: `${BASE_URL}/it/p/${p.slug}`,
+          pt: `${BASE_URL}/pt/p/${p.slug}`,
         };
         const lastModified = p.updatedAt instanceof Date ? p.updatedAt : new Date();
         return [
@@ -117,6 +131,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           },
           {
             url: languages.it,
+            lastModified,
+            changeFrequency: 'weekly' as const,
+            priority: 0.6,
+            alternates: { languages },
+          },
+          {
+            url: languages.pt,
             lastModified,
             changeFrequency: 'weekly' as const,
             priority: 0.6,

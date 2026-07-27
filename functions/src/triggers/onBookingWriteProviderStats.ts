@@ -247,7 +247,7 @@ export async function recomputeClientDoc(
       .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))[0]
       ?.clientLocale as string | undefined;
     client.clientLocale =
-      latestLocale === 'en' || latestLocale === 'it'
+      latestLocale === 'en' || latestLocale === 'it' || latestLocale === 'pt'
         ? latestLocale
         : ((existingSnap.data()?.clientLocale as string | undefined) ?? 'fr');
     await ref.set(client, { merge: false });
@@ -258,7 +258,9 @@ export async function recomputeClientDoc(
       client.clientId,
       previousLoyaltyCount,
       Math.max(0, client.loyaltyConfirmedCount + existingAdjustment),
-      latestLocale === 'en' || latestLocale === 'it' ? latestLocale : 'fr',
+      latestLocale === 'en' || latestLocale === 'it' || latestLocale === 'pt'
+        ? latestLocale
+        : 'fr',
       ctx.providerName,
       client.email,
       client.name,
@@ -283,7 +285,7 @@ async function maybeSendLoyaltyMilestone(
   clientId: string | null,
   oldCount: number,
   newCount: number,
-  locale: 'fr' | 'en' | 'it',
+  locale: 'fr' | 'en' | 'it' | 'pt',
   providerName: string,
   clientEmail: string | null,
   clientName: string,
@@ -311,35 +313,45 @@ async function maybeSendLoyaltyMilestone(
   );
 
   const remaining = T - pos;
-  const payload = armed
-    ? locale === 'en'
-      ? {
-          title: 'Your reward is ready!',
-          body: `At ${providerName}: ${reward} off your next booking in the app.`,
-        }
-      : locale === 'it'
-        ? {
-            title: 'Il Suo premio è pronto!',
-            body: `Da ${providerName}: ${reward} sulla Sua prossima prenotazione nell'app.`,
-          }
-        : {
-            title: 'Votre récompense est prête !',
-            body: `Chez ${providerName} : ${reward} sur votre prochaine réservation dans l'app.`,
-          }
-    : locale === 'en'
-      ? {
-          title: 'Loyalty card halfway there',
-          body: `Only ${remaining} more appointment${remaining > 1 ? 's' : ''} at ${providerName} to get ${reward}.`,
-        }
-      : locale === 'it'
-        ? {
-            title: 'Carta fedeltà a metà strada',
-            body: `Ancora ${remaining} appuntament${remaining > 1 ? 'i' : 'o'} da ${providerName} per ottenere ${reward}.`,
-          }
-        : {
-            title: 'Carte de fidélité à mi-chemin',
-            body: `Plus que ${remaining} RDV chez ${providerName} pour obtenir ${reward}.`,
-          };
+  // Table par langue : à 4 locales, les ternaires imbriqués devenaient
+  // illisibles — et c'est exactement là qu'une langue se fait oublier.
+  const ARMED: Record<typeof locale, { title: string; body: string }> = {
+    fr: {
+      title: 'Votre récompense est prête !',
+      body: `Chez ${providerName} : ${reward} sur votre prochaine réservation dans l'app.`,
+    },
+    en: {
+      title: 'Your reward is ready!',
+      body: `At ${providerName}: ${reward} off your next booking in the app.`,
+    },
+    it: {
+      title: 'Il Suo premio è pronto!',
+      body: `Da ${providerName}: ${reward} sulla Sua prossima prenotazione nell'app.`,
+    },
+    pt: {
+      title: 'A sua recompensa está pronta!',
+      body: `Em ${providerName}: ${reward} na sua próxima reserva na app.`,
+    },
+  };
+  const HALFWAY: Record<typeof locale, { title: string; body: string }> = {
+    fr: {
+      title: 'Carte de fidélité à mi-chemin',
+      body: `Plus que ${remaining} RDV chez ${providerName} pour obtenir ${reward}.`,
+    },
+    en: {
+      title: 'Loyalty card halfway there',
+      body: `Only ${remaining} more appointment${remaining > 1 ? 's' : ''} at ${providerName} to get ${reward}.`,
+    },
+    it: {
+      title: 'Carta fedeltà a metà strada',
+      body: `Ancora ${remaining} appuntament${remaining > 1 ? 'i' : 'o'} da ${providerName} per ottenere ${reward}.`,
+    },
+    pt: {
+      title: 'Cartão de fidelização a meio',
+      body: `Faltam ${remaining} marca${remaining > 1 ? 'ções' : 'ção'} em ${providerName} para obter ${reward}.`,
+    },
+  };
+  const payload = armed ? ARMED[locale] : HALFWAY[locale];
 
   const userSnap = await db.doc(`users/${clientId}`).get();
   const tokens = (userSnap.data()?.pushTokens as string[] | undefined) ?? [];

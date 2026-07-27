@@ -22,7 +22,7 @@ import { sendRawEmail } from '../utils/resendService';
 const THROTTLE_MS = 7 * 24 * 60 * 60 * 1000;
 const APP_URL = 'https://opatam.com';
 
-type Locale = 'fr' | 'en' | 'it';
+type Locale = 'fr' | 'en' | 'it' | 'pt';
 const TEXTS: Record<Locale, {
   subject: (p: string) => string;
   hello: (n: string) => string;
@@ -55,8 +55,17 @@ const TEXTS: Record<Locale, {
     cta: 'Prenota ora',
     unsub: 'Non ricevere più le promozioni di questo professionista',
   },
+  pt: {
+    subject: (p) => `${p} tem um desconto para si`,
+    hello: (n) => `Olá ${n},`,
+    body: (p, s, pct) => `<strong>${p}</strong> acaba de lançar <strong>−${pct}%</strong> em «${s}».`,
+    until: (d) => `Oferta válida até ${d}.`,
+    cta: 'Marcar agora',
+    unsub: 'Deixar de receber as promoções deste profissional',
+  },
 };
-const resolveLocale = (raw: unknown): Locale => (raw === 'en' || raw === 'it' ? raw : 'fr');
+const resolveLocale = (raw: unknown): Locale =>
+  raw === 'en' || raw === 'it' || raw === 'pt' ? raw : 'fr';
 
 export const onServiceDiscountPromoEmail = onDocumentWritten(
   {
@@ -137,7 +146,7 @@ export const onServiceDiscountPromoEmail = onDocumentWritten(
       const t = TEXTS[l];
       const endsAtLabel = discount.endsAt
         ? new Date(`${discount.endsAt}T12:00:00`).toLocaleDateString(
-            l === 'en' ? 'en-GB' : l === 'it' ? 'it-IT' : 'fr-FR',
+            l === 'en' ? 'en-GB' : l === 'it' ? 'it-IT' : l === 'pt' ? 'pt-PT' : 'fr-FR',
             { day: 'numeric', month: 'long' },
           )
         : null;
