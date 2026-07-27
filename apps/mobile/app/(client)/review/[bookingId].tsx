@@ -132,7 +132,7 @@ export default function ReviewScreen() {
     // la connexion — la garde (auth) ramène ici ensuite.
     if (!user?.uid) {
       setPendingRoute(`/(client)/review/${bookingId}`);
-      router.replace('/(auth)/login');
+      router.replace('/(auth)');
       return;
     }
 

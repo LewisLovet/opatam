@@ -33,7 +33,12 @@ export default function ClientLayout() {
   }
   if (!isAuthenticated) {
     if (pathname && pathname !== '/') setPendingRoute(pathname);
-    return <Redirect href="/(auth)/login" />;
+    // L'écran d'accueil auth, pas le formulaire de connexion : celui qui
+    // arrive ici par un lien n'a souvent PAS encore de compte (téléchargement
+    // sans inscription finie, réinstallation). Il y trouve les deux chemins,
+    // et la reprise fonctionne aussi bien après une inscription qu'après une
+    // connexion (la garde (auth) réagit à l'authentification, pas au moyen).
+    return <Redirect href="/(auth)" />;
   }
 
   return (
