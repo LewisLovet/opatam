@@ -141,7 +141,10 @@ export default function ClientDetailScreen() {
   // Sections repliables — l'historique des RDV est fermé par défaut :
   // c'est la section la plus longue et la moins consultée au premier
   // coup d'œil.
-  const [historyOpen, setHistoryOpen] = useState(false);
+  // Ouvert par défaut : les rendez-vous font partie de ce que le pro vient
+  // chercher en priorité sur une fiche client. Seul l'historique des
+  // ajustements de points, lui secondaire, reste replié.
+  const [historyOpen, setHistoryOpen] = useState(true);
 
   // ── Load doc + history when the route mounts ───────────────────
   useEffect(() => {
