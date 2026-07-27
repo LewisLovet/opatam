@@ -24,3 +24,22 @@ export function consumePendingRoute(): string | null {
   pending = null;
   return p;
 }
+
+/**
+ * Un lien profond a-t-il pris la main sur la navigation de démarrage ?
+ *
+ * `app/index.tsx` redirige tout visiteur déconnecté vers l'écran de
+ * connexion. Cette redirection se déclenche quand l'auth se résout —
+ * c'est-à-dire APRÈS la lecture du lien profond, plus rapide. Sans ce
+ * drapeau, un client déconnecté qui ouvre un lien de prestataire serait
+ * éjecté de la page du salon vers la connexion.
+ */
+let deepLinkTookOver = false;
+
+export function markDeepLinkHandled(): void {
+  deepLinkTookOver = true;
+}
+
+export function didDeepLinkTakeOver(): boolean {
+  return deepLinkTookOver;
+}
