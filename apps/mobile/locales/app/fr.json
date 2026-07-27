@@ -2460,7 +2460,9 @@
         "baseService": "Prestation",
         "optionsGroup": "Options et suppléments",
         "notIncluded": "non incluse"
-      }
+      },
+      "notifyTitle": "Prévenir mes clients fidélité",
+      "notifyDescription": "Un email aux clients qui ont accepté vos promotions (1 par semaine maximum)."
     },
     "form": {
       "editTitle": "Modifier",

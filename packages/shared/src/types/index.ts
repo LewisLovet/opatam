@@ -771,6 +771,11 @@ export interface ServiceDiscount {
    *  is absent, `false` means "exclude all add-on options". New code writes
    *  `excludedIds` instead. */
   includeExtras?: boolean;
+  /** Prévenir par email les clients fidélité inscrits aux promos de ce
+   *  prestataire. Choix EXPLICITE du pro à chaque promo : absent/false =
+   *  aucun envoi (on n'écrit jamais dans la boîte de ses clients sans
+   *  qu'il l'ait demandé). Voir functions/src/triggers/onServiceDiscountPromoEmail. */
+  notifyLoyaltyClients?: boolean;
   /** Active window, local YYYY-MM-DD inclusive. null/absent = unbounded. */
   startsAt?: string | null;
   endsAt?: string | null;

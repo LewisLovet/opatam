@@ -2460,7 +2460,9 @@
         "baseService": "Service",
         "optionsGroup": "Options and add-ons",
         "notIncluded": "not included"
-      }
+      },
+      "notifyTitle": "Notify my loyalty clients",
+      "notifyDescription": "An email to clients who opted in to your promotions (max 1 per week)."
     },
     "form": {
       "editTitle": "Edit",

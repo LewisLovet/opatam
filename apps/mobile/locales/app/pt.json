@@ -2460,7 +2460,9 @@
         "baseService": "Serviço",
         "optionsGroup": "Opções e suplementos",
         "notIncluded": "não incluída"
-      }
+      },
+      "notifyTitle": "Avisar os meus clientes de fidelização",
+      "notifyDescription": "Um email aos clientes que aceitaram as suas promoções (máx. 1 por semana)."
     },
     "form": {
       "editTitle": "Editar",

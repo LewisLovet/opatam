@@ -1,8 +1,9 @@
 /**
  * onServiceDiscountPromoEmail — fidélité v2 M3.
  *
- * Quand un pro met en ligne une promo sur une prestation (champ `discount`
- * apparaît ou change), email aux clients qui ont ACTIVÉ leur carte ET coché
+ * Quand un pro met en ligne une promo sur une prestation ET demande
+ * explicitement d'en informer ses clients (`discount.notifyLoyaltyClients`),
+ * email aux clients qui ont coché
  * l'opt-in promos (promoEmailsOptIn) chez ce prestataire.
  *
  * Garde-fous :
@@ -78,15 +79,30 @@ export const onServiceDiscountPromoEmail = onDocumentWritten(
     if (!after) return; // suppression de presta
 
     const discount = after.discount as
-      | { percent?: number; startsAt?: string | null; endsAt?: string | null }
+      | {
+          percent?: number;
+          startsAt?: string | null;
+          endsAt?: string | null;
+          notifyLoyaltyClients?: boolean;
+        }
       | null
       | undefined;
     if (!discount?.percent) return;
 
+    // Le pro décide, promo par promo. Sans demande explicite, on n'écrit
+    // pas dans la boîte de ses clients — même s'ils ont accepté les promos.
+    if (discount.notifyLoyaltyClients !== true) {
+      console.log(`[promoEmail] ${event.params.providerId}: envoi non demandé par le pro — skip`);
+      return;
+    }
+
     // Nouvelle promo = discount apparu OU % / échéance modifiés.
     const prev = before?.discount as typeof discount;
     const isNew =
-      !prev?.percent || prev.percent !== discount.percent || prev.endsAt !== discount.endsAt;
+      !prev?.percent ||
+      prev.percent !== discount.percent ||
+      prev.endsAt !== discount.endsAt ||
+      prev.notifyLoyaltyClients !== true; // le pro vient de cocher l'envoi
     if (!isNew) return;
 
     // Promo réellement active aujourd'hui (fenêtre de dates locale).

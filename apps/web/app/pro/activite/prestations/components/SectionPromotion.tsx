@@ -141,6 +141,24 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
             error={errors.discountPercent}
           />
 
+          {/* Envoi aux clients fidélité — décision explicite, promo par
+              promo : sans coche, aucun email ne part. */}
+          <label className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+            <Switch
+              checked={promo.notifyLoyaltyClients === true}
+              onChange={(e) => setPromo({ notifyLoyaltyClients: e.target.checked })}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-800 dark:text-gray-200">
+                Prévenir mes clients fidélité par email
+              </span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Uniquement ceux qui ont accepté de recevoir vos promotions. Un email
+                maximum par semaine, quel que soit le nombre de promotions.
+              </span>
+            </span>
+          </label>
+
           {/* Live, interactive before/after preview */}
           {preview && (
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 p-3 space-y-3">

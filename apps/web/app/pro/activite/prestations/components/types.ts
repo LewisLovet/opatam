@@ -44,6 +44,8 @@ export interface ServiceFormData {
     excludedIds: string[];
     startsAt: string | null; // YYYY-MM-DD
     endsAt: string | null;   // YYYY-MM-DD
+    /** Prévenir les clients fidélité par email — choix explicite du pro. */
+    notifyLoyaltyClients?: boolean;
   } | null;
   /** Client-facing choices. Empty arrays for a plain prestation. */
   variations: ServiceVariation[];
@@ -87,6 +89,7 @@ export function serviceToFormData(service: WithId<Service>): ServiceFormData {
           excludedIds: Array.from(resolveExcludedIds(service, service.discount)),
           startsAt: service.discount.startsAt ?? null,
           endsAt: service.discount.endsAt ?? null,
+          notifyLoyaltyClients: service.discount.notifyLoyaltyClients === true,
         }
       : null,
     variations: service.variations ?? [],

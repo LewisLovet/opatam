@@ -2460,7 +2460,9 @@
         "baseService": "Servizio",
         "optionsGroup": "Opzioni ed extra",
         "notIncluded": "non inclusa"
-      }
+      },
+      "notifyTitle": "Avvisare i miei clienti fedeltà",
+      "notifyDescription": "Un’email ai clienti che hanno accettato le tue promozioni (max 1 a settimana)."
     },
     "form": {
       "editTitle": "Modifica",

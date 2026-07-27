@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import i18n, { getIntlLocale } from '../../lib/i18n';
-import { Text, Button, Input, Card, useToast } from '../../components';
+import { Text, Button, Input, Card, Switch, useToast } from '../../components';
 import { useProvider } from '../../contexts';
 import {
   serviceRepository,
@@ -109,6 +109,9 @@ interface ServiceFormData {
   discountExcludedIds: string[];
   discountStartsAt: string | null; // YYYY-MM-DD inclusive
   discountEndsAt: string | null;
+  /** Prévenir les clients fidélité par email — choix explicite, promo par
+   *  promo. Sans coche, aucun email ne part. */
+  discountNotify: boolean;
   // Variations / options / info fields — same model as the web editor and
   // the registration wizard. Prices stored in cents.
   variations: ServiceVariation[];
@@ -135,6 +138,7 @@ const DEFAULT_FORM: ServiceFormData = {
   depositRefundHours: '24',
   discountEnabled: false,
   discountPercent: '10',
+  discountNotify: false,
   discountExcludedIds: [],
   discountStartsAt: null,
   discountEndsAt: null,
@@ -752,6 +756,7 @@ export default function ServicesScreen() {
       discountExcludedIds: service.discount ? Array.from(resolveExcludedIds(service, service.discount)) : [],
       discountStartsAt: service.discount?.startsAt ?? null,
       discountEndsAt: service.discount?.endsAt ?? null,
+      discountNotify: service.discount?.notifyLoyaltyClients === true,
       variations: service.variations ?? [],
       options: service.options ?? [],
       infoFields: service.infoFields ?? [],
@@ -849,6 +854,7 @@ export default function ServicesScreen() {
           excludedIds: form.discountExcludedIds,
           startsAt: form.discountStartsAt,
           endsAt: form.discountEndsAt,
+          notifyLoyaltyClients: form.discountNotify,
         };
       }
 
@@ -1973,6 +1979,30 @@ export default function ServicesScreen() {
                         onChangeText={(t) => setForm((p) => ({ ...p, discountPercent: t.replace(/[^0-9]/g, '') }))}
                         keyboardType="number-pad"
                       />
+
+                      {/* Envoi aux clients fidélité : décision explicite du
+                          pro, promo par promo. Sans activation, aucun email. */}
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: spacing.md,
+                          paddingVertical: spacing.sm,
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text variant="body" style={{ fontWeight: '500' }}>
+                            {t('proServices.promo.notifyTitle')}
+                          </Text>
+                          <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                            {t('proServices.promo.notifyDescription')}
+                          </Text>
+                        </View>
+                        <Switch
+                          value={form.discountNotify}
+                          onValueChange={(v) => setForm((p) => ({ ...p, discountNotify: v }))}
+                        />
+                      </View>
 
                       {/* Live, interactive before/after preview — tap a line to
                           include/exclude it from the promo. */}

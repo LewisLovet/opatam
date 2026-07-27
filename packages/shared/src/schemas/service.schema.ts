@@ -52,6 +52,8 @@ export const serviceDiscountSchema = z
     excludedIds: z.array(z.string()).optional(),
     /** @deprecated Legacy single toggle, kept for back-compat reads. */
     includeExtras: z.boolean().optional(),
+    /** Prévenir les clients fidélité par email (choix explicite du pro). */
+    notifyLoyaltyClients: z.boolean().optional(),
     startsAt: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Date de début invalide' })
