@@ -26,21 +26,21 @@
  * and that's the end of it — analytics is best-effort.
  */
 
-import { Platform } from 'react-native';
-
-// react-native-fbsdk-next n'a pas d'implémentation web : require paresseux
-// pour que l'aperçu `expo start --web` ne crashe pas au chargement du module.
-// Sur web, les helpers deviennent des no-op (chaque appel est déjà sous
-// try/catch — AppEventsLogger null → warn silencieux).
+// Le SDK Facebook est un module NATIF : absent du web et d'Expo Go. On le
+// charge en try/catch plutôt que sur un test de plateforme — la mesure
+// d'audience ne doit jamais être porteuse : là où le module manque, les
+// helpers deviennent des no-op silencieux et l'app démarre normalement.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let AppEventsLogger: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Settings: any = null;
-if (Platform.OS !== 'web') {
+try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const fbsdk = require('react-native-fbsdk-next');
   AppEventsLogger = fbsdk.AppEventsLogger;
   Settings = fbsdk.Settings;
+} catch {
+  // Module indisponible (web, Expo Go) → mesure désactivée, rien de plus.
 }
 
 /** Mirror of the web `MetaStandardEvent` union — same names so the
