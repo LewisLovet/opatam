@@ -1725,21 +1725,41 @@ export default function ProDashboardScreen() {
                 {/* Three equal columns — each number sits directly above its
                     own label, so the grouping is unambiguous. Today is
                     emphasised in the primary colour. */}
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text variant="h2" color="primary" style={{ fontWeight: '800' }}>{liveViews.today}</Text>
-                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>{t('proHome.today')}</Text>
-                  </View>
-                  <View style={[styles.viewsDivider, { backgroundColor: colors.border }]} />
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text variant="h2" style={{ fontWeight: '800' }}>{liveViews.last7Days}</Text>
-                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>{t('proHome.last7Days')}</Text>
-                  </View>
-                  <View style={[styles.viewsDivider, { backgroundColor: colors.border }]} />
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text variant="h2" style={{ fontWeight: '800' }}>{liveViews.last30Days}</Text>
-                    <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}>{t('proHome.last30Days')}</Text>
-                  </View>
+                {/* Trois colonnes égales. Libellés COURTS et sur une seule
+                    ligne : « 30 derniers jours » passait à la ligne sur les
+                    petits écrans et décalait la colonne vers le bas. Les
+                    nombres s'ajustent aussi pour rester lisibles à 4 chiffres. */}
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
+                  {(
+                    [
+                      { value: liveViews.today, label: t('proHome.views.shortToday'), highlight: true },
+                      { value: liveViews.last7Days, label: t('proHome.views.short7Days'), highlight: false },
+                      { value: liveViews.last30Days, label: t('proHome.views.short30Days'), highlight: false },
+                    ] as const
+                  ).map((col, i) => (
+                    <React.Fragment key={col.label}>
+                      {i > 0 && <View style={[styles.viewsDivider, { backgroundColor: colors.border }]} />}
+                      <View style={{ flex: 1, alignItems: 'center' }}>
+                        <Text
+                          variant="h2"
+                          color={col.highlight ? 'primary' : undefined}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          style={{ fontWeight: '800' }}
+                        >
+                          {col.value}
+                        </Text>
+                        <Text
+                          variant="caption"
+                          color="textMuted"
+                          numberOfLines={1}
+                          style={{ fontSize: 11, marginTop: 2, textAlign: 'center' }}
+                        >
+                          {col.label}
+                        </Text>
+                      </View>
+                    </React.Fragment>
+                  ))}
                 </View>
               </View>
 

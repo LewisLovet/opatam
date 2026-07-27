@@ -1854,7 +1854,10 @@
     },
     "views": {
       "title": "Visualizações da sua página",
-      "storyCta": "Crie uma story para atrair mais clientes"
+      "storyCta": "Crie uma story para atrair mais clientes",
+      "shortToday": "Hoje",
+      "short7Days": "7 dias",
+      "short30Days": "30 dias"
     },
     "seeAll": "Ver tudo →",
     "seeRemaining": "Ver as {{count}} restantes",
