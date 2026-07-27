@@ -1473,7 +1473,8 @@
       "daysWithMonths_one": "{{days}} days ({{count}} month)",
       "daysWithMonths_other": "{{days}} days ({{count}} months)",
       "daysWithYears_one": "{{days}} days ({{count}} year)",
-      "daysWithYears_other": "{{days}} days ({{count}} years)"
+      "daysWithYears_other": "{{days}} days ({{count}} years)",
+      "hoursMinutes": "{{hours}}h{{minutes}}"
     },
     "notice": {
       "title": "Pre-booking notice",

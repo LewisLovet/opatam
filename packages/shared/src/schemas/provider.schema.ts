@@ -60,7 +60,7 @@ export const providerSettingsSchema = z.object({
     .number()
     .int()
     .min(5, { message: 'L\'intervalle minimum est de 5 minutes' })
-    .max(60, { message: 'L\'intervalle maximum est de 60 minutes' })
+    .max(180, { message: 'L\'intervalle maximum est de 3 heures' })
     .default(15)
     .optional(),
   bookingNotice: z

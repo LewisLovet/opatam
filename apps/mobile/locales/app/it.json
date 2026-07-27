@@ -1473,7 +1473,8 @@
       "daysWithMonths_one": "{{days}} giorni ({{count}} mese)",
       "daysWithMonths_other": "{{days}} giorni ({{count}} mesi)",
       "daysWithYears_one": "{{days}} giorni ({{count}} anno)",
-      "daysWithYears_other": "{{days}} giorni ({{count}} anni)"
+      "daysWithYears_other": "{{days}} giorni ({{count}} anni)",
+      "hoursMinutes": "{{hours}} h {{minutes}}"
     },
     "notice": {
       "title": "Avviso prima della prenotazione",

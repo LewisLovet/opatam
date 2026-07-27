@@ -67,6 +67,10 @@ const SLOT_INTERVAL_OPTIONS: OptionSpec[] = [
   { value: 30, labelKey: 'proBookingSettings.options.minutes', labelParams: { count: 30 } },
   { value: 45, labelKey: 'proBookingSettings.options.minutes', labelParams: { count: 45 } },
   { value: 60, labelKey: 'proBookingSettings.options.hours', labelParams: { count: 1 } },
+  { value: 90, labelKey: 'proBookingSettings.options.hoursMinutes', labelParams: { hours: 1, minutes: 30 } },
+  { value: 120, labelKey: 'proBookingSettings.options.hours', labelParams: { count: 2 } },
+  { value: 150, labelKey: 'proBookingSettings.options.hoursMinutes', labelParams: { hours: 2, minutes: 30 } },
+  { value: 180, labelKey: 'proBookingSettings.options.hours', labelParams: { count: 3 } },
 ];
 
 /** Resolve an option's display label in the current language. */

@@ -41,6 +41,10 @@ const SLOT_INTERVAL_OPTIONS = [
   { value: '30', label: '30 minutes' },
   { value: '45', label: '45 minutes' },
   { value: '60', label: '1 heure' },
+  { value: '90', label: '1 h 30' },
+  { value: '120', label: '2 heures' },
+  { value: '150', label: '2 h 30' },
+  { value: '180', label: '3 heures' },
 ];
 
 const MAX_BOOKING_ADVANCE_OPTIONS = [
