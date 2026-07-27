@@ -73,9 +73,15 @@ jamais concernés (grandfathering).
 (`details: []`) : les liens `opatam.com/avis/…` et
 `/reservation/confirmation/…` n'ouvraient donc **jamais** l'app sur iOS
 depuis le début. Le fichier déclare désormais `/fidelite`, `/avis/*` et
-`/reservation/confirmation/*`, mais l'`appID` contient encore le
-placeholder **`REMPLACER_TEAM_ID`** — à remplacer par l'identifiant
-d'équipe Apple (App Store Connect → Membership) avant le push.
+`/reservation/confirmation/*` avec l'appID réel
+`9KX5T72C3J.com.kamerleontech.opatam` (Team ID relevé dans le journal de
+build EAS — `eas build` l'affiche dans le récapitulatif des credentials).
+
+L'entitlement « Associated Domains » étant dans l'app depuis avril 2026,
+déployer ce fichier suffit à activer les liens iOS **sur l'app déjà
+installée** — sans nouveau build. iOS met le fichier en cache (relu à
+l'installation/mise à jour, rafraîchi périodiquement) : la prise d'effet
+n'est pas instantanée sur les appareils existants.
 
 Android était correctement configuré (assetlinks.json) ; le chemin
 `/fidelite` a été ajouté aux `intentFilters` — c'est **baké dans le
