@@ -39,7 +39,9 @@ export function useDeepLinks() {
         const path = new URL(url).pathname;
 
         const rules: [RegExp, (m: RegExpMatchArray) => string][] = [
-          // L'écran presta ne demande pas de compte (contenu public).
+          // Tous les écrans client exigent un compte (garde dans
+          // `(client)/_layout`) : la destination est mise de côté et
+          // rejouée après connexion.
           [new RegExp(`^${L}/p/([^/]+)$`), (m) => `/(client)/provider/${m[1]}`],
           [new RegExp(`^${L}/fidelite$`), () => '/(client)/loyalty'],
           [/^\/avis\/([^/]+)$/, (m) => `/(client)/review/${m[1]}`],

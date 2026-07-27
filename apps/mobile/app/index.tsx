@@ -32,9 +32,10 @@ export default function Index() {
     );
   }
 
-  // Un lien profond a pris la main (page prestataire, carte de fidélité…) :
-  // on ne redirige pas, sinon on éjecterait l'utilisateur de la page qu'il
-  // a demandée — l'auth se résout après la lecture du lien.
+  // Un lien profond a pris la main : on ne redirige pas depuis ici, sinon
+  // on écraserait sa navigation (l'auth se résout après la lecture du
+  // lien). C'est la garde de `(client)/_layout` qui exige le compte et
+  // mémorise la destination.
   if (didDeepLinkTakeOver()) {
     return null;
   }
