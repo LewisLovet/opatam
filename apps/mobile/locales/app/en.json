@@ -1478,7 +1478,9 @@
       "daysWithMonths_other": "{{days}} days ({{count}} months)",
       "daysWithYears_one": "{{days}} days ({{count}} year)",
       "daysWithYears_other": "{{days}} days ({{count}} years)",
-      "hoursMinutes": "{{hours}}h{{minutes}}"
+      "hoursMinutes": "{{hours}}h{{minutes}}",
+      "weeks_one": "{{count}} week",
+      "weeks_other": "{{count}} weeks"
     },
     "notice": {
       "title": "Pre-booking notice",
@@ -1493,6 +1495,13 @@
     "about": {
       "title": "About these settings",
       "description": "These rules apply to all new bookings. Existing bookings are not affected by these changes."
+    },
+    "custom": {
+      "label": "Custom value",
+      "days": "days",
+      "weeks": "weeks",
+      "apply": "Apply",
+      "hint": "From 1 to {{max}} days"
     }
   },
   "proClients": {

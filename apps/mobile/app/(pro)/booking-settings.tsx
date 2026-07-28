@@ -49,6 +49,12 @@ const MIN_BOOKING_NOTICE_OPTIONS: OptionSpec[] = [
   { value: 168, labelKey: 'proBookingSettings.options.hoursWithDays', labelParams: { hours: 168, count: 7 } },
 ];
 
+/** Bornes du délai maximum — miroir de `providerSettingsSchema`
+ *  (packages/shared). Une saisie hors bornes est ramenée dedans plutôt
+ *  que refusée : le pro voit immédiatement la valeur retenue. */
+const MAX_ADVANCE_MIN_DAYS = 1;
+const MAX_ADVANCE_MAX_DAYS = 365;
+
 const MAX_BOOKING_ADVANCE_OPTIONS: OptionSpec[] = [
   { value: 7, labelKey: 'proBookingSettings.options.days', labelParams: { count: 7 } },
   { value: 14, labelKey: 'proBookingSettings.options.days', labelParams: { count: 14 } },
@@ -153,6 +159,10 @@ export default function BookingSettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activePicker, setActivePicker] = useState<PickerField | null>(null);
+  // Saisie libre du délai maximum : les présets (7/14/30/60/90/180/365)
+  // couvrent mal les cas réels — « 3 semaines », « 45 jours ».
+  const [customValue, setCustomValue] = useState('');
+  const [customUnit, setCustomUnit] = useState<'days' | 'weeks'>('days');
 
   // Initialize from provider
   useEffect(() => {
@@ -206,7 +216,16 @@ export default function BookingSettingsScreen() {
 
   const getLabel = (field: PickerField, value: number): string => {
     const option = PICKER_CONFIG[field].options.find((o) => o.value === value);
-    return option ? optionLabel(option) : String(value);
+    if (option) return optionLabel(option);
+    // Valeur personnalisée : aucun préset ne correspond. Sans ce repli,
+    // l'écran affichait un nombre nu (« 45 ») sans son unité.
+    if (field === 'maxBookingAdvance') {
+      return value % 7 === 0
+        ? t('proBookingSettings.options.weeks', { count: value / 7 })
+        : t('proBookingSettings.options.days', { count: value });
+    }
+    if (field === 'slotInterval') return t('proBookingSettings.options.minutes', { count: value });
+    return t('proBookingSettings.options.hours', { count: value });
   };
 
   const settingsFields: PickerField[] = ['minBookingNotice', 'maxBookingAdvance', 'slotInterval'];
@@ -422,6 +441,110 @@ export default function BookingSettingsScreen() {
               {activePicker ? t(PICKER_CONFIG[activePicker].titleKey) : ''}
             </Text>
             <ScrollView style={{ maxHeight: 350 }}>
+              {/* Saisie libre — au-dessus des présets, qui restent des
+                  raccourcis. Les présets seuls ne couvraient ni « 3
+                  semaines » ni « 45 jours ». La valeur est TOUJOURS stockée
+                  en jours ; les semaines ne sont qu'une unité de saisie. */}
+              {activePicker === 'maxBookingAdvance' && (
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: radius.md,
+                    padding: spacing.md,
+                    marginBottom: spacing.md,
+                    gap: spacing.sm,
+                  }}
+                >
+                  <Text variant="bodySmall" color="textSecondary">
+                    {t('proBookingSettings.custom.label')}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <TextInput
+                      value={customValue}
+                      onChangeText={(v) => setCustomValue(v.replace(/[^0-9]/g, ''))}
+                      keyboardType="number-pad"
+                      returnKeyType="done"
+                      placeholder={customUnit === 'weeks' ? '3' : '45'}
+                      placeholderTextColor={colors.textMuted}
+                      maxLength={3}
+                      style={{
+                        width: 72,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        borderRadius: radius.sm,
+                        paddingHorizontal: spacing.sm,
+                        paddingVertical: spacing.sm,
+                        color: colors.text,
+                        fontSize: 16,
+                        textAlign: 'center',
+                      }}
+                    />
+                    {(['days', 'weeks'] as const).map((unit) => (
+                      <Pressable
+                        key={unit}
+                        onPress={() => setCustomUnit(unit)}
+                        style={{
+                          paddingHorizontal: spacing.md,
+                          paddingVertical: spacing.sm,
+                          borderRadius: radius.sm,
+                          borderWidth: 1,
+                          borderColor: customUnit === unit ? colors.primary : colors.border,
+                          backgroundColor: customUnit === unit ? colors.primaryLight : 'transparent',
+                        }}
+                      >
+                        <Text
+                          variant="bodySmall"
+                          style={{
+                            color: customUnit === unit ? colors.primary : colors.textSecondary,
+                            fontWeight: customUnit === unit ? '600' : '400',
+                          }}
+                        >
+                          {t(`proBookingSettings.custom.${unit}`)}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Pressable
+                    disabled={!customValue}
+                    onPress={() => {
+                      const raw = parseInt(customValue, 10);
+                      if (!Number.isFinite(raw) || raw <= 0) return;
+                      // Hors bornes → on ramène dedans plutôt que de
+                      // refuser : le pro voit tout de suite la valeur
+                      // retenue au lieu d'un message d'erreur.
+                      const days = Math.min(
+                        MAX_ADVANCE_MAX_DAYS,
+                        Math.max(MAX_ADVANCE_MIN_DAYS, customUnit === 'weeks' ? raw * 7 : raw),
+                      );
+                      setSettings((prev) => ({ ...prev, maxBookingAdvance: days }));
+                      setCustomValue('');
+                      setActivePicker(null);
+                    }}
+                    style={{
+                      alignSelf: 'flex-start',
+                      paddingHorizontal: spacing.lg,
+                      paddingVertical: spacing.sm,
+                      borderRadius: radius.sm,
+                      backgroundColor: customValue ? colors.primary : colors.surfaceSecondary,
+                    }}
+                  >
+                    <Text
+                      variant="bodySmall"
+                      style={{
+                        color: customValue ? '#FFFFFF' : colors.textMuted,
+                        fontWeight: '600',
+                      }}
+                    >
+                      {t('proBookingSettings.custom.apply')}
+                    </Text>
+                  </Pressable>
+                  <Text variant="caption" color="textMuted">
+                    {t('proBookingSettings.custom.hint', { max: MAX_ADVANCE_MAX_DAYS })}
+                  </Text>
+                </View>
+              )}
+
               {activePicker && PICKER_CONFIG[activePicker].options.map((option) => {
                 const isSelected = settings[activePicker] === option.value;
                 return (

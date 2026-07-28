@@ -1478,7 +1478,9 @@
       "daysWithMonths_other": "{{days}} giorni ({{count}} mesi)",
       "daysWithYears_one": "{{days}} giorni ({{count}} anno)",
       "daysWithYears_other": "{{days}} giorni ({{count}} anni)",
-      "hoursMinutes": "{{hours}} h {{minutes}}"
+      "hoursMinutes": "{{hours}} h {{minutes}}",
+      "weeks_one": "{{count}} settimana",
+      "weeks_other": "{{count}} settimane"
     },
     "notice": {
       "title": "Avviso prima della prenotazione",
@@ -1493,6 +1495,13 @@
     "about": {
       "title": "Informazioni su queste impostazioni",
       "description": "Queste regole si applicano a tutte le nuove prenotazioni. Le prenotazioni esistenti non vengono modificate da questi cambiamenti."
+    },
+    "custom": {
+      "label": "Valore personalizzato",
+      "days": "giorni",
+      "weeks": "settimane",
+      "apply": "Applica",
+      "hint": "Da 1 a {{max}} giorni"
     }
   },
   "proClients": {
