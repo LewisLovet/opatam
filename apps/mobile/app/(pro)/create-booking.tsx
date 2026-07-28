@@ -1071,9 +1071,21 @@ export default function CreateBookingScreen() {
       // honored when the pro opted in: the server then creates the booking
       // as pending_payment and emails the client a Stripe Checkout link.
       // Otherwise the booking is confirmed immediately.
+      // Jeton du prestataire : il prouve le mode « pro » côté serveur
+      // (acompte sauté, fenêtre maximale ignorée) et autorise le
+      // rattachement du compte de la cliente, pour que ses points de
+      // fidélité se cumulent sur un rendez-vous saisi au salon.
+      // Session expirée → on part sans en-tête plutôt que d'échouer.
+      let authHeader: Record<string, string> = {};
+      try {
+        const token = await user?.getIdToken();
+        if (token) authHeader = { Authorization: `Bearer ${token}` };
+      } catch {
+        // pas d'en-tête : le serveur retombe sur le comportement actuel
+      }
       const res = await fetch(`${API_URL}/api/bookings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({
           providerId,
           serviceId: selectedService.id,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { getAuth } from 'firebase/auth';
 import {
   ArrowLeft,
   Loader2,
@@ -28,6 +29,18 @@ import {
 import { StepSlot } from '@/app/p/[slug]/reserver/components/StepSlot';
 // Phase B: reuse the tunnel's variations/options picker.
 import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
+
+/** En-tête d'authentification du prestataire, vide si la session a expiré —
+ *  la réservation part alors sans privilège plutôt que d'échouer. */
+async function proAuthHeader(): Promise<Record<string, string>> {
+  try {
+    const token = await getAuth().currentUser?.getIdToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -264,7 +277,14 @@ export function NewBookingDrawer({
       const willAskDeposit = !!resolvedDeposit && askDeposit;
       const res = await fetch('/api/bookings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Jeton du prestataire : c'est lui qui prouve le mode « pro »
+          // côté serveur (sauter l'acompte, ignorer la fenêtre maximale)
+          // et qui autorise le rattachement du compte de la cliente pour
+          // que ses points de fidélité se cumulent.
+          ...(await proAuthHeader()),
+        },
         body: JSON.stringify({
           providerId,
           serviceId: selectedServiceId,
