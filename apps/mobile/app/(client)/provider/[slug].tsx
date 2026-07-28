@@ -54,6 +54,10 @@ import {
 } from '../../../hooks';
 import { useProvidersCache, useAuth } from '../../../contexts';
 import { useLoyaltyCards, formatLoyaltyReward } from '../../../hooks/useLoyaltyCards';
+import {
+  LoyaltyActivationCard,
+  LoyaltyActivationSheet,
+} from '../../../components/business/LoyaltyCardActivation';
 import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
 import { ASSETS } from '@booking-app/shared/constants';
 import {
@@ -143,10 +147,14 @@ export default function ProviderDetailScreen() {
   const { members, refresh: refreshMembers } = useMembers(provider?.id);
 
   // Carte de fidélité du client chez ce pro — ligne discrète sous le header.
-  // Silencieux si non connecté, pas de carte, ou erreur réseau (le hook
-  // avale les erreurs et rend simplement une liste vide).
+  // Silencieux en aperçu, ou en cas d'erreur réseau (le hook avale les
+  // erreurs et rend simplement une liste vide).
   const { isAuthenticated } = useAuth();
-  const { cards: loyaltyCards } = useLoyaltyCards(isAuthenticated && !isPreview);
+  const {
+    cards: loyaltyCards,
+    loading: loyaltyLoading,
+    refresh: refreshLoyaltyCards,
+  } = useLoyaltyCards(isAuthenticated && !isPreview);
   // Programme de fidélité du pro (bandeau public) : réglages valides + gate.
   const publicLoyalty =
     provider &&
@@ -171,11 +179,46 @@ export default function ProviderDetailScreen() {
   };
   // Tant que la carte n'est pas ACTIVÉE, on n'expose pas la progression ici :
   // le client verrait « 4/6 » sur la page du salon avant même d'avoir activé
-  // sa carte, ce qui viderait de son sens la révélation de l'onglet Fidélité.
-  // Il voit alors le bloc générique du programme, qui l'invite à s'y rendre.
-  const loyaltyCard = provider
-    ? loyaltyCards.find((c) => c.providerId === provider.id && c.activated)
+  // sa carte, ce qui viderait de son sens la révélation. Il voit à la place
+  // la carte à tampons voilée, avec le bouton d'activation.
+  const rawLoyaltyCard = provider
+    ? loyaltyCards.find((c) => c.providerId === provider.id)
     : undefined;
+  const loyaltyCard = rawLoyaltyCard?.activated ? rawLoyaltyCard : undefined;
+
+  // --- Activation depuis la page publique ----------------------------------
+  // Le client peut activer sa carte ici, sans passer par l'espace fidélité —
+  // y compris s'il n'a JAMAIS réservé chez ce pro (aucun doc côté serveur) :
+  // la carte affichée est alors VIERGE, construite depuis `publicLoyalty`,
+  // et POST /api/loyalty/activate crée le doc.
+  const [loyaltySheetOpen, setLoyaltySheetOpen] = useState(false);
+  const [loyaltyRevealing, setLoyaltyRevealing] = useState(false);
+  // Seuil : la donnée serveur prime (le pro a pu changer son réglage depuis),
+  // sinon celui du programme public pour la carte vierge.
+  const loyaltyThreshold = rawLoyaltyCard?.threshold ?? publicLoyalty?.threshold ?? 0;
+  // Tampons posés — seulement une fois activée (avant, la jauge est voilée).
+  const loyaltyFilled = loyaltyCard
+    ? loyaltyCard.armed
+      ? loyaltyCard.threshold
+      : loyaltyCard.confirmedCount % loyaltyCard.threshold
+    : 0;
+  // Carte à activer : programme actif, pas en aperçu, et cartes chargées
+  // (sinon un client déjà activé verrait clignoter un bouton « Activer »).
+  // Elle reste montée pendant la révélation, le temps de la cinématique.
+  const showLoyaltyActivation =
+    isAuthenticated &&
+    !isPreview &&
+    !!publicLoyalty &&
+    !loyaltyLoading &&
+    (!loyaltyCard || loyaltyRevealing);
+
+  const handleLoyaltyActivated = async () => {
+    // Re-fetch AVANT la cinématique : `armed` et les tampons rétroactifs ne
+    // sont renvoyés qu'une fois la carte activée côté serveur.
+    await refreshLoyaltyCards();
+    setLoyaltySheetOpen(false);
+    setLoyaltyRevealing(true);
+  };
   // Récompense ARMÉE : la réduction s'affiche sur les prix des prestations
   // éligibles dès la page publique (avant même d'appuyer sur Réserver) —
   // même calcul que le serveur, meilleure-des-deux face aux promos.
@@ -488,11 +531,11 @@ export default function ProviderDetailScreen() {
             </View>
           )}
 
-          {/* Programme de fidélité — bandeau PUBLIC quand la carte du pro est
-              active : visible par tous les visiteurs (argument pour réserver),
-              même déconnectés. La ligne de progression personnelle ci-dessous
-              prend le relais quand le client a une carte. */}
-          {!loyaltyCard && publicLoyalty && (
+          {/* Programme de fidélité — bandeau PUBLIC, réservé à l'APERÇU du
+              pro (il voit ce que met en avant sa page, sans carte ni bouton
+              d'activation). Côté client, tout l'espace (client) exige un
+              compte : c'est la carte à tampons ci-dessous qui s'affiche. */}
+          {isPreview && publicLoyalty && (
             <View
               style={{
                 flexDirection: 'row',
@@ -536,12 +579,71 @@ export default function ProviderDetailScreen() {
             </View>
           )}
 
+          {/* Carte à tampons ACTIVABLE — vierge (aucun RDV encore) ou voilée
+              (des RDV, mais carte pas encore activée). Après activation, la
+              cinématique se joue ici puis la ligne de progression prend le
+              relais (`loyaltyRevealing`). */}
+          {showLoyaltyActivation && publicLoyalty && (
+            <View style={{ marginTop: spacing.md }}>
+              <LoyaltyActivationCard
+                header={
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 19,
+                        backgroundColor: colors.primary,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: spacing.md,
+                      }}
+                    >
+                      <Ionicons name="gift" size={19} color="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="body" style={{ fontWeight: '700', color: colors.primary }}>
+                        {t('loyalty.provider.cardTitle')}
+                      </Text>
+                      <Text variant="caption" style={{ color: colors.textSecondary, marginTop: 1 }}>
+                        {t('loyalty.publicDetail', {
+                          threshold: loyaltyThreshold,
+                          reward: formatLoyaltyReward(
+                            publicLoyalty.rewardType,
+                            publicLoyalty.rewardValue,
+                            t,
+                          ),
+                        })}
+                      </Text>
+                    </View>
+                    <Pressable onPress={showLoyaltyInfo} hitSlop={8}>
+                      <Ionicons
+                        name="information-circle-outline"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    </Pressable>
+                  </View>
+                }
+                threshold={loyaltyThreshold}
+                filled={loyaltyFilled}
+                activated={!!loyaltyCard}
+                // Carte vierge (aucun doc serveur) : rien à cacher, on montre
+                // les emplacements vides. Carte existante non activée : voilée.
+                veiled={!!rawLoyaltyCard}
+                revealing={loyaltyRevealing}
+                onRequestActivation={() => setLoyaltySheetOpen(true)}
+                onRevealDone={() => setLoyaltyRevealing(false)}
+              />
+            </View>
+          )}
+
           {/* Loyalty progress line (discreet, only when the client has a card) */}
           {/* Carte de fidélité PERSONNELLE — encore plus visible que le
               bandeau public : le client a des RDV ici, sa progression est un
               levier de re-réservation. Version pleine couleur quand la
               récompense est armée. */}
-          {loyaltyCard && (
+          {loyaltyCard && !loyaltyRevealing && (
             <View
               style={{
                 flexDirection: 'row',
@@ -950,6 +1052,16 @@ export default function ProviderDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Feuille d'activation de la carte de fidélité (opt-in emails
+          pré-coché) — même composant que l'espace fidélité. */}
+      <LoyaltyActivationSheet
+        visible={loyaltySheetOpen}
+        providerId={provider?.id ?? null}
+        businessName={provider?.businessName ?? ''}
+        onClose={() => setLoyaltySheetOpen(false)}
+        onActivated={handleLoyaltyActivated}
+      />
     </View>
   );
 }

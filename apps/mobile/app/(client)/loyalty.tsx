@@ -8,25 +8,24 @@
  * que non activée). L'activation (POST /api/loyalty/activate) embarque un
  * opt-in emails promos révocable, puis joue une cinématique de révélation
  * (tampons rétroactifs un par un + confettis maison, Animated natif).
+ *
+ * La carte et la feuille d'activation vivent dans
+ * `components/business/LoyaltyCardActivation` : la page publique du
+ * prestataire permet la même activation, avec la même cérémonie.
  */
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  RefreshControl,
-  Animated,
-  type DimensionValue,
-} from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
-import { Text, Card, Avatar, Button, EmptyState, Skeleton, Switch } from '../../components';
-import { OverlaySheet } from '../../components/OverlaySheet';
+import { Text, Card, Avatar, EmptyState, Skeleton } from '../../components';
+import {
+  LoyaltyActivationCard,
+  LoyaltyActivationSheet,
+} from '../../components/business/LoyaltyCardActivation';
 import { useAuth } from '../../contexts';
 import {
   useLoyaltyCards,
@@ -34,128 +33,6 @@ import {
   postLoyaltyActivation,
   type LoyaltyCard,
 } from '../../hooks/useLoyaltyCards';
-
-/**
- * Pluie de confettis maison : ~20 rectangles colorés qui tombent (~1,5 s).
- * Volontairement sans lib externe — Animated + useNativeDriver suffisent.
- */
-function ConfettiRain({ onDone }: { onDone: () => void }) {
-  const { colors } = useTheme();
-  const palette = [colors.primary, '#F59E0B', '#10B981', '#EC4899'];
-  const particles = React.useRef(
-    Array.from({ length: 20 }, (_, i) => ({
-      anim: new Animated.Value(0),
-      left: `${5 + Math.random() * 90}%` as DimensionValue,
-      delay: Math.random() * 400,
-      drift: (Math.random() - 0.5) * 60,
-      spin: (Math.random() - 0.5) * 720,
-      size: 5 + Math.random() * 6,
-      colorIdx: i % 4,
-    })),
-  ).current;
-
-  React.useEffect(() => {
-    Animated.parallel(
-      particles.map((p) =>
-        Animated.timing(p.anim, {
-          toValue: 1,
-          duration: 1100,
-          delay: p.delay,
-          useNativeDriver: true,
-        }),
-      ),
-    ).start(({ finished }) => {
-      if (finished) onDone();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {particles.map((p, i) => (
-        <Animated.View
-          key={i}
-          style={{
-            position: 'absolute',
-            top: -12,
-            left: p.left,
-            width: p.size,
-            height: p.size * 1.7,
-            borderRadius: 2,
-            backgroundColor: palette[p.colorIdx],
-            opacity: p.anim.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] }),
-            transform: [
-              { translateY: p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, 170] }) },
-              { translateX: p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, p.drift] }) },
-              {
-                rotate: p.anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', `${p.spin}deg`],
-                }),
-              },
-            ],
-          }}
-        />
-      ))}
-    </View>
-  );
-}
-
-/**
- * Rangée de tampons : `filled` cercles remplis sur `threshold`.
- * `appearAnims` (cinématique d'activation) : une Animated.Value par tampon
- * rempli — le tampon reste invisible tant que sa valeur est à 0.
- */
-function StampRow({
-  filled,
-  threshold,
-  appearAnims,
-}: {
-  filled: number;
-  threshold: number;
-  appearAnims?: Animated.Value[] | null;
-}) {
-  const { colors } = useTheme();
-  return (
-    <View style={styles.stampRow}>
-      {Array.from({ length: threshold }, (_, i) => {
-        const isFilled = i < filled;
-        const stamp = (
-          <View
-            style={[
-              styles.stamp,
-              isFilled
-                ? { backgroundColor: colors.primary }
-                : {
-                    backgroundColor: colors.surfaceSecondary,
-                    borderWidth: 1.5,
-                    borderColor: colors.border,
-                  },
-            ]}
-          >
-            {isFilled && <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
-          </View>
-        );
-        const anim = isFilled ? appearAnims?.[i] : undefined;
-        if (!anim) return <View key={i}>{stamp}</View>;
-        return (
-          <Animated.View
-            key={i}
-            style={{
-              opacity: anim,
-              // Le spring dépasse 1 → petit rebond « pop » sur chaque tampon.
-              transform: [
-                { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }) },
-              ],
-            }}
-          >
-            {stamp}
-          </Animated.View>
-        );
-      })}
-    </View>
-  );
-}
 
 function LoyaltyCardItem({
   card,
@@ -171,7 +48,7 @@ function LoyaltyCardItem({
   onToggleOptIn: (card: LoyaltyCard, value: boolean) => void;
   onRevealDone: () => void;
 }) {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing } = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -179,45 +56,41 @@ function LoyaltyCardItem({
   // Progression sur le cycle courant ; carte armée = tous les tampons posés.
   const filled = card.armed ? card.threshold : card.confirmedCount % card.threshold;
 
-  // --- Cinématique d'activation -------------------------------------------
-  // Les Animated.Value des tampons sont créées PENDANT le render (et pas dans
-  // un effet) pour que la première frame « revealing » parte bien de 0 — un
-  // useEffect s'exécute après paint et laisserait flasher la jauge pleine.
-  const sectionAnim = React.useRef(new Animated.Value(1)).current;
-  const stampAnims = React.useRef<Animated.Value[] | null>(null);
-  const [confetti, setConfetti] = React.useState(false);
-  if (revealing && !stampAnims.current) {
-    stampAnims.current = Array.from({ length: filled }, () => new Animated.Value(0));
-    sectionAnim.setValue(0);
-  }
-
-  React.useEffect(() => {
-    if (!revealing || !stampAnims.current) return;
-    // Fondu/scale de la carte, puis tampons UN PAR UN (stagger 120 ms) —
-    // rétroactif : la jauge peut se remplir d'un coup, effet « trésor ».
-    Animated.sequence([
-      Animated.timing(sectionAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.stagger(
-        120,
-        stampAnims.current.map((a) =>
-          Animated.spring(a, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 220 }),
-        ),
-      ),
-    ]).start(({ finished }) => {
-      if (finished) setConfetti(true);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revealing]);
-
-  const handleConfettiDone = () => {
-    setConfetti(false);
-    stampAnims.current = null;
-    onRevealDone();
-  };
-
   const openProvider = card.slug
     ? () => router.push(`/(client)/provider/${card.slug}` as any)
     : undefined;
+
+  // Corps de carte + cinématique : composant partagé avec la page du
+  // prestataire (components/business/LoyaltyCardActivation).
+  const header = (
+    <View style={styles.cardHeader}>
+      <Avatar
+        size="md"
+        name={card.businessName}
+        imageUrl={card.photoURL ?? undefined}
+        style={{ marginRight: spacing.md }}
+      />
+      <View style={{ flex: 1 }}>
+        <Text variant="body" style={{ fontWeight: '600' }} numberOfLines={1}>
+          {card.businessName}
+        </Text>
+        {!card.activated ? (
+          <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+            {t('clientLoyalty.activation.teaser')}
+          </Text>
+        ) : card.armed ? (
+          <Text variant="caption" style={{ color: colors.primary, fontWeight: '600', marginTop: 2 }}>
+            {t('loyalty.card.armed')}
+          </Text>
+        ) : (
+          <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+            {t('loyalty.card.remaining', { count: card.remaining, reward })}
+          </Text>
+        )}
+      </View>
+      {openProvider && <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+    </View>
+  );
 
   return (
     <Pressable
@@ -225,108 +98,19 @@ function LoyaltyCardItem({
       disabled={!openProvider}
       style={({ pressed }) => [pressed && openProvider ? { opacity: 0.85 } : null]}
     >
-      <Animated.View
-        style={
-          revealing
-            ? {
-                opacity: sectionAnim,
-                transform: [
-                  { scale: sectionAnim.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
-                ],
-              }
-            : null
-        }
-      >
-        <Card padding="lg" shadow="sm">
-          <View style={styles.cardHeader}>
-            <Avatar
-              size="md"
-              name={card.businessName}
-              imageUrl={card.photoURL ?? undefined}
-              style={{ marginRight: spacing.md }}
-            />
-            <View style={{ flex: 1 }}>
-              <Text variant="body" style={{ fontWeight: '600' }} numberOfLines={1}>
-                {card.businessName}
-              </Text>
-              {!card.activated ? (
-                <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                  {t('clientLoyalty.activation.teaser')}
-                </Text>
-              ) : card.armed ? (
-                <Text
-                  variant="caption"
-                  style={{ color: colors.primary, fontWeight: '600', marginTop: 2 }}
-                >
-                  {t('loyalty.card.armed')}
-                </Text>
-              ) : (
-                <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                  {t('loyalty.card.remaining', { count: card.remaining, reward })}
-                </Text>
-              )}
-            </View>
-            {openProvider && (
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            )}
-          </View>
-
-          {card.activated ? (
-            <>
-              <View style={{ marginTop: spacing.md }}>
-                <StampRow
-                  filled={filled}
-                  threshold={card.threshold}
-                  appearAnims={revealing ? stampAnims.current : null}
-                />
-              </View>
-              {/* Réglage opt-in emails promos, révocable à tout moment. */}
-              <View
-                style={[
-                  styles.optInRow,
-                  { marginTop: spacing.md, borderTopColor: colors.border, paddingTop: spacing.sm },
-                ]}
-              >
-                <Switch
-                  value={card.promoEmailsOptIn}
-                  onValueChange={(v) => onToggleOptIn(card, v)}
-                  label={t(
-                    card.promoEmailsOptIn
-                      ? 'clientLoyalty.activation.emailsOn'
-                      : 'clientLoyalty.activation.emailsOff',
-                  )}
-                />
-              </View>
-            </>
-          ) : (
-            /* Jauge voilée : tampons à peine visibles + voile avec CTA.
-               Ni progression ni récompense tant que la carte n'est pas activée. */
-            <View
-              style={[
-                styles.veiledZone,
-                {
-                  marginTop: spacing.md,
-                  backgroundColor: colors.surfaceSecondary,
-                  borderRadius: radius.md,
-                },
-              ]}
-            >
-              <View style={{ opacity: 0.18 }}>
-                <StampRow filled={0} threshold={card.threshold} />
-              </View>
-              <View style={[StyleSheet.absoluteFill, styles.veilOverlay]}>
-                <Button
-                  title={t('clientLoyalty.activation.activateButton')}
-                  size="sm"
-                  onPress={() => onRequestActivation(card)}
-                />
-              </View>
-            </View>
-          )}
-
-          {confetti && <ConfettiRain onDone={handleConfettiDone} />}
-        </Card>
-      </Animated.View>
+      <LoyaltyActivationCard
+        header={header}
+        threshold={card.threshold}
+        filled={filled}
+        activated={card.activated}
+        revealing={revealing}
+        onRequestActivation={() => onRequestActivation(card)}
+        onRevealDone={onRevealDone}
+        optIn={{
+          value: card.promoEmailsOptIn,
+          onChange: (v) => onToggleOptIn(card, v),
+        }}
+      />
     </Pressable>
   );
 }
@@ -341,10 +125,9 @@ export default function LoyaltyScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
 
   // --- Activation ----------------------------------------------------------
+  // L'appel réseau et l'opt-in pré-coché vivent dans LoyaltyActivationSheet ;
+  // l'écran ne garde que la cible et la suite (overrides, refresh, révélation).
   const [activationTarget, setActivationTarget] = React.useState<LoyaltyCard | null>(null);
-  const [optIn, setOptIn] = React.useState(true);
-  const [activating, setActivating] = React.useState(false);
-  const [activateError, setActivateError] = React.useState(false);
   const [revealingId, setRevealingId] = React.useState<string | null>(null);
   // Écrasements locaux (activation / opt-in optimiste) par providerId —
   // filet si le refresh post-activation échoue.
@@ -364,25 +147,15 @@ export default function LoyaltyScreen() {
   };
 
   const openActivation = (card: LoyaltyCard) => {
-    setOptIn(true); // opt-in PRÉ-COCHÉ (révocable dans la carte ensuite)
-    setActivateError(false);
     setActivationTarget(card);
   };
 
-  const handleActivate = async () => {
-    if (!user || !activationTarget) return;
+  const handleActivated = async (promoEmailsOptIn: boolean) => {
+    if (!activationTarget) return;
     const providerId = activationTarget.providerId;
-    setActivating(true);
-    setActivateError(false);
-    const ok = await postLoyaltyActivation(user, providerId, optIn);
-    if (!ok) {
-      setActivating(false);
-      setActivateError(true);
-      return;
-    }
     setOverrides((prev) => ({
       ...prev,
-      [providerId]: { activated: true, promoEmailsOptIn: optIn },
+      [providerId]: { activated: true, promoEmailsOptIn },
     }));
     // Re-fetch AVANT la cinématique : `armed` est gated par l'activation,
     // seule la donnée fraîche donne la jauge rétroactive correcte. Le flag
@@ -390,7 +163,6 @@ export default function LoyaltyScreen() {
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
-    setActivating(false);
     setActivationTarget(null);
     setRevealingId(providerId);
   };
@@ -521,82 +293,15 @@ export default function LoyaltyScreen() {
         </ScrollView>
       )}
 
-      {/* Feuille d'activation (opt-in emails pré-coché, révocable) */}
-      <OverlaySheet
+      {/* Feuille d'activation (opt-in emails pré-coché, révocable) —
+          composant partagé avec la page du prestataire. */}
+      <LoyaltyActivationSheet
         visible={!!activationTarget}
-        onClose={() => !activating && setActivationTarget(null)}
-        heightPct={0.62}
-      >
-        {activationTarget && (
-          <ScrollView
-            contentContainerStyle={{
-              paddingHorizontal: spacing.lg,
-              paddingTop: spacing.md,
-              paddingBottom: insets.bottom + spacing.lg,
-              gap: spacing.md,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.sheetIconWrap}>
-              <View
-                style={[styles.sheetIconCircle, { backgroundColor: colors.primaryLight }]}
-              >
-                <Ionicons name="ribbon" size={34} color={colors.primary} />
-              </View>
-            </View>
-            <Text variant="h2" style={{ textAlign: 'center' }}>
-              {t('clientLoyalty.activation.sheetTitle')}
-            </Text>
-            <Text variant="body" color="textSecondary" style={{ textAlign: 'center' }}>
-              {t('clientLoyalty.activation.sheetDescription', {
-                businessName: activationTarget.businessName,
-              })}
-            </Text>
-
-            <Pressable
-              onPress={() => setOptIn((v) => !v)}
-              style={({ pressed }) => [
-                styles.optInCheckRow,
-                {
-                  backgroundColor: colors.surfaceSecondary,
-                  borderRadius: 12,
-                  padding: spacing.md,
-                  opacity: pressed ? 0.8 : 1,
-                },
-              ]}
-            >
-              <Ionicons
-                name={optIn ? 'checkbox' : 'square-outline'}
-                size={24}
-                color={optIn ? colors.primary : colors.textMuted}
-              />
-              <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                <Text variant="bodySmall">
-                  {t('clientLoyalty.activation.optInLabel', {
-                    businessName: activationTarget.businessName,
-                  })}
-                </Text>
-                <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
-                  {t('clientLoyalty.activation.optInHint')}
-                </Text>
-              </View>
-            </Pressable>
-
-            {activateError && (
-              <Text variant="caption" style={{ color: colors.error, textAlign: 'center' }}>
-                {t('clientLoyalty.activation.error')}
-              </Text>
-            )}
-
-            <Button
-              title={t('clientLoyalty.activation.confirmButton')}
-              onPress={() => void handleActivate()}
-              loading={activating}
-              fullWidth
-            />
-          </ScrollView>
-        )}
-      </OverlaySheet>
+        providerId={activationTarget?.providerId ?? null}
+        businessName={activationTarget?.businessName ?? ''}
+        onClose={() => setActivationTarget(null)}
+        onActivated={handleActivated}
+      />
     </View>
   );
 }
@@ -625,47 +330,6 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stampRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  stamp: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  veiledZone: {
-    minHeight: 68,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    overflow: 'hidden',
-  },
-  veilOverlay: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  optInRow: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  optInCheckRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  sheetIconWrap: {
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  sheetIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
     alignItems: 'center',
   },
 });
