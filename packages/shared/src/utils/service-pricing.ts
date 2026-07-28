@@ -87,6 +87,7 @@ export function computeServiceTotal(
   const hasVariations = (service.variations?.length ?? 0) > 0;
   let price = hasVariations ? 0 : service.price;
   let duration = hasVariations ? 0 : service.duration;
+  let variationDuration = 0;
 
   for (const variation of service.variations ?? []) {
     const chosenId = selections.variations[variation.id];
@@ -94,8 +95,21 @@ export function computeServiceTotal(
     const chosen = variation.options.find((o) => o.id === chosenId);
     if (!chosen) continue;
     price += chosen.price;
-    duration += chosen.duration;
+    variationDuration += chosen.duration;
   }
+
+  // Beaucoup de pros créent des variations qui ne changent QUE le prix et
+  // laissent les durées à 0 (« simple / double / triple », même temps de
+  // pose). Sans ce repli, la durée de base étant écartée, la prestation
+  // durait ZÉRO minute : des réservations de 0 min existent en base.
+  // Le prix, lui, ne retombe PAS sur la base : une prestation gratuite est
+  // un cas légitime, alors qu'un rendez-vous de durée nulle n'en est
+  // jamais un.
+  duration += hasVariations
+    ? variationDuration > 0
+      ? variationDuration
+      : service.duration
+    : 0;
 
   for (const option of service.options ?? []) {
     const selOpt = selections.options[option.id];
@@ -275,7 +289,10 @@ export function getServiceMinDuration(
     if (variation.options.length === 0) continue;
     min += Math.min(...variation.options.map((o) => o.duration));
   }
-  return min;
+  // Variations sans durée (elles ne font varier que le prix) : la durée
+  // reste celle de la prestation. Même repli que `computeServiceTotal`,
+  // sinon l'affichage « à partir de » annoncerait 0 minute.
+  return min > 0 ? min : service.duration;
 }
 
 /** Bounds the PERSISTED base duration/price must respect — mirrors
@@ -310,8 +327,12 @@ export function deriveServiceBasePricing(
   if (variations.length === 0) {
     return { price: service.price, duration: service.duration };
   }
+  // Prix : base volontairement à 0 — les variations définissent la
+  // prestation, et une prestation gratuite doit rester gratuite.
+  // Durée : on transmet la vraie durée, car elle sert de REPLI quand les
+  // variations ne portent aucune durée (voir getServiceMinDuration).
   const price = getServiceMinPrice({ price: 0, variations });
-  const duration = getServiceMinDuration({ duration: 0, variations });
+  const duration = getServiceMinDuration({ duration: service.duration, variations });
   return {
     price: Math.min(SERVICE_BASE_PRICE_MAX, Math.max(0, Math.round(price) || 0)),
     duration: Math.min(

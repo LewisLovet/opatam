@@ -1386,7 +1386,8 @@
       "cartSummary": "{{count}} serviços · {{duration}} min · {{price}}",
       "continue": "Continuar",
       "continueWithCount_one": "Continuar — {{count}} serviço",
-      "continueWithCount_other": "Continuar — {{count}} serviços"
+      "continueWithCount_other": "Continuar — {{count}} serviços",
+      "fromPrefix": "desde"
     },
     "periods": {
       "morning": "Manhã",

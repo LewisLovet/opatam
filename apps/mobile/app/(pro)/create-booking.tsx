@@ -60,6 +60,8 @@ import {
   computeDiscountedTotal,
   emptyServiceSelections,
   serviceHasChoices,
+  getServiceMinPrice,
+  getServiceMinDuration,
   resolveDeposit,
   hasDepositAccess,
 } from '@booking-app/shared';
@@ -579,6 +581,20 @@ export default function CreateBookingScreen() {
   const globalDiscount = provider?.settings?.globalDiscount ?? null;
   // Effective price/duration of a service given its chosen variations/options,
   // discount applied.
+  // Prix et durée AFFICHÉS dans la liste. Avec des variantes, la
+  // prestation n'a pas de prix unique : la liste montrait la base stockée
+  // (20 € / 45 min) tandis que la fiche détail calculait la combinaison la
+  // moins chère (10 € / 10 min) — deux écrans qui se contredisaient sur la
+  // même prestation. Les deux passent maintenant par le même calcul.
+  const displayPrice = useCallback(
+    (s: Service) => (serviceHasChoices(s) ? getServiceMinPrice(s) : s.price),
+    [],
+  );
+  const displayDuration = useCallback(
+    (s: Service) => (serviceHasChoices(s) ? getServiceMinDuration(s) : s.duration),
+    [],
+  );
+
   const effFor = useCallback(
     (s: WithId<Service>) =>
       computeDiscountedTotal(s, selectionsByService[s.id] ?? emptyServiceSelections(), globalDiscount),
@@ -1232,7 +1248,7 @@ export default function CreateBookingScreen() {
                               style={{ marginRight: 4 }}
                             />
                             <Text variant="caption" color="textSecondary">
-                              {service.duration} min
+                              {(isSelected ? effFor(service).duration : displayDuration(service))} min
                             </Text>
                           </View>
 
@@ -1260,7 +1276,11 @@ export default function CreateBookingScreen() {
                               color="primary"
                               style={{ fontWeight: '600', fontSize: 13 }}
                             >
-                              {formatPrice(isSelected ? effFor(service).price : service.price)}
+                              {isSelected
+                                ? formatPrice(effFor(service).price)
+                                : serviceHasChoices(service)
+                                  ? `${t('proCreateBooking.services.fromPrefix')} ${formatPrice(displayPrice(service))}`
+                                  : formatPrice(service.price)}
                             </Text>
                           </View>
 

@@ -71,6 +71,7 @@ import {
   hasLoyaltyAccess,
   isServiceLoyaltyEligible,
   applyLoyaltyToLine,
+  getServiceMinDuration,
 } from '@booking-app/shared';
 import { analyticsService, type WithId } from '@booking-app/firebase';
 
@@ -908,7 +909,10 @@ export default function ProviderDetailScreen() {
                           name: s.name,
                           description: s.description,
                           photoURL: s.photoURL,
-                          duration: s.duration,
+                          // Durée du MÊME combo que le prix affiché : la valeur
+                      // brute annonçait la durée de base alors que le prix
+                      // était déjà « à partir de ».
+                      duration: getServiceMinDuration(s),
                           // Discounted "à partir de" (cheapest reachable combo) — correct
                           // for variation/option services, not just the dropped base.
                           price: (loy ? loy.price : md.price) / 100,

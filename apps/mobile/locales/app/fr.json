@@ -1386,7 +1386,8 @@
       "cartSummary": "{{count}} prestations · {{duration}} min · {{price}}",
       "continue": "Continuer",
       "continueWithCount_one": "Continuer — {{count}} prestation",
-      "continueWithCount_other": "Continuer — {{count}} prestations"
+      "continueWithCount_other": "Continuer — {{count}} prestations",
+      "fromPrefix": "dès"
     },
     "periods": {
       "morning": "Matin",
