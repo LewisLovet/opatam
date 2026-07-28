@@ -169,8 +169,12 @@ export default function ProviderDetailScreen() {
           : t('loyalty.info.only', { list: eligible.map((s) => s.name).join(', ') });
     Alert.alert(t('loyalty.publicTitle'), msg);
   };
+  // Tant que la carte n'est pas ACTIVÉE, on n'expose pas la progression ici :
+  // le client verrait « 4/6 » sur la page du salon avant même d'avoir activé
+  // sa carte, ce qui viderait de son sens la révélation de l'onglet Fidélité.
+  // Il voit alors le bloc générique du programme, qui l'invite à s'y rendre.
   const loyaltyCard = provider
-    ? loyaltyCards.find((c) => c.providerId === provider.id)
+    ? loyaltyCards.find((c) => c.providerId === provider.id && c.activated)
     : undefined;
   // Récompense ARMÉE : la réduction s'affiche sur les prix des prestations
   // éligibles dès la page publique (avant même d'appuyer sur Réserver) —
