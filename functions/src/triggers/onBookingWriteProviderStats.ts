@@ -65,13 +65,24 @@ export const onBookingWriteProviderStats = onDocumentWritten(
     if (!providerId) return;
 
     // ── Fidélité : libérer le ticket de rédemption si la résa réduite
-    // est ANNULÉE ou SUPPRIMÉE (la récompense n'est pas « brûlée » — un
-    // no-show, lui, la consomme définitivement). La suppression couvre en
-    // un seul point tous les chemins d'acompte impayé : échec
-    // PaymentIntent/Checkout, abandon volontaire, purge cron
-    // (audit P1 « ticket bloqué »). Best-effort, jamais bloquant.
+    // n'a pas eu lieu — ANNULÉE, ABSENTE (no-show) ou SUPPRIMÉE.
+    //
+    // Le no-show consommait auparavant la récompense définitivement. La
+    // cliente perdait une carte entière SANS avoir eu sa réduction, ce
+    // qui transforme une punition d'assiduité en punition de fidélité :
+    // c'est le pro qui encaisse la plainte. Décision produit : un
+    // rendez-vous non honoré ne brûle pas la carte. Le pro dispose par
+    // ailleurs du compteur d'absences et du tag `noshow_prone` pour
+    // traiter le sujet là où il se pose.
+    //
+    // La suppression couvre en un seul point tous les chemins d'acompte
+    // impayé : échec PaymentIntent/Checkout, abandon volontaire, purge
+    // cron (audit P1 « ticket bloqué »). Best-effort, jamais bloquant.
+    const RELEASING_STATUSES = ['cancelled', 'noshow'];
     const loyaltyCancelled =
-      before?.status !== 'cancelled' && after?.status === 'cancelled' && !!after?.loyalty;
+      !RELEASING_STATUSES.includes(before?.status as string) &&
+      RELEASING_STATUSES.includes(after?.status as string) &&
+      !!after?.loyalty;
     const loyaltyDeleted = !after && !!before?.loyalty;
     if (loyaltyCancelled || loyaltyDeleted) {
       try {
@@ -82,7 +93,9 @@ export const onBookingWriteProviderStats = onDocumentWritten(
           .get();
         await Promise.all(redemptions.docs.map((d) => d.ref.delete()));
         if (!redemptions.empty) {
-          console.log(`[loyalty] ticket libéré (annulation ${event.params.bookingId})`);
+          console.log(
+            `[loyalty] ticket libéré (${after?.status ?? 'suppression'} ${event.params.bookingId})`,
+          );
         }
       } catch (e) {
         console.error('[loyalty] libération ticket échouée:', e);
