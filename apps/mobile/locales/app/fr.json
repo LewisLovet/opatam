@@ -3036,5 +3036,27 @@
       "title": "Aucune carte pour l'instant",
       "description": "Les cartes de vos clients apparaîtront ici dès leur premier RDV compté."
     }
+  },
+  "calendarSync": {
+    "title": "Synchroniser mon agenda",
+    "subtitle": "Vos rendez-vous dans votre agenda personnel, mis à jour tout seuls.",
+    "intro": "Activez la synchronisation, puis ajoutez le planning à votre agenda. Les nouveaux rendez-vous apparaissent, les annulations disparaissent, les déplacements suivent — sans rien faire.",
+    "activate": "Activer la synchronisation",
+    "addToCalendar": "Ajouter à mon agenda",
+    "copyHint": "Ou copiez ce lien pour Google Agenda ou Outlook",
+    "copied": "Lien copié",
+    "regenerate": "Régénérer le lien",
+    "regenerated": "Nouveau lien créé — réabonnez-vous depuis votre agenda",
+    "disable": "Désactiver",
+    "noticeDelay": "Le délai de mise à jour dépend du réglage de votre agenda — de quelques minutes à une fois par jour. Vous pouvez le raccourcir dans les réglages de l'abonnement.",
+    "noticeReadOnly": "Votre agenda affiche les rendez-vous sans pouvoir les modifier : les changements se font ici.",
+    "lastSyncMinutes_one": "Dernière synchronisation il y a {{count}} minute",
+    "lastSyncMinutes_other": "Dernière synchronisation il y a {{count}} minutes",
+    "lastSyncHours_one": "Dernière synchronisation il y a {{count}} heure",
+    "lastSyncHours_other": "Dernière synchronisation il y a {{count}} heures",
+    "lastSyncDays_one": "Dernière synchronisation il y a {{count}} jour",
+    "lastSyncDays_other": "Dernière synchronisation il y a {{count}} jours",
+    "error": "La synchronisation n'a pas pu être activée",
+    "openFailed": "Impossible d'ouvrir votre agenda"
   }
 }

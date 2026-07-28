@@ -3036,5 +3036,27 @@
       "title": "No cards yet",
       "description": "Your clients' cards will appear here as soon as their first appointment is counted."
     }
+  },
+  "calendarSync": {
+    "title": "Sync my calendar",
+    "subtitle": "Your appointments in your own calendar, kept up to date.",
+    "intro": "Turn on syncing, then add your schedule to your calendar. New bookings appear, cancellations vanish, reschedules follow — with nothing to do.",
+    "activate": "Turn on syncing",
+    "addToCalendar": "Add to my calendar",
+    "copyHint": "Or copy this link for Google Calendar or Outlook",
+    "copied": "Link copied",
+    "regenerate": "Regenerate link",
+    "regenerated": "New link created — subscribe again from your calendar",
+    "disable": "Turn off",
+    "noticeDelay": "Refresh timing depends on your calendar settings — from a few minutes to once a day. You can shorten it in the subscription settings.",
+    "noticeReadOnly": "Your calendar shows the appointments but cannot edit them: changes happen here.",
+    "lastSyncMinutes_one": "Last synced {{count}} minute ago",
+    "lastSyncMinutes_other": "Last synced {{count}} minutes ago",
+    "lastSyncHours_one": "Last synced {{count}} hour ago",
+    "lastSyncHours_other": "Last synced {{count}} hours ago",
+    "lastSyncDays_one": "Last synced {{count}} day ago",
+    "lastSyncDays_other": "Last synced {{count}} days ago",
+    "error": "Syncing could not be turned on",
+    "openFailed": "Could not open your calendar"
   }
 }

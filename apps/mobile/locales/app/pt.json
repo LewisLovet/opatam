@@ -3036,5 +3036,27 @@
       "title": "Ainda não há cartões",
       "description": "Os cartões dos seus clientes aparecerão aqui a partir da primeira marcação contabilizada."
     }
+  },
+  "calendarSync": {
+    "title": "Sincronizar a minha agenda",
+    "subtitle": "As suas marcações na sua agenda pessoal, sempre atualizadas.",
+    "intro": "Ative a sincronização e depois adicione a agenda ao seu calendário. As novas marcações aparecem, os cancelamentos desaparecem, as alterações acompanham — sem fazer nada.",
+    "activate": "Ativar a sincronização",
+    "addToCalendar": "Adicionar à minha agenda",
+    "copyHint": "Ou copie este link para o Google Agenda ou o Outlook",
+    "copied": "Link copiado",
+    "regenerate": "Gerar novo link",
+    "regenerated": "Novo link criado — subscreva novamente na sua agenda",
+    "disable": "Desativar",
+    "noticeDelay": "O intervalo de atualização depende das definições da sua agenda — de alguns minutos a uma vez por dia. Pode reduzi-lo nas definições da subscrição.",
+    "noticeReadOnly": "A sua agenda mostra as marcações mas não as pode alterar: as alterações fazem-se aqui.",
+    "lastSyncMinutes_one": "Última sincronização há {{count}} minuto",
+    "lastSyncMinutes_other": "Última sincronização há {{count}} minutos",
+    "lastSyncHours_one": "Última sincronização há {{count}} hora",
+    "lastSyncHours_other": "Última sincronização há {{count}} horas",
+    "lastSyncDays_one": "Última sincronização há {{count}} dia",
+    "lastSyncDays_other": "Última sincronização há {{count}} dias",
+    "error": "Não foi possível ativar a sincronização",
+    "openFailed": "Não foi possível abrir a sua agenda"
   }
 }

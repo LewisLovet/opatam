@@ -33,6 +33,7 @@ import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
 import { useProviderBookings, useServiceCategories, useServices, useWorkingRanges } from '../../../hooks';
+import { CalendarSyncSheet } from '../../../components/business/CalendarSyncSheet';
 import { closedBands, type RangesByDay, type WorkingRange } from '../../../lib/workingRanges';
 import {
   Text,
@@ -1609,6 +1610,7 @@ export default function CalendarScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(memberIdParam ?? null);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   // Horaires de travail — pour voiler les heures fermées dans la grille.
   const {
@@ -2229,7 +2231,29 @@ export default function CalendarScreen() {
             },
           ]}
         >
-          <Text variant="h2" style={{ color: '#FFFFFF' }}>{t('proCalendar.title')}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            {/* Synchronisation agenda — posée ici, dans le bandeau, parce
+                que l'abonnement doit se prendre sur l'appareil qui porte
+                l'agenda. Renvoyer le pro vers le web l'obligerait à
+                transporter l'URL jusqu'à son téléphone. */}
+            <Pressable
+              onPress={() => setSyncOpen(true)}
+              accessibilityLabel={t('calendarSync.title')}
+              style={({ pressed }) => ({
+                width: 32,
+                height: 32,
+                borderRadius: radius.full,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                opacity: pressed ? 0.7 : 1,
+              })}
+              hitSlop={8}
+            >
+              <Ionicons name="sync-outline" size={17} color="#FFFFFF" />
+            </Pressable>
+            <Text variant="h2" style={{ color: '#FFFFFF' }}>{t('proCalendar.title')}</Text>
+          </View>
           {!isToday(selectedDate) && (
             <Pressable
               onPress={goToToday}
@@ -2490,6 +2514,8 @@ export default function CalendarScreen() {
           onRefresh={handleRefresh}
         />
       )}
+
+      <CalendarSyncSheet visible={syncOpen} onClose={() => setSyncOpen(false)} />
 
       {/* ===== Unified "+ Ajouter" FAB ===== */}
       <View style={styles.fabContainer}>
