@@ -25,11 +25,15 @@ import {
   Images,
   Smartphone,
   Bell,
+  MailWarning,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { LogoWhite } from '@/components/ui';
 import { ChangeCodeModal } from './ChangeCodeModal';
+
+/** Entrées ayant une sous-page listée séparément dans le menu. */
+const EXACT_MATCH_ONLY = new Set(['/admin/marketing']);
 
 interface NavItem {
   label: string;
@@ -58,6 +62,11 @@ const navGroups: NavGroup[] = [
       { label: 'Revenue', href: '/admin/revenue', icon: <Euro className="w-5 h-5" /> },
       { label: 'Affiliés', href: '/admin/affiliates', icon: <Handshake className="w-5 h-5" /> },
       { label: 'Marketing', href: '/admin/marketing', icon: <Megaphone className="w-5 h-5" /> },
+      {
+        label: 'Envois promos fidélité',
+        href: '/admin/marketing/promos-fidelite',
+        icon: <MailWarning className="w-5 h-5" />,
+      },
     ],
   },
   {
@@ -111,6 +120,10 @@ export function AdminSidebar({ collapsed = false }: SidebarProps) {
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
+    // Une entrée qui possède une sous-page listée séparément dans ce menu ne
+    // s'allume que sur son chemin exact — sinon parent et enfant s'allument
+    // ensemble.
+    if (EXACT_MATCH_ONLY.has(href)) return pathname === href;
     return pathname.startsWith(href);
   };
 
@@ -289,6 +302,10 @@ export function AdminMobileSidebar({ open, onClose }: MobileSidebarProps) {
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
+    // Une entrée qui possède une sous-page listée séparément dans ce menu ne
+    // s'allume que sur son chemin exact — sinon parent et enfant s'allument
+    // ensemble.
+    if (EXACT_MATCH_ONLY.has(href)) return pathname === href;
     return pathname.startsWith(href);
   };
 
