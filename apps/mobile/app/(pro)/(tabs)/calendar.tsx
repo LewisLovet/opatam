@@ -32,7 +32,8 @@ import type { WithId } from '@booking-app/firebase';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
-import { useProviderBookings, useServiceCategories, useServices } from '../../../hooks';
+import { useProviderBookings, useServiceCategories, useServices, useWorkingRanges } from '../../../hooks';
+import { closedBands, type RangesByDay, type WorkingRange } from '../../../lib/workingRanges';
 import {
   Text,
   Loader,
@@ -799,6 +800,9 @@ interface WeekViewProps {
   showMemberAvatars: boolean;
   startHour?: number;
   endHour?: number;
+  /** Plages de travail par index de jour (0 = lundi), en minutes depuis
+   *  minuit. Absent = horaires inconnus, rien n'est grisé. */
+  workingRangesByDay?: Record<number, WorkingRange[]> | null;
   refreshing?: boolean;
   onRefresh?: () => void;
   /** Triggered when the user swipes horizontally across the grid —
@@ -818,6 +822,7 @@ function WeekView({
   showMemberAvatars,
   startHour = DEFAULT_WEEK_START_HOUR,
   endHour = DEFAULT_WEEK_END_HOUR,
+  workingRangesByDay = null,
   refreshing = false,
   onRefresh,
   onNavigate,
@@ -1172,6 +1177,35 @@ function WeekView({
                     },
                   ]}
                 >
+                  {/* Heures HORS travail — voile neutre très léger, posé
+                      sous tout le reste. On grise le fermé plutôt que de
+                      colorer l'ouvert : la teinte du jour sélectionné
+                      occupe déjà la colonne, et une seconde couleur les
+                      ferait se disputer l'attention. Rien n'est dessiné
+                      tant que les horaires ne sont pas chargés — un
+                      planning entièrement grisé se lirait comme une panne. */}
+                  {workingRangesByDay &&
+                    closedBands(
+                      workingRangesByDay[dayIdx] ?? [],
+                      startHour * 60,
+                      endHour * 60,
+                    ).map((band, i) => (
+                      <View
+                        key={`closed-${dayIdx}-${i}`}
+                        pointerEvents="none"
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          top:
+                            ((band.start - startHour * 60) / (weekTotalHours * 60)) * totalHeight,
+                          height: ((band.end - band.start) / (weekTotalHours * 60)) * totalHeight,
+                          backgroundColor: colors.textMuted,
+                          opacity: 0.06,
+                        }}
+                      />
+                    ))}
+
                   {/* Blocked slots / activities */}
                   {dayBlocked.map((bs) => {
                     let bsStartMin: number;
@@ -1575,6 +1609,23 @@ export default function CalendarScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(memberIdParam ?? null);
+
+  // Horaires de travail — pour voiler les heures fermées dans la grille.
+  const {
+    byMember: rangesByMember,
+    union: rangesUnion,
+    loaded: rangesLoaded,
+    refresh: refreshWorkingRanges,
+  } = useWorkingRanges(providerId ?? undefined);
+
+  /** Plages du membre affiché, ou amplitude d'ouverture de l'équipe quand
+   *  aucun membre n'est sélectionné. `null` tant que rien n'est chargé :
+   *  la grille reste alors telle quelle. */
+  const workingRanges: RangesByDay | null = useMemo(() => {
+    if (!rangesLoaded) return null;
+    if (selectedMemberId) return rangesByMember[selectedMemberId] ?? null;
+    return rangesUnion;
+  }, [rangesLoaded, selectedMemberId, rangesByMember, rangesUnion]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [disambiguationBookings, setDisambiguationBookings] = useState<WeekBooking[] | null>(null);
   // Same idea for stacked activities — a tap on an overlapping
@@ -1595,6 +1646,18 @@ export default function CalendarScreen() {
   const weekDays = useMemo(() => getWeekDays(weekMonday), [weekMonday]);
   const weekStart = useMemo(() => startOfDay(weekDays[0]), [weekDays]);
   const weekEnd = useMemo(() => endOfDay(weekDays[6]), [weekDays]);
+
+  /** Plages de travail réindexées sur les colonnes de la vue semaine
+   *  (0 = lundi), alors que la disponibilité est stockée par
+   *  `dayOfWeek` JS (0 = dimanche). */
+  const weekWorkingRanges = useMemo(() => {
+    if (!workingRanges) return null;
+    const out: Record<number, WorkingRange[]> = {};
+    weekDays.forEach((day, idx) => {
+      out[idx] = workingRanges[day.getDay()] ?? [];
+    });
+    return out;
+  }, [workingRanges, weekDays]);
 
   // ---- Fetch bookings ----
   // In day mode, fetch for the day. In week mode, fetch for the entire week.
@@ -1865,7 +1928,7 @@ export default function CalendarScreen() {
   }, [blockedSlots, viewMode, selectedMemberId, memberNameMap, memberColorMap, members, t]);
 
   // ---- Compute effective hour range from bookings + activities ----
-  // Walks both data sources so an activity / categorised blocked
+  // Walks every data source so an activity / categorised blocked
   // slot ending at 22:30 still gets its row painted instead of
   // being clipped at the default 21:00 cap. allDay vacations are
   // intentionally skipped — they cover 00→24 conceptually but
@@ -1910,11 +1973,26 @@ export default function CalendarScreen() {
       if (endHour > maxHour) maxHour = endHour;
     }
 
+    // Les HORAIRES DE TRAVAIL élargissent aussi la fenêtre. Sans cela, un
+    // pro ouvrant à 6 h sans aucun RDV ce jour-là ne verrait jamais sa
+    // première heure — et la bande d'ouverture, coupée au bord de la
+    // grille, décrirait des horaires faux.
+    const daysInView =
+      viewMode === 'week' ? weekDays : [selectedDate];
+    for (const day of daysInView) {
+      for (const r of workingRanges?.[day.getDay()] ?? []) {
+        const startHour = Math.floor(r.start / 60);
+        const endHour = Math.min(24, Math.ceil(r.end / 60));
+        if (startHour < minHour) minHour = startHour;
+        if (endHour > maxHour) maxHour = endHour;
+      }
+    }
+
     return {
       effectiveStartHour: Math.max(0, minHour),
       effectiveEndHour: Math.min(24, maxHour),
     };
-  }, [bookings, weekBlockedSlots]);
+  }, [bookings, weekBlockedSlots, workingRanges, viewMode, weekDays, selectedDate]);
 
   // ---- Handlers ----
   const handleBookingPress = useCallback(
@@ -2081,10 +2159,14 @@ export default function CalendarScreen() {
     setRefreshing(true);
     await Promise.all([
       refresh(),
+      // Les horaires changent depuis un AUTRE écran : sans ce rafraîchi,
+      // l'onglet planning resterait sur les anciennes plages tant que
+      // l'app n'a pas redémarré.
+      refreshWorkingRanges(),
       providerId ? schedulingService.getBlockedSlotsInRange(providerId, fetchStart, fetchEnd).then(setBlockedSlots) : Promise.resolve(),
     ]);
     setRefreshing(false);
-  }, [refresh, providerId, fetchStart, fetchEnd]);
+  }, [refresh, refreshWorkingRanges, providerId, fetchStart, fetchEnd]);
 
   // ---- Auto-refresh when screen regains focus (e.g. after creating a booking) ----
   const isFirstFocus = useRef(true);
@@ -2357,6 +2439,9 @@ export default function CalendarScreen() {
                   start: `${effectiveStartHour.toString().padStart(2, '0')}:00`,
                   end: effectiveEndHour === 24 ? '00:00' : `${effectiveEndHour.toString().padStart(2, '0')}:00`,
                 }}
+                workingRanges={
+                  workingRanges ? workingRanges[selectedDate.getDay()] ?? [] : undefined
+                }
               />
             ) : (
               <View
@@ -2400,6 +2485,7 @@ export default function CalendarScreen() {
           showMemberAvatars={members.length > 1}
           startHour={effectiveStartHour}
           endHour={effectiveEndHour}
+          workingRangesByDay={weekWorkingRanges}
           refreshing={refreshing}
           onRefresh={handleRefresh}
         />

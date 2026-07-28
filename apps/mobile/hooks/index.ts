@@ -38,6 +38,8 @@ export type { UseMembersResult } from './useMembers';
 export { useAvailableSlots } from './useAvailableSlots';
 export type { UseAvailableSlotsResult, UseAvailableSlotsParams, TimeSlot, DaySlots } from './useAvailableSlots';
 export { useAvailabilitySummary } from './useAvailabilitySummary';
+export { useWorkingRanges } from './useWorkingRanges';
+export type { UseWorkingRangesResult } from './useWorkingRanges';
 export type { UseAvailabilitySummaryResult, UseAvailabilitySummaryParams, DayInfo, DayStatus } from './useAvailabilitySummary';
 
 export { useProviderById } from './useProviderById';

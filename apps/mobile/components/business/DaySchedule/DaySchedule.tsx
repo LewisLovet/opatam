@@ -4,6 +4,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { closedBands } from '../../../lib/workingRanges';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -80,6 +81,11 @@ export interface DayScheduleProps {
     start: string; // "09:00"
     end: string; // "19:00"
   };
+  /** Plages RÉELLEMENT travaillées ce jour-là, en minutes depuis minuit.
+   *  Sert à voiler les heures fermées — à ne pas confondre avec
+   *  `workingHours`, qui ne définit que l'amplitude VISIBLE de la grille.
+   *  `undefined` = horaires inconnus, rien n'est voilé. */
+  workingRanges?: { start: number; end: number }[];
   /** Callback when a booking is pressed */
   onBookingPress?: (id: string) => void;
 }
@@ -218,6 +224,7 @@ export function DaySchedule({
   bookings,
   blockedSlots = [],
   workingHours = { start: '07:00', end: '21:00' },
+  workingRanges,
   onBookingPress,
   onBlockedSlotPress,
 }: DayScheduleProps) {
@@ -342,6 +349,28 @@ export function DaySchedule({
 
       {/* Grid area */}
       <View style={styles.gridArea}>
+        {/* Heures HORS travail — voile neutre très léger, sous tout le
+            reste. Un planning tout blanc ne disait pas quand on
+            travaille ; on grise le fermé plutôt que de colorer l'ouvert,
+            pour ne pas concurrencer les RDV. Rien n'est dessiné quand les
+            horaires sont inconnus. */}
+        {workingRanges &&
+          closedBands(workingRanges, startMinutes, endMinutes).map((band, i) => (
+            <View
+              key={`closed-${i}`}
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: ((band.start - startMinutes) / totalMinutes) * totalHeight,
+                height: ((band.end - band.start) / totalMinutes) * totalHeight,
+                backgroundColor: colors.textMuted,
+                opacity: 0.06,
+              }}
+            />
+          ))}
+
         {/* Hour grid lines */}
         {hours.map((_, index) => (
           <View
