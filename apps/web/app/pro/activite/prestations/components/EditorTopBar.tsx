@@ -68,7 +68,9 @@ export function EditorTopBar({
           ) : isEditing ? (
             'Enregistrer'
           ) : (
-            'Créer'
+            /* Creating opens the client preview first — publication is
+               confirmed from there. */
+            'Vérifier et publier'
           )}
         </Button>
       </div>

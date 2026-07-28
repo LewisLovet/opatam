@@ -18,7 +18,7 @@ import { SectionReglages } from './SectionReglages';
 import { SectionPromotion } from './SectionPromotion';
 import { SectionDisponibilite } from './SectionDisponibilite';
 import { SectionVariations } from './SectionVariations';
-import { ServicePreview } from './ServicePreview';
+import { ServicePreview, type ServicePreviewSection } from './ServicePreview';
 import {
   emptyServiceFormData,
   serviceToFormData,
@@ -29,6 +29,7 @@ import {
   sanitizeOptions,
   sanitizeInfoFields,
 } from './choiceHelpers';
+import { deriveServiceBasePricing } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -79,8 +80,29 @@ export function ServiceEditor({
   const [deleting, setDeleting] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  // Mobile-only: the preview lives in a modal instead of a side pane.
+  // The preview lives in a modal on mobile (side pane on desktop) — and is
+  // ALWAYS opened as the confirmation step when creating a prestation.
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  // Force the "Variations & options" section open when a preview pencil
+  // points at it (a collapsed section can't be scrolled to).
+  const [forceOpenChoices, setForceOpenChoices] = useState(false);
+
+  /** Preview pencil → close the modal, reveal + scroll to the form block. */
+  const handleEditSection = useCallback((section: ServicePreviewSection) => {
+    const anchors: Record<ServicePreviewSection, string> = {
+      name: 'section-essentiel',
+      price: 'section-prix',
+      variations: 'section-variations',
+      options: 'section-options',
+    };
+    if (section === 'variations' || section === 'options') setForceOpenChoices(true);
+    setShowPreviewModal(false);
+    setTimeout(() => {
+      document
+        .getElementById(anchors[section])
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }, []);
 
   // Mobile-only: pulse the floating "Voir l'aperçu" button when the structure
   // changes (variation/option/info added or removed) — the preview itself is
@@ -222,12 +244,23 @@ export function ServiceEditor({
     }
     // Strip half-filled choices so Firestore stays clean and Zod (which
     // requires non-empty names) doesn't reject the payload.
+    const variations = sanitizeVariations(formData.variations);
+    // With variations the base price/duration inputs are hidden — derive them
+    // from the cheapest reachable combination so the stored "à partir de" is
+    // truthful (and always satisfies the schema's 5 min minimum).
+    const base = deriveServiceBasePricing({
+      price: formData.price,
+      duration: formData.duration,
+      variations,
+    });
     const payload: ServiceFormData = {
       ...formData,
+      price: base.price,
+      duration: base.duration,
       // Price ranges are no longer authored manually — a varying price is
       // expressed through variations — so never persist a priceMax.
       priceMax: null,
-      variations: sanitizeVariations(formData.variations),
+      variations,
       options: sanitizeOptions(formData.options),
       infoFields: sanitizeInfoFields(formData.infoFields),
     };
@@ -264,6 +297,20 @@ export function ServiceEditor({
     }
   };
 
+  /** Creating a prestation ALWAYS goes through the client preview: the pro
+   *  confirms publication from there. Editing saves straight away. */
+  const handlePrimaryAction = () => {
+    if (isEditing) {
+      handleSave();
+      return;
+    }
+    if (!validate()) {
+      toast.error('Vérifiez les champs en rouge');
+      return;
+    }
+    setShowPreviewModal(true);
+  };
+
   return (
     // On desktop the editor owns a viewport-height column: the form pane
     // scrolls on its own while the preview pane stays put. (The app shell
@@ -276,17 +323,19 @@ export function ServiceEditor({
         saving={saving}
         isDirty={isDirty}
         onBack={handleBack}
-        onSave={handleSave}
+        onSave={handlePrimaryAction}
       />
 
       <div className="mt-5 w-full lg:flex lg:gap-6 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
         <div className="flex-1 min-w-0 space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1 lg:pb-12">
-        <SectionEssentiel
-          data={formData}
-          errors={errors}
-          isEditing={isEditing}
-          update={update}
-        />
+        <div id="section-essentiel" className="scroll-mt-24">
+          <SectionEssentiel
+            data={formData}
+            errors={errors}
+            isEditing={isEditing}
+            update={update}
+          />
+        </div>
 
         <SectionReglages
           data={formData}
@@ -300,7 +349,7 @@ export function ServiceEditor({
 
         <SectionPromotion data={formData} errors={errors} update={update} />
 
-        <SectionVariations data={formData} update={update} />
+        <SectionVariations data={formData} update={update} forceOpen={forceOpenChoices} />
         {errors.variations && (
           <p className="text-sm text-error-600 dark:text-error-400 px-1 -mt-2">
             {errors.variations}
@@ -337,7 +386,7 @@ export function ServiceEditor({
             the form scrolls). On mobile it's hidden here and opened in a
             modal via the floating "Voir l'aperçu" button instead. */}
         <div className="hidden lg:block lg:w-[360px] lg:flex-shrink-0 lg:min-h-0 lg:overflow-y-auto lg:pb-4">
-          <ServicePreview data={formData} />
+          <ServicePreview data={formData} onEditSection={handleEditSection} />
         </div>
       </div>
 
@@ -363,6 +412,10 @@ export function ServiceEditor({
           data={formData}
           embedded
           onClose={() => setShowPreviewModal(false)}
+          onEditSection={handleEditSection}
+          // Creation: this modal IS the publication step.
+          onPublish={isEditing ? undefined : handleSave}
+          publishing={saving}
         />
       </Modal>
 

@@ -46,6 +46,9 @@ export interface PreviewService {
   infoFields: ServiceInfoField[];
 }
 
+/** The editable blocks a pro can jump back to from the preview. */
+export type ServicePreviewSection = 'name' | 'price' | 'variations' | 'options';
+
 export function ServiceChoicesPreview({
   service,
   discount = null,
@@ -55,6 +58,9 @@ export function ServiceChoicesPreview({
   confirmLabel,
   confirmLoading = false,
   safeAreaBottom = false,
+  onEditSection,
+  onPublish,
+  publishLoading = false,
 }: {
   service: PreviewService;
   /** Active promo to reflect in the prices (effective = per-service or global).
@@ -72,6 +78,13 @@ export function ServiceChoicesPreview({
    *  component sits flush against the screen bottom (full-screen step or
    *  custom overlay) rather than inside a SafeAreaView / pageSheet. */
   safeAreaBottom?: boolean;
+  /** Pro-facing shortcut back to the form. When set, a pencil is shown on
+   *  every editable block of the preview (name, price, variations, options). */
+  onEditSection?: (section: ServicePreviewSection) => void;
+  /** Creation flow: the preview is the mandatory last step, so the CTA
+   *  publishes instead of showing the illustrative "Réserver" pill. */
+  onPublish?: () => void;
+  publishLoading?: boolean;
 }) {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
@@ -184,6 +197,30 @@ export function ServiceChoicesPreview({
     });
 
   // ── small presentational helpers ──────────────────────────────────
+  /** Pencil sending the pro back to the matching section of the form.
+   *  Rendered only when the caller wired `onEditSection` (pro editor). */
+  const EditPencil = ({ section }: { section: ServicePreviewSection }) =>
+    onEditSection ? (
+      <Pressable
+        onPress={() => onEditSection(section)}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel={t('components.serviceChoicesPreview.editSection')}
+        style={({ pressed }) => ({
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: pressed ? colors.surfaceSecondary : colors.surface ?? colors.background,
+        })}
+      >
+        <Ionicons name="pencil" size={15} color={colors.primary} />
+      </Pressable>
+    ) : null;
+
   const Radio = ({ selected }: { selected: boolean }) => (
     <View
       style={{
@@ -227,11 +264,15 @@ export function ServiceChoicesPreview({
     // from the promo, none of its nested choices are discounted (matches
     // computeDiscountedTotal). Top-level variations are always discountable.
     lineDiscountable = true,
+    editable = false,
   ) => (
     <View key={v.id} style={{ gap: spacing.xs }}>
-      <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.text }}>
-        {v.name || t('components.serviceChoicesPreview.variationFallback')}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        <Text variant="bodySmall" style={{ flex: 1, fontWeight: '700', color: colors.text }}>
+          {v.name || t('components.serviceChoicesPreview.variationFallback')}
+        </Text>
+        {editable && <EditPencil section="variations" />}
+      </View>
       <View style={{ gap: spacing.xs }}>
         {v.options.map((o) => {
           const selected = chosenId === o.id;
@@ -370,8 +411,13 @@ export function ServiceChoicesPreview({
         )}
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="h3">{service.name || t('components.serviceChoicesPreview.serviceFallback')}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text variant="h3" style={{ flex: 1 }}>
+              {service.name || t('components.serviceChoicesPreview.serviceFallback')}
+            </Text>
+            <EditPencil section="name" />
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm }}>
             <View
               style={{
                 flexDirection: 'row',
@@ -413,14 +459,21 @@ export function ServiceChoicesPreview({
                 {formatDuration(getServiceMinDuration(service))}
               </Text>
             </View>
+            <EditPencil section="price" />
           </View>
         </View>
 
         {mode !== 'picker' && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
+            <Ionicons
+              name={onPublish ? 'checkmark-circle-outline' : 'eye-outline'}
+              size={14}
+              color={colors.textMuted}
+            />
             <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
-              {t('components.serviceChoicesPreview.clientPreviewHint')}
+              {onPublish
+                ? t('components.serviceChoicesPreview.publishHint')
+                : t('components.serviceChoicesPreview.clientPreviewHint')}
             </Text>
           </View>
         )}
@@ -447,15 +500,18 @@ export function ServiceChoicesPreview({
 
         {/* Top-level variations */}
         {service.variations.map((v) =>
-          renderVariation(v, sel.variations[v.id], (optId) => pickVariation(v.id, optId)),
+          renderVariation(v, sel.variations[v.id], (optId) => pickVariation(v.id, optId), true, true),
         )}
 
         {/* Top-level options */}
         {service.options.length > 0 && (
           <View style={{ gap: spacing.sm }}>
-            <Text variant="bodySmall" style={{ fontWeight: '700', color: colors.text }}>
-              {t('components.serviceChoicesPreview.options')}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Text variant="bodySmall" style={{ flex: 1, fontWeight: '700', color: colors.text }}>
+                {t('components.serviceChoicesPreview.options')}
+              </Text>
+              <EditPencil section="options" />
+            </View>
             {service.options.map((o) => {
               const checked = !!sel.options[o.id];
               return (
@@ -582,6 +638,35 @@ export function ServiceChoicesPreview({
                   {resolvedConfirmLabel}
                 </Text>
                 <Ionicons name="add" size={16} color="#FFFFFF" />
+              </>
+            )}
+          </Pressable>
+        ) : onPublish ? (
+          /* Creation flow: this CTA is the real publication. */
+          <Pressable
+            onPress={() => !publishLoading && onPublish()}
+            disabled={publishLoading}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.xs,
+              paddingVertical: spacing.sm,
+              paddingHorizontal: spacing.lg,
+              borderRadius: 999,
+              minWidth: 130,
+              justifyContent: 'center',
+              backgroundColor: colors.primary,
+              opacity: publishLoading || pressed ? 0.75 : 1,
+            })}
+          >
+            {publishLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
+                  {t('components.serviceChoicesPreview.publish')}
+                </Text>
+                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
               </>
             )}
           </Pressable>

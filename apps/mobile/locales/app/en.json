@@ -697,7 +697,10 @@
       "yourAnswerPlaceholder": "Your answer…",
       "clientFreeAnswer": "Client's free-text answer…",
       "clientPreviewHint": "This is exactly what clients will see when they book.",
-      "fixedPriceNotice": "Fixed-price service — clients book directly, with no choices to make. Add variations or options to enrich this listing."
+      "fixedPriceNotice": "Fixed-price service — clients book directly, with no choices to make. Add variations or options to enrich this listing.",
+      "editSection": "Edit",
+      "publish": "Publish",
+      "publishHint": "Check the listing as your clients will see it, then publish. The pencil takes you back to the field to fix."
     },
     "timeSlotGrid": {
       "noSlotsForDate": "No time slots available for this date"
@@ -2545,7 +2548,10 @@
     },
     "preview": {
       "clientPreview": "Client preview",
-      "buttonSubtitle": "See the booking page"
+      "buttonSubtitle": "See the booking page",
+      "backToPreview": "Back to preview",
+      "backToPreviewSubtitle": "Resume checking",
+      "reviewAndPublish": "Review and publish"
     },
     "move": {
       "title": "Move to…",

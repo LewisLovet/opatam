@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Eye, RotateCcw, X } from 'lucide-react';
+import { Check, Eye, Loader2, Pencil, RotateCcw, X } from 'lucide-react';
 import {
   computeServiceTotal,
   validateServiceSelections,
@@ -20,16 +20,28 @@ import type { ServiceFormData } from './types';
  * running total so the pro understands the impact of their config as
  * they build it.
  */
+/** The editable blocks a pro can jump back to from the preview. */
+export type ServicePreviewSection = 'name' | 'price' | 'variations' | 'options';
+
 export function ServicePreview({
   data,
   embedded = false,
   onClose,
+  onEditSection,
+  onPublish,
+  publishing = false,
 }: {
   data: ServiceFormData;
   /** Drop the outer card frame to sit flush inside a modal (mobile). */
   embedded?: boolean;
   /** When provided, a close button is shown in the header (modal use). */
   onClose?: () => void;
+  /** Shortcut back to the matching form section — shows a pencil per block. */
+  onEditSection?: (section: ServicePreviewSection) => void;
+  /** Creation flow: the preview is the mandatory last step, so its CTA
+   *  publishes the prestation. */
+  onPublish?: () => void;
+  publishing?: boolean;
 }) {
   const [selections, setSelections] = useState<ServiceSelections>(() =>
     emptyServiceSelections(),
@@ -86,6 +98,36 @@ export function ServicePreview({
       ? `À partir de ${formatPrice(getServiceMinPrice({ price: data.price, variations: data.variations }))}`
       : formatPrice(total.price);
 
+  /** Pencil sending the pro back to the matching section of the form. */
+  const EditPencil = ({ section }: { section: ServicePreviewSection }) =>
+    onEditSection ? (
+      <button
+        type="button"
+        onClick={() => onEditSection(section)}
+        aria-label="Modifier cette partie"
+        title="Modifier cette partie"
+        className="flex-shrink-0 p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:border-primary-300 dark:hover:border-primary-700 transition-colors"
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </button>
+    ) : null;
+
+  /** Small labelled header above a preview block, with its own pencil. */
+  const BlockHeader = ({
+    label,
+    section,
+  }: {
+    label: string;
+    section: ServicePreviewSection;
+  }) => (
+    <div className="flex items-center gap-2">
+      <p className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+        {label}
+      </p>
+      <EditPencil section={section} />
+    </div>
+  );
+
   return (
     <div
       className={`${
@@ -120,27 +162,76 @@ export function ServicePreview({
       </div>
 
       <div className={`p-4 space-y-4 ${embedded ? 'overflow-y-auto' : ''}`}>
-        <div>
-          <p className="text-base font-semibold text-gray-900 dark:text-white">
-            {data.name || 'Votre prestation'}
+        {onPublish && (
+          <p className="rounded-lg bg-primary-50 dark:bg-primary-900/15 border border-primary-200 dark:border-primary-900/40 px-3 py-2 text-xs text-primary-800 dark:text-primary-200">
+            Vérifiez la fiche telle que vos clientes la verront, puis publiez.
+            Le crayon ramène directement au champ à corriger.
           </p>
-          {data.description && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
-              {data.description}
+        )}
+
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-semibold text-gray-900 dark:text-white">
+              {data.name || 'Votre prestation'}
             </p>
-          )}
+            {data.description && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                {data.description}
+              </p>
+            )}
+          </div>
+          <EditPencil section="name" />
         </div>
 
-        <ServiceChoicesPicker
-          service={{
-            variations: data.variations,
-            options: data.options,
-            infoFields: data.infoFields,
-          }}
-          selections={selections}
-          onChange={setSelections}
-          missing={missingSet}
-        />
+        {onEditSection ? (
+          <>
+            {data.variations.length > 0 && (
+              <div className="space-y-3">
+                <BlockHeader label="Variations" section="variations" />
+                <ServiceChoicesPicker
+                  service={{ variations: data.variations, options: [], infoFields: [] }}
+                  selections={selections}
+                  onChange={setSelections}
+                  missing={missingSet}
+                />
+              </div>
+            )}
+            {(data.options.length > 0 || data.infoFields.length > 0) && (
+              <div className="space-y-3">
+                <BlockHeader label="Options & infos" section="options" />
+                <ServiceChoicesPicker
+                  service={{
+                    variations: [],
+                    options: data.options,
+                    infoFields: data.infoFields,
+                  }}
+                  selections={selections}
+                  onChange={setSelections}
+                  missing={missingSet}
+                />
+              </div>
+            )}
+            {!hasChoices && data.infoFields.length === 0 && (
+              <ServiceChoicesPicker
+                service={{ variations: [], options: [], infoFields: [] }}
+                selections={selections}
+                onChange={setSelections}
+                missing={missingSet}
+              />
+            )}
+          </>
+        ) : (
+          <ServiceChoicesPicker
+            service={{
+              variations: data.variations,
+              options: data.options,
+              infoFields: data.infoFields,
+            }}
+            selections={selections}
+            onChange={setSelections}
+            missing={missingSet}
+          />
+        )}
       </div>
 
       {/* Total bar — what the client commits to */}
@@ -150,14 +241,37 @@ export function ServicePreview({
             À choisir : {missing.join(', ')}
           </p>
         )}
-        <div className="flex items-end justify-between">
+        <div className="flex items-end justify-between gap-2">
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {formatDuration(total.duration)}
           </span>
           <span className="text-lg font-bold text-gray-900 dark:text-white">
             {priceLabel}
           </span>
+          <EditPencil section="price" />
         </div>
+
+        {/* Creation flow: publication is confirmed from here. */}
+        {onPublish && (
+          <button
+            type="button"
+            onClick={onPublish}
+            disabled={publishing}
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 transition-colors"
+          >
+            {publishing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Publication…
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                Publier la prestation
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

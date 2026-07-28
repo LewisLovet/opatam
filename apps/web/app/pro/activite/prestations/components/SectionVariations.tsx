@@ -12,6 +12,9 @@ import type { ServiceFormData } from './types';
 interface SectionVariationsProps {
   data: ServiceFormData;
   update: (patch: Partial<ServiceFormData>) => void;
+  /** Force the section open — set when the pro jumps here from a preview
+   *  pencil (the target block must be visible to scroll to it). */
+  forceOpen?: boolean;
 }
 
 /**
@@ -26,7 +29,7 @@ interface SectionVariationsProps {
  * action, not the other way around). A live "À partir de" recap reflects the
  * cheapest reachable price and pulses when it changes.
  */
-export function SectionVariations({ data, update }: SectionVariationsProps) {
+export function SectionVariations({ data, update, forceOpen = false }: SectionVariationsProps) {
   const hasVariations = data.variations.length > 0;
   const minPrice = getServiceMinPrice({
     price: data.price,
@@ -64,7 +67,7 @@ export function SectionVariations({ data, update }: SectionVariationsProps) {
         description="Laissez le client composer sa prestation — le prix s'ajuste tout seul."
         icon={<Layers className="w-5 h-5" />}
         defaultOpen={false}
-        forceOpen={hasVariations}
+        forceOpen={hasVariations || forceOpen}
         badge={badge}
       >
         {/* Variations — always available: adding the first one flips the
@@ -100,7 +103,7 @@ export function SectionVariations({ data, update }: SectionVariationsProps) {
         </div>
 
         {/* Options */}
-        <div className="pt-4 border-t border-gray-100 dark:border-gray-700/60">
+        <div id="section-options" className="scroll-mt-24 pt-4 border-t border-gray-100 dark:border-gray-700/60">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
             Options
           </h3>

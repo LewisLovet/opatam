@@ -697,7 +697,10 @@
       "yourAnswerPlaceholder": "La tua risposta…",
       "clientFreeAnswer": "Risposta libera del cliente…",
       "clientPreviewHint": "Ecco esattamente cosa vedrà il cliente al momento di prenotare.",
-      "fixedPriceNotice": "Servizio a prezzo fisso — il cliente prenota direttamente, senza scelte da fare. Aggiungi varianti o opzioni per arricchire questa scheda."
+      "fixedPriceNotice": "Servizio a prezzo fisso — il cliente prenota direttamente, senza scelte da fare. Aggiungi varianti o opzioni per arricchire questa scheda.",
+      "editSection": "Modifica",
+      "publish": "Pubblica",
+      "publishHint": "Controlla la scheda come la vedranno i clienti, poi pubblica. La matita riporta al campo da correggere."
     },
     "timeSlotGrid": {
       "noSlotsForDate": "Nessun orario disponibile per questa data"
@@ -2545,7 +2548,10 @@
     },
     "preview": {
       "clientPreview": "Anteprima cliente",
-      "buttonSubtitle": "Vedi la scheda di prenotazione"
+      "buttonSubtitle": "Vedi la scheda di prenotazione",
+      "backToPreview": "Torna all'anteprima",
+      "backToPreviewSubtitle": "Riprendi la verifica",
+      "reviewAndPublish": "Verifica e pubblica"
     },
     "move": {
       "title": "Sposta in…",

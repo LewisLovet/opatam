@@ -50,6 +50,7 @@ import {
   buildServiceDiscountPreview,
   resolveExcludedIds,
   getServiceMinPrice,
+  deriveServiceBasePricing,
   hasDepositAccess,
   hasLoyaltyAccess,
   isLoyaltyConfigValid,
@@ -66,7 +67,10 @@ import {
   InfoFieldsEditor,
 } from '../../components/business/ServiceChoicesEditor';
 import { EditorSection } from '../../components/business/EditorSection';
-import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
+import {
+  ServiceChoicesPreview,
+  type ServicePreviewSection,
+} from '../../components/business/ServiceChoicesPreview';
 import { OverlaySheet } from '../../components/OverlaySheet';
 import { KeyboardAvoidingSheet } from '../../components/KeyboardAvoidingSheet';
 import * as ImagePicker from 'expo-image-picker';
@@ -542,6 +546,34 @@ export default function ServicesScreen() {
   const [promoDateField, setPromoDateField] = useState<'start' | 'end' | null>(null);
   // Client-view preview overlay (floating "Aperçu" button).
   const [showPreview, setShowPreview] = useState(false);
+  // True once the pro has jumped from the preview back into a form section:
+  // the floating button then invites them to return to the preview.
+  const [returnToPreview, setReturnToPreview] = useState(false);
+  // Scroll plumbing for the preview's per-block pencils.
+  const formScrollRef = useRef<ScrollView>(null);
+  const sectionOffsets = useRef<{ essentiel: number; choices: number }>({
+    essentiel: 0,
+    choices: 0,
+  });
+
+  const openPreview = () => {
+    setReturnToPreview(false);
+    setShowPreview(true);
+  };
+
+  /** Preview pencil → close the overlay, open + scroll to the matching form
+   *  section, and arm the "back to preview" affordance. */
+  const jumpToFormSection = (section: ServicePreviewSection) => {
+    const toChoices = section === 'variations' || section === 'options';
+    setShowPreview(false);
+    if (toChoices) setChoicesExpanded(true);
+    setReturnToPreview(true);
+    // Wait for the sheet to close (and the section to expand) before scrolling.
+    setTimeout(() => {
+      const y = toChoices ? sectionOffsets.current.choices : sectionOffsets.current.essentiel;
+      formScrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+    }, 320);
+  };
   // Gentle permanent "breathing" of the floating preview button so the pro
   // always knows the client preview lives there (mirrors the web editor).
   const previewBreath = useRef(new Animated.Value(0)).current;
@@ -708,6 +740,7 @@ export default function ServicesScreen() {
     setExpandedPicker(null);
     setShowPortfolio(false);
     setChoicesExpanded(false);
+    setReturnToPreview(false);
     setShowModal(true);
   };
 
@@ -763,6 +796,7 @@ export default function ServicesScreen() {
     });
     setExpandedPicker(null);
     setShowPortfolio(false);
+    setReturnToPreview(false);
     // Auto-expand the section when the service already has choices so the
     // provider sees them right away.
     setChoicesExpanded(
@@ -773,113 +807,146 @@ export default function ServicesScreen() {
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    if (!providerId) return;
+  /**
+   * Validate the form and build the Firestore payload, or show the first
+   * blocking error and return null. Split out of the save so the CREATION
+   * flow can run the exact same checks BEFORE opening the mandatory client
+   * preview (the pro must never reach the preview with an invalid form).
+   */
+  const buildServicePayload = () => {
     if (!form.name.trim()) {
       showToast({ variant: 'error', message: t('proServices.errors.nameRequired') });
-      return;
+      return null;
     }
-    if (!form.price.trim() || isNaN(Number(form.price)) || Number(form.price) < 0) {
-      showToast({ variant: 'error', message: t('proServices.errors.pricePositive') });
-      return;
+
+    // With variations the base price/duration inputs are hidden — they're
+    // derived from the cheapest combination below, so don't demand them.
+    const cleanVariations = sanitizeVariations(form.variations);
+    const usesVariations = form.variations.length > 0;
+    if (usesVariations && cleanVariations.length === 0) {
+      showToast({ variant: 'error', message: t('proServices.errors.variationsIncomplete') });
+      return null;
     }
-    const totalDuration = hoursMinutesToMinutes(form.durationHours, form.durationMinutes);
-    if (totalDuration <= 0) {
-      showToast({ variant: 'error', message: t('proServices.errors.durationPositive') });
-      return;
+    if (!usesVariations) {
+      if (!form.price.trim() || isNaN(Number(form.price)) || Number(form.price) < 0) {
+        showToast({ variant: 'error', message: t('proServices.errors.pricePositive') });
+        return null;
+      }
+      if (hoursMinutesToMinutes(form.durationHours, form.durationMinutes) <= 0) {
+        showToast({ variant: 'error', message: t('proServices.errors.durationPositive') });
+        return null;
+      }
     }
     if (form.locationIds.length === 0) {
       showToast({ variant: 'error', message: t('proServices.errors.locationRequired') });
+      return null;
+    }
+
+    const bufferTimeValue = parseInt(form.bufferTime, 10) || 0;
+    // Stored base = what the pro typed (no variations) or the cheapest
+    // reachable combination (with variations) → the "à partir de".
+    const { price: priceCents, duration: totalDuration } = deriveServiceBasePricing({
+      price: usesVariations ? 0 : Math.round(Number(form.price) * 100),
+      duration: usesVariations ? 0 : hoursMinutesToMinutes(form.durationHours, form.durationMinutes),
+      variations: cleanVariations,
+    });
+
+    // Build the deposit payload from the form mode + custom inputs.
+    let depositPayload: Service['deposit'] | null;
+    if (form.depositMode === 'inherit') {
+      depositPayload = null;
+    } else if (form.depositMode === 'none') {
+      depositPayload = { type: 'none' };
+    } else {
+      const valueRaw = Number(form.depositValue);
+      const hoursRaw = Number(form.depositRefundHours);
+      if (!Number.isFinite(valueRaw) || valueRaw < 1) {
+        showToast({ variant: 'error', message: t('proServices.errors.depositPositive') });
+        return null;
+      }
+      if (form.depositType === 'percent' && valueRaw > 100) {
+        showToast({ variant: 'error', message: t('proServices.errors.depositPercentMax') });
+        return null;
+      }
+      const valueCents =
+        form.depositType === 'fixed' ? Math.round(valueRaw * 100) : Math.round(valueRaw);
+      if (form.depositType === 'fixed' && valueCents > priceCents) {
+        showToast({ variant: 'error', message: t('proServices.errors.depositFixedMax') });
+        return null;
+      }
+      depositPayload = {
+        type: form.depositType,
+        value: valueCents,
+        refundDeadlineHours: Math.max(0, Math.min(720, Math.round(hoursRaw) || 24)),
+      };
+    }
+
+    // Build the promotion payload (percentage). null = no promo.
+    let discountPayload: Service['discount'] | null = null;
+    if (form.discountEnabled) {
+      const pct = Number(form.discountPercent);
+      if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
+        showToast({ variant: 'error', message: t('proServices.errors.percentRange') });
+        return null;
+      }
+      if (
+        form.discountStartsAt &&
+        form.discountEndsAt &&
+        form.discountStartsAt > form.discountEndsAt
+      ) {
+        showToast({ variant: 'error', message: t('proServices.errors.endAfterStart') });
+        return null;
+      }
+      discountPayload = {
+        percent: Math.round(pct),
+        excludedIds: form.discountExcludedIds,
+        startsAt: form.discountStartsAt,
+        endsAt: form.discountEndsAt,
+        notifyLoyaltyClients: form.discountNotify,
+      };
+    }
+
+    return {
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      photoURL: form.photoURL,
+      duration: totalDuration,
+      price: priceCents,
+      // Price ranges removed in favour of variations — flatten any
+      // legacy range on the next save.
+      priceMax: null,
+      bufferTime: bufferTimeValue,
+      isActive: form.isActive,
+      locationIds: form.locationIds,
+      memberIds: form.memberIds,
+      categoryId: form.categoryId,
+      color: form.color,
+      deposit: depositPayload,
+      discount: discountPayload,
+      variations: cleanVariations,
+      options: sanitizeOptions(form.options),
+      infoFields: sanitizeInfoFields(form.infoFields),
+    };
+  };
+
+  /** Publish from the creation preview. On a validation error we close the
+   *  overlay so the pro lands back on the form (where the faulty field is). */
+  const handlePublishFromPreview = () => {
+    if (!buildServicePayload()) {
+      setShowPreview(false);
+      setReturnToPreview(true);
       return;
     }
+    handleSave();
+  };
+
+  const handleSave = async () => {
+    if (!providerId) return;
+    const payload = buildServicePayload();
+    if (!payload) return;
 
     setIsSaving(true);
     try {
-      const bufferTimeValue = parseInt(form.bufferTime, 10) || 0;
-      const priceCents = Math.round(Number(form.price) * 100);
-
-      // Build the deposit payload from the form mode + custom inputs.
-      let depositPayload: Service['deposit'] | null;
-      if (form.depositMode === 'inherit') {
-        depositPayload = null;
-      } else if (form.depositMode === 'none') {
-        depositPayload = { type: 'none' };
-      } else {
-        const valueRaw = Number(form.depositValue);
-        const hoursRaw = Number(form.depositRefundHours);
-        if (!Number.isFinite(valueRaw) || valueRaw < 1) {
-          showToast({ variant: 'error', message: t('proServices.errors.depositPositive') });
-          setIsSaving(false);
-          return;
-        }
-        if (form.depositType === 'percent' && valueRaw > 100) {
-          showToast({ variant: 'error', message: t('proServices.errors.depositPercentMax') });
-          setIsSaving(false);
-          return;
-        }
-        const valueCents =
-          form.depositType === 'fixed' ? Math.round(valueRaw * 100) : Math.round(valueRaw);
-        if (form.depositType === 'fixed' && valueCents > priceCents) {
-          showToast({ variant: 'error', message: t('proServices.errors.depositFixedMax') });
-          setIsSaving(false);
-          return;
-        }
-        depositPayload = {
-          type: form.depositType,
-          value: valueCents,
-          refundDeadlineHours: Math.max(0, Math.min(720, Math.round(hoursRaw) || 24)),
-        };
-      }
-
-      // Build the promotion payload (percentage). null = no promo.
-      let discountPayload: Service['discount'] | null = null;
-      if (form.discountEnabled) {
-        const pct = Number(form.discountPercent);
-        if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
-          showToast({ variant: 'error', message: t('proServices.errors.percentRange') });
-          setIsSaving(false);
-          return;
-        }
-        if (
-          form.discountStartsAt &&
-          form.discountEndsAt &&
-          form.discountStartsAt > form.discountEndsAt
-        ) {
-          showToast({ variant: 'error', message: t('proServices.errors.endAfterStart') });
-          setIsSaving(false);
-          return;
-        }
-        discountPayload = {
-          percent: Math.round(pct),
-          excludedIds: form.discountExcludedIds,
-          startsAt: form.discountStartsAt,
-          endsAt: form.discountEndsAt,
-          notifyLoyaltyClients: form.discountNotify,
-        };
-      }
-
-      const payload = {
-        name: form.name.trim(),
-        description: form.description.trim() || null,
-        photoURL: form.photoURL,
-        duration: totalDuration,
-        price: priceCents,
-        // Price ranges removed in favour of variations — flatten any
-        // legacy range on the next save.
-        priceMax: null,
-        bufferTime: bufferTimeValue,
-        isActive: form.isActive,
-        locationIds: form.locationIds,
-        memberIds: form.memberIds,
-        categoryId: form.categoryId,
-        color: form.color,
-        deposit: depositPayload,
-        discount: discountPayload,
-        variations: sanitizeVariations(form.variations),
-        options: sanitizeOptions(form.options),
-        infoFields: sanitizeInfoFields(form.infoFields),
-      };
-
       if (editingId) {
         await serviceRepository.update(providerId, editingId, payload);
         showToast({ variant: 'success', message: t('proServices.toasts.serviceUpdated') });
@@ -891,6 +958,8 @@ export default function ServicesScreen() {
         showToast({ variant: 'success', message: t('proServices.toasts.serviceCreated') });
       }
 
+      // Creation publishes FROM the preview overlay — close both layers.
+      setShowPreview(false);
       setShowModal(false);
       loadData();
     } catch (err: any) {
@@ -1427,12 +1496,18 @@ export default function ServicesScreen() {
             </View>
 
             <ScrollView
+              ref={formScrollRef}
               contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               automaticallyAdjustKeyboardInsets
             >
               <View style={{ gap: spacing.lg }}>
+                <View
+                  onLayout={(e) => {
+                    sectionOffsets.current.essentiel = e.nativeEvent.layout.y;
+                  }}
+                >
                 <EditorSection
                   title={t('proServices.form.essentialsTitle')}
                   subtitle={t('proServices.form.essentialsSubtitle')}
@@ -1769,6 +1844,7 @@ export default function ServicesScreen() {
                   numberOfLines={3}
                 />
                 </EditorSection>
+                </View>
 
                 <EditorSection
                   title={t('proServices.settingsSection.title')}
@@ -2141,6 +2217,11 @@ export default function ServicesScreen() {
                   </EditorSection>
                 )}
 
+                <View
+                  onLayout={(e) => {
+                    sectionOffsets.current.choices = e.nativeEvent.layout.y;
+                  }}
+                >
                 <EditorSection
                   title={t('proServices.choices.title')}
                   subtitle={t('proServices.choices.subtitle')}
@@ -2187,6 +2268,7 @@ export default function ServicesScreen() {
                     />
                   </View>
                 </EditorSection>
+                </View>
               </View>
             </ScrollView>
 
@@ -2215,7 +2297,7 @@ export default function ServicesScreen() {
               }}
             >
             <Pressable
-              onPress={() => setShowPreview(true)}
+              onPress={openPreview}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -2238,25 +2320,46 @@ export default function ServicesScreen() {
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="eye" size={17} color="#FFFFFF" />
+                <Ionicons name={returnToPreview ? 'arrow-undo' : 'eye'} size={17} color="#FFFFFF" />
               </View>
               <View>
                 <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF', lineHeight: 16 }}>
-                  {t('proServices.preview.clientPreview')}
+                  {returnToPreview
+                    ? t('proServices.preview.backToPreview')
+                    : t('proServices.preview.clientPreview')}
                 </Text>
                 <Text variant="caption" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, lineHeight: 12 }}>
-                  {t('proServices.preview.buttonSubtitle')}
+                  {returnToPreview
+                    ? t('proServices.preview.backToPreviewSubtitle')
+                    : t('proServices.preview.buttonSubtitle')}
                 </Text>
               </View>
             </Pressable>
             </Animated.View>
 
-            {/* Save Button */}
+            {/* Sticky footer. Creating a prestation ALWAYS goes through the
+                client preview first (that's where publication is confirmed);
+                editing an existing one saves straight away. */}
             <View style={[styles.stickyFooter, { padding: spacing.lg, paddingBottom: insets.bottom + spacing.sm, borderTopColor: colors.border }]}>
               <Button
                 variant="primary"
-                title={isSaving ? t('proServices.saving') : t('common.save')}
-                onPress={handleSave}
+                title={
+                  isSaving
+                    ? t('proServices.saving')
+                    : editingId
+                      ? t('common.save')
+                      : t('proServices.preview.reviewAndPublish')
+                }
+                onPress={() => {
+                  if (editingId) {
+                    handleSave();
+                    return;
+                  }
+                  // Same checks as the save — never open the preview on an
+                  // invalid form, the pro would be blocked at publication.
+                  if (!buildServicePayload()) return;
+                  openPreview();
+                }}
                 loading={isSaving}
                 disabled={isSaving}
                 fullWidth
@@ -2278,13 +2381,25 @@ export default function ServicesScreen() {
               safeAreaBottom
               service={{
                 name: form.name,
-                price: Math.round((parseFloat(form.price) || 0) * 100),
-                duration: hoursMinutesToMinutes(form.durationHours, form.durationMinutes),
+                // Same derivation as the save: with variations the base is the
+                // cheapest reachable combination, never the (hidden) inputs.
+                ...deriveServiceBasePricing({
+                  price: form.variations.length > 0 ? 0 : Math.round((parseFloat(form.price) || 0) * 100),
+                  duration:
+                    form.variations.length > 0
+                      ? 0
+                      : hoursMinutesToMinutes(form.durationHours, form.durationMinutes),
+                  variations: sanitizeVariations(form.variations),
+                }),
                 photoURL: form.photoURL,
                 variations: sanitizeVariations(form.variations),
                 options: sanitizeOptions(form.options),
                 infoFields: sanitizeInfoFields(form.infoFields),
               }}
+              onEditSection={jumpToFormSection}
+              // Creation: the preview IS the publication step.
+              onPublish={editingId ? undefined : handlePublishFromPreview}
+              publishLoading={isSaving}
             />
           </OverlaySheet>
 
