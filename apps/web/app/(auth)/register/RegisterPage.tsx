@@ -1062,7 +1062,7 @@ export default function RegisterPage() {
                   numericValue={svc.duration ?? 0}
                   onNumericChange={(d) => updateService(index, 'duration', Math.round(d))}
                   min={5}
-                  max={480}
+                  max={1440}
                 />
                 <Input
                   label="Prix (€)"

@@ -184,8 +184,8 @@ export function SectionEssentiel({
                 numericValue={data.duration}
                 onNumericChange={(d) => update({ duration: Math.round(d) })}
                 min={5}
-                max={480}
-                hint="De 5 min à 8h"
+                max={1440}
+                hint="De 5 min à 24h"
                 required
               />
               {activeMode !== 'free' && (

@@ -279,11 +279,15 @@ export function getServiceMinDuration(
 }
 
 /** Bounds the PERSISTED base duration/price must respect — mirrors
- *  `createServiceSchema` (5 min ≤ duration ≤ 8 h, price ≤ 10 000 €). Variation
- *  choices themselves are allowed up to 24 h, so a derived minimum can overshoot
- *  the base bound and has to be clamped. */
+ *  `createServiceSchema` (5 min ≤ duration ≤ 24 h, price ≤ 10 000 €).
+ *
+ *  The duration ceiling matches the one on variation options ON PURPOSE. It
+ *  used to be 8 h: a prestation whose SHORTEST combination exceeded 8 h saw
+ *  its derived base duration truncated, and `getAvailableSlots` — which
+ *  falls back to that stored duration before the client has chosen his
+ *  options — offered slots far too short for the real prestation. */
 export const SERVICE_BASE_DURATION_MIN = 5;
-export const SERVICE_BASE_DURATION_MAX = 480;
+export const SERVICE_BASE_DURATION_MAX = 1440;
 export const SERVICE_BASE_PRICE_MAX = 1_000_000;
 
 /**

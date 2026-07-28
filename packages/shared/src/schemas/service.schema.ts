@@ -111,8 +111,9 @@ const choiceDurationSchema = z
   .int({ message: 'La durée doit être un nombre entier' })
   .min(0, { message: 'La durée ne peut pas être négative' })
   // Variation / option durations can be long (braids, dreadlocks…) and
-  // define the whole prestation, so allow up to 24h here (vs 8h on the
-  // base service duration).
+  // define the whole prestation. Same 24h ceiling as the base duration:
+  // an 8h base cap used to TRUNCATE the derived minimum of a longer
+  // prestation, and pre-choice availability then offered slots too short.
   .max(1440, { message: 'La durée maximum est de 24 heures (1440 minutes)' });
 
 /** One selectable row inside a variation (e.g. "Mi-dos · 70€ · +30min"). */
@@ -169,7 +170,10 @@ export const createServiceSchema = z.object({
     .number({ required_error: 'La durée est requise' })
     .int({ message: 'La durée doit être un nombre entier' })
     .min(5, { message: 'La durée minimum est de 5 minutes' })
-    .max(480, { message: 'La durée maximum est de 8 heures (480 minutes)' }),
+    // 24h, comme les durées de variations : avec variations, cette durée
+    // de base est DÉRIVÉE de la combinaison la plus courte et un plafond
+    // plus bas la tronquait silencieusement.
+    .max(1440, { message: 'La durée maximum est de 24 heures (1440 minutes)' }),
   price: z
     .number({ required_error: 'Le prix est requis' })
     .int({ message: 'Le prix doit être en centimes (nombre entier)' })
@@ -266,7 +270,7 @@ export const updateServiceSchema = z.object({
     .number()
     .int()
     .min(5)
-    .max(480)
+    .max(1440)
     .optional(),
   price: z
     .number()
