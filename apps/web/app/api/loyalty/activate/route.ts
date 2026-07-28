@@ -82,10 +82,19 @@ export async function POST(req: NextRequest) {
           // on refuse plutôt que d'écrire sur la fiche d'un autre compte.
           return NextResponse.json({ error: 'Fiche non autorisée' }, { status: 403 });
         }
+        // Fiche ORPHELINE (créée par une réservation faite sans compte) :
+        // on l'adopte sur correspondance d'adresse, sans exiger d'email
+        // vérifié. C'est la même règle que le rattachement des
+        // réservations invitées (décision produit) — et l'exiger ici
+        // n'aurait bloqué QUE les personnes concernées, puisque l'app
+        // n'envoie aucun email de vérification : `email_verified` est faux
+        // pour toute inscription par mot de passe.
+        //
+        // `emailVerified` reste lu et journalisé : le jour où la
+        // vérification d'adresse existera, c'est ici qu'on resserrera.
         if (!ownerUid && !emailVerified) {
-          return NextResponse.json(
-            { error: 'Adresse email non vérifiée', code: 'email-not-verified' },
-            { status: 403 },
+          console.log(
+            `[loyalty/activate] adoption d'une fiche orpheline sur email non vérifié — uid=${uid}, provider=${providerId}`,
           );
         }
       }

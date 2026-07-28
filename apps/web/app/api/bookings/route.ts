@@ -314,6 +314,39 @@ export async function POST(request: NextRequest) {
         .doc(booking.id)
         .update({ clientId: clientUid });
       booking.clientId = clientUid;
+    } else if (!isProSource) {
+      // Réservation faite SANS être connecté, alors que l'adresse saisie
+      // appartient déjà à un compte. Cas très courant : la cliente a
+      // l'application, mais réserve depuis le lien web du salon sans s'y
+      // connecter. Sans rattachement, sa fiche reste orpheline — et comme
+      // `/api/loyalty/me` cherche les cartes par `clientId`, elle ne voit
+      // AUCUNE carte chez ce prestataire, pas même une carte vide.
+      //
+      // On rattache donc sur correspondance d'adresse (décision produit).
+      // La réservation compte pour la fidélité, MAIS aucune réduction
+      // n'est accordée dans cette session : rien ne prouve que la personne
+      // devant l'écran est bien la titulaire du compte. Le gate de
+      // récompense plus haut reste sur `verifiedUid`, lui vérifié.
+      //
+      // Exclu pour les résas créées par le pro (`isProSource`) : ce sont
+      // ses propres saisies, elles n'ont jamais compté pour la fidélité et
+      // ce n'est pas le sujet ici.
+      try {
+        const email = validated.clientInfo?.email?.trim().toLowerCase();
+        if (email) {
+          const account = await getAdminAuth().getUserByEmail(email);
+          if (account?.uid) {
+            await getAdminFirestore()
+              .collection('bookings')
+              .doc(booking.id)
+              .update({ clientId: account.uid });
+            booking.clientId = account.uid;
+          }
+        }
+      } catch {
+        // Aucun compte à cette adresse (cas le plus fréquent) — on ne
+        // rattache rien et la réservation suit son cours normalement.
+      }
     }
 
     // Deposit path: status=pending_payment + booking.deposit populated.
