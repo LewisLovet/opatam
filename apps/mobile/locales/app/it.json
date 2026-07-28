@@ -3044,7 +3044,7 @@
     "intro": "Attiva la sincronizzazione, poi aggiungi l'agenda al tuo calendario. I nuovi appuntamenti compaiono, le disdette spariscono, gli spostamenti seguono — senza fare nulla.",
     "activate": "Attiva la sincronizzazione",
     "addToCalendar": "Aggiungi al mio calendario",
-    "copyHint": "Oppure copia questo link per Google Calendar o Outlook",
+    "copyHint": "Oppure copia questo link per Outlook o un altro calendario",
     "copied": "Link copiato",
     "disable": "Disattiva",
     "noticeDelay": "L'intervallo di aggiornamento dipende dalle impostazioni del tuo calendario — da pochi minuti a una volta al giorno. Puoi ridurlo nelle impostazioni dell'iscrizione.",
@@ -3057,6 +3057,8 @@
     "lastSyncDays_other": "Ultima sincronizzazione {{count}} giorni fa",
     "error": "Non è stato possibile attivare la sincronizzazione",
     "openFailed": "Impossibile aprire il tuo calendario",
-    "button": "Sincronizza"
+    "button": "Sincronizza",
+    "addToGoogle": "Aggiungi a Google Calendar",
+    "googleHint": "Google consente di aggiungere un calendario solo da computer. Una volta fatto, compare anche nell'app mobile."
   }
 }

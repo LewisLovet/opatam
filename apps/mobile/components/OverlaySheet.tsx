@@ -82,7 +82,12 @@ export function OverlaySheet({
   if (!mounted) return null;
 
   return (
-    <View style={StyleSheet.absoluteFill}>
+    // `zIndex` + `elevation` EXPLICITES. Un calque absolu ne compte que sur
+    // son rang dans l'arbre pour passer devant — dès qu'un élément plus
+    // haut déclare un zIndex (le sélecteur Jour/Semaine/Mois du planning
+    // le fait), il repasse devant la feuille et reste cliquable à travers
+    // le voile. `elevation` fait le même travail côté Android.
+    <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000 }]}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)', opacity: backdrop }]}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
       </Animated.View>

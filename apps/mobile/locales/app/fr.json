@@ -3044,7 +3044,7 @@
     "intro": "Activez la synchronisation, puis ajoutez le planning à votre agenda. Les nouveaux rendez-vous apparaissent, les annulations disparaissent, les déplacements suivent — sans rien faire.",
     "activate": "Activer la synchronisation",
     "addToCalendar": "Ajouter à mon agenda",
-    "copyHint": "Ou copiez ce lien pour Google Agenda ou Outlook",
+    "copyHint": "Ou copiez ce lien pour Outlook ou un autre agenda",
     "copied": "Lien copié",
     "disable": "Désactiver",
     "noticeDelay": "Le délai de mise à jour dépend du réglage de votre agenda — de quelques minutes à une fois par jour. Vous pouvez le raccourcir dans les réglages de l'abonnement.",
@@ -3057,6 +3057,8 @@
     "lastSyncDays_other": "Dernière synchronisation il y a {{count}} jours",
     "error": "La synchronisation n'a pas pu être activée",
     "openFailed": "Impossible d'ouvrir votre agenda",
-    "button": "Synchroniser"
+    "button": "Synchroniser",
+    "addToGoogle": "Ajouter à Google Agenda",
+    "googleHint": "Google n'autorise l'ajout d'un calendrier que depuis un ordinateur. Une fois fait, il apparaît aussi dans l'app mobile."
   }
 }

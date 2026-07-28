@@ -3044,7 +3044,7 @@
     "intro": "Ative a sincronização e depois adicione a agenda ao seu calendário. As novas marcações aparecem, os cancelamentos desaparecem, as alterações acompanham — sem fazer nada.",
     "activate": "Ativar a sincronização",
     "addToCalendar": "Adicionar à minha agenda",
-    "copyHint": "Ou copie este link para o Google Agenda ou o Outlook",
+    "copyHint": "Ou copie este link para o Outlook ou outra agenda",
     "copied": "Link copiado",
     "disable": "Desativar",
     "noticeDelay": "O intervalo de atualização depende das definições da sua agenda — de alguns minutos a uma vez por dia. Pode reduzi-lo nas definições da subscrição.",
@@ -3057,6 +3057,8 @@
     "lastSyncDays_other": "Última sincronização há {{count}} dias",
     "error": "Não foi possível ativar a sincronização",
     "openFailed": "Não foi possível abrir a sua agenda",
-    "button": "Sincronizar"
+    "button": "Sincronizar",
+    "addToGoogle": "Adicionar ao Google Agenda",
+    "googleHint": "O Google só permite adicionar um calendário a partir de um computador. Depois disso, aparece também na app móvel."
   }
 }

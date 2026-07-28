@@ -3044,7 +3044,7 @@
     "intro": "Turn on syncing, then add your schedule to your calendar. New bookings appear, cancellations vanish, reschedules follow — with nothing to do.",
     "activate": "Turn on syncing",
     "addToCalendar": "Add to my calendar",
-    "copyHint": "Or copy this link for Google Calendar or Outlook",
+    "copyHint": "Or copy this link for Outlook or another calendar",
     "copied": "Link copied",
     "disable": "Turn off",
     "noticeDelay": "Refresh timing depends on your calendar settings — from a few minutes to once a day. You can shorten it in the subscription settings.",
@@ -3057,6 +3057,8 @@
     "lastSyncDays_other": "Last synced {{count}} days ago",
     "error": "Syncing could not be turned on",
     "openFailed": "Could not open your calendar",
-    "button": "Sync"
+    "button": "Sync",
+    "addToGoogle": "Add to Google Calendar",
+    "googleHint": "Google only allows adding a calendar from a computer. Once done, it also shows up in the mobile app."
   }
 }

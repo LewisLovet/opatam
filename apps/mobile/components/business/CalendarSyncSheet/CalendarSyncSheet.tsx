@@ -112,6 +112,28 @@ export function CalendarSyncSheet({ visible, onClose }: CalendarSyncSheetProps) 
     });
   };
 
+  /**
+   * Abonnement Google en un clic.
+   *
+   * Google Agenda accepte une URL d'abonnement en paramètre `cid` : la
+   * page s'ouvre avec « Ajouter ce calendrier ? » et il ne reste qu'à
+   * confirmer. Bien mieux qu'un copier-coller.
+   *
+   * MAIS l'application mobile Google Agenda ne sait pas ajouter un
+   * calendrier par URL — seul le site le permet. Le lien ouvre donc le
+   * navigateur, et sur téléphone Google renvoie souvent vers son app.
+   * D'où l'avertissement affiché juste en dessous : cette opération se
+   * fait depuis un ordinateur. Une fois faite, elle redescend toute
+   * seule dans l'app mobile.
+   */
+  const addToGoogle = async () => {
+    if (!state?.webcalUrl) return;
+    const url = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(state.webcalUrl)}`;
+    Linking.openURL(url).catch(() => {
+      showToast({ variant: 'error', message: t('calendarSync.openFailed') });
+    });
+  };
+
   const copy = async () => {
     if (!state?.url) return;
     await Clipboard.setStringAsync(state.url);
@@ -187,6 +209,30 @@ export function CalendarSyncSheet({ visible, onClose }: CalendarSyncSheetProps) 
               fullWidth
               leftIcon={<Ionicons name="calendar-outline" size={18} color="#FFFFFF" />}
             />
+
+            <Pressable
+              onPress={addToGoogle}
+              style={({ pressed }) => ({
+                marginTop: spacing.sm,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: spacing.sm,
+                paddingVertical: spacing.md,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+              })}
+            >
+              <Ionicons name="logo-google" size={16} color={colors.textSecondary} />
+              <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+                {t('calendarSync.addToGoogle')}
+              </Text>
+            </Pressable>
+            <Text variant="caption" color="textMuted" style={{ marginTop: spacing.xs }}>
+              {t('calendarSync.googleHint')}
+            </Text>
 
             <Pressable
               onPress={copy}
