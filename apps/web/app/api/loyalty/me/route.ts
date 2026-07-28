@@ -42,16 +42,40 @@ export async function GET(request: NextRequest) {
     }
     const decoded = await getAdminAuth().verifyIdToken(authHeader.slice('Bearer '.length));
     const uid = decoded.uid;
+    const accountEmail = decoded.email?.toLowerCase().trim() ?? null;
 
     const db = getAdminFirestore();
     // Les fiches client d'un utilisateur inscrit portent son uid (champ
     // `clientId`, posé par le trigger onBookingWrite / le patch de la route
     // de création). Une seule requête d'égalité — pas d'index composite.
-    const snap = await db
-      .collection('providerClients')
-      .where('clientId', '==', uid)
-      .limit(100)
-      .get();
+    //
+    // SECONDE REQUÊTE, par ADRESSE. Une cliente qui possède l'application
+    // mais réserve depuis le lien web du salon sans s'y connecter produit
+    // une fiche SANS `clientId` : la première requête ne la voit pas, et
+    // elle n'avait donc AUCUNE carte à l'écran chez ce prestataire — pas
+    // même une carte vide. C'est ce que remontaient les prestataires.
+    //
+    // Purement de l'AFFICHAGE : la fiche remonte, mais son compteur reste
+    // ce qu'il est. La politique « app requise » (seules les résas faites
+    // connecté remplissent la carte) n'est pas touchée — la cliente voit
+    // sa carte à zéro et l'invitation à réserver depuis l'app.
+    const [byUid, byEmail] = await Promise.all([
+      db.collection('providerClients').where('clientId', '==', uid).limit(100).get(),
+      accountEmail
+        ? db.collection('providerClients').where('email', '==', accountEmail).limit(100).get()
+        : Promise.resolve(null),
+    ]);
+
+    // Dédoublonnage par id : une fiche rattachée remonte dans les DEUX
+    // requêtes. On écarte aussi les fiches d'un autre compte qui
+    // partageraient l'adresse — le `clientId` fait foi quand il existe.
+    const docsById = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+    for (const d of byUid.docs) docsById.set(d.id, d);
+    for (const d of byEmail?.docs ?? []) {
+      const owner = d.data().clientId as string | undefined;
+      if (!owner || owner === uid) docsById.set(d.id, d);
+    }
+    const snap = { docs: [...docsById.values()], empty: docsById.size === 0 };
 
     if (snap.empty) return NextResponse.json({ cards: [] });
 
