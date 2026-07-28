@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Image, Platform, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Updates from 'expo-updates';
 import { useTranslation } from 'react-i18next';
@@ -27,13 +27,47 @@ const APP_ICON = require('../assets/splash-icon-white.png');
 const CHECK_TIMEOUT_MS = 5000; // check silencieux — au-delà, on laisse démarrer
 const FETCH_TIMEOUT_MS = 15000; // téléchargement visible — au-delà, on s'efface
 
+/**
+ * Durée MINIMALE d'affichage une fois le splash apparu.
+ *
+ * Sur une bonne connexion, une petite OTA se télécharge en quelques
+ * centaines de millisecondes : l'écran apparaissait et disparaissait
+ * presque aussitôt, donnant un clignotement au lieu d'une transition. On
+ * ne retarde jamais un démarrage SANS mise à jour — ce plancher ne
+ * s'applique qu'une fois qu'on a décidé d'afficher quelque chose.
+ */
+const MIN_VISIBLE_MS = 2000;
+
+/**
+ * Taille du logo, ALIGNÉE sur le splash natif de `app.json`
+ * (`splash.imageWidth` = 220 sur iOS, `android.splash.imageWidth` = 200).
+ *
+ * C'est la même image, affichée successivement par deux écrans : le
+ * moindre écart de taille se lit comme un saut au moment où l'un prend
+ * le relais de l'autre. Ces valeurs doivent bouger ENSEMBLE.
+ */
+const LOGO_SIZE = Platform.OS === 'ios' ? 220 : 200;
+/** Anneaux légèrement plus petits que le logo, comme avant (ratio 104/120). */
+const RING_SIZE = Math.round(LOGO_SIZE * 0.87);
+
 // ── Aperçu dev-only ──────────────────────────────────────────────────
 // Le gate ne se déclenche JAMAIS en dev (Updates désactivé) ; ce hook
 // permet au DevFAB d'afficher le splash quelques secondes pour valider
 // le rendu sur un vrai écran. Aucun effet en production.
 let previewListener: ((ms: number) => void) | null = null;
-export function previewOtaSplash(ms = 6000): void {
-  previewListener?.(ms);
+/** Demande émise avant que le gate ne soit monté — rejouée à son montage.
+ *  Sans ce tampon, un appui pendant un rechargement Fast Refresh ne
+ *  produisait RIEN, sans le moindre message : le plus déroutant des
+ *  comportements pour qui teste. */
+let pendingPreviewMs: number | null = null;
+
+export function previewOtaSplash(ms = 8000): void {
+  if (previewListener) {
+    previewListener(ms);
+  } else {
+    pendingPreviewMs = ms;
+    console.log('[otaSplash] aperçu demandé avant montage — rejoué au montage');
+  }
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -162,7 +196,8 @@ export function OtaUpdateGate() {
   useEffect(() => {
     // Aperçu dev-only déclenché depuis le DevFAB.
     if (__DEV__) {
-      previewListener = (ms) => {
+      const play = (ms: number) => {
+        console.log(`[otaSplash] aperçu ${ms} ms`);
         setDownloading(true);
         Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
         setTimeout(() => {
@@ -171,6 +206,12 @@ export function OtaUpdateGate() {
           );
         }, ms);
       };
+      previewListener = play;
+      if (pendingPreviewMs !== null) {
+        const ms = pendingPreviewMs;
+        pendingPreviewMs = null;
+        play(ms);
+      }
       return () => {
         previewListener = null;
       };
@@ -188,8 +229,14 @@ export function OtaUpdateGate() {
 
         setDownloading(true);
         Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+        const shownAt = Date.now();
 
         await withTimeout(Updates.fetchUpdateAsync(), FETCH_TIMEOUT_MS);
+        if (cancelled) return;
+        // Laisse l'animation exister : sans ce plancher, une petite OTA
+        // sur bonne connexion produit un flash de 300 ms.
+        const remaining = MIN_VISIBLE_MS - (Date.now() - shownAt);
+        if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
         if (cancelled) return;
         await Updates.reloadAsync();
       } catch {
@@ -237,22 +284,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   logoWrap: {
-    width: 150,
-    height: 150,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 28,
   },
   ring: {
     position: 'absolute',
-    width: 104,
-    height: 104,
-    borderRadius: 52,
+    width: RING_SIZE,
+    height: RING_SIZE,
+    borderRadius: RING_SIZE / 2,
     backgroundColor: '#FFFFFF',
   },
   logoImg: {
-    width: 120,
-    height: 120,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
   },
   title: {
     fontSize: 21,

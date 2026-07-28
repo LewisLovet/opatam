@@ -173,6 +173,19 @@ export function DevFAB() {
 
   const menuItems: MenuItem[] = [
     {
+      // EN TÊTE : le splash OTA ne se déclenche jamais en dev (Updates y
+      // est désactivé), donc c'est le SEUL moyen de le voir. Enterré au
+      // milieu du menu, il passait inaperçu.
+      icon: 'cloud-download-outline',
+      label: '▶︎ Voir le splash de mise à jour',
+      action: () => {
+        setIsMenuOpen(false);
+        // Laisse la modale du menu finir sa disparition : elle est native
+        // et couvre tout, zIndex compris.
+        setTimeout(() => previewOtaSplash(), 350);
+      },
+    },
+    {
       icon: 'color-palette-outline',
       label: 'Design System',
       action: () => {
@@ -213,16 +226,6 @@ export function DevFAB() {
       action: () => {
         void setAppLocale(APP_LOCALES[(APP_LOCALES.indexOf(devLocale) + 1) % APP_LOCALES.length]);
         setIsMenuOpen(false);
-      },
-    },
-    {
-      // Montre le splash de mise à jour OTA pendant 6 s (rendu réel,
-      // animations comprises) — impossible à déclencher autrement en dev.
-      icon: 'cloud-download-outline',
-      label: 'Splash OTA (aperçu 6 s)',
-      action: () => {
-        setIsMenuOpen(false);
-        previewOtaSplash();
       },
     },
     {
