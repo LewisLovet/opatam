@@ -2975,11 +2975,12 @@
       "amount": "−{{amount}}"
     },
     "progress": {
-      "next_one": "Próxima recompensa daqui a {{count}} marcação cumprida",
-      "next_other": "Próxima recompensa daqui a {{count}} marcações cumpridas",
+      "next_one": "Próxima recompensa daqui a {{count}} ponto",
+      "next_other": "Próxima recompensa daqui a {{count}} pontos",
       "armed": "Recompensa pronta — a próxima reserva terá desconto",
-      "rewardPercent": "−{{percent}} % a cada {{threshold}} marcações",
-      "rewardAmount": "−{{amount}} a cada {{threshold}} marcações"
+      "rewardPercent": "−{{percent}} % a cada {{threshold}} pontos",
+      "rewardAmount": "−{{amount}} a cada {{threshold}} pontos",
+      "hint": "Um ponto por marcação cumprida desde o lançamento do seu cartão, mais os seus ajustes manuais."
     }
   },
   "proLoyaltyAdjust": {
@@ -3029,8 +3030,8 @@
     "statsReady": "Recompensas prontas",
     "listTitle": "Clientes do programa",
     "ready": "Pronta",
-    "remaining_one": "falta {{count}} marcação",
-    "remaining_other": "faltam {{count}} marcações",
+    "remaining_one": "falta {{count}} ponto",
+    "remaining_other": "faltam {{count}} pontos",
     "empty": {
       "title": "Ainda não há cartões",
       "description": "Os cartões dos seus clientes aparecerão aqui a partir da primeira marcação contabilizada."

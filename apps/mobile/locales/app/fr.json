@@ -2975,11 +2975,12 @@
       "amount": "−{{amount}}"
     },
     "progress": {
-      "next_one": "Prochaine récompense dans {{count}} RDV honoré",
-      "next_other": "Prochaine récompense dans {{count}} RDV honorés",
+      "next_one": "Prochaine récompense dans {{count}} point",
+      "next_other": "Prochaine récompense dans {{count}} points",
       "armed": "Récompense armée — la prochaine réservation sera réduite",
-      "rewardPercent": "−{{percent}} % tous les {{threshold}} RDV",
-      "rewardAmount": "−{{amount}} tous les {{threshold}} RDV"
+      "rewardPercent": "−{{percent}} % tous les {{threshold}} points",
+      "rewardAmount": "−{{amount}} tous les {{threshold}} points",
+      "hint": "Un point par RDV honoré depuis le lancement de votre carte, plus vos ajustements manuels."
     }
   },
   "proLoyaltyAdjust": {
@@ -3029,8 +3030,8 @@
     "statsReady": "Récompenses prêtes",
     "listTitle": "Clients du programme",
     "ready": "Prête",
-    "remaining_one": "encore {{count}} RDV",
-    "remaining_other": "encore {{count}} RDV",
+    "remaining_one": "encore {{count}} point",
+    "remaining_other": "encore {{count}} points",
     "empty": {
       "title": "Aucune carte pour l'instant",
       "description": "Les cartes de vos clients apparaîtront ici dès leur premier RDV compté."

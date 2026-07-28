@@ -10,6 +10,7 @@ import {
   hasDepositAccess,
   hasLoyaltyAccess,
   isLoyaltyConfigValid,
+  effectiveLoyaltyCount,
   isLoyaltyRewardArmed,
   type PageViewStats,
   type TrendPoint,
@@ -829,9 +830,12 @@ export default function ProDashboardScreen() {
     if (!loyaltyActive || !loyaltySettings) {
       return { loyaltyInProgressCount: 0, loyaltyReadyCount: 0 };
     }
-    const withCards = providerClients.filter((c) => (c.loyaltyConfirmedCount ?? 0) > 0);
+    // Compte EFFECTIF (RDV comptés + ajustement manuel du pro).
+    const points = (c: (typeof providerClients)[number]) =>
+      effectiveLoyaltyCount(c.loyaltyConfirmedCount ?? 0, c.loyaltyAdjustment ?? 0);
+    const withCards = providerClients.filter((c) => points(c) > 0);
     const ready = withCards.filter((c) =>
-      isLoyaltyRewardArmed(c.loyaltyConfirmedCount ?? 0, loyaltySettings.threshold),
+      isLoyaltyRewardArmed(points(c), loyaltySettings.threshold),
     ).length;
     return { loyaltyInProgressCount: withCards.length, loyaltyReadyCount: ready };
   }, [loyaltyActive, loyaltySettings, providerClients]);

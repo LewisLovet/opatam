@@ -37,6 +37,7 @@ import { useProviderClients } from '../../hooks';
 import {
   hasLoyaltyAccess,
   isLoyaltyConfigValid,
+  effectiveLoyaltyCount,
   isLoyaltyRewardArmed,
   type ProviderClient,
   type ProviderClientTag,
@@ -90,10 +91,12 @@ export default function ClientsScreen() {
 
   const loyaltyStats = useMemo(() => {
     if (loyaltyThreshold == null) return null;
-    const withCards = clients.filter((c) => (c.loyaltyConfirmedCount ?? 0) > 0);
-    const ready = withCards.filter((c) =>
-      isLoyaltyRewardArmed(c.loyaltyConfirmedCount ?? 0, loyaltyThreshold),
-    ).length;
+    // Compte EFFECTIF (RDV comptés + ajustement manuel du pro) — le compte
+    // brut ferait diverger ces tuiles de la fiche client.
+    const points = (c: (typeof clients)[number]) =>
+      effectiveLoyaltyCount(c.loyaltyConfirmedCount ?? 0, c.loyaltyAdjustment ?? 0);
+    const withCards = clients.filter((c) => points(c) > 0);
+    const ready = withCards.filter((c) => isLoyaltyRewardArmed(points(c), loyaltyThreshold)).length;
     return { inProgress: withCards.length, ready };
   }, [clients, loyaltyThreshold]);
 
@@ -453,7 +456,10 @@ function ClientRow({
 
   // Carte de fidélité — visible d'un coup d'œil dans la liste : badge
   // « Prête » ou « 3/10 » + fine jauge de progression sous le résumé.
-  const loyaltyCount = client.loyaltyConfirmedCount ?? 0;
+  const loyaltyCount = effectiveLoyaltyCount(
+    client.loyaltyConfirmedCount ?? 0,
+    client.loyaltyAdjustment ?? 0,
+  );
   const showLoyalty = loyaltyThreshold != null && loyaltyCount > 0;
   const loyaltyArmed = showLoyalty && isLoyaltyRewardArmed(loyaltyCount, loyaltyThreshold!);
   const loyaltyPos = showLoyalty
@@ -684,7 +690,10 @@ function applyFilters(
 
   if (armedThreshold != null) {
     out = out.filter((c) =>
-      isLoyaltyRewardArmed(c.loyaltyConfirmedCount ?? 0, armedThreshold),
+      isLoyaltyRewardArmed(
+        effectiveLoyaltyCount(c.loyaltyConfirmedCount ?? 0, c.loyaltyAdjustment ?? 0),
+        armedThreshold,
+      ),
     );
   }
 

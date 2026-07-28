@@ -13,12 +13,13 @@
  *                           (armed first, then closest to the reward).
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
   RefreshControl,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -26,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import type { WithId } from '@booking-app/firebase';
 import {
+  effectiveLoyaltyCount,
   hasLoyaltyAccess,
   isLoyaltyConfigValid,
   isLoyaltyRewardArmed,
@@ -124,20 +126,33 @@ export default function LoyaltyScreen() {
 
   const threshold = loyaltySettings?.threshold ?? 0;
 
+  // Recherche par nom : au-delà d'une poignée de cartes, retrouver un
+  // client dans une liste triée par progression devient vite pénible.
+  const [search, setSearch] = useState('');
+
   // Clients with a started card, armed first then closest to the
   // reward (armed → remaining === 0, so one ascending sort does it).
+  //
+  // TOUJOURS le compte EFFECTIF (RDV comptés + ajustement manuel du pro).
+  // Cet écran lisait `loyaltyConfirmedCount` brut : un client dont le pro
+  // avait retiré des points s'affichait « Prête » ici et « encore 2 » dans
+  // sa fiche — deux écrans qui se contredisaient sur la même carte.
   const { rows, inProgressCount, readyCount } = useMemo(() => {
-    const withCards = clients.filter((c) => (c.loyaltyConfirmedCount ?? 0) > 0);
-    const ready = withCards.filter((c) =>
-      isLoyaltyRewardArmed(c.loyaltyConfirmedCount ?? 0, threshold),
-    ).length;
+    const pointsOf = (c: ProviderClient) =>
+      effectiveLoyaltyCount(c.loyaltyConfirmedCount ?? 0, c.loyaltyAdjustment ?? 0);
+    const withCards = clients.filter((c) => pointsOf(c) > 0);
+    const ready = withCards.filter((c) => isLoyaltyRewardArmed(pointsOf(c), threshold)).length;
     const sorted = [...withCards].sort(
-      (a, b) =>
-        loyaltyRemaining(a.loyaltyConfirmedCount ?? 0, threshold) -
-        loyaltyRemaining(b.loyaltyConfirmedCount ?? 0, threshold),
+      (a, b) => loyaltyRemaining(pointsOf(a), threshold) - loyaltyRemaining(pointsOf(b), threshold),
     );
-    return { rows: sorted, inProgressCount: withCards.length, readyCount: ready };
-  }, [clients, threshold]);
+    // La recherche ne filtre QUE la liste : les deux compteurs continuent
+    // de décrire l'ensemble du programme.
+    const needle = search.trim().toLowerCase();
+    const visible = needle
+      ? sorted.filter((c) => (c.name ?? '').toLowerCase().includes(needle))
+      : sorted;
+    return { rows: visible, inProgressCount: withCards.length, readyCount: ready };
+  }, [clients, threshold, search]);
 
   const handleRefresh = async () => {
     await Promise.all([refresh(), refreshProvider()]);
@@ -269,7 +284,10 @@ export default function LoyaltyScreen() {
 
   // -- Render: program active -------------------------------------------------
   const renderClient = ({ item, index }: { item: WithId<ProviderClient>; index: number }) => {
-    const count = item.loyaltyConfirmedCount ?? 0;
+    const count = effectiveLoyaltyCount(
+      item.loyaltyConfirmedCount ?? 0,
+      item.loyaltyAdjustment ?? 0,
+    );
     const armed = isLoyaltyRewardArmed(count, threshold);
     const remaining = loyaltyRemaining(count, threshold);
     const name = item.name || t('proClients.unnamedClient');
@@ -381,11 +399,38 @@ export default function LoyaltyScreen() {
                 />
               </View>
 
-              {/* List title */}
-              {rows.length > 0 && (
-                <Text variant="h3" style={{ marginTop: spacing.lg }}>
-                  {t('proLoyaltyPage.listTitle')}
-                </Text>
+              {/* List title + recherche. La barre reste visible dès qu'il y
+                  a des cartes, même si le filtre ne renvoie rien — sinon
+                  elle disparaîtrait avec son propre résultat vide. */}
+              {inProgressCount > 0 && (
+                <>
+                  <Text variant="h3" style={{ marginTop: spacing.lg }}>
+                    {t('proLoyaltyPage.listTitle')}
+                  </Text>
+                  <View
+                    style={[
+                      styles.searchWrap,
+                      { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+                    ]}
+                  >
+                    <Ionicons name="search" size={18} color={colors.textMuted} />
+                    <TextInput
+                      value={search}
+                      onChangeText={setSearch}
+                      placeholder={t('proClients.searchPlaceholder')}
+                      placeholderTextColor={colors.textMuted}
+                      style={[styles.searchInput, { color: colors.text }]}
+                      autoCorrect={false}
+                      autoCapitalize="none"
+                      returnKeyType="search"
+                    />
+                    {search.length > 0 && (
+                      <Pressable onPress={() => setSearch('')} hitSlop={10}>
+                        <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+                      </Pressable>
+                    )}
+                  </View>
+                </>
               )}
             </View>
           }
@@ -405,6 +450,23 @@ export default function LoyaltyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  // Mêmes dimensions que la recherche de /pro/clients : les deux listes se
+  // ressemblent, la barre doit se ressembler aussi.
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 0,
   },
   center: {
     flex: 1,

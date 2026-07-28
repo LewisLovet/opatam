@@ -2975,11 +2975,12 @@
       "amount": "−{{amount}}"
     },
     "progress": {
-      "next_one": "Prossimo premio tra {{count}} appuntamento onorato",
-      "next_other": "Prossimo premio tra {{count}} appuntamenti onorati",
+      "next_one": "Prossimo premio tra {{count}} punto",
+      "next_other": "Prossimo premio tra {{count}} punti",
       "armed": "Premio pronto — la prossima prenotazione sarà scontata",
-      "rewardPercent": "−{{percent}} % ogni {{threshold}} app.ti",
-      "rewardAmount": "−{{amount}} ogni {{threshold}} app.ti"
+      "rewardPercent": "−{{percent}} % ogni {{threshold}} punti",
+      "rewardAmount": "−{{amount}} ogni {{threshold}} punti",
+      "hint": "Un punto per ogni appuntamento onorato dall'attivazione della tua carta, più le tue rettifiche manuali."
     }
   },
   "proLoyaltyAdjust": {
@@ -3029,8 +3030,8 @@
     "statsReady": "Premi pronti",
     "listTitle": "Clienti del programma",
     "ready": "Pronta",
-    "remaining_one": "ancora {{count}} app.to",
-    "remaining_other": "ancora {{count}} app.ti",
+    "remaining_one": "ancora {{count}} punto",
+    "remaining_other": "ancora {{count}} punti",
     "empty": {
       "title": "Nessuna carta per ora",
       "description": "Le carte dei tuoi clienti appariranno qui dal loro primo appuntamento conteggiato."

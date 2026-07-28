@@ -581,6 +581,16 @@ export default function ClientDetailScreen() {
                       })}`
                     : ''}
                 </Text>
+                {/* Les points ne sont PAS le nombre de RDV honorés affiché
+                    plus haut : la carte ne compte que les RDV postérieurs à
+                    son lancement, et le pro peut ajouter ou retirer des
+                    points à la main. Sans ce rappel, « 12 RDV honorés » face
+                    à « 4 points » se lit comme une erreur. */}
+                {loyaltyView.count !== (client.confirmedCount ?? 0) && (
+                  <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
+                    {t('proLoyalty.progress.hint')}
+                  </Text>
+                )}
               </View>
 
               {/* Ajuster les points */}

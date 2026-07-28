@@ -2975,11 +2975,12 @@
       "amount": "−{{amount}}"
     },
     "progress": {
-      "next_one": "Next reward in {{count}} completed appointment",
-      "next_other": "Next reward in {{count}} completed appointments",
+      "next_one": "Next reward in {{count}} point",
+      "next_other": "Next reward in {{count}} points",
       "armed": "Reward ready — the next booking will be discounted",
-      "rewardPercent": "−{{percent}}% every {{threshold}} appointments",
-      "rewardAmount": "−{{amount}} every {{threshold}} appointments"
+      "rewardPercent": "−{{percent}}% every {{threshold}} points",
+      "rewardAmount": "−{{amount}} every {{threshold}} points",
+      "hint": "One point per completed appointment since your card went live, plus your manual adjustments."
     }
   },
   "proLoyaltyAdjust": {
@@ -3029,8 +3030,8 @@
     "statsReady": "Rewards ready",
     "listTitle": "Program clients",
     "ready": "Ready",
-    "remaining_one": "{{count}} more appt",
-    "remaining_other": "{{count}} more appts",
+    "remaining_one": "{{count}} more point",
+    "remaining_other": "{{count}} more points",
     "empty": {
       "title": "No cards yet",
       "description": "Your clients' cards will appear here as soon as their first appointment is counted."
