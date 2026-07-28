@@ -9,7 +9,6 @@ import { Redirect } from 'expo-router';
 import { useAuth } from '../contexts';
 import { useTheme } from '../theme';
 import { hasSeenOnboarding } from '../utils';
-import { didDeepLinkTakeOver } from '../lib/pendingRoute';
 
 export default function Index() {
   const { isAuthenticated, isLoading: authLoading, userData } = useAuth();
@@ -30,14 +29,6 @@ export default function Index() {
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
-  }
-
-  // Un lien profond a pris la main : on ne redirige pas depuis ici, sinon
-  // on écraserait sa navigation (l'auth se résout après la lecture du
-  // lien). C'est la garde de `(client)/_layout` qui exige le compte et
-  // mémorise la destination.
-  if (didDeepLinkTakeOver()) {
-    return null;
   }
 
   // Authenticated → redirect based on role.

@@ -1,17 +1,6 @@
 {
   "applinks": {
     "apps": [],
-    "details": [
-      {
-        "appID": "9KX5T72C3J.com.kamerleontech.opatam",
-        "paths": [
-          "/fidelite",
-          "/p/*",
-          "/en/p/*",
-          "/it/p/*",
-          "/pt/p/*"
-        ]
-      }
-    ]
+    "details": []
   }
 }

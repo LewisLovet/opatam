@@ -1,11 +1,12 @@
 /**
- * /fidelite — cible du lien « ouvrir ma carte dans l'app ».
+ * /fidelite — page « vos cartes de fidélité vivent dans l'application ».
  *
- * Sur un téléphone où l'app est installée, l'URL n'atteint JAMAIS cette
- * page : iOS (apple-app-site-association) et Android (assetlinks + intent
- * filter /fidelite) l'interceptent et ouvrent l'app sur l'espace fidélité.
- * Cette page est donc la retombée : app absente, ou visite depuis un
- * ordinateur. Elle explique et renvoie vers les stores.
+ * Les liens profonds ont été retirés : un prestataire a l'application mais
+ * réserve chez un confrère en tant que client, et l'interception l'envoyait
+ * dans un espace qui n'est pas le sien. Aucune URL du site n'ouvre plus
+ * l'app automatiquement — seule la bannière App Store le propose, sur appui
+ * explicite. Cette page est donc TOUJOURS affichée, téléphone comme
+ * ordinateur, et renvoie vers les stores.
  */
 
 import type { Metadata } from 'next';

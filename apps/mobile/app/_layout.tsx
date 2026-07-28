@@ -28,7 +28,7 @@ import {
 } from '../components';
 import { DevFAB } from '../components/DevFAB';
 import { ProvidersCacheProvider, AuthProvider } from '../contexts';
-import { useAppReady, useDeepLinks } from '../hooks';
+import { useAppReady } from '../hooks';
 import { STRIPE_PUBLISHABLE_KEY } from '../lib/config';
 
 // Same merchant ID configured in app.json under the @stripe/stripe-react-native plugin.
@@ -41,9 +41,6 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
 
   const { isReady, onLayoutRootView } = useAppReady();
-
-  // Handle deep links (universal links)
-  useDeepLinks();
 
   // Don't render anything until ready
   if (!isReady) {

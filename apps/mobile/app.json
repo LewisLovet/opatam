@@ -32,10 +32,6 @@
       "bundleIdentifier": "com.kamerleontech.opatam",
       "usesAppleSignIn": true,
       "googleServicesFile": "./GoogleService-Info.plist",
-      "associatedDomains": [
-        "applinks:opatam.com",
-        "applinks:www.opatam.com"
-      ],
       "infoPlist": {
         "CFBundleDevelopmentRegion": "fr",
         "UIBackgroundModes": [
@@ -63,38 +59,6 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
-      ],
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "opatam.com",
-              "pathPrefix": "/p/"
-            },
-            {
-              "scheme": "https",
-              "host": "opatam.com",
-              "pathPrefix": "/avis/"
-            },
-            {
-              "scheme": "https",
-              "host": "opatam.com",
-              "pathPrefix": "/reservation/confirmation/"
-            },
-            {
-              "scheme": "https",
-              "host": "opatam.com",
-              "pathPrefix": "/fidelite"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        }
       ],
       "splash": {
         "image": "./assets/splash-icon-white.png",

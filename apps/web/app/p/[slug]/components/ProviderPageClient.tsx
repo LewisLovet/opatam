@@ -321,10 +321,11 @@ export function ProviderPageClient({
                   {/* CTA app — la carte ne se cumule qu'en réservant connecté
                       depuis l'app : encart badges stores sous le bandeau. */}
                   <div className="mt-3 pt-3 border-t border-primary-200/60 dark:border-primary-800/60 flex flex-col sm:flex-row sm:items-center gap-3">
-                    {/* Lien intelligent : sur mobile avec l'app installée,
-                        /fidelite est intercepté (universal link / app link) et
-                        ouvre directement l'espace fidélité ; sinon la page
-                        explique et renvoie vers les stores. */}
+                    {/* /fidelite explique le programme et renvoie vers les
+                        stores. Plus d'interception par l'app : un pro a
+                        l'application sans être client du confrère chez qui
+                        il réserve, et l'ouverture automatique l'envoyait
+                        dans un espace qui n'est pas le sien. */}
                     <a
                       href={localizedPath('/fidelite', locale)}
                       className="flex-1 min-w-0 text-xs text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 underline decoration-dotted underline-offset-2"

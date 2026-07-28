@@ -67,42 +67,33 @@ récompense, faute de bouton d'activation dans l'app 1.5.0 d'origine.
 L'OTA du même jour referme cette fenêtre. Les clients existants ne sont
 jamais concernés (grandfathering).
 
-## Universal links — à faire avant de compter dessus
+## Liens profonds — RETIRÉS le 28/07/2026
 
-`apps/web/public/.well-known/apple-app-site-association` était **vide**
-(`details: []`) : les liens `opatam.com/avis/…` et
-`/reservation/confirmation/…` n'ouvraient donc **jamais** l'app sur iOS
-depuis le début. Le fichier déclare désormais `/fidelite`, `/avis/*` et
-seulement (voir ci-dessous) avec l'appID réel
-`9KX5T72C3J.com.kamerleontech.opatam` (Team ID relevé dans le journal de
-build EAS — `eas build` l'affiche dans le récapitulatif des credentials).
+Cette section décrivait la mise en place des universal links iOS et des
+App Links Android. **Tout a été retiré.**
 
-L'entitlement « Associated Domains » étant dans l'app depuis avril 2026,
-déployer ce fichier suffit à activer les liens iOS **sur l'app déjà
-installée** — sans nouveau build. iOS met le fichier en cache (relu à
-l'installation/mise à jour, rafraîchi périodiquement) : la prise d'effet
-n'est pas instantanée sur les appareils existants.
+Raison : un prestataire a l'application, mais quand il réserve chez un
+confrère il est un CLIENT. L'interception l'envoyait dans l'espace client
+alors que son compte est un compte pro — un état que l'app ne sait pas
+tenir (les rôles y sont exclusifs). Le même piège existait pour tout
+compte pro recevant un lien du site.
 
-Android était correctement configuré (assetlinks.json) ; le chemin
-`/fidelite` a été ajouté aux `intentFilters` — c'est **baké dans le
-binaire**, donc actif seulement à partir du build 1.6.0.
+Ce qui a été supprimé :
 
-### Pourquoi SEUL `/fidelite` est déclaré
+- `apps/mobile/hooks/useDeepLinks.ts` et son montage dans `app/_layout.tsx` ;
+- `expo.android.intentFilters` et `expo.ios.associatedDomains` dans
+  `apps/mobile/app.json` — **baké dans le binaire**, donc effectif au
+  prochain build seulement ;
+- le contenu de `apps/web/public/.well-known/apple-app-site-association`,
+  remis à `details: []`. C'est ce fichier qui coupe l'interception sur les
+  **builds iOS déjà installés**, sans attendre de mise à jour (iOS le met
+  en cache : prise d'effet non instantanée).
 
-Les pages web `/avis/{id}` et `/reservation/confirmation/{id}` fonctionnent
-**sans compte** : le document est chargé par son id, et `POST
-/api/reviews/submit` n'exige aucune authentification. Les écrans mobiles
-correspondants, eux, exigent un utilisateur connecté
-(`apps/mobile/app/(client)/review/[bookingId].tsx` : `if (!bookingId ||
-!user?.uid)` → erreur « données manquantes »).
+Ce qui reste, volontairement :
 
-Router ces liens vers l'app **dégraderait** donc l'expérience des clients
-invités — majoritaires sur les réservations. On les laisse au web, qui
-marche pour tout le monde.
-
-**Dette connue (antérieure)** : les `intentFilters` Android incluent déjà
-`/avis/` et `/reservation/confirmation/` depuis avril 2026. Sur Android, un
-client déconnecté ayant l'app installée tombe donc sur l'écran d'erreur.
-Le bon correctif est de faire fonctionner ces écrans SANS compte (charger la
-résa par son id, comme le web) — c'est du JS, donc livrable en OTA sans
-rebuild. À traiter avant de compter sur ces liens.
+- la bannière App Store (`apple-itunes-app`) sur les pages du site : c'est
+  une incitation au téléchargement, l'app ne s'ouvre que sur appui ;
+- la page `/fidelite` et ses boutons vers les stores, désormais toujours
+  affichée ;
+- le schéma interne `opatam://` (retours d'authentification Google/Apple) ;
+- `assetlinks.json` côté web — inoffensif sans `intentFilters` en face.

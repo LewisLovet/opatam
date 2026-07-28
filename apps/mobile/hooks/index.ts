@@ -82,7 +82,6 @@ export type { UpcomingDay } from './useUpcomingAvailabilities';
 
 export { useProBookingBadges, useClientBookingBadges } from './useBookingBadges';
 
-export { useDeepLinks } from './useDeepLinks';
 
 export {
   useNewFeatures,
