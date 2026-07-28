@@ -50,6 +50,7 @@ export { purgePendingPaymentBookings } from './scheduled/purgePendingPaymentBook
 export { publishScheduledNotifications } from './scheduled/publishScheduledNotifications';
 export { recomputeProviderStats } from './scheduled/recomputeProviderStats';
 export { recomputeDashboardStatsCron } from './scheduled/recomputeDashboardStats';
+export { sendScheduledPromoEmails } from './scheduled/sendScheduledPromoEmails';
 
 // ─── Admin-only callables ──────────────────────────────────────────────────
 export { recomputeDashboardStatsNow } from './callable/recomputeDashboardStatsNow';
