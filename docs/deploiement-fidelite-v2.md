@@ -97,3 +97,44 @@ Ce qui reste, volontairement :
   affichée ;
 - le schéma interne `opatam://` (retours d'authentification Google/Apple) ;
 - `assetlinks.json` côté web — inoffensif sans `intentFilters` en face.
+
+## Rattrapage des réservations invitées — exécuté le 28/07/2026
+
+Opération ponctuelle, sur signalement de la prestataire naails.byk
+(`R3jIK0hqeuOSvjPh9p0JBgpvin63`) : ses clientes ayant créé un compte après
+avoir déjà réservé ne voyaient pas leur rendez-vous.
+
+**Diagnostic.** Une fiche `providerClients` créée par une réservation
+invitée n'a aucun `clientId`. Or `/api/loyalty/me` ne cherchait les cartes
+que par `clientId` : ces clientes ne voyaient AUCUNE carte chez ce
+prestataire — pas même une carte vide.
+
+Le trigger `onUserCreateClaimLoyaltyBooking` fonctionnait bien, mais ne
+couvre qu'un sens : réserver en invitée PUIS s'inscrire. Le cas réel était
+l'inverse — avoir déjà un compte et réserver depuis le lien web du salon
+sans s'y connecter. Aucun trigger ne se déclenche alors.
+
+**Ce qui a été fait.** Un script ponctuel a posé le `clientId` sur les
+réservations sans compte dont l'adresse correspondait à un compte
+existant :
+
+- 1342 réservations examinées, 1137 sans compte ;
+- 590 adresses distinctes, 34 correspondant à un compte ;
+- **184 réservations rattachées** ;
+- 4 seulement ont produit un point (la non-rétroactivité écarte tout ce
+  qui a été créé avant le 20/07) ;
+- 18 cartes rendues visibles ; fiches orphelines 577 → 548.
+
+Le script n'est PAS versionné : il a rempli son office, il mute des
+données de production, et le correctif d'affichage le rend inutile pour la
+suite. Une copie de travail existe hors dépôt.
+
+**Correctif pérenne.** `/api/loyalty/me` retrouve désormais les fiches par
+l'adresse du compte en plus du `clientId`. Purement de l'affichage : la
+politique « app requise » est intacte, la cliente voit sa carte à zéro et
+l'invitation à réserver depuis l'app.
+
+**Règle retenue (28/07)** : à l'inscription, seule la DERNIÈRE réservation
+invitée est créditée — comportement du trigger existant, inchangé. Le
+rattrapage ci-dessus, lui, a tout rattaché : décision assumée, sans effet
+rétroactif ultérieur.
