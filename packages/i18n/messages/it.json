@@ -286,25 +286,25 @@
       "title": "Cosa dicono i professionisti che lo usano",
       "items": [
         {
-          "name": "Marie L.",
-          "role": "Parrucchiera indipendente",
-          "city": "Lione",
-          "initials": "ML",
-          "text": "Lo 0% di commissioni è quello che mi ha convinta. Tengo il 100% di quello che guadagno. E lo strumento è così semplice che sono stata online in 10 minuti."
+          "name": "BraidzTouch",
+          "role": "Parrucchiera",
+          "city": "",
+          "initials": "BT",
+          "text": "Adoro Opatam: uno strumento di gestione semplicissimo che mi permette di gestire i miei appuntamenti in automatico."
         },
         {
-          "name": "Karim B.",
-          "role": "Barbiere",
-          "city": "Parigi",
-          "initials": "KB",
-          "text": "La sera stessa dell'iscrizione avevo già tre prenotazioni dal link nella mia bio di Instagram. Non devo più rispondere ai DM alle 22 per fissare un orario."
+          "name": "Cam Beauty Studio",
+          "role": "Onicotecnica",
+          "city": "",
+          "initials": "CB",
+          "text": "Mi sono iscritta di recente all'app e non me ne pento affatto, soprattutto dal punto di vista economico."
         },
         {
-          "name": "Sophie D.",
-          "role": "Titolare di un istituto di bellezza",
-          "city": "Marsiglia",
-          "initials": "SD",
-          "text": "Siamo in tre nell'istituto, ognuna ha la sua agenda sul proprio telefono. Alla metà di quanto pagavamo prima — e pensato meglio per il nostro mestiere."
+          "name": "Palm Beauty",
+          "role": "Spray tan e sbiancamento dentale",
+          "city": "",
+          "initials": "PB",
+          "text": "La mia prima app di appuntamenti automatizzati, e non rimpiango la mia scelta."
         }
       ]
     },

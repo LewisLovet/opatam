@@ -601,9 +601,14 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {item.role}, {item.city}
-                      </p>
+                      {/* Métier et ville ne sont pas connus pour tous les
+                          prestataires : on n'affiche que ce qui est renseigné,
+                          sans virgule orpheline. */}
+                      {[item.role, item.city].filter(Boolean).length > 0 && (
+                        <p className="text-xs text-gray-500">
+                          {[item.role, item.city].filter(Boolean).join(', ')}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

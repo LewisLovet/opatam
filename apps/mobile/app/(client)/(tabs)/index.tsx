@@ -137,6 +137,10 @@ function getTimeUntilChip(bookingDate: Date, t: TFunction): string | null {
 // Main Component
 // ---------------------------------------------------------------------------
 
+/** Largeur d'une carte du carrousel de suggestions — identique à l'écran de
+ *  recherche pour que les deux rangées se ressemblent. */
+const SUGGESTION_CARD_WIDTH = 280;
+
 export default function HomeScreen() {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
@@ -495,9 +499,11 @@ export default function HomeScreen() {
           </Text>
 
           {loadingSuggestions ? (
-            <View style={{ gap: spacing.md }}>
-              {[1, 2, 3].map((i) => (
-                <ProviderCardSkeleton key={i} />
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              {[1, 2].map((i) => (
+                <View key={i} style={{ width: SUGGESTION_CARD_WIDTH }}>
+                  <ProviderCardSkeleton />
+                </View>
               ))}
             </View>
           ) : suggestions.length === 0 ? (
@@ -509,23 +515,32 @@ export default function HomeScreen() {
               />
             </Card>
           ) : (
-            <View style={{ gap: spacing.md }}>
+            /* Carrousel horizontal : empilées verticalement, ces cartes se
+               confondaient avec la suite de la page. Le débord de la carte
+               suivante signale à lui seul que la rangée défile. */
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: spacing.md, paddingRight: spacing.lg }}
+              directionalLockEnabled
+            >
               {suggestions.map((provider) => (
-                <ProviderCard
-                  key={provider.id}
-                  photoURL={provider.coverPhotoURL || provider.photoURL}
-                  businessName={provider.businessName}
-                  category={provider.category}
-                  city={provider.cities[0] || ''}
-                  rating={provider.rating}
-                  minPrice={provider.minPrice}
-                  isVerified={provider.isVerified}
-                  distance={isNearby ? provider.distance : undefined}
-                  onPress={() => navigateToProvider(provider.slug)}
-                  isLoading={isLoading(provider.slug)}
-                />
+                <View key={provider.id} style={{ width: SUGGESTION_CARD_WIDTH }}>
+                  <ProviderCard
+                    photoURL={provider.coverPhotoURL || provider.photoURL}
+                    businessName={provider.businessName}
+                    category={provider.category}
+                    city={provider.cities[0] || ''}
+                    rating={provider.rating}
+                    minPrice={provider.minPrice}
+                    isVerified={provider.isVerified}
+                    distance={isNearby ? provider.distance : undefined}
+                    onPress={() => navigateToProvider(provider.slug)}
+                    isLoading={isLoading(provider.slug)}
+                  />
+                </View>
               ))}
-            </View>
+            </ScrollView>
           )}
         </View>
       </ScrollView>

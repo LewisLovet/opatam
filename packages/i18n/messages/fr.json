@@ -286,25 +286,25 @@
       "title": "Ce qu'en disent les indépendants qui l'utilisent",
       "items": [
         {
-          "name": "Marie L.",
-          "role": "Coiffeuse indépendante",
-          "city": "Lyon",
-          "initials": "ML",
-          "text": "0% de commission, c'est ce qui m'a convaincue. Je garde 100% de ce que je gagne. Et l'outil est tellement simple que j'ai été en ligne en 10 minutes."
+          "name": "BraidzTouch",
+          "role": "Coiffeuse",
+          "city": "",
+          "initials": "BT",
+          "text": "J'adore Opatam, un outil de gestion très simple qui me permet de gérer mes rendez-vous de façon automatique."
         },
         {
-          "name": "Karim B.",
-          "role": "Barbier",
-          "city": "Paris",
-          "initials": "KB",
-          "text": "Le soir de l'inscription, j'avais déjà trois réservations via le lien dans ma bio Instagram. Plus besoin de répondre aux DM à 22h pour caler un créneau."
+          "name": "Cam Beauty Studio",
+          "role": "Prothésiste ongulaire",
+          "city": "",
+          "initials": "CB",
+          "text": "J'ai rejoint récemment l'application et je ne regrette pas du tout, surtout sur le plan économique."
         },
         {
-          "name": "Sophie D.",
-          "role": "Gérante d'institut de beauté",
-          "city": "Marseille",
-          "initials": "SD",
-          "text": "On est trois dans l'institut, chacune a son agenda sur le sien. Pour moitié moins cher que ce qu'on payait avant — et mieux pensé pour notre métier."
+          "name": "Palm Beauty",
+          "role": "Spray tan & blanchiment dentaire",
+          "city": "",
+          "initials": "PB",
+          "text": "Ma première application de rendez-vous automatisés, et je ne regrette pas mon choix."
         }
       ]
     },

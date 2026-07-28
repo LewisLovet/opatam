@@ -286,25 +286,25 @@
       "title": "What independent professionals say about it",
       "items": [
         {
-          "name": "Marie L.",
-          "role": "Independent hairdresser",
-          "city": "Lyon",
-          "initials": "ML",
-          "text": "0% commission is what won me over. I keep 100% of what I earn. And the tool is so simple I was online in 10 minutes."
+          "name": "BraidzTouch",
+          "role": "Hairdresser",
+          "city": "",
+          "initials": "BT",
+          "text": "I love Opatam — a really simple management tool that lets me handle my appointments automatically."
         },
         {
-          "name": "Karim B.",
-          "role": "Barber",
-          "city": "Paris",
-          "initials": "KB",
-          "text": "The night I signed up, I already had three bookings through the link in my Instagram bio. No more answering DMs at 10pm to schedule a slot."
+          "name": "Cam Beauty Studio",
+          "role": "Nail technician",
+          "city": "",
+          "initials": "CB",
+          "text": "I joined the app recently and I have no regrets at all, especially financially."
         },
         {
-          "name": "Sophie D.",
-          "role": "Beauty salon owner",
-          "city": "Marseille",
-          "initials": "SD",
-          "text": "There are three of us at the salon, each with our own calendar. For half of what we paid before — and better designed for our craft."
+          "name": "Palm Beauty",
+          "role": "Spray tan & teeth whitening",
+          "city": "",
+          "initials": "PB",
+          "text": "My first automated booking app, and I don't regret my choice."
         }
       ]
     },
