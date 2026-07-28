@@ -3045,8 +3045,6 @@
     "addToCalendar": "Ajouter à mon agenda",
     "copyHint": "Ou copiez ce lien pour Google Agenda ou Outlook",
     "copied": "Lien copié",
-    "regenerate": "Régénérer le lien",
-    "regenerated": "Nouveau lien créé — réabonnez-vous depuis votre agenda",
     "disable": "Désactiver",
     "noticeDelay": "Le délai de mise à jour dépend du réglage de votre agenda — de quelques minutes à une fois par jour. Vous pouvez le raccourcir dans les réglages de l'abonnement.",
     "noticeReadOnly": "Votre agenda affiche les rendez-vous sans pouvoir les modifier : les changements se font ici.",
@@ -3057,6 +3055,7 @@
     "lastSyncDays_one": "Dernière synchronisation il y a {{count}} jour",
     "lastSyncDays_other": "Dernière synchronisation il y a {{count}} jours",
     "error": "La synchronisation n'a pas pu être activée",
-    "openFailed": "Impossible d'ouvrir votre agenda"
+    "openFailed": "Impossible d'ouvrir votre agenda",
+    "button": "Synchroniser"
   }
 }

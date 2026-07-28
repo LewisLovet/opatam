@@ -2231,52 +2231,67 @@ export default function CalendarScreen() {
             },
           ]}
         >
+          <Text
+            variant="h2"
+            style={{ color: '#FFFFFF', flexShrink: 1 }}
+            numberOfLines={1}
+          >
+            {t('proCalendar.title')}
+          </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            {/* Synchronisation agenda — posée ici, dans le bandeau, parce
-                que l'abonnement doit se prendre sur l'appareil qui porte
-                l'agenda. Renvoyer le pro vers le web l'obligerait à
-                transporter l'URL jusqu'à son téléphone. */}
+            {!isToday(selectedDate) && (
+              <Pressable
+                onPress={goToToday}
+                style={({ pressed }) => [
+                  styles.todayButton,
+                  {
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    borderRadius: radius.full,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.xs,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+                hitSlop={8}
+              >
+                <Text
+                  variant="caption"
+                  style={{ fontWeight: '600', color: '#FFFFFF' }}
+                >
+                  {t('dates.today')}
+                </Text>
+              </Pressable>
+            )}
+
+            {/* Synchronisation agenda. LIBELLÉE : une flèche circulaire
+                seule se lit « rafraîchir », et personne ne devine qu'il
+                s'agit d'envoyer son planning vers son agenda perso.
+                Posée dans l'app et non sur le web parce que l'abonnement
+                doit se prendre sur l'appareil qui porte l'agenda. */}
             <Pressable
               onPress={() => setSyncOpen(true)}
               accessibilityLabel={t('calendarSync.title')}
               style={({ pressed }) => ({
-                width: 32,
-                height: 32,
-                borderRadius: radius.full,
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'rgba(255,255,255,0.2)',
+                gap: 6,
+                backgroundColor: 'rgba(255,255,255,0.22)',
+                borderRadius: radius.full,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.xs + 1,
                 opacity: pressed ? 0.7 : 1,
               })}
               hitSlop={8}
             >
-              <Ionicons name="sync-outline" size={17} color="#FFFFFF" />
-            </Pressable>
-            <Text variant="h2" style={{ color: '#FFFFFF' }}>{t('proCalendar.title')}</Text>
-          </View>
-          {!isToday(selectedDate) && (
-            <Pressable
-              onPress={goToToday}
-              style={({ pressed }) => [
-                styles.todayButton,
-                {
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  borderRadius: radius.full,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.xs,
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-              hitSlop={8}
-            >
+              <Ionicons name="sync-outline" size={15} color="#FFFFFF" />
               <Text
                 variant="caption"
                 style={{ fontWeight: '600', color: '#FFFFFF' }}
               >
-                {t('dates.today')}
+                {t('calendarSync.button')}
               </Text>
             </Pressable>
-          )}
+          </View>
         </View>
       </View>
 
@@ -2514,8 +2529,6 @@ export default function CalendarScreen() {
           onRefresh={handleRefresh}
         />
       )}
-
-      <CalendarSyncSheet visible={syncOpen} onClose={() => setSyncOpen(false)} />
 
       {/* ===== Unified "+ Ajouter" FAB ===== */}
       <View style={styles.fabContainer}>
@@ -3041,6 +3054,12 @@ export default function CalendarScreen() {
           />
         )
       )}
+
+      {/* Rendue en DERNIER : l'OverlaySheet est un calque absolu, tout ce
+          qui est monté après lui passe au-dessus. Placée plus haut, elle
+          se faisait recouvrir par le sélecteur Jour/Semaine/Mois et par
+          le bouton d'ajout. */}
+      <CalendarSyncSheet visible={syncOpen} onClose={() => setSyncOpen(false)} />
     </View>
   );
 }

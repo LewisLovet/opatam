@@ -118,16 +118,6 @@ export function CalendarSyncSheet({ visible, onClose }: CalendarSyncSheetProps) 
     showToast({ variant: 'success', message: t('calendarSync.copied') });
   };
 
-  const regenerate = async () => {
-    setWorking(true);
-    const next = await call('POST');
-    setWorking(false);
-    if (next) {
-      setState(next);
-      showToast({ variant: 'success', message: t('calendarSync.regenerated') });
-    }
-  };
-
   const disable = async () => {
     setWorking(true);
     const next = await call('DELETE');
@@ -243,23 +233,20 @@ export function CalendarSyncSheet({ visible, onClose }: CalendarSyncSheetProps) 
               </Text>
             </View>
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
-              <Button
-                title={t('calendarSync.regenerate')}
-                variant="outline"
-                size="sm"
-                onPress={regenerate}
-                loading={working}
-                style={{ flex: 1 }}
-              />
-              <Button
-                title={t('calendarSync.disable')}
-                variant="ghost"
-                size="sm"
-                onPress={disable}
-                style={{ flex: 1 }}
-              />
-            </View>
+            {/* Pas de « régénérer le lien » : la notion ne parle à
+                personne, et se retrouver déconnecté de son agenda sans
+                comprendre pourquoi est pire que le risque qu'elle couvre.
+                Désactiver puis réactiver produit le même effet, avec des
+                mots que le pro comprend. */}
+            <Button
+              title={t('calendarSync.disable')}
+              variant="ghost"
+              size="sm"
+              onPress={disable}
+              loading={working}
+              fullWidth
+              style={{ marginTop: spacing.lg }}
+            />
           </>
         )}
       </ScrollView>

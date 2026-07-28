@@ -3045,8 +3045,6 @@
     "addToCalendar": "Adicionar à minha agenda",
     "copyHint": "Ou copie este link para o Google Agenda ou o Outlook",
     "copied": "Link copiado",
-    "regenerate": "Gerar novo link",
-    "regenerated": "Novo link criado — subscreva novamente na sua agenda",
     "disable": "Desativar",
     "noticeDelay": "O intervalo de atualização depende das definições da sua agenda — de alguns minutos a uma vez por dia. Pode reduzi-lo nas definições da subscrição.",
     "noticeReadOnly": "A sua agenda mostra as marcações mas não as pode alterar: as alterações fazem-se aqui.",
@@ -3057,6 +3055,7 @@
     "lastSyncDays_one": "Última sincronização há {{count}} dia",
     "lastSyncDays_other": "Última sincronização há {{count}} dias",
     "error": "Não foi possível ativar a sincronização",
-    "openFailed": "Não foi possível abrir a sua agenda"
+    "openFailed": "Não foi possível abrir a sua agenda",
+    "button": "Sincronizar"
   }
 }

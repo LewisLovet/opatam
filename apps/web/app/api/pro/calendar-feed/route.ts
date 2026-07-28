@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { generateFeedToken } from '@/lib/calendar-feed';
 import { appConfig } from '@/lib/resend';
+import { networkInterfaces } from 'os';
 
 async function requireProvider(req: NextRequest): Promise<string | null> {
   const header = req.headers.get('authorization') ?? '';
@@ -28,14 +29,27 @@ async function requireProvider(req: NextRequest): Promise<string | null> {
 /**
  * Base publique du flux.
  *
- * En production c'est toujours le domaine officiel. En développement on
- * prend l'origine de la REQUÊTE : le téléphone appelle l'API par l'IP du
- * réseau local, et une URL en `localhost` lui serait injoignable — son
- * agenda ne pourrait jamais consulter le flux.
+ * En production c'est toujours le domaine officiel.
+ *
+ * En développement, l'URL doit être joignable DEPUIS LE TÉLÉPHONE : ni
+ * `localhost`, ni `0.0.0.0`, qui ne désignent rien pour lui. On prend
+ * donc l'en-tête `Host` de la requête, c'est-à-dire l'adresse par
+ * laquelle l'app a effectivement appelé l'API — et si cette adresse est
+ * une adresse d'écoute (le serveur de dev est lié à 0.0.0.0), on résout
+ * l'IP du réseau local de la machine.
  */
 function feedOrigin(req: NextRequest): string {
   if (process.env.NODE_ENV === 'production') return appConfig.url;
-  return req.nextUrl.origin;
+
+  const host = req.headers.get('host') ?? '';
+  const [hostname, port = '3000'] = host.split(':');
+  const unusable = !hostname || hostname === '0.0.0.0' || hostname === 'localhost' || hostname === '127.0.0.1';
+  if (!unusable) return `http://${host}`;
+
+  const lanIp = Object.values(networkInterfaces())
+    .flat()
+    .find((i) => i && i.family === 'IPv4' && !i.internal)?.address;
+  return lanIp ? `http://${lanIp}:${port}` : appConfig.url;
 }
 
 function feedUrls(token: string, origin: string) {

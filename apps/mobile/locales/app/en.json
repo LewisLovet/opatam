@@ -3045,8 +3045,6 @@
     "addToCalendar": "Add to my calendar",
     "copyHint": "Or copy this link for Google Calendar or Outlook",
     "copied": "Link copied",
-    "regenerate": "Regenerate link",
-    "regenerated": "New link created — subscribe again from your calendar",
     "disable": "Turn off",
     "noticeDelay": "Refresh timing depends on your calendar settings — from a few minutes to once a day. You can shorten it in the subscription settings.",
     "noticeReadOnly": "Your calendar shows the appointments but cannot edit them: changes happen here.",
@@ -3057,6 +3055,7 @@
     "lastSyncDays_one": "Last synced {{count}} day ago",
     "lastSyncDays_other": "Last synced {{count}} days ago",
     "error": "Syncing could not be turned on",
-    "openFailed": "Could not open your calendar"
+    "openFailed": "Could not open your calendar",
+    "button": "Sync"
   }
 }

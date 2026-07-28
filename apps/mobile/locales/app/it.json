@@ -3045,8 +3045,6 @@
     "addToCalendar": "Aggiungi al mio calendario",
     "copyHint": "Oppure copia questo link per Google Calendar o Outlook",
     "copied": "Link copiato",
-    "regenerate": "Rigenera il link",
-    "regenerated": "Nuovo link creato — iscriviti di nuovo dal tuo calendario",
     "disable": "Disattiva",
     "noticeDelay": "L'intervallo di aggiornamento dipende dalle impostazioni del tuo calendario — da pochi minuti a una volta al giorno. Puoi ridurlo nelle impostazioni dell'iscrizione.",
     "noticeReadOnly": "Il tuo calendario mostra gli appuntamenti ma non può modificarli: le modifiche si fanno qui.",
@@ -3057,6 +3055,7 @@
     "lastSyncDays_one": "Ultima sincronizzazione {{count}} giorno fa",
     "lastSyncDays_other": "Ultima sincronizzazione {{count}} giorni fa",
     "error": "Non è stato possibile attivare la sincronizzazione",
-    "openFailed": "Impossibile aprire il tuo calendario"
+    "openFailed": "Impossibile aprire il tuo calendario",
+    "button": "Sincronizza"
   }
 }
