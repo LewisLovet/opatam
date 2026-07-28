@@ -12,24 +12,30 @@ import { setPendingRoute } from '../../lib/pendingRoute';
 
 export default function ClientLayout() {
   const { colors } = useTheme();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, userData } = useAuth();
   const pathname = usePathname();
 
-  // Garde d'authentification de TOUT l'espace client. `app/index.tsx`
-  // envoyait déjà les visiteurs déconnectés vers la connexion, mais rien
-  // ne protégeait le groupe lui-même : un lien profond (ou n'importe quel
-  // push) pouvait ouvrir un écran client sans compte. Décision produit :
-  // on ne parcourt pas l'app sans être connecté.
+  // Garde d'authentification ET de rôle pour TOUT l'espace client.
+  // `app/index.tsx` envoyait déjà les visiteurs déconnectés vers la
+  // connexion, mais rien ne protégeait le groupe lui-même : n'importe quel
+  // push pouvait ouvrir un écran client sans compte. Décision produit : on
+  // ne parcourt pas l'app sans être connecté.
   //
   // La destination est mise de côté avant de rediriger — la garde de
   // `(auth)/_layout` y ramène dès que le compte est authentifié, pour que
   // l'utilisateur atterrisse bien sur la page qu'il avait demandée.
-  if (isLoading) {
+  // On attend `userData` : c'est le rôle qui décide de l'espace.
+  if (isLoading || (isAuthenticated && !userData)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
+  }
+  // Les rôles sont exclusifs : un compte pro n'a rien à faire dans
+  // l'espace client, quel que soit le chemin emprunté pour y arriver.
+  if (isAuthenticated && userData?.role === 'provider') {
+    return <Redirect href={'/(pro)' as never} />;
   }
   if (!isAuthenticated) {
     if (pathname && pathname !== '/') setPendingRoute(pathname);

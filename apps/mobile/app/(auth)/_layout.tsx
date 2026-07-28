@@ -16,13 +16,21 @@ export default function AuthLayout() {
   // If authenticated and userData loaded → redirect out of auth flow
   // This handles the post-login redirect reactively (no race condition)
   if (!isLoading && isAuthenticated && userData) {
-    // Un lien profond a pu viser un écran réservé aux comptes : on y
-    // retourne au lieu de retomber sur l'accueil.
+    // Une destination mise de côté par la garde de l'espace client est
+    // rejouée ici, pour atterrir sur l'écran demandé plutôt que sur
+    // l'accueil.
+    //
+    // Elle ne traverse JAMAIS les espaces. Elle est
+    // toujours posée par l'espace client (garde de `(client)/_layout`,
+    // écran d'avis) et survit à une déconnexion : sans ce filtre, un pro
+    // qui se connectait après une session client atterrissait dans
+    // l'espace client.
     const pending = consumePendingRoute();
-    if (pending) {
+    const isProvider = userData.role === 'provider';
+    if (pending && !isProvider && pending.startsWith('/(client)')) {
       return <Redirect href={pending as never} />;
     }
-    if (userData.role === 'provider') {
+    if (isProvider) {
       return <Redirect href={'/(pro)' as never} />;
     }
     return <Redirect href="/(client)/(tabs)" />;
