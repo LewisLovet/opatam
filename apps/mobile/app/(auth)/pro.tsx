@@ -53,6 +53,9 @@ import {
   sanitizeVariations,
   sanitizeOptions,
   sanitizeInfoFields,
+  getServiceMinPrice,
+  deriveServiceBasePricing,
+  formatPrice,
 } from '@booking-app/shared';
 import { EMAIL_REGEX as SHARED_EMAIL_REGEX, suggestEmailDomain } from '@booking-app/shared';
 import {
@@ -692,7 +695,17 @@ export default function ProRegisterScreen() {
         if (data.services.length === 0) return t('auth.pro.validation.addOneService');
         for (let i = 0; i < data.services.length; i++) {
           if (!data.services[i].name.trim()) return t('auth.pro.validation.serviceNameRequired', { index: i + 1 });
-          if (!data.services[i].price.trim() || isNaN(Number(data.services[i].price)) || Number(data.services[i].price) < 0)
+          // With variations the price/duration inputs are hidden (the
+          // variations define them) — require a usable variation instead.
+          const rawVariations = data.services[i].variations ?? [];
+          if (rawVariations.length > 0) {
+            if (sanitizeVariations(rawVariations).length === 0)
+              return t('proServices.errors.variationsIncomplete');
+          } else if (
+            !data.services[i].price.trim() ||
+            isNaN(Number(data.services[i].price)) ||
+            Number(data.services[i].price) < 0
+          )
             return t('auth.pro.validation.servicePriceInvalid', { index: i + 1 });
         }
         return null;
@@ -827,12 +840,20 @@ export default function ProRegisterScreen() {
       for (let i = 0; i < data.services.length; i++) {
         const svc = data.services[i];
         const catId = svc.category?.trim() ? categoryMap.get(svc.category.trim()) || null : null;
+        const variations = sanitizeVariations(svc.variations ?? []);
+        // With variations the base is derived from the cheapest combination
+        // (the "à partir de"), never from the hidden inputs.
+        const base = deriveServiceBasePricing({
+          price: Math.round(Number(svc.price) * 100) || 0,
+          duration: svc.duration,
+          variations,
+        });
         await serviceRepository.create(provider.id, {
           name: svc.name.trim(),
           description: svc.description.trim() || null,
           photoURL: null,
-          duration: svc.duration,
-          price: Math.round(Number(svc.price) * 100),
+          duration: base.duration,
+          price: base.price,
           priceMax: null,
           bufferTime: 0,
           categoryId: catId,
@@ -840,7 +861,7 @@ export default function ProRegisterScreen() {
           locationIds: [location.id],
           memberIds: [defaultMember.id],
           sortOrder: i,
-          variations: sanitizeVariations(svc.variations ?? []),
+          variations,
           options: sanitizeOptions(svc.options ?? []),
           infoFields: sanitizeInfoFields(svc.infoFields ?? []),
         });
@@ -1486,61 +1507,92 @@ export default function ProRegisterScreen() {
             </View>
           )}
 
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <View style={{ flex: 1 }}>
-              <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-                {t('auth.pro.step3.durationLabel')}
-              </Text>
-              <Pressable
-                onPress={() => {
-                  setEditingServiceIndex(index);
-                  setShowDurationModal(true);
-                }}
-                style={({ pressed }) => [
-                  styles.selectButton,
-                  {
-                    borderColor: colors.border,
-                    borderRadius: radius.lg,
-                    padding: spacing.md,
-                    backgroundColor: 'rgba(255,255,255,0.8)',
-                    opacity: pressed ? 0.8 : 1,
-                  },
-                ]}
-              >
-                <Text variant="body">{formatDurationLabel(svc.duration)}</Text>
-                <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
-              </Pressable>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Input
-                label={t('auth.pro.step3.priceLabel')}
-                placeholder="0"
-                value={svc.price}
-                onChangeText={(v: string) => updateServiceField(index, 'price', v)}
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
-
-          {/* Price options */}
-          <View style={{ flexDirection: 'row', gap: spacing.lg, flexWrap: 'wrap' }}>
-            <Pressable
-              onPress={() => {
-                const isFree = !svc.price || svc.price === '0';
-                updateServiceField(index, 'price', isFree ? '' : '0');
+          {(svc.variations?.length ?? 0) > 0 ? (
+            /* With variations, the base price/duration are ignored — hide them
+               so the pro isn't asked for numbers that have no effect (mirrors
+               the pro editor & the web wizard). */
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: spacing.sm,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: colors.primaryLight || '#bfdbfe',
+                backgroundColor: colors.primaryLight ? `${colors.primaryLight}66` : '#eff6ff',
+                padding: spacing.md,
               }}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
             >
-              <Ionicons
-                name={!svc.price || svc.price === '0' ? 'checkbox' : 'square-outline'}
-                size={22}
-                color={!svc.price || svc.price === '0' ? colors.primary : colors.textMuted}
-              />
-              <Text variant="bodySmall" style={{ color: !svc.price || svc.price === '0' ? colors.primary : colors.textSecondary }}>
-                {t('auth.pro.step3.freeAppointment')}
+              <Ionicons name="layers-outline" size={18} color={colors.primary} style={{ marginTop: 1 }} />
+              <Text variant="caption" style={{ flex: 1, color: colors.text }}>
+                {t('proServices.form.variationsPricingBefore')}{' '}
+                <Text variant="caption" style={{ fontWeight: '700', color: colors.primary }}>
+                  {formatPrice(
+                    getServiceMinPrice({ price: 0, variations: sanitizeVariations(svc.variations ?? []) }),
+                  )}
+                </Text>
+                {t('proServices.form.variationsPricingAfter')}
               </Text>
-            </Pressable>
-          </View>
+            </View>
+          ) : (
+            <>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+                    {t('auth.pro.step3.durationLabel')}
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setEditingServiceIndex(index);
+                      setShowDurationModal(true);
+                    }}
+                    style={({ pressed }) => [
+                      styles.selectButton,
+                      {
+                        borderColor: colors.border,
+                        borderRadius: radius.lg,
+                        padding: spacing.md,
+                        backgroundColor: 'rgba(255,255,255,0.8)',
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}
+                  >
+                    <Text variant="body">{formatDurationLabel(svc.duration)}</Text>
+                    <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+                  </Pressable>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label={t('auth.pro.step3.priceLabel')}
+                    placeholder="0"
+                    value={svc.price}
+                    onChangeText={(v: string) => updateServiceField(index, 'price', v)}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+
+              {/* Price options */}
+              <View style={{ flexDirection: 'row', gap: spacing.lg, flexWrap: 'wrap' }}>
+                <Pressable
+                  onPress={() => {
+                    const isFree = !svc.price || svc.price === '0';
+                    updateServiceField(index, 'price', isFree ? '' : '0');
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                >
+                  <Ionicons
+                    name={!svc.price || svc.price === '0' ? 'checkbox' : 'square-outline'}
+                    size={22}
+                    color={!svc.price || svc.price === '0' ? colors.primary : colors.textMuted}
+                  />
+                  <Text variant="bodySmall" style={{ color: !svc.price || svc.price === '0' ? colors.primary : colors.textSecondary }}>
+                    {t('auth.pro.step3.freeAppointment')}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          )}
 
           {/* Description */}
           <Input
@@ -2217,8 +2269,13 @@ export default function ProRegisterScreen() {
             safeAreaBottom
             service={{
               name: data.services[previewServiceIndex].name,
-              price: Math.round((parseFloat(data.services[previewServiceIndex].price) || 0) * 100),
-              duration: data.services[previewServiceIndex].duration,
+              // Same derivation as the creation: with variations the base is
+              // the cheapest combination, not the (hidden) inputs.
+              ...deriveServiceBasePricing({
+                price: Math.round((parseFloat(data.services[previewServiceIndex].price) || 0) * 100),
+                duration: data.services[previewServiceIndex].duration,
+                variations: sanitizeVariations(data.services[previewServiceIndex].variations ?? []),
+              }),
               variations: sanitizeVariations(data.services[previewServiceIndex].variations ?? []),
               options: sanitizeOptions(data.services[previewServiceIndex].options ?? []),
               infoFields: sanitizeInfoFields(data.services[previewServiceIndex].infoFields ?? []),

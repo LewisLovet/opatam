@@ -32,7 +32,7 @@ import {
   schedulingService,
   memberService,
 } from '@booking-app/firebase';
-import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, formatPrice, suggestEmailDomain, EMAIL_REGEX } from '@booking-app/shared';
+import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, deriveServiceBasePricing, formatPrice, suggestEmailDomain, EMAIL_REGEX } from '@booking-app/shared';
 import type { ServiceVariation, ServiceOption, ServiceInfoField } from '@booking-app/shared';
 import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
@@ -371,6 +371,21 @@ export default function RegisterPage() {
             setError(`Le prix max de la prestation ${i + 1} doit être supérieur au prix min`);
             return false;
           }
+          // With variations the base price/duration inputs are hidden (the
+          // variations define them) — so require a usable variation instead
+          // of a duration. Without variations, the duration is mandatory.
+          const rawVariations = data.services[i].variations ?? [];
+          if (rawVariations.length > 0) {
+            if (sanitizeVariations(rawVariations).length === 0) {
+              setError(
+                `Complétez la variation de la prestation ${i + 1} : un nom et au moins un choix nommé.`,
+              );
+              return false;
+            }
+          } else if (!data.services[i].duration || data.services[i].duration < 5) {
+            setError(`La durée de la prestation ${i + 1} doit être d'au moins 5 minutes`);
+            return false;
+          }
         }
         return true;
       case 4:
@@ -518,20 +533,29 @@ export default function RegisterPage() {
       const categoryId = svc.category?.trim()
         ? categoryMap.get(svc.category.trim()) || null
         : null;
+      const variations = sanitizeVariations(svc.variations ?? []);
+      // With variations the base price/duration fields are hidden in the
+      // wizard — derive them from the cheapest combination so the stored
+      // "à partir de" is truthful (and passes the 5 min schema minimum).
+      const base = deriveServiceBasePricing({
+        price: svc.price * 100, // euros → cents
+        duration: svc.duration,
+        variations,
+      });
       await serviceRepository.create(provider.id, {
         name: svc.name,
         description: svc.description || null,
         photoURL: null,
-        duration: svc.duration,
-        price: svc.price * 100, // Convert to cents
-        priceMax: svc.priceMax ? svc.priceMax * 100 : null,
+        duration: base.duration,
+        price: base.price,
+        priceMax: variations.length > 0 || !svc.priceMax ? null : svc.priceMax * 100,
         bufferTime: 0,
         categoryId,
         isActive: true,
         locationIds: [locationId],
         memberIds: [defaultMember.id],
         sortOrder: i,
-        variations: sanitizeVariations(svc.variations ?? []),
+        variations,
         options: sanitizeOptions(svc.options ?? []),
         infoFields: sanitizeInfoFields(svc.infoFields ?? []),
       });

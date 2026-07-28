@@ -1,6 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  deriveServiceBasePricing,
+  formatPrice,
+  formatDuration,
+} from '@booking-app/shared';
 import { Input, Textarea, ConfirmDialog } from '@/components/ui';
 import { ClipboardList, Layers } from 'lucide-react';
 import { EditorSection } from './EditorSection';
@@ -54,6 +59,13 @@ export function SectionEssentiel({
   const activeMode: PriceMode = isVariations ? 'variations' : simpleMode;
 
   const priceInEuros = data.price / 100;
+  // What will actually be persisted in "variations" mode: the cheapest
+  // reachable combination (the "à partir de" clients see on the listing).
+  const derivedBase = deriveServiceBasePricing({
+    price: 0,
+    duration: 0,
+    variations: data.variations,
+  });
 
   const applySimple = (mode: SimpleMode) => {
     setSimpleMode(mode);
@@ -120,7 +132,7 @@ export function SectionEssentiel({
       </div>
 
       {/* Prix & durée — single decision, variations-aware */}
-      <div>
+      <div id="section-prix" className="scroll-mt-24">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Prix & durée
         </label>
@@ -147,11 +159,21 @@ export function SectionEssentiel({
         {activeMode === 'variations' ? (
           <div className="mt-3 flex items-start gap-2 rounded-lg border border-primary-200 dark:border-primary-900/40 bg-primary-50/60 dark:bg-primary-900/15 px-3 py-2.5">
             <Layers className="w-4 h-4 mt-0.5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
-            <p className="text-xs text-primary-800 dark:text-primary-200">
-              Le prix et la durée sont définis par la variation choisie par la
-              cliente. Configurez-les dans la section{' '}
-              <strong>Variations &amp; options</strong> ci-dessous.
-            </p>
+            <div className="text-xs text-primary-800 dark:text-primary-200">
+              <p>
+                Le prix et la durée sont définis par la variation choisie par la
+                cliente. Configurez-les dans la section{' '}
+                <strong>Variations &amp; options</strong> ci-dessous.
+              </p>
+              <p className="mt-1 text-primary-700/90 dark:text-primary-300/90">
+                La prestation sera affichée{' '}
+                <strong>
+                  à partir de {formatPrice(derivedBase.price)} ·{' '}
+                  {formatDuration(derivedBase.duration)}
+                </strong>{' '}
+                (la combinaison la moins chère).
+              </p>
+            </div>
           </div>
         ) : (
           <>

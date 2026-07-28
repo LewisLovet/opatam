@@ -2426,7 +2426,8 @@
       "depositPercentMax": "A percentagem não pode exceder 100",
       "depositFixedMax": "O sinal fixo não pode exceder o preço",
       "percentRange": "O desconto deve estar entre 1 e 100 %",
-      "endAfterStart": "A data de fim deve ser posterior à de início"
+      "endAfterStart": "A data de fim deve ser posterior à de início",
+      "variationsIncomplete": "Complete pelo menos uma variante: um nome e pelo menos uma escolha com nome."
     },
     "deleteService": {
       "title": "Eliminar o serviço",
@@ -2557,7 +2558,7 @@
     },
     "editor": {
       "variationNameLabel": "Nome da variante",
-      "variationNamePlaceholder": "Nome da variante (ex.: Comprimento)",
+      "variationNamePlaceholder": "Ex.: Comprimento",
       "choicePlaceholder": "Escolha (ex.: Meio das costas)",
       "priceLabel": "Preço (€)",
       "durationLabel": "Duração (min)",
@@ -2565,14 +2566,14 @@
       "totalPriceNote": "Preço e duração = o total para esta escolha (não é um suplemento).",
       "addVariation": "Adicionar uma variante",
       "optionNameLabel": "Nome da opção",
-      "optionNamePlaceholder": "Nome da opção (ex.: Madeixas)",
+      "optionNamePlaceholder": "Ex.: Madeixas",
       "optionDetailsWithCount": "Detalhes da opção ({{count}})",
       "optionDetailsEmpty": "Detalhes da opção — variantes e informações",
       "nestedVariationsHint": "Variantes desta opção (visíveis se a opção estiver assinalada)",
       "nestedInfoHint": "Informações a pedir para esta opção",
       "addOption": "Adicionar uma opção",
       "questionLabel": "Pergunta",
-      "questionPlaceholder": "Pergunta (ex.: Alergias?)",
+      "questionPlaceholder": "Ex.: Alergias?",
       "typeText": "Texto livre",
       "typeBoolean": "Sim/Não",
       "typeSelect": "Lista de escolhas",

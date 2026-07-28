@@ -2426,7 +2426,8 @@
       "depositPercentMax": "The percentage cannot exceed 100",
       "depositFixedMax": "A fixed deposit cannot exceed the price",
       "percentRange": "The discount must be between 1 and 100%",
-      "endAfterStart": "The end date must be after the start"
+      "endAfterStart": "The end date must be after the start",
+      "variationsIncomplete": "Complete at least one variation: a name and at least one named choice."
     },
     "deleteService": {
       "title": "Delete service",
@@ -2557,7 +2558,7 @@
     },
     "editor": {
       "variationNameLabel": "Variation name",
-      "variationNamePlaceholder": "Variation name (e.g. Length)",
+      "variationNamePlaceholder": "E.g. Length",
       "choicePlaceholder": "Choice (e.g. Mid-back)",
       "priceLabel": "Price (€)",
       "durationLabel": "Duration (min)",
@@ -2565,14 +2566,14 @@
       "totalPriceNote": "Price and duration = the total for this choice (not a supplement).",
       "addVariation": "Add a variation",
       "optionNameLabel": "Option name",
-      "optionNamePlaceholder": "Option name (e.g. Highlights)",
+      "optionNamePlaceholder": "E.g. Highlights",
       "optionDetailsWithCount": "Option details ({{count}})",
       "optionDetailsEmpty": "Option details — variations & info",
       "nestedVariationsHint": "Variations for this option (visible when the option is ticked)",
       "nestedInfoHint": "Info to request for this option",
       "addOption": "Add an option",
       "questionLabel": "Question",
-      "questionPlaceholder": "Question (e.g. Allergies?)",
+      "questionPlaceholder": "E.g. Allergies?",
       "typeText": "Free text",
       "typeBoolean": "Yes/No",
       "typeSelect": "List of choices",

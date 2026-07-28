@@ -2426,7 +2426,8 @@
       "depositPercentMax": "Le pourcentage ne peut pas dépasser 100",
       "depositFixedMax": "L'acompte fixe ne peut pas dépasser le prix",
       "percentRange": "La réduction doit être entre 1 et 100 %",
-      "endAfterStart": "La date de fin doit être après le début"
+      "endAfterStart": "La date de fin doit être après le début",
+      "variationsIncomplete": "Complétez au moins une variation : un nom et au moins un choix nommé."
     },
     "deleteService": {
       "title": "Supprimer la prestation",
@@ -2557,7 +2558,7 @@
     },
     "editor": {
       "variationNameLabel": "Nom de la variation",
-      "variationNamePlaceholder": "Nom de la variation (ex : Longueur)",
+      "variationNamePlaceholder": "Ex : Longueur",
       "choicePlaceholder": "Choix (ex : Mi-dos)",
       "priceLabel": "Prix (€)",
       "durationLabel": "Durée (min)",
@@ -2565,14 +2566,14 @@
       "totalPriceNote": "Prix et durée = le total pour ce choix (pas un supplément).",
       "addVariation": "Ajouter une variation",
       "optionNameLabel": "Nom de l'option",
-      "optionNamePlaceholder": "Nom de l'option (ex : Mèches)",
+      "optionNamePlaceholder": "Ex : Mèches",
       "optionDetailsWithCount": "Détails de l'option ({{count}})",
       "optionDetailsEmpty": "Détails de l'option — variations & infos",
       "nestedVariationsHint": "Variations de cette option (visibles si l'option est cochée)",
       "nestedInfoHint": "Infos à demander pour cette option",
       "addOption": "Ajouter une option",
       "questionLabel": "Question",
-      "questionPlaceholder": "Question (ex : Allergies ?)",
+      "questionPlaceholder": "Ex : Allergies ?",
       "typeText": "Texte libre",
       "typeBoolean": "Oui/Non",
       "typeSelect": "Liste de choix",

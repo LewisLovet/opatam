@@ -278,6 +278,45 @@ export function getServiceMinDuration(
   return min;
 }
 
+/** Bounds the PERSISTED base duration/price must respect — mirrors
+ *  `createServiceSchema` (5 min ≤ duration ≤ 8 h, price ≤ 10 000 €). Variation
+ *  choices themselves are allowed up to 24 h, so a derived minimum can overshoot
+ *  the base bound and has to be clamped. */
+export const SERVICE_BASE_DURATION_MIN = 5;
+export const SERVICE_BASE_DURATION_MAX = 480;
+export const SERVICE_BASE_PRICE_MAX = 1_000_000;
+
+/**
+ * The base `price` / `duration` to PERSIST on a service.
+ *
+ * With variations the pro never types them (the fields are hidden — the
+ * variations define the prestation), so we derive them from the CHEAPEST
+ * reachable combination: the stored values become the "à partir de" shown on
+ * cards, lists and the public fiche. Without variations the typed values are
+ * returned untouched — a free prestation stays free.
+ *
+ * Clamped so the stored document always satisfies the schema even in the
+ * degenerate cases: a variation with no option, or every option at 0 min,
+ * would otherwise derive a 0-minute duration and be rejected.
+ */
+export function deriveServiceBasePricing(
+  service: Pick<Service, 'price' | 'duration' | 'variations'>,
+): { price: number; duration: number } {
+  const variations = service.variations ?? [];
+  if (variations.length === 0) {
+    return { price: service.price, duration: service.duration };
+  }
+  const price = getServiceMinPrice({ price: 0, variations });
+  const duration = getServiceMinDuration({ duration: 0, variations });
+  return {
+    price: Math.min(SERVICE_BASE_PRICE_MAX, Math.max(0, Math.round(price) || 0)),
+    duration: Math.min(
+      SERVICE_BASE_DURATION_MAX,
+      Math.max(SERVICE_BASE_DURATION_MIN, Math.round(duration) || 0),
+    ),
+  };
+}
+
 /** `true` if the service has ANY variation / option / info field —
  *  i.e. the client needs the picker UI, not just a flat description. */
 export function serviceHasChoices(
