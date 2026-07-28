@@ -55,6 +55,7 @@ import {
 import { useProvidersCache, useAuth } from '../../../contexts';
 import { useLoyaltyCards, formatLoyaltyReward } from '../../../hooks/useLoyaltyCards';
 import {
+  ActivateLoyaltyButton,
   LoyaltyActivationCard,
   LoyaltyActivationSheet,
 } from '../../../components/business/LoyaltyCardActivation';
@@ -202,15 +203,12 @@ export default function ProviderDetailScreen() {
       ? loyaltyCard.threshold
       : loyaltyCard.confirmedCount % loyaltyCard.threshold
     : 0;
-  // Carte à activer : programme actif, pas en aperçu, et cartes chargées
-  // (sinon un client déjà activé verrait clignoter un bouton « Activer »).
-  // Elle reste montée pendant la révélation, le temps de la cinématique.
-  const showLoyaltyActivation =
-    isAuthenticated &&
-    !isPreview &&
-    !!publicLoyalty &&
-    !loyaltyLoading &&
-    (!loyaltyCard || loyaltyRevealing);
+  // Bloc COMPACT d'activation : programme actif, pas en aperçu, et cartes
+  // chargées (sinon un client déjà activé verrait clignoter un bouton
+  // « Activer »). Volontairement sans rangée de tampons — la carte se
+  // découvre dans la feuille d'activation, pas à l'arrivée sur la page.
+  const showLoyaltyCta =
+    isAuthenticated && !isPreview && !!publicLoyalty && !loyaltyLoading && !loyaltyCard;
 
   const handleLoyaltyActivated = async () => {
     // Re-fetch AVANT la cinématique : `armed` et les tampons rétroactifs ne
@@ -219,6 +217,11 @@ export default function ProviderDetailScreen() {
     setLoyaltySheetOpen(false);
     setLoyaltyRevealing(true);
   };
+  // Filet : si le re-fetch a échoué, la carte activée n'est jamais arrivée —
+  // on sort du mode révélation pour ne pas rester bloqué sur un écran vide.
+  useEffect(() => {
+    if (loyaltyRevealing && !loyaltyCard) setLoyaltyRevealing(false);
+  }, [loyaltyRevealing, loyaltyCard]);
   // Récompense ARMÉE : la réduction s'affiche sur les prix des prestations
   // éligibles dès la page publique (avant même d'appuyer sur Réserver) —
   // même calcul que le serveur, meilleure-des-deux face aux promos.
@@ -579,11 +582,62 @@ export default function ProviderDetailScreen() {
             </View>
           )}
 
-          {/* Carte à tampons ACTIVABLE — vierge (aucun RDV encore) ou voilée
-              (des RDV, mais carte pas encore activée). Après activation, la
-              cinématique se joue ici puis la ligne de progression prend le
-              relais (`loyaltyRevealing`). */}
-          {showLoyaltyActivation && publicLoyalty && (
+          {/* Bloc COMPACT d'activation — icône, titre, récompense, ⓘ et le
+              bouton. Pas de rangée de tampons ici : la carte se découvre
+              dans la feuille d'activation, au moment où le client s'engage. */}
+          {showLoyaltyCta && publicLoyalty && (
+            <View
+              style={{
+                marginTop: spacing.md,
+                backgroundColor: colors.primaryLight,
+                borderWidth: 1,
+                borderColor: colors.primary + '40',
+                borderRadius: radius.lg,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.md,
+                gap: spacing.md,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    backgroundColor: colors.primary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="gift" size={19} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="body" style={{ fontWeight: '700', color: colors.primary }}>
+                    {t('loyalty.provider.cardTitle')}
+                  </Text>
+                  <Text variant="caption" style={{ color: colors.textSecondary, marginTop: 1 }}>
+                    {t('loyalty.publicDetail', {
+                      threshold: loyaltyThreshold,
+                      reward: formatLoyaltyReward(
+                        publicLoyalty.rewardType,
+                        publicLoyalty.rewardValue,
+                        t,
+                      ),
+                    })}
+                  </Text>
+                </View>
+                <Pressable onPress={showLoyaltyInfo} hitSlop={8}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+                </Pressable>
+              </View>
+              <ActivateLoyaltyButton onPress={() => setLoyaltySheetOpen(true)} />
+            </View>
+          )}
+
+          {/* Cérémonie : la carte n'apparaît en entier QU'APRÈS activation,
+              le temps que les tampons tombent — puis la ligne de progression
+              ci-dessous prend le relais (`onRevealDone`). */}
+          {loyaltyRevealing && loyaltyCard && (
             <View style={{ marginTop: spacing.md }}>
               <LoyaltyActivationCard
                 header={
@@ -607,31 +661,21 @@ export default function ProviderDetailScreen() {
                       </Text>
                       <Text variant="caption" style={{ color: colors.textSecondary, marginTop: 1 }}>
                         {t('loyalty.publicDetail', {
-                          threshold: loyaltyThreshold,
+                          threshold: loyaltyCard.threshold,
                           reward: formatLoyaltyReward(
-                            publicLoyalty.rewardType,
-                            publicLoyalty.rewardValue,
+                            loyaltyCard.rewardType,
+                            loyaltyCard.rewardValue,
                             t,
                           ),
                         })}
                       </Text>
                     </View>
-                    <Pressable onPress={showLoyaltyInfo} hitSlop={8}>
-                      <Ionicons
-                        name="information-circle-outline"
-                        size={20}
-                        color={colors.primary}
-                      />
-                    </Pressable>
                   </View>
                 }
-                threshold={loyaltyThreshold}
+                threshold={loyaltyCard.threshold}
                 filled={loyaltyFilled}
-                activated={!!loyaltyCard}
-                // Carte vierge (aucun doc serveur) : rien à cacher, on montre
-                // les emplacements vides. Carte existante non activée : voilée.
-                veiled={!!rawLoyaltyCard}
-                revealing={loyaltyRevealing}
+                activated
+                revealing
                 onRequestActivation={() => setLoyaltySheetOpen(true)}
                 onRevealDone={() => setLoyaltyRevealing(false)}
               />
@@ -1059,6 +1103,7 @@ export default function ProviderDetailScreen() {
         visible={loyaltySheetOpen}
         providerId={provider?.id ?? null}
         businessName={provider?.businessName ?? ''}
+        threshold={loyaltyThreshold}
         onClose={() => setLoyaltySheetOpen(false)}
         onActivated={handleLoyaltyActivated}
       />

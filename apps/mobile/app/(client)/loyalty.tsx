@@ -299,6 +299,7 @@ export default function LoyaltyScreen() {
         visible={!!activationTarget}
         providerId={activationTarget?.providerId ?? null}
         businessName={activationTarget?.businessName ?? ''}
+        threshold={activationTarget?.threshold ?? 0}
         onClose={() => setActivationTarget(null)}
         onActivated={handleActivated}
       />

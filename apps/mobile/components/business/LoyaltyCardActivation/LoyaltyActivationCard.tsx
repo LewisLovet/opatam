@@ -10,12 +10,10 @@
  * dans l'espace fidélité, titre du programme sur la page du prestataire —
  * le corps (tampons, voile, opt-in, animations) reste identique.
  *
- * Trois rendus possibles :
- *  - activée            → tampons + (optionnel) réglage opt-in emails ;
- *  - non activée voilée → tampons quasi invisibles + CTA (le client a déjà
- *    des RDV : on ne révèle PAS sa progression avant activation) ;
- *  - non activée vierge → tampons vides bien visibles + CTA (aucune carte
- *    encore, il n'y a donc rien à cacher).
+ * Deux rendus possibles :
+ *  - activée     → tampons + (optionnel) réglage opt-in emails ;
+ *  - non activée → tampons quasi invisibles derrière un voile + CTA : on ne
+ *    révèle PAS la progression avant que le client ait activé sa carte.
  */
 
 import React from 'react';
@@ -23,8 +21,8 @@ import { useTranslation } from 'react-i18next';
 import { View, StyleSheet, Animated } from 'react-native';
 import { useTheme } from '../../../theme';
 import { Card } from '../../Card';
-import { Button } from '../../Button';
 import { Switch } from '../../Switch';
+import { ActivateLoyaltyButton } from './ActivateLoyaltyButton';
 import { ConfettiRain } from './ConfettiRain';
 import { StampRow } from './StampRow';
 
@@ -36,11 +34,6 @@ export interface LoyaltyActivationCardProps {
   /** Tampons posés à afficher (ignoré tant que la carte n'est pas activée). */
   filled: number;
   activated: boolean;
-  /**
-   * Masquer la jauge tant que la carte n'est pas activée. `true` par défaut
-   * quand le client a déjà une carte ; `false` pour une carte vierge.
-   */
-  veiled?: boolean;
   /** true = jouer la cinématique de révélation (vient d'être activée). */
   revealing: boolean;
   onRequestActivation: () => void;
@@ -54,7 +47,6 @@ export function LoyaltyActivationCard({
   threshold,
   filled,
   activated,
-  veiled = true,
   revealing,
   onRequestActivation,
   onRevealDone,
@@ -144,7 +136,7 @@ export function LoyaltyActivationCard({
               </View>
             )}
           </>
-        ) : veiled ? (
+        ) : (
           /* Jauge voilée : tampons à peine visibles + voile avec CTA.
              Ni progression ni récompense tant que la carte n'est pas activée. */
           <View
@@ -161,24 +153,7 @@ export function LoyaltyActivationCard({
               <StampRow filled={0} threshold={threshold} />
             </View>
             <View style={[StyleSheet.absoluteFill, styles.veilOverlay]}>
-              <Button
-                title={t('clientLoyalty.activation.activateButton')}
-                size="sm"
-                onPress={onRequestActivation}
-              />
-            </View>
-          </View>
-        ) : (
-          /* Carte vierge : rien à cacher (aucun RDV compté), on montre les
-             emplacements vides pour donner envie de les remplir. */
-          <View style={{ marginTop: spacing.md, gap: spacing.md }}>
-            <StampRow filled={0} threshold={threshold} />
-            <View style={styles.blankCta}>
-              <Button
-                title={t('clientLoyalty.activation.activateButton')}
-                size="sm"
-                onPress={onRequestActivation}
-              />
+              <ActivateLoyaltyButton onPress={onRequestActivation} />
             </View>
           </View>
         )}
@@ -200,9 +175,6 @@ const styles = StyleSheet.create({
   veilOverlay: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  blankCta: {
-    alignSelf: 'flex-start',
   },
   optInRow: {
     borderTopWidth: StyleSheet.hairlineWidth,

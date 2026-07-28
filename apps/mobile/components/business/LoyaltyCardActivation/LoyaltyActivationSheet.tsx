@@ -8,6 +8,10 @@
  *
  * L'appel réseau est encapsulé ici ; l'écran appelant n'a plus qu'à réagir
  * au succès (`onActivated`) — rafraîchir ses cartes puis jouer la révélation.
+ *
+ * C'est ICI qu'on découvre la carte et ses emplacements vides : la page du
+ * prestataire n'affiche qu'un bloc compact avec le bouton, pour ne pas
+ * encombrer la page avant que le client s'y intéresse.
  */
 
 import React from 'react';
@@ -21,11 +25,14 @@ import { Button } from '../../Button';
 import { OverlaySheet } from '../../OverlaySheet';
 import { useAuth } from '../../../contexts';
 import { postLoyaltyActivation } from '../../../hooks/useLoyaltyCards';
+import { StampRow } from './StampRow';
 
 export interface LoyaltyActivationSheetProps {
   visible: boolean;
   providerId: string | null;
   businessName: string;
+  /** Seuil du programme — la carte vierge affichée dans la feuille. */
+  threshold: number;
   /** Fermeture demandée par l'utilisateur (ignorée pendant l'appel réseau). */
   onClose: () => void;
   /**
@@ -40,6 +47,7 @@ export function LoyaltyActivationSheet({
   visible,
   providerId,
   businessName,
+  threshold,
   onClose,
   onActivated,
 }: LoyaltyActivationSheetProps) {
@@ -104,6 +112,22 @@ export function LoyaltyActivationSheet({
           {t('clientLoyalty.activation.sheetDescription', { businessName })}
         </Text>
 
+        {/* La carte, emplacements vides — dont le dernier, la récompense. */}
+        {threshold > 0 && (
+          <View
+            style={[
+              styles.blankCard,
+              {
+                backgroundColor: colors.surfaceSecondary,
+                borderColor: colors.border,
+                padding: spacing.md,
+              },
+            ]}
+          >
+            <StampRow filled={0} threshold={threshold} />
+          </View>
+        )}
+
         <Pressable
           onPress={() => setOptIn((v) => !v)}
           style={({ pressed }) => [
@@ -149,6 +173,11 @@ export function LoyaltyActivationSheet({
 }
 
 const styles = StyleSheet.create({
+  blankCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+  },
   optInCheckRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

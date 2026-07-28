@@ -10,6 +10,10 @@
 export { ConfettiRain, type ConfettiRainProps } from './ConfettiRain';
 export { StampRow, type StampRowProps } from './StampRow';
 export {
+  ActivateLoyaltyButton,
+  type ActivateLoyaltyButtonProps,
+} from './ActivateLoyaltyButton';
+export {
   LoyaltyActivationCard,
   type LoyaltyActivationCardProps,
 } from './LoyaltyActivationCard';
