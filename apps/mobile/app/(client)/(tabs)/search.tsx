@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Pressable,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,6 +62,10 @@ const MAX_BROWSE_RESULTS = 100;
 
 // Map CATEGORIES constant to the format CategorySelect expects
 const categoryOptions = CATEGORIES.map((c) => ({ id: c.id, label: c.label, icon: c.icon }));
+
+/** Largeur d'une carte du carrousel de suggestions : on laisse dépasser la
+ *  suivante pour signaler que la rangée défile horizontalement. */
+const SUGGESTION_CARD_WIDTH = 280;
 
 export default function SearchScreen() {
   const { colors, spacing, radius } = useTheme();
@@ -365,10 +370,23 @@ export default function SearchScreen() {
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         )}
+        {/* Suggestions : carrousel HORIZONTAL, volontairement séparé du
+            défilement vertical des résultats. Empilées verticalement avec la
+            même carte, elles se confondaient avec la suite du scroll infini —
+            on croyait continuer sa recherche. */}
         {!loading && suggestedProviders.length > 0 && (
-          <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl, paddingBottom: spacing.xl }}>
-            {/* Section header */}
-            <View style={[styles.popularHeader, { marginBottom: spacing.md }]}>
+          <View style={{ marginTop: spacing.xl, paddingBottom: spacing.xl }}>
+            <View
+              style={{
+                height: 1,
+                backgroundColor: colors.border,
+                marginHorizontal: spacing.lg,
+                marginBottom: spacing.lg,
+              }}
+            />
+            <View
+              style={[styles.popularHeader, { paddingHorizontal: spacing.lg, marginBottom: spacing.md }]}
+            >
               <View style={[styles.popularHeaderIcon, { backgroundColor: `${colors.primary}15` }]}>
                 <Ionicons name="trending-up" size={16} color={colors.primary} />
               </View>
@@ -381,22 +399,31 @@ export default function SearchScreen() {
                 </Text>
               </View>
             </View>
-            {suggestedProviders.map((provider) => (
-              <View key={provider.id} style={{ marginBottom: spacing.md }}>
-                <ProviderCard
-                  photoURL={provider.coverPhotoURL || provider.photoURL}
-                  businessName={provider.businessName}
-                  category={provider.category}
-                  city={provider.cities[0] || ''}
-                  rating={provider.rating}
-                  minPrice={provider.minPrice}
-                  nextAvailableSlot={provider.nextAvailableSlot}
-                  isVerified={provider.isVerified}
-                  onPress={() => navigateToProvider(provider.slug)}
-                  isLoading={isLoading(provider.slug)}
-                />
-              </View>
-            ))}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
+              // Le carrousel capte le geste horizontal ; le vertical reste
+              // à la FlatList des résultats.
+              directionalLockEnabled
+            >
+              {suggestedProviders.map((provider) => (
+                <View key={provider.id} style={{ width: SUGGESTION_CARD_WIDTH }}>
+                  <ProviderCard
+                    photoURL={provider.coverPhotoURL || provider.photoURL}
+                    businessName={provider.businessName}
+                    category={provider.category}
+                    city={provider.cities[0] || ''}
+                    rating={provider.rating}
+                    minPrice={provider.minPrice}
+                    nextAvailableSlot={provider.nextAvailableSlot}
+                    isVerified={provider.isVerified}
+                    onPress={() => navigateToProvider(provider.slug)}
+                    isLoading={isLoading(provider.slug)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
           </View>
         )}
       </>
