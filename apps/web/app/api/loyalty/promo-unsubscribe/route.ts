@@ -34,7 +34,26 @@ export async function GET(req: NextRequest) {
     if (!snap.exists || snap.data()!.promoUnsubToken !== token) {
       return page('Lien invalide', 'Ce lien de désinscription ne correspond à aucune inscription.');
     }
-    await ref.update({ promoEmailsOptIn: false });
+    // Désinscription sur TOUTES les fiches de ce client chez ce
+    // prestataire. Un client qui a réservé sous deux adresses en possède
+    // plusieurs : n'en désabonner qu'une laisserait la jumelle abonnée, et
+    // le prochain envoi serait repris par elle — le client aurait cliqué
+    // « ne plus recevoir » pour rien.
+    const data = snap.data()!;
+    const clientId = data.clientId as string | undefined;
+    const providerId = data.providerId as string | undefined;
+    const refs = [ref];
+    if (clientId && providerId) {
+      const siblings = await getAdminFirestore()
+        .collection('providerClients')
+        .where('clientId', '==', clientId)
+        .limit(100)
+        .get();
+      for (const d of siblings.docs) {
+        if (d.id !== ref.id && d.data().providerId === providerId) refs.push(d.ref);
+      }
+    }
+    await Promise.all(refs.map((r) => r.update({ promoEmailsOptIn: false })));
     return page(
       'Désinscription confirmée',
       'Vous ne recevrez plus les promotions de ce prestataire par email. Vous pouvez les réactiver à tout moment depuis votre carte de fidélité dans l\'app Opatam. / You will no longer receive this provider\'s promotions.',

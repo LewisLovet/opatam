@@ -9,12 +9,11 @@ import {
   isLoyaltyConfigValid,
   isLoyaltyRewardArmed,
   hasLoyaltyAccess,
-  getClientKey,
-  isLoyaltyCardActivated,
 } from '@booking-app/shared';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
+import { loyaltyRedemptionKey, resolveLoyaltyCard } from '@/lib/loyalty-identity';
 import { sendDepositPaymentRequestEmail } from '@/lib/emails/depositPaymentRequest';
 
 // Stripe Checkout Sessions require expires_at to be at least 30 minutes
@@ -156,75 +155,83 @@ export async function POST(request: NextRequest) {
       isLoyaltyConfigValid(providerData.settings?.loyalty) &&
       hasLoyaltyAccess(providerData)
     ) {
-      const clientKey = getClientKey({
-        clientId: verifiedUid,
-        clientInfo: validated.clientInfo ?? null,
-      } as Parameters<typeof getClientKey>[0]);
-      if (clientKey !== 'anonymous') {
-        try {
-          const adminDb = getAdminFirestore();
-          const threshold = providerData.settings!.loyalty!.threshold;
-          // Fidélité v2 : la carte doit être ACTIVÉE par le client pour
-          // consommer une récompense, et le compte effectif inclut le
-          // delta manuel posé par le pro (les deux vivent sur le doc
-          // providerClients, préservés par le recompute).
-          const clientDoc = await adminDb
-            .collection('providerClients')
-            .doc(`${validated.providerId}_${clientKey}`)
-            .get();
-          const cardActivated = isLoyaltyCardActivated(clientDoc.data());
-          const manualAdjustment = (clientDoc.data()?.loyaltyAdjustment as number | undefined) ?? 0;
-          // Comptage live : mêmes conditions que l'agrégateur (confirmée +
-          // connectée + post-lancement + RDV passé).
-          const now = Date.now();
-          const launch = new Date('2026-07-20T00:00:00+02:00').getTime();
-          const bookingsSnap = await adminDb
-            .collection('bookings')
-            .where('providerId', '==', validated.providerId)
-            .where('clientInfo.email', '==', validated.clientInfo!.email.trim().toLowerCase())
-            .get();
-          const computed = bookingsSnap.docs.filter((d) => {
-            const b = d.data();
-            const createdAt = b.createdAt?.toDate?.()?.getTime?.() ?? 0;
-            const datetime = b.datetime?.toDate?.()?.getTime?.() ?? Number.MAX_SAFE_INTEGER;
-            return (
-              b.status === 'confirmed' && !!b.clientId && createdAt >= launch && datetime <= now
-            );
-          }).length;
-          const count = Math.max(0, computed + manualAdjustment);
+      // Identité de la carte : l'UID, JAMAIS l'email du formulaire. Un
+      // client qui réserve tantôt avec l'adresse de son compte, tantôt avec
+      // une autre, avait deux cartes chez le même pro — l'une activée,
+      // l'autre qui se remplissait. Voir `lib/loyalty-identity`.
+      try {
+        const adminDb = getAdminFirestore();
+        const threshold = providerData.settings!.loyalty!.threshold;
+        // Fidélité v2 : la carte doit être ACTIVÉE par le client pour
+        // consommer une récompense, et le compte effectif inclut le delta
+        // manuel posé par le pro — l'un comme l'autre réunis sur TOUTES les
+        // fiches de ce client chez ce pro.
+        const card = await resolveLoyaltyCard(adminDb, validated.providerId, verifiedUid);
+        const cardActivated = card.activated;
+        const manualAdjustment = card.adjustment;
+        // Comptage live : mêmes conditions que l'agrégateur (confirmée +
+        // connectée + post-lancement + RDV passé). Requête par `clientId`
+        // et non par email : le filtre exigeait déjà un compte, l'ensemble
+        // obtenu est donc le même — à ceci près qu'il couvre maintenant
+        // TOUTES les adresses utilisées par ce client.
+        const now = Date.now();
+        const launch = new Date('2026-07-20T00:00:00+02:00').getTime();
+        const bookingsSnap = await adminDb
+          .collection('bookings')
+          .where('providerId', '==', validated.providerId)
+          .where('clientId', '==', verifiedUid)
+          .get();
+        const computed = bookingsSnap.docs.filter((d) => {
+          const b = d.data();
+          const createdAt = b.createdAt?.toDate?.()?.getTime?.() ?? 0;
+          const datetime = b.datetime?.toDate?.()?.getTime?.() ?? Number.MAX_SAFE_INTEGER;
+          return b.status === 'confirmed' && createdAt >= launch && datetime <= now;
+        }).length;
+        const count = Math.max(0, computed + manualAdjustment);
 
-          if (cardActivated && isLoyaltyRewardArmed(count, threshold)) {
-            // Ticket de rédemption — un par cycle de carte. Transaction :
-            // si le ticket existe déjà (résa réduite en cours, même pas
-            // encore passée), la récompense est déjà consommée → pas de
-            // deuxième réduction.
-            const cycle = count / threshold;
-            const ref = adminDb
-              .collection('loyaltyRedemptions')
-              .doc(`${validated.providerId}_${clientKey}_c${cycle}`);
-            const created = await adminDb.runTransaction(async (tx) => {
-              const existing = await tx.get(ref);
-              if (existing.exists) return false;
-              tx.set(ref, {
-                providerId: validated.providerId,
-                clientKey,
-                clientId: verifiedUid,
-                cycle,
-                threshold,
-                createdAt: new Date(),
-                bookingId: null,
-              });
-              return true;
+        if (cardActivated && isLoyaltyRewardArmed(count, threshold)) {
+          // Ticket de rédemption — un par cycle de carte. Transaction : si
+          // le ticket existe déjà (résa réduite en cours, même pas encore
+          // passée), la récompense est déjà consommée → pas de deuxième
+          // réduction.
+          const cycle = count / threshold;
+          const clientKey = loyaltyRedemptionKey(verifiedUid);
+          const ref = adminDb
+            .collection('loyaltyRedemptions')
+            .doc(`${validated.providerId}_${clientKey}_c${cycle}`);
+          // Tickets hérités : avant l'unification, la clé dérivait de
+          // l'email. Un cycle déjà consommé sous l'ancienne clé ne doit pas
+          // rouvrir droit à une réduction.
+          const legacyRefs = card.all
+            .map((c) => c.clientKey)
+            .filter((k) => k !== clientKey)
+            .map((k) =>
+              adminDb
+                .collection('loyaltyRedemptions')
+                .doc(`${validated.providerId}_${k}_c${cycle}`),
+            );
+          const created = await adminDb.runTransaction(async (tx) => {
+            const snaps = await Promise.all([ref, ...legacyRefs].map((r) => tx.get(r)));
+            if (snaps.some((snap) => snap.exists)) return false;
+            tx.set(ref, {
+              providerId: validated.providerId,
+              clientKey,
+              clientId: verifiedUid,
+              cycle,
+              threshold,
+              createdAt: new Date(),
+              bookingId: null,
             });
-            if (created) {
-              loyaltySettings = providerData.settings!.loyalty!;
-              loyaltyRedemptionRef = ref;
-            }
+            return true;
+          });
+          if (created) {
+            loyaltySettings = providerData.settings!.loyalty!;
+            loyaltyRedemptionRef = ref;
           }
-        } catch (e) {
-          // La fidélité ne doit JAMAIS bloquer une réservation.
-          console.error('[bookings] loyalty lookup failed:', e);
         }
+      } catch (e) {
+        // La fidélité ne doit JAMAIS bloquer une réservation.
+        console.error('[bookings] loyalty lookup failed:', e);
       }
     }
 

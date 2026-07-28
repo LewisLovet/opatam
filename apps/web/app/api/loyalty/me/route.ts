@@ -6,10 +6,14 @@ import {
   hasLoyaltyAccess,
   isLoyaltyConfigValid,
   isLoyaltyRewardArmed,
-  isLoyaltyCardActivated,
   loyaltyRemaining,
   type LoyaltySettings,
 } from '@booking-app/shared';
+import {
+  buildLoyaltyCardIdentity,
+  loyaltyRedemptionKey,
+  type OwnedProviderClient,
+} from '@/lib/loyalty-identity';
 
 /**
  * GET /api/loyalty/me — l'espace fidélité du client connecté.
@@ -24,6 +28,11 @@ import {
  * clients anonymes (résa par email sans compte) n'ont pas d'espace fidélité —
  * leur réduction s'applique quand même à la résa, simplement sans écran de
  * suivi.
+ *
+ * UNE SEULE CARTE PAR PRESTATAIRE. Un client qui a réservé sous deux
+ * adresses possède deux fiches `providerClients` (le CRM les découpe par
+ * email) : elles sont réunies ici en une carte unique, identifiée par
+ * (clientId, providerId). Voir `lib/loyalty-identity`.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -46,32 +55,50 @@ export async function GET(request: NextRequest) {
 
     if (snap.empty) return NextResponse.json({ cards: [] });
 
+    // Regroupement par prestataire AVANT toute lecture : c'est ce qui
+    // garantit qu'un client ayant plusieurs fiches chez le même pro ne voit
+    // jamais deux cartes.
+    const byProvider = new Map<string, OwnedProviderClient[]>();
+    for (const d of snap.docs) {
+      const data = d.data();
+      const pid = data.providerId as string | undefined;
+      if (!pid) continue;
+      const owned: OwnedProviderClient = {
+        ref: d.ref,
+        data,
+        clientKey: (data.clientKey as string) ?? d.id.slice(pid.length + 1),
+      };
+      byProvider.set(pid, [...(byProvider.get(pid) ?? []), owned]);
+    }
+
+    const entries = [...byProvider.entries()].map(([providerId, docs]) => ({
+      providerId,
+      card: buildLoyaltyCardIdentity(docs),
+    }));
+
     // Charge les prestataires concernés en parallèle pour joindre nom/photo
     // et évaluer le gate + les réglages fidélité à la lecture.
-    const entries = snap.docs.map((d) => d.data());
     const providers = await Promise.all(
-      entries.map((c) => db.collection('providers').doc(c.providerId as string).get()),
+      entries.map((e) => db.collection('providers').doc(e.providerId).get()),
     );
 
-    const rawCards = entries.flatMap((client, i) => {
+    const rawCards = entries.flatMap(({ card }, i) => {
       const p = providers[i].data();
       if (!p || !p.isPublished) return [];
       const loyalty = (p.settings?.loyalty ?? null) as LoyaltySettings | null;
       if (!isLoyaltyConfigValid(loyalty) || !hasLoyaltyAccess(p)) return [];
       // Compteur FIDÉLITÉ : seuls les RDV faits connecté après le lancement
       // ET passés remplissent la carte — PLUS le delta manuel du pro
-      // (fidélité v2). Le champ API `confirmedCount` reste le compte
-      // effectif affiché, inchangé pour le mobile.
-      const confirmedCount = Math.max(
-        0,
-        ((client.loyaltyConfirmedCount as number | undefined) ?? 0) +
-          ((client.loyaltyAdjustment as number | undefined) ?? 0),
-      );
-      const activated = isLoyaltyCardActivated(client);
+      // (fidélité v2). Les deux sont SOMMÉS sur toutes les fiches du client
+      // chez ce pro. Le champ API `confirmedCount` reste le compte effectif
+      // affiché, inchangé pour le mobile.
+      const confirmedCount = card.effectiveCount;
+      const activated = card.activated;
       return [
         {
+          // Clés de rédemption de CETTE carte, retirées avant la réponse.
+          legacyKeys: card.all.map((d) => d.clientKey),
           providerId: providers[i].id,
-          clientKey: client.clientKey as string,
           businessName: (p.businessName as string) ?? '',
           slug: (p.slug as string) ?? null,
           photoURL: (p.photoURL as string) ?? null,
@@ -85,7 +112,7 @@ export async function GET(request: NextRequest) {
           armed: activated && isLoyaltyRewardArmed(confirmedCount, loyalty.threshold),
           // Nouveaux champs pour le bouton « Activer ma carte » + opt-in.
           activated,
-          promoEmailsOptIn: (client.promoEmailsOptIn as boolean | undefined) ?? false,
+          promoEmailsOptIn: card.promoEmailsOptIn,
         },
       ];
     });
@@ -93,14 +120,19 @@ export async function GET(request: NextRequest) {
     // Récompense déjà consommée ce cycle (ticket de rédemption existant,
     // résa réduite pas encore passée) → la carte redémarre côté affichage.
     const cards = await Promise.all(
-      rawCards.map(async ({ clientKey, ...card }) => {
+      rawCards.map(async ({ legacyKeys, ...card }) => {
         if (!card.armed) return card;
         const cycle = card.confirmedCount / card.threshold;
-        const ticket = await db
-          .collection('loyaltyRedemptions')
-          .doc(`${card.providerId}_${clientKey}_c${cycle}`)
-          .get();
-        if (!ticket.exists) return card;
+        // Clé stable (uid) + clés héritées (une par fiche) : un ticket émis
+        // avant l'unification de la carte doit toujours compter, sinon la
+        // récompense serait accordée une seconde fois.
+        const keys = [...new Set([loyaltyRedemptionKey(uid), ...legacyKeys])];
+        const tickets = await Promise.all(
+          keys.map((k) =>
+            db.collection('loyaltyRedemptions').doc(`${card.providerId}_${k}_c${cycle}`).get(),
+          ),
+        );
+        if (!tickets.some((t) => t.exists)) return card;
         return { ...card, armed: false, remaining: card.threshold };
       }),
     );
