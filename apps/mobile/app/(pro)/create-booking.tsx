@@ -1540,7 +1540,7 @@ export default function CreateBookingScreen() {
         {step === STEP_CLIENT && (
           <KeyboardAvoidingView
             style={styles.flex}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
           >
             <ScrollView

@@ -1999,7 +1999,7 @@ export default function ProRegisterScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           contentContainerStyle={[
@@ -2113,7 +2113,9 @@ export default function ProRegisterScreen() {
             styles.stickyFooter,
             {
               paddingHorizontal: spacing.lg,
-              paddingBottom: insets.bottom + spacing.sm,
+              // Marge suffisante, pas cumulée : sur Android edge-to-edge
+              // `insets.bottom` vaut déjà la hauteur de la barre système.
+              paddingBottom: Math.max(insets.bottom, spacing.sm),
               paddingTop: spacing.md,
             },
           ]}
