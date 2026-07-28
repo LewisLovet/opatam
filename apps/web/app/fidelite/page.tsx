@@ -13,8 +13,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getLocale } from 'next-intl/server';
 
+import { PlayStoreWaitlistButton } from '@/components/common/PlayStoreWaitlistButton';
+
 const STORE_IOS = 'https://apps.apple.com/app/opatam/id6759246218';
-const STORE_ANDROID = 'https://play.google.com/store/apps/details?id=com.kamerleontech.opatam';
+// Pas de lien Play Store : l'app Android n'est pas publiée et le lien
+// direct menait à une page d'erreur. Le bouton ouvre la liste d'attente.
 
 const TEXTS = {
   fr: {
@@ -26,6 +29,7 @@ const TEXTS = {
     step3: 'Activez votre carte — vos rendez-vous déjà honorés y sont comptés',
     back: "Retour à l'accueil",
     badge: 'Télécharger sur',
+    soon: 'Bientôt sur',
   },
   en: {
     title: 'Your loyalty card',
@@ -36,6 +40,7 @@ const TEXTS = {
     step3: 'Activate your card — the appointments you already had are counted',
     back: 'Back to home',
     badge: 'Download on',
+    soon: 'Coming soon to',
   },
   it: {
     title: 'La tua carta fedeltà',
@@ -46,6 +51,7 @@ const TEXTS = {
     step3: 'Attiva la tua carta — gli appuntamenti già effettuati sono conteggiati',
     back: 'Torna alla home',
     badge: 'Scarica su',
+    soon: 'Presto su',
   },
   pt: {
     title: 'O seu cartão de fidelização',
@@ -56,6 +62,7 @@ const TEXTS = {
     step3: 'Ative o seu cartão — as marcações já realizadas são contabilizadas',
     back: 'Voltar ao início',
     badge: 'Descarregar na',
+    soon: 'Brevemente em',
   },
 } as const;
 
@@ -103,17 +110,12 @@ export default async function LoyaltyLandingPage() {
               <span className="block text-sm font-semibold">App Store</span>
             </span>
           </a>
-          <a
-            href={STORE_ANDROID}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-xl hover:bg-gray-800 transition-colors"
-          >
+          <PlayStoreWaitlistButton className="inline-flex items-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-xl hover:bg-gray-800 transition-colors">
             <span className="text-left leading-tight">
-              <span className="block text-[10px] opacity-80">{t.badge}</span>
+              <span className="block text-[10px] opacity-80">{t.soon}</span>
               <span className="block text-sm font-semibold">Google Play</span>
             </span>
-          </a>
+          </PlayStoreWaitlistButton>
         </div>
 
         <Link

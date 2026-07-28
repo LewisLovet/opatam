@@ -17,6 +17,7 @@ import { ReviewsSection } from './ReviewsSection';
 import { InfosSection } from './InfosSection';
 import { MobileBookingBar } from './MobileBookingBar';
 import { DemoBanner } from './DemoBanner';
+import { PlayStoreWaitlistButton } from '@/components/common/PlayStoreWaitlistButton';
 
 // Serialized types (dates as strings from server)
 interface SerializedProvider {
@@ -348,10 +349,7 @@ export function ProviderPageClient({
                           <span className="block text-xs font-semibold leading-tight">App Store</span>
                         </span>
                       </a>
-                      <a
-                        href="https://play.google.com/store/apps/details?id=com.kamerleontech.opatam"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <PlayStoreWaitlistButton
                         aria-label={t('appCtaPlayAria')}
                         className="inline-flex items-center gap-2 px-3 py-1.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
                       >
@@ -362,7 +360,7 @@ export function ProviderPageClient({
                           <span className="block text-[9px] leading-tight">{tBadges('downloadOn')}</span>
                           <span className="block text-xs font-semibold leading-tight">Google Play</span>
                         </span>
-                      </a>
+                      </PlayStoreWaitlistButton>
                     </div>
                   </div>
                 </div>

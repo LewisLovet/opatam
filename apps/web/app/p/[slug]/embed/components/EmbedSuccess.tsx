@@ -2,6 +2,7 @@
 
 import { CheckCircle2, Calendar, MapPin, User } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
+import { PlayStoreWaitlistButton } from '@/components/common/PlayStoreWaitlistButton';
 
 interface EmbedSuccessProps {
   /** Service + slot + member recap for context */
@@ -118,17 +119,14 @@ export function EmbedSuccess({
             </svg>
             App Store
           </a>
-          <a
-            href="https://play.google.com/store/apps/details?id=com.kamerleontech.opatam"
-            target="_blank"
-            rel="noopener noreferrer"
+          <PlayStoreWaitlistButton
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 512 512" fill="currentColor">
               <path d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z" />
             </svg>
             Google Play
-          </a>
+          </PlayStoreWaitlistButton>
         </div>
       </div>
 
