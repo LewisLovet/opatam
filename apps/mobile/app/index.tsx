@@ -4,15 +4,13 @@
  */
 
 import { useState, useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../contexts';
-import { useTheme } from '../theme';
+import { AppBootSplash } from '../components/AppBootSplash';
 import { hasSeenOnboarding } from '../utils';
 
 export default function Index() {
   const { isAuthenticated, isLoading: authLoading, userData } = useAuth();
-  const { colors } = useTheme();
 
   const [onboardingSeen, setOnboardingSeen] = useState<boolean | null>(null);
 
@@ -23,12 +21,13 @@ export default function Index() {
 
   // Show loading while checking auth or onboarding state
   // Also wait for userData to be loaded to check role
+  //
+  // Le décor du splash plutôt qu'un spinner nu : cet instant arrive JUSTE
+  // après le splash natif plein écran, et un indicateur seul sur fond
+  // clair y produisait une rupture brutale. On prolonge la même scène,
+  // le démarrage se lit comme une séquence continue.
   if (authLoading || onboardingSeen === null || (isAuthenticated && !userData)) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <AppBootSplash />;
   }
 
   // Authenticated → redirect based on role.
@@ -53,11 +52,3 @@ export default function Index() {
   // Not authenticated, has seen onboarding → welcome gate
   return <Redirect href="/(auth)" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
