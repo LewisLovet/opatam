@@ -450,6 +450,12 @@ export default function ProRegisterScreen() {
    *  défilement tomberait systématiquement trop haut, de la hauteur de
    *  l'en-tête. */
   const stepContentOffset = useRef(0);
+  /** Position des sous-blocs « Choix » dans chaque carte, pour viser la
+   *  variation ou l'option désignée plutôt que le haut de la carte. */
+  const choiceOffsets = useRef<Record<string, number>>({});
+  /** Carte mise en évidence quelques secondes après un saut depuis
+   *  l'aperçu : sans repère visuel, on atterrit sans comprendre pourquoi. */
+  const [highlightedService, setHighlightedService] = useState<number | null>(null);
   const [data, setData] = useState<WizardData>(() => ({
     ...DEFAULT_DATA,
     locationName: i18n.t('auth.pro.locationNames.salon'),
@@ -1551,8 +1557,8 @@ export default function ProRegisterScreen() {
             gap: spacing.sm,
             padding: spacing.md,
             borderRadius: radius.lg,
-            borderWidth: 1,
-            borderColor: colors.border,
+            borderWidth: highlightedService === index ? 2 : 1,
+            borderColor: highlightedService === index ? colors.primary : colors.border,
             backgroundColor: 'rgba(255,255,255,0.5)',
           }}
         >
@@ -1731,8 +1737,18 @@ export default function ProRegisterScreen() {
             </Pressable>
 
             {expandedChoices[index] && (
-              <View style={{ gap: spacing.lg, marginTop: spacing.sm }}>
-                <View style={{ gap: spacing.xs }}>
+              <View
+                style={{ gap: spacing.lg, marginTop: spacing.sm }}
+                onLayout={(e) => {
+                  choiceOffsets.current[`${index}:container`] = e.nativeEvent.layout.y;
+                }}
+              >
+                <View
+                  style={{ gap: spacing.xs }}
+                  onLayout={(e) => {
+                    choiceOffsets.current[`${index}:variations`] = e.nativeEvent.layout.y;
+                  }}
+                >
                   <Text variant="label" color="text">{t('auth.pro.step3.variationsTitle')}</Text>
                   <Text variant="caption" color="textSecondary">
                     {t('auth.pro.step3.variationsDesc')}
@@ -1743,7 +1759,12 @@ export default function ProRegisterScreen() {
                   />
                 </View>
 
-                <View style={{ gap: spacing.xs }}>
+                <View
+                  style={{ gap: spacing.xs }}
+                  onLayout={(e) => {
+                    choiceOffsets.current[`${index}:options`] = e.nativeEvent.layout.y;
+                  }}
+                >
                   <Text variant="label" color="text">{t('auth.pro.step3.optionsTitle')}</Text>
                   <Text variant="caption" color="textSecondary">
                     {t('auth.pro.step3.optionsDesc')}
@@ -2383,17 +2404,31 @@ export default function ProRegisterScreen() {
              * reste un MIROIR fidèle, le formulaire reste l'unique endroit
              * où l'on saisit.
              */
-            onEditSection={() => {
+            onEditSection={(section) => {
               const target = previewServiceIndex;
+              const toChoices = section === 'variations' || section === 'options';
               setPreviewServiceIndex(null);
-              // On attend la fermeture de la feuille avant de défiler,
-              // sinon le mouvement se joue derrière le voile.
+              // Le bloc « Choix » est replié par défaut : sans l'ouvrir, le
+              // crayon d'une variation ramenait à une carte n'affichant
+              // qu'un nom et un prix — on atterrissait sans comprendre.
+              if (toChoices) setExpandedChoices((prev) => ({ ...prev, [target]: true }));
+              setHighlightedService(target);
+              setTimeout(() => setHighlightedService(null), 2200);
+              // On attend la fermeture de la feuille ET le dépliage avant
+              // de défiler, sinon on vise des positions encore périmées.
               setTimeout(() => {
-                const y = stepContentOffset.current + (serviceOffsets.current[target] ?? 0);
-                // Une marge au-dessus pour que le titre de la prestation
-                // reste visible, plutôt que collé au bord haut.
-                stepScrollRef.current?.scrollTo({ y: Math.max(0, y - 24), animated: true });
-              }, 320);
+                const card = stepContentOffset.current + (serviceOffsets.current[target] ?? 0);
+                // Trois niveaux d'imbrication : `onLayout` étant toujours
+                // relatif au parent, il faut additionner conteneur des
+                // choix + bloc visé pour viser juste.
+                const sub = toChoices
+                  ? (choiceOffsets.current[`${target}:container`] ?? 0) +
+                    (choiceOffsets.current[`${target}:${section}`] ?? 0)
+                  : 0;
+                // Une marge au-dessus pour que le titre reste visible,
+                // plutôt que collé au bord haut.
+                stepScrollRef.current?.scrollTo({ y: Math.max(0, card + sub - 24), animated: true });
+              }, 380);
             }}
             onPublish={() => {
               const svc = data.services[previewServiceIndex];
