@@ -1,12 +1,23 @@
 /**
  * In-app store review prompt (App Store / Play Store natif).
  *
- * Appelé aux « moments positifs » (résa confirmée, avis 4-5 étoiles déposé).
+ * Appelé aux « moments positifs ». Côté CLIENT : résa confirmée, avis 4-5
+ * étoiles déposé. Côté PRO : réservation acceptée (du chiffre qui rentre),
+ * et consultation de ses avis quand la note est flatteuse.
+ *
  * Le prompt n'est demandé que si :
- *   - au moins MIN_POSITIVE_EVENTS moments positifs cumulés,
+ *   - au moins `minEvents` moments positifs cumulés,
  *   - pas de demande dans les COOLDOWN_DAYS derniers jours.
  * L'OS garde de toute façon le dernier mot (iOS plafonne à ~3 affichages/an
  * et ne dit jamais si la popup a réellement été montrée).
+ *
+ * Le seuil est PLUS HAUT côté pro : accepter une réservation est un geste
+ * quotidien, alors qu'une cliente ne réserve pas tous les jours. Sans ça, un
+ * salon actif brûlerait sa fenêtre de 120 jours dès sa première matinée
+ * d'utilisation, avant même de s'être fait une opinion de l'app.
+ *
+ * Le compteur est COMMUN aux deux rôles (un pro réserve aussi chez ses
+ * confrères) ; c'est le seuil du moment déclencheur qui s'applique.
  *
  * IMPORTANT (OTA) : expo-store-review est un module NATIF présent seulement
  * à partir du build 1.6.0. Ce fichier part aussi en OTA vers des binaires
@@ -20,6 +31,17 @@ const STORAGE_KEY = '@opatam/store_review';
 const MIN_POSITIVE_EVENTS = 2;
 const COOLDOWN_DAYS = 120;
 const PROMPT_DELAY_MS = 1500; // laisse le toast de succès / la navigation se poser
+
+/** Seuil côté pro — voir l'en-tête : gestes plus fréquents, barre plus haute. */
+export const PRO_MIN_POSITIVE_EVENTS = 3;
+
+/**
+ * Note à partir de laquelle consulter ses avis est un bon moment : le pro
+ * regarde une réussite. En dessous, la demande tomberait au pire instant.
+ * Le nombre minimum d'avis évite qu'un unique 5 étoiles fasse une moyenne.
+ */
+export const PRO_FLATTERING_AVERAGE = 4.5;
+export const PRO_MIN_REVIEWS_FOR_PROMPT = 3;
 
 interface ReviewState {
   events: number;
@@ -50,15 +72,20 @@ async function writeState(state: ReviewState): Promise<void> {
 /**
  * Enregistre un moment positif et, si les conditions sont réunies, demande
  * la popup de notation native. Fire-and-forget : jamais d'exception.
+ *
+ * @param minEvents seuil de moments cumulés — passer `PRO_MIN_POSITIVE_EVENTS`
+ *                  depuis l'espace pro.
  */
-export async function recordPositiveMomentAndMaybeAskReview(): Promise<void> {
+export async function recordPositiveMomentAndMaybeAskReview(
+  minEvents: number = MIN_POSITIVE_EVENTS,
+): Promise<void> {
   if (__DEV__) return;
   try {
     const state = await readState();
     state.events += 1;
 
     const cooldownOver = Date.now() - state.lastAskAt > COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
-    if (state.events < MIN_POSITIVE_EVENTS || !cooldownOver) {
+    if (state.events < minEvents || !cooldownOver) {
       await writeState(state);
       return;
     }

@@ -4,7 +4,7 @@
  * toggle visibility, delete reviews.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -20,6 +20,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import i18n from '../../lib/i18n';
+import {
+  PRO_FLATTERING_AVERAGE,
+  PRO_MIN_POSITIVE_EVENTS,
+  PRO_MIN_REVIEWS_FOR_PROMPT,
+  recordPositiveMomentAndMaybeAskReview,
+} from '../../lib/appReview';
 import { Text, Card, useToast } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
@@ -162,6 +168,24 @@ export default function ReviewsScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  /**
+   * Moment positif pro : le prestataire consulte ses avis et sa note est
+   * flatteuse. C'est une navigation VOLONTAIRE vers une réussite, pas une
+   * interruption au milieu d'un geste métier.
+   *
+   * Une seule fois par ouverture d'écran (`hasRecordedMomentRef`) : sans ce
+   * garde-fou, chaque « tirer pour rafraîchir » compterait un moment de plus
+   * et la fenêtre de 120 jours partirait en une seule visite.
+   */
+  const hasRecordedMomentRef = useRef(false);
+  useEffect(() => {
+    if (isLoading || hasRecordedMomentRef.current) return;
+    if (rating.count < PRO_MIN_REVIEWS_FOR_PROMPT) return;
+    if (rating.average < PRO_FLATTERING_AVERAGE) return;
+    hasRecordedMomentRef.current = true;
+    void recordPositiveMomentAndMaybeAskReview(PRO_MIN_POSITIVE_EVENTS);
+  }, [isLoading, rating.average, rating.count]);
 
   const onRefresh = () => {
     setRefreshing(true);

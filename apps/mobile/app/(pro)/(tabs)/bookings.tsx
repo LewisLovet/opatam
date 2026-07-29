@@ -59,6 +59,10 @@ import { useAuth, useProvider } from '../../../contexts';
 import { API_URL } from '../../../lib/config';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import {
+  PRO_MIN_POSITIVE_EVENTS,
+  recordPositiveMomentAndMaybeAskReview,
+} from '../../../lib/appReview';
+import {
   useProviderBookings,
   useProviderActivities,
 } from '../../../hooks';
@@ -500,6 +504,9 @@ export default function ProBookingsScreen() {
       try {
         await bookingService.confirmBooking(bookingId, user.uid);
         await refresh();
+        // Moment positif : le pro vient d'accepter du chiffre. Après le
+        // refresh, donc jamais devant un écran encore en chargement.
+        void recordPositiveMomentAndMaybeAskReview(PRO_MIN_POSITIVE_EVENTS);
       } catch {
         Alert.alert(
           i18n.t('proBookings.alerts.errorTitle'),

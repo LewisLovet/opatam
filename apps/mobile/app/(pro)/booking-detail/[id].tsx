@@ -55,6 +55,10 @@ import type {
 import { ServiceChoicesPreview } from '../../../components/business/ServiceChoicesPreview';
 import type { WithId } from '@booking-app/firebase';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
+import {
+  PRO_MIN_POSITIVE_EVENTS,
+  recordPositiveMomentAndMaybeAskReview,
+} from '../../../lib/appReview';
 import { useTheme } from '../../../theme';
 import {
   Text,
@@ -453,6 +457,9 @@ export default function ProBookingDetailScreen() {
             try {
               await bookingService.confirmBooking(booking.id, user.uid);
               await loadBooking();
+              // Même moment positif que depuis la liste : réservation
+              // acceptée, écran rechargé.
+              void recordPositiveMomentAndMaybeAskReview(PRO_MIN_POSITIVE_EVENTS);
             } catch (err: any) {
               console.error('Error confirming booking:', err);
               Alert.alert(
