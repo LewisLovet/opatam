@@ -774,6 +774,85 @@ export default function ProRegisterScreen() {
   // Navigation
   // ---------------------------------------------------------------------------
 
+  /**
+   * Remplissage de confort — DÉVELOPPEMENT UNIQUEMENT.
+   *
+   * Retaper six étapes d'inscription à chaque essai décourage de tester le
+   * parcours, et c'est justement le parcours qu'on veut éprouver souvent.
+   * Le bouton n'existe pas hors `__DEV__` : aucun risque de le voir en
+   * production, ni d'embarquer ces données.
+   *
+   * L'adresse email est horodatée, sinon la deuxième inscription échoue
+   * sur « adresse déjà utilisée » — l'erreur la plus perdante quand on
+   * teste vite.
+   *
+   * Volontairement DEUX prestations : une à prix fixe et une à variations,
+   * pour éprouver aussi l'aperçu obligatoire et le crayon de correction.
+   */
+  const fillDevData = () => {
+    const stamp = Date.now();
+    setData((prev: WizardData) => ({
+      ...prev,
+      businessName: `Salon Test ${String(stamp).slice(-4)}`,
+      category: CATEGORIES[0].id,
+      description: 'Salon de test créé depuis le remplissage de développement.',
+      locationName: 'Boutique principale',
+      locationType: 'fixed',
+      cityOnly: false,
+      address: '10 Rue de Rivoli',
+      postalCode: '75004',
+      city: 'Paris',
+      geopoint: { latitude: 48.8566, longitude: 2.3522 },
+      services: [
+        {
+          name: 'Coupe simple',
+          duration: 45,
+          price: '35',
+          description: 'Coupe et brushing.',
+          category: 'Coiffure',
+          variations: [],
+          options: [],
+          infoFields: [],
+        },
+        {
+          name: 'Coloration',
+          duration: 90,
+          price: '',
+          description: 'Couleur sur mesure.',
+          category: 'Coiffure',
+          variations: [
+            {
+              id: `v-${stamp}`,
+              name: 'Longueur',
+              options: [
+                { id: `o-${stamp}-1`, name: 'Courts', price: 6000, duration: 90 },
+                { id: `o-${stamp}-2`, name: 'Longs', price: 9000, duration: 150 },
+              ],
+            },
+          ],
+          options: [
+            {
+              id: `a-${stamp}`,
+              name: 'Soin profond',
+              price: 1500,
+              duration: 15,
+              nestedVariations: [],
+              nestedInfoFields: [],
+            },
+          ],
+          infoFields: [],
+        },
+      ],
+      displayName: 'Testeur Opatam',
+      email: `dev+${stamp}@opatam.test`,
+      confirmEmail: `dev+${stamp}@opatam.test`,
+      phone: '0612345678',
+      password: 'Test1234!',
+      confirmPassword: 'Test1234!',
+    }));
+    showToast({ variant: 'success', message: `Formulaire rempli — dev+${stamp}@opatam.test` });
+  };
+
   const handleNext = () => {
     const error = validateStep();
     if (error) {
@@ -2214,6 +2293,32 @@ export default function ProRegisterScreen() {
           {/* Header: Back + Step Dots */}
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Remplissage de confort — n'existe qu'en développement. */}
+              {__DEV__ && (
+                <Pressable
+                  onPress={fillDevData}
+                  hitSlop={10}
+                  style={({ pressed }) => ({
+                    position: 'absolute',
+                    right: 0,
+                    top: -6,
+                    zIndex: 5,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: radius.full,
+                    backgroundColor: colors.primary,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Ionicons name="flash" size={13} color="#FFFFFF" />
+                  <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>
+                    DEV
+                  </Text>
+                </Pressable>
+              )}
               <Pressable
                 onPress={handleBack}
                 style={({ pressed }) => [
