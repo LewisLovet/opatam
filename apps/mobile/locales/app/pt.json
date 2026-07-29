@@ -2583,7 +2583,7 @@
       "variationNamePlaceholder": "Ex.: Comprimento",
       "choicePlaceholder": "Escolha (ex.: Meio das costas)",
       "priceLabel": "Preço (€)",
-      "durationLabel": "Duração (min)",
+      "durationLabel": "Duração",
       "addChoice": "Adicionar uma escolha",
       "totalPriceNote": "Preço e duração = o total para esta escolha (não é um suplemento).",
       "addVariation": "Adicionar uma variante",
@@ -2601,7 +2601,8 @@
       "typeSelect": "Lista de escolhas",
       "valuePlaceholder": "Escolha",
       "requiredLabel": "Obrigatório",
-      "addInfoField": "Adicionar uma informação"
+      "addInfoField": "Adicionar uma informação",
+      "durationUnit": "min"
     }
   },
   "proMembers": {

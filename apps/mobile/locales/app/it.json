@@ -2583,7 +2583,7 @@
       "variationNamePlaceholder": "Es.: Lunghezza",
       "choicePlaceholder": "Scelta (es.: Metà schiena)",
       "priceLabel": "Prezzo (€)",
-      "durationLabel": "Durata (min)",
+      "durationLabel": "Durata",
       "addChoice": "Aggiungi una scelta",
       "totalPriceNote": "Prezzo e durata = il totale per questa scelta (non un extra).",
       "addVariation": "Aggiungi una variante",
@@ -2601,7 +2601,8 @@
       "typeSelect": "Elenco di scelte",
       "valuePlaceholder": "Scelta",
       "requiredLabel": "Obbligatorio",
-      "addInfoField": "Aggiungi un'informazione"
+      "addInfoField": "Aggiungi un'informazione",
+      "durationUnit": "min"
     }
   },
   "proMembers": {

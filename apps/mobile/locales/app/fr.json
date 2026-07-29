@@ -2583,7 +2583,7 @@
       "variationNamePlaceholder": "Ex : Longueur",
       "choicePlaceholder": "Choix (ex : Mi-dos)",
       "priceLabel": "Prix (€)",
-      "durationLabel": "Durée (min)",
+      "durationLabel": "Durée",
       "addChoice": "Ajouter un choix",
       "totalPriceNote": "Prix et durée = le total pour ce choix (pas un supplément).",
       "addVariation": "Ajouter une variation",
@@ -2601,7 +2601,8 @@
       "typeSelect": "Liste de choix",
       "valuePlaceholder": "Choix",
       "requiredLabel": "Obligatoire",
-      "addInfoField": "Ajouter une info"
+      "addInfoField": "Ajouter une info",
+      "durationUnit": "min"
     }
   },
   "proMembers": {

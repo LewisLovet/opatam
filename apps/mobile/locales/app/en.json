@@ -2583,7 +2583,7 @@
       "variationNamePlaceholder": "E.g. Length",
       "choicePlaceholder": "Choice (e.g. Mid-back)",
       "priceLabel": "Price (€)",
-      "durationLabel": "Duration (min)",
+      "durationLabel": "Duration",
       "addChoice": "Add a choice",
       "totalPriceNote": "Price and duration = the total for this choice (not a supplement).",
       "addVariation": "Add a variation",
@@ -2601,7 +2601,8 @@
       "typeSelect": "List of choices",
       "valuePlaceholder": "Choice",
       "requiredLabel": "Required",
-      "addInfoField": "Add an info field"
+      "addInfoField": "Add an info field",
+      "durationUnit": "min"
     }
   },
   "proMembers": {

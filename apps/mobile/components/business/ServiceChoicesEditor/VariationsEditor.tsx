@@ -133,8 +133,14 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
                 onChangeText={(t) => updateOption(vi, oi, { name: t })}
                 autoCapitalize="sentences"
               />
+              {/* Même correction que dans OptionsEditor : colonnes élastiques
+                  et unité « min » déplacée dans le champ. La rangée est ici
+                  la plus étroite de l'app (trois colonnes, imbriquée dans une
+                  variation), d'où l'intérêt du libellé court. La colonne
+                  d'actions perd son `flex` pour ne pas disputer la largeur
+                  aux champs — `marginLeft: auto` la garde collée à droite. */}
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
-                <View style={{ width: 90 }}>
+                <View style={{ flex: 1 }}>
                   <Input
                     label={t('proServices.editor.priceLabel')}
                     placeholder="0"
@@ -147,9 +153,14 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
                     }
                   />
                 </View>
-                <View style={{ width: 90 }}>
+                <View style={{ flex: 1 }}>
                   <Input
                     label={t('proServices.editor.durationLabel')}
+                    rightIcon={
+                      <Text variant="caption" color="textMuted">
+                        {t('proServices.editor.durationUnit')}
+                      </Text>
+                    }
                     placeholder="0"
                     keyboardType="numeric"
                     value={option.duration ? String(option.duration) : ''}
@@ -160,7 +171,7 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
                     }
                   />
                 </View>
-                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: spacing.xs, paddingBottom: 12 }}>
+                <View style={{ marginLeft: 'auto', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: spacing.xs, paddingBottom: 12 }}>
                   <Pressable onPress={() => moveOption(vi, oi, -1)} hitSlop={6} disabled={oi === 0}>
                     <Ionicons
                       name="chevron-up"

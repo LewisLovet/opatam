@@ -90,8 +90,17 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
               </View>
             </View>
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <View style={{ width: 90 }}>
+            {/* Deux corrections au libellé qui repassait à la ligne :
+                - les colonnes sont ÉLASTIQUES et non plus figées à 90 px ;
+                - l'unité vit DANS le champ (« min » à droite) au lieu du
+                  libellé, qui redevient un seul mot dans les quatre langues.
+                Le libellé seul suffisait rarement : « Duration (min) » à
+                14 px fait ~100 pt, plus que la demi-rangée disponible sur un
+                écran de 375 pt. `flex-end` garde les deux champs alignés par
+                le bas si un futur libellé revient malgré tout sur deux
+                lignes. */}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
+              <View style={{ flex: 1 }}>
                 <Input
                   label={t('proServices.editor.priceLabel')}
                   placeholder="0"
@@ -102,9 +111,14 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
                   }
                 />
               </View>
-              <View style={{ width: 90 }}>
+              <View style={{ flex: 1 }}>
                 <Input
                   label={t('proServices.editor.durationLabel')}
+                  rightIcon={
+                    <Text variant="caption" color="textMuted">
+                      {t('proServices.editor.durationUnit')}
+                    </Text>
+                  }
                   placeholder="0"
                   keyboardType="numeric"
                   value={option.duration ? String(option.duration) : ''}
