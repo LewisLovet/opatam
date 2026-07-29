@@ -348,7 +348,8 @@
         "customCategoryHint": "Oppure inserisci un nome personalizzato:",
         "customCategoryPlaceholder": "Altra categoria...",
         "previewConfirm": "Conferma l'anteprima",
-        "previewConfirmHint": "Controlla il percorso come lo vedranno i tuoi clienti, poi conferma per continuare. La matita riporta al campo da correggere."
+        "previewConfirmHint": "Controlla il percorso come lo vedranno i tuoi clienti, poi conferma per continuare. La matita riporta al campo da correggere.",
+        "durationHint": "Ovvero {{label}}"
       },
       "step4": {
         "to": "alle",

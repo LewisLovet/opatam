@@ -348,7 +348,8 @@
         "customCategoryHint": "Or enter a custom name:",
         "customCategoryPlaceholder": "Other category...",
         "previewConfirm": "Confirm preview",
-        "previewConfirmHint": "Check the flow exactly as your clients will see it, then confirm to continue. The pencil jumps back to the field to fix."
+        "previewConfirmHint": "Check the flow exactly as your clients will see it, then confirm to continue. The pencil jumps back to the field to fix.",
+        "durationHint": "That is {{label}}"
       },
       "step4": {
         "to": "to",

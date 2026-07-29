@@ -348,7 +348,8 @@
         "customCategoryHint": "Ou entrez un nom personnalisé :",
         "customCategoryPlaceholder": "Autre catégorie...",
         "previewConfirm": "Valider l'aperçu",
-        "previewConfirmHint": "Vérifiez le parcours tel que vos clientes le verront, puis validez pour continuer. Le crayon ramène au champ à corriger."
+        "previewConfirmHint": "Vérifiez le parcours tel que vos clientes le verront, puis validez pour continuer. Le crayon ramène au champ à corriger.",
+        "durationHint": "Soit {{label}}"
       },
       "step4": {
         "to": "à",

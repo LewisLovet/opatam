@@ -174,7 +174,6 @@ const STEPS = [
   { key: 'account', icon: 'person-outline' as const },
 ];
 
-const DURATION_OPTIONS = [15, 30, 45, 60, 75, 90, 120, 150, 180, 240];
 
 // Same wording as /api/affiliates/verify (web) so the message matches.
 // Module-level helper — i18n.t is called at message time, not import time.
@@ -453,9 +452,17 @@ export default function ProRegisterScreen() {
   /** Position des sous-blocs « Choix » dans chaque carte, pour viser la
    *  variation ou l'option désignée plutôt que le haut de la carte. */
   const choiceOffsets = useRef<Record<string, number>>({});
-  /** Carte mise en évidence quelques secondes après un saut depuis
-   *  l'aperçu : sans repère visuel, on atterrit sans comprendre pourquoi. */
-  const [highlightedService, setHighlightedService] = useState<number | null>(null);
+  /**
+   * Bloc mis en évidence quelques secondes après un saut depuis l'aperçu :
+   * sans repère visuel, on atterrit sans comprendre pourquoi.
+   *
+   * On retient la SECTION et pas seulement la prestation : souligner
+   * toute la carte quand on a cliqué sur le crayon d'une option ne
+   * désigne pas ce qu'on vient de demander à corriger.
+   */
+  const [highlighted, setHighlighted] = useState<
+    { index: number; section: 'name' | 'price' | 'variations' | 'options' } | null
+  >(null);
   const [data, setData] = useState<WizardData>(() => ({
     ...DEFAULT_DATA,
     locationName: i18n.t('auth.pro.locationNames.salon'),
@@ -463,7 +470,6 @@ export default function ProRegisterScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showDurationModal, setShowDurationModal] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [customCategoryText, setCustomCategoryText] = useState('');
   const [copyFromDay, setCopyFromDay] = useState<number | null>(null);
@@ -1557,8 +1563,16 @@ export default function ProRegisterScreen() {
             gap: spacing.sm,
             padding: spacing.md,
             borderRadius: radius.lg,
-            borderWidth: highlightedService === index ? 2 : 1,
-            borderColor: highlightedService === index ? colors.primary : colors.border,
+            // Seules les sections « nom » et « prix » vivent directement
+            // sur la carte ; variations et options ont leur propre bloc.
+            borderWidth:
+              highlighted?.index === index && highlighted.section !== 'variations' && highlighted.section !== 'options'
+                ? 2
+                : 1,
+            borderColor:
+              highlighted?.index === index && highlighted.section !== 'variations' && highlighted.section !== 'options'
+                ? colors.primary
+                : colors.border,
             backgroundColor: 'rgba(255,255,255,0.5)',
           }}
         >
@@ -1640,28 +1654,24 @@ export default function ProRegisterScreen() {
             <>
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <View style={{ flex: 1 }}>
-                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-                    {t('auth.pro.step3.durationLabel')}
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      setEditingServiceIndex(index);
-                      setShowDurationModal(true);
+                  {/* Saisie LIBRE en minutes. Une liste figée (15, 30, 45…)
+                      ne couvre pas les métiers qui travaillent en 20, 25 ou
+                      100 minutes, et obligeait à choisir une durée fausse. */}
+                  <Input
+                    label={t('auth.pro.step3.durationLabel')}
+                    placeholder="60"
+                    value={svc.duration ? String(svc.duration) : ''}
+                    onChangeText={(v: string) => {
+                      const digits = v.replace(/[^0-9]/g, '');
+                      updateServiceField(index, 'duration', digits ? Number(digits) : 0);
                     }}
-                    style={({ pressed }) => [
-                      styles.selectButton,
-                      {
-                        borderColor: colors.border,
-                        borderRadius: radius.lg,
-                        padding: spacing.md,
-                        backgroundColor: 'rgba(255,255,255,0.8)',
-                        opacity: pressed ? 0.8 : 1,
-                      },
-                    ]}
-                  >
-                    <Text variant="body">{formatDurationLabel(svc.duration)}</Text>
-                    <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
-                  </Pressable>
+                    keyboardType="number-pad"
+                    helperText={
+                      svc.duration > 0
+                        ? t('auth.pro.step3.durationHint', { label: formatDurationLabel(svc.duration) })
+                        : undefined
+                    }
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Input
@@ -1744,7 +1754,16 @@ export default function ProRegisterScreen() {
                 }}
               >
                 <View
-                  style={{ gap: spacing.xs }}
+                  style={[
+                    { gap: spacing.xs },
+                    highlighted?.index === index && highlighted.section === 'variations' && {
+                      borderWidth: 2,
+                      borderColor: colors.primary,
+                      borderRadius: radius.lg,
+                      padding: spacing.sm,
+                      margin: -spacing.sm,
+                    },
+                  ]}
                   onLayout={(e) => {
                     choiceOffsets.current[`${index}:variations`] = e.nativeEvent.layout.y;
                   }}
@@ -1760,7 +1779,16 @@ export default function ProRegisterScreen() {
                 </View>
 
                 <View
-                  style={{ gap: spacing.xs }}
+                  style={[
+                    { gap: spacing.xs },
+                    highlighted?.index === index && highlighted.section === 'options' && {
+                      borderWidth: 2,
+                      borderColor: colors.primary,
+                      borderRadius: radius.lg,
+                      padding: spacing.sm,
+                      margin: -spacing.sm,
+                    },
+                  ]}
                   onLayout={(e) => {
                     choiceOffsets.current[`${index}:options`] = e.nativeEvent.layout.y;
                   }}
@@ -2412,8 +2440,8 @@ export default function ProRegisterScreen() {
               // crayon d'une variation ramenait à une carte n'affichant
               // qu'un nom et un prix — on atterrissait sans comprendre.
               if (toChoices) setExpandedChoices((prev) => ({ ...prev, [target]: true }));
-              setHighlightedService(target);
-              setTimeout(() => setHighlightedService(null), 2200);
+              setHighlighted({ index: target, section });
+              setTimeout(() => setHighlighted(null), 2200);
               // On attend la fermeture de la feuille ET le dépliage avant
               // de défiler, sinon on vise des positions encore périmées.
               setTimeout(() => {
@@ -2467,64 +2495,6 @@ export default function ProRegisterScreen() {
         )}
       </OverlaySheet>
 
-      {/* ── Duration Modal ── */}
-      <Modal visible={showDurationModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
-            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">{t('auth.pro.step3.durationLabel')}</Text>
-              <Pressable onPress={() => setShowDurationModal(false)}>
-                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
-              </Pressable>
-            </View>
-            <FlatList
-              data={DURATION_OPTIONS}
-              keyExtractor={(item) => String(item)}
-              renderItem={({ item }) => {
-                const label = item >= 60
-                  ? `${Math.floor(item / 60)}h${item % 60 > 0 ? String(item % 60).padStart(2, '0') : ''}`
-                  : `${item} min`;
-                return (
-                  <Pressable
-                    onPress={() => {
-                      updateServiceField(editingServiceIndex, 'duration', item);
-                      setShowDurationModal(false);
-                    }}
-                    style={({ pressed }) => [
-                      styles.listItem,
-                      {
-                        padding: spacing.md,
-                        paddingHorizontal: spacing.lg,
-                        backgroundColor: data.services[editingServiceIndex]?.duration === item
-                          ? colors.primaryLight
-                          : pressed
-                            ? 'rgba(0,0,0,0.03)'
-                            : 'transparent',
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="time-outline"
-                      size={18}
-                      color={data.services[editingServiceIndex]?.duration === item ? colors.primary : colors.textMuted}
-                    />
-                    <Text
-                      variant="body"
-                      style={{ flex: 1, marginLeft: spacing.sm, fontWeight: data.services[editingServiceIndex]?.duration === item ? '600' : '400' }}
-                      color={data.services[editingServiceIndex]?.duration === item ? 'primary' : 'text'}
-                    >
-                      {label}
-                    </Text>
-                    {data.services[editingServiceIndex]?.duration === item && (
-                      <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
-                    )}
-                  </Pressable>
-                );
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
 
       {/* ── Service Category Picker Modal ── */}
       <Modal visible={showCategoryPicker} transparent animationType="slide">
