@@ -439,6 +439,17 @@ export default function ProRegisterScreen() {
    * contrôle, sinon on valide un aperçu périmé.
    */
   const [previewedSignatures, setPreviewedSignatures] = useState<Set<string>>(new Set());
+
+  /** Position verticale de chaque carte de prestation, relevée à
+   *  l'affichage — le crayon de l'aperçu s'en sert pour ramener le pro
+   *  exactement là où il a demandé une correction. */
+  const stepScrollRef = useRef<ScrollView>(null);
+  const serviceOffsets = useRef<Record<number, number>>({});
+  /** Position du bloc d'étape dans le contenu défilant. `onLayout` d'une
+   *  carte donne sa position DANS SON PARENT : sans cette origine, le
+   *  défilement tomberait systématiquement trop haut, de la hauteur de
+   *  l'en-tête. */
+  const stepContentOffset = useRef(0);
   const [data, setData] = useState<WizardData>(() => ({
     ...DEFAULT_DATA,
     locationName: i18n.t('auth.pro.locationNames.salon'),
@@ -1533,6 +1544,9 @@ export default function ProRegisterScreen() {
       {data.services.map((svc: WizardService, index: number) => (
         <View
           key={index}
+          onLayout={(e) => {
+            serviceOffsets.current[index] = e.nativeEvent.layout.y;
+          }}
           style={{
             gap: spacing.sm,
             padding: spacing.md,
@@ -2136,6 +2150,7 @@ export default function ProRegisterScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          ref={stepScrollRef}
           contentContainerStyle={[
             styles.scrollContent,
             {
@@ -2213,6 +2228,9 @@ export default function ProRegisterScreen() {
 
           {/* Step Content */}
           <Animated.View
+            onLayout={(e) => {
+              stepContentOffset.current = e.nativeEvent.layout.y;
+            }}
             style={[
               { marginTop: spacing.xl },
               { opacity: stepFadeAnim, transform: [{ translateX: stepSlideAnim }] },
@@ -2355,6 +2373,28 @@ export default function ProRegisterScreen() {
             // passe à l'étape suivante.
             publishLabel={t('auth.pro.step3.previewConfirm')}
             publishHint={t('auth.pro.step3.previewConfirmHint')}
+            /**
+             * Le crayon renvoie au FORMULAIRE, à la prestation concernée —
+             * il n'ouvre pas un second éditeur dans l'aperçu.
+             *
+             * Éditer sur place supposerait de reconstruire les champs à
+             * l'intérieur de l'aperçu : deux interfaces pour les mêmes
+             * données, qui divergeraient à la première évolution. L'aperçu
+             * reste un MIROIR fidèle, le formulaire reste l'unique endroit
+             * où l'on saisit.
+             */
+            onEditSection={() => {
+              const target = previewServiceIndex;
+              setPreviewServiceIndex(null);
+              // On attend la fermeture de la feuille avant de défiler,
+              // sinon le mouvement se joue derrière le voile.
+              setTimeout(() => {
+                const y = stepContentOffset.current + (serviceOffsets.current[target] ?? 0);
+                // Une marge au-dessus pour que le titre de la prestation
+                // reste visible, plutôt que collé au bord haut.
+                stepScrollRef.current?.scrollTo({ y: Math.max(0, y - 24), animated: true });
+              }, 320);
+            }}
             onPublish={() => {
               const svc = data.services[previewServiceIndex];
               const next = new Set(previewedSignatures);
