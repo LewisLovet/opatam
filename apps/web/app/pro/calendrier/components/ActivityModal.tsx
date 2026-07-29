@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { isBlockedPeriodValid } from '@booking-app/shared';
 import {
   Modal,
   ModalHeader,
@@ -238,7 +239,15 @@ export function ActivityModal({
     }
     const startDt = combine(date, startTime);
     const endDt = combine(date, endTime);
-    if (endDt <= startDt) {
+    // Une activité tient sur UN jour : la règle partagée s'applique donc
+    // toujours en `sameDay`. `endDt <= startDt` gérait bien les bornes
+    // égales, mais refusait « 22:00 → 00:00 » — une fin à minuit produit
+    // une date antérieure au début —, alors que le service et le mobile
+    // l'acceptent. Une activité de soirée s'achevant à minuit était donc
+    // impossible à saisir depuis le web.
+    if (
+      !isBlockedPeriodValid({ allDay: false, sameDay: true, startTime, endTime })
+    ) {
       toast.error("L'heure de fin doit être après l'heure de début");
       return;
     }
