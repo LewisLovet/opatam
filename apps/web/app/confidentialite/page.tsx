@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 
@@ -161,6 +162,7 @@ export default function ConfidentialitePage() {
                 <li><strong>Droit à la limitation :</strong> limiter le traitement de vos données</li>
               </ul>
               <p className="mt-3">Pour exercer ces droits, contactez-nous à : <a href="mailto:contact@opatam.com" className="text-indigo-600 hover:underline">contact@opatam.com</a></p>
+              <p className="mt-2">Pour la <strong>suppression de votre compte</strong>, la marche à suivre est détaillée sur une page dédiée : <Link href="/supprimer-mon-compte" className="text-indigo-600 hover:underline">supprimer mon compte</Link>.</p>
               <p className="mt-2">Vous disposez également du droit d&apos;introduire une réclamation auprès de la CNIL (Commission Nationale de l&apos;Informatique et des Libertés) : <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">www.cnil.fr</a></p>
             </section>
 
