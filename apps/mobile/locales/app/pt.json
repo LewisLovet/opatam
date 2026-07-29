@@ -1940,7 +1940,9 @@
       "deleteMessage": "Pretende eliminar este período?",
       "delete": "Eliminar",
       "errorTitle": "Erro",
-      "deleteError": "Não foi possível eliminar"
+      "deleteError": "Não foi possível eliminar",
+      "edit": "Editar",
+      "actionsMessage": "O que pretende fazer?"
     },
     "emptyDay": {
       "title": "Nenhuma marcação",
@@ -2873,7 +2875,8 @@
     "startDate": "Data de início",
     "endDate": "Data de fim",
     "startTime": "Hora de início",
-    "endTime": "Hora de fim"
+    "endTime": "Hora de fim",
+    "updated": "Período bloqueado atualizado"
   },
   "proBlockedSlots": {
     "title": "Horários bloqueados",
@@ -2895,7 +2898,8 @@
     "empty": {
       "title": "Nenhum horário bloqueado",
       "description": "Bloqueie horários para indicar as suas indisponibilidades"
-    }
+    },
+    "edit": "Editar este período"
   },
   "loyalty": {
     "title": "Fidelização",

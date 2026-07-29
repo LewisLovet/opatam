@@ -1940,7 +1940,9 @@
       "deleteMessage": "Do you want to delete this period?",
       "delete": "Delete",
       "errorTitle": "Error",
-      "deleteError": "Could not delete"
+      "deleteError": "Could not delete",
+      "edit": "Edit",
+      "actionsMessage": "What would you like to do?"
     },
     "emptyDay": {
       "title": "No appointments",
@@ -2873,7 +2875,8 @@
     "startDate": "Start date",
     "endDate": "End date",
     "startTime": "Start time",
-    "endTime": "End time"
+    "endTime": "End time",
+    "updated": "Blocked period updated"
   },
   "proBlockedSlots": {
     "title": "Blocked slots",
@@ -2895,7 +2898,8 @@
     "empty": {
       "title": "No blocked slots",
       "description": "Block slots to mark when you're unavailable"
-    }
+    },
+    "edit": "Edit this period"
   },
   "loyalty": {
     "title": "Loyalty",

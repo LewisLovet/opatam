@@ -2044,8 +2044,15 @@ export default function CalendarScreen() {
       }
 
       const label = slot?.reason || t('proCalendar.blockedSlot.fallbackLabel');
-      Alert.alert(label, t('proCalendar.blockedSlot.deleteMessage'), [
+      Alert.alert(label, t('proCalendar.blockedSlot.actionsMessage'), [
         { text: t('common.cancel'), style: 'cancel' },
+        {
+          // Modifier plutôt que supprimer-recréer : rien ne l'empêchait
+          // techniquement, l'écran mobile n'avait simplement jamais eu de
+          // chemin d'édition (le web, lui, l'a toujours eu).
+          text: t('proCalendar.blockedSlot.edit'),
+          onPress: () => router.push(`/(pro)/block-slot?id=${id}` as any),
+        },
         {
           text: t('proCalendar.blockedSlot.delete'),
           style: 'destructive',

@@ -1940,7 +1940,9 @@
       "deleteMessage": "Voulez-vous supprimer cette période ?",
       "delete": "Supprimer",
       "errorTitle": "Erreur",
-      "deleteError": "Impossible de supprimer"
+      "deleteError": "Impossible de supprimer",
+      "edit": "Modifier",
+      "actionsMessage": "Que voulez-vous faire ?"
     },
     "emptyDay": {
       "title": "Aucun rendez-vous",
@@ -2873,7 +2875,8 @@
     "startDate": "Date de début",
     "endDate": "Date de fin",
     "startTime": "Heure de début",
-    "endTime": "Heure de fin"
+    "endTime": "Heure de fin",
+    "updated": "Créneau bloqué modifié"
   },
   "proBlockedSlots": {
     "title": "Créneaux bloqués",
@@ -2895,7 +2898,8 @@
     "empty": {
       "title": "Aucun créneau bloqué",
       "description": "Bloquez des créneaux pour indiquer vos indisponibilités"
-    }
+    },
+    "edit": "Modifier ce créneau"
   },
   "loyalty": {
     "title": "Fidélité",

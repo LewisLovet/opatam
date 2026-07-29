@@ -219,6 +219,29 @@ export default function BlockedSlotsScreen() {
               </View>
             )}
           </View>
+          {/* Modifier — seulement quand le groupe ne porte QU'UN créneau.
+              Un blocage posé sur plusieurs membres est un document par
+              membre : l'éditer comme un tout supposerait de créer et
+              supprimer des documents selon les membres cochés, ce qui
+              n'est plus une modification. Dans ce cas on garde la
+              suppression, et le pro recrée. */}
+          {group.slots.length === 1 && (
+            <Pressable
+              onPress={() => router.push(`/(pro)/block-slot?id=${group.slots[0].id}` as any)}
+              hitSlop={12}
+              accessibilityLabel={t('proBlockedSlots.edit')}
+              style={[
+                styles.deleteButton,
+                {
+                  backgroundColor: colors.surfaceSecondary,
+                  borderRadius: radius.full,
+                  marginRight: spacing.xs,
+                },
+              ]}
+            >
+              <Ionicons name="pencil" size={16} color={colors.textSecondary} />
+            </Pressable>
+          )}
           <Pressable
             onPress={() => handleDeleteGroup(group)}
             hitSlop={12}
