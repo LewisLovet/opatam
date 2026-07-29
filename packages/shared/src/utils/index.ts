@@ -34,6 +34,7 @@ export * from './service-pricing';
 export * from './loyalty';
 export * from './email';
 export * from './phone';
+export * from './blockedPeriod';
 // Article freshness — the "Nouveau" pill recency check used by both
 // the web blog cards and the mobile in-app tutoriels list.
 export * from './articles';
