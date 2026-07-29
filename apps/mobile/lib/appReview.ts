@@ -2,8 +2,15 @@
  * In-app store review prompt (App Store / Play Store natif).
  *
  * Appelé aux « moments positifs ». Côté CLIENT : résa confirmée, avis 4-5
- * étoiles déposé. Côté PRO : réservation acceptée (du chiffre qui rentre),
- * et consultation de ses avis quand la note est flatteuse.
+ * étoiles déposé. Côté PRO : nouvelle réservation découverte dans son
+ * planning (du chiffre qui tombe), et consultation de ses avis quand la note
+ * est flatteuse.
+ *
+ * Pourquoi la DÉCOUVERTE d'une résa et non son acceptation : le bouton
+ * « Confirmer » n'apparaît que si le prestataire a activé la confirmation
+ * manuelle (`settings.requiresConfirmation`), ce que personne n'a fait —
+ * les réservations naissent `confirmed`. Un déclencheur sur l'acceptation
+ * ne se serait donc jamais déclenché.
  *
  * Le prompt n'est demandé que si :
  *   - au moins `minEvents` moments positifs cumulés,
@@ -11,10 +18,10 @@
  * L'OS garde de toute façon le dernier mot (iOS plafonne à ~3 affichages/an
  * et ne dit jamais si la popup a réellement été montrée).
  *
- * Le seuil est PLUS HAUT côté pro : accepter une réservation est un geste
- * quotidien, alors qu'une cliente ne réserve pas tous les jours. Sans ça, un
- * salon actif brûlerait sa fenêtre de 120 jours dès sa première matinée
- * d'utilisation, avant même de s'être fait une opinion de l'app.
+ * Le seuil est PLUS HAUT côté pro : un salon actif reçoit des réservations
+ * tous les jours, alors qu'une cliente ne réserve que de temps en temps.
+ * Sans ça, un prestataire chargé brûlerait sa fenêtre de 120 jours en une
+ * semaine, avant même de s'être fait une opinion de l'app.
  *
  * Le compteur est COMMUN aux deux rôles (un pro réserve aussi chez ses
  * confrères) ; c'est le seuil du moment déclencheur qui s'applique.
@@ -27,7 +34,11 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { decideNewBookingMoment } from './newBookingWatermark';
+
 const STORAGE_KEY = '@opatam/store_review';
+/** Repère « dernière résa vue » du planning pro — voir `recordNewBookingSeen…`. */
+const LAST_SEEN_BOOKING_KEY = '@opatam/pro_last_seen_booking';
 const MIN_POSITIVE_EVENTS = 2;
 const COOLDOWN_DAYS = 120;
 const PROMPT_DELAY_MS = 1500; // laisse le toast de succès / la navigation se poser
@@ -106,5 +117,38 @@ export async function recordPositiveMomentAndMaybeAskReview(
     }, PROMPT_DELAY_MS);
   } catch {
     // no-op : la notation ne doit jamais gêner le parcours
+  }
+}
+
+/**
+ * Moment positif pro : une NOUVELLE réservation est apparue dans le planning
+ * depuis la dernière fois que le prestataire l'a regardé.
+ *
+ * Le repère est la date de création la plus récente parmi les réservations
+ * affichées (`latestCreatedAtMs`), stockée en local. Elle ne peut
+ * qu'AVANCER : un filtre de période plus étroit affiche moins de résas, et
+ * reculer le repère ferait recompter d'anciennes réservations comme neuves.
+ *
+ * La toute première consultation ne compte rien : on enregistre le repère et
+ * on s'arrête là, sinon tout l'historique d'un prestataire déjà installé
+ * passerait pour une bonne nouvelle du jour.
+ *
+ * Fire-and-forget : jamais d'exception.
+ */
+export async function recordNewBookingSeenAndMaybeAskReview(
+  latestCreatedAtMs: number,
+): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(LAST_SEEN_BOOKING_KEY);
+    const { shouldCount, nextWatermark } = decideNewBookingMoment(latestCreatedAtMs, raw);
+
+    if (nextWatermark !== null) {
+      await AsyncStorage.setItem(LAST_SEEN_BOOKING_KEY, String(nextWatermark));
+    }
+    if (!shouldCount) return;
+
+    await recordPositiveMomentAndMaybeAskReview(PRO_MIN_POSITIVE_EVENTS);
+  } catch {
+    // stockage indisponible : pas de notation, et surtout pas de crash
   }
 }

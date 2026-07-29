@@ -58,10 +58,7 @@ import {
 import { useAuth, useProvider } from '../../../contexts';
 import { API_URL } from '../../../lib/config';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
-import {
-  PRO_MIN_POSITIVE_EVENTS,
-  recordPositiveMomentAndMaybeAskReview,
-} from '../../../lib/appReview';
+import { recordNewBookingSeenAndMaybeAskReview } from '../../../lib/appReview';
 import {
   useProviderBookings,
   useProviderActivities,
@@ -370,6 +367,34 @@ export default function ProBookingsScreen() {
     endDate,
   });
 
+  /**
+   * Moment positif pro : une nouvelle réservation est tombée depuis la
+   * dernière consultation du planning. C'est LE bon moment — du chiffre qui
+   * arrive — et il vaut pour tous les prestataires, contrairement à
+   * l'acceptation d'une résa qui suppose la confirmation manuelle activée.
+   *
+   * On ne retient que les réservations qui valent une bonne nouvelle : une
+   * annulation ou un acompte encore impayé n'en est pas une.
+   */
+  useEffect(() => {
+    if (bookingsLoading) return;
+    let latestCreatedAt = 0;
+    for (const booking of bookings) {
+      if (
+        booking.status === 'cancelled' ||
+        booking.status === 'noshow' ||
+        booking.status === 'pending_payment'
+      ) {
+        continue;
+      }
+      const created = toDate(booking.createdAt).getTime();
+      if (Number.isFinite(created) && created > latestCreatedAt) {
+        latestCreatedAt = created;
+      }
+    }
+    if (latestCreatedAt > 0) void recordNewBookingSeenAndMaybeAskReview(latestCreatedAt);
+  }, [bookings, bookingsLoading]);
+
   const {
     activities,
     isLoading: activitiesLoading,
@@ -504,9 +529,6 @@ export default function ProBookingsScreen() {
       try {
         await bookingService.confirmBooking(bookingId, user.uid);
         await refresh();
-        // Moment positif : le pro vient d'accepter du chiffre. Après le
-        // refresh, donc jamais devant un écran encore en chargement.
-        void recordPositiveMomentAndMaybeAskReview(PRO_MIN_POSITIVE_EVENTS);
       } catch {
         Alert.alert(
           i18n.t('proBookings.alerts.errorTitle'),
