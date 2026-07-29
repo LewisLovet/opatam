@@ -22,7 +22,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -423,9 +423,22 @@ export default function ProRegisterScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const navigation = useNavigation();
   const { showToast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(0);
+
+  /**
+   * Aperçu client OBLIGATOIRE avant de quitter l'étape des prestations —
+   * uniquement pour celles qui portent des choix (variations, options,
+   * informations demandées). Sans choix, le libellé et le prix se lisent
+   * déjà dans le formulaire : imposer un aperçu n'apprendrait rien.
+   *
+   * On mémorise la SIGNATURE de ce qui a été vu, pas l'indice : modifier
+   * une prestation après l'avoir prévisualisée doit redemander un
+   * contrôle, sinon on valide un aperçu périmé.
+   */
+  const [previewedSignatures, setPreviewedSignatures] = useState<Set<string>>(new Set());
   const [data, setData] = useState<WizardData>(() => ({
     ...DEFAULT_DATA,
     locationName: i18n.t('auth.pro.locationNames.salon'),
@@ -744,6 +757,16 @@ export default function ProRegisterScreen() {
       showToast({ variant: 'error', message: error });
       return;
     }
+    // Étape prestations : on ouvre l'aperçu resté à valider plutôt que
+    // d'avancer. Le pro voit ce que verra sa cliente AVANT de publier —
+    // c'est le seul endroit où l'enchaînement des choix se juge.
+    if (currentStep === 2) {
+      const pending = firstUnpreviewedService();
+      if (pending >= 0) {
+        setPreviewServiceIndex(pending);
+        return;
+      }
+    }
     if (currentStep < STEPS.length - 1) {
       setCurrentStep((s) => s + 1);
       animateStepTransition('forward');
@@ -759,6 +782,32 @@ export default function ProRegisterScreen() {
     }
   };
 
+  /**
+   * Le geste « revenir en arrière » recule d'UNE ÉTAPE, il ne quitte plus
+   * l'inscription.
+   *
+   * Toutes les étapes vivent dans un seul écran, avec `currentStep` en
+   * mémoire locale : un balayage arrière dépilait donc la ROUTE entière et
+   * renvoyait à l'accueil, effaçant au passage tout ce qui avait été saisi.
+   * On intercepte le retrait de l'écran pour le transformer en « étape
+   * précédente » tant qu'il en reste une.
+   *
+   * `beforeRemove` couvre les trois chemins d'un coup : balayage iOS,
+   * bouton retour matériel Android, et flèche de l'en-tête.
+   */
+  const leavingRef = useRef(false);
+  useEffect(() => {
+    const sub = navigation.addListener('beforeRemove', (e: { preventDefault: () => void }) => {
+      // Sortie volontaire (fin d'inscription) : on laisse passer.
+      if (leavingRef.current || currentStep === 0) return;
+      e.preventDefault();
+      setCurrentStep((s) => s - 1);
+      animateStepTransition('back');
+    });
+    return sub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, currentStep]);
+
   // ---------------------------------------------------------------------------
   // Submit
   // ---------------------------------------------------------------------------
@@ -770,6 +819,12 @@ export default function ProRegisterScreen() {
       return;
     }
 
+    // Sortie VOLONTAIRE : une fois le compte créé, la garde de
+    // `(auth)/_layout` redirige vers l'espace pro, ce qui retire cet
+    // écran. Sans ce drapeau, l'interception du retour comprendrait ce
+    // départ comme un « revenir en arrière » et ramènerait à l'étape
+    // précédente au lieu de laisser l'inscription se terminer.
+    leavingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -902,6 +957,9 @@ export default function ProRegisterScreen() {
       setFinalizing(true);
     } catch (err: any) {
       console.error('Registration error:', err);
+      // L'inscription a échoué : l'écran reste, le geste de retour doit
+      // donc redevenir « étape précédente ».
+      leavingRef.current = false;
       const msg = err?.message || t('auth.pro.registerError');
       showToast({ variant: 'error', message: msg });
     } finally {
@@ -1431,6 +1489,30 @@ export default function ProRegisterScreen() {
     updated[index] = { ...updated[index], [field]: value };
     updateField('services', updated);
   };
+
+  /** Une prestation « à choix » : c'est là que l'aperçu apporte quelque
+   *  chose, puisque le prix affiché et le parcours client en dépendent. */
+  const serviceHasChoices = (svc: any) =>
+    sanitizeVariations(svc.variations ?? []).length > 0 ||
+    sanitizeOptions(svc.options ?? []).length > 0 ||
+    sanitizeInfoFields(svc.infoFields ?? []).length > 0;
+
+  const serviceSignature = (svc: any) =>
+    JSON.stringify([
+      svc.name,
+      svc.price,
+      svc.duration,
+      sanitizeVariations(svc.variations ?? []),
+      sanitizeOptions(svc.options ?? []),
+      sanitizeInfoFields(svc.infoFields ?? []),
+    ]);
+
+  /** Indice de la première prestation à choix dont l'aperçu n'a pas été
+   *  validé — `-1` quand tout est vu. */
+  const firstUnpreviewedService = (): number =>
+    data.services.findIndex(
+      (svc: any) => serviceHasChoices(svc) && !previewedSignatures.has(serviceSignature(svc)),
+    );
 
   const addServiceEntry = () => {
     updateField('services', [...data.services, { name: '', duration: 60, price: '', description: '', category: '', variations: [], options: [], infoFields: [] }]);
@@ -2267,6 +2349,32 @@ export default function ProRegisterScreen() {
         {previewServiceIndex !== null && data.services[previewServiceIndex] && (
           <ServiceChoicesPreview
             safeAreaBottom
+            // Valider l'aperçu mémorise la SIGNATURE de la prestation vue,
+            // puis relance l'avancement : s'il reste une autre prestation
+            // à choix non validée, elle s'ouvre à son tour ; sinon on
+            // passe à l'étape suivante.
+            publishLabel={t('auth.pro.step3.previewConfirm')}
+            publishHint={t('auth.pro.step3.previewConfirmHint')}
+            onPublish={() => {
+              const svc = data.services[previewServiceIndex];
+              const next = new Set(previewedSignatures);
+              next.add(serviceSignature(svc));
+              setPreviewedSignatures(next);
+
+              // Enchaîner : s'il reste une prestation à choix non validée,
+              // on ouvre la sienne ; sinon l'étape est franchie. Sans ça,
+              // le pro devait re-toucher « Suivant » après chaque aperçu.
+              const stillPending = data.services.findIndex(
+                (x: any) => serviceHasChoices(x) && !next.has(serviceSignature(x)),
+              );
+              if (stillPending >= 0) {
+                setPreviewServiceIndex(stillPending);
+                return;
+              }
+              setPreviewServiceIndex(null);
+              setCurrentStep((s) => s + 1);
+              animateStepTransition('forward');
+            }}
             service={{
               name: data.services[previewServiceIndex].name,
               // Same derivation as the creation: with variations the base is

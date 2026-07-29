@@ -61,6 +61,8 @@ export function ServiceChoicesPreview({
   onEditSection,
   onPublish,
   publishLoading = false,
+  publishLabel,
+  publishHint,
 }: {
   service: PreviewService;
   /** Active promo to reflect in the prices (effective = per-service or global).
@@ -85,6 +87,12 @@ export function ServiceChoicesPreview({
    *  publishes instead of showing the illustrative "Réserver" pill. */
   onPublish?: () => void;
   publishLoading?: boolean;
+  /** Libellé du bouton de validation. Par défaut « Publier » — l'écran
+   *  d'inscription, lui, ne publie rien : il fait valider l'aperçu avant
+   *  de passer à l'étape suivante. */
+  publishLabel?: string;
+  /** Phrase explicative au-dessus. Même raison que `publishLabel`. */
+  publishHint?: string;
 }) {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
@@ -472,7 +480,7 @@ export function ServiceChoicesPreview({
             />
             <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
               {onPublish
-                ? t('components.serviceChoicesPreview.publishHint')
+                ? publishHint ?? t('components.serviceChoicesPreview.publishHint')
                 : t('components.serviceChoicesPreview.clientPreviewHint')}
             </Text>
           </View>
@@ -664,7 +672,7 @@ export function ServiceChoicesPreview({
             ) : (
               <>
                 <Text variant="bodySmall" style={{ fontWeight: '700', color: '#FFFFFF' }}>
-                  {t('components.serviceChoicesPreview.publish')}
+                  {publishLabel ?? t('components.serviceChoicesPreview.publish')}
                 </Text>
                 <Ionicons name="checkmark" size={16} color="#FFFFFF" />
               </>

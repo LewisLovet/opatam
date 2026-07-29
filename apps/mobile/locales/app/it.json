@@ -346,7 +346,9 @@
         "addService": "Aggiungi un servizio",
         "serviceCategoryModalTitle": "Categoria del servizio",
         "customCategoryHint": "Oppure inserisci un nome personalizzato:",
-        "customCategoryPlaceholder": "Altra categoria..."
+        "customCategoryPlaceholder": "Altra categoria...",
+        "previewConfirm": "Conferma l'anteprima",
+        "previewConfirmHint": "Controlla il percorso come lo vedranno i tuoi clienti, poi conferma per continuare. La matita riporta al campo da correggere."
       },
       "step4": {
         "to": "alle",

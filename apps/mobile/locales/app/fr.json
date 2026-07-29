@@ -346,7 +346,9 @@
         "addService": "Ajouter une prestation",
         "serviceCategoryModalTitle": "Catégorie de prestation",
         "customCategoryHint": "Ou entrez un nom personnalisé :",
-        "customCategoryPlaceholder": "Autre catégorie..."
+        "customCategoryPlaceholder": "Autre catégorie...",
+        "previewConfirm": "Valider l'aperçu",
+        "previewConfirmHint": "Vérifiez le parcours tel que vos clientes le verront, puis validez pour continuer. Le crayon ramène au champ à corriger."
       },
       "step4": {
         "to": "à",

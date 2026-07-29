@@ -346,7 +346,9 @@
         "addService": "Adicionar um serviço",
         "serviceCategoryModalTitle": "Categoria do serviço",
         "customCategoryHint": "Ou introduza um nome personalizado:",
-        "customCategoryPlaceholder": "Outra categoria..."
+        "customCategoryPlaceholder": "Outra categoria...",
+        "previewConfirm": "Confirmar a pré-visualização",
+        "previewConfirmHint": "Verifique o percurso tal como os seus clientes o verão e confirme para continuar. O lápis leva ao campo a corrigir."
       },
       "step4": {
         "to": "às",

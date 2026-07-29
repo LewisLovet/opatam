@@ -346,7 +346,9 @@
         "addService": "Add a service",
         "serviceCategoryModalTitle": "Service category",
         "customCategoryHint": "Or enter a custom name:",
-        "customCategoryPlaceholder": "Other category..."
+        "customCategoryPlaceholder": "Other category...",
+        "previewConfirm": "Confirm preview",
+        "previewConfirmHint": "Check the flow exactly as your clients will see it, then confirm to continue. The pencil jumps back to the field to fix."
       },
       "step4": {
         "to": "to",
