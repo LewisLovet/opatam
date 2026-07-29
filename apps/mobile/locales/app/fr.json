@@ -295,7 +295,8 @@
         "phoneInvalid": "Numero de telephone invalide",
         "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
         "passwordMismatch": "Les mots de passe ne correspondent pas",
-        "emailMismatch": "Les adresses email ne correspondent pas"
+        "emailMismatch": "Les adresses email ne correspondent pas",
+        "serviceDurationInvalid": "Indiquez une durée comprise entre 5 minutes et 24 heures."
       },
       "registerError": "Erreur lors de l'inscription",
       "finalizing": "Création de votre espace…",
@@ -2879,7 +2880,8 @@
     "endDate": "Date de fin",
     "startTime": "Heure de début",
     "endTime": "Heure de fin",
-    "updated": "Créneau bloqué modifié"
+    "updated": "Créneau bloqué modifié",
+    "endBeforeStart": "L'heure de fin doit être après l'heure de début."
   },
   "proBlockedSlots": {
     "title": "Créneaux bloqués",

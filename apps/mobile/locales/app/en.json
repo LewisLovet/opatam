@@ -295,7 +295,8 @@
         "phoneInvalid": "Invalid phone number",
         "passwordTooShort": "Password must be at least 6 characters",
         "passwordMismatch": "Passwords do not match",
-        "emailMismatch": "Email addresses do not match"
+        "emailMismatch": "Email addresses do not match",
+        "serviceDurationInvalid": "Enter a duration between 5 minutes and 24 hours."
       },
       "registerError": "Error during registration",
       "finalizing": "Creating your space…",
@@ -2879,7 +2880,8 @@
     "endDate": "End date",
     "startTime": "Start time",
     "endTime": "End time",
-    "updated": "Blocked period updated"
+    "updated": "Blocked period updated",
+    "endBeforeStart": "The end time must be after the start time."
   },
   "proBlockedSlots": {
     "title": "Blocked slots",

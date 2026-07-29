@@ -56,6 +56,8 @@ import {
   getServiceMinPrice,
   deriveServiceBasePricing,
   formatPrice,
+  SERVICE_BASE_DURATION_MIN,
+  SERVICE_BASE_DURATION_MAX,
 } from '@booking-app/shared';
 import { EMAIL_REGEX as SHARED_EMAIL_REGEX, suggestEmailDomain } from '@booking-app/shared';
 import {
@@ -727,8 +729,10 @@ export default function ProRegisterScreen() {
         if (!data.cityOnly && !data.postalCode.trim())
           return t('auth.pro.validation.selectAddressSuggestion');
         return null;
-      case 2:
+      case 2: {
         if (data.services.length === 0) return t('auth.pro.validation.addOneService');
+        const badDuration = invalidDurationIndex();
+        if (badDuration >= 0) return t('auth.pro.validation.serviceDurationInvalid');
         for (let i = 0; i < data.services.length; i++) {
           if (!data.services[i].name.trim()) return t('auth.pro.validation.serviceNameRequired', { index: i + 1 });
           // With variations the price/duration inputs are hidden (the
@@ -745,6 +749,7 @@ export default function ProRegisterScreen() {
             return t('auth.pro.validation.servicePriceInvalid', { index: i + 1 });
         }
         return null;
+      }
       case 3: {
         const hasOpenDay = Object.values(data.availability).some((d) => d.isOpen);
         if (!hasOpenDay) return t('auth.pro.validation.openDayRequired');
@@ -853,6 +858,30 @@ export default function ProRegisterScreen() {
     showToast({ variant: 'success', message: `Formulaire rempli — dev+${stamp}@opatam.test` });
   };
 
+  /**
+   * Durée d'une prestation SANS variations — la seule saisie librement.
+   *
+   * Le wizard écrit dans Firestore via `serviceRepository.create`, sans
+   * passer par `createServiceSchema` : rien ne bornait donc cette valeur,
+   * et une prestation à 0 minute rendait créneaux et disponibilités
+   * incohérents. Avec variations, la durée de base est DÉRIVÉE de la
+   * combinaison la plus courte puis bornée par `deriveServiceBasePricing`
+   * — il n'y a rien à valider ici.
+   *
+   * Les bornes viennent des constantes partagées, jamais réécrites à la
+   * main : elles doivent rester celles du schéma serveur.
+   */
+  const invalidDurationIndex = (): number =>
+    data.services.findIndex((svc: WizardService) => {
+      if (sanitizeVariations(svc.variations ?? []).length > 0) return false;
+      const d = svc.duration;
+      return (
+        !Number.isInteger(d) ||
+        d < SERVICE_BASE_DURATION_MIN ||
+        d > SERVICE_BASE_DURATION_MAX
+      );
+    });
+
   const handleNext = () => {
     const error = validateStep();
     if (error) {
@@ -918,6 +947,18 @@ export default function ProRegisterScreen() {
     const error = validateStep();
     if (error) {
       showToast({ variant: 'error', message: error });
+      return;
+    }
+
+    // Seconde barrière, juste avant d'écrire. L'étape peut avoir été
+    // franchie puis la durée modifiée en revenant en arrière — et cet
+    // écran écrit dans Firestore SANS passer par `createServiceSchema`,
+    // il n'y a donc aucun filet côté service.
+    const badDuration = invalidDurationIndex();
+    if (badDuration >= 0) {
+      showToast({ variant: 'error', message: t('auth.pro.validation.serviceDurationInvalid') });
+      setCurrentStep(2);
+      animateStepTransition('back');
       return;
     }
 
@@ -1745,6 +1786,16 @@ export default function ProRegisterScreen() {
                       updateServiceField(index, 'duration', digits ? Number(digits) : 0);
                     }}
                     keyboardType="number-pad"
+                    error={
+                      // Silencieux tant que le champ est vide : on ne
+                      // gronde pas quelqu'un qui n'a pas encore saisi.
+                      svc.duration > 0 &&
+                      sanitizeVariations(svc.variations ?? []).length === 0 &&
+                      (svc.duration < SERVICE_BASE_DURATION_MIN ||
+                        svc.duration > SERVICE_BASE_DURATION_MAX)
+                        ? t('auth.pro.validation.serviceDurationInvalid')
+                        : undefined
+                    }
                     helperText={
                       svc.duration > 0
                         ? t('auth.pro.step3.durationHint', { label: formatDurationLabel(svc.duration) })

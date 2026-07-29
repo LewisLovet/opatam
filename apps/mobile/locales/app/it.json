@@ -295,7 +295,8 @@
         "phoneInvalid": "Numero di telefono non valido",
         "passwordTooShort": "La password deve contenere almeno 6 caratteri",
         "passwordMismatch": "Le password non corrispondono",
-        "emailMismatch": "Gli indirizzi email non corrispondono"
+        "emailMismatch": "Gli indirizzi email non corrispondono",
+        "serviceDurationInvalid": "Indica una durata compresa tra 5 minuti e 24 ore."
       },
       "registerError": "Errore durante la registrazione",
       "finalizing": "Creazione del tuo spazio…",
@@ -2879,7 +2880,8 @@
     "endDate": "Data di fine",
     "startTime": "Ora di inizio",
     "endTime": "Ora di fine",
-    "updated": "Periodo bloccato modificato"
+    "updated": "Periodo bloccato modificato",
+    "endBeforeStart": "L'ora di fine deve essere successiva all'ora di inizio."
   },
   "proBlockedSlots": {
     "title": "Orari bloccati",

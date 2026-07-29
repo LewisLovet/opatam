@@ -481,9 +481,40 @@ export default function BlockSlotScreen() {
     setActivePicker(null);
   };
 
+  /**
+   * Période cohérente ? Contrôlée pour la CRÉATION comme pour l'ÉDITION.
+   *
+   * La création passe par `schedulingService.blockPeriod`, qui refuse déjà
+   * une fin antérieure au début — mais l'édition écrit directement via le
+   * repository et court-circuitait donc ce garde-fou. Vérifier ici couvre
+   * les deux chemins depuis un seul endroit, et fait remonter l'erreur
+   * AVANT l'appel réseau plutôt qu'après.
+   *
+   * Une journée entière n'a pas d'heures : rien à comparer.
+   * Sur des jours DIFFÉRENTS, toute combinaison d'heures est valide (on
+   * bloque du lundi 18 h au mercredi 9 h). Seul le même jour impose une
+   * fin strictement postérieure — avec « 00:00 » compris comme minuit de
+   * fin de journée, comme côté serveur.
+   */
+  const periodError = (): string | null => {
+    if (allDay) return null;
+    const sameDay = startDate.toDateString() === endDate.toDateString();
+    if (!sameDay) return null;
+    const startMin = startDate.getHours() * 60 + startDate.getMinutes();
+    const endRaw = endDate.getHours() * 60 + endDate.getMinutes();
+    const endMin = endRaw === 0 ? 24 * 60 : endRaw;
+    return endMin > startMin ? null : t('proBlockSlot.endBeforeStart');
+  };
+
   const handleSubmit = async () => {
     if (!providerId || selectedMemberIds.length === 0) {
       Alert.alert(t('proBlockSlot.errorTitle'), t('proBlockSlot.selectAtLeastOne'));
+      return;
+    }
+
+    const invalidPeriod = periodError();
+    if (invalidPeriod) {
+      Alert.alert(t('proBlockSlot.errorTitle'), invalidPeriod);
       return;
     }
 

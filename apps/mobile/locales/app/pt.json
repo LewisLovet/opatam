@@ -295,7 +295,8 @@
         "phoneInvalid": "Número de telefone inválido",
         "passwordTooShort": "A palavra-passe deve ter pelo menos 6 caracteres",
         "passwordMismatch": "As palavras-passe não coincidem",
-        "emailMismatch": "Os endereços de email não coincidem"
+        "emailMismatch": "Os endereços de email não coincidem",
+        "serviceDurationInvalid": "Indique uma duração entre 5 minutos e 24 horas."
       },
       "registerError": "Erro durante o registo",
       "finalizing": "A criar a sua área…",
@@ -2879,7 +2880,8 @@
     "endDate": "Data de fim",
     "startTime": "Hora de início",
     "endTime": "Hora de fim",
-    "updated": "Período bloqueado atualizado"
+    "updated": "Período bloqueado atualizado",
+    "endBeforeStart": "A hora de fim deve ser posterior à hora de início."
   },
   "proBlockedSlots": {
     "title": "Horários bloqueados",
