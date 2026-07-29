@@ -24,7 +24,8 @@ import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
-import { schedulingService, memberService } from '@booking-app/firebase';
+import { schedulingService, memberService, blockedSlotRepository } from '@booking-app/firebase';
+import { isBlockedPeriodValid } from '@booking-app/shared';
 import type { Member } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
@@ -353,13 +354,23 @@ function DatePickerModal({
 
 type PickerMode = 'startDate' | 'endDate' | 'startTime' | 'endTime' | null;
 
+/** Motifs proposés. Sert aussi, en édition, à distinguer un motif choisi
+ *  d'une saisie libre : si le texte enregistré n'est aucun de ceux-ci,
+ *  c'est que le pro l'a écrit lui-même. */
+const REASON_KEYS = ['vacation', 'training', 'sick', 'personal', 'holiday', 'meeting'] as const;
+
 export default function BlockSlotScreen() {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
   const { providerId } = useProvider();
   const sub = useSubscriptionStatus();
-  const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
+  const { date: dateParam, id: editId } = useLocalSearchParams<{
+    date?: string;
+    /** Présent = ÉDITION d'un créneau existant. */
+    id?: string;
+  }>();
+  const isEditing = !!editId;
 
   // Subscription guard
   const [showSubModal, setShowSubModal] = useState(false);
@@ -388,17 +399,54 @@ export default function BlockSlotScreen() {
 
   useEffect(() => {
     if (!providerId) return;
-    memberService
-      .getByProvider(providerId)
-      .then((result) => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await memberService.getByProvider(providerId);
         const activeMembers = (result as WithId<Member>[]).filter((m) => m.isActive);
+        if (cancelled) return;
         setMembers(activeMembers);
-        // Pre-select all members by default
-        setSelectedMemberIds(activeMembers.map((m) => m.id));
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, [providerId]);
+
+        if (!editId) {
+          // Création : tous les membres pré-sélectionnés.
+          setSelectedMemberIds(activeMembers.map((m) => m.id));
+          return;
+        }
+
+        // Édition : on repart de l'existant. Le créneau appartient à UN
+        // membre — on ne propose donc pas d'en changer l'affectation ici
+        // (ce serait créer/supprimer des documents, pas modifier
+        // celui-ci). Le pro qui veut réaffecter supprime et recrée.
+        const existing = await blockedSlotRepository.getById(providerId, editId);
+        if (cancelled || !existing) return;
+        const sd = existing.startDate instanceof Date ? existing.startDate : (existing.startDate as any).toDate();
+        const ed = existing.endDate instanceof Date ? existing.endDate : (existing.endDate as any).toDate();
+        if (!existing.allDay && existing.startTime) {
+          const [sh, sm] = existing.startTime.split(':').map(Number);
+          sd.setHours(sh, sm, 0, 0);
+        }
+        if (!existing.allDay && existing.endTime) {
+          const [eh, em] = existing.endTime.split(':').map(Number);
+          ed.setHours(eh, em, 0, 0);
+        }
+        setSelectedMemberIds([existing.memberId]);
+        setStartDate(sd);
+        setEndDate(ed);
+        setAllDay(existing.allDay);
+        setReason(existing.reason ?? '');
+        // Un motif absent des propositions est forcément une saisie libre.
+        const presetLabels = REASON_KEYS.map((k) => i18n.t(`proBlockSlot.reasons.${k}`));
+        setIsCustomReason(!!existing.reason && !presetLabels.includes(existing.reason));
+      } catch {
+        // Silencieux : l'écran reste utilisable en création.
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [providerId, editId]);
 
   const allSelected = members.length > 0 && selectedMemberIds.length === members.length;
 
@@ -434,9 +482,37 @@ export default function BlockSlotScreen() {
     setActivePicker(null);
   };
 
+  /**
+   * Période cohérente ? Contrôlée pour la CRÉATION comme pour l'ÉDITION.
+   *
+   * La création passe par `schedulingService.blockPeriod`, qui refuse déjà
+   * une période invalide — mais l'édition écrit directement via le
+   * repository et court-circuitait ce garde-fou. Vérifier ici couvre les
+   * deux chemins depuis un seul endroit, et fait remonter l'erreur AVANT
+   * l'appel réseau plutôt qu'après.
+   *
+   * La règle elle-même vit dans `isBlockedPeriodValid` (shared), testée :
+   * une copie locale avait déjà laissé passer `00:00 → 00:00`.
+   */
+  const periodError = (): string | null =>
+    isBlockedPeriodValid({
+      allDay,
+      sameDay: startDate.toDateString() === endDate.toDateString(),
+      startTime: formatTime(startDate),
+      endTime: formatTime(endDate),
+    })
+      ? null
+      : t('proBlockSlot.endBeforeStart');
+
   const handleSubmit = async () => {
     if (!providerId || selectedMemberIds.length === 0) {
       Alert.alert(t('proBlockSlot.errorTitle'), t('proBlockSlot.selectAtLeastOne'));
+      return;
+    }
+
+    const invalidPeriod = periodError();
+    if (invalidPeriod) {
+      Alert.alert(t('proBlockSlot.errorTitle'), invalidPeriod);
       return;
     }
 
@@ -444,6 +520,25 @@ export default function BlockSlotScreen() {
       setIsSubmitting(true);
 
       const selectedMembers = members.filter((m) => selectedMemberIds.includes(m.id));
+
+      if (editId) {
+        // MODIFICATION du document existant — aucune contrainte technique
+        // ne l'interdisait : le repo expose `update`, le web s'en sert
+        // déjà pour ce même type de document, et le trigger de stats
+        // traite les écritures comme les créations.
+        await blockedSlotRepository.update(providerId, editId, {
+          startDate,
+          endDate,
+          allDay,
+          startTime: allDay ? null : formatTime(startDate),
+          endTime: allDay ? null : formatTime(endDate),
+          reason: reason.trim() || null,
+        });
+        Alert.alert(t('proBlockSlot.successTitle'), t('proBlockSlot.updated'), [
+          { text: t('proBlockSlot.ok'), onPress: () => router.back() },
+        ]);
+        return;
+      }
 
       await Promise.all(
         selectedMembers.map((member) =>
@@ -629,7 +724,7 @@ export default function BlockSlotScreen() {
           {t('proBlockSlot.reasonLabel')}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: isCustomReason ? spacing.sm : spacing.xl }}>
-          {(['vacation', 'training', 'sick', 'personal', 'holiday', 'meeting'] as const).map((reasonKey) => {
+          {REASON_KEYS.map((reasonKey) => {
             const label = t(`proBlockSlot.reasons.${reasonKey}`);
             const isSelected = reason === label && !isCustomReason;
             return (

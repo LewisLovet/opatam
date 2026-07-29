@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_TIME_ZONE,
   decidePromoNotification,
   isPromoActiveOn,
   localToday,
+  promoPreCheck,
   promoSignature,
+  resolveTimeZone,
 } from '../src/lib/promoNotification';
 
 const BASE = { percent: 20, notifyLoyaltyClients: true } as const;
@@ -92,5 +95,99 @@ describe('decidePromoNotification', () => {
   it('refuse une promo expirée même jamais notifiée', () => {
     const d = decidePromoNotification({ ...BASE, endsAt: '2026-07-01' }, '2026-07-15');
     expect(d).toEqual({ send: false, reason: 'not-active' });
+  });
+});
+
+
+describe('resolveTimeZone', () => {
+  it('accepte un fuseau IANA valide', () => {
+    expect(resolveTimeZone('Europe/Lisbon')).toBe('Europe/Lisbon');
+    expect(resolveTimeZone('America/Guadeloupe')).toBe('America/Guadeloupe');
+  });
+
+  it('retombe sur Paris quand le prestataire n\'en déclare pas', () => {
+    expect(resolveTimeZone(undefined)).toBe(DEFAULT_TIME_ZONE);
+    expect(resolveTimeZone(null)).toBe(DEFAULT_TIME_ZONE);
+    expect(resolveTimeZone('')).toBe(DEFAULT_TIME_ZONE);
+    expect(resolveTimeZone('   ')).toBe(DEFAULT_TIME_ZONE);
+  });
+
+  it('retombe sur Paris sur un fuseau invalide, SANS lever', () => {
+    // Une faute de frappe en base ne doit pas faire échouer l'envoi.
+    expect(() => resolveTimeZone('Europe/Lisboa')).not.toThrow();
+    expect(resolveTimeZone('Europe/Lisboa')).toBe(DEFAULT_TIME_ZONE);
+    expect(resolveTimeZone(42)).toBe(DEFAULT_TIME_ZONE);
+  });
+});
+
+describe('fuseau du prestataire — Portugal', () => {
+  // Lisbonne est une heure DERRIÈRE Paris toute l'année.
+  it('minuit à Lisbonne : le jour a changé là-bas, pas encore la veille à Paris', () => {
+    // 23 h 30 UTC en été = 00 h 30 à Lisbonne (UTC+1) et 01 h 30 à Paris.
+    const instant = new Date('2026-07-14T23:30:00Z');
+    expect(localToday(instant, 'Europe/Lisbon')).toBe('2026-07-15');
+    expect(localToday(instant, 'Europe/Paris')).toBe('2026-07-15');
+  });
+
+  it('une promo qui commence le 15 est active dès minuit à Lisbonne', () => {
+    // 23 h 05 UTC le 14 juillet = 00 h 05 le 15 à Lisbonne.
+    const instant = new Date('2026-07-14T23:05:00Z');
+    const promo = { percent: 20, notifyLoyaltyClients: true, startsAt: '2026-07-15' };
+    expect(decidePromoNotification(promo, localToday(instant, 'Europe/Lisbon')).send).toBe(true);
+  });
+
+  it('à 23 h 05 à Lisbonne la veille, elle ne l\'est pas encore', () => {
+    // 22 h 05 UTC = 23 h 05 à Lisbonne, toujours le 14.
+    const instant = new Date('2026-07-14T22:05:00Z');
+    const promo = { percent: 20, notifyLoyaltyClients: true, startsAt: '2026-07-15' };
+    const d = decidePromoNotification(promo, localToday(instant, 'Europe/Lisbon'));
+    expect(d).toEqual({ send: false, reason: 'not-active' });
+    // Et c'est bien le fuseau qui décide : à Paris il est déjà le 15.
+    expect(decidePromoNotification(promo, localToday(instant, 'Europe/Paris')).send).toBe(true);
+  });
+
+  it('une promo qui expire le 14 est morte dès minuit à Lisbonne', () => {
+    const instant = new Date('2026-07-14T23:05:00Z'); // 00 h 05 le 15 à Lisbonne
+    const promo = { percent: 20, notifyLoyaltyClients: true, endsAt: '2026-07-14' };
+    expect(decidePromoNotification(promo, localToday(instant, 'Europe/Lisbon'))).toEqual({
+      send: false,
+      reason: 'not-active',
+    });
+  });
+
+  it('heure d\'HIVER : Lisbonne est à UTC, Paris à UTC+1', () => {
+    // 23 h 30 UTC le 14 janvier : encore le 14 à Lisbonne, déjà le 15 à Paris.
+    const instant = new Date('2026-01-14T23:30:00Z');
+    expect(localToday(instant, 'Europe/Lisbon')).toBe('2026-01-14');
+    expect(localToday(instant, 'Europe/Paris')).toBe('2026-01-15');
+
+    const promo = { percent: 20, notifyLoyaltyClients: true, startsAt: '2026-01-15' };
+    expect(decidePromoNotification(promo, localToday(instant, 'Europe/Lisbon')).send).toBe(false);
+    expect(decidePromoNotification(promo, localToday(instant, 'Europe/Paris')).send).toBe(true);
+  });
+
+  it('un prestataire sans fuseau se comporte exactement comme avant', () => {
+    const instant = new Date('2026-07-14T22:30:00Z');
+    expect(localToday(instant, resolveTimeZone(undefined))).toBe(
+      localToday(instant, 'Europe/Paris'),
+    );
+  });
+});
+
+describe('promoPreCheck', () => {
+  it('écarte sans date ce qui ne dépend pas du fuseau', () => {
+    expect(promoPreCheck(null)).toEqual({ send: false, reason: 'no-promo' });
+    expect(promoPreCheck({ percent: 0, notifyLoyaltyClients: true })).toEqual({
+      send: false,
+      reason: 'no-promo',
+    });
+    expect(promoPreCheck({ percent: 20, notifyLoyaltyClients: false })).toEqual({
+      send: false,
+      reason: 'not-requested',
+    });
+  });
+
+  it('laisse passer une offre à évaluer (le fuseau devient nécessaire)', () => {
+    expect(promoPreCheck({ percent: 20, notifyLoyaltyClients: true })).toBeNull();
   });
 });

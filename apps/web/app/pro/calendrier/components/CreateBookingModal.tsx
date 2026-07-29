@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { getAuth } from 'firebase/auth';
 import {
   Modal,
   ModalHeader,
@@ -25,6 +26,18 @@ import {
 } from '@booking-app/shared';
 import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import { ClientAutocomplete } from './ClientAutocomplete';
+
+/** En-tête d'authentification du prestataire, vide si la session a expiré —
+ *  la réservation part alors sans privilège plutôt que d'échouer. */
+async function proAuthHeader(): Promise<Record<string, string>> {
+  try {
+    const token = await getAuth().currentUser?.getIdToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 import {
   Loader2,
   ChevronRight,
@@ -557,7 +570,14 @@ export function CreateBookingModal({
       const willAskDeposit = !!resolvedDeposit && askDeposit;
       const res = await fetch('/api/bookings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Jeton du prestataire : c'est lui qui prouve le mode « pro »
+          // côté serveur (sauter l'acompte, ignorer la fenêtre maximale)
+          // et qui autorise le rattachement du compte de la cliente pour
+          // que ses points de fidélité se cumulent.
+          ...(await proAuthHeader()),
+        },
         body: JSON.stringify({
           providerId: provider.id,
           locationId: formData.locationId,

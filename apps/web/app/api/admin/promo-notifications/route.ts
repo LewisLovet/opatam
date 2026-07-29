@@ -8,6 +8,12 @@
  * lourd qu'une promo manquée) — cette route sert uniquement à CONSTATER un
  * échec ou un envoi partiel.
  *
+ * AUTH : Bearer Firebase ID token, VÉRIFIÉ, puis contrôle de
+ * `users/{uid}.isAdmin`. Les autres routes admin de ce projet se
+ * contentent d'un en-tête `x-admin-uid` — un simple identifiant, que
+ * n'importe qui connaissant l'UID d'un admin peut forger. Cette route ne
+ * reprend pas ce motif (les anciennes restent à migrer séparément).
+ *
  * Source : `providers/{providerId}/promoNotifications/{serviceId}`, écrit
  * par `functions/src/lib/promoEmailRunner`.
  *
@@ -18,7 +24,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminFirestore } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 
 export type PromoNotificationStatus = 'pending' | 'sent' | 'partial' | 'failed';
 
@@ -41,10 +47,26 @@ export interface PromoNotificationRow {
   lastError: string | null;
 }
 
-async function verifyAdmin(uid: string) {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
+/**
+ * Retourne l'UID si le porteur du token est bien un admin, sinon le code
+ * HTTP à renvoyer. Le token est vérifié cryptographiquement par Firebase :
+ * il ne peut pas être fabriqué à partir d'un simple identifiant.
+ */
+async function requireAdmin(req: NextRequest): Promise<{ uid: string } | { status: 401 | 403 }> {
+  const header = req.headers.get('authorization') ?? '';
+  if (!header.startsWith('Bearer ')) return { status: 401 };
+
+  let uid: string;
+  try {
+    const decoded = await getAdminAuth().verifyIdToken(header.slice('Bearer '.length));
+    uid = decoded.uid;
+  } catch {
+    return { status: 401 };
+  }
+
+  const userDoc = await getAdminFirestore().collection('users').doc(uid).get();
+  if (!userDoc.exists || userDoc.data()?.isAdmin !== true) return { status: 403 };
+  return { uid };
 }
 
 const toIso = (v: unknown): string | null => {
@@ -54,12 +76,12 @@ const toIso = (v: unknown): string | null => {
 
 export async function GET(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-    if (!(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    const auth = await requireAdmin(request);
+    if ('status' in auth) {
+      return NextResponse.json(
+        { error: auth.status === 401 ? 'Non authentifié' : 'Accès non autorisé' },
+        { status: auth.status },
+      );
     }
 
     const db = getAdminFirestore();

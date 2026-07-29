@@ -22,7 +22,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,6 +56,8 @@ import {
   getServiceMinPrice,
   deriveServiceBasePricing,
   formatPrice,
+  SERVICE_BASE_DURATION_MIN,
+  SERVICE_BASE_DURATION_MAX,
 } from '@booking-app/shared';
 import { EMAIL_REGEX as SHARED_EMAIL_REGEX, suggestEmailDomain } from '@booking-app/shared';
 import {
@@ -174,7 +176,6 @@ const STEPS = [
   { key: 'account', icon: 'person-outline' as const },
 ];
 
-const DURATION_OPTIONS = [15, 30, 45, 60, 75, 90, 120, 150, 180, 240];
 
 // Same wording as /api/affiliates/verify (web) so the message matches.
 // Module-level helper — i18n.t is called at message time, not import time.
@@ -423,9 +424,47 @@ export default function ProRegisterScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const navigation = useNavigation();
   const { showToast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(0);
+
+  /**
+   * Aperçu client OBLIGATOIRE avant de quitter l'étape des prestations —
+   * uniquement pour celles qui portent des choix (variations, options,
+   * informations demandées). Sans choix, le libellé et le prix se lisent
+   * déjà dans le formulaire : imposer un aperçu n'apprendrait rien.
+   *
+   * On mémorise la SIGNATURE de ce qui a été vu, pas l'indice : modifier
+   * une prestation après l'avoir prévisualisée doit redemander un
+   * contrôle, sinon on valide un aperçu périmé.
+   */
+  const [previewedSignatures, setPreviewedSignatures] = useState<Set<string>>(new Set());
+
+  /** Position verticale de chaque carte de prestation, relevée à
+   *  l'affichage — le crayon de l'aperçu s'en sert pour ramener le pro
+   *  exactement là où il a demandé une correction. */
+  const stepScrollRef = useRef<ScrollView>(null);
+  const serviceOffsets = useRef<Record<number, number>>({});
+  /** Position du bloc d'étape dans le contenu défilant. `onLayout` d'une
+   *  carte donne sa position DANS SON PARENT : sans cette origine, le
+   *  défilement tomberait systématiquement trop haut, de la hauteur de
+   *  l'en-tête. */
+  const stepContentOffset = useRef(0);
+  /** Position des sous-blocs « Choix » dans chaque carte, pour viser la
+   *  variation ou l'option désignée plutôt que le haut de la carte. */
+  const choiceOffsets = useRef<Record<string, number>>({});
+  /**
+   * Bloc mis en évidence quelques secondes après un saut depuis l'aperçu :
+   * sans repère visuel, on atterrit sans comprendre pourquoi.
+   *
+   * On retient la SECTION et pas seulement la prestation : souligner
+   * toute la carte quand on a cliqué sur le crayon d'une option ne
+   * désigne pas ce qu'on vient de demander à corriger.
+   */
+  const [highlighted, setHighlighted] = useState<
+    { index: number; section: 'name' | 'price' | 'variations' | 'options' } | null
+  >(null);
   const [data, setData] = useState<WizardData>(() => ({
     ...DEFAULT_DATA,
     locationName: i18n.t('auth.pro.locationNames.salon'),
@@ -433,7 +472,6 @@ export default function ProRegisterScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showDurationModal, setShowDurationModal] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [customCategoryText, setCustomCategoryText] = useState('');
   const [copyFromDay, setCopyFromDay] = useState<number | null>(null);
@@ -691,8 +729,10 @@ export default function ProRegisterScreen() {
         if (!data.cityOnly && !data.postalCode.trim())
           return t('auth.pro.validation.selectAddressSuggestion');
         return null;
-      case 2:
+      case 2: {
         if (data.services.length === 0) return t('auth.pro.validation.addOneService');
+        const badDuration = invalidDurationIndex();
+        if (badDuration >= 0) return t('auth.pro.validation.serviceDurationInvalid');
         for (let i = 0; i < data.services.length; i++) {
           if (!data.services[i].name.trim()) return t('auth.pro.validation.serviceNameRequired', { index: i + 1 });
           // With variations the price/duration inputs are hidden (the
@@ -709,6 +749,7 @@ export default function ProRegisterScreen() {
             return t('auth.pro.validation.servicePriceInvalid', { index: i + 1 });
         }
         return null;
+      }
       case 3: {
         const hasOpenDay = Object.values(data.availability).some((d) => d.isOpen);
         if (!hasOpenDay) return t('auth.pro.validation.openDayRequired');
@@ -738,11 +779,124 @@ export default function ProRegisterScreen() {
   // Navigation
   // ---------------------------------------------------------------------------
 
+  /**
+   * Remplissage de confort — DÉVELOPPEMENT UNIQUEMENT.
+   *
+   * Retaper six étapes d'inscription à chaque essai décourage de tester le
+   * parcours, et c'est justement le parcours qu'on veut éprouver souvent.
+   * Le bouton n'existe pas hors `__DEV__` : aucun risque de le voir en
+   * production, ni d'embarquer ces données.
+   *
+   * L'adresse email est horodatée, sinon la deuxième inscription échoue
+   * sur « adresse déjà utilisée » — l'erreur la plus perdante quand on
+   * teste vite.
+   *
+   * Volontairement DEUX prestations : une à prix fixe et une à variations,
+   * pour éprouver aussi l'aperçu obligatoire et le crayon de correction.
+   */
+  const fillDevData = () => {
+    const stamp = Date.now();
+    setData((prev: WizardData) => ({
+      ...prev,
+      businessName: `Salon Test ${String(stamp).slice(-4)}`,
+      category: CATEGORIES[0].id,
+      description: 'Salon de test créé depuis le remplissage de développement.',
+      locationName: 'Boutique principale',
+      locationType: 'fixed',
+      cityOnly: false,
+      address: '10 Rue de Rivoli',
+      postalCode: '75004',
+      city: 'Paris',
+      geopoint: { latitude: 48.8566, longitude: 2.3522 },
+      services: [
+        {
+          name: 'Coupe simple',
+          duration: 45,
+          price: '35',
+          description: 'Coupe et brushing.',
+          category: 'Coiffure',
+          variations: [],
+          options: [],
+          infoFields: [],
+        },
+        {
+          name: 'Coloration',
+          duration: 90,
+          price: '',
+          description: 'Couleur sur mesure.',
+          category: 'Coiffure',
+          variations: [
+            {
+              id: `v-${stamp}`,
+              name: 'Longueur',
+              options: [
+                { id: `o-${stamp}-1`, name: 'Courts', price: 6000, duration: 90 },
+                { id: `o-${stamp}-2`, name: 'Longs', price: 9000, duration: 150 },
+              ],
+            },
+          ],
+          options: [
+            {
+              id: `a-${stamp}`,
+              name: 'Soin profond',
+              price: 1500,
+              duration: 15,
+              nestedVariations: [],
+              nestedInfoFields: [],
+            },
+          ],
+          infoFields: [],
+        },
+      ],
+      displayName: 'Testeur Opatam',
+      email: `dev+${stamp}@opatam.test`,
+      confirmEmail: `dev+${stamp}@opatam.test`,
+      phone: '0612345678',
+      password: 'Test1234!',
+      confirmPassword: 'Test1234!',
+    }));
+    showToast({ variant: 'success', message: `Formulaire rempli — dev+${stamp}@opatam.test` });
+  };
+
+  /**
+   * Durée d'une prestation SANS variations — la seule saisie librement.
+   *
+   * Le wizard écrit dans Firestore via `serviceRepository.create`, sans
+   * passer par `createServiceSchema` : rien ne bornait donc cette valeur,
+   * et une prestation à 0 minute rendait créneaux et disponibilités
+   * incohérents. Avec variations, la durée de base est DÉRIVÉE de la
+   * combinaison la plus courte puis bornée par `deriveServiceBasePricing`
+   * — il n'y a rien à valider ici.
+   *
+   * Les bornes viennent des constantes partagées, jamais réécrites à la
+   * main : elles doivent rester celles du schéma serveur.
+   */
+  const invalidDurationIndex = (): number =>
+    data.services.findIndex((svc: WizardService) => {
+      if (sanitizeVariations(svc.variations ?? []).length > 0) return false;
+      const d = svc.duration;
+      return (
+        !Number.isInteger(d) ||
+        d < SERVICE_BASE_DURATION_MIN ||
+        d > SERVICE_BASE_DURATION_MAX
+      );
+    });
+
   const handleNext = () => {
     const error = validateStep();
     if (error) {
       showToast({ variant: 'error', message: error });
       return;
+    }
+    // Étape prestations : on ouvre l'aperçu resté à valider plutôt que
+    // d'avancer. Le pro voit ce que verra sa cliente AVANT de publier —
+    // c'est le seul endroit où l'enchaînement des choix se juge.
+    if (currentStep === 2) {
+      const pending = firstUnpreviewedService();
+      if (pending >= 0) {
+        setPreviewServiceIndex(pending);
+        return;
+      }
     }
     if (currentStep < STEPS.length - 1) {
       setCurrentStep((s) => s + 1);
@@ -759,6 +913,32 @@ export default function ProRegisterScreen() {
     }
   };
 
+  /**
+   * Le geste « revenir en arrière » recule d'UNE ÉTAPE, il ne quitte plus
+   * l'inscription.
+   *
+   * Toutes les étapes vivent dans un seul écran, avec `currentStep` en
+   * mémoire locale : un balayage arrière dépilait donc la ROUTE entière et
+   * renvoyait à l'accueil, effaçant au passage tout ce qui avait été saisi.
+   * On intercepte le retrait de l'écran pour le transformer en « étape
+   * précédente » tant qu'il en reste une.
+   *
+   * `beforeRemove` couvre les trois chemins d'un coup : balayage iOS,
+   * bouton retour matériel Android, et flèche de l'en-tête.
+   */
+  const leavingRef = useRef(false);
+  useEffect(() => {
+    const sub = navigation.addListener('beforeRemove', (e: { preventDefault: () => void }) => {
+      // Sortie volontaire (fin d'inscription) : on laisse passer.
+      if (leavingRef.current || currentStep === 0) return;
+      e.preventDefault();
+      setCurrentStep((s) => s - 1);
+      animateStepTransition('back');
+    });
+    return sub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, currentStep]);
+
   // ---------------------------------------------------------------------------
   // Submit
   // ---------------------------------------------------------------------------
@@ -770,6 +950,24 @@ export default function ProRegisterScreen() {
       return;
     }
 
+    // Seconde barrière, juste avant d'écrire. L'étape peut avoir été
+    // franchie puis la durée modifiée en revenant en arrière — et cet
+    // écran écrit dans Firestore SANS passer par `createServiceSchema`,
+    // il n'y a donc aucun filet côté service.
+    const badDuration = invalidDurationIndex();
+    if (badDuration >= 0) {
+      showToast({ variant: 'error', message: t('auth.pro.validation.serviceDurationInvalid') });
+      setCurrentStep(2);
+      animateStepTransition('back');
+      return;
+    }
+
+    // Sortie VOLONTAIRE : une fois le compte créé, la garde de
+    // `(auth)/_layout` redirige vers l'espace pro, ce qui retire cet
+    // écran. Sans ce drapeau, l'interception du retour comprendrait ce
+    // départ comme un « revenir en arrière » et ramènerait à l'étape
+    // précédente au lieu de laisser l'inscription se terminer.
+    leavingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -902,6 +1100,9 @@ export default function ProRegisterScreen() {
       setFinalizing(true);
     } catch (err: any) {
       console.error('Registration error:', err);
+      // L'inscription a échoué : l'écran reste, le geste de retour doit
+      // donc redevenir « étape précédente ».
+      leavingRef.current = false;
       const msg = err?.message || t('auth.pro.registerError');
       showToast({ variant: 'error', message: msg });
     } finally {
@@ -1432,6 +1633,30 @@ export default function ProRegisterScreen() {
     updateField('services', updated);
   };
 
+  /** Une prestation « à choix » : c'est là que l'aperçu apporte quelque
+   *  chose, puisque le prix affiché et le parcours client en dépendent. */
+  const serviceHasChoices = (svc: any) =>
+    sanitizeVariations(svc.variations ?? []).length > 0 ||
+    sanitizeOptions(svc.options ?? []).length > 0 ||
+    sanitizeInfoFields(svc.infoFields ?? []).length > 0;
+
+  const serviceSignature = (svc: any) =>
+    JSON.stringify([
+      svc.name,
+      svc.price,
+      svc.duration,
+      sanitizeVariations(svc.variations ?? []),
+      sanitizeOptions(svc.options ?? []),
+      sanitizeInfoFields(svc.infoFields ?? []),
+    ]);
+
+  /** Indice de la première prestation à choix dont l'aperçu n'a pas été
+   *  validé — `-1` quand tout est vu. */
+  const firstUnpreviewedService = (): number =>
+    data.services.findIndex(
+      (svc: any) => serviceHasChoices(svc) && !previewedSignatures.has(serviceSignature(svc)),
+    );
+
   const addServiceEntry = () => {
     updateField('services', [...data.services, { name: '', duration: 60, price: '', description: '', category: '', variations: [], options: [], infoFields: [] }]);
   };
@@ -1451,12 +1676,23 @@ export default function ProRegisterScreen() {
       {data.services.map((svc: WizardService, index: number) => (
         <View
           key={index}
+          onLayout={(e) => {
+            serviceOffsets.current[index] = e.nativeEvent.layout.y;
+          }}
           style={{
             gap: spacing.sm,
             padding: spacing.md,
             borderRadius: radius.lg,
-            borderWidth: 1,
-            borderColor: colors.border,
+            // Seules les sections « nom » et « prix » vivent directement
+            // sur la carte ; variations et options ont leur propre bloc.
+            borderWidth:
+              highlighted?.index === index && highlighted.section !== 'variations' && highlighted.section !== 'options'
+                ? 2
+                : 1,
+            borderColor:
+              highlighted?.index === index && highlighted.section !== 'variations' && highlighted.section !== 'options'
+                ? colors.primary
+                : colors.border,
             backgroundColor: 'rgba(255,255,255,0.5)',
           }}
         >
@@ -1538,28 +1774,34 @@ export default function ProRegisterScreen() {
             <>
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <View style={{ flex: 1 }}>
-                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
-                    {t('auth.pro.step3.durationLabel')}
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      setEditingServiceIndex(index);
-                      setShowDurationModal(true);
+                  {/* Saisie LIBRE en minutes. Une liste figée (15, 30, 45…)
+                      ne couvre pas les métiers qui travaillent en 20, 25 ou
+                      100 minutes, et obligeait à choisir une durée fausse. */}
+                  <Input
+                    label={t('auth.pro.step3.durationLabel')}
+                    placeholder="60"
+                    value={svc.duration ? String(svc.duration) : ''}
+                    onChangeText={(v: string) => {
+                      const digits = v.replace(/[^0-9]/g, '');
+                      updateServiceField(index, 'duration', digits ? Number(digits) : 0);
                     }}
-                    style={({ pressed }) => [
-                      styles.selectButton,
-                      {
-                        borderColor: colors.border,
-                        borderRadius: radius.lg,
-                        padding: spacing.md,
-                        backgroundColor: 'rgba(255,255,255,0.8)',
-                        opacity: pressed ? 0.8 : 1,
-                      },
-                    ]}
-                  >
-                    <Text variant="body">{formatDurationLabel(svc.duration)}</Text>
-                    <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
-                  </Pressable>
+                    keyboardType="number-pad"
+                    error={
+                      // Silencieux tant que le champ est vide : on ne
+                      // gronde pas quelqu'un qui n'a pas encore saisi.
+                      svc.duration > 0 &&
+                      sanitizeVariations(svc.variations ?? []).length === 0 &&
+                      (svc.duration < SERVICE_BASE_DURATION_MIN ||
+                        svc.duration > SERVICE_BASE_DURATION_MAX)
+                        ? t('auth.pro.validation.serviceDurationInvalid')
+                        : undefined
+                    }
+                    helperText={
+                      svc.duration > 0
+                        ? t('auth.pro.step3.durationHint', { label: formatDurationLabel(svc.duration) })
+                        : undefined
+                    }
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Input
@@ -1635,8 +1877,27 @@ export default function ProRegisterScreen() {
             </Pressable>
 
             {expandedChoices[index] && (
-              <View style={{ gap: spacing.lg, marginTop: spacing.sm }}>
-                <View style={{ gap: spacing.xs }}>
+              <View
+                style={{ gap: spacing.lg, marginTop: spacing.sm }}
+                onLayout={(e) => {
+                  choiceOffsets.current[`${index}:container`] = e.nativeEvent.layout.y;
+                }}
+              >
+                <View
+                  style={[
+                    { gap: spacing.xs },
+                    highlighted?.index === index && highlighted.section === 'variations' && {
+                      borderWidth: 2,
+                      borderColor: colors.primary,
+                      borderRadius: radius.lg,
+                      padding: spacing.sm,
+                      margin: -spacing.sm,
+                    },
+                  ]}
+                  onLayout={(e) => {
+                    choiceOffsets.current[`${index}:variations`] = e.nativeEvent.layout.y;
+                  }}
+                >
                   <Text variant="label" color="text">{t('auth.pro.step3.variationsTitle')}</Text>
                   <Text variant="caption" color="textSecondary">
                     {t('auth.pro.step3.variationsDesc')}
@@ -1647,7 +1908,21 @@ export default function ProRegisterScreen() {
                   />
                 </View>
 
-                <View style={{ gap: spacing.xs }}>
+                <View
+                  style={[
+                    { gap: spacing.xs },
+                    highlighted?.index === index && highlighted.section === 'options' && {
+                      borderWidth: 2,
+                      borderColor: colors.primary,
+                      borderRadius: radius.lg,
+                      padding: spacing.sm,
+                      margin: -spacing.sm,
+                    },
+                  ]}
+                  onLayout={(e) => {
+                    choiceOffsets.current[`${index}:options`] = e.nativeEvent.layout.y;
+                  }}
+                >
                   <Text variant="label" color="text">{t('auth.pro.step3.optionsTitle')}</Text>
                   <Text variant="caption" color="textSecondary">
                     {t('auth.pro.step3.optionsDesc')}
@@ -2054,6 +2329,7 @@ export default function ProRegisterScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          ref={stepScrollRef}
           contentContainerStyle={[
             styles.scrollContent,
             {
@@ -2068,6 +2344,32 @@ export default function ProRegisterScreen() {
           {/* Header: Back + Step Dots */}
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Remplissage de confort — n'existe qu'en développement. */}
+              {__DEV__ && (
+                <Pressable
+                  onPress={fillDevData}
+                  hitSlop={10}
+                  style={({ pressed }) => ({
+                    position: 'absolute',
+                    right: 0,
+                    top: -6,
+                    zIndex: 5,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: radius.full,
+                    backgroundColor: colors.primary,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Ionicons name="flash" size={13} color="#FFFFFF" />
+                  <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>
+                    DEV
+                  </Text>
+                </Pressable>
+              )}
               <Pressable
                 onPress={handleBack}
                 style={({ pressed }) => [
@@ -2131,6 +2433,9 @@ export default function ProRegisterScreen() {
 
           {/* Step Content */}
           <Animated.View
+            onLayout={(e) => {
+              stepContentOffset.current = e.nativeEvent.layout.y;
+            }}
             style={[
               { marginTop: spacing.xl },
               { opacity: stepFadeAnim, transform: [{ translateX: stepSlideAnim }] },
@@ -2267,6 +2572,68 @@ export default function ProRegisterScreen() {
         {previewServiceIndex !== null && data.services[previewServiceIndex] && (
           <ServiceChoicesPreview
             safeAreaBottom
+            // Valider l'aperçu mémorise la SIGNATURE de la prestation vue,
+            // puis relance l'avancement : s'il reste une autre prestation
+            // à choix non validée, elle s'ouvre à son tour ; sinon on
+            // passe à l'étape suivante.
+            publishLabel={t('auth.pro.step3.previewConfirm')}
+            publishHint={t('auth.pro.step3.previewConfirmHint')}
+            /**
+             * Le crayon renvoie au FORMULAIRE, à la prestation concernée —
+             * il n'ouvre pas un second éditeur dans l'aperçu.
+             *
+             * Éditer sur place supposerait de reconstruire les champs à
+             * l'intérieur de l'aperçu : deux interfaces pour les mêmes
+             * données, qui divergeraient à la première évolution. L'aperçu
+             * reste un MIROIR fidèle, le formulaire reste l'unique endroit
+             * où l'on saisit.
+             */
+            onEditSection={(section) => {
+              const target = previewServiceIndex;
+              const toChoices = section === 'variations' || section === 'options';
+              setPreviewServiceIndex(null);
+              // Le bloc « Choix » est replié par défaut : sans l'ouvrir, le
+              // crayon d'une variation ramenait à une carte n'affichant
+              // qu'un nom et un prix — on atterrissait sans comprendre.
+              if (toChoices) setExpandedChoices((prev) => ({ ...prev, [target]: true }));
+              setHighlighted({ index: target, section });
+              setTimeout(() => setHighlighted(null), 2200);
+              // On attend la fermeture de la feuille ET le dépliage avant
+              // de défiler, sinon on vise des positions encore périmées.
+              setTimeout(() => {
+                const card = stepContentOffset.current + (serviceOffsets.current[target] ?? 0);
+                // Trois niveaux d'imbrication : `onLayout` étant toujours
+                // relatif au parent, il faut additionner conteneur des
+                // choix + bloc visé pour viser juste.
+                const sub = toChoices
+                  ? (choiceOffsets.current[`${target}:container`] ?? 0) +
+                    (choiceOffsets.current[`${target}:${section}`] ?? 0)
+                  : 0;
+                // Une marge au-dessus pour que le titre reste visible,
+                // plutôt que collé au bord haut.
+                stepScrollRef.current?.scrollTo({ y: Math.max(0, card + sub - 24), animated: true });
+              }, 380);
+            }}
+            onPublish={() => {
+              const svc = data.services[previewServiceIndex];
+              const next = new Set(previewedSignatures);
+              next.add(serviceSignature(svc));
+              setPreviewedSignatures(next);
+
+              // Enchaîner : s'il reste une prestation à choix non validée,
+              // on ouvre la sienne ; sinon l'étape est franchie. Sans ça,
+              // le pro devait re-toucher « Suivant » après chaque aperçu.
+              const stillPending = data.services.findIndex(
+                (x: any) => serviceHasChoices(x) && !next.has(serviceSignature(x)),
+              );
+              if (stillPending >= 0) {
+                setPreviewServiceIndex(stillPending);
+                return;
+              }
+              setPreviewServiceIndex(null);
+              setCurrentStep((s) => s + 1);
+              animateStepTransition('forward');
+            }}
             service={{
               name: data.services[previewServiceIndex].name,
               // Same derivation as the creation: with variations the base is
@@ -2284,64 +2651,6 @@ export default function ProRegisterScreen() {
         )}
       </OverlaySheet>
 
-      {/* ── Duration Modal ── */}
-      <Modal visible={showDurationModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
-            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
-              <Text variant="h3">{t('auth.pro.step3.durationLabel')}</Text>
-              <Pressable onPress={() => setShowDurationModal(false)}>
-                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
-              </Pressable>
-            </View>
-            <FlatList
-              data={DURATION_OPTIONS}
-              keyExtractor={(item) => String(item)}
-              renderItem={({ item }) => {
-                const label = item >= 60
-                  ? `${Math.floor(item / 60)}h${item % 60 > 0 ? String(item % 60).padStart(2, '0') : ''}`
-                  : `${item} min`;
-                return (
-                  <Pressable
-                    onPress={() => {
-                      updateServiceField(editingServiceIndex, 'duration', item);
-                      setShowDurationModal(false);
-                    }}
-                    style={({ pressed }) => [
-                      styles.listItem,
-                      {
-                        padding: spacing.md,
-                        paddingHorizontal: spacing.lg,
-                        backgroundColor: data.services[editingServiceIndex]?.duration === item
-                          ? colors.primaryLight
-                          : pressed
-                            ? 'rgba(0,0,0,0.03)'
-                            : 'transparent',
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="time-outline"
-                      size={18}
-                      color={data.services[editingServiceIndex]?.duration === item ? colors.primary : colors.textMuted}
-                    />
-                    <Text
-                      variant="body"
-                      style={{ flex: 1, marginLeft: spacing.sm, fontWeight: data.services[editingServiceIndex]?.duration === item ? '600' : '400' }}
-                      color={data.services[editingServiceIndex]?.duration === item ? 'primary' : 'text'}
-                    >
-                      {label}
-                    </Text>
-                    {data.services[editingServiceIndex]?.duration === item && (
-                      <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
-                    )}
-                  </Pressable>
-                );
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
 
       {/* ── Service Category Picker Modal ── */}
       <Modal visible={showCategoryPicker} transparent animationType="slide">

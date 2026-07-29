@@ -38,10 +38,31 @@ export function promoSignature(promo: PromoNotificationInput): string {
   return `${promo.percent ?? 0}|${promo.startsAt ?? ''}|${promo.endsAt ?? ''}`;
 }
 
+/** Fuseau de repli quand le prestataire n'en déclare pas, ou en déclare un
+ *  que la plateforme ne connaît pas. */
+export const DEFAULT_TIME_ZONE = 'Europe/Paris';
+
+/**
+ * Valide un identifiant IANA en le soumettant à `Intl.DateTimeFormat`,
+ * seule autorité disponible ici. Un fuseau absent, mal orthographié ou
+ * inconnu de la plateforme retombe sur Paris plutôt que de faire échouer
+ * l'envoi — une promo mal datée d'une heure vaut mieux qu'une promo
+ * jamais partie.
+ */
+export function resolveTimeZone(raw: unknown): string {
+  if (typeof raw !== 'string' || !raw.trim()) return DEFAULT_TIME_ZONE;
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: raw });
+    return raw;
+  } catch {
+    return DEFAULT_TIME_ZONE;
+  }
+}
+
 /** Date du jour au format YYYY-MM-DD dans le fuseau donné (Paris par
  *  défaut) — à comparer aux dates locales des promos, jamais `toISOString`
  *  qui renvoie la date UTC. */
-export function localToday(now: Date = new Date(), timeZone = 'Europe/Paris'): string {
+export function localToday(now: Date = new Date(), timeZone: string = DEFAULT_TIME_ZONE): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
@@ -63,7 +84,28 @@ export type PromoDecision =
   | { send: true; signature: string };
 
 /**
+ * Les deux refus qui ne dépendent PAS d'une date, donc évaluables avant
+ * d'avoir lu le prestataire.
+ *
+ * Le trigger se déclenche à CHAQUE écriture sur une prestation — changer
+ * un libellé ou un prix suffit. Trancher ces cas d'abord évite une
+ * lecture de prestataire sur l'écrasante majorité des écritures, alors
+ * même qu'il faut désormais ce document pour connaître le fuseau.
+ */
+export function promoPreCheck(
+  promo: PromoNotificationInput | null | undefined,
+): { send: false; reason: 'no-promo' | 'not-requested' } | null {
+  if (!promo?.percent) return { send: false, reason: 'no-promo' };
+  if (promo.notifyLoyaltyClients !== true) return { send: false, reason: 'not-requested' };
+  return null;
+}
+
+/**
  * Faut-il envoyer l'email pour cette promo aujourd'hui ?
+ *
+ * `today` est la date locale DU PRESTATAIRE : `startsAt` et `endsAt` sont
+ * saisis dans son fuseau, les comparer à autre chose décale les bornes
+ * autour de minuit.
  *
  * Volontairement indépendante du throttle par prestataire : celui-ci est une
  * protection de volume côté appelant, et il ne doit être consommé QUE si un

@@ -295,7 +295,8 @@
         "phoneInvalid": "Invalid phone number",
         "passwordTooShort": "Password must be at least 6 characters",
         "passwordMismatch": "Passwords do not match",
-        "emailMismatch": "Email addresses do not match"
+        "emailMismatch": "Email addresses do not match",
+        "serviceDurationInvalid": "Enter a duration between 5 minutes and 24 hours."
       },
       "registerError": "Error during registration",
       "finalizing": "Creating your space…",
@@ -346,7 +347,10 @@
         "addService": "Add a service",
         "serviceCategoryModalTitle": "Service category",
         "customCategoryHint": "Or enter a custom name:",
-        "customCategoryPlaceholder": "Other category..."
+        "customCategoryPlaceholder": "Other category...",
+        "previewConfirm": "Confirm preview",
+        "previewConfirmHint": "Check the flow exactly as your clients will see it, then confirm to continue. The pencil jumps back to the field to fix.",
+        "durationHint": "That is {{label}}"
       },
       "step4": {
         "to": "to",
@@ -1386,7 +1390,8 @@
       "cartSummary": "{{count}} services · {{duration}} min · {{price}}",
       "continue": "Continue",
       "continueWithCount_one": "Continue — {{count}} service",
-      "continueWithCount_other": "Continue — {{count}} services"
+      "continueWithCount_other": "Continue — {{count}} services",
+      "fromPrefix": "from"
     },
     "periods": {
       "morning": "Morning",
@@ -1477,7 +1482,9 @@
       "daysWithMonths_other": "{{days}} days ({{count}} months)",
       "daysWithYears_one": "{{days}} days ({{count}} year)",
       "daysWithYears_other": "{{days}} days ({{count}} years)",
-      "hoursMinutes": "{{hours}}h{{minutes}}"
+      "hoursMinutes": "{{hours}}h{{minutes}}",
+      "weeks_one": "{{count}} week",
+      "weeks_other": "{{count}} weeks"
     },
     "notice": {
       "title": "Pre-booking notice",
@@ -1492,6 +1499,13 @@
     "about": {
       "title": "About these settings",
       "description": "These rules apply to all new bookings. Existing bookings are not affected by these changes."
+    },
+    "custom": {
+      "label": "Custom value",
+      "days": "days",
+      "weeks": "weeks",
+      "apply": "Apply",
+      "hint": "From 1 to {{max}} days"
     }
   },
   "proClients": {
@@ -1930,7 +1944,9 @@
       "deleteMessage": "Do you want to delete this period?",
       "delete": "Delete",
       "errorTitle": "Error",
-      "deleteError": "Could not delete"
+      "deleteError": "Could not delete",
+      "edit": "Edit",
+      "actionsMessage": "What would you like to do?"
     },
     "emptyDay": {
       "title": "No appointments",
@@ -2863,7 +2879,9 @@
     "startDate": "Start date",
     "endDate": "End date",
     "startTime": "Start time",
-    "endTime": "End time"
+    "endTime": "End time",
+    "updated": "Blocked period updated",
+    "endBeforeStart": "The end time must be after the start time."
   },
   "proBlockedSlots": {
     "title": "Blocked slots",
@@ -2885,7 +2903,8 @@
     "empty": {
       "title": "No blocked slots",
       "description": "Block slots to mark when you're unavailable"
-    }
+    },
+    "edit": "Edit this period"
   },
   "loyalty": {
     "title": "Loyalty",
@@ -3036,5 +3055,28 @@
       "title": "No cards yet",
       "description": "Your clients' cards will appear here as soon as their first appointment is counted."
     }
+  },
+  "calendarSync": {
+    "title": "Sync my calendar",
+    "subtitle": "Your appointments in your own calendar, kept up to date.",
+    "intro": "Turn on syncing, then add your schedule to your calendar. New bookings appear, cancellations vanish, reschedules follow — with nothing to do.",
+    "activate": "Turn on syncing",
+    "addToCalendar": "Add to my calendar",
+    "copyHint": "Or copy this link for Outlook or another calendar",
+    "copied": "Link copied",
+    "disable": "Turn off",
+    "noticeDelay": "Refresh timing depends on your calendar settings — from a few minutes to once a day. You can shorten it in the subscription settings.",
+    "noticeReadOnly": "Your calendar shows the appointments but cannot edit them: changes happen here.",
+    "lastSyncMinutes_one": "Last synced {{count}} minute ago",
+    "lastSyncMinutes_other": "Last synced {{count}} minutes ago",
+    "lastSyncHours_one": "Last synced {{count}} hour ago",
+    "lastSyncHours_other": "Last synced {{count}} hours ago",
+    "lastSyncDays_one": "Last synced {{count}} day ago",
+    "lastSyncDays_other": "Last synced {{count}} days ago",
+    "error": "Syncing could not be turned on",
+    "openFailed": "Could not open your calendar",
+    "button": "Sync",
+    "addToGoogle": "Add to Google Calendar",
+    "googleHint": "Google only allows adding a calendar from a computer. Once done, it also shows up in the mobile app."
   }
 }

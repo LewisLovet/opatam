@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAuth } from 'firebase/auth';
 import { Button } from '@/components/ui';
 import { AlertTriangle, CheckCircle2, Clock, Mail, RefreshCw, XCircle } from 'lucide-react';
 import type {
@@ -77,8 +78,13 @@ export default function PromoNotificationsPage() {
     setLoading(true);
     setError(null);
     try {
+      // Token Firebase VÉRIFIÉ côté serveur, et non un simple UID posé en
+      // en-tête : ce dernier se forge dès qu'on connaît l'identifiant d'un
+      // admin.
+      const token = await getAuth().currentUser?.getIdToken();
+      if (!token) throw new Error('Session expirée — reconnectez-vous');
       const res = await fetch('/api/admin/promo-notifications', {
-        headers: { 'x-admin-uid': user.id },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Erreur');

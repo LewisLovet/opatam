@@ -295,7 +295,8 @@
         "phoneInvalid": "Numero de telephone invalide",
         "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
         "passwordMismatch": "Les mots de passe ne correspondent pas",
-        "emailMismatch": "Les adresses email ne correspondent pas"
+        "emailMismatch": "Les adresses email ne correspondent pas",
+        "serviceDurationInvalid": "Indiquez une durée comprise entre 5 minutes et 24 heures."
       },
       "registerError": "Erreur lors de l'inscription",
       "finalizing": "Création de votre espace…",
@@ -346,7 +347,10 @@
         "addService": "Ajouter une prestation",
         "serviceCategoryModalTitle": "Catégorie de prestation",
         "customCategoryHint": "Ou entrez un nom personnalisé :",
-        "customCategoryPlaceholder": "Autre catégorie..."
+        "customCategoryPlaceholder": "Autre catégorie...",
+        "previewConfirm": "Valider l'aperçu",
+        "previewConfirmHint": "Vérifiez le parcours tel que vos clientes le verront, puis validez pour continuer. Le crayon ramène au champ à corriger.",
+        "durationHint": "Soit {{label}}"
       },
       "step4": {
         "to": "à",
@@ -1386,7 +1390,8 @@
       "cartSummary": "{{count}} prestations · {{duration}} min · {{price}}",
       "continue": "Continuer",
       "continueWithCount_one": "Continuer — {{count}} prestation",
-      "continueWithCount_other": "Continuer — {{count}} prestations"
+      "continueWithCount_other": "Continuer — {{count}} prestations",
+      "fromPrefix": "dès"
     },
     "periods": {
       "morning": "Matin",
@@ -1477,7 +1482,9 @@
       "daysWithMonths_other": "{{days}} jours ({{count}} mois)",
       "daysWithYears_one": "{{days}} jours ({{count}} an)",
       "daysWithYears_other": "{{days}} jours ({{count}} ans)",
-      "hoursMinutes": "{{hours}} h {{minutes}}"
+      "hoursMinutes": "{{hours}} h {{minutes}}",
+      "weeks_one": "{{count}} semaine",
+      "weeks_other": "{{count}} semaines"
     },
     "notice": {
       "title": "Avertissement avant réservation",
@@ -1492,6 +1499,13 @@
     "about": {
       "title": "À propos de ces paramètres",
       "description": "Ces règles s'appliquent à toutes les nouvelles réservations. Les réservations existantes ne sont pas affectées par ces changements."
+    },
+    "custom": {
+      "label": "Valeur personnalisée",
+      "days": "jours",
+      "weeks": "semaines",
+      "apply": "Appliquer",
+      "hint": "De 1 à {{max}} jours"
     }
   },
   "proClients": {
@@ -1930,7 +1944,9 @@
       "deleteMessage": "Voulez-vous supprimer cette période ?",
       "delete": "Supprimer",
       "errorTitle": "Erreur",
-      "deleteError": "Impossible de supprimer"
+      "deleteError": "Impossible de supprimer",
+      "edit": "Modifier",
+      "actionsMessage": "Que voulez-vous faire ?"
     },
     "emptyDay": {
       "title": "Aucun rendez-vous",
@@ -2863,7 +2879,9 @@
     "startDate": "Date de début",
     "endDate": "Date de fin",
     "startTime": "Heure de début",
-    "endTime": "Heure de fin"
+    "endTime": "Heure de fin",
+    "updated": "Créneau bloqué modifié",
+    "endBeforeStart": "L'heure de fin doit être après l'heure de début."
   },
   "proBlockedSlots": {
     "title": "Créneaux bloqués",
@@ -2885,7 +2903,8 @@
     "empty": {
       "title": "Aucun créneau bloqué",
       "description": "Bloquez des créneaux pour indiquer vos indisponibilités"
-    }
+    },
+    "edit": "Modifier ce créneau"
   },
   "loyalty": {
     "title": "Fidélité",
@@ -3036,5 +3055,28 @@
       "title": "Aucune carte pour l'instant",
       "description": "Les cartes de vos clients apparaîtront ici dès leur premier RDV compté."
     }
+  },
+  "calendarSync": {
+    "title": "Synchroniser mon agenda",
+    "subtitle": "Vos rendez-vous dans votre agenda personnel, mis à jour tout seuls.",
+    "intro": "Activez la synchronisation, puis ajoutez le planning à votre agenda. Les nouveaux rendez-vous apparaissent, les annulations disparaissent, les déplacements suivent — sans rien faire.",
+    "activate": "Activer la synchronisation",
+    "addToCalendar": "Ajouter à mon agenda",
+    "copyHint": "Ou copiez ce lien pour Outlook ou un autre agenda",
+    "copied": "Lien copié",
+    "disable": "Désactiver",
+    "noticeDelay": "Le délai de mise à jour dépend du réglage de votre agenda — de quelques minutes à une fois par jour. Vous pouvez le raccourcir dans les réglages de l'abonnement.",
+    "noticeReadOnly": "Votre agenda affiche les rendez-vous sans pouvoir les modifier : les changements se font ici.",
+    "lastSyncMinutes_one": "Dernière synchronisation il y a {{count}} minute",
+    "lastSyncMinutes_other": "Dernière synchronisation il y a {{count}} minutes",
+    "lastSyncHours_one": "Dernière synchronisation il y a {{count}} heure",
+    "lastSyncHours_other": "Dernière synchronisation il y a {{count}} heures",
+    "lastSyncDays_one": "Dernière synchronisation il y a {{count}} jour",
+    "lastSyncDays_other": "Dernière synchronisation il y a {{count}} jours",
+    "error": "La synchronisation n'a pas pu être activée",
+    "openFailed": "Impossible d'ouvrir votre agenda",
+    "button": "Synchroniser",
+    "addToGoogle": "Ajouter à Google Agenda",
+    "googleHint": "Google n'autorise l'ajout d'un calendrier que depuis un ordinateur. Une fois fait, il apparaît aussi dans l'app mobile."
   }
 }

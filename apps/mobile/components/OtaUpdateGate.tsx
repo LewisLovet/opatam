@@ -7,33 +7,53 @@
  * Au boot (prod uniquement) : checkForUpdateAsync (course avec un timeout
  * court — pas de réseau = pas d'attente), et SEULEMENT si une mise à jour
  * existe : splash animé plein écran pendant fetchUpdateAsync, puis
- * reloadAsync (rechargement JS immédiat, sans action utilisateur).
+ * reloadAsync (rechargement JS immédiat, sans action utilisateur). Le
+ * décor vient de `BrandSplash`, partagé avec l'écran d'attente du
+ * démarrage — même dégradé, même logo, pour que l'utilisateur perçoive
+ * une seule séquence depuis le splash natif.
  * Au moindre pépin (timeout, erreur), on s'efface : l'app démarre
  * normalement et l'OTA s'appliquera au prochain lancement, comme avant.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Animated, StyleSheet } from 'react-native';
 import * as Updates from 'expo-updates';
 import { useTranslation } from 'react-i18next';
-
-const PRIMARY = '#1a6daf';
-const PRIMARY_DARK = '#145a8f';
-// Même asset que le splash natif (app.json) : la reprise se fait sans
-// couture — l'utilisateur perçoit une seule animation continue.
-const APP_ICON = require('../assets/splash-icon-white.png');
+import { BrandSplash, splashStyles } from './BrandSplash';
 
 const CHECK_TIMEOUT_MS = 5000; // check silencieux — au-delà, on laisse démarrer
 const FETCH_TIMEOUT_MS = 15000; // téléchargement visible — au-delà, on s'efface
+
+/**
+ * Durée MINIMALE d'affichage une fois le splash apparu.
+ *
+ * Sur une bonne connexion, une petite OTA se télécharge en quelques
+ * centaines de millisecondes : l'écran apparaissait et disparaissait
+ * presque aussitôt, donnant un clignotement au lieu d'une transition. On
+ * ne retarde jamais un démarrage SANS mise à jour — ce plancher ne
+ * s'applique qu'une fois qu'on a décidé d'afficher quelque chose.
+ */
+const MIN_VISIBLE_MS = 2000;
+
 
 // ── Aperçu dev-only ──────────────────────────────────────────────────
 // Le gate ne se déclenche JAMAIS en dev (Updates désactivé) ; ce hook
 // permet au DevFAB d'afficher le splash quelques secondes pour valider
 // le rendu sur un vrai écran. Aucun effet en production.
 let previewListener: ((ms: number) => void) | null = null;
-export function previewOtaSplash(ms = 6000): void {
-  previewListener?.(ms);
+/** Demande émise avant que le gate ne soit monté — rejouée à son montage.
+ *  Sans ce tampon, un appui pendant un rechargement Fast Refresh ne
+ *  produisait RIEN, sans le moindre message : le plus déroutant des
+ *  comportements pour qui teste. */
+let pendingPreviewMs: number | null = null;
+
+export function previewOtaSplash(ms = 8000): void {
+  if (previewListener) {
+    previewListener(ms);
+  } else {
+    pendingPreviewMs = ms;
+    console.log('[otaSplash] aperçu demandé avant montage — rejoué au montage');
+  }
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -43,126 +63,16 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
-/** Logo sur anneaux pulsants — même langage visuel que l'UpdateGate. */
-function PulsingLogo() {
-  const rings = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
-
-  useEffect(() => {
-    const loops = rings.map((v, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 700),
-          Animated.timing(v, {
-            toValue: 1,
-            duration: 2100,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      )
-    );
-    loops.forEach((l) => l.start());
-    return () => loops.forEach((l) => l.stop());
-  }, [rings]);
-
-  return (
-    <View style={styles.logoWrap}>
-      {rings.map((v, i) => (
-        <Animated.View
-          key={i}
-          pointerEvents="none"
-          style={[
-            styles.ring,
-            {
-              opacity: v.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.22, 0] }),
-              transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 2.2] }) }],
-            },
-          ]}
-        />
-      ))}
-      <Image source={APP_ICON} style={styles.logoImg} resizeMode="contain" />
-    </View>
-  );
-}
-
-/** Trois points qui respirent en décalé, façon « ça travaille ». */
-function LoadingDots() {
-  const dots = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
-
-  useEffect(() => {
-    const loops = dots.map((v, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 220),
-          Animated.timing(v, { toValue: 1, duration: 420, useNativeDriver: true }),
-          Animated.timing(v, { toValue: 0, duration: 420, useNativeDriver: true }),
-          Animated.delay((2 - i) * 220),
-        ])
-      )
-    );
-    loops.forEach((l) => l.start());
-    return () => loops.forEach((l) => l.stop());
-  }, [dots]);
-
-  return (
-    <View style={styles.dotsRow}>
-      {dots.map((v, i) => (
-        <Animated.View
-          key={i}
-          style={[
-            styles.dot,
-            {
-              opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
-              transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -6] }) }],
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
-
-const PHRASE_ROTATE_MS = 2600;
-
-/** Phrase d'ambiance qui tourne en fondu — on crée une atmosphère
- *  (« Nous préparons votre espace… ») plutôt que d'annoncer une MAJ. */
-function RotatingPhrase() {
-  const { t } = useTranslation();
-  const phrases = [
-    t('components.otaGate.phrase1'),
-    t('components.otaGate.phrase2'),
-    t('components.otaGate.phrase3'),
-  ];
-  const [index, setIndex] = useState(0);
-  const opacity = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      Animated.timing(opacity, { toValue: 0, duration: 350, useNativeDriver: true }).start(
-        ({ finished }) => {
-          if (!finished) return;
-          setIndex((i) => (i + 1) % phrases.length);
-          Animated.timing(opacity, { toValue: 1, duration: 350, useNativeDriver: true }).start();
-        }
-      );
-    }, PHRASE_ROTATE_MS);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <Animated.Text style={[styles.title, { opacity }]}>{phrases[index]}</Animated.Text>
-  );
-}
-
 export function OtaUpdateGate() {
+  const { t } = useTranslation();
   const [downloading, setDownloading] = useState(false);
   const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Aperçu dev-only déclenché depuis le DevFAB.
     if (__DEV__) {
-      previewListener = (ms) => {
+      const play = (ms: number) => {
+        console.log(`[otaSplash] aperçu ${ms} ms`);
         setDownloading(true);
         Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
         setTimeout(() => {
@@ -171,6 +81,12 @@ export function OtaUpdateGate() {
           );
         }, ms);
       };
+      previewListener = play;
+      if (pendingPreviewMs !== null) {
+        const ms = pendingPreviewMs;
+        pendingPreviewMs = null;
+        play(ms);
+      }
       return () => {
         previewListener = null;
       };
@@ -188,8 +104,14 @@ export function OtaUpdateGate() {
 
         setDownloading(true);
         Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+        const shownAt = Date.now();
 
         await withTimeout(Updates.fetchUpdateAsync(), FETCH_TIMEOUT_MS);
+        if (cancelled) return;
+        // Laisse l'animation exister : sans ce plancher, une petite OTA
+        // sur bonne connexion produit un flash de 300 ms.
+        const remaining = MIN_VISIBLE_MS - (Date.now() - shownAt);
+        if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
         if (cancelled) return;
         await Updates.reloadAsync();
       } catch {
@@ -214,16 +136,17 @@ export function OtaUpdateGate() {
   if (!downloading) return null;
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, styles.overlay, { opacity: fade }]} pointerEvents="auto">
-      <LinearGradient
-        colors={[PRIMARY, PRIMARY_DARK]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <Animated.View
+      style={[StyleSheet.absoluteFill, splashStyles.scene, styles.overlay, { opacity: fade }]}
+      pointerEvents="auto"
+    >
+      <BrandSplash
+        phrases={[
+          t('components.otaGate.phrase1'),
+          t('components.otaGate.phrase2'),
+          t('components.otaGate.phrase3'),
+        ]}
       />
-      <PulsingLogo />
-      <RotatingPhrase />
-      <LoadingDots />
     </Animated.View>
   );
 }
@@ -232,43 +155,5 @@ const styles = StyleSheet.create({
   overlay: {
     zIndex: 9998, // sous l'UpdateGate bloquant (9999), au-dessus de tout le reste
     elevation: 9998,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  logoWrap: {
-    width: 150,
-    height: 150,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 28,
-  },
-  ring: {
-    position: 'absolute',
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    backgroundColor: '#FFFFFF',
-  },
-  logoImg: {
-    width: 120,
-    height: 120,
-  },
-  title: {
-    fontSize: 21,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 28,
-  },
-  dot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#FFFFFF',
   },
 });

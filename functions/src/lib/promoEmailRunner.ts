@@ -7,8 +7,10 @@
  * immédiate, sans doublon.
  *
  * ORDRE DES OPÉRATIONS (c'est là qu'était le bug) :
- *   1. décider (pur, testé dans lib/promoNotification) ;
- *   2. revérifier que le prestataire est TOUJOURS éligible ;
+ *   1. écarter ce qui ne dépend d'aucune date (pas de promo, envoi non
+ *      demandé) — sans lire le prestataire ;
+ *   2. lire le prestataire : éligibilité ET fuseau, puis décider la
+ *      fenêtre de dates DANS SON FUSEAU ;
  *   3. lire le throttle 7 j SANS le consommer ;
  *   4. chercher les destinataires ;
  *   5. seulement s'il en existe au moins un, réserver ATOMIQUEMENT le
@@ -49,7 +51,13 @@
 import * as admin from 'firebase-admin';
 import { randomBytes } from 'crypto';
 import { sendRawEmail } from '../utils/resendService';
-import { decidePromoNotification, localToday, type PromoNotificationInput } from './promoNotification';
+import {
+  decidePromoNotification,
+  localToday,
+  promoPreCheck,
+  resolveTimeZone,
+  type PromoNotificationInput,
+} from './promoNotification';
 import { hasLoyaltyAccessMirror, isLoyaltyConfigValidMirror } from '../utils/loyaltyMirror';
 
 const THROTTLE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -145,25 +153,17 @@ export async function runPromoEmailForService(
   const providerRef = db.collection('providers').doc(providerId);
   const ledgerRef = providerRef.collection('promoNotifications').doc(serviceId);
 
-  // Registre : cette offre a-t-elle déjà été TRAITÉE ? La présence de la
-  // signature suffit — un échec partiel ou total ne rouvre rien.
-  const ledgerSnap = await ledgerRef.get();
-  const ledger = ledgerSnap.exists ? ledgerSnap.data()! : null;
-  const settledSignature = (ledger?.signature as string | undefined) ?? null;
+  // Étape 1a — refus qui ne dépendent d'aucune date. Tranchés AVANT de
+  // lire le prestataire : ce trigger part à chaque écriture sur une
+  // prestation (un simple changement de libellé suffit), il serait
+  // dispendieux de charger le document du pro pour rien.
+  const pre = promoPreCheck(discount);
+  if (pre) return pre.reason;
 
-  const decision = decidePromoNotification(
-    discount ? { ...discount, notifiedSignature: settledSignature } : discount,
-    localToday(now),
-  );
-  if (!decision.send) {
-    return decision.reason;
-  }
-
-  // Étape 2 — le prestataire est-il TOUJOURS en droit d'envoyer ? Le cron
-  // peut passer des semaines après la mise en ligne de l'offre : entre
-  // temps l'abonnement a pu expirer, la fiche être dépubliée ou la carte
-  // de fidélité désactivée. On revérifie, on ne se fie pas à l'état du
-  // jour où la promo a été créée.
+  // Étape 2 — le prestataire. Nécessaire à double titre : vérifier qu'il
+  // est TOUJOURS en droit d'envoyer (le cron peut passer des semaines
+  // après la mise en ligne de l'offre — abonnement expiré, fiche
+  // dépubliée, carte désactivée), et connaître SON FUSEAU.
   const providerSnap = await providerRef.get();
   if (!providerSnap.exists) return 'provider-missing';
   const provider = providerSnap.data()!;
@@ -173,6 +173,25 @@ export async function runPromoEmailForService(
     !hasLoyaltyAccessMirror(provider)
   ) {
     return 'provider-ineligible';
+  }
+
+  // Registre : cette offre a-t-elle déjà été TRAITÉE ? La présence de la
+  // signature suffit — un échec partiel ou total ne rouvre rien.
+  const ledgerSnap = await ledgerRef.get();
+  const ledger = ledgerSnap.exists ? ledgerSnap.data()! : null;
+  const settledSignature = (ledger?.signature as string | undefined) ?? null;
+
+  // Fenêtre de dates évaluée dans le fuseau DU PRESTATAIRE. `startsAt` et
+  // `endsAt` sont saisis chez lui : les comparer à la date parisienne
+  // décalait ses bornes d'une journée autour de minuit — une offre
+  // portugaise commençait ou expirait une heure trop tôt.
+  const timeZone = resolveTimeZone(provider.settings?.timezone);
+  const decision = decidePromoNotification(
+    discount ? { ...discount, notifiedSignature: settledSignature } : discount,
+    localToday(now, timeZone),
+  );
+  if (!decision.send) {
+    return decision.reason;
   }
 
   // Étape 3 — lecture seule du throttle. On sort SANS rien écrire.

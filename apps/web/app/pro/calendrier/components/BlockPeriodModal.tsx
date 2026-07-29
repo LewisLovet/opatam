@@ -30,6 +30,7 @@ import {
   memberService,
   blockedSlotRepository,
 } from '@booking-app/firebase';
+import { isBlockedPeriodValid } from '@booking-app/shared';
 import type { Member } from '@booking-app/shared';
 import { Loader2, Ban } from 'lucide-react';
 
@@ -191,8 +192,35 @@ export function BlockPeriodModal({
     const endDt = allDay
       ? combine(endDate, '23:59')
       : combine(endDate, endTime);
-    if (endDt < startDt) {
+
+    // Ordre des JOURS d'abord — indépendant des heures, et seul cas où
+    // comparer les dates a un sens.
+    if (endDate < startDate) {
       toast.error('La date de fin doit être après le début');
+      return;
+    }
+
+    // Puis la règle horaire PARTAGÉE, la même que le service et que
+    // l'écran mobile.
+    //
+    // Comparer `endDt < startDt` ne convenait pas : sur un même jour,
+    // « 22:00 → 00:00 » produit une fin à minuit du matin, donc
+    // antérieure au début — le web refusait une période pourtant valide,
+    // acceptée partout ailleurs. Et l'opérateur strict laissait passer
+    // « 14:00 → 14:00 » et « 00:00 → 00:00 », que la création faisait
+    // ensuite échouer côté service, mais que l'ÉDITION enregistrait :
+    // elle écrit directement via le repository.
+    //
+    // Placée AVANT les deux branches, la vérification couvre les deux.
+    if (
+      !isBlockedPeriodValid({
+        allDay,
+        sameDay: startDate === endDate,
+        startTime,
+        endTime,
+      })
+    ) {
+      toast.error("L'heure de fin doit être après l'heure de début");
       return;
     }
 

@@ -621,6 +621,19 @@ export function DaySchedule({
           // sit on top of the tail of the first and steal its touches).
           const actualHeight = Math.max(height, 18);
 
+          // DENSITÉ D'AFFICHAGE. Une heure fait 60 px : un RDV de 15 min
+          // n'a que 15 px, et une ligne de texte avec son padding en
+          // réclame le double — le libellé se retrouvait tranché en deux,
+          // ce qui donnait un trait barbouillé au lieu d'un rendez-vous.
+          // On adapte donc le contenu à la place disponible plutôt que de
+          // l'y forcer. Les seuils viennent de ce qui TIENT réellement :
+          // une ligne de 12 px de hauteur, plus le padding vertical.
+          const density: 'micro' | 'compact' | 'full' =
+            actualHeight < 22 ? 'micro' : actualHeight < 38 ? 'compact' : 'full';
+          // Le padding vertical disparaît sur les cartes minuscules : il
+          // mangeait la seule ligne disponible.
+          const padV = density === 'micro' ? 0 : density === 'compact' ? 2 : spacing.xs;
+
           // Overlap layout
           const layout = overlapLayout[booking.id] || { column: 0, totalColumns: 1 };
           const GRID_RIGHT_MARGIN = 8;
@@ -649,8 +662,14 @@ export function DaySchedule({
                   borderLeftColor:
                     tintColor || getStatusBorderColor(booking.status, colors),
                   borderRadius: radius.sm,
-                  padding: spacing.xs,
+                  paddingVertical: padV,
+                  paddingHorizontal: spacing.xs,
                   marginLeft: spacing.xs,
+                  // Centrage vertical UNIQUEMENT sur les cartes courtes,
+                  // où l'unique ligne doit se placer au milieu du filet.
+                  // Une carte de 2 h garde son texte en haut, comme dans
+                  // n'importe quel agenda.
+                  justifyContent: density === 'full' ? 'flex-start' : 'center',
                   // NB: never set `position` here — `styles.bookingBlock`
                   // is `position: 'absolute'`, and an inline 'relative'
                   // would knock the bar back into normal flow, stacking
@@ -669,7 +688,10 @@ export function DaySchedule({
                     },
               ]}
             >
-              {showMemberDot && (
+              {/* Pastille du membre — en absolu sur les cartes hautes, mais
+                  INLINE sur les cartes minuscules, où elle recouvrirait le
+                  seul texte affiché. */}
+              {showMemberDot && density !== 'micro' && (
                 <View
                   style={{
                     position: 'absolute',
@@ -682,24 +704,8 @@ export function DaySchedule({
                   }}
                 />
               )}
-              {/* For very short cells (< 30px, typical of 30-min slots
-                  on a wide visible window) lay time + client name on
-                  the same row; otherwise stack them vertically as
-                  before. Saves vertical space without losing info. */}
-              {actualHeight < 30 ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text variant="caption" style={styles.bookingTime} numberOfLines={1}>
-                    {booking.startTime}
-                  </Text>
-                  <Text
-                    variant="caption"
-                    numberOfLines={1}
-                    style={[styles.clientName, { flex: 1 }]}
-                  >
-                    {booking.clientName}
-                  </Text>
-                </View>
-              ) : (
+
+              {density === 'full' ? (
                 <>
                   <Text variant="caption" style={styles.bookingTime} numberOfLines={1}>
                     {booking.startTime} - {booking.endTime}
@@ -708,7 +714,49 @@ export function DaySchedule({
                     {booking.clientName}
                   </Text>
                 </>
+              ) : (
+                // UNE seule ligne, verticalement centrée. En micro on tombe
+                // à 10 px avec une interligne serrée : c'est ce qui permet
+                // à un RDV de 15 min de rester lisible au lieu d'être coupé.
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Text
+                    variant="caption"
+                    numberOfLines={1}
+                    style={[
+                      styles.bookingTime,
+                      density === 'micro' && { fontSize: 10, lineHeight: 12 },
+                      density === 'compact' && { fontSize: 11, lineHeight: 14 },
+                    ]}
+                  >
+                    {booking.startTime}
+                  </Text>
+                  <Text
+                    variant="caption"
+                    numberOfLines={1}
+                    style={[
+                      styles.clientName,
+                      { flex: 1 },
+                      density === 'micro' && { fontSize: 10, lineHeight: 12 },
+                      density === 'compact' && { fontSize: 11, lineHeight: 14 },
+                    ]}
+                  >
+                    {booking.clientName}
+                  </Text>
+                  {showMemberDot && (
+                    <View
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: 2.5,
+                        backgroundColor: booking.memberColor!,
+                      }}
+                    />
+                  )}
+                </View>
               )}
+
+              {/* La prestation n'apparaît que si elle ne vole pas la place
+                  du nom : deux lignes pleines tiennent à partir de 50 px. */}
               {actualHeight > 50 && (
                 <Text variant="caption" color="textSecondary" numberOfLines={1} style={{ fontSize: 11 }}>
                   {booking.serviceName}

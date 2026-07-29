@@ -295,7 +295,8 @@
         "phoneInvalid": "Número de telefone inválido",
         "passwordTooShort": "A palavra-passe deve ter pelo menos 6 caracteres",
         "passwordMismatch": "As palavras-passe não coincidem",
-        "emailMismatch": "Os endereços de email não coincidem"
+        "emailMismatch": "Os endereços de email não coincidem",
+        "serviceDurationInvalid": "Indique uma duração entre 5 minutos e 24 horas."
       },
       "registerError": "Erro durante o registo",
       "finalizing": "A criar a sua área…",
@@ -346,7 +347,10 @@
         "addService": "Adicionar um serviço",
         "serviceCategoryModalTitle": "Categoria do serviço",
         "customCategoryHint": "Ou introduza um nome personalizado:",
-        "customCategoryPlaceholder": "Outra categoria..."
+        "customCategoryPlaceholder": "Outra categoria...",
+        "previewConfirm": "Confirmar a pré-visualização",
+        "previewConfirmHint": "Verifique o percurso tal como os seus clientes o verão e confirme para continuar. O lápis leva ao campo a corrigir.",
+        "durationHint": "Ou seja {{label}}"
       },
       "step4": {
         "to": "às",
@@ -1386,7 +1390,8 @@
       "cartSummary": "{{count}} serviços · {{duration}} min · {{price}}",
       "continue": "Continuar",
       "continueWithCount_one": "Continuar — {{count}} serviço",
-      "continueWithCount_other": "Continuar — {{count}} serviços"
+      "continueWithCount_other": "Continuar — {{count}} serviços",
+      "fromPrefix": "desde"
     },
     "periods": {
       "morning": "Manhã",
@@ -1477,7 +1482,9 @@
       "daysWithMonths_other": "{{days}} dias ({{count}} meses)",
       "daysWithYears_one": "{{days}} dias ({{count}} ano)",
       "daysWithYears_other": "{{days}} dias ({{count}} anos)",
-      "hoursMinutes": "{{hours}}h{{minutes}}"
+      "hoursMinutes": "{{hours}}h{{minutes}}",
+      "weeks_one": "{{count}} semana",
+      "weeks_other": "{{count}} semanas"
     },
     "notice": {
       "title": "Aviso antes da reserva",
@@ -1492,6 +1499,13 @@
     "about": {
       "title": "Sobre estas definições",
       "description": "Estas regras aplicam-se a todas as novas reservas. As reservas existentes não são afetadas por estas alterações."
+    },
+    "custom": {
+      "label": "Valor personalizado",
+      "days": "dias",
+      "weeks": "semanas",
+      "apply": "Aplicar",
+      "hint": "De 1 a {{max}} dias"
     }
   },
   "proClients": {
@@ -1930,7 +1944,9 @@
       "deleteMessage": "Pretende eliminar este período?",
       "delete": "Eliminar",
       "errorTitle": "Erro",
-      "deleteError": "Não foi possível eliminar"
+      "deleteError": "Não foi possível eliminar",
+      "edit": "Editar",
+      "actionsMessage": "O que pretende fazer?"
     },
     "emptyDay": {
       "title": "Nenhuma marcação",
@@ -2863,7 +2879,9 @@
     "startDate": "Data de início",
     "endDate": "Data de fim",
     "startTime": "Hora de início",
-    "endTime": "Hora de fim"
+    "endTime": "Hora de fim",
+    "updated": "Período bloqueado atualizado",
+    "endBeforeStart": "A hora de fim deve ser posterior à hora de início."
   },
   "proBlockedSlots": {
     "title": "Horários bloqueados",
@@ -2885,7 +2903,8 @@
     "empty": {
       "title": "Nenhum horário bloqueado",
       "description": "Bloqueie horários para indicar as suas indisponibilidades"
-    }
+    },
+    "edit": "Editar este período"
   },
   "loyalty": {
     "title": "Fidelização",
@@ -3036,5 +3055,28 @@
       "title": "Ainda não há cartões",
       "description": "Os cartões dos seus clientes aparecerão aqui a partir da primeira marcação contabilizada."
     }
+  },
+  "calendarSync": {
+    "title": "Sincronizar a minha agenda",
+    "subtitle": "As suas marcações na sua agenda pessoal, sempre atualizadas.",
+    "intro": "Ative a sincronização e depois adicione a agenda ao seu calendário. As novas marcações aparecem, os cancelamentos desaparecem, as alterações acompanham — sem fazer nada.",
+    "activate": "Ativar a sincronização",
+    "addToCalendar": "Adicionar à minha agenda",
+    "copyHint": "Ou copie este link para o Outlook ou outra agenda",
+    "copied": "Link copiado",
+    "disable": "Desativar",
+    "noticeDelay": "O intervalo de atualização depende das definições da sua agenda — de alguns minutos a uma vez por dia. Pode reduzi-lo nas definições da subscrição.",
+    "noticeReadOnly": "A sua agenda mostra as marcações mas não as pode alterar: as alterações fazem-se aqui.",
+    "lastSyncMinutes_one": "Última sincronização há {{count}} minuto",
+    "lastSyncMinutes_other": "Última sincronização há {{count}} minutos",
+    "lastSyncHours_one": "Última sincronização há {{count}} hora",
+    "lastSyncHours_other": "Última sincronização há {{count}} horas",
+    "lastSyncDays_one": "Última sincronização há {{count}} dia",
+    "lastSyncDays_other": "Última sincronização há {{count}} dias",
+    "error": "Não foi possível ativar a sincronização",
+    "openFailed": "Não foi possível abrir a sua agenda",
+    "button": "Sincronizar",
+    "addToGoogle": "Adicionar ao Google Agenda",
+    "googleHint": "O Google só permite adicionar um calendário a partir de um computador. Depois disso, aparece também na app móvel."
   }
 }

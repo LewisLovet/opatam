@@ -295,7 +295,8 @@
         "phoneInvalid": "Numero di telefono non valido",
         "passwordTooShort": "La password deve contenere almeno 6 caratteri",
         "passwordMismatch": "Le password non corrispondono",
-        "emailMismatch": "Gli indirizzi email non corrispondono"
+        "emailMismatch": "Gli indirizzi email non corrispondono",
+        "serviceDurationInvalid": "Indica una durata compresa tra 5 minuti e 24 ore."
       },
       "registerError": "Errore durante la registrazione",
       "finalizing": "Creazione del tuo spazio…",
@@ -346,7 +347,10 @@
         "addService": "Aggiungi un servizio",
         "serviceCategoryModalTitle": "Categoria del servizio",
         "customCategoryHint": "Oppure inserisci un nome personalizzato:",
-        "customCategoryPlaceholder": "Altra categoria..."
+        "customCategoryPlaceholder": "Altra categoria...",
+        "previewConfirm": "Conferma l'anteprima",
+        "previewConfirmHint": "Controlla il percorso come lo vedranno i tuoi clienti, poi conferma per continuare. La matita riporta al campo da correggere.",
+        "durationHint": "Ovvero {{label}}"
       },
       "step4": {
         "to": "alle",
@@ -1386,7 +1390,8 @@
       "cartSummary": "{{count}} servizi · {{duration}} min · {{price}}",
       "continue": "Continua",
       "continueWithCount_one": "Continua — {{count}} servizio",
-      "continueWithCount_other": "Continua — {{count}} servizi"
+      "continueWithCount_other": "Continua — {{count}} servizi",
+      "fromPrefix": "da"
     },
     "periods": {
       "morning": "Mattina",
@@ -1477,7 +1482,9 @@
       "daysWithMonths_other": "{{days}} giorni ({{count}} mesi)",
       "daysWithYears_one": "{{days}} giorni ({{count}} anno)",
       "daysWithYears_other": "{{days}} giorni ({{count}} anni)",
-      "hoursMinutes": "{{hours}} h {{minutes}}"
+      "hoursMinutes": "{{hours}} h {{minutes}}",
+      "weeks_one": "{{count}} settimana",
+      "weeks_other": "{{count}} settimane"
     },
     "notice": {
       "title": "Avviso prima della prenotazione",
@@ -1492,6 +1499,13 @@
     "about": {
       "title": "Informazioni su queste impostazioni",
       "description": "Queste regole si applicano a tutte le nuove prenotazioni. Le prenotazioni esistenti non vengono modificate da questi cambiamenti."
+    },
+    "custom": {
+      "label": "Valore personalizzato",
+      "days": "giorni",
+      "weeks": "settimane",
+      "apply": "Applica",
+      "hint": "Da 1 a {{max}} giorni"
     }
   },
   "proClients": {
@@ -1930,7 +1944,9 @@
       "deleteMessage": "Vuoi eliminare questo periodo?",
       "delete": "Elimina",
       "errorTitle": "Errore",
-      "deleteError": "Impossibile eliminare"
+      "deleteError": "Impossibile eliminare",
+      "edit": "Modifica",
+      "actionsMessage": "Cosa vuoi fare?"
     },
     "emptyDay": {
       "title": "Nessun appuntamento",
@@ -2863,7 +2879,9 @@
     "startDate": "Data di inizio",
     "endDate": "Data di fine",
     "startTime": "Ora di inizio",
-    "endTime": "Ora di fine"
+    "endTime": "Ora di fine",
+    "updated": "Periodo bloccato modificato",
+    "endBeforeStart": "L'ora di fine deve essere successiva all'ora di inizio."
   },
   "proBlockedSlots": {
     "title": "Orari bloccati",
@@ -2885,7 +2903,8 @@
     "empty": {
       "title": "Nessun orario bloccato",
       "description": "Blocca orari per indicare le tue indisponibilità"
-    }
+    },
+    "edit": "Modifica questo periodo"
   },
   "loyalty": {
     "title": "Fedeltà",
@@ -3036,5 +3055,28 @@
       "title": "Nessuna carta per ora",
       "description": "Le carte dei tuoi clienti appariranno qui dal loro primo appuntamento conteggiato."
     }
+  },
+  "calendarSync": {
+    "title": "Sincronizza il mio calendario",
+    "subtitle": "I tuoi appuntamenti nel tuo calendario personale, sempre aggiornati.",
+    "intro": "Attiva la sincronizzazione, poi aggiungi l'agenda al tuo calendario. I nuovi appuntamenti compaiono, le disdette spariscono, gli spostamenti seguono — senza fare nulla.",
+    "activate": "Attiva la sincronizzazione",
+    "addToCalendar": "Aggiungi al mio calendario",
+    "copyHint": "Oppure copia questo link per Outlook o un altro calendario",
+    "copied": "Link copiato",
+    "disable": "Disattiva",
+    "noticeDelay": "L'intervallo di aggiornamento dipende dalle impostazioni del tuo calendario — da pochi minuti a una volta al giorno. Puoi ridurlo nelle impostazioni dell'iscrizione.",
+    "noticeReadOnly": "Il tuo calendario mostra gli appuntamenti ma non può modificarli: le modifiche si fanno qui.",
+    "lastSyncMinutes_one": "Ultima sincronizzazione {{count}} minuto fa",
+    "lastSyncMinutes_other": "Ultima sincronizzazione {{count}} minuti fa",
+    "lastSyncHours_one": "Ultima sincronizzazione {{count}} ora fa",
+    "lastSyncHours_other": "Ultima sincronizzazione {{count}} ore fa",
+    "lastSyncDays_one": "Ultima sincronizzazione {{count}} giorno fa",
+    "lastSyncDays_other": "Ultima sincronizzazione {{count}} giorni fa",
+    "error": "Non è stato possibile attivare la sincronizzazione",
+    "openFailed": "Impossibile aprire il tuo calendario",
+    "button": "Sincronizza",
+    "addToGoogle": "Aggiungi a Google Calendar",
+    "googleHint": "Google consente di aggiungere un calendario solo da computer. Una volta fatto, compare anche nell'app mobile."
   }
 }

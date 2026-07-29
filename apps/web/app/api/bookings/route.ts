@@ -21,6 +21,48 @@ import { sendDepositPaymentRequestEmail } from '@/lib/emails/depositPaymentReque
 // time as possible while the client completes payment.
 const CHECKOUT_EXPIRY_MIN_SECONDS = 30 * 60;
 
+/**
+ * Compte Firebase du CLIENT pour lequel le prestataire saisit un rendez-vous.
+ *
+ * Appelé UNIQUEMENT depuis une requête pro authentifiée : c'est le
+ * prestataire qui atteste l'identité de sa cliente, et il ne peut le faire
+ * que pour lui-même (son UID est celui du document prestataire).
+ *
+ * Deux sources, dans cet ordre :
+ *  1. sa propre fiche client, si elle porte déjà un `clientId` — c'est la
+ *     preuve la plus forte, la cliente a déjà réservé connectée ici ;
+ *  2. à défaut, le compte correspondant à l'adresse saisie. Même règle de
+ *     correspondance d'email que le rattachement des réservations
+ *     invitées, appliquée ici à la déclaration d'un pro identifié.
+ *
+ * Sans compte à cette adresse, on ne rattache rien : la réservation existe,
+ * elle ne remplit simplement aucune carte — la fidélité suppose un compte.
+ */
+async function resolveClientAccount(
+  providerId: string,
+  email: string | null,
+): Promise<string | null> {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return null;
+  const db = getAdminFirestore();
+  try {
+    const doc = await db
+      .collection('providerClients')
+      .doc(`${providerId}_email:${normalized}`)
+      .get();
+    const owner = doc.data()?.clientId as string | undefined;
+    if (owner) return owner;
+  } catch {
+    // Fiche absente ou illisible → on tente la résolution par compte.
+  }
+  try {
+    const account = await getAdminAuth().getUserByEmail(normalized);
+    return account?.uid ?? null;
+  } catch {
+    return null; // aucun compte à cette adresse — cas le plus fréquent
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -110,6 +152,24 @@ export async function POST(request: NextRequest) {
     //                        redirecting the pro to Stripe Checkout,
     //                        email the client a payment link.
     const isProSource = body.source === 'pro';
+    // Le mode pro accorde de vrais privilèges — sauter l'acompte, ignorer
+    // la fenêtre de réservation maximale. Il doit donc être PROUVÉ : le
+    // document prestataire a pour identifiant l'UID de son propriétaire,
+    // il suffit de comparer.
+    //
+    // Tolérance transitoire : les écrans pro déjà déployés n'envoient pas
+    // encore de jeton, et refuser leurs réservations casserait le
+    // planning en production. On les accepte donc encore, en le
+    // journalisant — mais ce qui est NOUVEAU (rattacher le compte du
+    // client pour la fidélité) exige la preuve. À resserrer quand les
+    // clients à jour auront remplacé les anciens.
+    const isProVerified = isProSource && verifiedUid === validated.providerId;
+    if (isProSource && !isProVerified) {
+      console.warn(
+        `[bookings] source=pro NON authentifiée (provider ${validated.providerId}) — ` +
+          'client non rattaché, à refuser une fois les écrans pro à jour',
+      );
+    }
     const proAsksDeposit = isProSource && body.askDeposit === true;
     const skipDeposit = isProSource && !proAsksDeposit;
 
@@ -306,7 +366,25 @@ export async function POST(request: NextRequest) {
     // Stamp the clientId via Admin SDK (bypasses Firestore rules — see
     // note above the schema parse). Without this the booking is invisible
     // to "Mes rendez-vous" since useClientBookings queries by clientId.
-    if (clientUid) {
+    if (isProVerified) {
+      // RÉSERVATION SAISIE PAR LE PRO. `clientUid` vaut ici l'UID du PRO
+      // (c'est lui qui porte le jeton) — l'écrire serait attribuer le
+      // rendez-vous au prestataire lui-même. On résout donc le compte du
+      // CLIENT, pour que ses points se cumulent (décision produit : une
+      // réservation prise au salon compte, même si le client n'a pas
+      // utilisé l'app).
+      const attachedUid = await resolveClientAccount(
+        validated.providerId,
+        validated.clientInfo?.email ?? null,
+      );
+      if (attachedUid) {
+        await getAdminFirestore()
+          .collection('bookings')
+          .doc(booking.id)
+          .update({ clientId: attachedUid });
+        booking.clientId = attachedUid;
+      }
+    } else if (clientUid) {
       // verifiedUid en priorité ; legacyClientId (non vérifié) seulement en
       // secours pour « Mes rendez-vous » des anciens builds — voir P1.1.
       await getAdminFirestore()
