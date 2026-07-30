@@ -1,5 +1,5 @@
 export { AppStoreBadges } from './AppStoreBadges';
 export { EmptyState } from './EmptyState';
-export { PlayStoreWaitlistModal } from './PlayStoreWaitlistModal';
+export { PlayStoreButton } from './PlayStoreButton';
 export { SocialLinks } from './SocialLinks';
 export { StepIndicator } from './StepIndicator';

@@ -38,9 +38,8 @@
     },
     "appBadges": {
       "downloadOn": "Download on",
-      "soonOn": "Coming soon on",
       "ariaAppStore": "Download on the App Store",
-      "ariaPlaySoon": "Google Play — Coming soon"
+      "ariaPlayStore": "Get it on Google Play"
     }
   },
   "blog": {
@@ -89,19 +88,6 @@
     "refuse": "Refuse",
     "accept": "Accept"
   },
-  "playStore": {
-    "title": "Coming soon on Android!",
-    "body": "Leave your email to be notified as soon as the app is released on Google Play.",
-    "webNote": "In the meantime, every feature is available on the web version: search, booking and managing your appointments.",
-    "continueWeb": "Continue on the web",
-    "emailPlaceholder": "your@email.com",
-    "notifyMe": "Notify me",
-    "sending": "Sending...",
-    "successTitle": "Got it!",
-    "successBody": "You'll receive an email as soon as the app is available on Google Play.",
-    "close": "Close",
-    "genericError": "Something went wrong"
-  },
   "home": {
     "hero": {
       "title": "Your appointments shouldn't live in your DMs anymore.",
@@ -116,8 +102,7 @@
     "appStrip": {
       "caption": "Also available on mobile",
       "downloadOn": "Download on the",
-      "soonOn": "Coming soon on",
-      "soonBadge": "Soon"
+      "playOn": "Get it on"
     },
     "stats": {
       "items": [
@@ -436,9 +421,8 @@
       "cta": "Create my page",
       "disclaimer": "{days} days free — No credit card — No commitment",
       "availableOn": "Available on the",
-      "soonOn": "Coming soon on",
-      "soonBadge": "Soon",
-      "followUs": "Follow us"
+      "followUs": "Follow us",
+      "playOn": "Available on"
     },
     "marketplace": {
       "lookingFor": "Looking for a professional near you?",

@@ -13,11 +13,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getLocale } from 'next-intl/server';
 
-import { PlayStoreWaitlistButton } from '@/components/common/PlayStoreWaitlistButton';
+import { PlayStoreButton } from '@/components/common/PlayStoreButton';
 
 const STORE_IOS = 'https://apps.apple.com/app/opatam/id6759246218';
-// Pas de lien Play Store : l'app Android n'est pas publiée et le lien
-// direct menait à une page d'erreur. Le bouton ouvre la liste d'attente.
+// Le lien Play Store vit dans PlayStoreButton (@/lib/store-links) : l'app
+// Android est publiée depuis le 29 juillet 2026.
 
 const TEXTS = {
   fr: {
@@ -29,7 +29,7 @@ const TEXTS = {
     step3: 'Activez votre carte — vos rendez-vous déjà honorés y sont comptés',
     back: "Retour à l'accueil",
     badge: 'Télécharger sur',
-    soon: 'Bientôt sur',
+    soon: 'Télécharger sur',
   },
   en: {
     title: 'Your loyalty card',
@@ -40,7 +40,7 @@ const TEXTS = {
     step3: 'Activate your card — the appointments you already had are counted',
     back: 'Back to home',
     badge: 'Download on',
-    soon: 'Coming soon to',
+    soon: 'Download on',
   },
   it: {
     title: 'La tua carta fedeltà',
@@ -51,7 +51,7 @@ const TEXTS = {
     step3: 'Attiva la tua carta — gli appuntamenti già effettuati sono conteggiati',
     back: 'Torna alla home',
     badge: 'Scarica su',
-    soon: 'Presto su',
+    soon: 'Scarica su',
   },
   pt: {
     title: 'O seu cartão de fidelização',
@@ -62,7 +62,7 @@ const TEXTS = {
     step3: 'Ative o seu cartão — as marcações já realizadas são contabilizadas',
     back: 'Voltar ao início',
     badge: 'Descarregar na',
-    soon: 'Brevemente em',
+    soon: 'Descarregar em',
   },
 } as const;
 
@@ -110,12 +110,12 @@ export default async function LoyaltyLandingPage() {
               <span className="block text-sm font-semibold">App Store</span>
             </span>
           </a>
-          <PlayStoreWaitlistButton className="inline-flex items-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-xl hover:bg-gray-800 transition-colors">
+          <PlayStoreButton className="inline-flex items-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-xl hover:bg-gray-800 transition-colors">
             <span className="text-left leading-tight">
               <span className="block text-[10px] opacity-80">{t.soon}</span>
               <span className="block text-sm font-semibold">Google Play</span>
             </span>
-          </PlayStoreWaitlistButton>
+          </PlayStoreButton>
         </div>
 
         <Link

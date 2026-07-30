@@ -1,3 +1,18 @@
+/**
+ * POST /api/android-waitlist — VESTIGE de la liste d'attente Android.
+ *
+ * Plus aucune page n'appelle cette route : l'application est publiée sur le
+ * Play Store depuis le 29 juillet 2026 et les boutons y renvoient
+ * directement. Elle survit uniquement pour les navigateurs qui exécutent
+ * encore l'ancien bundle JavaScript (page laissée ouverte, cache) : plutôt
+ * qu'un 404 affiché comme une erreur, ils reçoivent le lien de
+ * téléchargement. À supprimer une fois ces sessions expirées.
+ *
+ * Rien n'a jamais été stocké côté serveur : chaque inscription était
+ * simplement notifiée à contact@opatam.com. Les adresses collectées vivent
+ * donc dans cette boîte, sujet « [Android Waitlist] ».
+ */
+
 import { NextResponse } from 'next/server';
 import { getResend, emailConfig, appConfig, getEmailWrapperHtml, isValidEmail } from '@/lib/resend';
 
@@ -19,13 +34,13 @@ export async function POST(request: Request) {
       <tr>
         <td style="padding: 0 32px 24px;">
           <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: #18181b;">
-            Merci pour votre intérêt !
+            Bonne nouvelle : c'est disponible !
           </h2>
           <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #3f3f46;">
-            Nous avons bien pris en compte votre demande. L'application <strong>${appConfig.name}</strong> sera bientôt disponible sur <strong>Google Play</strong>.
+            L'application <strong>${appConfig.name}</strong> est désormais téléchargeable sur <strong>Google Play</strong>.
           </p>
           <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #3f3f46;">
-            Vous serez parmi les premiers informés dès que l'application sera disponible au téléchargement sur Android.
+            <a href="https://play.google.com/store/apps/details?id=com.kamerleontech.opatam" style="color: #dc2626; text-decoration: none; font-weight: 500;">Télécharger Opatam sur Google Play</a>
           </p>
           <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #3f3f46;">
             En attendant, l'application est déjà disponible sur l'<a href="https://apps.apple.com/us/app/opatam-agenda-rendez-vous/id6759246218" style="color: #dc2626; text-decoration: none; font-weight: 500;">App Store</a> pour les utilisateurs iPhone.
@@ -74,9 +89,9 @@ export async function POST(request: Request) {
       resend.emails.send({
         from: emailConfig.from,
         to: email,
-        subject: `${appConfig.name} sur Android — Bientôt disponible !`,
+        subject: `${appConfig.name} est disponible sur Google Play`,
         html: confirmationHtml,
-        text: `Merci pour votre intérêt ! L'application ${appConfig.name} sera bientôt disponible sur Google Play. Vous serez parmi les premiers informés dès que l'application sera disponible au téléchargement sur Android.`,
+        text: `L'application ${appConfig.name} est désormais disponible sur Google Play : https://play.google.com/store/apps/details?id=com.kamerleontech.opatam`,
       }),
       resend.emails.send({
         from: emailConfig.from,

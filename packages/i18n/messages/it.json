@@ -38,9 +38,8 @@
     },
     "appBadges": {
       "downloadOn": "Scarica su",
-      "soonOn": "Presto su",
       "ariaAppStore": "Scarica sull'App Store",
-      "ariaPlaySoon": "Google Play — Presto disponibile"
+      "ariaPlayStore": "Scarica su Google Play"
     }
   },
   "blog": {
@@ -89,19 +88,6 @@
     "refuse": "Rifiuta",
     "accept": "Accetta"
   },
-  "playStore": {
-    "title": "Presto su Android!",
-    "body": "Lascia la tua email per essere avvisato non appena l'app sarà disponibile su Google Play.",
-    "webNote": "Nel frattempo, tutte le funzionalità sono disponibili nella versione web: ricerca, prenotazione e gestione dei tuoi appuntamenti.",
-    "continueWeb": "Continua sul web",
-    "emailPlaceholder": "tua@email.com",
-    "notifyMe": "Avvisami",
-    "sending": "Invio in corso...",
-    "successTitle": "Fatto!",
-    "successBody": "Riceverai un'email non appena l'app sarà disponibile su Google Play.",
-    "close": "Chiudi",
-    "genericError": "Si è verificato un errore"
-  },
   "home": {
     "hero": {
       "title": "I tuoi appuntamenti non dovrebbero più vivere nei tuoi DM.",
@@ -116,8 +102,7 @@
     "appStrip": {
       "caption": "Disponibile anche su mobile",
       "downloadOn": "Scarica sull'",
-      "soonOn": "Presto su",
-      "soonBadge": "Presto"
+      "playOn": "Scarica su"
     },
     "stats": {
       "items": [
@@ -436,9 +421,8 @@
       "cta": "Crea la tua pagina",
       "disclaimer": "{days} giorni gratis — Senza carta di credito — Senza vincoli",
       "availableOn": "Disponibile sull'",
-      "soonOn": "Presto su",
-      "soonBadge": "Presto",
-      "followUs": "Seguici"
+      "followUs": "Seguici",
+      "playOn": "Disponibile su"
     },
     "marketplace": {
       "lookingFor": "Cerchi un professionista vicino a te?",

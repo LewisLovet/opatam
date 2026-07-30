@@ -35,8 +35,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { PlayStoreWaitlistModal } from '@/components/common/PlayStoreWaitlistModal';
 import { localizedPath } from '@/lib/localizedPath';
+import { APP_STORE_URL, PLAY_STORE_URL } from '@/lib/store-links';
 import { SocialLinks } from '@/components/common/SocialLinks';
 import { TutorialsSection } from '@/components/home/TutorialsSection';
 import { HowItWorksAnimated } from '@/components/home/HowItWorksAnimated';
@@ -128,7 +128,6 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
   const [openFaq, setOpenFaq] = useState<number>(0);
   const [isYearly, setIsYearly] = useState(false);
   const [showStickyCta, setShowStickyCta] = useState(false);
-  const [showPlayStoreModal, setShowPlayStoreModal] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
 
   // ── Sticky CTA observer ───────────────────────────────────────────
@@ -256,7 +255,7 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
               </span>
               <div className="flex flex-row flex-wrap justify-center gap-3">
                 <a
-                  href="https://apps.apple.com/us/app/opatam-agenda-rendez-vous/id6759246218"
+                  href={APP_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors shadow-sm"
@@ -269,21 +268,20 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
                     <div className="text-sm font-semibold leading-tight">App Store</div>
                   </div>
                 </a>
-                <button
-                  onClick={() => setShowPlayStoreModal(true)}
-                  className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-black/80 text-white rounded-xl hover:bg-gray-800 transition-colors shadow-sm relative"
+                <a
+                  href={PLAY_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors shadow-sm"
                 >
                   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z" />
                   </svg>
                   <div className="text-left">
-                    <div className="text-[10px] leading-tight opacity-80">{t('appStrip.soonOn')}</div>
+                    <div className="text-[10px] leading-tight opacity-80">{t('appStrip.playOn')}</div>
                     <div className="text-sm font-semibold leading-tight">Google Play</div>
                   </div>
-                  <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-primary-500 text-white text-[10px] font-bold rounded-full shadow">
-                    {t('appStrip.soonBadge')}
-                  </span>
-                </button>
+                </a>
               </div>
             </div>
           </div>
@@ -982,7 +980,7 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
 
             <div className="mt-8 flex flex-row flex-wrap gap-3 justify-center">
               <a
-                href="https://apps.apple.com/us/app/opatam-agenda-rendez-vous/id6759246218"
+                href={APP_STORE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2.5 px-5 py-3 bg-white/10 backdrop-blur text-white border border-white/20 rounded-xl hover:bg-white/20 transition-colors"
@@ -995,21 +993,20 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
                   <div className="text-sm font-semibold leading-tight">App Store</div>
                 </div>
               </a>
-              <button
-                onClick={() => setShowPlayStoreModal(true)}
-                className="inline-flex items-center gap-2.5 px-5 py-3 bg-white/5 backdrop-blur text-white border border-white/15 rounded-xl hover:bg-white/15 transition-colors relative"
+              <a
+                href={PLAY_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 px-5 py-3 bg-white/10 backdrop-blur text-white border border-white/20 rounded-xl hover:bg-white/20 transition-colors"
               >
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z" />
                 </svg>
                 <div className="text-left">
-                  <div className="text-[10px] leading-tight opacity-70">{t('finalCta.soonOn')}</div>
+                  <div className="text-[10px] leading-tight opacity-80">{t('finalCta.playOn')}</div>
                   <div className="text-sm font-semibold leading-tight">Google Play</div>
                 </div>
-                <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-primary-500 text-white text-[10px] font-bold rounded-full shadow">
-                  {t('finalCta.soonBadge')}
-                </span>
-              </button>
+              </a>
             </div>
 
             {/* Social links */}
@@ -1055,11 +1052,6 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
         </div>
       </div>
 
-      {/* Play Store Waitlist Modal */}
-      <PlayStoreWaitlistModal
-        isOpen={showPlayStoreModal}
-        onClose={() => setShowPlayStoreModal(false)}
-      />
     </div>
   );
 }

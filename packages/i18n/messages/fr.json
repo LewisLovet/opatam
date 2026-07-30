@@ -38,9 +38,8 @@
     },
     "appBadges": {
       "downloadOn": "Télécharger sur",
-      "soonOn": "Bientôt sur",
       "ariaAppStore": "Télécharger sur l'App Store",
-      "ariaPlaySoon": "Google Play — Bientôt disponible"
+      "ariaPlayStore": "Télécharger sur Google Play"
     }
   },
   "blog": {
@@ -89,19 +88,6 @@
     "refuse": "Refuser",
     "accept": "Accepter"
   },
-  "playStore": {
-    "title": "Bientôt sur Android !",
-    "body": "Laissez votre email pour être informé dès la sortie de l'application sur Google Play.",
-    "webNote": "En attendant, toutes les fonctionnalités sont disponibles sur la version web : recherche, réservation et gestion de vos rendez-vous.",
-    "continueWeb": "Continuer sur le web",
-    "emailPlaceholder": "votre@email.com",
-    "notifyMe": "Me prévenir",
-    "sending": "Envoi en cours...",
-    "successTitle": "C'est noté !",
-    "successBody": "Vous recevrez un email dès que l'application sera disponible sur Google Play.",
-    "close": "Fermer",
-    "genericError": "Une erreur est survenue"
-  },
   "home": {
     "hero": {
       "title": "Vos rendez-vous ne devraient plus vivre dans vos DM.",
@@ -116,8 +102,7 @@
     "appStrip": {
       "caption": "Aussi disponible sur mobile",
       "downloadOn": "Télécharger sur l'",
-      "soonOn": "Bientôt sur",
-      "soonBadge": "Bientôt"
+      "playOn": "Télécharger sur"
     },
     "stats": {
       "items": [
@@ -436,9 +421,8 @@
       "cta": "Créer ma page",
       "disclaimer": "{days} jours gratuits — Sans carte bancaire — Sans engagement",
       "availableOn": "Disponible sur l'",
-      "soonOn": "Bientôt sur",
-      "soonBadge": "Bientôt",
-      "followUs": "Suivez-nous"
+      "followUs": "Suivez-nous",
+      "playOn": "Disponible sur"
     },
     "marketplace": {
       "lookingFor": "Vous cherchez un professionnel près de chez vous ?",
