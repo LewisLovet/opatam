@@ -34,7 +34,15 @@ export default function ClientLayout() {
   }
   // Les rôles sont exclusifs : un compte pro n'a rien à faire dans
   // l'espace client, quel que soit le chemin emprunté pour y arriver.
-  if (isAuthenticated && userData?.role === 'provider') {
+  //
+  // UNE exception : la fiche publique d'un prestataire. C'est la cible du
+  // bouton « Voir ma page » de l'accueil pro, qui ouvre sa propre fiche en
+  // aperçu — la garde la renvoyait vers l'accueil, rendant l'aperçu
+  // inatteignable. Cette page est publique et en lecture seule : la laisser
+  // s'afficher n'ouvre aucun accès à l'espace client, les écrans suivants
+  // (réservation, profil…) restant protégés.
+  const isPublicProviderPage = pathname?.startsWith('/provider/') ?? false;
+  if (isAuthenticated && userData?.role === 'provider' && !isPublicProviderPage) {
     return <Redirect href={'/(pro)' as never} />;
   }
   if (!isAuthenticated) {
