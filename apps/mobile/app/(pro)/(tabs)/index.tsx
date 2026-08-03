@@ -95,6 +95,8 @@ import {
   useNewFeatures,
   type NewFeatureKey,
 } from '../../../hooks/useNewFeatures';
+import * as WebBrowser from 'expo-web-browser';
+import { providerPublicUrl } from '../../../lib/config';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 
@@ -946,10 +948,27 @@ export default function ProDashboardScreen() {
   }, [shopUrl, t]);
 
 
-  const handleViewShop = useCallback(() => {
+  /**
+   * « Voir ma page » ouvre la VRAIE page publique dans le navigateur, et non
+   * un aperçu interne : le pro veut voir ce que voit sa cliente, à l'adresse
+   * qu'il partage. L'aperçu intégré reste disponible depuis le profil, sous
+   * le libellé « Voir l'aperçu ».
+   *
+   * `openBrowserAsync` garde l'utilisateur dans l'app (onglet Safari/Chrome
+   * intégré) ; `Linking` en repli ouvre le navigateur externe, au cas où le
+   * module natif manquerait sur un binaire ancien.
+   */
+  const handleViewShop = useCallback(async () => {
     if (!provider?.slug) return;
-    router.push({ pathname: '/(client)/provider/[slug]', params: { slug: provider.slug, preview: '1' } });
-  }, [provider?.slug, router]);
+    const url = providerPublicUrl(provider.slug);
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch {
+      Linking.openURL(url).catch(() => {
+        Alert.alert(t('proHome.errorTitle'), t('proHome.openPageError'));
+      });
+    }
+  }, [provider?.slug, t]);
 
   const handleEditShop = useCallback(() => {
     router.push('/(pro)/profile');

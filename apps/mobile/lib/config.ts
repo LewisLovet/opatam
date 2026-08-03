@@ -56,3 +56,16 @@ export const API_URL = __DEV__
 /** Clé publishable Stripe. Toujours la clé LIVE en production. */
 export const STRIPE_PUBLISHABLE_KEY =
   __DEV__ && envStripeKey ? envStripeKey : PROD_STRIPE_PUBLISHABLE_KEY;
+
+/**
+ * Adresse publique de la fiche d'un prestataire — celle que voient ses
+ * clientes. Passe par `API_URL`, donc pointe sur le serveur local en dev et
+ * sur opatam.com en production.
+ *
+ * À ne pas confondre avec le lien COPIÉ pour être partagé, qui vise toujours
+ * opatam.com : une URL de développement envoyée à une cliente ne mènerait
+ * nulle part.
+ */
+export function providerPublicUrl(slug: string): string {
+  return `${API_URL}/p/${slug}`;
+}

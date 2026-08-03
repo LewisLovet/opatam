@@ -1918,7 +1918,8 @@
       "paypalNotConfigured": "PayPal não configurado",
       "paypalNotConfiguredDesc": "Adicione a sua ligação PayPal a partir da interface web para gerar um QR code de pagamento.",
       "configurePaypal": "Configurar o PayPal"
-    }
+    },
+    "openPageError": "Não foi possível abrir a sua página."
   },
   "proCalendar": {
     "title": "Agenda",
