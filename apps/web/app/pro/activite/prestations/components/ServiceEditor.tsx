@@ -16,6 +16,7 @@ import { EditorTopBar } from './EditorTopBar';
 import { SectionEssentiel } from './SectionEssentiel';
 import { SectionReglages } from './SectionReglages';
 import { SectionPromotion } from './SectionPromotion';
+import { SectionReservation } from './SectionReservation';
 import { SectionDisponibilite } from './SectionDisponibilite';
 import { SectionVariations } from './SectionVariations';
 import { ServicePreview, type ServicePreviewSection } from './ServicePreview';
@@ -24,6 +25,7 @@ import {
   serviceToFormData,
   type ServiceFormData,
 } from './types';
+import { discountToPayload } from './types';
 import {
   sanitizeVariations,
   sanitizeOptions,
@@ -194,9 +196,18 @@ export function ServiceEditor({
       }
     }
     if (formData.discount) {
-      const p = formData.discount.percent;
-      if (!Number.isFinite(p) || p < 1 || p > 100) {
-        next.discountPercent = 'La réduction doit être comprise entre 1 et 100 %';
+      if (formData.discount.mode === 'amount') {
+        const a = formData.discount.amount;
+        if (!Number.isFinite(a) || a < 1) {
+          next.discountPercent = 'La réduction doit être d\u2019au moins 1 centime';
+        } else if (a > 1_000_000) {
+          next.discountPercent = 'La réduction ne peut pas dépasser 10 000 €';
+        }
+      } else {
+        const p = formData.discount.percent;
+        if (!Number.isFinite(p) || p < 1 || p > 100) {
+          next.discountPercent = 'La réduction doit être comprise entre 1 et 100 %';
+        }
       }
       const { startsAt, endsAt } = formData.discount;
       if (startsAt && endsAt && startsAt > endsAt) {
@@ -253,8 +264,14 @@ export function ServiceEditor({
       duration: formData.duration,
       variations,
     });
-    const payload: ServiceFormData = {
+    const payload = {
       ...formData,
+      // Une seule des deux formes de remise est persistée — le formulaire, lui,
+      // garde les deux pour ne rien perdre en basculant.
+      discount: discountToPayload(formData.discount),
+      // La note ne survit pas au retour à « disponible » : elle annoncerait une
+      // rupture sur une prestation à nouveau réservable.
+      unavailableNote: formData.isAvailable ? null : (formData.unavailableNote?.trim() || null),
       price: base.price,
       duration: base.duration,
       // Price ranges are no longer authored manually — a varying price is
@@ -348,6 +365,8 @@ export function ServiceEditor({
         />
 
         <SectionPromotion data={formData} errors={errors} update={update} />
+
+        <SectionReservation data={formData} update={update} />
 
         <SectionVariations data={formData} update={update} forceOpen={forceOpenChoices} />
         {errors.variations && (

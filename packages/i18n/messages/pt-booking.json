@@ -172,7 +172,8 @@
     "addressAfterConfirmation": "Morada exata comunicada após confirmação",
     "promoUntil": "até {date}",
     "promoValid": "Oferta válida {datePart}",
-    "promoSavings": "Promoção −{percent}% · poupa {amount}"
+    "promoSavings": "Promoção −{percent}% · poupa {amount}",
+    "promoSavingsAmount": "Promoção · poupa {amount}"
   },
   "summary": {
     "title": "Resumo",

@@ -4,7 +4,33 @@ import type {
   ServiceOption,
   ServiceVariation,
 } from '@booking-app/shared';
-import { resolveExcludedIds } from '@booking-app/shared';
+import { isAmountDiscount, resolveExcludedIds } from '@booking-app/shared';
+import type { ServiceDiscount } from '@booking-app/shared';
+
+/** Valeurs proposées à l'activation d'une promo : 10 % ou 5 €. */
+export const DEFAULT_DISCOUNT_PERCENT = 10;
+export const DEFAULT_DISCOUNT_AMOUNT = 500;
+
+/**
+ * Forme PERSISTÉE de la promo à partir de l'état du formulaire.
+ *
+ * N'écrit que le champ correspondant au mode choisi : le schéma refuse un
+ * document portant `percent` ET `amount`, et Firestore refuse `undefined`.
+ */
+export function discountToPayload(
+  discount: ServiceFormData['discount'],
+): ServiceDiscount | null {
+  if (!discount) return null;
+  const common = {
+    excludedIds: discount.excludedIds,
+    startsAt: discount.startsAt,
+    endsAt: discount.endsAt,
+    notifyLoyaltyClients: discount.notifyLoyaltyClients === true,
+  };
+  return discount.mode === 'amount'
+    ? { amount: Math.round(discount.amount), ...common }
+    : { percent: Math.round(discount.percent), ...common };
+}
 
 type WithId<T> = { id: string } & T;
 
@@ -39,7 +65,14 @@ export interface ServiceFormData {
     | null;
   /** Per-service promotion (percentage). null = no promo on this prestation. */
   discount: {
+    /** Quelle forme de remise est active. Les DEUX valeurs sont conservées
+     *  dans le formulaire : basculer de % à € et revenir ne doit pas effacer
+     *  ce que le pro avait saisi. Une seule est persistée (voir
+     *  `discountToPayload`). */
+    mode: 'percent' | 'amount';
     percent: number;
+    /** Montant fixe en centimes. */
+    amount: number;
     /** Variation-option / option ids excluded from the promo (per-line). */
     excludedIds: string[];
     startsAt: string | null; // YYYY-MM-DD
@@ -47,6 +80,10 @@ export interface ServiceFormData {
     /** Prévenir les clients fidélité par email — choix explicite du pro. */
     notifyLoyaltyClients?: boolean;
   } | null;
+  /** Réservable en ligne. `false` = visible mais marquée indisponible. */
+  isAvailable: boolean;
+  /** Raison affichée à la cliente quand la prestation est indisponible. */
+  unavailableNote: string | null;
   /** Client-facing choices. Empty arrays for a plain prestation. */
   variations: ServiceVariation[];
   options: ServiceOption[];
@@ -84,7 +121,10 @@ export function serviceToFormData(service: WithId<Service>): ServiceFormData {
     deposit: normalizeDepositForForm(service.deposit),
     discount: service.discount
       ? {
-          percent: service.discount.percent,
+          mode: isAmountDiscount(service.discount) ? 'amount' : 'percent',
+          // Valeurs de repli quand l'autre forme n'a jamais été saisie.
+          percent: service.discount.percent ?? DEFAULT_DISCOUNT_PERCENT,
+          amount: service.discount.amount ?? DEFAULT_DISCOUNT_AMOUNT,
           // Migrate legacy includeExtras into the per-line excludedIds model.
           excludedIds: Array.from(resolveExcludedIds(service, service.discount)),
           startsAt: service.discount.startsAt ?? null,
@@ -92,6 +132,8 @@ export function serviceToFormData(service: WithId<Service>): ServiceFormData {
           notifyLoyaltyClients: service.discount.notifyLoyaltyClients === true,
         }
       : null,
+    isAvailable: service.isAvailable !== false,
+    unavailableNote: service.unavailableNote ?? null,
     variations: service.variations ?? [],
     options: service.options ?? [],
     infoFields: service.infoFields ?? [],
@@ -117,6 +159,8 @@ export function emptyServiceFormData(
     color: null,
     deposit: null,
     discount: null,
+    isAvailable: true,
+    unavailableNote: null,
     variations: [],
     options: [],
     infoFields: [],

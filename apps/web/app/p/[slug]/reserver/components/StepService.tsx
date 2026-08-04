@@ -8,6 +8,7 @@ import {
   getDiscountedMinPrice,
   resolveServiceDiscount,
   getDiscountDaysLeft,
+  formatDiscountBadge,
   formatPromoCountdown,
   PROMO_URGENCY_DAYS,
   type ServiceVariation,
@@ -106,11 +107,17 @@ function ServiceButton({
     (service.variations?.length ?? 0) > 0 || (service.options?.length ?? 0) > 0;
 
   // Active promotion → crossed-out original + discounted "from" price + badge.
-  const { price: minPrice, original: minOriginal, discountPercent } = getDiscountedMinPrice(
-    service,
-    globalDiscount,
+  const {
+    price: minPrice,
+    original: minOriginal,
+    discountPercent,
+    discountAmount,
+  } = getDiscountedMinPrice(service, globalDiscount);
+  const hasPromo = (discountPercent != null || discountAmount != null) && minPrice < minOriginal;
+  const promoBadge = formatDiscountBadge(
+    { percent: discountPercent ?? undefined, amount: discountAmount ?? undefined },
+    locale,
   );
-  const hasPromo = discountPercent != null && minPrice < minOriginal;
   const promoDaysLeft = hasPromo
     ? getDiscountDaysLeft(resolveServiceDiscount(service, globalDiscount))
     : null;
@@ -194,9 +201,9 @@ function ServiceButton({
               >
                 {formatPrice(minPrice)}
               </span>
-              {hasPromo && (
-                <span className="text-[10px] font-bold text-white bg-rose-500 px-1 py-0.5 rounded leading-none">
-                  −{discountPercent}%
+              {hasPromo && promoBadge && (
+                <span className="text-[10px] font-bold text-white bg-rose-500 px-1 py-0.5 rounded leading-none whitespace-nowrap">
+                  {promoBadge}
                 </span>
               )}
             </span>

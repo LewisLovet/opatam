@@ -172,7 +172,8 @@
     "addressAfterConfirmation": "Exact address shared after confirmation",
     "promoUntil": "until {date}",
     "promoValid": "Offer valid {datePart}",
-    "promoSavings": "Promotion −{percent}% · you save {amount}"
+    "promoSavings": "Promotion −{percent}% · you save {amount}",
+    "promoSavingsAmount": "Promotion · you save {amount}"
   },
   "summary": {
     "title": "Summary",

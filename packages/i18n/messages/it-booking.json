@@ -172,7 +172,8 @@
     "addressAfterConfirmation": "Indirizzo esatto comunicato dopo la conferma",
     "promoUntil": "fino al {date}",
     "promoValid": "Offerta valida {datePart}",
-    "promoSavings": "Promozione −{percent}% · risparmi {amount}"
+    "promoSavings": "Promozione −{percent}% · risparmi {amount}",
+    "promoSavingsAmount": "Promozione · risparmi {amount}"
   },
   "summary": {
     "title": "Riepilogo",

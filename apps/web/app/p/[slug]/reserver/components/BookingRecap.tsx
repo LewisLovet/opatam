@@ -155,8 +155,10 @@ export function BookingRecap({
   const displayMax = effectivePrice != null ? null : service?.priceMax;
   const displayDuration = effectiveDuration ?? service?.duration ?? 0;
   // Active promo → show the crossed-out original + a "−X%" badge.
-  const hasPromo =
-    discountPercent != null && originalPrice != null && originalPrice > displayPrice;
+  //
+  // La présence d'une économie suffit : une promo en euros n'a pas de
+  // pourcentage, et exiger `discountPercent` la rendrait invisible ici.
+  const hasPromo = originalPrice != null && originalPrice > displayPrice;
   // Promo deadline line. Urgency wording ("Plus que N jours") only kicks in
   // within PROMO_URGENCY_DAYS of the end; before that we just state the
   // validity date so it reads informative, not pushy.
@@ -395,10 +397,14 @@ export function BookingRecap({
           </div>
           {hasPromo && (
             <p className="text-right text-xs font-semibold text-rose-600 dark:text-rose-400">
-              {t('recap.promoSavings', {
-                percent: discountPercent,
-                amount: formatPrice(originalPrice! - displayPrice),
-              })}
+              {discountPercent != null
+                ? t('recap.promoSavings', {
+                    percent: discountPercent,
+                    amount: formatPrice(originalPrice! - displayPrice),
+                  })
+                : t('recap.promoSavingsAmount', {
+                    amount: formatPrice(originalPrice! - displayPrice),
+                  })}
             </p>
           )}
           {promoCountdownText && (

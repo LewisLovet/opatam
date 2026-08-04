@@ -70,6 +70,9 @@ interface SerializedService {
   locationIds: string[];
   memberIds: string[] | null;
   isActive: boolean;
+  /** `false` = visible mais non réservable en ligne. */
+  isAvailable?: boolean;
+  unavailableNote?: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;

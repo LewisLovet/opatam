@@ -4,6 +4,11 @@ import { Input, Switch } from '@/components/ui';
 import { Tag, Check } from 'lucide-react';
 import { buildServiceDiscountPreview, type DiscountPreviewRow } from '@booking-app/shared';
 import { EditorSection } from './EditorSection';
+import {
+  DEFAULT_DISCOUNT_AMOUNT,
+  DEFAULT_DISCOUNT_PERCENT,
+  discountToPayload,
+} from './types';
 import type { ServiceFormData } from './types';
 
 interface SectionPromotionProps {
@@ -13,11 +18,13 @@ interface SectionPromotionProps {
 }
 
 const DEFAULT_PROMO = {
-  percent: 10,
+  mode: 'percent' as const,
+  percent: DEFAULT_DISCOUNT_PERCENT,
+  amount: DEFAULT_DISCOUNT_AMOUNT,
   excludedIds: [] as string[],
   startsAt: null,
   endsAt: null,
-} as const;
+};
 
 function euro(cents: number): string {
   if (cents === 0) return 'Gratuit';
@@ -96,11 +103,14 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
     setPromo({ excludedIds: ex.includes(id) ? ex.filter((x) => x !== id) : [...ex, id] });
   };
 
+  // On passe la forme PERSISTÉE : le formulaire garde `percent` et `amount`
+  // en même temps, et `getDiscountReduction` fait primer le montant — l'aperçu
+  // afficherait donc une remise en euros même en mode pourcentage.
   const preview =
     enabled && promo
       ? buildServiceDiscountPreview(
           { price: data.price, variations: data.variations, options: data.options },
-          promo,
+          discountToPayload(promo),
         )
       : null;
 
@@ -110,7 +120,7 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
   return (
     <EditorSection
       title="Promotion"
-      description="Une réduction en % sur cette prestation."
+      description="Une réduction en % ou en € sur cette prestation."
       icon={<Tag className="w-5 h-5" />}
       defaultOpen={enabled}
       forceOpen={!!errors.discountPercent || !!errors.discountEnd}
@@ -130,16 +140,46 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
 
       {enabled && promo && (
         <div className="space-y-4">
-          {/* Percent */}
-          <Input
-            label="Réduction (%)"
-            numericValue={promo.percent}
-            onNumericChange={(p) => setPromo({ percent: Math.round(p) })}
-            min={1}
-            max={100}
-            suffix="%"
-            error={errors.discountPercent}
-          />
+          {/* Forme de la remise. Les deux valeurs sont conservées : basculer
+              d'un mode à l'autre et revenir ne perd pas la saisie. */}
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 w-fit">
+            {(['percent', 'amount'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setPromo({ mode })}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  promo.mode === mode
+                    ? 'bg-rose-500 text-white'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                {mode === 'percent' ? 'En %' : 'En €'}
+              </button>
+            ))}
+          </div>
+
+          {promo.mode === 'amount' ? (
+            <Input
+              label="Réduction (€)"
+              numericValue={promo.amount / 100}
+              onNumericChange={(v) => setPromo({ amount: Math.round(v * 100) })}
+              min={0}
+              step={0.5}
+              suffix="€"
+              error={errors.discountPercent}
+            />
+          ) : (
+            <Input
+              label="Réduction (%)"
+              numericValue={promo.percent}
+              onNumericChange={(p) => setPromo({ percent: Math.round(p) })}
+              min={1}
+              max={100}
+              suffix="%"
+              error={errors.discountPercent}
+            />
+          )}
 
           {/* Envoi aux clients fidélité — décision explicite, promo par
               promo : sans coche, aucun email ne part. */}
@@ -167,7 +207,7 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
                   Aperçu des prix
                 </span>
                 <span className="text-[11px] font-bold text-white bg-rose-500 px-1.5 py-0.5 rounded">
-                  −{preview.percent}%
+                  {preview.amount !== null ? `−${euro(preview.amount)}` : `−${preview.percent}%`}
                 </span>
               </div>
 
@@ -175,6 +215,33 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Cliquez une ligne pour l&apos;inclure ou l&apos;exclure de la promo.
                 </p>
+              )}
+
+              {/* Une remise en euros ne se répartit pas ligne à ligne : les
+                  prix ci-dessous restent inchangés, c'est ce total qui porte
+                  l'information. */}
+              {preview.amount !== null && (
+                <div className="rounded-md bg-white dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-2.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Total si tout est choisi
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-gray-400 line-through">
+                        {euro(preview.total.original)}
+                      </span>
+                      <span className="font-semibold text-rose-600 dark:text-rose-400">
+                        {euro(preview.total.discounted)}
+                      </span>
+                    </span>
+                  </div>
+                  {preview.total.discountable < preview.total.original && (
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                      La remise ne peut mordre que sur {euro(preview.total.discountable)} de
+                      lignes incluses.
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* Base (variation-less services) — always discounted */}

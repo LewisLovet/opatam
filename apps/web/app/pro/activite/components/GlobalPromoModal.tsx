@@ -5,6 +5,7 @@ import { Modal, Button, Input, Switch, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { providerService } from '@booking-app/firebase';
 import type { ServiceDiscount } from '@booking-app/shared';
+import { isAmountDiscount } from '@booking-app/shared';
 
 interface GlobalPromoModalProps {
   isOpen: boolean;
@@ -21,7 +22,10 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
   const current = provider?.settings?.globalDiscount ?? null;
 
   const [enabled, setEnabled] = useState(false);
+  // Les deux valeurs coexistent dans le formulaire ; une seule est persistée.
+  const [mode, setMode] = useState<'percent' | 'amount'>('percent');
   const [percent, setPercent] = useState(10);
+  const [amount, setAmount] = useState(500);
   const [includeExtras, setIncludeExtras] = useState(true);
   const [startsAt, setStartsAt] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState<string | null>(null);
@@ -32,13 +36,17 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
     if (!isOpen) return;
     if (current) {
       setEnabled(true);
-      setPercent(current.percent);
+      setMode(isAmountDiscount(current) ? 'amount' : 'percent');
+      setPercent(current.percent ?? 10);
+      setAmount(current.amount ?? 500);
       setIncludeExtras(current.includeExtras ?? true);
       setStartsAt(current.startsAt ?? null);
       setEndsAt(current.endsAt ?? null);
     } else {
       setEnabled(false);
+      setMode('percent');
       setPercent(10);
+      setAmount(500);
       setIncludeExtras(true);
       setStartsAt(null);
       setEndsAt(null);
@@ -50,7 +58,16 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
   const handleSave = async () => {
     if (!provider) return;
     if (enabled) {
-      if (!Number.isFinite(percent) || percent < 1 || percent > 100) {
+      if (mode === 'amount') {
+        if (!Number.isFinite(amount) || amount < 1) {
+          setError('La réduction doit être d\u2019au moins 1 centime.');
+          return;
+        }
+        if (amount > 1_000_000) {
+          setError('La réduction ne peut pas dépasser 10 000 €.');
+          return;
+        }
+      } else if (!Number.isFinite(percent) || percent < 1 || percent > 100) {
         setError('La réduction doit être comprise entre 1 et 100 %.');
         return;
       }
@@ -62,8 +79,17 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
     setSaving(true);
     setError('');
     try {
+      // Un seul des deux champs est écrit : le schéma refuse la combinaison,
+      // et Firestore refuse `undefined`.
       const globalDiscount: ServiceDiscount | null = enabled
-        ? { percent, includeExtras, startsAt, endsAt }
+        ? {
+            ...(mode === 'amount'
+              ? { amount: Math.round(amount) }
+              : { percent: Math.round(percent) }),
+            includeExtras,
+            startsAt,
+            endsAt,
+          }
         : null;
       // updateSettings merges with the provider's current settings server-side
       // (it never strips unknown keys the way updateProvider's Zod schema can),
@@ -101,14 +127,42 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
 
         {enabled && (
           <div className="space-y-4">
-            <Input
-              label="Réduction (%)"
-              numericValue={percent}
-              onNumericChange={(p) => setPercent(Math.round(p))}
-              min={1}
-              max={100}
-              suffix="%"
-            />
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 w-fit">
+              {(['percent', 'amount'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    mode === m
+                      ? 'bg-rose-500 text-white'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  {m === 'percent' ? 'En %' : 'En €'}
+                </button>
+              ))}
+            </div>
+
+            {mode === 'amount' ? (
+              <Input
+                label="Réduction (€)"
+                numericValue={amount / 100}
+                onNumericChange={(v) => setAmount(Math.round(v * 100))}
+                min={0}
+                step={0.5}
+                suffix="€"
+              />
+            ) : (
+              <Input
+                label="Réduction (%)"
+                numericValue={percent}
+                onNumericChange={(p) => setPercent(Math.round(p))}
+                min={1}
+                max={100}
+                suffix="%"
+              />
+            )}
 
             <label className="flex items-start justify-between gap-3 cursor-pointer">
               <span>
@@ -117,7 +171,8 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
                 </span>
                 <span className="block text-xs text-gray-500 dark:text-gray-400">
                   Chaque prestation (et ses variations) est toujours réduite. Activez pour
-                  réduire aussi les options cochées.
+                  compter aussi les options cochées — en euros, elles entrent alors dans le
+                  montant sur lequel la remise peut mordre.
                 </span>
               </span>
               <Switch

@@ -31,7 +31,8 @@
       "lastDay": "Dernier jour",
       "endsTomorrow": "Se termine demain",
       "daysLeft": "Plus que {days} jours"
-    }
+    },
+    "unavailable": "Indisponible"
   },
   "mobileBar": {
     "from": "À partir de",

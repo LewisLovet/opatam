@@ -11,6 +11,7 @@ import {
   getDiscountedMinPrice,
   resolveServiceDiscount,
   getDiscountDaysLeft,
+  formatDiscountBadge,
   PROMO_URGENCY_DAYS,
   type ServiceVariation,
   type ServiceOption,
@@ -29,6 +30,9 @@ interface ServiceItemProps {
     variations?: ServiceVariation[];
     options?: ServiceOption[];
     discount?: ServiceDiscount | null;
+    /** `false` = visible mais non réservable en ligne. */
+    isAvailable?: boolean;
+    unavailableNote?: string | null;
   };
   slug: string;
   /** Shop-wide promo, applied to services without their own. */
@@ -72,11 +76,18 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
     (service.variations?.length ?? 0) > 0 || (service.options?.length ?? 0) > 0;
 
   // Active promotion → crossed-out original + discounted "from" price + badge.
-  const { price: minPrice, original: minOriginal, discountPercent } = getDiscountedMinPrice(
-    service,
-    globalDiscount,
-  );
-  const hasPromo = discountPercent != null && minPrice < minOriginal;
+  const {
+    price: minPrice,
+    original: minOriginal,
+    discountPercent,
+    discountAmount,
+  } = getDiscountedMinPrice(service, globalDiscount);
+  const hasPromo = (discountPercent != null || discountAmount != null) && minPrice < minOriginal;
+  const promoBadge = formatDiscountBadge({ percent: discountPercent ?? undefined, amount: discountAmount ?? undefined }, locale);
+  // Prestation suspendue : la carte reste affichée, mais elle n'est plus un
+  // lien — laisser cliquer pour buter sur un refus serveur serait pire que
+  // de ne pas cliquer du tout.
+  const unavailable = service.isAvailable === false;
   // Countdown — surfaced only when the promo is ending soon (≤ 7 days) to
   // create urgency without cluttering every card.
   const promoDaysLeft = hasPromo
@@ -107,12 +118,29 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
       <Link
         href={localizedPath(`/p/${slug}/reserver?service=${service.id}`, locale)}
         className="block group"
-        onClick={onBookingClick ? (e) => {
-          e.preventDefault();
-          onBookingClick(localizedPath(`/p/${slug}/reserver?service=${service.id}`, locale));
-        } : undefined}
+        aria-disabled={unavailable}
+        tabIndex={unavailable ? -1 : undefined}
+        onClick={(e) => {
+          // Suspendue : on neutralise la navigation ici plutôt que de laisser
+          // la cliente traverser tout le tunnel pour se faire refuser par le
+          // serveur à la dernière étape.
+          if (unavailable) {
+            e.preventDefault();
+            return;
+          }
+          if (onBookingClick) {
+            e.preventDefault();
+            onBookingClick(localizedPath(`/p/${slug}/reserver?service=${service.id}`, locale));
+          }
+        }}
       >
-        <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.01] hover:border-primary-200 dark:hover:border-primary-800">
+        <div
+          className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-200 ${
+            unavailable
+              ? 'opacity-60'
+              : 'hover:shadow-lg hover:scale-[1.01] hover:border-primary-200 dark:hover:border-primary-800'
+          }`}
+        >
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
 
           <div className="p-4 sm:p-5 pl-5 sm:pl-6">
@@ -164,22 +192,33 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
                     >
                       {formatPrice(minPrice)}
                     </span>
-                    {hasPromo && (
-                      <span className="text-[11px] font-bold text-white bg-rose-500 px-1.5 py-0.5 rounded">
-                        −{discountPercent}%
+                    {hasPromo && promoBadge && (
+                      <span className="text-[11px] font-bold text-white bg-rose-500 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        {promoBadge}
                       </span>
                     )}
                   </span>
-                  {showCountdown && (
+                  {showCountdown && !unavailable && (
                     <span className="block text-[10px] font-semibold text-rose-500 dark:text-rose-400 leading-tight mt-0.5">
                       {countdownLabel}
                     </span>
                   )}
+                  {unavailable && service.unavailableNote && (
+                    <span className="block text-[11px] text-amber-700 dark:text-amber-400 leading-tight mt-0.5">
+                      {service.unavailableNote}
+                    </span>
+                  )}
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 text-white text-sm font-medium rounded-lg group-hover:bg-primary-700 transition-colors shadow-sm">
-                  {t('services.book')}
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-                </span>
+                {unavailable ? (
+                  <span className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm font-medium rounded-lg">
+                    {t('services.unavailable')}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 text-white text-sm font-medium rounded-lg group-hover:bg-primary-700 transition-colors shadow-sm">
+                    {t('services.book')}
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                )}
               </div>
             </div>
 

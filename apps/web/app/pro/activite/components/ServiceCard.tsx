@@ -10,6 +10,7 @@ import {
   getServiceMinPrice,
   getServiceMinDuration,
   getActiveDiscount,
+  formatDiscountBadge,
 } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -124,6 +125,9 @@ export function ServiceCard({
   // Effective promo surfaced on the card so the pro sees at a glance which
   // prestations are discounted — the service's own promo wins, otherwise the
   // shop-wide one applies (so a global promo shows on every prestation too).
+  // Prestation suspendue : signalée au pro sur sa propre liste, sinon il
+  // oublie qu'il l'a coupée et s'étonne de ne plus recevoir de réservations.
+  const unavailable = service.isAvailable === false;
   const ownActive = getActiveDiscount(service.discount);
   const globalActive = getActiveDiscount(globalDiscount);
   const effectiveActive = ownActive ?? globalActive;
@@ -249,6 +253,14 @@ export function ServiceCard({
                   )}
                   {formatPrice(getServiceMinPrice(service))}
                 </span>
+                {unavailable && (
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                    title="Visible sur votre page, mais non réservable en ligne"
+                  >
+                    Indisponible
+                  </span>
+                )}
                 {depositBadge && (
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
@@ -277,8 +289,8 @@ export function ServiceCard({
                   >
                     <Tag className="w-3 h-3" />
                     {effectiveActive
-                      ? `Promo −${effectiveActive.percent}%${fromGlobal ? ' · globale' : ''}`
-                      : `Promo −${service.discount!.percent}% · inactive`}
+                      ? `Promo ${formatDiscountBadge(effectiveActive)}${fromGlobal ? ' · globale' : ''}`
+                      : `Promo ${formatDiscountBadge(service.discount)} · inactive`}
                   </span>
                 )}
               </div>

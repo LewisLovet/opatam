@@ -238,9 +238,12 @@ export default async function ProviderPage({ params }: PageProps) {
 
   // Calculate min price from services (variation-aware: cheapest reachable
   // price; falls back to base price for services without variations).
+  // Les prestations suspendues sont écartées : le « à partir de » de l'en-tête
+  // et le balisage JSON-LD annonceraient un prix non réservable.
+  const bookableServices = services.filter((s) => s.isAvailable !== false);
   const minPrice =
-    services.length > 0
-      ? Math.min(...services.map((s) => getServiceMinPrice(s)))
+    bookableServices.length > 0
+      ? Math.min(...bookableServices.map((s) => getServiceMinPrice(s)))
       : null;
 
   // Use cached nextAvailableSlot from provider (updated by Cloud Functions on booking changes + every 2h)

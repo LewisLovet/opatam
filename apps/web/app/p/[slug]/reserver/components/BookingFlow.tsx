@@ -13,6 +13,7 @@ import type { ServiceDiscount } from '@booking-app/shared';
 import {
   computeDiscountedTotal,
   resolveServiceDiscount,
+  isAmountDiscount,
   getDiscountDaysLeft,
   validateServiceSelections,
   emptyServiceSelections,
@@ -323,12 +324,19 @@ export function BookingFlow({
     () => cartLines.reduce((sum, l) => sum + l.original, 0),
     [cartLines],
   );
+  // Une remise en euros n'a pas de pourcentage : en déduire un taux afficherait
+  // « −25 % » là où le pro a saisi « −10 € ». On renvoie null, et le récapitulatif
+  // bascule sur la formulation en montant.
+  const cartHasAmountPromo = useMemo(
+    () => cartLines.some((l) => isAmountDiscount(resolveServiceDiscount(l.service, globalDiscount))),
+    [cartLines, globalDiscount],
+  );
   const cartDiscountPercent = useMemo(
     () =>
-      cartTotalOriginal > cartTotalPrice
+      !cartHasAmountPromo && cartTotalOriginal > cartTotalPrice
         ? Math.round(((cartTotalOriginal - cartTotalPrice) / cartTotalOriginal) * 100)
         : null,
-    [cartTotalOriginal, cartTotalPrice],
+    [cartHasAmountPromo, cartTotalOriginal, cartTotalPrice],
   );
   // Soonest-ending active promo in the cart → drives the urgency line in the
   // recap ("Plus que N jours · jusqu'au …").
@@ -540,11 +548,10 @@ export function BookingFlow({
     () =>
       configuringService
         ? computeDiscountedTotal(configuringService, state.selections, globalDiscount)
-        : { price: 0, duration: 0, original: 0, discountPercent: null },
+        : { price: 0, duration: 0, original: 0, discountPercent: null, discountAmount: null },
     [configuringService, state.selections, globalDiscount],
   );
-  const draftHasPromo =
-    draftEffective.discountPercent != null && draftEffective.original > draftEffective.price;
+  const draftHasPromo = draftEffective.original > draftEffective.price;
 
   // Confirm the chosen variations/options → push the draft to the cart and
   // return to the cart view (so the client can add more or continue).
