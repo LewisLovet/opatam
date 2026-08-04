@@ -894,7 +894,9 @@ export default function ProviderDetailScreen() {
                       services={group.services.map((s) => {
                         const md = getDiscountedMinPrice(s, globalDiscount);
                         const active = resolveServiceDiscount(s, globalDiscount);
-                        const hasPromo = md.discountPercent != null && md.price < md.original;
+                        const hasPromo =
+                          (md.discountPercent != null || md.discountAmount != null) &&
+                          md.price < md.original;
                         const daysLeft = getDiscountDaysLeft(active);
                         const priceFrom =
                           (s.variations?.length ?? 0) > 0 || (s.options?.length ?? 0) > 0;
@@ -921,11 +923,19 @@ export default function ProviderDetailScreen() {
                           discountPercent: loy
                             ? armedLoyalty!.rewardType === 'percent' ? armedLoyalty!.rewardValue : null
                             : hasPromo ? md.discountPercent : null,
+                          // La récompense fidélité en euros suit le même
+                          // chemin que la promo en euros : une pastille
+                          // « −10 € » plutôt qu'un pourcentage inventé.
+                          discountAmount: loy
+                            ? armedLoyalty!.rewardType === 'amount' ? armedLoyalty!.rewardValue : null
+                            : hasPromo ? md.discountAmount : null,
                           promoCountdown:
                             hasPromo && daysLeft != null && daysLeft <= PROMO_URGENCY_DAYS
                               ? formatPromoCountdown(daysLeft, i18n.language)
                               : null,
                           priceFrom,
+                          isAvailable: s.isAvailable !== false,
+                          unavailableNote: s.unavailableNote ?? null,
                         };
                       })}
                       selectedId={isPreview ? null : selectedServiceId}

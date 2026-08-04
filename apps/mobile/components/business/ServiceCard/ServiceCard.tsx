@@ -9,6 +9,7 @@ import { View, StyleSheet, Pressable, Image, Modal, Dimensions } from 'react-nat
 import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { formatDiscountBadge } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 
@@ -30,6 +31,13 @@ export interface ServiceCardProps {
   originalPrice?: number | null;
   /** Active promo percentage (for the "−X%" badge). */
   discountPercent?: number | null;
+  /** Montant fixe de la promo en CENTIMES (pastille « −10 € »). Exclusif
+   *  avec `discountPercent`. */
+  discountAmount?: number | null;
+  /** `false` = visible mais non réservable : carte grisée, pastille. */
+  isAvailable?: boolean;
+  /** Raison affichée sous le nom quand la prestation est indisponible. */
+  unavailableNote?: string | null;
   /** Pre-formatted urgency line ("Plus que N jours"); null = hide. */
   promoCountdown?: string | null;
   /** When the price is a "from" (service has variations/options), show the
@@ -66,6 +74,9 @@ export function ServiceCard({
   priceMax,
   originalPrice,
   discountPercent,
+  discountAmount,
+  isAvailable = true,
+  unavailableNote,
   promoCountdown,
   priceFrom = false,
   selected = false,
@@ -84,7 +95,14 @@ export function ServiceCard({
   };
 
   const hasPromo =
-    discountPercent != null && originalPrice != null && originalPrice > price;
+    (discountPercent != null || discountAmount != null) &&
+    originalPrice != null &&
+    originalPrice > price;
+  const promoBadge = formatDiscountBadge({
+    percent: discountPercent ?? undefined,
+    amount: discountAmount ?? undefined,
+  });
+  const unavailable = isAvailable === false;
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
@@ -102,6 +120,7 @@ export function ServiceCard({
           backgroundColor: selected ? colors.primaryLight : colors.surface,
           ...shadows.sm,
         },
+        unavailable && { opacity: 0.55 },
       ]}
     >
       <View style={[styles.content, { padding: spacing.md }]}>
@@ -134,9 +153,28 @@ export function ServiceCard({
           <View style={{ flex: 1 }}>
             {/* Header: Name + Price Badge */}
             <View style={styles.header}>
-              <Text variant="body" style={styles.name} numberOfLines={1}>
-                {name}
-              </Text>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text variant="body" style={[styles.name, { flexShrink: 1 }]} numberOfLines={1}>
+                  {name}
+                </Text>
+                {unavailable && (
+                  <View
+                    style={{
+                      backgroundColor: '#FEF3C7',
+                      borderRadius: 4,
+                      paddingHorizontal: 5,
+                      paddingVertical: 1,
+                    }}
+                  >
+                    <Text
+                      variant="caption"
+                      style={{ color: '#B45309', fontWeight: '700', fontSize: 10 }}
+                    >
+                      {t('components.serviceCard.unavailable')}
+                    </Text>
+                  </View>
+                )}
+              </View>
           <View style={{ alignItems: 'flex-end' }}>
             {priceFrom && (
               <Text variant="caption" style={{ color: colors.textMuted, fontSize: 10 }}>
@@ -197,12 +235,12 @@ export function ServiceCard({
                   }}
                 >
                   <Text variant="caption" style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>
-                    −{discountPercent}%
+                    {promoBadge}
                   </Text>
                 </View>
               )}
             </View>
-            {hasPromo && promoCountdown && (
+            {hasPromo && promoCountdown && !unavailable && (
               <Text
                 variant="caption"
                 style={{ color: PROMO_COLOR, fontSize: 10, fontWeight: '600', marginTop: 2 }}
@@ -210,6 +248,15 @@ export function ServiceCard({
                 {promoCountdown}
               </Text>
             )}
+            {unavailable && unavailableNote ? (
+              <Text
+                variant="caption"
+                style={{ color: '#B45309', fontSize: 10, marginTop: 2, textAlign: 'right' }}
+                numberOfLines={2}
+              >
+                {unavailableNote}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -309,7 +356,7 @@ export function ServiceCard({
     </Modal>
   ) : null;
 
-  if (onPress) {
+  if (onPress && !unavailable) {
     return (
       <>
         <Pressable

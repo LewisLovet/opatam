@@ -683,7 +683,8 @@
       "fromPrefix": "from",
       "priceRange": "From {{min}} to {{max}}",
       "showMore": "More details",
-      "showLess": "Less"
+      "showLess": "Less",
+      "unavailable": "Unavailable"
     },
     "serviceChoicesPreview": {
       "add": "Add",
@@ -2447,7 +2448,8 @@
       "depositFixedMax": "A fixed deposit cannot exceed the price",
       "percentRange": "The discount must be between 1 and 100%",
       "endAfterStart": "The end date must be after the start",
-      "variationsIncomplete": "Complete at least one variation: a name and at least one named choice."
+      "variationsIncomplete": "Complete at least one variation: a name and at least one named choice.",
+      "amountRange": "The discount must be between €0.01 and €10,000"
     },
     "deleteService": {
       "title": "Delete service",
@@ -2493,10 +2495,15 @@
         "tapHint": "Tap a line to include or exclude it from the promo.",
         "baseService": "Service",
         "optionsGroup": "Options and add-ons",
-        "notIncluded": "not included"
+        "notIncluded": "not included",
+        "totalLabel": "Total if everything is selected",
+        "discountableHint": "The discount can only apply to {{amount}} of included lines."
       },
       "notifyTitle": "Notify my loyalty clients",
-      "notifyDescription": "An email to clients who opted in to your promotions (max 1 per week)."
+      "notifyDescription": "An email to clients who opted in to your promotions (max 1 per week).",
+      "modePercent": "In %",
+      "modeAmount": "In €",
+      "amountLabel": "Discount (€)"
     },
     "form": {
       "editTitle": "Edit",
@@ -2604,7 +2611,16 @@
       "requiredLabel": "Required",
       "addInfoField": "Add an info field",
       "durationUnit": "min"
-    }
+    },
+    "bookable": {
+      "sectionTitle": "Online booking",
+      "sectionSubtitle": "Pause it without hiding the service.",
+      "toggleTitle": "Bookable online",
+      "toggleDescription": "Turn off to keep it visible on your page, marked “Unavailable”. You can still add it yourself from your calendar.",
+      "noteLabel": "Reason shown to your clients (optional)",
+      "notePlaceholder": "E.g. out of stock, back in early September"
+    },
+    "unavailableBadge": "Unavailable"
   },
   "proMembers": {
     "title": "Team",

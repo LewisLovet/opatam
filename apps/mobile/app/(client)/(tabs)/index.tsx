@@ -5,7 +5,7 @@
  */
 
 import { providerService, catalogService } from '@booking-app/firebase';
-import { getProviderActivePromoPercent } from '@booking-app/shared';
+import { providerHasActivePromo } from '@booking-app/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -169,7 +169,7 @@ export default function HomeScreen() {
   // cours" badge that nudges past clients to rebook. Evaluated at read time
   // (provider's globalDiscount + per-service discounts) so date windows are
   // honoured without any denormalised flag.
-  const [promoByProvider, setPromoByProvider] = useState<Record<string, number>>({});
+  const [promoByProvider, setPromoByProvider] = useState<Record<string, boolean>>({});
   const recentProviderKey = recentPast.map((b) => b.providerId).filter(Boolean).join(',');
   useEffect(() => {
     const ids = Array.from(new Set(recentProviderKey ? recentProviderKey.split(',') : []));
@@ -183,9 +183,9 @@ export default function HomeScreen() {
               providerService.getById(pid),
               catalogService.getActiveByProvider(pid),
             ]);
-            return [pid, getProviderActivePromoPercent(prov?.settings?.globalDiscount, svcs ?? [])] as const;
+            return [pid, providerHasActivePromo(prov?.settings?.globalDiscount, svcs ?? [])] as const;
           } catch {
-            return [pid, 0] as const;
+            return [pid, false] as const;
           }
         }),
       );
@@ -439,7 +439,7 @@ export default function HomeScreen() {
                         <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
                           {booking.providerName} — {dateStr}
                         </Text>
-                        {promoByProvider[booking.providerId] > 0 && (
+                        {promoByProvider[booking.providerId] && (
                           <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginTop: 4, backgroundColor: 'rgba(225,29,72,0.12)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, gap: 3 }}>
                             <Ionicons name="pricetag" size={11} color="#E11D48" />
                             <Text style={{ fontSize: 11, fontWeight: '700', color: '#E11D48' }}>

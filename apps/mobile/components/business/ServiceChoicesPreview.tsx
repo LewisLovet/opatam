@@ -26,6 +26,7 @@ import {
   computeDiscountedTotal,
   getDiscountedMinPrice,
   resolveExcludedIds,
+  isAmountDiscount,
   validateServiceSelections,
   getServiceMinDuration,
   formatPrice,
@@ -116,9 +117,17 @@ export function ServiceChoicesPreview({
     discount: null,
   };
   const excluded = resolveExcludedIds(service, discount);
+  /**
+   * Prix d'UNE ligne après remise.
+   *
+   * Une remise en montant fixe ne se répartit pas ligne à ligne : la ligne
+   * garde son prix, et c'est le total (`eff`, calculé par
+   * `computeDiscountedTotal`) qui porte la réduction. Sans ce garde-fou, un
+   * « −10 € » serait retranché de CHAQUE ligne affichée.
+   */
   const cut = (price: number, id?: string): number => {
-    if (!discount || (id && excluded.has(id))) return price;
-    return Math.max(0, price - Math.round((price * discount.percent) / 100));
+    if (!discount || isAmountDiscount(discount) || (id && excluded.has(id))) return price;
+    return Math.max(0, price - Math.round((price * (discount.percent ?? 0)) / 100));
   };
   const eff = computeDiscountedTotal(svcForPricing, sel, discount);
   const minD = getDiscountedMinPrice(

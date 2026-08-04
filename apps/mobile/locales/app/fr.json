@@ -683,7 +683,8 @@
       "fromPrefix": "à partir de",
       "priceRange": "De {{min}} à {{max}}",
       "showMore": "Plus de détails",
-      "showLess": "Moins"
+      "showLess": "Moins",
+      "unavailable": "Indisponible"
     },
     "serviceChoicesPreview": {
       "add": "Ajouter",
@@ -2447,7 +2448,8 @@
       "depositFixedMax": "L'acompte fixe ne peut pas dépasser le prix",
       "percentRange": "La réduction doit être entre 1 et 100 %",
       "endAfterStart": "La date de fin doit être après le début",
-      "variationsIncomplete": "Complétez au moins une variation : un nom et au moins un choix nommé."
+      "variationsIncomplete": "Complétez au moins une variation : un nom et au moins un choix nommé.",
+      "amountRange": "La réduction doit être comprise entre 0,01 € et 10 000 €"
     },
     "deleteService": {
       "title": "Supprimer la prestation",
@@ -2493,10 +2495,15 @@
         "tapHint": "Touchez une ligne pour l'inclure ou l'exclure de la promo.",
         "baseService": "Prestation",
         "optionsGroup": "Options et suppléments",
-        "notIncluded": "non incluse"
+        "notIncluded": "non incluse",
+        "totalLabel": "Total si tout est choisi",
+        "discountableHint": "La remise ne peut mordre que sur {{amount}} de lignes incluses."
       },
       "notifyTitle": "Prévenir mes clients fidélité",
-      "notifyDescription": "Un email aux clients qui ont accepté vos promotions (1 par semaine maximum)."
+      "notifyDescription": "Un email aux clients qui ont accepté vos promotions (1 par semaine maximum).",
+      "modePercent": "En %",
+      "modeAmount": "En €",
+      "amountLabel": "Réduction (€)"
     },
     "form": {
       "editTitle": "Modifier",
@@ -2604,7 +2611,16 @@
       "requiredLabel": "Obligatoire",
       "addInfoField": "Ajouter une info",
       "durationUnit": "min"
-    }
+    },
+    "bookable": {
+      "sectionTitle": "Réservation en ligne",
+      "sectionSubtitle": "Suspendre sans masquer la prestation.",
+      "toggleTitle": "Réservable en ligne",
+      "toggleDescription": "Désactivez pour la laisser visible sur votre page, marquée « Indisponible ». Vous pourrez toujours l’inscrire vous-même depuis votre agenda.",
+      "noteLabel": "Raison affichée à vos clientes (optionnel)",
+      "notePlaceholder": "Ex : rupture de produit, de retour début septembre"
+    },
+    "unavailableBadge": "Indisponible"
   },
   "proMembers": {
     "title": "Équipe",

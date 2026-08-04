@@ -240,7 +240,7 @@ export default function MemberSelectionScreen() {
                 const linePrice = isLoyaltyTarget ? eff.price - loyaltyPreview.amountOff : eff.price;
                 const lineOriginal = isLoyaltyTarget && eff.original <= eff.price ? eff.price : eff.original;
                 const itemHasPromo =
-                  (eff.discountPercent != null && eff.original > eff.price) || isLoyaltyTarget;
+                  eff.original > eff.price || isLoyaltyTarget;
                 return (
                   <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                     <View style={{ flex: 1 }}>
@@ -457,7 +457,9 @@ export default function MemberSelectionScreen() {
                   services={g.items.map((s) => {
                     const md = getDiscountedMinPrice(s, globalDiscount);
                     const active = resolveServiceDiscount(s, globalDiscount);
-                    const hasPromo = md.discountPercent != null && md.price < md.original;
+                    const hasPromo =
+                      (md.discountPercent != null || md.discountAmount != null) &&
+                      md.price < md.original;
                     const daysLeft = getDiscountDaysLeft(active);
                     const priceFrom =
                       (s.variations?.length ?? 0) > 0 || (s.options?.length ?? 0) > 0;
@@ -476,11 +478,14 @@ export default function MemberSelectionScreen() {
                       priceMax: hasPromo || priceFrom ? null : s.priceMax ? s.priceMax / 100 : null,
                       originalPrice: hasPromo ? md.original / 100 : null,
                       discountPercent: hasPromo ? md.discountPercent : null,
+                      discountAmount: hasPromo ? md.discountAmount : null,
                       promoCountdown:
                         hasPromo && daysLeft != null && daysLeft <= PROMO_URGENCY_DAYS
                           ? formatPromoCountdown(daysLeft, i18n.language)
                           : null,
                       priceFrom,
+                      isAvailable: s.isAvailable !== false,
+                      unavailableNote: s.unavailableNote ?? null,
                     };
                   })}
                   onSelectService={(id) => {

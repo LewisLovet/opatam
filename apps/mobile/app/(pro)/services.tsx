@@ -48,6 +48,7 @@ import {
   resolveDeposit,
   getActiveDiscount,
   buildServiceDiscountPreview,
+  isAmountDiscount,
   resolveExcludedIds,
   getServiceMinPrice,
   deriveServiceBasePricing,
@@ -93,6 +94,10 @@ interface ServiceFormData {
   price: string;
   bufferTime: string;
   isActive: boolean;
+  /** Réservable en ligne. `false` = visible mais marquée indisponible. */
+  isAvailable: boolean;
+  /** Raison affichée à la cliente quand la prestation est indisponible. */
+  unavailableNote: string;
   locationIds: string[];
   memberIds: string[] | null;
   categoryId: string | null;
@@ -106,9 +111,14 @@ interface ServiceFormData {
   depositType: DepositCustomType;
   depositValue: string; // % when percent, € when fixed
   depositRefundHours: string;
-  // Promotion (percentage). Empty/disabled = no promo on this service.
+  // Promotion — pourcentage OU montant fixe. Empty/disabled = no promo.
   discountEnabled: boolean;
+  /** Forme active. Les deux saisies sont conservées pour ne rien perdre en
+   *  basculant de l'une à l'autre ; une seule est persistée. */
+  discountMode: 'percent' | 'amount';
   discountPercent: string;
+  /** Montant en EUROS tel que saisi (converti en centimes à l'écriture). */
+  discountAmount: string;
   /** Variation-option / option ids excluded from the promo (per-line). */
   discountExcludedIds: string[];
   discountStartsAt: string | null; // YYYY-MM-DD inclusive
@@ -132,6 +142,8 @@ const DEFAULT_FORM: ServiceFormData = {
   price: '',
   bufferTime: '0',
   isActive: true,
+  isAvailable: true,
+  unavailableNote: '',
   locationIds: [],
   memberIds: null,
   categoryId: null,
@@ -141,7 +153,9 @@ const DEFAULT_FORM: ServiceFormData = {
   depositValue: '30',
   depositRefundHours: '24',
   discountEnabled: false,
+  discountMode: 'percent',
   discountPercent: '10',
+  discountAmount: '5',
   discountNotify: false,
   discountExcludedIds: [],
   discountStartsAt: null,
@@ -230,13 +244,50 @@ function PromoPreview({ preview, onToggleLine }: { preview: ServiceDiscountPrevi
           {t('proServices.promo.preview.title')}
         </Text>
         <View style={{ backgroundColor: '#E11D48', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-          <Text variant="caption" style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>−{preview.percent}%</Text>
+          <Text variant="caption" style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>
+            {preview.amount !== null ? `−${euroCents(preview.amount)}` : `−${preview.percent}%`}
+          </Text>
         </View>
       </View>
       {hasLines && (
         <Text variant="caption" color="textMuted">
           {t('proServices.promo.preview.tapHint')}
         </Text>
+      )}
+      {/* Une remise en euros ne se répartit pas ligne à ligne : les prix
+          ci-dessous restent inchangés, c'est ce total qui porte la remise. */}
+      {preview.amount !== null && (
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: radius.sm,
+            backgroundColor: colors.background,
+            padding: spacing.sm,
+            gap: 2,
+          }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text variant="bodySmall" color="textSecondary">
+              {t('proServices.promo.preview.totalLabel')}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text variant="bodySmall" color="textMuted" style={{ textDecorationLine: 'line-through' }}>
+                {euroCents(preview.total.original)}
+              </Text>
+              <Text variant="bodySmall" style={{ fontWeight: '700', color: '#E11D48' }}>
+                {euroCents(preview.total.discounted)}
+              </Text>
+            </View>
+          </View>
+          {preview.total.discountable < preview.total.original && (
+            <Text variant="caption" color="textMuted">
+              {t('proServices.promo.preview.discountableHint', {
+                amount: euroCents(preview.total.discountable),
+              })}
+            </Text>
+          )}
+        </View>
       )}
       {preview.base && (
         <PromoPriceRow row={{ id: null, name: t('proServices.promo.preview.baseService'), original: preview.base.original, discounted: preview.base.discounted, applies: true }} />
@@ -392,7 +443,10 @@ export default function ServicesScreen() {
   const [gDateField, setGDateField] = useState<'start' | 'end' | null>(null);
   const [gForm, setGForm] = useState({
     enabled: false,
+    mode: 'percent' as 'percent' | 'amount',
     percent: '10',
+    /** Montant en EUROS tel que saisi. */
+    amount: '5',
     includeExtras: true,
     startsAt: null as string | null,
     endsAt: null as string | null,
@@ -402,7 +456,9 @@ export default function ServicesScreen() {
     const g = provider?.settings?.globalDiscount ?? null;
     setGForm({
       enabled: !!g,
-      percent: g ? String(g.percent) : '10',
+      mode: isAmountDiscount(g) ? 'amount' : 'percent',
+      percent: g?.percent ? String(g.percent) : '10',
+      amount: g?.amount ? String(g.amount / 100) : '5',
       includeExtras: g?.includeExtras ?? true,
       startsAt: g?.startsAt ?? null,
       endsAt: g?.endsAt ?? null,
@@ -414,21 +470,30 @@ export default function ServicesScreen() {
     if (!providerId) return;
     let globalDiscount: Service['discount'] | null = null;
     if (gForm.enabled) {
-      const pct = Number(gForm.percent);
-      if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
-        showToast({ variant: 'error', message: t('proServices.errors.percentRange') });
-        return;
-      }
       if (gForm.startsAt && gForm.endsAt && gForm.startsAt > gForm.endsAt) {
         showToast({ variant: 'error', message: t('proServices.errors.endAfterStart') });
         return;
       }
-      globalDiscount = {
-        percent: Math.round(pct),
+      const common = {
         includeExtras: gForm.includeExtras,
         startsAt: gForm.startsAt,
         endsAt: gForm.endsAt,
       };
+      if (gForm.mode === 'amount') {
+        const cents = Math.round(Number(gForm.amount.replace(',', '.')) * 100);
+        if (!Number.isFinite(cents) || cents < 1 || cents > 1_000_000) {
+          showToast({ variant: 'error', message: t('proServices.errors.amountRange') });
+          return;
+        }
+        globalDiscount = { amount: cents, ...common };
+      } else {
+        const pct = Number(gForm.percent);
+        if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
+          showToast({ variant: 'error', message: t('proServices.errors.percentRange') });
+          return;
+        }
+        globalDiscount = { percent: Math.round(pct), ...common };
+      }
     }
     setGSaving(true);
     try {
@@ -775,6 +840,8 @@ export default function ServicesScreen() {
       price: String(service.price / 100),
       bufferTime: String(service.bufferTime),
       isActive: service.isActive,
+      isAvailable: service.isAvailable !== false,
+      unavailableNote: service.unavailableNote ?? '',
       locationIds: service.locationIds || [],
       memberIds: service.memberIds,
       categoryId: service.categoryId || null,
@@ -784,7 +851,9 @@ export default function ServicesScreen() {
       depositValue,
       depositRefundHours,
       discountEnabled: !!service.discount,
-      discountPercent: service.discount ? String(service.discount.percent) : '10',
+      discountMode: isAmountDiscount(service.discount) ? 'amount' : 'percent',
+      discountPercent: service.discount?.percent ? String(service.discount.percent) : '10',
+      discountAmount: service.discount?.amount ? String(service.discount.amount / 100) : '5',
       // Migrate legacy includeExtras into the per-line excludedIds model.
       discountExcludedIds: service.discount ? Array.from(resolveExcludedIds(service, service.discount)) : [],
       discountStartsAt: service.discount?.startsAt ?? null,
@@ -881,14 +950,9 @@ export default function ServicesScreen() {
       };
     }
 
-    // Build the promotion payload (percentage). null = no promo.
+    // Build the promotion payload — pourcentage OU montant. null = no promo.
     let discountPayload: Service['discount'] | null = null;
     if (form.discountEnabled) {
-      const pct = Number(form.discountPercent);
-      if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
-        showToast({ variant: 'error', message: t('proServices.errors.percentRange') });
-        return null;
-      }
       if (
         form.discountStartsAt &&
         form.discountEndsAt &&
@@ -897,13 +961,28 @@ export default function ServicesScreen() {
         showToast({ variant: 'error', message: t('proServices.errors.endAfterStart') });
         return null;
       }
-      discountPayload = {
-        percent: Math.round(pct),
+      const common = {
         excludedIds: form.discountExcludedIds,
         startsAt: form.discountStartsAt,
         endsAt: form.discountEndsAt,
         notifyLoyaltyClients: form.discountNotify,
       };
+      if (form.discountMode === 'amount') {
+        const cents = Math.round(Number(form.discountAmount.replace(',', '.')) * 100);
+        if (!Number.isFinite(cents) || cents < 1 || cents > 1_000_000) {
+          showToast({ variant: 'error', message: t('proServices.errors.amountRange') });
+          return null;
+        }
+        // Un seul des deux champs est écrit : le schéma refuse la combinaison.
+        discountPayload = { amount: cents, ...common };
+      } else {
+        const pct = Number(form.discountPercent);
+        if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
+          showToast({ variant: 'error', message: t('proServices.errors.percentRange') });
+          return null;
+        }
+        discountPayload = { percent: Math.round(pct), ...common };
+      }
     }
 
     return {
@@ -917,6 +996,9 @@ export default function ServicesScreen() {
       priceMax: null,
       bufferTime: bufferTimeValue,
       isActive: form.isActive,
+      isAvailable: form.isAvailable,
+      // La note ne survit pas au retour à « disponible ».
+      unavailableNote: form.isAvailable ? null : (form.unavailableNote.trim() || null),
       locationIds: form.locationIds,
       memberIds: form.memberIds,
       categoryId: form.categoryId,
@@ -1077,6 +1159,13 @@ export default function ServicesScreen() {
                 {!service.isActive && (
                   <View style={[styles.badge, { backgroundColor: '#FEE2E2' }]}>
                     <Text variant="caption" style={{ color: '#DC2626', fontWeight: '600', fontSize: 10 }}>{t('proServices.inactiveBadge')}</Text>
+                  </View>
+                )}
+                {/* Suspendue : signalée au pro, sinon il oublie qu'il l'a
+                    coupée et s'étonne de ne plus recevoir de réservations. */}
+                {service.isActive && service.isAvailable === false && (
+                  <View style={[styles.badge, { backgroundColor: '#FEF3C7' }]}>
+                    <Text variant="caption" style={{ color: '#B45309', fontWeight: '600', fontSize: 10 }}>{t('proServices.unavailableBadge')}</Text>
                   </View>
                 )}
               </View>
@@ -2048,13 +2137,68 @@ export default function ServicesScreen() {
 
                   {form.discountEnabled && (
                     <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
-                      <Input
-                        label={t('proServices.promo.percentLabel')}
-                        placeholder="10"
-                        value={form.discountPercent}
-                        onChangeText={(t) => setForm((p) => ({ ...p, discountPercent: t.replace(/[^0-9]/g, '') }))}
-                        keyboardType="number-pad"
-                      />
+                      {/* Forme de la remise. Les deux saisies restent en
+                          mémoire : basculer et revenir ne perd rien. */}
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          backgroundColor: colors.surfaceSecondary,
+                          borderRadius: radius.md,
+                          padding: 3,
+                          alignSelf: 'flex-start',
+                        }}
+                      >
+                        {(['percent', 'amount'] as const).map((mode) => (
+                          <Pressable
+                            key={mode}
+                            onPress={() => setForm((p) => ({ ...p, discountMode: mode }))}
+                            style={{
+                              paddingHorizontal: spacing.lg,
+                              paddingVertical: spacing.xs,
+                              borderRadius: radius.sm,
+                              backgroundColor:
+                                form.discountMode === mode ? colors.primary : 'transparent',
+                            }}
+                          >
+                            <Text
+                              variant="bodySmall"
+                              style={{
+                                fontWeight: '600',
+                                color: form.discountMode === mode ? '#FFFFFF' : colors.textSecondary,
+                              }}
+                            >
+                              {mode === 'percent'
+                                ? t('proServices.promo.modePercent')
+                                : t('proServices.promo.modeAmount')}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+
+                      {form.discountMode === 'amount' ? (
+                        <Input
+                          label={t('proServices.promo.amountLabel')}
+                          placeholder="5"
+                          value={form.discountAmount}
+                          onChangeText={(v) =>
+                            setForm((p) => ({ ...p, discountAmount: v.replace(/[^0-9.,]/g, '') }))
+                          }
+                          keyboardType="decimal-pad"
+                          rightIcon={
+                            <Text variant="caption" color="textMuted">
+                              €
+                            </Text>
+                          }
+                        />
+                      ) : (
+                        <Input
+                          label={t('proServices.promo.percentLabel')}
+                          placeholder="10"
+                          value={form.discountPercent}
+                          onChangeText={(t) => setForm((p) => ({ ...p, discountPercent: t.replace(/[^0-9]/g, '') }))}
+                          keyboardType="number-pad"
+                        />
+                      )}
 
                       {/* Envoi aux clients fidélité : décision explicite du
                           pro, promo par promo. Sans activation, aucun email. */}
@@ -2089,7 +2233,19 @@ export default function ServicesScreen() {
                             variations: form.variations,
                             options: form.options,
                           },
-                          { percent: Number(form.discountPercent) || 0, excludedIds: form.discountExcludedIds },
+                          // Forme persistée : passer les deux valeurs ferait
+                          // primer le montant même en mode pourcentage.
+                          form.discountMode === 'amount'
+                            ? {
+                                amount: Math.round(
+                                  Number(form.discountAmount.replace(',', '.')) * 100,
+                                ) || 0,
+                                excludedIds: form.discountExcludedIds,
+                              }
+                            : {
+                                percent: Number(form.discountPercent) || 0,
+                                excludedIds: form.discountExcludedIds,
+                              },
                         );
                         if (!preview) return null;
                         return (
@@ -2134,6 +2290,75 @@ export default function ServicesScreen() {
                         {t('proServices.promo.permanentNote')}
                       </Text>
                     </View>
+                  )}
+                </EditorSection>
+
+                {/* Suspendre la réservation en ligne SANS masquer la
+                    prestation : elle reste sur la page publique, grisée et
+                    marquée « Indisponible ». Le pro, lui, peut toujours
+                    l'inscrire depuis son agenda. */}
+                <EditorSection
+                  title={t('proServices.bookable.sectionTitle')}
+                  subtitle={t('proServices.bookable.sectionSubtitle')}
+                  icon="calendar-outline"
+                  defaultOpen={!form.isAvailable}
+                >
+                  <Pressable
+                    onPress={() =>
+                      setForm((p) => ({
+                        ...p,
+                        isAvailable: !p.isAvailable,
+                        unavailableNote: !p.isAvailable ? '' : p.unavailableNote,
+                      }))
+                    }
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingVertical: spacing.xs,
+                      gap: spacing.md,
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text variant="body" style={{ fontWeight: '500' }}>
+                        {t('proServices.bookable.toggleTitle')}
+                      </Text>
+                      <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                        {t('proServices.bookable.toggleDescription')}
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        width: 44,
+                        height: 26,
+                        borderRadius: 13,
+                        backgroundColor: form.isAvailable ? colors.primary : colors.border,
+                        justifyContent: 'center',
+                        padding: 2,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 11,
+                          backgroundColor: '#fff',
+                          alignSelf: form.isAvailable ? 'flex-end' : 'flex-start',
+                        }}
+                      />
+                    </View>
+                  </Pressable>
+
+                  {!form.isAvailable && (
+                    <Input
+                      label={t('proServices.bookable.noteLabel')}
+                      placeholder={t('proServices.bookable.notePlaceholder')}
+                      value={form.unavailableNote}
+                      onChangeText={(v) =>
+                        setForm((p) => ({ ...p, unavailableNote: v.slice(0, 120) }))
+                      }
+                      maxLength={120}
+                    />
                   )}
                 </EditorSection>
 
@@ -2609,13 +2834,64 @@ export default function ServicesScreen() {
 
             {gForm.enabled && (
               <View style={{ gap: spacing.sm }}>
-                <Input
-                  label={t('proServices.promo.percentLabel')}
-                  placeholder="10"
-                  value={gForm.percent}
-                  onChangeText={(t) => setGForm((f) => ({ ...f, percent: t.replace(/[^0-9]/g, '') }))}
-                  keyboardType="number-pad"
-                />
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    backgroundColor: colors.surfaceSecondary,
+                    borderRadius: radius.md,
+                    padding: 3,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  {(['percent', 'amount'] as const).map((mode) => (
+                    <Pressable
+                      key={mode}
+                      onPress={() => setGForm((f) => ({ ...f, mode }))}
+                      style={{
+                        paddingHorizontal: spacing.lg,
+                        paddingVertical: spacing.xs,
+                        borderRadius: radius.sm,
+                        backgroundColor: gForm.mode === mode ? colors.primary : 'transparent',
+                      }}
+                    >
+                      <Text
+                        variant="bodySmall"
+                        style={{
+                          fontWeight: '600',
+                          color: gForm.mode === mode ? '#FFFFFF' : colors.textSecondary,
+                        }}
+                      >
+                        {mode === 'percent'
+                          ? t('proServices.promo.modePercent')
+                          : t('proServices.promo.modeAmount')}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                {gForm.mode === 'amount' ? (
+                  <Input
+                    label={t('proServices.promo.amountLabel')}
+                    placeholder="5"
+                    value={gForm.amount}
+                    onChangeText={(v) =>
+                      setGForm((f) => ({ ...f, amount: v.replace(/[^0-9.,]/g, '') }))
+                    }
+                    keyboardType="decimal-pad"
+                    rightIcon={
+                      <Text variant="caption" color="textMuted">
+                        €
+                      </Text>
+                    }
+                  />
+                ) : (
+                  <Input
+                    label={t('proServices.promo.percentLabel')}
+                    placeholder="10"
+                    value={gForm.percent}
+                    onChangeText={(t) => setGForm((f) => ({ ...f, percent: t.replace(/[^0-9]/g, '') }))}
+                    keyboardType="number-pad"
+                  />
+                )}
                 <Pressable
                   onPress={() => setGForm((f) => ({ ...f, includeExtras: !f.includeExtras }))}
                   style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs }}

@@ -39,8 +39,11 @@ export interface ServiceCategoryProps {
     priceMax?: number | null;
     originalPrice?: number | null;
     discountPercent?: number | null;
+    discountAmount?: number | null;
     promoCountdown?: string | null;
     priceFrom?: boolean;
+    isAvailable?: boolean;
+    unavailableNote?: string | null;
   }>;
   /** Currently selected service ID */
   selectedId?: string | null;
@@ -234,8 +237,11 @@ export function ServiceCategory({
               priceMax={service.priceMax}
               originalPrice={service.originalPrice}
               discountPercent={service.discountPercent}
+              discountAmount={service.discountAmount}
               promoCountdown={service.promoCountdown}
               priceFrom={service.priceFrom}
+              isAvailable={service.isAvailable}
+              unavailableNote={service.unavailableNote}
               selected={selectedId === service.id}
               onPress={onSelectService ? () => onSelectService(service.id) : undefined}
             />

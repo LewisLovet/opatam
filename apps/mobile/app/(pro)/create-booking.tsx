@@ -1237,7 +1237,18 @@ export default function CreateBookingScreen() {
                   >
                     <View style={styles.serviceCardContent}>
                       <View style={styles.serviceCardInfo}>
-                        <Text variant="h3">{service.name}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                          <Text variant="h3" style={{ flexShrink: 1 }}>{service.name}</Text>
+                          {/* Suspendue en ligne, mais le pro garde le droit de
+                              l'inscrire — d'où la pastille plutôt qu'un blocage. */}
+                          {service.isAvailable === false && (
+                            <View style={{ backgroundColor: '#FEF3C7', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                              <Text variant="caption" style={{ color: '#B45309', fontWeight: '700', fontSize: 10 }}>
+                                {t('components.serviceCard.unavailable')}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
 
                         {/* Duration + Price pills */}
                         <View style={[styles.pillRow, { marginTop: spacing.sm, flexWrap: 'wrap', rowGap: spacing.xs }]}>

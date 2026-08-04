@@ -505,7 +505,7 @@ export default function ConfirmBookingScreen() {
                 <>
                   {cart.map((c, idx) => {
                     const e = computeDiscountedTotal(c.service, c.selections, globalDiscount);
-                    const ePromo = e.discountPercent != null && e.original > e.price;
+                    const ePromo = e.original > e.price;
                     return (
                       <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, marginTop: idx ? 2 : 0 }}>
                         <Text variant="body" style={{ fontWeight: '600', flex: 1 }} numberOfLines={1}>

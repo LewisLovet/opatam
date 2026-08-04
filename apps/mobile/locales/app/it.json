@@ -683,7 +683,8 @@
       "fromPrefix": "a partire da",
       "priceRange": "Da {{min}} a {{max}}",
       "showMore": "Più dettagli",
-      "showLess": "Meno"
+      "showLess": "Meno",
+      "unavailable": "Non disponibile"
     },
     "serviceChoicesPreview": {
       "add": "Aggiungi",
@@ -2447,7 +2448,8 @@
       "depositFixedMax": "L'acconto fisso non può superare il prezzo",
       "percentRange": "Lo sconto deve essere tra 1 e 100 %",
       "endAfterStart": "La data di fine deve essere dopo l'inizio",
-      "variationsIncomplete": "Completa almeno una variante: un nome e almeno una scelta con nome."
+      "variationsIncomplete": "Completa almeno una variante: un nome e almeno una scelta con nome.",
+      "amountRange": "Lo sconto deve essere compreso tra 0,01 € e 10 000 €"
     },
     "deleteService": {
       "title": "Elimina il servizio",
@@ -2493,10 +2495,15 @@
         "tapHint": "Tocca una riga per includerla o escluderla dalla promo.",
         "baseService": "Servizio",
         "optionsGroup": "Opzioni ed extra",
-        "notIncluded": "non inclusa"
+        "notIncluded": "non inclusa",
+        "totalLabel": "Totale se si sceglie tutto",
+        "discountableHint": "Lo sconto può incidere solo su {{amount}} di righe incluse."
       },
       "notifyTitle": "Avvisare i miei clienti fedeltà",
-      "notifyDescription": "Un’email ai clienti che hanno accettato le tue promozioni (max 1 a settimana)."
+      "notifyDescription": "Un’email ai clienti che hanno accettato le tue promozioni (max 1 a settimana).",
+      "modePercent": "In %",
+      "modeAmount": "In €",
+      "amountLabel": "Sconto (€)"
     },
     "form": {
       "editTitle": "Modifica",
@@ -2604,7 +2611,16 @@
       "requiredLabel": "Obbligatorio",
       "addInfoField": "Aggiungi un'informazione",
       "durationUnit": "min"
-    }
+    },
+    "bookable": {
+      "sectionTitle": "Prenotazione online",
+      "sectionSubtitle": "Sospendere senza nascondere il servizio.",
+      "toggleTitle": "Prenotabile online",
+      "toggleDescription": "Disattiva per lasciarlo visibile sulla tua pagina, con la dicitura « Non disponibile ». Potrai comunque inserirlo dal tuo calendario.",
+      "noteLabel": "Motivo mostrato ai clienti (facoltativo)",
+      "notePlaceholder": "Es. prodotto esaurito, torna a inizio settembre"
+    },
+    "unavailableBadge": "Non disponibile"
   },
   "proMembers": {
     "title": "Team",
