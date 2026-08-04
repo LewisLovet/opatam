@@ -762,8 +762,20 @@ export interface ServiceOption {
  * say, the premium tier or one supplément outside the sale.
  */
 export interface ServiceDiscount {
-  /** Percent off, 1-100. */
-  percent: number;
+  /** Percent off, 1-100. Absent when the promo is a fixed amount. */
+  percent?: number;
+  /**
+   * Fixed amount off, in CENTS. Mutually exclusive with `percent` — a promo
+   * carries one or the other, jamais les deux (le schéma le refuse).
+   *
+   * POURQUOI un champ à côté de `percent` plutôt qu'un discriminant `type`
+   * comme LoyaltySettings.rewardType : les binaires mobiles déjà en
+   * circulation lisent `discount.percent` en direct. Sur une promo en euros
+   * ils trouvent `percent` absent, en déduisent « pas de promo » et affichent
+   * le prix plein — le seul repli acceptable. Un discriminant qu'ils ne
+   * connaissent pas leur ferait afficher une remise fantaisiste.
+   */
+  amount?: number;
   /** Variation-option / add-on-option ids NOT reduced by the promo.
    *  Absent or [] = every line is reduced. */
   excludedIds?: string[];
@@ -793,6 +805,20 @@ export interface Service {
   locationIds: string[];
   memberIds: string[] | null;
   isActive: boolean;
+  /**
+   * Visible mais NON réservable en ligne. Absent = disponible, pour que les
+   * prestations existantes le restent sans migration.
+   *
+   * À ne pas confondre avec `isActive`, qui retire la prestation du catalogue :
+   * les requêtes clientes filtrent `isActive == true`, donc une prestation
+   * désactivée n'existe plus pour la cliente. Ici on veut l'inverse — elle
+   * reste affichée, marquée indisponible, le temps d'un réapprovisionnement
+   * ou d'une absence. Le pro, lui, peut toujours la réserver manuellement.
+   */
+  isAvailable?: boolean;
+  /** Raison affichée à la cliente sous la pastille « Indisponible »
+   *  (« rupture de produit », « de retour début septembre »). */
+  unavailableNote?: string | null;
   sortOrder: number;
   /** Hex color (#RRGGBB) used to tint this service's bookings on the
    *  calendar. When null, the booking falls back to the member's color.

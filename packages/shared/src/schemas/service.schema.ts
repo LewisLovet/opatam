@@ -37,17 +37,30 @@ export const serviceDepositSchema = z
   .nullable();
 
 /**
- * Per-service promotion (percentage). `includeExtras` decides whether
- * variations/options are discounted too. Optional inclusive date window as
- * local YYYY-MM-DD strings. `null` = no promo on this service.
+ * Per-service promotion — pourcentage OU montant fixe en centimes, jamais les
+ * deux. `includeExtras` decides whether variations/options are discounted too.
+ * Optional inclusive date window as local YYYY-MM-DD strings. `null` = no promo
+ * on this service.
+ *
+ * Le refus des deux champs simultanés n'est pas cosmétique : sans lui, le
+ * comportement dépendrait de l'ordre des tests dans `getDiscountReduction`,
+ * donc d'un détail d'implémentation.
  */
 export const serviceDiscountSchema = z
   .object({
     percent: z
-      .number({ required_error: 'Le pourcentage de réduction est requis' })
+      .number()
       .int({ message: 'Le pourcentage doit être un nombre entier' })
       .min(1, { message: 'La réduction doit être d\'au moins 1 %' })
-      .max(100, { message: 'La réduction ne peut pas dépasser 100 %' }),
+      .max(100, { message: 'La réduction ne peut pas dépasser 100 %' })
+      .optional(),
+    /** Montant fixe en centimes. */
+    amount: z
+      .number()
+      .int({ message: 'Le montant doit être un nombre entier de centimes' })
+      .min(1, { message: 'La réduction doit être d\'au moins 1 centime' })
+      .max(1_000_000, { message: 'La réduction ne peut pas dépasser 10 000 €' })
+      .optional(),
     /** Variation-option / option ids excluded from the promo (per-line control). */
     excludedIds: z.array(z.string()).optional(),
     /** @deprecated Legacy single toggle, kept for back-compat reads. */
@@ -68,6 +81,10 @@ export const serviceDiscountSchema = z
   .refine((d) => !d.startsAt || !d.endsAt || d.startsAt <= d.endsAt, {
     message: 'La date de fin doit être postérieure à la date de début',
     path: ['endsAt'],
+  })
+  .refine((d) => (d.percent != null) !== (d.amount != null), {
+    message: 'Choisissez une réduction en pourcentage OU en euros',
+    path: ['percent'],
   })
   .nullable();
 
@@ -220,8 +237,19 @@ export const createServiceSchema = z.object({
   // Per-service deposit override. See serviceDepositSchema above.
   deposit: serviceDepositSchema.optional(),
 
-  // Per-service promotion (percentage). See serviceDiscountSchema above.
+  // Per-service promotion (pourcentage ou montant). Voir serviceDiscountSchema.
   discount: serviceDiscountSchema.optional(),
+
+  // Disponibilité à la réservation en ligne. Absent = disponible : les
+  // prestations existantes n'ont pas à être migrées, et une valeur manquante
+  // ne doit jamais bloquer une réservation.
+  isAvailable: z.boolean().optional(),
+  unavailableNote: z
+    .string()
+    .trim()
+    .max(120, { message: 'La note ne peut pas dépasser 120 caractères' })
+    .nullable()
+    .optional(),
 
   // Client-facing choices — all optional, default empty so a service
   // without them validates exactly as before.
@@ -321,6 +349,17 @@ export const updateServiceSchema = z.object({
   // Per-service promotion (percentage). See serviceDiscountSchema above.
   discount: serviceDiscountSchema.optional(),
   isActive: z.boolean().optional(),
+  // Disponibilité à la réservation en ligne. Absent = disponible : les
+  // prestations existantes n'ont pas à être migrées, et une valeur manquante
+  // ne doit jamais bloquer une réservation.
+  isAvailable: z.boolean().optional(),
+  unavailableNote: z
+    .string()
+    .trim()
+    .max(120, { message: 'La note ne peut pas dépasser 120 caractères' })
+    .nullable()
+    .optional(),
+
   sortOrder: z.number().int().min(0).optional(),
 
   // Client-facing choices — see createServiceSchema for the field docs.

@@ -303,6 +303,11 @@ export async function POST(request: NextRequest) {
       booking = await bookingService.createBooking(validated, {
         skipDeposit,
         loyalty: loyaltySettings,
+        // Le pro AUTHENTIFIÉ peut inscrire un rendez-vous sur une prestation
+        // qu'il a rendue indisponible : l'indisponibilité vise la réservation
+        // en ligne, pas l'appel téléphonique. `isProSource` seul ne suffirait
+        // pas — c'est une simple valeur envoyée par le client.
+        allowUnavailable: isProVerified,
       });
     } catch (e) {
       // Résa refusée après réservation du ticket → on le libère pour que

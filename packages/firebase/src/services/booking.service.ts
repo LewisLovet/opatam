@@ -51,6 +51,10 @@ export class BookingService {
       /** Réglages fidélité à appliquer — fournis par la route API UNIQUEMENT
        *  quand le gate d'accès et l'armement du client sont vérifiés. */
       loyalty?: LoyaltySettings | null;
+      /** Autorise une prestation marquée indisponible (ou désactivée).
+       *  Réservé au prestataire AUTHENTIFIÉ : l'indisponibilité coupe la
+       *  réservation en ligne, pas le rendez-vous pris au téléphone. */
+      allowUnavailable?: boolean;
     } = {},
   ): Promise<WithId<Booking>> {
     // Validate input
@@ -126,6 +130,22 @@ export class BookingService {
       const svc = await serviceRepository.getById(validated.providerId, reqItem.serviceId);
       if (!svc) {
         throw new Error('Prestation non trouvée');
+      }
+      // Garde de disponibilité — UNIQUE point de contrôle, donc valable pour
+      // le web, le mobile, et les binaires anciens qui ignorent la
+      // fonctionnalité : ils proposeront la prestation, le serveur refusera.
+      //
+      // `isAvailable` absent vaut disponible (aucune migration des documents
+      // existants). `isActive === false` n'était vérifié NULLE PART : une
+      // prestation retirée du catalogue restait réservable pour qui
+      // connaissait son identifiant — corrigé ici au passage.
+      if (!opts.allowUnavailable) {
+        if (svc.isAvailable === false) {
+          throw new Error(`« ${svc.name} » n'est pas disponible à la réservation pour le moment.`);
+        }
+        if (svc.isActive === false) {
+          throw new Error(`« ${svc.name} » n'est plus proposée par ce prestataire.`);
+        }
       }
       const sel = reqItem.selections ?? emptyServiceSelections();
       // Guard: a service with required variations (or required info fields)

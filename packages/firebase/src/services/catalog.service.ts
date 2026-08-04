@@ -395,7 +395,11 @@ export class CatalogService {
    * Called after service create/update/delete
    */
   async updateProviderMinPrice(providerId: string): Promise<void> {
-    const activeServices = await serviceRepository.getActiveByProvider(providerId);
+    // Les prestations marquées indisponibles sont écartées : annoncer un
+    // « à partir de 25 € » que la cliente ne peut pas réserver est trompeur.
+    const activeServices = (await serviceRepository.getActiveByProvider(providerId)).filter(
+      (s) => s.isAvailable !== false,
+    );
 
     let minPrice: number | null = null;
     if (activeServices.length > 0) {

@@ -58,7 +58,11 @@ export class ServiceRepository {
       if (!snap.exists()) return;
       const globalDiscount =
         (snap.data() as { settings?: { globalDiscount?: unknown } })?.settings?.globalDiscount ?? null;
-      const promoSummary = buildPromoWindows(globalDiscount as never, services);
+      // Une promo sur une prestation indisponible ne doit pas faire clignoter
+      // « Promotion en cours » dans les listes : la cliente ne peut pas en
+      // profiter. La promo boutique, elle, reste comptée.
+      const bookable = services.filter((s) => s.isAvailable !== false);
+      const promoSummary = buildPromoWindows(globalDiscount as never, bookable);
       await updateDoc(providerRef, { promoSummary });
     } catch (err) {
       console.warn('[promoSummary] recompute failed for', providerId, err);
@@ -208,7 +212,7 @@ export class ServiceRepository {
     await updateDoc(docRef, docData);
     // Only the discount or active flag affect the promo summary — skip the
     // frequent sortOrder-only updates.
-    if ('discount' in data || 'isActive' in data) {
+    if ('discount' in data || 'isActive' in data || 'isAvailable' in data) {
       await this.recomputePromoSummary(providerId);
     }
   }
@@ -227,6 +231,25 @@ export class ServiceRepository {
    */
   async toggleActive(providerId: string, serviceId: string, isActive: boolean): Promise<void> {
     await this.update(providerId, serviceId, { isActive });
+  }
+
+  /**
+   * Toggle service availability — la prestation reste visible et publiée, mais
+   * n'est plus réservable en ligne. À ne pas confondre avec `toggleActive`,
+   * qui la retire du catalogue.
+   */
+  async toggleAvailable(
+    providerId: string,
+    serviceId: string,
+    isAvailable: boolean,
+    unavailableNote?: string | null,
+  ): Promise<void> {
+    await this.update(providerId, serviceId, {
+      isAvailable,
+      // Redevenir disponible efface la note : la garder afficherait
+      // « rupture de produit » sur une prestation à nouveau réservable.
+      unavailableNote: isAvailable ? null : (unavailableNote ?? null),
+    });
   }
 
   /**

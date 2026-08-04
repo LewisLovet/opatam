@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   SERVICE_BASE_DURATION_MAX,
+  buildPromoWindows,
+  buildServiceDiscountPreview,
+  computeDiscountedTotal,
   deriveServiceBasePricing,
+  formatDiscountBadge,
+  getActiveDiscount,
+  getActivePromoPercentFromWindows,
+  getDiscountReduction,
+  getDiscountedMinPrice,
   getServiceMinDuration,
+  hasActivePromoFromWindows,
 } from './service-pricing';
 import { createServiceSchema } from '../schemas/service.schema';
 
@@ -103,5 +112,220 @@ describe('createServiceSchema — durée', () => {
 
   it('refuse toujours en dessous de 5 min', () => {
     expect(createServiceSchema.safeParse({ ...base, duration: 4 }).success).toBe(false);
+  });
+});
+
+// ─── Promotions en montant fixe ──────────────────────────────────────────
+
+/** Prestation à variations : « Coupe » 30 € ou 45 €, option « Soin » +10 €. */
+const promoService = {
+  price: 0,
+  duration: 60,
+  variations: [
+    {
+      id: 'v1',
+      name: 'Formule',
+      options: [
+        { id: 'o1', name: 'Simple', price: 3000, duration: 60 },
+        { id: 'o2', name: 'Complète', price: 4500, duration: 90 },
+      ],
+    },
+  ],
+  options: [
+    {
+      id: 'a1',
+      name: 'Soin',
+      price: 1000,
+      duration: 15,
+      nestedVariations: [],
+      nestedInfoFields: [],
+    },
+  ],
+} as never;
+
+const pick = (variationOption: string, addOn = false) => ({
+  variations: { v1: variationOption },
+  options: addOn ? { a1: { nestedVariations: {}, infoValues: {} } } : {},
+  infoValues: {},
+});
+
+describe('getDiscountReduction', () => {
+  it('applique un pourcentage sur le sous-total', () => {
+    expect(getDiscountReduction(4000, { percent: 20 })).toBe(800);
+  });
+
+  it('retire un montant fixe', () => {
+    expect(getDiscountReduction(4000, { amount: 1000 })).toBe(1000);
+  });
+
+  it('PLAFONNE le montant au sous-total remisable', () => {
+    // « −20 € » sur une prestation à 15 € ne doit pas produire un prix négatif.
+    expect(getDiscountReduction(1500, { amount: 2000 })).toBe(1500);
+  });
+
+  it('ne réduit rien sans promo ni sur un sous-total nul', () => {
+    expect(getDiscountReduction(4000, null)).toBe(0);
+    expect(getDiscountReduction(0, { amount: 1000 })).toBe(0);
+  });
+
+  it('fait primer le montant quand les deux champs coexistent', () => {
+    // Le schéma l'interdit ; si un document contourne la validation, le
+    // comportement doit rester défini.
+    expect(getDiscountReduction(4000, { percent: 50, amount: 500 })).toBe(500);
+  });
+});
+
+describe('getActiveDiscount — montant', () => {
+  it('accepte une promo en montant', () => {
+    expect(getActiveDiscount({ amount: 1000 })).not.toBeNull();
+  });
+
+  it('refuse une promo sans valeur exploitable', () => {
+    expect(getActiveDiscount({ amount: 0 })).toBeNull();
+    expect(getActiveDiscount({ percent: 0 })).toBeNull();
+    expect(getActiveDiscount({} as never)).toBeNull();
+  });
+
+  it('respecte la fenêtre de dates comme pour un pourcentage', () => {
+    const at = new Date('2026-08-10T12:00:00Z');
+    expect(getActiveDiscount({ amount: 1000, endsAt: '2026-08-01' }, at)).toBeNull();
+    expect(getActiveDiscount({ amount: 1000, startsAt: '2026-08-20' }, at)).toBeNull();
+    expect(getActiveDiscount({ amount: 1000, startsAt: '2026-08-01' }, at)).not.toBeNull();
+  });
+});
+
+describe('computeDiscountedTotal — montant fixe', () => {
+  it('retire le montant du total remisable', () => {
+    const r = computeDiscountedTotal(promoService, pick('o1'), { amount: 1000 });
+    expect(r.original).toBe(3000);
+    expect(r.price).toBe(2000);
+    expect(r.discountAmount).toBe(1000);
+    expect(r.discountPercent).toBeNull();
+  });
+
+  it('ne descend jamais sous zéro', () => {
+    const r = computeDiscountedTotal(promoService, pick('o1'), { amount: 999999 });
+    expect(r.price).toBe(0);
+  });
+
+  it('exclut les lignes non concernées du sous-total remisable', () => {
+    // L'option « Soin » est exclue : elle reste à 10 €, et la remise de 10 €
+    // ne peut mordre que sur les 30 € de la formule.
+    const r = computeDiscountedTotal(promoService, pick('o1', true), {
+      amount: 1000,
+      excludedIds: ['a1'],
+    });
+    expect(r.original).toBe(4000);
+    expect(r.price).toBe(3000);
+  });
+
+  it('plafonne au sous-total ÉLIGIBLE, pas au total', () => {
+    const r = computeDiscountedTotal(promoService, pick('o1', true), {
+      amount: 5000,
+      excludedIds: ['o1'],
+    });
+    // Seule l'option de 10 € est éligible : on ne peut retirer que 10 €.
+    expect(r.original).toBe(4000);
+    expect(r.price).toBe(3000);
+  });
+
+  it('laisse le pourcentage inchangé (non-régression)', () => {
+    const r = computeDiscountedTotal(promoService, pick('o2'), { percent: 20 });
+    expect(r.price).toBe(3600);
+    expect(r.discountPercent).toBe(20);
+    expect(r.discountAmount).toBeNull();
+  });
+});
+
+describe('getDiscountedMinPrice — montant fixe', () => {
+  it('remise sur la combinaison la moins chère', () => {
+    const r = getDiscountedMinPrice({ ...promoService, discount: { amount: 1000 } } as never);
+    expect(r.original).toBe(3000);
+    expect(r.price).toBe(2000);
+    expect(r.discountAmount).toBe(1000);
+  });
+
+  it('promo boutique appliquée à défaut de promo prestation', () => {
+    const r = getDiscountedMinPrice({ ...promoService, discount: null } as never, {
+      amount: 500,
+    });
+    expect(r.price).toBe(2500);
+  });
+
+  it('la promo de la prestation prime sur celle de la boutique', () => {
+    const r = getDiscountedMinPrice(
+      { ...promoService, discount: { amount: 1000 } } as never,
+      { percent: 50 },
+    );
+    expect(r.price).toBe(2000);
+    expect(r.discountPercent).toBeNull();
+  });
+});
+
+describe('buildServiceDiscountPreview — montant fixe', () => {
+  it('laisse les lignes intactes et porte la remise sur le total', () => {
+    const p = buildServiceDiscountPreview(promoService, { amount: 1000 })!;
+    expect(p.amount).toBe(1000);
+    expect(p.percent).toBe(0);
+    // Un montant ne se répartit pas : chaque ligne garde son prix.
+    expect(p.variations[0].rows.every((r) => r.discounted === r.original)).toBe(true);
+    // Total « tout choisi » : 30 + 45 + 10 = 85 €, moins 10 €.
+    expect(p.total.original).toBe(8500);
+    expect(p.total.discounted).toBe(7500);
+  });
+
+  it('retire les lignes exclues du sous-total remisable', () => {
+    const p = buildServiceDiscountPreview(promoService, {
+      amount: 1000,
+      excludedIds: ['a1'],
+    })!;
+    expect(p.total.discountable).toBe(7500);
+    expect(p.options[0].applies).toBe(false);
+  });
+
+  it('conserve l’avant/après par ligne en pourcentage (non-régression)', () => {
+    const p = buildServiceDiscountPreview(promoService, { percent: 10 })!;
+    expect(p.variations[0].rows[0].discounted).toBe(2700);
+    expect(p.amount).toBeNull();
+  });
+});
+
+describe('buildPromoWindows — montant fixe', () => {
+  it('recopie le montant dans le résumé dénormalisé', () => {
+    const w = buildPromoWindows({ amount: 1500 }, []);
+    expect(w).toHaveLength(1);
+    expect(w[0].amount).toBe(1500);
+    // Firestore refuse `undefined` : le champ inutilisé doit être ABSENT.
+    expect('percent' in w[0]).toBe(false);
+  });
+
+  it('écarte les fenêtres expirées', () => {
+    const at = new Date('2026-08-10T12:00:00Z');
+    expect(buildPromoWindows({ amount: 1500, endsAt: '2026-08-01' }, [], at)).toHaveLength(0);
+  });
+
+  it('hasActivePromoFromWindows voit une promo en montant que le pourcentage ignore', () => {
+    const windows = buildPromoWindows({ amount: 1500 }, []);
+    expect(getActivePromoPercentFromWindows(windows)).toBe(0);
+    expect(hasActivePromoFromWindows(windows)).toBe(true);
+  });
+});
+
+describe('formatDiscountBadge', () => {
+  it('formate un pourcentage', () => {
+    expect(formatDiscountBadge({ percent: 20 })).toBe('−20%');
+  });
+
+  it('formate un montant rond sans décimales', () => {
+    expect(formatDiscountBadge({ amount: 1000 })?.replace(/ | /g, ' ')).toBe('−10 €');
+  });
+
+  it('garde les centimes quand il y en a', () => {
+    expect(formatDiscountBadge({ amount: 1050 })?.replace(/ | /g, ' ')).toBe('−10,50 €');
+  });
+
+  it('retourne null sans valeur exploitable', () => {
+    expect(formatDiscountBadge(null)).toBeNull();
+    expect(formatDiscountBadge({ amount: 0 })).toBeNull();
   });
 });

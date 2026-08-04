@@ -356,12 +356,17 @@ export function serviceHasChoices(
 
 // ─── Promotions / discounts ──────────────────────────────────────────────
 //
-// A percentage promo can live on a service (`service.discount`) or shop-wide
+// A promo can live on a service (`service.discount`) or shop-wide
 // (`provider.settings.globalDiscount`). The per-service one wins. A promo is
 // only active within its optional date window. Applying it at the
 // effective-price layer makes the discount propagate automatically to the
 // deposit (resolveDeposit runs on the effective price), Stripe charge, emails
 // and revenue stats — none of those need to know about promos.
+//
+// Deux formes : POURCENTAGE (`percent`) ou MONTANT FIXE en centimes
+// (`amount`), jamais les deux — le schéma refuse la combinaison. Tout passe
+// par `getDiscountReduction`, ce qui garantit que le prix affiché, le prix
+// facturé et l'acompte parlent de la même remise.
 
 /** Local YYYY-MM-DD (timezone-safe — matches the window strings). */
 function discountDateKey(d: Date): string {
@@ -371,19 +376,85 @@ function discountDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** The discount if it's currently active (valid percent + inside its window),
- *  else null. */
+/** `true` si la promo porte une valeur exploitable, sous l'une ou l'autre
+ *  forme. Une promo sans valeur n'est pas une promo. */
+export function isDiscountValueUsable(
+  discount: Pick<ServiceDiscount, 'percent' | 'amount'> | null | undefined,
+): boolean {
+  if (!discount) return false;
+  const pct = discount.percent;
+  if (typeof pct === 'number' && pct > 0 && pct <= 100) return true;
+  const amt = discount.amount;
+  return typeof amt === 'number' && amt > 0;
+}
+
+/** `true` quand la promo est un montant fixe (et non un pourcentage). */
+export function isAmountDiscount(
+  discount: Pick<ServiceDiscount, 'amount'> | null | undefined,
+): boolean {
+  return typeof discount?.amount === 'number' && discount.amount > 0;
+}
+
+/**
+ * LA réduction à retirer d'un sous-total remisable — point de passage unique
+ * des deux formes de promo.
+ *
+ * Le montant fixe est PLAFONNÉ au sous-total : sans ce plafond, « −20 € » sur
+ * une prestation à 15 € donnerait un prix négatif. C'est aussi ce qui rend
+ * inutiles les `Math.max(0, …)` défensifs chez les appelants.
+ *
+ * Quand les deux champs sont renseignés — impossible via le schéma, mais un
+ * document écrit à la main pourrait l'être — le montant l'emporte, par choix
+ * explicite plutôt que par hasard d'implémentation.
+ */
+export function getDiscountReduction(
+  discountable: number,
+  discount: Pick<ServiceDiscount, 'percent' | 'amount'> | null | undefined,
+): number {
+  if (!discount || discountable <= 0) return 0;
+  if (isAmountDiscount(discount)) return Math.min(discount.amount!, discountable);
+  const pct = discount.percent ?? 0;
+  if (!(pct > 0)) return 0;
+  return Math.round((discountable * pct) / 100);
+}
+
+/**
+ * Libellé court de la remise pour les pastilles : « −20 % » ou « −10 € ».
+ * Retourne null quand la promo n'a pas de valeur exploitable.
+ *
+ * Le formatage monétaire est fait ici avec `Intl` plutôt qu'en réutilisant
+ * `formatPrice` : ce module est réexporté par `utils/index`, l'importer
+ * créerait un cycle.
+ */
+export function formatDiscountBadge(
+  discount: Pick<ServiceDiscount, 'percent' | 'amount'> | null | undefined,
+  locale = 'fr-FR',
+  currency = 'EUR',
+): string | null {
+  if (!isDiscountValueUsable(discount)) return null;
+  if (isAmountDiscount(discount)) {
+    const value = new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: discount!.amount! % 100 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(discount!.amount! / 100);
+    return `−${value}`;
+  }
+  return `−${discount!.percent}%`;
+}
+
+/** The discount if it's currently active (valeur exploitable + inside its
+ *  window), else null. */
 export function getActiveDiscount(
   discount: ServiceDiscount | null | undefined,
   now: Date = new Date(),
 ): ServiceDiscount | null {
-  if (!discount) return null;
-  const pct = discount.percent;
-  if (!(typeof pct === 'number' && pct > 0 && pct <= 100)) return null;
+  if (!isDiscountValueUsable(discount)) return null;
   const today = discountDateKey(now);
-  if (discount.startsAt && today < discount.startsAt) return null;
-  if (discount.endsAt && today > discount.endsAt) return null;
-  return discount;
+  if (discount!.startsAt && today < discount!.startsAt) return null;
+  if (discount!.endsAt && today > discount!.endsAt) return null;
+  return discount!;
 }
 
 /** Effective discount for a service: its own active promo wins; otherwise the
@@ -405,15 +476,46 @@ export function applyDiscount(
   grossTotal: number,
   basePrice: number,
   discount: ServiceDiscount | null,
-): { price: number; original: number; discountPercent: number | null } {
-  if (!discount) return { price: grossTotal, original: grossTotal, discountPercent: null };
+): {
+  price: number;
+  original: number;
+  discountPercent: number | null;
+  discountAmount: number | null;
+} {
+  if (!discount) {
+    return {
+      price: grossTotal,
+      original: grossTotal,
+      discountPercent: null,
+      discountAmount: null,
+    };
+  }
   const discountable = discount.includeExtras ? grossTotal : Math.min(basePrice, grossTotal);
-  const reduction = Math.round((discountable * discount.percent) / 100);
+  const reduction = getDiscountReduction(discountable, discount);
   return {
     price: Math.max(0, grossTotal - reduction),
     original: grossTotal,
-    discountPercent: discount.percent,
+    ...describeDiscount(discount),
   };
+}
+
+/**
+ * La forme de la promo, telle que la restituent les fonctions de calcul.
+ *
+ * `discountAmount` est le MONTANT FIXE DE LA PROMO en centimes, pas l'économie
+ * réalisée — celle-ci vaut toujours `original - price`. La distinction compte
+ * pour les pastilles : « −10 € » doit rester « −10 € » même quand la
+ * prestation ne coûte que 8 € et que l'économie réelle est de 8 €.
+ */
+function describeDiscount(discount: ServiceDiscount | null): {
+  discountPercent: number | null;
+  discountAmount: number | null;
+} {
+  if (!discount) return { discountPercent: null, discountAmount: null };
+  if (isAmountDiscount(discount)) {
+    return { discountPercent: null, discountAmount: discount.amount! };
+  }
+  return { discountPercent: discount.percent ?? null, discountAmount: null };
 }
 
 /**
@@ -453,7 +555,13 @@ export function computeDiscountedTotal(
   selections: ServiceSelections,
   globalDiscount: ServiceDiscount | null | undefined = null,
   now: Date = new Date(),
-): { price: number; original: number; duration: number; discountPercent: number | null } {
+): {
+  price: number;
+  original: number;
+  duration: number;
+  discountPercent: number | null;
+  discountAmount: number | null;
+} {
   const discount = resolveServiceDiscount(service, globalDiscount, now);
   const excluded = resolveExcludedIds(service, discount);
   const hasVariations = (service.variations?.length ?? 0) > 0;
@@ -495,13 +603,15 @@ export function computeDiscountedTotal(
     }
   }
 
-  if (!discount) return { price: original, original, duration, discountPercent: null };
-  const reduction = Math.round((discountable * discount.percent) / 100);
+  if (!discount) {
+    return { price: original, original, duration, discountPercent: null, discountAmount: null };
+  }
+  const reduction = getDiscountReduction(discountable, discount);
   return {
     price: Math.max(0, original - reduction),
     original,
     duration,
-    discountPercent: discount.percent,
+    ...describeDiscount(discount),
   };
 }
 
@@ -511,27 +621,42 @@ export function getDiscountedMinPrice(
   service: Pick<Service, 'price' | 'variations' | 'discount'>,
   globalDiscount: ServiceDiscount | null | undefined = null,
   now: Date = new Date(),
-): { price: number; original: number; discountPercent: number | null } {
+): {
+  price: number;
+  original: number;
+  discountPercent: number | null;
+  discountAmount: number | null;
+} {
   const discount = resolveServiceDiscount(service, globalDiscount, now);
-  const cut = (v: number) =>
-    discount ? Math.max(0, v - Math.round((v * discount.percent) / 100)) : v;
   const variations = service.variations ?? [];
 
-  if (variations.length === 0) {
-    const original = service.price;
-    return { price: cut(original), original, discountPercent: discount?.percent ?? null };
-  }
-
+  // On additionne d'abord, on remise ensuite — un montant fixe ne peut pas se
+  // répartir ligne par ligne. Ça aligne aussi cette fonction sur
+  // `computeDiscountedTotal`, qui arrondissait déjà sur le sous-total : la
+  // version précédente arrondissait par ligne, d'où un « à partir de »
+  // pouvant différer d'un centime du prix réellement affiché ensuite.
   const excluded = new Set(discount?.excludedIds ?? []);
   let original = 0;
-  let price = 0;
-  for (const variation of variations) {
-    if (variation.options.length === 0) continue;
-    const cheapest = variation.options.reduce((a, b) => (b.price < a.price ? b : a));
-    original += cheapest.price;
-    price += excluded.has(cheapest.id) ? cheapest.price : cut(cheapest.price);
+  let discountable = 0;
+
+  if (variations.length === 0) {
+    original = service.price;
+    if (discount) discountable = service.price;
+  } else {
+    for (const variation of variations) {
+      if (variation.options.length === 0) continue;
+      const cheapest = variation.options.reduce((a, b) => (b.price < a.price ? b : a));
+      original += cheapest.price;
+      if (discount && !excluded.has(cheapest.id)) discountable += cheapest.price;
+    }
   }
-  return { price, original, discountPercent: discount?.percent ?? null };
+
+  const reduction = getDiscountReduction(discountable, discount);
+  return {
+    price: Math.max(0, original - reduction),
+    original,
+    ...describeDiscount(discount),
+  };
 }
 
 /** One row of the promo preview: a togglable line with its before/after price.
@@ -549,11 +674,23 @@ export interface DiscountPreviewRow {
  *  provider-facing config preview. Each variation/option row is individually
  *  togglable (its `id` flips membership in `excludedIds`). */
 export interface ServiceDiscountPreview {
+  /** Renseigné pour une promo en pourcentage, 0 sinon. */
   percent: number;
+  /** Montant fixe de la promo en centimes, null pour une promo en pourcentage. */
+  amount: number | null;
   /** Base price line — only for variation-less services (else null). */
   base: { original: number; discounted: number } | null;
   variations: { name: string; rows: DiscountPreviewRow[] }[];
   options: DiscountPreviewRow[];
+  /**
+   * Avant/après sur l'ENSEMBLE des lignes éligibles, en supposant tout choisi.
+   *
+   * C'est la seule lecture qui ait un sens pour une promo en montant fixe :
+   * « −10 € » ne se répartit pas sur les lignes, donc l'avant/après par ligne
+   * (`DiscountPreviewRow.discounted`) reste égal à l'original dans ce cas, et
+   * c'est ce total qui porte l'information.
+   */
+  total: { original: number; discountable: number; discounted: number };
 }
 
 /**
@@ -563,27 +700,55 @@ export interface ServiceDiscountPreview {
  */
 export function buildServiceDiscountPreview(
   service: Pick<Service, 'price' | 'variations' | 'options'>,
-  discount: Pick<ServiceDiscount, 'percent' | 'excludedIds' | 'includeExtras'> | null | undefined,
+  discount:
+    | Pick<ServiceDiscount, 'percent' | 'amount' | 'excludedIds' | 'includeExtras'>
+    | null
+    | undefined,
 ): ServiceDiscountPreview | null {
-  const pct = discount?.percent ?? 0;
-  if (!(pct > 0 && pct <= 100)) return null;
+  if (!isDiscountValueUsable(discount)) return null;
   const excluded = resolveExcludedIds(service, discount);
-  const cut = (v: number) => Math.max(0, v - Math.round((v * pct) / 100));
+  const isAmount = isAmountDiscount(discount);
+  const pct = isAmount ? 0 : (discount!.percent ?? 0);
+  // Un montant fixe ne se répartit pas : la colonne « après » de chaque ligne
+  // reste égale à l'original, et c'est le total qui porte la remise.
+  const cut = (v: number) => (isAmount ? v : Math.max(0, v - Math.round((v * pct) / 100)));
   const hasVariations = (service.variations?.length ?? 0) > 0;
+
+  let original = 0;
+  let discountable = 0;
+  const count = (id: string | null, price: number) => {
+    original += price;
+    if (id === null || !excluded.has(id)) discountable += price;
+  };
 
   const row = (id: string, name: string, price: number): DiscountPreviewRow => {
     const applies = !excluded.has(id);
     return { id, name, original: price, discounted: applies ? cut(price) : price, applies };
   };
 
+  if (!hasVariations) count(null, service.price);
+  const variations = (service.variations ?? []).map((v) => ({
+    name: v.name,
+    rows: v.options.map((o) => row(o.id, o.name, o.price)),
+  }));
+  const options = (service.options ?? []).map((o) => row(o.id, o.name, o.price));
+
+  // Le total suppose TOUT choisi : c'est une borne haute, cohérente avec ce
+  // que le pro voit ligne à ligne juste au-dessus.
+  for (const v of service.variations ?? []) for (const o of v.options) count(o.id, o.price);
+  for (const o of service.options ?? []) count(o.id, o.price);
+
   return {
     percent: pct,
+    amount: isAmount ? discount!.amount! : null,
     base: hasVariations ? null : { original: service.price, discounted: cut(service.price) },
-    variations: (service.variations ?? []).map((v) => ({
-      name: v.name,
-      rows: v.options.map((o) => row(o.id, o.name, o.price)),
-    })),
-    options: (service.options ?? []).map((o) => row(o.id, o.name, o.price)),
+    variations,
+    options,
+    total: {
+      original,
+      discountable,
+      discounted: Math.max(0, original - getDiscountReduction(discountable, discount)),
+    },
   };
 }
 
@@ -635,12 +800,28 @@ export function getProviderActivePromoPercent(
 ): number {
   let max = 0;
   const g = getActiveDiscount(globalDiscount, now);
-  if (g) max = g.percent;
+  if (g?.percent && g.percent > max) max = g.percent;
   for (const s of services) {
     const d = getActiveDiscount(s.discount, now);
-    if (d && d.percent > max) max = d.percent;
+    if (d?.percent && d.percent > max) max = d.percent;
   }
   return max;
+}
+
+/**
+ * Y a-t-il au moins une promo active, QUELLE QUE SOIT sa forme ?
+ *
+ * Complément indispensable de `getProviderActivePromoPercent`, qui renvoie 0
+ * pour une promo en euros : une pastille « Promotion en cours » branchée sur
+ * le seul pourcentage laisserait les promos en montant invisibles.
+ */
+export function providerHasActivePromo(
+  globalDiscount: ServiceDiscount | null | undefined,
+  services: Array<Pick<Service, 'discount'>>,
+  now: Date = new Date(),
+): boolean {
+  if (getActiveDiscount(globalDiscount, now)) return true;
+  return services.some((s) => getActiveDiscount(s.discount, now) !== null);
 }
 
 /**
@@ -663,20 +844,23 @@ export function buildPromoWindows(
   ];
   const out: ServiceDiscount[] = [];
   for (const d of candidates) {
-    if (!d) continue;
-    if (!(typeof d.percent === 'number' && d.percent > 0 && d.percent <= 100)) continue;
-    if (d.endsAt && d.endsAt < today) continue; // drop expired
+    if (!isDiscountValueUsable(d)) continue;
+    if (d!.endsAt && d!.endsAt < today) continue; // drop expired
+    // Firestore refuse `undefined` : on n'écrit que le champ qui porte la
+    // valeur, jamais les deux.
     out.push({
-      percent: d.percent,
-      includeExtras: d.includeExtras ?? true,
-      startsAt: d.startsAt ?? null,
-      endsAt: d.endsAt ?? null,
+      ...(isAmountDiscount(d) ? { amount: d!.amount! } : { percent: d!.percent! }),
+      includeExtras: d!.includeExtras ?? true,
+      startsAt: d!.startsAt ?? null,
+      endsAt: d!.endsAt ?? null,
     });
   }
   return out;
 }
 
-/** Highest currently-active percentage from a stored promo-windows summary. */
+/** Highest currently-active percentage from a stored promo-windows summary.
+ *  Renvoie 0 quand les promos actives sont toutes en montant fixe — utiliser
+ *  `hasActivePromoFromWindows` pour savoir s'il y a une promo tout court. */
 export function getActivePromoPercentFromWindows(
   windows: ServiceDiscount[] | null | undefined,
   now: Date = new Date(),
@@ -684,9 +868,18 @@ export function getActivePromoPercentFromWindows(
   let max = 0;
   for (const w of windows ?? []) {
     const d = getActiveDiscount(w, now);
-    if (d && d.percent > max) max = d.percent;
+    if (d?.percent && d.percent > max) max = d.percent;
   }
   return max;
+}
+
+/** Une promo est-elle active dans le résumé dénormalisé, toutes formes
+ *  confondues ? */
+export function hasActivePromoFromWindows(
+  windows: ServiceDiscount[] | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  return (windows ?? []).some((w) => getActiveDiscount(w, now) !== null);
 }
 
 /** Short urgency label from a day count (see getDiscountDaysLeft).
