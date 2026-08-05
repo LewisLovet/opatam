@@ -429,7 +429,7 @@ function StorySection() {
             {[
               ['01', 'Un trou ce mardi à 14 h.'],
               ['02', 'Un geste — la story est générée avec vos dispos et votre QR code.'],
-              ['03', 'Vos clientes scannent, elles réservent.'],
+              ['03', 'Vos clients scannent, ils réservent.'],
             ].map(([num, text]) => (
               <StepRow key={num} num={num} text={text} />
             ))}
@@ -563,8 +563,10 @@ const PLANS = [
   {
     name: 'Pro',
     forWho: 'Pour les indépendants',
-    price: '19,90 €',
-    year: 'ou 199 € par an — deux mois offerts',
+    monthly: '19,90 €',
+    yearly: '16,58 €',
+    yearlyTotal: '199 € facturés une fois par an',
+    saving: '39,80 € économisés',
     featured: true,
     features: [
       'Réservations illimitées, 0 % de commission',
@@ -577,8 +579,10 @@ const PLANS = [
   {
     name: 'Studio',
     forWho: 'Pour les équipes jusqu’à 10 personnes',
-    price: '29,90 €',
-    year: 'ou 299 € par an — deux mois offerts',
+    monthly: '29,90 €',
+    yearly: '24,92 €',
+    yearlyTotal: '299 € facturés une fois par an',
+    saving: '59,80 € économisés',
     featured: false,
     features: [
       'Tout le plan Pro, sans limite de membres',
@@ -593,6 +597,7 @@ const PLANS = [
 function Pricing() {
   const head = useReveal<HTMLDivElement>();
   const bars = useReveal<HTMLDivElement>();
+  const [yearly, setYearly] = useState(false);
 
   return (
     <section className={`${s.sec} ${s.secDark}`} id="tarif">
@@ -610,9 +615,29 @@ function Pricing() {
           </p>
         </div>
 
+        <div className={s.periodSwitch} role="group" aria-label="Période de facturation">
+          <button
+            type="button"
+            className={`${s.periodBtn} ${yearly ? '' : s.periodBtnOn}`}
+            aria-pressed={!yearly}
+            onClick={() => setYearly(false)}
+          >
+            Mensuel
+          </button>
+          <button
+            type="button"
+            className={`${s.periodBtn} ${yearly ? s.periodBtnOn : ''}`}
+            aria-pressed={yearly}
+            onClick={() => setYearly(true)}
+          >
+            Annuel
+            <span className={s.periodBadge}>2 mois offerts</span>
+          </button>
+        </div>
+
         <div className={`${s.plans} ${s.stagger}`}>
           {PLANS.map((plan) => (
-            <PlanCard key={plan.name} plan={plan} />
+            <PlanCard key={plan.name} plan={plan} yearly={yearly} />
           ))}
         </div>
 
@@ -668,7 +693,7 @@ function Pricing() {
   );
 }
 
-function PlanCard({ plan }: { plan: (typeof PLANS)[number] }) {
+function PlanCard({ plan, yearly }: { plan: (typeof PLANS)[number]; yearly: boolean }) {
   const { ref, shown } = useReveal<HTMLDivElement>();
   return (
     <div
@@ -680,11 +705,28 @@ function PlanCard({ plan }: { plan: (typeof PLANS)[number] }) {
       {plan.featured && <span className={s.planTag}>Le plus choisi</span>}
       <span className={s.planName}>{plan.name}</span>
       <span className={s.planFor}>{plan.forWho}</span>
+      {/* Le prix annuel s'affiche ramené au mois : c'est la seule façon de
+          comparer les deux formules d'un coup d'œil. Le montant réellement
+          prélevé est juste en dessous — l'annonce doit rester honnête. */}
       <div className={s.planPrice}>
-        {plan.price}
+        {yearly ? plan.yearly : plan.monthly}
         <span className={s.planPer}>/mois</span>
       </div>
-      <p className={s.planYear}>{plan.year}</p>
+      <p className={s.planYear}>
+        {yearly ? (
+          <>
+            {plan.yearlyTotal}
+            <br />
+            <b className={s.planSaving}>{plan.saving}</b>
+          </>
+        ) : (
+          <>
+            Sans engagement, résiliable en un clic
+            <br />
+            <b className={s.planSaving}>ou {plan.yearlyTotal.split(' facturés')[0]} par an</b>
+          </>
+        )}
+      </p>
 
       <ul className={s.priceList}>
         {plan.features.map((f) => (
@@ -722,7 +764,7 @@ function FinalCta() {
             className={s.secLead}
             style={{ margin: '18px auto 30px', color: 'rgba(255,255,255,.75)', maxWidth: 480 }}
           >
-            Votre page de réservation est en ligne dans 5 minutes. Vos clientes
+            Votre page de réservation est en ligne dans 5 minutes. Vos clients
             réservent dès ce soir.
           </p>
           <div className={s.heroCtas} style={{ justifyContent: 'center' }}>

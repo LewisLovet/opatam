@@ -151,7 +151,7 @@ function Phone({ step }: { step: number }) {
         <div className={s.screenBody}>
           <span className={s.label}>Jeudi — créneaux libres</span>
           {/* Les créneaux se remplissent un à un : c'est le geste que la
-              cliente fait, pas une capture figée. */}
+              client fait, pas une capture figée. */}
           <div
             className={`${s.slots} ${step === 1 ? s.playing : step > 1 ? s.filled : ''}`}
           >

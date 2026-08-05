@@ -1780,3 +1780,88 @@
     animation: none;
   }
 }
+
+/* ── Mensuel / annuel ─────────────────────────────────────────────────
+   Un interrupteur à deux boutons plutôt qu'une case à cocher : les deux
+   options sont nommées et lisibles sans avoir à deviner ce que bascule
+   l'interrupteur. */
+.periodSwitch {
+  /* `width: fit-content` plutôt qu'`inline-flex` : `margin: auto` ne centre
+     pas un élément en ligne. */
+  display: flex;
+  width: fit-content;
+  gap: 4px;
+  margin: 0 auto 28px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+.periodBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease;
+}
+
+.periodBtn:hover {
+  color: #fff;
+}
+
+.periodBtnOn {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.periodBadge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(16, 27, 56, 0.14);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.periodBtnOn .periodBadge {
+  background: rgba(16, 27, 56, 0.16);
+}
+
+.periodBtn:not(.periodBtnOn) .periodBadge {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+/* Une pastille, pas du texte jaune : le jaune de la marque sur le blanc de
+   la carte ne passe aucun seuil de contraste. */
+.planSaving {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(244, 201, 40, 0.24);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+@media (max-width: 420px) {
+  .periodBtn {
+    padding: 9px 13px;
+    font-size: 14px;
+  }
+  .periodBadge {
+    font-size: 10px;
+    padding: 3px 7px;
+  }
+}
