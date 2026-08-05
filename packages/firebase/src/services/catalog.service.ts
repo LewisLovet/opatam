@@ -1,5 +1,5 @@
 import { serviceRepository, bookingRepository, providerRepository, serviceCategoryRepository } from '../repositories';
-import type { Service, ServiceCategory } from '@booking-app/shared';
+import type { Service, ServiceCategory, ServiceUnavailableReason } from '@booking-app/shared';
 import {
   parseOrThrow,
   createServiceSchema,
@@ -43,6 +43,14 @@ export class CatalogService {
       // Deposit override — null by default, configured per service in the
       // service edit form. Falls back to provider.settings.depositDefault.
       deposit: validated.deposit ?? null,
+      // Promotion et disponibilité posées DÈS la création. Cette liste est
+      // blanche : tout champ non recopié est silencieusement perdu, et
+      // `discount` l'était déjà — une prestation créée avec une promo depuis
+      // le web repartait sans elle, et il fallait la rouvrir pour la poser.
+      discount: validated.discount ?? null,
+      isAvailable: validated.isAvailable ?? true,
+      unavailableReason: validated.unavailableReason ?? null,
+      unavailableNote: validated.unavailableNote ?? null,
       // Client-facing choices (variations / options / info fields).
       // Optional — omitted entirely for simple services so Firestore docs
       // stay lean and legacy reads are unaffected.
@@ -81,10 +89,39 @@ export class CatalogService {
 
     await serviceRepository.update(providerId, serviceId, validated);
 
-    // Update provider's minPrice if price or isActive changed
-    if (validated.price !== undefined || validated.isActive !== undefined) {
+    // Update provider's minPrice if price, isActive OR isAvailable changed —
+    // le prix d'appel exclut les prestations suspendues, il devient donc faux
+    // dès qu'on en suspend une (« à partir de 25 € » non réservable).
+    if (
+      validated.price !== undefined ||
+      validated.isActive !== undefined ||
+      validated.isAvailable !== undefined
+    ) {
       await this.updateProviderMinPrice(providerId);
     }
+  }
+
+  /**
+   * Suspendre / rouvrir la réservation en ligne d'une prestation.
+   *
+   * Passe par `updateService` — et non par le repository directement — pour
+   * que le prix d'appel du prestataire soit recalculé : il exclut les
+   * prestations suspendues, et resterait sinon périmé jusqu'à la prochaine
+   * modification de prix.
+   */
+  async setServiceAvailability(
+    providerId: string,
+    serviceId: string,
+    isAvailable: boolean,
+    unavailable?: { reason?: ServiceUnavailableReason | null; note?: string | null },
+  ): Promise<void> {
+    await this.updateService(providerId, serviceId, {
+      isAvailable,
+      // Rouvrir efface motif et note : les garder afficherait « rupture de
+      // produit » sur une prestation à nouveau réservable.
+      unavailableReason: isAvailable ? null : (unavailable?.reason ?? null),
+      unavailableNote: isAvailable ? null : (unavailable?.note ?? null),
+    });
   }
 
   /**

@@ -74,6 +74,8 @@ interface Service {
   options?: ServiceOption[];
   infoFields?: ServiceInfoField[];
   discount?: ServiceDiscount | null;
+  /** `false` = visible mais non réservable en ligne. */
+  isAvailable?: boolean;
 }
 
 interface Location {
@@ -216,9 +218,15 @@ export function BookingFlow({
   const locale = useLocale();
 
   // Determine initial service (deep-link via ?service=)
+  //
+  // Une prestation suspendue est IGNORÉE ici : le lien profond
+  // `/reserver?service=…` remplit le panier tout seul, et la cliente
+  // configurerait tout un rendez-vous avant que le serveur ne le refuse. Le
+  // lien reste valide, il ouvre simplement la liste au lieu de présélectionner.
   const initialService = useMemo(() => {
     if (preselectedServiceId) {
-      return services.find((s) => s.id === preselectedServiceId) ?? null;
+      const found = services.find((s) => s.id === preselectedServiceId) ?? null;
+      return found && found.isAvailable === false ? null : found;
     }
     return null;
   }, [preselectedServiceId, services]);

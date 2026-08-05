@@ -126,6 +126,7 @@ const INTL_LOCALE: Record<Locale, string> = {
 
 export type PromoRunOutcome =
   | 'no-promo'
+  | 'service-unbookable'
   | 'not-requested'
   | 'not-active'
   | 'already-sent'
@@ -149,6 +150,17 @@ export async function runPromoEmailForService(
   now: Date = new Date(),
 ): Promise<PromoRunOutcome> {
   const discount = service.discount as PromoNotificationInput | null | undefined;
+
+  // Une prestation suspendue ou retirée du catalogue ne doit JAMAIS être
+  // promue : l'email inviterait à réserver quelque chose que le serveur
+  // refusera. Contrôle placé ici, donc valable pour le trigger comme pour le
+  // cron quotidien — les deux passent par cette fonction.
+  //
+  // `isAvailable` absent vaut disponible : les prestations antérieures à la
+  // fonctionnalité restent promouvables.
+  if (service.isAvailable === false || service.isActive === false) {
+    return 'service-unbookable';
+  }
 
   const db = admin.firestore();
   const providerRef = db.collection('providers').doc(providerId);

@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   type Firestore,
 } from 'firebase/firestore';
-import type { Service, ServiceUnavailableReason } from '@booking-app/shared';
+import type { Service } from '@booking-app/shared';
 import { buildPromoWindows } from '@booking-app/shared';
 import { getFirebaseApp } from '../lib/config';
 import { convertTimestamps, removeUndefined, type WithId } from './base.repository';
@@ -233,25 +233,6 @@ export class ServiceRepository {
     await this.update(providerId, serviceId, { isActive });
   }
 
-  /**
-   * Toggle service availability — la prestation reste visible et publiée, mais
-   * n'est plus réservable en ligne. À ne pas confondre avec `toggleActive`,
-   * qui la retire du catalogue.
-   */
-  async toggleAvailable(
-    providerId: string,
-    serviceId: string,
-    isAvailable: boolean,
-    unavailable?: { reason?: ServiceUnavailableReason | null; note?: string | null },
-  ): Promise<void> {
-    await this.update(providerId, serviceId, {
-      isAvailable,
-      // Redevenir disponible efface motif ET note : les garder afficherait
-      // « rupture de produit » sur une prestation à nouveau réservable.
-      unavailableReason: isAvailable ? null : (unavailable?.reason ?? null),
-      unavailableNote: isAvailable ? null : (unavailable?.note ?? null),
-    });
-  }
 
   /**
    * Update sort order

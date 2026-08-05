@@ -63,7 +63,8 @@
     "add": "Ajouter",
     "moreDetails": "Plus de détails",
     "less": "Moins",
-    "others": "Autres"
+    "others": "Autres",
+    "unavailable": "Indisponible"
   },
   "member": {
     "title": "Choisissez un professionnel"

@@ -27,6 +27,7 @@ import i18n, { getIntlLocale } from '../../lib/i18n';
 import { Text, Button, Input, Card, Switch, useToast } from '../../components';
 import { useProvider } from '../../contexts';
 import {
+  catalogService,
   serviceRepository,
   serviceCategoryRepository,
   locationRepository,
@@ -1092,7 +1093,7 @@ export default function ServicesScreen() {
       ),
     );
     try {
-      await serviceRepository.toggleAvailable(providerId, service.id, isAvailable, {
+      await catalogService.setServiceAvailability(providerId, service.id, isAvailable, {
         reason,
       });
       showToast({
@@ -1540,8 +1541,8 @@ export default function ServicesScreen() {
                   <Text variant="caption" color="textSecondary" style={{ marginTop: 1 }}>
                     {g
                       ? gActive
-                        ? t('proServices.globalPromo.activeSummary', { percent: g.percent })
-                        : t('proServices.globalPromo.inactiveSummary', { percent: g.percent })
+                        ? t('proServices.globalPromo.activeSummary', { off: formatDiscountBadge(g) })
+                        : t('proServices.globalPromo.inactiveSummary', { off: formatDiscountBadge(g) })
                       : t('proServices.globalPromo.promptSummary')}
                   </Text>
                 </View>

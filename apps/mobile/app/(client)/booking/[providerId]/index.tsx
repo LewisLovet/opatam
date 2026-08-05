@@ -82,7 +82,12 @@ export default function MemberSelectionScreen() {
   useEffect(() => {
     if (seeded || !provider || services.length === 0) return;
     initBooking(provider); // fresh: provider + empty cart
-    const first = serviceId ? services.find((s) => s.id === serviceId) : undefined;
+    // Une prestation suspendue n'est PAS mise au panier : le lien profond
+    // remplirait le panier tout seul et la cliente configurerait tout un
+    // rendez-vous avant que le serveur ne le refuse. Elle atterrit sur la
+    // liste, où la carte est grisée avec son motif.
+    const linked = serviceId ? services.find((s) => s.id === serviceId) : undefined;
+    const first = linked && linked.isAvailable === false ? undefined : linked;
     if (first) {
       if (serviceHasChoices(first)) setPendingChoiceService(first);
       else addToCart(first);

@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
-import { catalogService, memberService, serviceRepository } from '@booking-app/firebase';
+import { catalogService, memberService } from '@booking-app/firebase';
 import type { ServiceUnavailableReason } from '@booking-app/shared';
+import { formatDiscountBadge } from '@booking-app/shared';
 import { Plus, FolderPlus, Pencil, ChevronRight, Tag, Percent, Gift, Lock, Loader2 } from 'lucide-react';
 import { ServiceCard } from './ServiceCard';
 import { CategoryModal, type CategoryFormData } from './CategoryModal';
@@ -116,7 +117,7 @@ export function PrestationsTab() {
       ),
     );
     try {
-      await serviceRepository.toggleAvailable(provider.id, serviceId, isAvailable, { reason });
+      await catalogService.setServiceAvailability(provider.id, serviceId, isAvailable, { reason });
       toast.success(
         isAvailable ? 'Prestation à nouveau réservable' : 'Prestation marquée indisponible',
       );
@@ -374,7 +375,7 @@ export function PrestationsTab() {
           {globalDiscount ? (
             <>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                Promotion globale : −{globalDiscount.percent}&nbsp;% sur vos prestations
+                Promotion globale : {formatDiscountBadge(globalDiscount)} sur vos prestations
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {globalPromoWindowText(globalDiscount)} ·{' '}

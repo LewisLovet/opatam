@@ -63,7 +63,8 @@
     "add": "Aggiungi",
     "moreDetails": "Più dettagli",
     "less": "Meno",
-    "others": "Altri"
+    "others": "Altri",
+    "unavailable": "Non disponibile"
   },
   "member": {
     "title": "Scegli un professionista"

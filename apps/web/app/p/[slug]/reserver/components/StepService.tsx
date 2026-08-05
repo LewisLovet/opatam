@@ -31,6 +31,8 @@ interface Service {
   options?: ServiceOption[];
   infoFields?: ServiceInfoField[];
   discount?: ServiceDiscount | null;
+  /** `false` = visible mais non réservable en ligne. */
+  isAvailable?: boolean;
 }
 
 interface ServiceCategory {
@@ -124,22 +126,30 @@ function ServiceButton({
   const showCountdown = promoDaysLeft != null && promoDaysLeft <= PROMO_URGENCY_DAYS;
 
   const inCart = cartCount > 0;
+  // Suspendue : la carte reste listée — la cliente doit savoir que la
+  // prestation existe — mais devient inerte. La bloquer ici évite qu'elle
+  // configure tout un rendez-vous pour se faire refuser à la validation.
+  const unavailable = service.isAvailable === false;
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(service.id)}
+      role={unavailable ? undefined : 'button'}
+      tabIndex={unavailable ? undefined : 0}
+      aria-disabled={unavailable || undefined}
+      onClick={unavailable ? undefined : () => onSelect(service.id)}
       onKeyDown={(e) => {
+        if (unavailable) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onSelect(service.id);
         }
       }}
-      className={`w-full cursor-pointer text-left p-4 rounded-xl border-2 transition-all ${
-        isSelected
-          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-700'
+      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+        unavailable
+          ? 'cursor-default opacity-60 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+          : isSelected
+            ? 'cursor-pointer border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+            : 'cursor-pointer border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-700'
       }`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -148,6 +158,11 @@ function ServiceButton({
             <h3 className="font-semibold text-gray-900 dark:text-white">
               {service.name}
             </h3>
+            {unavailable && (
+              <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40 px-1.5 py-0.5 rounded whitespace-nowrap">
+                {t('unavailable')}
+              </span>
+            )}
             {isSelected && (
               <div className="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center">
                 <Check className="w-3 h-3 text-white" />

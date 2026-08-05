@@ -2469,8 +2469,8 @@
     },
     "globalPromo": {
       "title": "Promotion globale",
-      "activeSummary": "−{{percent}}% sur toutes les prestations",
-      "inactiveSummary": "−{{percent}}% · inactive (hors période)",
+      "activeSummary": "{{off}} sur toutes vos prestations",
+      "inactiveSummary": "{{off}} · hors période",
       "promptSummary": "Appliquez une réduction sur toutes vos prestations",
       "edit": "Modifier",
       "configure": "Configurer",

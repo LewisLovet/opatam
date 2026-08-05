@@ -2469,8 +2469,8 @@
     },
     "globalPromo": {
       "title": "Promoção global",
-      "activeSummary": "−{{percent}}% em todos os serviços",
-      "inactiveSummary": "−{{percent}}% · inativa (fora do período)",
+      "activeSummary": "{{off}} em todos os seus serviços",
+      "inactiveSummary": "{{off}} · fora do período",
       "promptSummary": "Aplique um desconto a todos os seus serviços",
       "edit": "Editar",
       "configure": "Configurar",
