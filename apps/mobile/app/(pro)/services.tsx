@@ -49,6 +49,8 @@ import {
   getActiveDiscount,
   buildServiceDiscountPreview,
   isAmountDiscount,
+  SERVICE_UNAVAILABLE_REASONS,
+  type ServiceUnavailableReason,
   resolveExcludedIds,
   getServiceMinPrice,
   deriveServiceBasePricing,
@@ -96,7 +98,9 @@ interface ServiceFormData {
   isActive: boolean;
   /** Réservable en ligne. `false` = visible mais marquée indisponible. */
   isAvailable: boolean;
-  /** Raison affichée à la cliente quand la prestation est indisponible. */
+  /** Motif d'indisponibilité (code traduit dans la langue de la cliente). */
+  unavailableReason: ServiceUnavailableReason | null;
+  /** Texte libre, utilisé uniquement quand le motif est « autre ». */
   unavailableNote: string;
   locationIds: string[];
   memberIds: string[] | null;
@@ -143,6 +147,7 @@ const DEFAULT_FORM: ServiceFormData = {
   bufferTime: '0',
   isActive: true,
   isAvailable: true,
+  unavailableReason: null,
   unavailableNote: '',
   locationIds: [],
   memberIds: null,
@@ -841,6 +846,9 @@ export default function ServicesScreen() {
       bufferTime: String(service.bufferTime),
       isActive: service.isActive,
       isAvailable: service.isAvailable !== false,
+      // Documents antérieurs aux motifs : une note sans code vaut « autre ».
+      unavailableReason:
+        service.unavailableReason ?? (service.unavailableNote ? 'other' : null),
       unavailableNote: service.unavailableNote ?? '',
       locationIds: service.locationIds || [],
       memberIds: service.memberIds,
@@ -997,8 +1005,14 @@ export default function ServicesScreen() {
       bufferTime: bufferTimeValue,
       isActive: form.isActive,
       isAvailable: form.isAvailable,
-      // La note ne survit pas au retour à « disponible ».
-      unavailableNote: form.isAvailable ? null : (form.unavailableNote.trim() || null),
+      // Motif et note ne survivent pas au retour à « disponible ». La note
+      // n'est écrite que pour « autre », sinon elle traînerait et pourrait
+      // contredire le motif choisi.
+      unavailableReason: form.isAvailable ? null : form.unavailableReason,
+      unavailableNote:
+        !form.isAvailable && form.unavailableReason === 'other'
+          ? form.unavailableNote.trim() || null
+          : null,
       locationIds: form.locationIds,
       memberIds: form.memberIds,
       categoryId: form.categoryId,
@@ -2308,6 +2322,11 @@ export default function ServicesScreen() {
                       setForm((p) => ({
                         ...p,
                         isAvailable: !p.isAvailable,
+                        // Un motif par défaut à la suspension évite un
+                        // affichage vide côté cliente.
+                        unavailableReason: !p.isAvailable
+                          ? null
+                          : (p.unavailableReason ?? 'out_of_stock'),
                         unavailableNote: !p.isAvailable ? '' : p.unavailableNote,
                       }))
                     }
@@ -2350,15 +2369,54 @@ export default function ServicesScreen() {
                   </Pressable>
 
                   {!form.isAvailable && (
-                    <Input
-                      label={t('proServices.bookable.noteLabel')}
-                      placeholder={t('proServices.bookable.notePlaceholder')}
-                      value={form.unavailableNote}
-                      onChangeText={(v) =>
-                        setForm((p) => ({ ...p, unavailableNote: v.slice(0, 120) }))
-                      }
-                      maxLength={120}
-                    />
+                    <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+                      <Text variant="bodySmall" style={{ fontWeight: '500' }}>
+                        {t('proServices.bookable.reasonLabel')}
+                      </Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+                        {SERVICE_UNAVAILABLE_REASONS.map((reason) => {
+                          const selected = form.unavailableReason === reason;
+                          return (
+                            <Pressable
+                              key={reason}
+                              onPress={() => setForm((p) => ({ ...p, unavailableReason: reason }))}
+                              style={{
+                                paddingHorizontal: spacing.md,
+                                paddingVertical: spacing.xs,
+                                borderRadius: radius.md,
+                                borderWidth: 1,
+                                borderColor: selected ? '#F59E0B' : colors.border,
+                                backgroundColor: selected ? '#F59E0B' : 'transparent',
+                              }}
+                            >
+                              <Text
+                                variant="bodySmall"
+                                style={{
+                                  fontWeight: selected ? '600' : '400',
+                                  color: selected ? '#FFFFFF' : colors.textSecondary,
+                                }}
+                              >
+                                {t(`proServices.bookable.reasons.${reason}`)}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+
+                      {/* Texte libre pour « autre » seulement : c'est le seul
+                          motif que la cliente ne verra pas dans sa langue. */}
+                      {form.unavailableReason === 'other' && (
+                        <Input
+                          label={t('proServices.bookable.noteLabel')}
+                          placeholder={t('proServices.bookable.notePlaceholder')}
+                          value={form.unavailableNote}
+                          onChangeText={(v) =>
+                            setForm((p) => ({ ...p, unavailableNote: v.slice(0, 120) }))
+                          }
+                          maxLength={120}
+                        />
+                      )}
+                    </View>
                   )}
                 </EditorSection>
 

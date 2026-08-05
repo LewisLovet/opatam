@@ -1,3 +1,5 @@
+import type { ServiceUnavailableReason } from '../constants';
+
 // Notification settings (shared by clients via User)
 export interface NotificationSettings {
   pushEnabled: boolean;
@@ -816,8 +818,10 @@ export interface Service {
    * ou d'une absence. Le pro, lui, peut toujours la réserver manuellement.
    */
   isAvailable?: boolean;
-  /** Raison affichée à la cliente sous la pastille « Indisponible »
-   *  (« rupture de produit », « de retour début septembre »). */
+  /** Motif affiché sous la pastille « Indisponible ». Code traduit dans la
+   *  langue de la cliente ; `other` renvoie à `unavailableNote`. */
+  unavailableReason?: ServiceUnavailableReason | null;
+  /** Texte libre, utilisé UNIQUEMENT quand le motif est `other`. */
   unavailableNote?: string | null;
   sortOrder: number;
   /** Hex color (#RRGGBB) used to tint this service's bookings on the

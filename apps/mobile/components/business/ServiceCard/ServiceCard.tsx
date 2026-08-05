@@ -36,7 +36,9 @@ export interface ServiceCardProps {
   discountAmount?: number | null;
   /** `false` = visible mais non réservable : carte grisée, pastille. */
   isAvailable?: boolean;
-  /** Raison affichée sous le nom quand la prestation est indisponible. */
+  /** Motif codé, traduit dans la langue de la cliente. */
+  unavailableReason?: string | null;
+  /** Texte libre, uniquement pour le motif « autre » (non traduit). */
   unavailableNote?: string | null;
   /** Pre-formatted urgency line ("Plus que N jours"); null = hide. */
   promoCountdown?: string | null;
@@ -76,6 +78,7 @@ export function ServiceCard({
   discountPercent,
   discountAmount,
   isAvailable = true,
+  unavailableReason,
   unavailableNote,
   promoCountdown,
   priceFrom = false,
@@ -103,6 +106,13 @@ export function ServiceCard({
     amount: discountAmount ?? undefined,
   });
   const unavailable = isAvailable === false;
+  // Motif dans la langue de la CLIENTE. « other » — ou un document antérieur
+  // aux motifs, qui n'a qu'une note — retombe sur le texte libre du pro.
+  const unavailableLabel = !unavailable
+    ? null
+    : unavailableReason && unavailableReason !== 'other'
+      ? t(`components.serviceCard.unavailableReason.${unavailableReason}`)
+      : (unavailableNote ?? null);
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
@@ -248,13 +258,13 @@ export function ServiceCard({
                 {promoCountdown}
               </Text>
             )}
-            {unavailable && unavailableNote ? (
+            {unavailableLabel ? (
               <Text
                 variant="caption"
                 style={{ color: '#B45309', fontSize: 10, marginTop: 2, textAlign: 'right' }}
                 numberOfLines={2}
               >
-                {unavailableNote}
+                {unavailableLabel}
               </Text>
             ) : null}
           </View>

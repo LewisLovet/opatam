@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SERVICE_UNAVAILABLE_REASONS } from '../constants';
 
 /**
  * Per-service deposit override.
@@ -244,6 +245,12 @@ export const createServiceSchema = z.object({
   // prestations existantes n'ont pas à être migrées, et une valeur manquante
   // ne doit jamais bloquer une réservation.
   isAvailable: z.boolean().optional(),
+  unavailableReason: z
+    .enum(SERVICE_UNAVAILABLE_REASONS, {
+      errorMap: () => ({ message: "Motif d'indisponibilité invalide" }),
+    })
+    .nullable()
+    .optional(),
   unavailableNote: z
     .string()
     .trim()
@@ -353,6 +360,12 @@ export const updateServiceSchema = z.object({
   // prestations existantes n'ont pas à être migrées, et une valeur manquante
   // ne doit jamais bloquer une réservation.
   isAvailable: z.boolean().optional(),
+  unavailableReason: z
+    .enum(SERVICE_UNAVAILABLE_REASONS, {
+      errorMap: () => ({ message: "Motif d'indisponibilité invalide" }),
+    })
+    .nullable()
+    .optional(),
   unavailableNote: z
     .string()
     .trim()

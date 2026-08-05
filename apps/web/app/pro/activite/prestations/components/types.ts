@@ -5,7 +5,7 @@ import type {
   ServiceVariation,
 } from '@booking-app/shared';
 import { isAmountDiscount, resolveExcludedIds } from '@booking-app/shared';
-import type { ServiceDiscount } from '@booking-app/shared';
+import type { ServiceDiscount, ServiceUnavailableReason } from '@booking-app/shared';
 
 /** Valeurs proposées à l'activation d'une promo : 10 % ou 5 €. */
 export const DEFAULT_DISCOUNT_PERCENT = 10;
@@ -82,7 +82,9 @@ export interface ServiceFormData {
   } | null;
   /** Réservable en ligne. `false` = visible mais marquée indisponible. */
   isAvailable: boolean;
-  /** Raison affichée à la cliente quand la prestation est indisponible. */
+  /** Motif d'indisponibilité (code traduit côté client). */
+  unavailableReason: ServiceUnavailableReason | null;
+  /** Texte libre, utilisé uniquement quand le motif est « autre ». */
   unavailableNote: string | null;
   /** Client-facing choices. Empty arrays for a plain prestation. */
   variations: ServiceVariation[];
@@ -133,6 +135,9 @@ export function serviceToFormData(service: WithId<Service>): ServiceFormData {
         }
       : null,
     isAvailable: service.isAvailable !== false,
+    // Documents antérieurs aux motifs : une note sans code vaut « autre ».
+    unavailableReason:
+      service.unavailableReason ?? (service.unavailableNote ? 'other' : null),
     unavailableNote: service.unavailableNote ?? null,
     variations: service.variations ?? [],
     options: service.options ?? [],
@@ -160,6 +165,7 @@ export function emptyServiceFormData(
     deposit: null,
     discount: null,
     isAvailable: true,
+    unavailableReason: null,
     unavailableNote: null,
     variations: [],
     options: [],

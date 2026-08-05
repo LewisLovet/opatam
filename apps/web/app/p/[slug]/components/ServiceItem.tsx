@@ -32,6 +32,9 @@ interface ServiceItemProps {
     discount?: ServiceDiscount | null;
     /** `false` = visible mais non réservable en ligne. */
     isAvailable?: boolean;
+    /** Motif codé, traduit dans la langue de la cliente. */
+    unavailableReason?: string | null;
+    /** Texte libre, uniquement pour le motif « autre » (non traduit). */
     unavailableNote?: string | null;
   };
   slug: string;
@@ -88,6 +91,13 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
   // lien — laisser cliquer pour buter sur un refus serveur serait pire que
   // de ne pas cliquer du tout.
   const unavailable = service.isAvailable === false;
+  // Motif dans la langue de la CLIENTE. « other » (ou un document antérieur
+  // aux motifs, qui n'a qu'une note) retombe sur le texte libre du pro.
+  const unavailableLabel = !unavailable
+    ? null
+    : service.unavailableReason && service.unavailableReason !== 'other'
+      ? t(`services.unavailableReason.${service.unavailableReason}`)
+      : (service.unavailableNote ?? null);
   // Countdown — surfaced only when the promo is ending soon (≤ 7 days) to
   // create urgency without cluttering every card.
   const promoDaysLeft = hasPromo
@@ -203,9 +213,9 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
                       {countdownLabel}
                     </span>
                   )}
-                  {unavailable && service.unavailableNote && (
+                  {unavailableLabel && (
                     <span className="block text-[11px] text-amber-700 dark:text-amber-400 leading-tight mt-0.5">
-                      {service.unavailableNote}
+                      {unavailableLabel}
                     </span>
                   )}
                 </div>

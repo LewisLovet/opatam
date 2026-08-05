@@ -684,7 +684,13 @@
       "priceRange": "Da {{min}} a {{max}}",
       "showMore": "Più dettagli",
       "showLess": "Meno",
-      "unavailable": "Non disponibile"
+      "unavailable": "Non disponibile",
+      "unavailableReason": {
+        "out_of_stock": "Prodotto esaurito",
+        "equipment": "Attrezzatura non disponibile",
+        "leave": "In ferie",
+        "training": "In formazione"
+      }
     },
     "serviceChoicesPreview": {
       "add": "Aggiungi",
@@ -2617,8 +2623,16 @@
       "sectionSubtitle": "Sospendere senza nascondere il servizio.",
       "toggleTitle": "Prenotabile online",
       "toggleDescription": "Disattiva per lasciarlo visibile sulla tua pagina, con la dicitura « Non disponibile ». Potrai comunque inserirlo dal tuo calendario.",
-      "noteLabel": "Motivo mostrato ai clienti (facoltativo)",
-      "notePlaceholder": "Es. prodotto esaurito, torna a inizio settembre"
+      "noteLabel": "Specifica (mostrato così com’è, non tradotto)",
+      "notePlaceholder": "Es. torno a inizio settembre",
+      "reasonLabel": "Motivo mostrato ai clienti",
+      "reasons": {
+        "out_of_stock": "Prodotto esaurito",
+        "equipment": "Attrezzatura non disponibile",
+        "leave": "Ferie / assenza",
+        "training": "In formazione",
+        "other": "Altro…"
+      }
     },
     "unavailableBadge": "Non disponibile"
   },

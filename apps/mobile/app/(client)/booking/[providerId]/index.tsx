@@ -485,7 +485,9 @@ export default function MemberSelectionScreen() {
                           : null,
                       priceFrom,
                       isAvailable: s.isAvailable !== false,
-                      unavailableNote: s.unavailableNote ?? null,
+                      unavailableReason:
+                            s.unavailableReason ?? (s.unavailableNote ? 'other' : null),
+                          unavailableNote: s.unavailableNote ?? null,
                     };
                   })}
                   onSelectService={(id) => {

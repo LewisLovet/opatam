@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   type Firestore,
 } from 'firebase/firestore';
-import type { Service } from '@booking-app/shared';
+import type { Service, ServiceUnavailableReason } from '@booking-app/shared';
 import { buildPromoWindows } from '@booking-app/shared';
 import { getFirebaseApp } from '../lib/config';
 import { convertTimestamps, removeUndefined, type WithId } from './base.repository';
@@ -242,13 +242,14 @@ export class ServiceRepository {
     providerId: string,
     serviceId: string,
     isAvailable: boolean,
-    unavailableNote?: string | null,
+    unavailable?: { reason?: ServiceUnavailableReason | null; note?: string | null },
   ): Promise<void> {
     await this.update(providerId, serviceId, {
       isAvailable,
-      // Redevenir disponible efface la note : la garder afficherait
+      // Redevenir disponible efface motif ET note : les garder afficherait
       // « rupture de produit » sur une prestation à nouveau réservable.
-      unavailableNote: isAvailable ? null : (unavailableNote ?? null),
+      unavailableReason: isAvailable ? null : (unavailable?.reason ?? null),
+      unavailableNote: isAvailable ? null : (unavailable?.note ?? null),
     });
   }
 

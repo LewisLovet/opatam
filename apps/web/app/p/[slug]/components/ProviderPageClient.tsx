@@ -72,6 +72,7 @@ interface SerializedService {
   isActive: boolean;
   /** `false` = visible mais non réservable en ligne. */
   isAvailable?: boolean;
+  unavailableReason?: string | null;
   unavailableNote?: string | null;
   sortOrder: number;
   createdAt: string;

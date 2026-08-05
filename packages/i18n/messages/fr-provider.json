@@ -32,7 +32,13 @@
       "endsTomorrow": "Se termine demain",
       "daysLeft": "Plus que {days} jours"
     },
-    "unavailable": "Indisponible"
+    "unavailable": "Indisponible",
+    "unavailableReason": {
+      "out_of_stock": "Rupture de produit",
+      "equipment": "Matériel indisponible",
+      "leave": "Congés",
+      "training": "En formation"
+    }
   },
   "mobileBar": {
     "from": "À partir de",

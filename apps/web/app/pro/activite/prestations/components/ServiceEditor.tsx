@@ -269,9 +269,15 @@ export function ServiceEditor({
       // Une seule des deux formes de remise est persistée — le formulaire, lui,
       // garde les deux pour ne rien perdre en basculant.
       discount: discountToPayload(formData.discount),
-      // La note ne survit pas au retour à « disponible » : elle annoncerait une
-      // rupture sur une prestation à nouveau réservable.
-      unavailableNote: formData.isAvailable ? null : (formData.unavailableNote?.trim() || null),
+      // Motif et note ne survivent pas au retour à « disponible » : ils
+      // annonceraient une rupture sur une prestation à nouveau réservable.
+      // La note n'est écrite que pour le motif « autre » — sinon elle
+      // resterait à traîner et pourrait contredire le motif choisi.
+      unavailableReason: formData.isAvailable ? null : formData.unavailableReason,
+      unavailableNote:
+        !formData.isAvailable && formData.unavailableReason === 'other'
+          ? formData.unavailableNote?.trim() || null
+          : null,
       price: base.price,
       duration: base.duration,
       // Price ranges are no longer authored manually — a varying price is

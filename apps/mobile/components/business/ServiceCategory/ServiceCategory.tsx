@@ -43,6 +43,7 @@ export interface ServiceCategoryProps {
     promoCountdown?: string | null;
     priceFrom?: boolean;
     isAvailable?: boolean;
+    unavailableReason?: string | null;
     unavailableNote?: string | null;
   }>;
   /** Currently selected service ID */
@@ -241,6 +242,7 @@ export function ServiceCategory({
               promoCountdown={service.promoCountdown}
               priceFrom={service.priceFrom}
               isAvailable={service.isAvailable}
+              unavailableReason={service.unavailableReason}
               unavailableNote={service.unavailableNote}
               selected={selectedId === service.id}
               onPress={onSelectService ? () => onSelectService(service.id) : undefined}

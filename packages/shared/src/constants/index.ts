@@ -19,6 +19,25 @@ export const SUPPORTED_COUNTRIES = [
 
 export type CountryCode = (typeof SUPPORTED_COUNTRIES)[number]['code'];
 
+/**
+ * Motifs d'indisponibilité d'une prestation, dans l'ordre d'affichage.
+ *
+ * Ce sont des CODES, pas des phrases : ils permettent d'afficher le motif dans
+ * la langue de la CLIENTE (la page publique est en quatre langues), là où une
+ * phrase saisie par le prestataire resterait dans la sienne. `other` bascule
+ * sur `Service.unavailableNote`, seul cas où le texte est libre — et donc le
+ * seul qui reste non traduit.
+ */
+export const SERVICE_UNAVAILABLE_REASONS = [
+  'out_of_stock',
+  'equipment',
+  'leave',
+  'training',
+  'other',
+] as const;
+
+export type ServiceUnavailableReason = (typeof SERVICE_UNAVAILABLE_REASONS)[number];
+
 /** Get the display label for a country code */
 export function getCountryLabel(code: string): string {
   const country = SUPPORTED_COUNTRIES.find((c) => c.code === code.toUpperCase());

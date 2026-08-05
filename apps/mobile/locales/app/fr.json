@@ -684,7 +684,13 @@
       "priceRange": "De {{min}} à {{max}}",
       "showMore": "Plus de détails",
       "showLess": "Moins",
-      "unavailable": "Indisponible"
+      "unavailable": "Indisponible",
+      "unavailableReason": {
+        "out_of_stock": "Rupture de produit",
+        "equipment": "Matériel indisponible",
+        "leave": "Congés",
+        "training": "En formation"
+      }
     },
     "serviceChoicesPreview": {
       "add": "Ajouter",
@@ -2617,8 +2623,16 @@
       "sectionSubtitle": "Suspendre sans masquer la prestation.",
       "toggleTitle": "Réservable en ligne",
       "toggleDescription": "Désactivez pour la laisser visible sur votre page, marquée « Indisponible ». Vous pourrez toujours l’inscrire vous-même depuis votre agenda.",
-      "noteLabel": "Raison affichée à vos clientes (optionnel)",
-      "notePlaceholder": "Ex : rupture de produit, de retour début septembre"
+      "noteLabel": "Précisez (affiché tel quel, sans traduction)",
+      "notePlaceholder": "Ex : de retour début septembre",
+      "reasonLabel": "Motif affiché à vos clientes",
+      "reasons": {
+        "out_of_stock": "Rupture de produit",
+        "equipment": "Matériel indisponible",
+        "leave": "Congés / absence",
+        "training": "En formation",
+        "other": "Autre…"
+      }
     },
     "unavailableBadge": "Indisponible"
   },

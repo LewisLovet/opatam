@@ -684,7 +684,13 @@
       "priceRange": "From {{min}} to {{max}}",
       "showMore": "More details",
       "showLess": "Less",
-      "unavailable": "Unavailable"
+      "unavailable": "Unavailable",
+      "unavailableReason": {
+        "out_of_stock": "Out of stock",
+        "equipment": "Equipment unavailable",
+        "leave": "On leave",
+        "training": "In training"
+      }
     },
     "serviceChoicesPreview": {
       "add": "Add",
@@ -2617,8 +2623,16 @@
       "sectionSubtitle": "Pause it without hiding the service.",
       "toggleTitle": "Bookable online",
       "toggleDescription": "Turn off to keep it visible on your page, marked “Unavailable”. You can still add it yourself from your calendar.",
-      "noteLabel": "Reason shown to your clients (optional)",
-      "notePlaceholder": "E.g. out of stock, back in early September"
+      "noteLabel": "Specify (shown as-is, untranslated)",
+      "notePlaceholder": "E.g. back in early September",
+      "reasonLabel": "Reason shown to your clients",
+      "reasons": {
+        "out_of_stock": "Out of stock",
+        "equipment": "Equipment unavailable",
+        "leave": "Leave / absence",
+        "training": "In training",
+        "other": "Other…"
+      }
     },
     "unavailableBadge": "Unavailable"
   },

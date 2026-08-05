@@ -935,6 +935,8 @@ export default function ProviderDetailScreen() {
                               : null,
                           priceFrom,
                           isAvailable: s.isAvailable !== false,
+                          unavailableReason:
+                            s.unavailableReason ?? (s.unavailableNote ? 'other' : null),
                           unavailableNote: s.unavailableNote ?? null,
                         };
                       })}

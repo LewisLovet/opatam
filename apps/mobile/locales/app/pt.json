@@ -684,7 +684,13 @@
       "priceRange": "De {{min}} a {{max}}",
       "showMore": "Mais detalhes",
       "showLess": "Menos",
-      "unavailable": "Indisponível"
+      "unavailable": "Indisponível",
+      "unavailableReason": {
+        "out_of_stock": "Produto esgotado",
+        "equipment": "Equipamento indisponível",
+        "leave": "De férias",
+        "training": "Em formação"
+      }
     },
     "serviceChoicesPreview": {
       "add": "Adicionar",
@@ -2617,8 +2623,16 @@
       "sectionSubtitle": "Suspender sem esconder o serviço.",
       "toggleTitle": "Reservável online",
       "toggleDescription": "Desative para o manter visível na sua página, marcado como « Indisponível ». Poderá sempre inscrevê-lo a partir da sua agenda.",
-      "noteLabel": "Motivo mostrado aos seus clientes (opcional)",
-      "notePlaceholder": "Ex.: rutura de stock, de volta no início de setembro"
+      "noteLabel": "Especifique (mostrado tal como está, sem tradução)",
+      "notePlaceholder": "Ex.: de volta no início de setembro",
+      "reasonLabel": "Motivo mostrado aos seus clientes",
+      "reasons": {
+        "out_of_stock": "Produto esgotado",
+        "equipment": "Equipamento indisponível",
+        "leave": "Férias / ausência",
+        "training": "Em formação",
+        "other": "Outro…"
+      }
     },
     "unavailableBadge": "Indisponível"
   },
