@@ -7,6 +7,7 @@ import { YouTubeThumbnail } from '@/app/blog/components/YouTubeThumbnail';
 import s from './v2.module.css';
 import { HeroV2 } from './HeroV2';
 import { VideoTestimonials, type VideoTestimonial } from './VideoTestimonials';
+import { useEffect, useMemo, useState } from 'react';
 import { useReveal, useCountUp } from './useReveal';
 
 const TRADES = [
@@ -139,7 +140,7 @@ function WhatChanges() {
         <Feature
           title="Votre agenda se remplit tout seul"
           text="Même à 23 h, même le dimanche. Au réveil, votre planning est prêt."
-          mock={<AgendaMock />}
+          mock={(active) => <AgendaMock active={active} />}
         />
 
         <Feature
@@ -172,7 +173,10 @@ function Feature({
 }: {
   title: string;
   text: string;
-  mock: React.ReactNode;
+  /** Maquette de droite. Sous forme de fonction quand elle anime en
+   *  boucle : elle reçoit alors sa visibilité, pour ne rien jouer hors
+   *  du champ. */
+  mock: React.ReactNode | ((active: boolean) => React.ReactNode);
   flip?: boolean;
 }) {
   const { ref, shown } = useReveal<HTMLDivElement>();
@@ -185,44 +189,120 @@ function Feature({
         <h3 className={s.featureTitle}>{title}</h3>
         <p className={s.featureText}>{text}</p>
       </div>
-      <div className={shown ? s.playing : undefined}>{mock}</div>
+      <div className={shown ? s.playing : undefined}>
+        {typeof mock === 'function' ? mock(shown) : mock}
+      </div>
     </div>
   );
 }
 
-/** L'agenda se remplit : les rendez-vous tombent un à un, le compteur suit,
- *  et la barre de remplissage de la journée progresse. */
-function AgendaMock() {
-  const rows = [
-    ['10:00', 'Manon — Pose gel', '45 €'],
-    ['11:30', 'Jade — Remplissage', '35 €'],
-    ['14:30', 'Léa — Nail art', '8 €'],
-    ['16:00', 'Inès — Dépose', '15 €'],
-  ];
+/* ── L'agenda qui se remplit ──────────────────────────────────────── */
+
+const WEEK_DAYS = ['LUN', 'MAR', 'MER', 'JEU', 'VEN'];
+const WEEK_HOURS = ['9:00', '10:30', '12:00', '14:00', '15:30', '17:00'];
+
+/**
+ * Ordre dans lequel les créneaux se réservent. Il est écrit à la main, et
+ * volontairement dispersé : un remplissage colonne par colonne ressemblerait
+ * à une barre de chargement, alors que des réservations tombent là où elles
+ * tombent. L'index vaut `jour * 6 + rang horaire`.
+ */
+const FILL_ORDER = [
+  8, 21, 3, 14, 27, 1, 19, 10, 25, 6, 16, 29, 4, 12, 22, 0, 17, 9, 26, 13,
+];
+
+/**
+ * Anime un remplissage progressif, en boucle.
+ *
+ * Le compteur vit dans une variable locale à l'effet plutôt que dans une
+ * mise à jour fonctionnelle du state : React exécute deux fois les
+ * `updater` en développement, ce qui armerait deux minuteries et ferait
+ * accélérer l'animation à chaque passage.
+ */
+function useFillLoop(count: number, active: boolean) {
+  const [filled, setFilled] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setFilled(count);
+      return;
+    }
+
+    let n = 0;
+    let id: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      n = n >= count ? 0 : n + 1;
+      setFilled(n);
+      // Une pause quand la semaine est pleine — c'est le moment où l'œil
+      // lit le résultat —, une autre après la remise à zéro.
+      id = setTimeout(tick, n === count ? 2600 : n === 0 ? 900 : 230);
+    };
+    id = setTimeout(tick, 350);
+
+    // Rien à animer sur un onglet qu'on ne regarde pas.
+    const onVisibility = () => {
+      clearTimeout(id);
+      if (!document.hidden) id = setTimeout(tick, 400);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [active, count]);
+
+  return filled;
+}
+
+/** Une semaine d'agenda dont les créneaux se réservent sous les yeux. */
+function AgendaMock({ active }: { active: boolean }) {
+  const filled = useFillLoop(FILL_ORDER.length, active);
+  // Un Set plutôt qu'un `includes` par cellule : 30 cellules × 20 étapes
+  // feraient 600 parcours de tableau à chaque battement.
+  const taken = useMemo(() => new Set(FILL_ORDER.slice(0, filled)), [filled]);
+  const last = filled > 0 ? FILL_ORDER[filled - 1] : -1;
+
   return (
     <div className={s.card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <strong style={{ fontSize: 15 }}>Jeudi 30 juillet</strong>
-        <span style={{ fontSize: 13, color: '#8892ab' }}>
-          <span className={s.dayCount}>
-            <CountUpInline to={rows.length} />
-          </span>{' '}
-          rendez-vous
+      <div className={s.weekHead}>
+        <strong style={{ fontSize: 15 }}>Semaine du 28 juillet</strong>
+        <span className={s.weekCount}>
+          <b>{filled}</b> rendez-vous
         </span>
       </div>
+
       <div className={s.dayBar}>
-        <span className={s.dayBarFill} style={{ ['--fill' as string]: '78%' }} />
+        <span
+          className={s.weekBarFill}
+          style={{ width: `${(filled / FILL_ORDER.length) * 100}%` }}
+        />
       </div>
-      <div style={{ marginTop: 8 }}>
-        {rows.map(([time, who, price], i) => (
-          <div
-            key={time}
-            className={`${s.agendaRow} ${s.fillItem}`}
-            style={{ ['--i' as string]: i }}
-          >
-            <span className={s.agendaTime}>{time}</span>
-            <span>{who}</span>
-            <span className={s.agendaPrice}>{price}</span>
+
+      <div className={s.week} aria-hidden="true">
+        <div className={s.weekHours}>
+          <span className={s.weekDay} />
+          {WEEK_HOURS.map((h) => (
+            <span key={h} className={s.weekHour}>
+              {h}
+            </span>
+          ))}
+        </div>
+
+        {WEEK_DAYS.map((day, col) => (
+          <div key={day} className={s.weekCol}>
+            <span className={s.weekDay}>{day}</span>
+            {WEEK_HOURS.map((h, row) => {
+              const idx = col * WEEK_HOURS.length + row;
+              return (
+                <span
+                  key={h}
+                  className={`${s.cell} ${taken.has(idx) ? s.cellOn : ''} ${
+                    idx === last ? s.cellNew : ''
+                  }`}
+                />
+              );
+            })}
           </div>
         ))}
       </div>
@@ -242,7 +322,10 @@ function RemindersMock() {
         <span
           key={title}
           className={`${s.pill} ${s.fillItem}`}
-          style={{ ['--i' as string]: i, marginLeft: i === 1 ? 28 : 0 }}
+          /* Pas de décalage décoratif sur la deuxième : sur un écran de
+             375 px il mangeait la largeur et faisait passer le texte à la
+             ligne, ce qui se lisait comme un défaut d'alignement. */
+          style={{ ['--i' as string]: i }}
         >
           <span className={s.dot} />
           <span>
@@ -541,25 +624,23 @@ function Pricing() {
         <div ref={bars.ref} className={`${s.savings} ${s.reveal} ${bars.shown ? s.revealed : ''}`}>
           <div className={s.savingsBars}>
             <div className={s.bar}>
-              <span style={{ width: 140, opacity: 0.75 }}>Plateforme à 20 %</span>
+              <span className={s.barLabel}>Plateforme à 20 %</span>
+              <span className={`${s.barValue} ${s.barValueThem}`}>180 € prélevés</span>
               <span className={s.barTrack}>
                 <span
                   className={`${s.barFill} ${s.barFillThem}`}
                   style={{ width: bars.shown ? '100%' : 0 }}
-                >
-                  180 € prélevés
-                </span>
+                />
               </span>
             </div>
             <div className={s.bar}>
-              <span style={{ width: 140, opacity: 0.75 }}>Opatam</span>
+              <span className={s.barLabel}>Opatam</span>
+              <span className={`${s.barValue} ${s.barValueUs}`}>19,90 €</span>
               <span className={s.barTrack}>
                 <span
                   className={`${s.barFill} ${s.barFillUs}`}
                   style={{ width: bars.shown ? '22%' : 0, transitionDelay: '160ms' }}
-                >
-                  19,90 €
-                </span>
+                />
               </span>
             </div>
           </div>

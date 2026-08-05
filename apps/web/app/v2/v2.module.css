@@ -1364,29 +1364,49 @@
   gap: 12px;
 }
 
+/* Le libellé au-dessus, la piste en dessous, le montant à droite.
+   La version précédente écrivait le montant DANS la barre : « 19,90 € » ne
+   tient pas dans 22 % d'une piste de 200 px, le texte passait à la ligne et
+   chevauchait le paragraphe suivant. Hors de la piste, la longueur des
+   barres reste l'argument et le montant se lit toujours. */
 .bar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 7px 12px;
   font-size: 14px;
 }
 
+.barLabel {
+  opacity: 0.75;
+}
+
+.barValue {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.barValueThem {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.barValueUs {
+  color: var(--yellow);
+}
+
 .barTrack {
-  flex: 1;
-  height: 34px;
+  grid-column: 1 / -1;
+  height: 14px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.08);
   overflow: hidden;
 }
 
 .barFill {
+  display: block;
   height: 100%;
   border-radius: 10px;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  font-weight: 700;
-  font-size: 14px;
   /* La barre se remplit à l'apparition — le contraste entre les deux
      longueurs est l'argument, autant le montrer se construire. */
   width: 0;
@@ -1643,4 +1663,120 @@
   background: var(--navy);
   border-color: var(--navy);
   color: #fff;
+}
+
+/* ── L'agenda de la semaine qui se remplit ─────────────────────────────
+   C'est la démonstration centrale : des créneaux vides qui deviennent des
+   rendez-vous, un à un, en boucle. Tout est piloté par une seule classe
+   posée sur la cellule — la boucle vit dans le composant. */
+.weekHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.weekCount {
+  font-size: 13px;
+  color: #8892ab;
+  white-space: nowrap;
+}
+
+.weekCount b {
+  font-size: 17px;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.weekBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--navy);
+  /* Suit le compteur pas à pas : la transition doit être plus courte que
+     l'intervalle entre deux créneaux, sinon la barre traîne derrière. */
+  transition: width 0.22s linear;
+}
+
+.week {
+  display: flex;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.weekHours {
+  flex: none;
+  width: 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weekCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weekDay {
+  height: 16px;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  color: #8892ab;
+  text-align: center;
+}
+
+.weekHour {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  color: #a3abbd;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell {
+  height: 26px;
+  border-radius: 7px;
+  border: 1px dashed rgba(16, 27, 56, 0.16);
+  background: transparent;
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.cellOn {
+  border: 1px solid var(--navy);
+  background: var(--navy);
+}
+
+/* Le dernier créneau pris se distingue une fraction de seconde : sans ce
+   repère, seize cellules qui s'allument se lisent comme un dégradé, pas
+   comme des réservations qui arrivent. */
+.cellNew {
+  border-color: var(--yellow);
+  background: var(--yellow);
+  animation: cellPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cellPop {
+  0% {
+    transform: scale(0.65);
+    opacity: 0.4;
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cellNew {
+    animation: none;
+  }
 }
