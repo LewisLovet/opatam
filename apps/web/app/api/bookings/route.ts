@@ -9,6 +9,7 @@ import {
   isLoyaltyConfigValid,
   isLoyaltyRewardArmed,
   hasLoyaltyAccess,
+  depositTransferAmount,
 } from '@booking-app/shared';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
@@ -447,6 +448,18 @@ export async function POST(request: NextRequest) {
             description: `Acompte — ${booking.serviceName} chez ${booking.providerName}`,
             transfer_data: {
               destination: providerData.stripeConnectAccountId,
+              // Frais de traitement déduits, comme sur le tunnel web.
+              //
+              // Sans ce montant, Stripe transfère la TOTALITÉ et prélève sa
+              // commission sur le solde de la plateforme : chaque acompte
+              // encaissé depuis l'app coûtait 0,45 € à Opatam, alors que le
+              // même acompte encaissé depuis le site ne lui coûtait rien —
+              // le web crée le paiement sur le compte du prestataire, qui
+              // supporte donc les frais.
+              //
+              // Opatam ne prélève toujours AUCUNE commission : elle cesse
+              // simplement de payer celle de Stripe à la place du pro.
+              amount: depositTransferAmount(booking.deposit.amount),
             },
             metadata: {
               bookingId: booking.id,

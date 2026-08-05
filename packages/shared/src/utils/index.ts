@@ -308,6 +308,49 @@ interface ServiceForDeposit {
   } | null;
 }
 
+/**
+ * Frais de traitement Stripe estimés pour un encaissement par carte, en
+ * centimes : **1,5 % + 0,25 €**, le tarif des cartes de l'Espace économique
+ * européen.
+ *
+ * POURQUOI UNE ESTIMATION. Stripe ne facture qu'APRÈS le paiement, alors que
+ * le montant à reverser au prestataire doit être fixé AVANT, à la création du
+ * PaymentIntent. Il faut donc anticiper. Vérifié contre les frais réellement
+ * prélevés sur les acomptes : 13,00 € → 0,45 €, 12,00 € → 0,43 €,
+ * 15,00 € → 0,48 € — la formule tombe juste au centime.
+ *
+ * CE QU'ELLE NE COUVRE PAS. Une carte hors EEE coûte davantage (3,25 %). La
+ * différence reste alors à la charge de la plateforme : l'écart est rare, et
+ * il vaut mieux le supporter que sur-prélever un prestataire.
+ *
+ * Le remboursement d'un acompte ne restitue PAS ces frais — c'est la règle de
+ * Stripe, aucune implémentation ne la contourne.
+ */
+export function estimateStripeCardFee(amountCents: number): number {
+  if (amountCents <= 0) return 0;
+  return Math.round(amountCents * 0.015) + 25;
+}
+
+/**
+ * Montant à reverser au prestataire pour un acompte encaissé par la
+ * plateforme, frais de traitement déduits.
+ *
+ * Aligne le tunnel mobile sur le tunnel web. Le web crée le paiement SUR le
+ * compte du prestataire (paiement direct) : Stripe y prélève sa commission,
+ * le prestataire reçoit le net. Le mobile passe par un paiement à destination
+ * — contrainte de la SDK React Native — et transférait jusqu'ici la TOTALITÉ,
+ * laissant la commission à la charge de la plateforme. Le même acompte
+ * rapportait donc au prestataire 0,45 € de plus selon l'appareil de sa
+ * cliente, aux frais d'Opatam.
+ *
+ * Ce n'est PAS une commission de plateforme : Opatam ne prélève rien, elle
+ * cesse simplement de payer les frais de Stripe à la place du prestataire.
+ * L'engagement « 0 % de commission » reste entier.
+ */
+export function depositTransferAmount(depositCents: number): number {
+  return Math.max(0, depositCents - estimateStripeCardFee(depositCents));
+}
+
 interface ProviderSettingsForDeposit {
   depositDefault?: {
     percent: number;
