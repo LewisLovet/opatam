@@ -151,17 +151,6 @@ export async function runPromoEmailForService(
 ): Promise<PromoRunOutcome> {
   const discount = service.discount as PromoNotificationInput | null | undefined;
 
-  // Une prestation suspendue ou retirée du catalogue ne doit JAMAIS être
-  // promue : l'email inviterait à réserver quelque chose que le serveur
-  // refusera. Contrôle placé ici, donc valable pour le trigger comme pour le
-  // cron quotidien — les deux passent par cette fonction.
-  //
-  // `isAvailable` absent vaut disponible : les prestations antérieures à la
-  // fonctionnalité restent promouvables.
-  if (service.isAvailable === false || service.isActive === false) {
-    return 'service-unbookable';
-  }
-
   const db = admin.firestore();
   const providerRef = db.collection('providers').doc(providerId);
   const ledgerRef = providerRef.collection('promoNotifications').doc(serviceId);
@@ -172,6 +161,27 @@ export async function runPromoEmailForService(
   // dispendieux de charger le document du pro pour rien.
   const pre = promoPreCheck(discount);
   if (pre) return pre.reason;
+
+  // Étape 1b — la prestation est-elle réservable ? Une prestation suspendue
+  // ou retirée du catalogue ne doit JAMAIS être promue : l'email inviterait à
+  // réserver ce que le serveur refusera. Contrôle unique, donc valable pour
+  // le trigger comme pour le cron.
+  //
+  // Placé APRÈS le préfiltre à dessein : en amont, il aurait renvoyé
+  // « service-unbookable » pour toute prestation suspendue, y compris les
+  // innombrables qui n'ont aucune promo — le décompte du cron n'aurait plus
+  // rien voulu dire. Ici, l'atteindre signifie que le pro a EXPLICITEMENT
+  // demandé l'envoi sur cette offre.
+  //
+  // `isAvailable` absent vaut disponible : les prestations antérieures à la
+  // fonctionnalité restent promouvables.
+  if (service.isAvailable === false || service.isActive === false) {
+    console.warn(
+      `[promoEmail] ${providerId}/${serviceId} : envoi demandé sur une prestation ` +
+        `non réservable (isAvailable=${service.isAvailable}, isActive=${service.isActive}) — ignoré`,
+    );
+    return 'service-unbookable';
+  }
 
   // Étape 2 — le prestataire. Nécessaire à double titre : vérifier qu'il
   // est TOUJOURS en droit d'envoyer (le cron peut passer des semaines
