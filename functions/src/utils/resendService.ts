@@ -107,20 +107,30 @@ export function formatPriceFr(priceInCentimes: number, priceMaxInCentimes?: numb
 
 /**
  * Promotion note appended after the price when a discount was applied
- * (originalPrice > price). HTML version: crossed-out original + "−X%".
+ * (originalPrice > price) : original barré + ÉCONOMIE réalisée.
+ *
+ * On affiche le montant économisé, PAS un pourcentage. La réservation ne
+ * conserve que `price` et `originalPrice` : le taux devait donc être déduit
+ * de l'écart, ce qui inventait un chiffre que le prestataire n'a jamais
+ * saisi — « −10 € » sur 40 € s'affichait « −25 % », en contradiction avec ce
+ * que la cliente venait de lire sur le site. L'économie, elle, est vraie
+ * quelle que soit la forme de la remise.
+ *
  * Returns '' when there's no promo.
  */
 function promoNoteHtml(price: number, originalPrice?: number | null, locale: EmailLocale = 'fr'): string {
   if (!originalPrice || originalPrice <= price) return '';
-  const pct = Math.round(((originalPrice - price) / originalPrice) * 100);
-  return ` <span style="color: #a1a1aa; text-decoration: line-through; font-weight: 400;">${formatEmailPrice(originalPrice, locale)}</span> <span style="color: #e11d48; font-weight: 700;">−${pct}%</span>`;
+  const saving = formatEmailPrice(originalPrice - price, locale);
+  return ` <span style="color: #a1a1aa; text-decoration: line-through; font-weight: 400;">${formatEmailPrice(originalPrice, locale)}</span> <span style="color: #e11d48; font-weight: 700;">−${saving}</span>`;
 }
 
-/** Plain-text version of the promo note: " (au lieu de 50 €, −20 %)". */
+/** Plain-text version of the promo note: " (au lieu de 50 €, soit 10 € de moins)". */
 function promoNoteText(price: number, originalPrice?: number | null, locale: EmailLocale = 'fr'): string {
   if (!originalPrice || originalPrice <= price) return '';
-  const pct = Math.round(((originalPrice - price) / originalPrice) * 100);
-  return EMAIL_TEXTS.common[locale].promoWas(formatEmailPrice(originalPrice, locale), pct);
+  return EMAIL_TEXTS.common[locale].promoWas(
+    formatEmailPrice(originalPrice, locale),
+    formatEmailPrice(originalPrice - price, locale),
+  );
 }
 
 // Helper to format a duration in minutes ("45 min", "1h", "1h30")

@@ -189,8 +189,8 @@ export const EMAIL_TEXTS = {
       addressPendingText: (when: string) =>
         `L'adresse exacte et les informations d'accès vous seront communiquées${when} avec votre rappel, avant le rendez-vous.`,
       onDate: (formattedDate: string) => ` le ${formattedDate}`,
-      promoWas: (formattedOriginal: string, pct: number) =>
-        ` (au lieu de ${formattedOriginal}, −${pct} %)`,
+      promoWas: (formattedOriginal: string, formattedSaving: string) =>
+        ` (au lieu de ${formattedOriginal}, soit ${formattedSaving} de moins)`,
       providerNoticeTitle: (businessName: string) => `Information de ${businessName}`,
       ics: {
         filename: 'rendez-vous.ics',
@@ -244,8 +244,8 @@ export const EMAIL_TEXTS = {
       addressPendingText: (when: string) =>
         `The exact address and access details will be sent to you${when} with your reminder, before your appointment.`,
       onDate: (formattedDate: string) => ` on ${formattedDate}`,
-      promoWas: (formattedOriginal: string, pct: number) =>
-        ` (was ${formattedOriginal}, −${pct}%)`,
+      promoWas: (formattedOriginal: string, formattedSaving: string) =>
+        ` (was ${formattedOriginal}, ${formattedSaving} off)`,
       providerNoticeTitle: (businessName: string) => `A note from ${businessName}`,
       ics: {
         filename: 'appointment.ics',
@@ -301,8 +301,8 @@ export const EMAIL_TEXTS = {
       addressPendingText: (when: string) =>
         `L'indirizzo esatto e le informazioni di accesso Le saranno comunicati${when} insieme al promemoria, prima dell'appuntamento.`,
       onDate: (formattedDate: string) => ` il ${formattedDate}`,
-      promoWas: (formattedOriginal: string, pct: number) =>
-        ` (anziché ${formattedOriginal}, −${pct}%)`,
+      promoWas: (formattedOriginal: string, formattedSaving: string) =>
+        ` (anziché ${formattedOriginal}, ${formattedSaving} in meno)`,
       providerNoticeTitle: (businessName: string) => `Comunicazione di ${businessName}`,
       ics: {
         filename: 'appuntamento.ics',
@@ -356,8 +356,8 @@ export const EMAIL_TEXTS = {
       addressPendingText: (when: string) =>
         `A morada exata e as informações de acesso ser-lhe-ão comunicadas${when} juntamente com o lembrete, antes da marcação.`,
       onDate: (formattedDate: string) => ` em ${formattedDate}`,
-      promoWas: (formattedOriginal: string, pct: number) =>
-        ` (em vez de ${formattedOriginal}, −${pct}%)`,
+      promoWas: (formattedOriginal: string, formattedSaving: string) =>
+        ` (em vez de ${formattedOriginal}, menos ${formattedSaving})`,
       providerNoticeTitle: (businessName: string) => `Informação de ${businessName}`,
       ics: {
         filename: 'marcacao.ics',
