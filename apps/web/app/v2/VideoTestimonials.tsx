@@ -51,7 +51,11 @@ export function VideoTestimonials({ items }: { items: VideoTestimonial[] }) {
           </p>
         </div>
 
-        <div className={s.videos}>
+        <p className={s.swipeHint}>
+          <span aria-hidden="true">←→</span> Faites défiler
+        </p>
+
+        <div className={`${s.videos} ${s.stagger}`}>
           {items.map((item) => (
             <Card key={item.id} item={item} />
           ))}
@@ -64,6 +68,7 @@ export function VideoTestimonials({ items }: { items: VideoTestimonial[] }) {
 function Card({ item }: { item: VideoTestimonial }) {
   const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { ref, shown } = useReveal<HTMLElement>();
 
   const start = () => {
     setPlaying(true);
@@ -78,7 +83,11 @@ function Card({ item }: { item: VideoTestimonial }) {
   };
 
   return (
-    <figure className={s.videoCard} style={{ margin: 0 }}>
+    <figure
+      ref={ref}
+      className={`${s.videoCard} ${s.revealScale} ${shown ? s.revealed : ''}`}
+      style={{ margin: 0 }}
+    >
       {playing ? (
         <video
           ref={videoRef}

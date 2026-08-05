@@ -94,7 +94,7 @@ export function HeroV2() {
             </p>
 
             <div className={s.heroCtas}>
-              <Link href="/inscription" className={`${s.btn} ${s.btnPrimary}`}>
+              <Link href="/register" className={`${s.btn} ${s.btnPrimary}`}>
                 Créer ma page
               </Link>
               <Link href="/p/salon-de-coiffure" className={`${s.btn} ${s.btnGhost}`}>
@@ -120,6 +120,9 @@ export function HeroV2() {
           </div>
 
           <div className={s.phoneWrap}>
+            {/* `phoneEnter` porte l'arrivée puis le flottement. La classe est
+                posée sur le téléphone lui-même et non sur le conteneur : le
+                conteneur porte la perspective, qui doit rester fixe. */}
             <Phone step={step} />
           </div>
         </div>
@@ -131,7 +134,7 @@ export function HeroV2() {
 /** Maquette d'écran : purement décorative, donc masquée aux lecteurs d'écran. */
 function Phone({ step }: { step: number }) {
   return (
-    <div className={s.phone} aria-hidden="true">
+    <div className={`${s.phone} ${s.phoneEnter}`} aria-hidden="true">
       <div className={s.notch} />
 
       {/* 1 — choix de la prestation */}

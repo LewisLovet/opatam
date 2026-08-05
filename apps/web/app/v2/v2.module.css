@@ -117,9 +117,54 @@
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Variante pour les maquettes : elles montent ET grandissent légèrement,
+   ce qui les fait exister comme des objets plutôt que comme du texte. */
+.revealScale {
+  opacity: 0;
+  transform: translateY(28px) scale(0.96);
+  transition: opacity 0.7s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+ * L'état révélé cible les DEUX classes à la fois.
+ *
+ * Un simple `.revealed` ne suffisait pas : à spécificité égale, c'est la
+ * dernière règle du fichier qui l'emporte, et `.revealScale` étant déclarée
+ * plus bas, elle refixait l'opacité à 0 — les maquettes de story, les cartes
+ * vidéo et les formules restaient invisibles pour toujours.
+ */
+.reveal.revealed,
+.revealScale.revealed,
 .revealed {
   opacity: 1;
   transform: none;
+}
+
+/* Cascade : chaque enfant part un cran après le précédent. Sans ce décalage,
+   trois cartes qui apparaissent ensemble donnent un « flash » au lieu d'un
+   mouvement. */
+.stagger > * {
+  transition-delay: 0ms;
+}
+.stagger > *:nth-child(2) {
+  transition-delay: 110ms;
+}
+.stagger > *:nth-child(3) {
+  transition-delay: 220ms;
+}
+.stagger > *:nth-child(4) {
+  transition-delay: 330ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .revealScale {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .stagger > * {
+    transition-delay: 0ms !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -210,18 +255,25 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.18;
-  filter: saturate(0.7);
+  /* Remontée de 0,18 à 0,55 : à 0,18 le voile mangeait tout et le héro
+     paraissait un aplat bleu. Le voile ci-dessous est lui aussi allégé —
+     les deux se compensaient. */
+  opacity: 0.55;
+  filter: saturate(0.85) contrast(1.05);
 }
 
 .heroVeil {
   position: absolute;
   inset: 0;
+  /* Dégradé plus lourd à gauche, où vit le texte, et presque transparent à
+     droite : la vidéo respire derrière le téléphone sans jamais disputer la
+     lisibilité du titre. */
   background: linear-gradient(
     100deg,
-    var(--deep) 8%,
-    rgba(35, 61, 133, 0.86) 46%,
-    rgba(35, 61, 133, 0.55) 100%
+    rgba(21, 41, 107, 0.94) 0%,
+    rgba(21, 41, 107, 0.8) 34%,
+    rgba(35, 61, 133, 0.42) 68%,
+    rgba(35, 61, 133, 0.25) 100%
   );
 }
 
@@ -297,6 +349,47 @@
 .phoneWrap {
   display: flex;
   justify-content: center;
+  /* Perspective posée sur le parent : le téléphone arrive légèrement
+     incliné puis se redresse, ce qu'une simple translation ne donne pas. */
+  perspective: 1400px;
+}
+
+/*
+ * Arrivée du téléphone. Il monte, se redresse et se pose — puis flotte très
+ * lentement. Le flottement démarre APRÈS l'arrivée (delay = durée de
+ * l'entrée), sinon les deux animations se combattent sur `transform`.
+ */
+.phoneEnter {
+  animation:
+    phoneIn 1.1s cubic-bezier(0.16, 1, 0.3, 1) both,
+    phoneFloat 7s ease-in-out 1.1s infinite;
+}
+
+@keyframes phoneIn {
+  from {
+    opacity: 0;
+    transform: translateY(70px) rotateX(14deg) rotateZ(-3deg) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes phoneFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phoneEnter {
+    animation: none;
+  }
 }
 
 .phone {
@@ -720,16 +813,63 @@
 
 /* ── Témoignages vidéo ──────────────────────────────────────────── */
 
-.videos {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
+.videos,
+.tutos {
   margin-top: 48px;
+  display: grid;
+  gap: 24px;
+  /* MOBILE — carrousel aimanté. Les cartes défilent horizontalement, la
+     dernière laisse une marge à droite pour qu'on devine qu'il y en a
+     d'autres. `-webkit-overflow-scrolling` garde l'inertie iOS. */
+  grid-auto-flow: column;
+  grid-auto-columns: 78%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 24px;
+  -webkit-overflow-scrolling: touch;
+  /* Le carrousel déborde de `.wrap` pour toucher les bords de l'écran, sinon
+     la carte suivante paraît coupée par une marge fantôme. */
+  margin-left: -24px;
+  margin-right: -24px;
+  padding: 4px 24px 20px;
+  scrollbar-width: none;
+}
+
+.videos::-webkit-scrollbar,
+.tutos::-webkit-scrollbar {
+  display: none;
+}
+
+.videos > *,
+.tutos > * {
+  scroll-snap-align: start;
 }
 
 @media (min-width: 760px) {
   .videos {
+    grid-auto-flow: row;
     grid-template-columns: repeat(3, 1fr);
+    grid-auto-columns: auto;
+    overflow: visible;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+  }
+}
+
+/* Repère de défilement, affiché seulement quand le carrousel existe. */
+.swipeHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+@media (min-width: 760px) {
+  .swipeHint {
+    display: none;
   }
 }
 
@@ -820,17 +960,20 @@
 
 /* ── Tutoriels ──────────────────────────────────────────────────── */
 
-.tutos {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 22px;
-  margin-top: 44px;
-}
-
 @media (min-width: 820px) {
   .tutos {
+    grid-auto-flow: row;
     grid-template-columns: repeat(3, 1fr);
+    grid-auto-columns: auto;
+    overflow: visible;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
   }
+}
+
+.swipeHintDark {
+  color: rgba(16, 27, 56, 0.45);
 }
 
 .tuto {
@@ -1009,4 +1152,353 @@
 
 .footer a:hover {
   color: #fff;
+}
+
+/* ── Story : aperçus réels ──────────────────────────────────────── */
+
+.storyGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 44px;
+  align-items: center;
+  margin-top: 48px;
+}
+
+@media (min-width: 940px) {
+  .storyGrid {
+    grid-template-columns: 0.95fr 1.05fr;
+    gap: 64px;
+  }
+}
+
+.storyShots {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  perspective: 1200px;
+}
+
+/*
+ * Deux aperçus légèrement inclinés l'un vers l'autre : ce sont les VRAIES
+ * images produites par l'application, pas des maquettes. Elles étaient déjà
+ * dans /public et ne servaient nulle part sur cette page.
+ */
+.storyShot {
+  width: 208px;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.storyShot img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.storyShotA {
+  transform: rotate(-5deg) translateY(10px);
+}
+
+.storyShotB {
+  transform: rotate(5deg);
+}
+
+.storyShots:hover .storyShotA {
+  transform: rotate(-2deg) translateY(0);
+}
+
+.storyShots:hover .storyShotB {
+  transform: rotate(2deg) translateY(-6px);
+}
+
+@media (max-width: 520px) {
+  .storyShot {
+    width: 150px;
+  }
+}
+
+.stepsCol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stepRow {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stepBadge {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--yellow);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* ── Tarif, version complète ────────────────────────────────────── */
+
+.plans {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-top: 44px;
+  align-items: stretch;
+}
+
+@media (min-width: 900px) {
+  .plans {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.plan {
+  position: relative;
+  background: #fff;
+  color: var(--ink);
+  border-radius: 24px;
+  padding: 34px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.3);
+}
+
+/* Le plan mis en avant se distingue par un liseré, pas par une taille
+   différente : deux cartes de hauteurs inégales donnent une grille bancale. */
+.planFeatured {
+  outline: 3px solid var(--yellow);
+  outline-offset: -3px;
+}
+
+.planTag {
+  position: absolute;
+  top: -13px;
+  left: 34px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--yellow);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--display);
+  letter-spacing: 0.04em;
+}
+
+.planName {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 20px;
+}
+
+.planFor {
+  margin: 6px 0 18px;
+  font-size: 14px;
+  color: rgba(16, 27, 56, 0.55);
+}
+
+.planPrice {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 46px;
+  line-height: 1;
+}
+
+.planPer {
+  font-size: 17px;
+  font-weight: 500;
+  color: rgba(16, 27, 56, 0.5);
+}
+
+.planYear {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.planFooter {
+  margin-top: auto;
+  padding-top: 22px;
+}
+
+/* Bandeau de comparaison : le chiffre qui fait mal, isolé. */
+.savings {
+  margin-top: 44px;
+  padding: 28px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  align-items: center;
+}
+
+@media (min-width: 820px) {
+  .savings {
+    grid-template-columns: 1.2fr 1fr;
+  }
+}
+
+.savingsBars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+}
+
+.barTrack {
+  flex: 1;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: 14px;
+  /* La barre se remplit à l'apparition — le contraste entre les deux
+     longueurs est l'argument, autant le montrer se construire. */
+  width: 0;
+  transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.barFillThem {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.barFillUs {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.reassure {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 30px;
+  justify-content: center;
+}
+
+.reassureItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* ── Bas de page ────────────────────────────────────────────────── */
+
+.finalCard {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 56px 36px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 36px;
+  padding-bottom: 34px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (min-width: 780px) {
+  .footerGrid {
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    gap: 28px;
+  }
+}
+
+.footerCol h4 {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 14px;
+  letter-spacing: 0.04em;
+}
+
+.footerCol a,
+.footerCol span {
+  display: block;
+  margin: 0 0 10px;
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.footerCol a:hover {
+  color: #fff;
+}
+
+.footerBottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 24px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.storeRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.storeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.storeBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
 }

@@ -91,9 +91,9 @@ function Nav() {
           <a href="#change">Fonctionnalités</a>
           <a href="#tutoriels">Tutoriels</a>
           <a href="#tarif">Tarif</a>
-          <Link href="/connexion">Se connecter</Link>
+          <Link href="/login">Se connecter</Link>
         </div>
-        <Link href="/inscription" className={`${s.btn} ${s.btnPrimary}`} style={{ padding: '12px 22px' }}>
+        <Link href="/register" className={`${s.btn} ${s.btnPrimary}`} style={{ padding: '12px 22px' }}>
           Créer ma page
         </Link>
       </div>
@@ -252,38 +252,75 @@ function Feature({
 /* ── Story Instagram ─────────────────────────────────────────────── */
 
 function StorySection() {
-  const { ref, shown } = useReveal<HTMLDivElement>();
+  const head = useReveal<HTMLDivElement>();
+  const shots = useReveal<HTMLDivElement>();
+
   return (
     <section className={`${s.sec} ${s.secDark}`}>
       <div className={s.wrap}>
-        <div ref={ref} className={`${s.reveal} ${shown ? s.revealed : ''}`}>
+        <div ref={head.ref} className={`${s.reveal} ${head.shown ? s.revealed : ''}`}>
           <span className={s.eyebrow}>Instagram &amp; Snapchat</span>
           <h2 className={s.secTitle}>
             Une story.
             <br />
             Des créneaux remplis.
           </h2>
+          <p className={s.secLead}>
+            Un trou dans votre après-midi ? L&apos;application produit la story, avec
+            vos disponibilités réelles et votre QR code. Vous n&apos;avez qu&apos;à la publier.
+          </p>
         </div>
-        <div className={s.steps}>
-          {[
-            ['01', 'Un trou ce mardi à 14 h.'],
-            ['02', 'Un geste — Opatam génère la story avec vos dispos et votre QR code.'],
-            ['03', 'Vos clientes scannent, elles réservent.'],
-          ].map(([num, text]) => (
-            <Step key={num} num={num} text={text} />
-          ))}
+
+        <div className={s.storyGrid}>
+          {/* Les VRAIES images générées par l'app, déjà présentes dans
+              /public et jusqu'ici inutilisées sur cette page. */}
+          <div
+            ref={shots.ref}
+            className={`${s.storyShots} ${s.revealScale} ${shots.shown ? s.revealed : ''}`}
+          >
+            <div className={`${s.storyShot} ${s.storyShotA}`}>
+              <Image
+                src="/instagram-story-jour.png"
+                alt="Story générée avec les créneaux libres du jour"
+                width={420}
+                height={747}
+                sizes="(min-width: 940px) 210px, 150px"
+              />
+            </div>
+            <div className={`${s.storyShot} ${s.storyShotB}`}>
+              <Image
+                src="/instagram-story-semaine.png"
+                alt="Story générée avec les créneaux libres de la semaine"
+                width={420}
+                height={747}
+                sizes="(min-width: 940px) 210px, 150px"
+              />
+            </div>
+          </div>
+
+          <div className={`${s.stepsCol} ${s.stagger}`}>
+            {[
+              ['01', 'Un trou ce mardi à 14 h.'],
+              ['02', 'Un geste — la story est générée avec vos dispos et votre QR code.'],
+              ['03', 'Vos clientes scannent, elles réservent.'],
+            ].map(([num, text]) => (
+              <StepRow key={num} num={num} text={text} />
+            ))}
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function Step({ num, text }: { num: string; text: string }) {
+function StepRow({ num, text }: { num: string; text: string }) {
   const { ref, shown } = useReveal<HTMLDivElement>();
   return (
-    <div ref={ref} className={`${s.step} ${s.reveal} ${shown ? s.revealed : ''}`}>
-      <span className={s.stepNum}>{num}</span>
-      <p className={s.stepText}>{text}</p>
+    <div ref={ref} className={`${s.stepRow} ${s.reveal} ${shown ? s.revealed : ''}`}>
+      <span className={s.stepBadge}>{num}</span>
+      <p className={s.stepText} style={{ margin: 0 }}>
+        {text}
+      </p>
     </div>
   );
 }
@@ -345,7 +382,11 @@ function Tutorials({ tutorials }: { tutorials: ArticleCardData[] }) {
           </Link>
         </div>
 
-        <div className={s.tutos}>
+        <p className={`${s.swipeHint} ${s.swipeHintDark}`}>
+          <span aria-hidden="true">←→</span> Faites défiler
+        </p>
+
+        <div className={`${s.tutos} ${s.stagger}`}>
           {tutorials.map((t) => (
             <Link key={t.slug} href={`/blog/${t.slug}`} className={s.tuto}>
               <div className={s.tutoCover}>
@@ -374,12 +415,45 @@ function Tutorials({ tutorials }: { tutorials: ArticleCardData[] }) {
 
 /* ── Tarif ───────────────────────────────────────────────────────── */
 
+const PLANS = [
+  {
+    name: 'Pro',
+    forWho: 'Pour les indépendants',
+    price: '19,90 €',
+    year: 'ou 199 € par an — deux mois offerts',
+    featured: true,
+    features: [
+      'Réservations illimitées, 0 % de commission',
+      'Votre vitrine en ligne + QR code',
+      'Rappels automatiques 24 h et 2 h avant',
+      'Carte de fidélité et promotions',
+      'Application mobile, notifications en direct',
+    ],
+  },
+  {
+    name: 'Studio',
+    forWho: 'Pour les équipes jusqu’à 10 personnes',
+    price: '29,90 €',
+    year: 'ou 299 € par an — deux mois offerts',
+    featured: false,
+    features: [
+      'Tout le plan Pro, sans limite de membres',
+      'Un agenda et des prestations par membre',
+      'Jusqu’à 10 adresses',
+      'Page publique d’équipe',
+      'Vue d’ensemble sur toute l’activité',
+    ],
+  },
+];
+
 function Pricing() {
-  const { ref, shown } = useReveal<HTMLDivElement>();
+  const head = useReveal<HTMLDivElement>();
+  const bars = useReveal<HTMLDivElement>();
+
   return (
     <section className={`${s.sec} ${s.secDark}`} id="tarif">
       <div className={s.wrap}>
-        <div ref={ref} className={`${s.reveal} ${shown ? s.revealed : ''}`}>
+        <div ref={head.ref} className={`${s.reveal} ${head.shown ? s.revealed : ''}`}>
           <span className={s.eyebrow}>Le tarif</span>
           <h2 className={s.secTitle}>
             Un prix fixe.
@@ -387,70 +461,140 @@ function Pricing() {
             Zéro surprise.
           </h2>
           <p className={s.secLead}>
-            Sur 10 rendez-vous à 45 €, une commission de 20 % vous coûterait 90 €.
-            Ici : 0 €.
+            Pas de commission, pas d&apos;option cachée, pas de palier au nombre de
+            rendez-vous. Le prix que vous voyez est celui que vous payez.
           </p>
         </div>
 
-        <div className={s.priceGrid}>
-          <div className={s.compare}>
-            <div className={s.compareRow}>
-              <span>Autres plateformes</span>
-              <strong>jusqu’à 20 % / RDV</strong>
-            </div>
-            <div className={`${s.compareRow} ${s.compareRowUs}`}>
-              <span>Opatam</span>
-              <strong>0 % — abonnement fixe</strong>
-            </div>
-          </div>
+        <div className={`${s.plans} ${s.stagger}`}>
+          {PLANS.map((plan) => (
+            <PlanCard key={plan.name} plan={plan} />
+          ))}
+        </div>
 
-          <div className={s.priceCard}>
-            <span className={s.eyebrow} style={{ color: '#233D85' }}>
-              Formule Pro
-            </span>
-            <div className={s.priceAmount} style={{ marginTop: 12 }}>
-              19,90 €
-              <span style={{ fontSize: 18, fontWeight: 500, color: '#68738d' }}>/mois</span>
+        {/*
+          La comparaison chiffrée : sur 20 rendez-vous à 45 €, une plateforme à
+          commission prélève 180 €. Les barres se remplissent à l'apparition —
+          c'est l'écart entre les deux longueurs qui porte l'argument.
+        */}
+        <div ref={bars.ref} className={`${s.savings} ${s.reveal} ${bars.shown ? s.revealed : ''}`}>
+          <div className={s.savingsBars}>
+            <div className={s.bar}>
+              <span style={{ width: 140, opacity: 0.75 }}>Plateforme à 20 %</span>
+              <span className={s.barTrack}>
+                <span
+                  className={`${s.barFill} ${s.barFillThem}`}
+                  style={{ width: bars.shown ? '100%' : 0 }}
+                >
+                  180 € prélevés
+                </span>
+              </span>
             </div>
-            <ul className={s.priceList}>
-              {[
-                'Réservations illimitées, 0 % de commission',
-                'Rappels automatiques 24 h et 2 h avant',
-                'Vitrine en ligne + QR code',
-                'Application mobile, notifications en direct',
-              ].map((line) => (
-                <li key={line}>
-                  <span className={s.check}>✓</span>
-                  {line}
-                </li>
-              ))}
-            </ul>
-            <Link href="/inscription" className={`${s.btn} ${s.btnPrimary}`} style={{ width: '100%' }}>
-              Commencer mes 30 jours gratuits
-            </Link>
-            <p style={{ margin: '14px 0 0', fontSize: 13, color: '#68738d', textAlign: 'center' }}>
-              Sans carte bancaire · formule Studio dès 29,90 € pour les équipes
-            </p>
+            <div className={s.bar}>
+              <span style={{ width: 140, opacity: 0.75 }}>Opatam</span>
+              <span className={s.barTrack}>
+                <span
+                  className={`${s.barFill} ${s.barFillUs}`}
+                  style={{ width: bars.shown ? '22%' : 0, transitionDelay: '160ms' }}
+                >
+                  19,90 €
+                </span>
+              </span>
+            </div>
           </div>
+          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'rgba(255,255,255,.72)' }}>
+            Sur <strong style={{ color: '#fff' }}>20 rendez-vous à 45 €</strong> dans le mois.
+            Chez Opatam, le prix ne bouge pas — que vous en fassiez 20 ou 200.
+          </p>
+        </div>
+
+        <div className={s.reassure}>
+          {[
+            '30 jours gratuits',
+            'Sans carte bancaire',
+            'Sans engagement',
+            'Résiliable en un clic',
+          ].map((item) => (
+            <span key={item} className={s.reassureItem}>
+              <span style={{ color: '#F4C928' }}>✓</span>
+              {item}
+            </span>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
+function PlanCard({ plan }: { plan: (typeof PLANS)[number] }) {
+  const { ref, shown } = useReveal<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={`${s.plan} ${plan.featured ? s.planFeatured : ''} ${s.revealScale} ${
+        shown ? s.revealed : ''
+      }`}
+    >
+      {plan.featured && <span className={s.planTag}>Le plus choisi</span>}
+      <span className={s.planName}>{plan.name}</span>
+      <span className={s.planFor}>{plan.forWho}</span>
+      <div className={s.planPrice}>
+        {plan.price}
+        <span className={s.planPer}>/mois</span>
+      </div>
+      <p className={s.planYear}>{plan.year}</p>
+
+      <ul className={s.priceList}>
+        {plan.features.map((f) => (
+          <li key={f}>
+            <span className={s.check}>✓</span>
+            {f}
+          </li>
+        ))}
+      </ul>
+
+      <div className={s.planFooter}>
+        <Link href="/register" className={`${s.btn} ${s.btnPrimary}`} style={{ width: '100%' }}>
+          Commencer 30 jours gratuits
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 /* ── Final ───────────────────────────────────────────────────────── */
 
 function FinalCta() {
+  const { ref, shown } = useReveal<HTMLDivElement>();
   return (
     <section className={s.final}>
       <div className={s.wrap}>
-        <h2 className={s.finalTitle}>Reprenez votre soirée.</h2>
-        <p className={s.secLead} style={{ margin: '18px auto 30px', color: 'rgba(255,255,255,.72)' }}>
-          Votre page de réservation est en ligne dans 5 minutes.
-        </p>
-        <Link href="/inscription" className={`${s.btn} ${s.btnPrimary}`}>
-          Créer ma page
-        </Link>
+        <div ref={ref} className={`${s.finalCard} ${s.revealScale} ${shown ? s.revealed : ''}`}>
+          <span className={s.eyebrow} style={{ justifyContent: 'center' }}>
+            Il est encore temps
+          </span>
+          <h2 className={s.finalTitle} style={{ marginTop: 16 }}>
+            Reprenez votre soirée.
+          </h2>
+          <p
+            className={s.secLead}
+            style={{ margin: '18px auto 30px', color: 'rgba(255,255,255,.75)', maxWidth: 480 }}
+          >
+            Votre page de réservation est en ligne dans 5 minutes. Vos clientes
+            réservent dès ce soir.
+          </p>
+          <div className={s.heroCtas} style={{ justifyContent: 'center' }}>
+            <Link href="/register" className={`${s.btn} ${s.btnPrimary}`}>
+              Créer ma page
+            </Link>
+            <Link href="/p/salon-de-coiffure" className={`${s.btn} ${s.btnGhost}`}>
+              Voir une démo →
+            </Link>
+          </div>
+          <p style={{ margin: '20px 0 0', fontSize: 14, color: 'rgba(255,255,255,.5)' }}>
+            30 jours gratuits · sans carte bancaire · sans engagement
+          </p>
+        </div>
       </div>
     </section>
   );
@@ -459,13 +603,66 @@ function FinalCta() {
 function Footer() {
   return (
     <footer className={s.footer}>
-      <div className={`${s.wrap} ${s.footerInner}`}>
-        <span>© 2026 Opatam</span>
-        <span>
-          <Link href="/mentions-legales">Mentions légales</Link>
-          <Link href="/confidentialite">Confidentialité</Link>
-          <Link href="/supprimer-mon-compte">Supprimer mon compte</Link>
-        </span>
+      <div className={s.wrap}>
+        <div className={s.footerGrid}>
+          <div className={s.footerCol}>
+            <Link href="/v2" className={s.navBrand} style={{ marginBottom: 14 }}>
+              <Image src="/logo-opatam.png" alt="" width={28} height={28} />
+              OPATAM
+            </Link>
+            <span style={{ maxWidth: 260, lineHeight: 1.6 }}>
+              La réservation en ligne pour les indépendants et les petites équipes.
+              Sans commission, jamais.
+            </span>
+            <div className={s.storeRow}>
+              <a
+                className={s.storeBtn}
+                href="https://apps.apple.com/app/opatam-agenda-rendez-vous/id6759246218"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                App Store
+              </a>
+              <a
+                className={s.storeBtn}
+                href="https://play.google.com/store/apps/details?id=com.kamerleontech.opatam"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Google Play
+              </a>
+            </div>
+          </div>
+
+          <div className={s.footerCol}>
+            <h4>Produit</h4>
+            <a href="#change">Fonctionnalités</a>
+            <a href="#tarif">Tarif</a>
+            <a href="#tutoriels">Tutoriels</a>
+            <Link href="/p/salon-de-coiffure">Voir une démo</Link>
+          </div>
+
+          <div className={s.footerCol}>
+            <h4>Ressources</h4>
+            <Link href="/blog">Blog</Link>
+            <Link href="/telechargement">Télécharger l’app</Link>
+            <Link href="/contact">Nous contacter</Link>
+            <Link href="/recrutement">Recrutement</Link>
+          </div>
+
+          <div className={s.footerCol}>
+            <h4>Légal</h4>
+            <Link href="/mentions-legales">Mentions légales</Link>
+            <Link href="/confidentialite">Confidentialité</Link>
+            <Link href="/cgv">Conditions générales</Link>
+            <Link href="/supprimer-mon-compte">Supprimer mon compte</Link>
+          </div>
+        </div>
+
+        <div className={s.footerBottom}>
+          <span>© 2026 Opatam — tous droits réservés</span>
+          <span>Fait en France · 0 % de commission</span>
+        </div>
       </div>
     </footer>
   );
