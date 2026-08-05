@@ -70,7 +70,8 @@ const TEXTS: Record<
   {
     subject: (p: string) => string;
     hello: (n: string) => string;
-    body: (p: string, s: string, pct: number) => string;
+    /** `off` est déjà formaté (« −20 % » ou « −10 € »). */
+    body: (p: string, s: string, off: string) => string;
     until: (d: string) => string;
     cta: string;
     unsub: string;
@@ -79,8 +80,8 @@ const TEXTS: Record<
   fr: {
     subject: (p) => `${p} vous propose une réduction`,
     hello: (n) => `Bonjour ${n},`,
-    body: (p, s, pct) =>
-      `<strong>${p}</strong> vient de mettre en ligne <strong>−${pct} %</strong> sur « ${s} ».`,
+    body: (p, s, off) =>
+      `<strong>${p}</strong> vient de mettre en ligne <strong>${off}</strong> sur « ${s} ».`,
     until: (d) => `Offre valable jusqu'au ${d}.`,
     cta: 'Réserver maintenant',
     unsub: 'Ne plus recevoir les promotions de ce prestataire',
@@ -88,7 +89,7 @@ const TEXTS: Record<
   en: {
     subject: (p) => `${p} has a discount for you`,
     hello: (n) => `Hi ${n},`,
-    body: (p, s, pct) => `<strong>${p}</strong> just launched <strong>−${pct}%</strong> on “${s}”.`,
+    body: (p, s, off) => `<strong>${p}</strong> just launched <strong>${off}</strong> on “${s}”.`,
     until: (d) => `Offer valid until ${d}.`,
     cta: 'Book now',
     unsub: 'Stop receiving promotions from this provider',
@@ -96,8 +97,8 @@ const TEXTS: Record<
   it: {
     subject: (p) => `${p} ha uno sconto per te`,
     hello: (n) => `Ciao ${n},`,
-    body: (p, s, pct) =>
-      `<strong>${p}</strong> ha appena lanciato <strong>−${pct}%</strong> su «${s}».`,
+    body: (p, s, off) =>
+      `<strong>${p}</strong> ha appena lanciato <strong>${off}</strong> su «${s}».`,
     until: (d) => `Offerta valida fino al ${d}.`,
     cta: 'Prenota ora',
     unsub: 'Non ricevere più le promozioni di questo professionista',
@@ -105,8 +106,8 @@ const TEXTS: Record<
   pt: {
     subject: (p) => `${p} tem um desconto para si`,
     hello: (n) => `Olá ${n},`,
-    body: (p, s, pct) =>
-      `<strong>${p}</strong> acaba de lançar <strong>−${pct}%</strong> em «${s}».`,
+    body: (p, s, off) =>
+      `<strong>${p}</strong> acaba de lançar <strong>${off}</strong> em «${s}».`,
     until: (d) => `Oferta válida até ${d}.`,
     cta: 'Marcar agora',
     unsub: 'Deixar de receber as promoções deste profissional',
@@ -248,6 +249,9 @@ export async function runPromoEmailForService(
       // promo depuis.
       serviceName: (service.name as string) ?? '',
       percent: discount!.percent ?? 0,
+      // Contexte figé : le montant aussi, sinon la vue admin ne saurait pas
+      // distinguer une promo en euros d'une promo sans valeur.
+      amount: discount!.amount ?? null,
       startsAt: discount!.startsAt ?? null,
       endsAt: discount!.endsAt ?? null,
       // 'pending' tant que la boucle d'envoi n'a rien conclu. Cet état
@@ -270,7 +274,18 @@ export async function runPromoEmailForService(
   const businessName = (provider.businessName as string) ?? '';
   const slug = (provider.slug as string) ?? null;
   const serviceName = (service.name as string) ?? '';
-  const percent = discount!.percent!;
+  // Libellé de la remise, mis en forme UNE fois pour l'email et le journal.
+  // `Intl` gère l'espace insécable et la virgule décimale selon la langue.
+  const isAmount = (discount!.amount ?? 0) > 0;
+  const offLabel = (locale: string) =>
+    isAmount
+      ? `−${new Intl.NumberFormat(locale, {
+          style: 'currency',
+          currency: 'EUR',
+          minimumFractionDigits: discount!.amount! % 100 === 0 ? 0 : 2,
+          maximumFractionDigits: 2,
+        }).format(discount!.amount! / 100)}`
+      : `−${discount!.percent} %`;
   const bookUrl = slug ? `${APP_URL}/p/${slug}` : APP_URL;
 
   // Qui a effectivement été servi — pour que la vue admin distingue un
@@ -296,7 +311,7 @@ export async function runPromoEmailForService(
     const unsubUrl = `${APP_URL}/api/loyalty/promo-unsubscribe?d=${encodeURIComponent(doc.id)}&t=${token}`;
     const html = `
         <p style="font-size:16px;color:#111827;">${t.hello((c.name as string) || '')}</p>
-        <p style="font-size:15px;color:#374151;line-height:1.6;">${t.body(businessName, serviceName, percent)}</p>
+        <p style="font-size:15px;color:#374151;line-height:1.6;">${t.body(businessName, serviceName, offLabel(l))}</p>
         ${endsAtLabel ? `<p style="font-size:14px;color:#b45309;font-weight:600;">${t.until(endsAtLabel)}</p>` : ''}
         <p style="margin:24px 0;"><a href="${bookUrl}" style="background:#1a6daf;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;">${t.cta}</a></p>
         <p style="font-size:12px;color:#9ca3af;margin-top:28px;"><a href="${unsubUrl}" style="color:#9ca3af;">${t.unsub}</a></p>
@@ -329,7 +344,7 @@ export async function runPromoEmailForService(
   );
 
   console.log(
-    `[promoEmail] ${providerId}/${serviceId}: ${sent}/${recipients.length} emails envoyés (${serviceName} −${percent}%)`,
+    `[promoEmail] ${providerId}/${serviceId}: ${sent}/${recipients.length} emails envoyés (${serviceName} ${offLabel('fr-FR')})`,
   );
   return status;
 }

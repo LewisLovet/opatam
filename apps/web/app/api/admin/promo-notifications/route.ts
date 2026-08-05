@@ -34,7 +34,10 @@ export interface PromoNotificationRow {
   businessName: string;
   serviceId: string;
   serviceName: string;
+  /** Remise figée à l'envoi : pourcentage, ou 0 si la promo était en euros. */
   percent: number;
+  /** Montant en centimes, null pour une promo en pourcentage. */
+  amount: number | null;
   startsAt: string | null;
   endsAt: string | null;
   status: PromoNotificationStatus;
@@ -108,6 +111,7 @@ export async function GET(request: NextRequest) {
             serviceId: (l.serviceId as string) ?? d.id,
             serviceName: (l.serviceName as string) ?? '—',
             percent: (l.percent as number | undefined) ?? 0,
+            amount: (l.amount as number | null | undefined) ?? null,
             startsAt: (l.startsAt as string | null) ?? null,
             endsAt: (l.endsAt as string | null) ?? null,
             status: ((l.status as PromoNotificationStatus | undefined) ?? 'pending'),

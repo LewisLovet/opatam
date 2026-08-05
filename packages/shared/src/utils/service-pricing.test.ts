@@ -13,6 +13,8 @@ import {
   getServiceMinDuration,
   hasActivePromoFromWindows,
 } from './service-pricing';
+import type { ServiceSelections } from './service-pricing';
+import type { Service } from '../types';
 import { createServiceSchema } from '../schemas/service.schema';
 
 /** Prestation longue type « box braids » : la combinaison la PLUS COURTE
@@ -117,8 +119,13 @@ describe('createServiceSchema — durée', () => {
 
 // ─── Promotions en montant fixe ──────────────────────────────────────────
 
-/** Prestation à variations : « Coupe » 30 € ou 45 €, option « Soin » +10 €. */
-const promoService = {
+/** Prestation à variations : « Coupe » 30 € ou 45 €, option « Soin » +10 €.
+ *  Typée explicitement : les tests la SPREADENT pour lui greffer une promo,
+ *  ce qu'un `as never` interdit. */
+const promoService: Pick<
+  Service,
+  'price' | 'duration' | 'variations' | 'options' | 'discount'
+> = {
   price: 0,
   duration: 60,
   variations: [
@@ -141,9 +148,10 @@ const promoService = {
       nestedInfoFields: [],
     },
   ],
-} as never;
+  discount: null,
+};
 
-const pick = (variationOption: string, addOn = false) => ({
+const pick = (variationOption: string, addOn = false): ServiceSelections => ({
   variations: { v1: variationOption },
   options: addOn ? { a1: { nestedVariations: {}, infoValues: {} } } : {},
   infoValues: {},
@@ -239,14 +247,14 @@ describe('computeDiscountedTotal — montant fixe', () => {
 
 describe('getDiscountedMinPrice — montant fixe', () => {
   it('remise sur la combinaison la moins chère', () => {
-    const r = getDiscountedMinPrice({ ...promoService, discount: { amount: 1000 } } as never);
+    const r = getDiscountedMinPrice({ ...promoService, discount: { amount: 1000 } });
     expect(r.original).toBe(3000);
     expect(r.price).toBe(2000);
     expect(r.discountAmount).toBe(1000);
   });
 
   it('promo boutique appliquée à défaut de promo prestation', () => {
-    const r = getDiscountedMinPrice({ ...promoService, discount: null } as never, {
+    const r = getDiscountedMinPrice({ ...promoService, discount: null }, {
       amount: 500,
     });
     expect(r.price).toBe(2500);
@@ -254,7 +262,7 @@ describe('getDiscountedMinPrice — montant fixe', () => {
 
   it('la promo de la prestation prime sur celle de la boutique', () => {
     const r = getDiscountedMinPrice(
-      { ...promoService, discount: { amount: 1000 } } as never,
+      { ...promoService, discount: { amount: 1000 } },
       { percent: 50 },
     );
     expect(r.price).toBe(2000);
@@ -312,16 +320,21 @@ describe('buildPromoWindows — montant fixe', () => {
 });
 
 describe('formatDiscountBadge', () => {
+  // `Intl` insère une espace fine insécable (U+202F) avant le symbole en
+  // français : on normalise TOUTES les espaces, sinon l'assertion échoue sur
+  // une différence invisible à l'œil.
+  const norm = (v: string | null) => v?.replace(/[\s\u00A0\u202F]+/g, ' ') ?? null;
+
   it('formate un pourcentage', () => {
     expect(formatDiscountBadge({ percent: 20 })).toBe('−20%');
   });
 
   it('formate un montant rond sans décimales', () => {
-    expect(formatDiscountBadge({ amount: 1000 })?.replace(/ | /g, ' ')).toBe('−10 €');
+    expect(norm(formatDiscountBadge({ amount: 1000 }))).toBe('−10 €');
   });
 
   it('garde les centimes quand il y en a', () => {
-    expect(formatDiscountBadge({ amount: 1050 })?.replace(/ | /g, ' ')).toBe('−10,50 €');
+    expect(norm(formatDiscountBadge({ amount: 1050 }))).toBe('−10,50 €');
   });
 
   it('retourne null sans valeur exploitable', () => {

@@ -14,13 +14,18 @@
  *     comme future.
  *
  * L'idempotence repose sur une SIGNATURE de l'offre plutôt que sur un
- * booléen : tant que le pourcentage et les dates ne bougent pas, l'email
- * n'est envoyé qu'une fois ; si le pro change son offre, elle redevient
- * notifiable.
+ * booléen : tant que la remise et les dates ne bougent pas, l'email n'est
+ * envoyé qu'une fois ; si le pro change son offre, elle redevient
+ * notifiable. La signature couvre les DEUX formes de remise — sans le
+ * montant, passer de « −20 % » à « −10 € » ne la changerait pas et l'email
+ * ne repartirait jamais.
  */
 
 export interface PromoNotificationInput {
   percent?: number;
+  /** Remise en centimes. Exclusive avec `percent` (miroir de
+   *  ServiceDiscount — functions ne peut pas importer @booking-app/shared). */
+  amount?: number;
   /** Fenêtre d'activité, dates LOCALES au format YYYY-MM-DD (incluses). */
   startsAt?: string | null;
   endsAt?: string | null;
@@ -35,7 +40,17 @@ export interface PromoNotificationInput {
 
 /** Identifie une OFFRE. Deux promos de même signature sont la même offre. */
 export function promoSignature(promo: PromoNotificationInput): string {
-  return `${promo.percent ?? 0}|${promo.startsAt ?? ''}|${promo.endsAt ?? ''}`;
+  return `${promo.percent ?? 0}|${promo.amount ?? 0}|${promo.startsAt ?? ''}|${promo.endsAt ?? ''}`;
+}
+
+/** La promo porte-t-elle une remise exploitable, sous l'une ou l'autre forme ?
+ *  Prédicat de type : il rétrécit aussi `null | undefined` pour les appelants,
+ *  qui enchaînent ensuite sur les autres champs. */
+export function hasPromoValue(
+  promo: PromoNotificationInput | null | undefined,
+): promo is PromoNotificationInput {
+  if (!promo) return false;
+  return (promo.percent ?? 0) > 0 || (promo.amount ?? 0) > 0;
 }
 
 /** Fuseau de repli quand le prestataire n'en déclare pas, ou en déclare un
@@ -73,7 +88,7 @@ export function localToday(now: Date = new Date(), timeZone: string = DEFAULT_TI
 
 /** La promo est-elle active à cette date locale ? Bornes incluses. */
 export function isPromoActiveOn(promo: PromoNotificationInput, today: string): boolean {
-  if (!promo.percent) return false;
+  if (!hasPromoValue(promo)) return false;
   if (promo.startsAt && promo.startsAt > today) return false;
   if (promo.endsAt && promo.endsAt < today) return false;
   return true;
@@ -95,7 +110,7 @@ export type PromoDecision =
 export function promoPreCheck(
   promo: PromoNotificationInput | null | undefined,
 ): { send: false; reason: 'no-promo' | 'not-requested' } | null {
-  if (!promo?.percent) return { send: false, reason: 'no-promo' };
+  if (!hasPromoValue(promo)) return { send: false, reason: 'no-promo' };
   if (promo.notifyLoyaltyClients !== true) return { send: false, reason: 'not-requested' };
   return null;
 }
@@ -115,7 +130,7 @@ export function decidePromoNotification(
   promo: PromoNotificationInput | null | undefined,
   today: string,
 ): PromoDecision {
-  if (!promo?.percent) return { send: false, reason: 'no-promo' };
+  if (!hasPromoValue(promo)) return { send: false, reason: 'no-promo' };
   if (promo.notifyLoyaltyClients !== true) return { send: false, reason: 'not-requested' };
   if (!isPromoActiveOn(promo, today)) return { send: false, reason: 'not-active' };
   const signature = promoSignature(promo);

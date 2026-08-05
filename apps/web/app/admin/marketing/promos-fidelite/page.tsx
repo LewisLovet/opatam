@@ -67,6 +67,19 @@ function formatPeriod(startsAt: string | null, endsAt: string | null): string {
   return 'sans limite';
 }
 
+/** Remise telle qu'elle est partie : « −20 % » ou « −10 € ». Le journal fige
+ *  les deux champs, l'un des deux seulement étant renseigné. */
+function formatOff(row: { percent: number; amount: number | null }): string {
+  if (row.amount != null && row.amount > 0) {
+    return `−${new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: row.amount % 100 === 0 ? 0 : 2,
+    }).format(row.amount / 100)}`;
+  }
+  return `−${row.percent} %`;
+}
+
 export default function PromoNotificationsPage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<PromoNotificationRow[]>([]);
@@ -169,7 +182,7 @@ export default function PromoNotificationsPage() {
                     <td className="px-4 py-3 text-gray-900 dark:text-white">{r.businessName}</td>
                     <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{r.serviceName}</td>
                     <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                      <span className="font-semibold">−{r.percent}&nbsp;%</span>
+                      <span className="font-semibold">{formatOff(r)}</span>
                       <span className="block text-xs text-gray-500 dark:text-gray-400">
                         {formatPeriod(r.startsAt, r.endsAt)}
                       </span>
@@ -228,7 +241,7 @@ export default function PromoNotificationsPage() {
                       {r.businessName}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                      {r.serviceName} · −{r.percent}&nbsp;%
+                      {r.serviceName} · {formatOff(r)}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {formatPeriod(r.startsAt, r.endsAt)}
