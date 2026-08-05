@@ -5,6 +5,9 @@ node_modules
 # Build outputs
 dist
 .next
+# Répertoires de build de vérification, horodatés : `.next` ne les couvre pas.
+# 1 Go et 1192 fichiers ont été committés par accident faute de cette ligne.
+.next-prod-build-*
 .expo
 *.tsbuildinfo
 
@@ -44,6 +47,7 @@ pubsub-debug.log
 
 # Testing
 coverage
+reports
 
 # Logs
 *.log
