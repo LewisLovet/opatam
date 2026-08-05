@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ArticleCardData } from '@/app/blog/components/ArticleCard';
+import { YouTubeThumbnail } from '@/app/blog/components/YouTubeThumbnail';
 import s from './v2.module.css';
 import { HeroV2 } from './HeroV2';
 import { VideoTestimonials, type VideoTestimonial } from './VideoTestimonials';
@@ -138,100 +139,40 @@ function WhatChanges() {
         <Feature
           title="Votre agenda se remplit tout seul"
           text="Même à 23 h, même le dimanche. Au réveil, votre planning est prêt."
-        >
-          <div className={s.card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-              <strong style={{ fontSize: 15 }}>Jeudi 30 juillet</strong>
-              <span style={{ fontSize: 13, color: '#8892ab' }}>opatam.com/pro</span>
-            </div>
-            {[
-              ['10:00', 'Manon — Pose gel', '45 €'],
-              ['11:30', 'Jade — Remplissage', '35 €'],
-              ['14:30', 'Léa — Nail art', '8 €'],
-              ['16:00', 'Inès — Dépose', '15 €'],
-            ].map(([time, who, price]) => (
-              <div key={time} className={s.agendaRow}>
-                <span className={s.agendaTime}>{time}</span>
-                <span>{who}</span>
-                <span className={s.agendaPrice}>{price}</span>
-              </div>
-            ))}
-          </div>
-        </Feature>
+          mock={<AgendaMock />}
+        />
 
         <Feature
           flip
           title="Les rappels partent sans vous"
           text="24 h et 2 h avant chaque rendez-vous. Fini les SMS de relance à 22 h."
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <span className={s.pill}>
-              <span className={s.dot} />
-              <span>
-                <strong>Rappel envoyé à Manon</strong>
-                <br />
-                <span style={{ color: '#68738d' }}>Pose gel demain à 14:30 — automatiquement</span>
-              </span>
-            </span>
-            <span className={s.pill} style={{ marginLeft: 28 }}>
-              <span className={s.dot} />
-              <span>
-                <strong>Rappel envoyé à Jade</strong>
-                <br />
-                <span style={{ color: '#68738d' }}>Remplissage dans 2 h — dernier rappel</span>
-              </span>
-            </span>
-            <span className={s.pill}>
-              <span className={s.dot} />
-              <span>
-                <strong>Léa a confirmé</strong>
-                <br />
-                <span style={{ color: '#68738d' }}>Aucun rendez-vous manqué cette semaine</span>
-              </span>
-            </span>
-          </div>
-        </Feature>
+          mock={<RemindersMock />}
+        />
 
         <Feature
           title="Toute l'équipe synchronisée"
           text="Chaque membre a son agenda et ses prestations. Vous gardez la vue d'ensemble."
-        >
-          <div className={s.card}>
-            {[
-              ['MD', 'Marie D. — coiffeuse', '6 RDV aujourd’hui'],
-              ['JK', 'Julie K. — coloriste', '4 RDV aujourd’hui'],
-              ['TR', 'Thomas R. — barbier', '5 RDV aujourd’hui'],
-            ].map(([initials, who, count]) => (
-              <div key={initials} className={s.agendaRow}>
-                <span
-                  className={s.avatar}
-                  style={{ width: 36, height: 36, fontSize: 13, background: '#233D85', color: '#fff' }}
-                >
-                  {initials}
-                </span>
-                <span>
-                  <strong>{who}</strong>
-                  <br />
-                  <span style={{ color: '#68738d', fontSize: 13 }}>{count}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </Feature>
+          mock={<TeamMock />}
+        />
       </div>
     </section>
   );
 }
 
+/**
+ * Une maquette dont le CONTENU se construit à l'entrée dans le viewport.
+ * `playing` est posé une fois révélé : c'est lui qui déclenche les
+ * animations internes décrites dans le module CSS.
+ */
 function Feature({
   title,
   text,
-  children,
+  mock,
   flip = false,
 }: {
   title: string;
   text: string;
-  children: React.ReactNode;
+  mock: React.ReactNode;
   flip?: boolean;
 }) {
   const { ref, shown } = useReveal<HTMLDivElement>();
@@ -244,9 +185,112 @@ function Feature({
         <h3 className={s.featureTitle}>{title}</h3>
         <p className={s.featureText}>{text}</p>
       </div>
-      <div>{children}</div>
+      <div className={shown ? s.playing : undefined}>{mock}</div>
     </div>
   );
+}
+
+/** L'agenda se remplit : les rendez-vous tombent un à un, le compteur suit,
+ *  et la barre de remplissage de la journée progresse. */
+function AgendaMock() {
+  const rows = [
+    ['10:00', 'Manon — Pose gel', '45 €'],
+    ['11:30', 'Jade — Remplissage', '35 €'],
+    ['14:30', 'Léa — Nail art', '8 €'],
+    ['16:00', 'Inès — Dépose', '15 €'],
+  ];
+  return (
+    <div className={s.card}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <strong style={{ fontSize: 15 }}>Jeudi 30 juillet</strong>
+        <span style={{ fontSize: 13, color: '#8892ab' }}>
+          <span className={s.dayCount}>
+            <CountUpInline to={rows.length} />
+          </span>{' '}
+          rendez-vous
+        </span>
+      </div>
+      <div className={s.dayBar}>
+        <span className={s.dayBarFill} style={{ ['--fill' as string]: '78%' }} />
+      </div>
+      <div style={{ marginTop: 8 }}>
+        {rows.map(([time, who, price], i) => (
+          <div
+            key={time}
+            className={`${s.agendaRow} ${s.fillItem}`}
+            style={{ ['--i' as string]: i }}
+          >
+            <span className={s.agendaTime}>{time}</span>
+            <span>{who}</span>
+            <span className={s.agendaPrice}>{price}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RemindersMock() {
+  const items = [
+    ['Rappel envoyé à Manon', 'Pose gel demain à 14:30 — automatiquement'],
+    ['Rappel envoyé à Jade', 'Remplissage dans 2 h — dernier rappel'],
+    ['Léa a confirmé', 'Aucun rendez-vous manqué cette semaine'],
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {items.map(([title, sub], i) => (
+        <span
+          key={title}
+          className={`${s.pill} ${s.fillItem}`}
+          style={{ ['--i' as string]: i, marginLeft: i === 1 ? 28 : 0 }}
+        >
+          <span className={s.dot} />
+          <span>
+            <strong>{title}</strong>
+            <br />
+            <span style={{ color: '#68738d' }}>{sub}</span>
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function TeamMock() {
+  const members = [
+    ['MD', 'Marie D. — coiffeuse', '6 RDV aujourd’hui'],
+    ['JK', 'Julie K. — coloriste', '4 RDV aujourd’hui'],
+    ['TR', 'Thomas R. — barbier', '5 RDV aujourd’hui'],
+  ];
+  return (
+    <div className={s.card}>
+      {members.map(([initials, who, count], i) => (
+        <div
+          key={initials}
+          className={`${s.agendaRow} ${s.fillItem}`}
+          style={{ ['--i' as string]: i }}
+        >
+          <span
+            className={s.avatar}
+            style={{ width: 36, height: 36, fontSize: 13, background: '#233D85', color: '#fff' }}
+          >
+            {initials}
+          </span>
+          <span>
+            <strong>{who}</strong>
+            <br />
+            <span style={{ color: '#68738d', fontSize: 13 }}>{count}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Petit compteur inline, pour le nombre de rendez-vous de la journée. */
+function CountUpInline({ to }: { to: number }) {
+  const { ref, value } = useCountUp(to, 900);
+  return <span ref={ref}>{value}</span>;
 }
 
 /* ── Story Instagram ─────────────────────────────────────────────── */
@@ -267,13 +311,13 @@ function StorySection() {
           </h2>
           <p className={s.secLead}>
             Un trou dans votre après-midi ? L&apos;application produit la story, avec
-            vos disponibilités réelles et votre QR code. Vous n&apos;avez qu&apos;à la publier.
+            vos disponibilités réelles et votre QR code. Vous n&apos;avez qu&apos;à la
+            publier.
           </p>
         </div>
 
         <div className={s.storyGrid}>
-          {/* Les VRAIES images générées par l'app, déjà présentes dans
-              /public et jusqu'ici inutilisées sur cette page. */}
+          {/* Les VRAIES images générées par l'app, déjà présentes dans /public. */}
           <div
             ref={shots.ref}
             className={`${s.storyShots} ${s.revealScale} ${shots.shown ? s.revealed : ''}`}
@@ -298,7 +342,7 @@ function StorySection() {
             </div>
           </div>
 
-          <div className={`${s.stepsCol} ${s.stagger}`}>
+          <div className={s.stepsCol}>
             {[
               ['01', 'Un trou ce mardi à 14 h.'],
               ['02', 'Un geste — la story est générée avec vos dispos et votre QR code.'],
@@ -390,7 +434,12 @@ function Tutorials({ tutorials }: { tutorials: ArticleCardData[] }) {
           {tutorials.map((t) => (
             <Link key={t.slug} href={`/blog/${t.slug}`} className={s.tuto}>
               <div className={s.tutoCover}>
-                {(t.videoCoverURL || t.coverImageURL) && (
+                {/* Tes tutoriels n'ont PAS de couverture : seulement une URL
+                    YouTube. Sans ce repli, les cartes étaient vides — c'est
+                    exactement ce que tu voyais. `YouTubeThumbnail` tente la
+                    vignette haute définition puis retombe sur la standard,
+                    qui existe toujours. */}
+                {t.videoCoverURL || t.coverImageURL ? (
                   <Image
                     src={(t.videoCoverURL || t.coverImageURL) as string}
                     alt=""
@@ -398,6 +447,18 @@ function Tutorials({ tutorials }: { tutorials: ArticleCardData[] }) {
                     height={360}
                     sizes="(min-width: 820px) 33vw, 100vw"
                   />
+                ) : (
+                  <YouTubeThumbnail
+                    videoUrl={t.videoUrl}
+                    sizes="(min-width: 820px) 33vw, 100vw"
+                  />
+                )}
+                {t.videoUrl && (
+                  <span className={s.tutoPlay}>
+                    <svg width="16" height="18" viewBox="0 0 20 22" fill="#101B38" aria-hidden="true">
+                      <path d="M19 9.27a2 2 0 0 1 0 3.46L3 21.99a2 2 0 0 1-3-1.73V1.74A2 2 0 0 1 3 .01l16 9.26Z" />
+                    </svg>
+                  </span>
                 )}
                 {t.videoUrl && <span className={s.tutoTag}>Vidéo</span>}
               </div>

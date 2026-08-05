@@ -230,20 +230,18 @@
 /* ── Héro ───────────────────────────────────────────────────────── */
 
 /*
- * Le héro reste ÉPINGLÉ pendant que le téléphone déroule son scénario.
- * La hauteur du rail (300vh) donne au visiteur le temps de voir les quatre
- * écrans sans que le défilement paraisse bloqué.
+ * Héro de hauteur normale. Le rail de 300 vh et l'épinglage ont disparu avec
+ * le pilotage par défilement : le téléphone joue seul, la page se parcourt
+ * comme n'importe quelle autre.
  */
 .heroRail {
   position: relative;
-  height: 300vh;
   background: linear-gradient(160deg, var(--navy) 0%, var(--deep) 100%);
 }
 
-.heroSticky {
-  position: sticky;
-  top: 0;
-  min-height: 100vh;
+.heroInner {
+  position: relative;
+  min-height: 92vh;
   display: flex;
   align-items: center;
   overflow: hidden;
@@ -359,16 +357,22 @@
  * lentement. Le flottement démarre APRÈS l'arrivée (delay = durée de
  * l'entrée), sinon les deux animations se combattent sur `transform`.
  */
+/* Entrée volontairement lente : 2 s et une courbe très amortie. À 1,1 s le
+   téléphone « claquait » à l'écran. L'inclinaison de départ est réduite pour
+   la même raison — moins de trajet, plus de douceur. */
 .phoneEnter {
   animation:
-    phoneIn 1.1s cubic-bezier(0.16, 1, 0.3, 1) both,
-    phoneFloat 7s ease-in-out 1.1s infinite;
+    phoneIn 2s cubic-bezier(0.22, 0.9, 0.24, 1) 0.15s both,
+    phoneFloat 8s ease-in-out 2.15s infinite;
 }
 
 @keyframes phoneIn {
   from {
     opacity: 0;
-    transform: translateY(70px) rotateX(14deg) rotateZ(-3deg) scale(0.92);
+    transform: translateY(48px) rotateX(8deg) rotateZ(-1.5deg) scale(0.95);
+  }
+  60% {
+    opacity: 1;
   }
   to {
     opacity: 1;
@@ -1501,4 +1505,142 @@
 
 .storeBtn:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+/* ── Animations INTERNES aux maquettes ──────────────────────────── */
+
+/*
+ * Le contenu des maquettes se construit sous les yeux du visiteur : les
+ * créneaux se remplissent, les lignes d'agenda tombent une à une, les
+ * rappels s'égrènent. C'est ce qui distingue une capture d'écran d'une
+ * démonstration — l'entrée du bloc ne raconte rien, son remplissage si.
+ *
+ * Tout part d'un état « vide » et se joue quand le parent reçoit `.playing`,
+ * posé à l'entrée dans le viewport. Le retard est porté par une variable
+ * `--i` fixée sur chaque enfant, ce qui évite une règle par rang.
+ */
+.fillItem {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.playing .fillItem {
+  animation: fillIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 160ms);
+}
+
+@keyframes fillIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Un créneau qui se réserve : il se remplit puis se fige, sélectionné. */
+.playing .slotBooking {
+  animation: slotBook 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 160ms + 700ms);
+}
+
+@keyframes slotBook {
+  0% {
+    background: #fff;
+    border-color: #e8eaf2;
+    color: var(--ink);
+    transform: scale(1);
+  }
+  55% {
+    transform: scale(1.07);
+  }
+  100% {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+    transform: scale(1);
+  }
+}
+
+/* Barre de progression d'une journée qui se remplit. */
+.dayBar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(16, 27, 56, 0.08);
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.dayBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--navy);
+  width: 0;
+  transition: width 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s;
+}
+
+.playing .dayBarFill {
+  width: var(--fill, 70%);
+}
+
+/* Compteur de rendez-vous du jour, dans l'en-tête de la maquette agenda. */
+.dayCount {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--display);
+  font-weight: 700;
+  color: var(--navy);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fillItem,
+  .playing .fillItem,
+  .playing .slotBooking {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .dayBarFill {
+    transition: none;
+    width: var(--fill, 70%);
+  }
+}
+
+/* Pastille de lecture sur une carte tutoriel — la vignette seule ne dit pas
+   qu'il s'agit d'une vidéo. */
+.tutoPlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  display: grid;
+  place-items: center;
+  padding-left: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.tuto:hover .tutoPlay {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* État APRÈS l'animation : l'écran du diaporama met une demi-seconde à
+   disparaître en fondu. Sans cet état de repli, retirer `.playing` ferait
+   ré-effondrer les créneaux à opacité 0 pendant ce fondu — on verrait la
+   liste se vider juste avant de partir. */
+.filled .fillItem {
+  opacity: 1;
+  transform: none;
+}
+
+.filled .slotBooking {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
 }

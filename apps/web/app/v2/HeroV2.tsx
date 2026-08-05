@@ -1,68 +1,53 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import s from './v2.module.css';
 
 /**
- * Héro épinglé : le téléphone déroule le parcours de réservation pendant
- * que le visiteur défile.
+ * Héro : le téléphone déroule le parcours de réservation TOUT SEUL.
  *
- * Le rail mesure 300 vh et l'intérieur est `sticky`. La progression dans ce
- * rail pilote l'écran affiché — le visiteur ne perd jamais la main sur son
- * défilement, contrairement à un vrai scroll-jacking, mais il voit les
- * quatre étapes sans avoir à cliquer.
+ * La version précédente liait l'écran affiché à la position de défilement,
+ * sur un rail de 300 vh. Deux défauts : le visiteur qui défile vite voyait
+ * les écrans sauter, et celui qui ne défilait pas ne voyait rien. Un
+ * diaporama minuté est prévisible — il joue le même scénario pour tout le
+ * monde, à la même vitesse.
  *
- * La position est lue dans un `requestAnimationFrame` : l'événement de
- * défilement se déclenche bien plus souvent qu'une image, et recalculer à
- * chaque déclenchement ferait tomber le taux de rafraîchissement.
+ * Le diaporama s'arrête quand l'onglet passe en arrière-plan : animer une
+ * page qu'on ne regarde pas ne fait que consommer de la batterie.
  */
 const SCREENS = 4;
+const SCREEN_MS = 3200;
 
 export function HeroV2() {
-  const railRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    const rail = railRef.current;
-    if (!rail) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    let raf = 0;
-    let queued = false;
-
-    const measure = () => {
-      queued = false;
-      const rect = rail.getBoundingClientRect();
-      // Course utile : du moment où le rail est en haut jusqu'à sa fin.
-      const travel = rail.offsetHeight - window.innerHeight;
-      if (travel <= 0) return;
-      const progress = Math.min(1, Math.max(0, -rect.top / travel));
-      // Le dernier écran occupe la fin du rail : on répartit la course sur
-      // SCREENS segments plutôt que SCREENS - 1, sinon l'écran final
-      // n'apparaît qu'au tout dernier pixel.
-      const next = Math.min(SCREENS - 1, Math.floor(progress * SCREENS));
-      setStep((prev) => (prev === next ? prev : next));
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(() => setStep((p) => (p + 1) % SCREENS), SCREEN_MS);
+    };
+    const stop = () => {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
     };
 
-    const onScroll = () => {
-      if (queued) return;
-      queued = true;
-      raf = requestAnimationFrame(measure);
-    };
-
-    measure();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    const onVisibility = () => (document.hidden ? stop() : start());
+    start();
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 
   return (
-    <div className={s.heroRail} ref={railRef}>
-      <div className={s.heroSticky}>
+    <div className={s.heroRail}>
+      <div className={s.heroInner}>
         {/*
           La vidéo d'ambiance reste la même que l'accueil actuel — elle est
           déjà encodée, mise en cache par le CDN, et sert ici de texture
@@ -165,11 +150,18 @@ function Phone({ step }: { step: number }) {
         <Head />
         <div className={s.screenBody}>
           <span className={s.label}>Jeudi — créneaux libres</span>
-          <div className={s.slots}>
+          {/* Les créneaux se remplissent un à un : c'est le geste que la
+              cliente fait, pas une capture figée. */}
+          <div
+            className={`${s.slots} ${step === 1 ? s.playing : step > 1 ? s.filled : ''}`}
+          >
             {['9:00', '10:30', '12:00', '14:30', '16:00', '17:30'].map((h, i) => (
               <div
                 key={h}
-                className={`${s.slot} ${i === 0 || i === 2 || i === 5 ? s.slotOff : ''}`}
+                className={`${s.slot} ${s.fillItem} ${
+                  i === 0 || i === 2 || i === 5 ? s.slotOff : ''
+                }`}
+                style={{ ['--i' as string]: i }}
               >
                 {h}
               </div>
@@ -184,13 +176,20 @@ function Phone({ step }: { step: number }) {
         <Head />
         <div className={s.screenBody}>
           <span className={s.label}>Jeudi — créneaux libres</span>
-          <div className={s.slots}>
+          <div
+            className={`${s.slots} ${step === 2 ? s.playing : step > 2 ? s.filled : ''}`}
+          >
             {['9:00', '10:30', '12:00', '14:30', '16:00', '17:30'].map((h, i) => (
               <div
                 key={h}
                 className={`${s.slot} ${
-                  i === 3 ? s.slotOn : i === 0 || i === 2 || i === 5 ? s.slotOff : ''
+                  i === 3
+                    ? `${s.fillItem} ${s.slotBooking}`
+                    : i === 0 || i === 2 || i === 5
+                      ? s.slotOff
+                      : ''
                 }`}
+                style={{ ['--i' as string]: 0 }}
               >
                 {h}
               </div>
