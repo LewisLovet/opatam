@@ -2493,9 +2493,9 @@
       "pickerTitleEnd": "Promo end",
       "clear": "Clear",
       "ok": "OK",
-      "badgeActive": "Promo −{{percent}}%",
-      "badgeActiveGlobal": "Promo −{{percent}}% · global",
-      "badgeInactive": "Promo −{{percent}}% · inactive",
+      "badgeActive": "Promo {{off}}",
+      "badgeActiveGlobal": "Promo {{off}} · shop-wide",
+      "badgeInactive": "Promo {{off}} · inactive",
       "preview": {
         "title": "Price preview",
         "tapHint": "Tap a line to include or exclude it from the promo.",
@@ -2632,7 +2632,11 @@
         "leave": "Leave / absence",
         "training": "In training",
         "other": "Other…"
-      }
+      },
+      "sheetTitle": "Availability",
+      "makeAvailable": "Make bookable again",
+      "toastAvailable": "Service bookable again",
+      "toastUnavailable": "Service marked unavailable"
     },
     "unavailableBadge": "Unavailable"
   },

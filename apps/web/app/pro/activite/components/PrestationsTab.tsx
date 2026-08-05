@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
-import { catalogService, memberService } from '@booking-app/firebase';
+import { catalogService, memberService, serviceRepository } from '@booking-app/firebase';
+import type { ServiceUnavailableReason } from '@booking-app/shared';
 import { Plus, FolderPlus, Pencil, ChevronRight, Tag, Percent, Gift, Lock, Loader2 } from 'lucide-react';
 import { ServiceCard } from './ServiceCard';
 import { CategoryModal, type CategoryFormData } from './CategoryModal';
@@ -93,6 +94,41 @@ export function PrestationsTab() {
   };
 
   // Toggle active status
+  /**
+   * Suspend ou rouvre une prestation DEPUIS LA LISTE, sans ouvrir sa fiche.
+   *
+   * `reason: null` la remet en ligne. La note libre n'est pas gérée ici : elle
+   * demande un champ de saisie, donc l'éditeur — le menu y renvoie pour
+   * « Autre ».
+   */
+  const handleSetAvailability = async (
+    serviceId: string,
+    reason: ServiceUnavailableReason | null,
+  ) => {
+    if (!provider) return;
+    const previous = services.find((s) => s.id === serviceId);
+    const isAvailable = reason === null;
+    setServices((prev) =>
+      prev.map((s) =>
+        s.id === serviceId
+          ? { ...s, isAvailable, unavailableReason: reason, unavailableNote: null }
+          : s,
+      ),
+    );
+    try {
+      await serviceRepository.toggleAvailable(provider.id, serviceId, isAvailable, { reason });
+      toast.success(
+        isAvailable ? 'Prestation à nouveau réservable' : 'Prestation marquée indisponible',
+      );
+    } catch {
+      // Retour à l'état précédent plutôt qu'un affichage optimiste qui ment.
+      if (previous) {
+        setServices((prev) => prev.map((s) => (s.id === serviceId ? previous : s)));
+      }
+      toast.error('Une erreur est survenue');
+    }
+  };
+
   const handleToggleActive = async (serviceId: string, isActive: boolean) => {
     if (!provider) return;
 
@@ -229,6 +265,7 @@ export function PrestationsTab() {
           members={activeMembers}
           allMembers={activeMembers}
           onToggleActive={handleToggleActive}
+          onSetAvailability={handleSetAvailability}
           onClick={() => handleEdit(service)}
           onMoveUp={() => handleMove(service.id, 'up')}
           onMoveDown={() => handleMove(service.id, 'down')}

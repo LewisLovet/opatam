@@ -49,6 +49,7 @@ import {
   getActiveDiscount,
   buildServiceDiscountPreview,
   isAmountDiscount,
+  formatDiscountBadge,
   SERVICE_UNAVAILABLE_REASONS,
   type ServiceUnavailableReason,
   resolveExcludedIds,
@@ -659,6 +660,9 @@ export default function ServicesScreen() {
   }, [previewBreath]);
   // Service whose "Déplacer vers une catégorie" sheet is open (null = closed).
   const [moveTarget, setMoveTarget] = useState<WithId<Service> | null>(null);
+  /** Prestation dont on règle la disponibilité depuis la LISTE, sans ouvrir
+   *  sa fiche : deux touchers au lieu d'un aller-retour dans l'éditeur. */
+  const [availabilityTarget, setAvailabilityTarget] = useState<WithId<Service> | null>(null);
 
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -1065,6 +1069,48 @@ export default function ServicesScreen() {
     }
   };
 
+  /**
+   * Suspend ou rouvre une prestation depuis la liste.
+   *
+   * `reason: null` remet la prestation en ligne. La note n'est jamais écrite
+   * ici : le texte libre demande un clavier, donc l'éditeur — la feuille
+   * renvoie vers lui pour « Autre ».
+   */
+  const setAvailability = async (
+    service: WithId<Service>,
+    reason: ServiceUnavailableReason | null,
+  ) => {
+    setAvailabilityTarget(null);
+    if (!providerId) return;
+    const isAvailable = reason === null;
+    // Optimiste : la pastille bouge tout de suite, la liste ne clignote pas.
+    setServices((prev) =>
+      prev.map((x) =>
+        x.id === service.id
+          ? { ...x, isAvailable, unavailableReason: reason, unavailableNote: null }
+          : x,
+      ),
+    );
+    try {
+      await serviceRepository.toggleAvailable(providerId, service.id, isAvailable, {
+        reason,
+      });
+      showToast({
+        variant: 'success',
+        message: isAvailable
+          ? t('proServices.bookable.toastAvailable')
+          : t('proServices.bookable.toastUnavailable'),
+      });
+    } catch {
+      // Retour à l'état précédent : mieux vaut une pastille juste qu'un
+      // affichage optimiste qui ment.
+      setServices((prev) =>
+        prev.map((x) => (x.id === service.id ? service : x)),
+      );
+      showToast({ variant: 'error', message: t('common.error') });
+    }
+  };
+
   const handleToggleActive = async (service: WithId<Service>) => {
     if (!providerId) return;
     try {
@@ -1219,9 +1265,9 @@ export default function ServicesScreen() {
                     >
                       {effectiveActive
                         ? fromGlobal
-                          ? t('proServices.promo.badgeActiveGlobal', { percent: effectiveActive.percent })
-                          : t('proServices.promo.badgeActive', { percent: effectiveActive.percent })
-                        : t('proServices.promo.badgeInactive', { percent: service.discount!.percent })}
+                          ? t('proServices.promo.badgeActiveGlobal', { off: formatDiscountBadge(effectiveActive) })
+                          : t('proServices.promo.badgeActive', { off: formatDiscountBadge(effectiveActive) })
+                        : t('proServices.promo.badgeInactive', { off: formatDiscountBadge(service.discount) })}
                     </Text>
                   </View>
                 </View>
@@ -1264,6 +1310,17 @@ export default function ServicesScreen() {
                   <Ionicons name="folder-outline" size={19} color={colors.textMuted} />
                 </Pressable>
               )}
+              <Pressable
+                onPress={(e) => { e.stopPropagation(); setAvailabilityTarget(service); }}
+                hitSlop={12}
+                style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 4 })}
+              >
+                <Ionicons
+                  name={service.isAvailable === false ? 'pause-circle' : 'pause-circle-outline'}
+                  size={19}
+                  color={service.isAvailable === false ? '#B45309' : colors.textMuted}
+                />
+              </Pressable>
               <Pressable
                 onPress={(e) => { e.stopPropagation(); handleDelete(service); }}
                 hitSlop={12}
@@ -2740,6 +2797,134 @@ export default function ServicesScreen() {
             />
           )}
         </View>
+      </Modal>
+
+      {/* ── Disponibilité rapide, depuis la liste ── */}
+      <Modal
+        visible={availabilityTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvailabilityTarget(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setAvailabilityTarget(null)}>
+          <Pressable
+            style={[
+              styles.modalContent,
+              {
+                maxHeight: '70%',
+                backgroundColor: colors.background,
+                borderTopLeftRadius: radius.xl,
+                borderTopRightRadius: radius.xl,
+              },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+              <View style={{ flex: 1 }}>
+                <Text variant="h3">{t('proServices.bookable.sheetTitle')}</Text>
+                {availabilityTarget && (
+                  <Text variant="caption" color="textSecondary" numberOfLines={1}>
+                    {availabilityTarget.name}
+                  </Text>
+                )}
+              </View>
+              <Pressable onPress={() => setAvailabilityTarget(null)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xs }}>
+              {/* Rouvrir : en tête, c'est le geste attendu quand la
+                  prestation est déjà suspendue. */}
+              {availabilityTarget?.isAvailable === false && (
+                <Pressable
+                  onPress={() => availabilityTarget && setAvailability(availabilityTarget, null)}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.sm,
+                    paddingVertical: spacing.md,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: radius.lg,
+                    backgroundColor: pressed ? colors.surfaceSecondary : colors.primaryLight,
+                  })}
+                >
+                  <Ionicons name="play-circle" size={18} color={colors.primary} />
+                  <Text variant="body" style={{ flex: 1, fontWeight: '700', color: colors.primary }}>
+                    {t('proServices.bookable.makeAvailable')}
+                  </Text>
+                </Pressable>
+              )}
+
+              <Text variant="caption" color="textMuted" style={{ marginTop: spacing.xs }}>
+                {t('proServices.bookable.reasonLabel')}
+              </Text>
+
+              {SERVICE_UNAVAILABLE_REASONS.filter((r) => r !== 'other').map((reason) => {
+                const current =
+                  availabilityTarget?.isAvailable === false &&
+                  availabilityTarget?.unavailableReason === reason;
+                return (
+                  <Pressable
+                    key={reason}
+                    onPress={() => availabilityTarget && setAvailability(availabilityTarget, reason)}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                      paddingVertical: spacing.md,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: radius.lg,
+                      backgroundColor: current
+                        ? colors.primaryLight
+                        : pressed
+                          ? colors.surfaceSecondary
+                          : 'transparent',
+                    })}
+                  >
+                    <Ionicons name="pause-circle-outline" size={18} color="#B45309" />
+                    <Text
+                      variant="body"
+                      style={{
+                        flex: 1,
+                        fontWeight: current ? '700' : '400',
+                        color: current ? colors.primary : colors.text,
+                      }}
+                    >
+                      {t(`proServices.bookable.reasons.${reason}`)}
+                    </Text>
+                    {current && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                  </Pressable>
+                );
+              })}
+
+              {/* « Autre » demande un texte libre, donc un clavier : on
+                  renvoie vers la fiche plutôt que d'enregistrer un motif
+                  sans explication. */}
+              <Pressable
+                onPress={() => {
+                  const target = availabilityTarget;
+                  setAvailabilityTarget(null);
+                  if (target) openEdit(target);
+                }}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.sm,
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.lg,
+                  backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+                })}
+              >
+                <Ionicons name="create-outline" size={18} color={colors.textMuted} />
+                <Text variant="body" style={{ flex: 1, color: colors.text }}>
+                  {t('proServices.bookable.reasons.other')}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+              </Pressable>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* ── Déplacer vers une catégorie ── */}

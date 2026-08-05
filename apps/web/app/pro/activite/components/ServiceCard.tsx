@@ -3,14 +3,20 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Badge, Switch } from '@/components/ui';
-import { ChevronUp, ChevronDown, Clock, Euro, Tag } from 'lucide-react';
-import type { Service, Member, ServiceDiscount } from '@booking-app/shared';
+import { ChevronUp, ChevronDown, Clock, Euro, PauseCircle, Tag } from 'lucide-react';
+import type {
+  Service,
+  Member,
+  ServiceDiscount,
+  ServiceUnavailableReason,
+} from '@booking-app/shared';
 import {
   resolveDeposit,
   getServiceMinPrice,
   getServiceMinDuration,
   getActiveDiscount,
   formatDiscountBadge,
+  SERVICE_UNAVAILABLE_REASONS,
 } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -20,6 +26,8 @@ interface ServiceCardProps {
   members?: WithId<Member>[];
   allMembers?: WithId<Member>[];
   onToggleActive: (serviceId: string, isActive: boolean) => Promise<void>;
+  /** Suspendre / rouvrir depuis la liste. `null` = rendre réservable. */
+  onSetAvailability?: (serviceId: string, reason: ServiceUnavailableReason | null) => Promise<void>;
   onClick: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -96,11 +104,21 @@ function depositBadgeProps(
   };
 }
 
+/** Libellés des motifs — espace pro, en français (voir SectionReservation). */
+const REASON_LABELS: Record<ServiceUnavailableReason, string> = {
+  out_of_stock: 'Rupture de produit',
+  equipment: 'Matériel indisponible',
+  leave: 'Congés / absence',
+  training: 'En formation',
+  other: 'Autre…',
+};
+
 export function ServiceCard({
   service,
   members = [],
   allMembers = [],
   onToggleActive,
+  onSetAvailability,
   onClick,
   onMoveUp,
   onMoveDown,
@@ -119,6 +137,7 @@ export function ServiceCard({
   const isAllMembers = !service.memberIds && allMembers.length > 0;
   const showMembers = allMembers.length > 0;
   const [toggling, setToggling] = useState(false);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
 
   const depositBadge = depositsEnabled ? depositBadgeProps(service, defaultDeposit) : null;
 
@@ -323,6 +342,85 @@ export function ServiceCard({
 
             {/* Status badge (desktop) + Toggle (mobile) */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Suspendre en deux clics, sans ouvrir la fiche : c'est un
+                  geste de tous les jours (rupture, congés), l'éditeur est
+                  fait pour la configuration. */}
+              {onSetAvailability && (
+                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => setAvailabilityOpen((v) => !v)}
+                    title={
+                      unavailable
+                        ? 'Indisponible — cliquez pour rouvrir'
+                        : 'Marquer comme indisponible'
+                    }
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      unavailable
+                        ? 'text-amber-600 bg-amber-100 dark:bg-amber-900/40'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                    aria-label="Disponibilité"
+                  >
+                    <PauseCircle className="w-4 h-4" />
+                  </button>
+
+                  {availabilityOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setAvailabilityOpen(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-1 z-20 w-56 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1">
+                        {unavailable && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAvailabilityOpen(false);
+                              void onSetAvailability(service.id, null);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                          >
+                            Rendre réservable
+                          </button>
+                        )}
+                        <p className="px-3 pt-2 pb-1 text-[11px] uppercase tracking-wide text-gray-400">
+                          Marquer indisponible
+                        </p>
+                        {SERVICE_UNAVAILABLE_REASONS.filter((r) => r !== 'other').map((reason) => (
+                          <button
+                            key={reason}
+                            type="button"
+                            onClick={() => {
+                              setAvailabilityOpen(false);
+                              void onSetAvailability(service.id, reason);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
+                              unavailable && service.unavailableReason === reason
+                                ? 'font-semibold text-amber-700 dark:text-amber-400'
+                                : 'text-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            {REASON_LABELS[reason]}
+                          </button>
+                        ))}
+                        {/* « Autre » demande un texte libre : on ouvre la fiche
+                            plutôt que d'enregistrer un motif sans explication. */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAvailabilityOpen(false);
+                            onClick();
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 mt-1"
+                        >
+                          Autre… (dans la fiche)
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               <Badge variant={service.isActive ? 'success' : 'default'} size="sm" className="hidden sm:inline-flex">
                 {service.isActive ? 'Actif' : 'Inactif'}
               </Badge>

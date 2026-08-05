@@ -2493,9 +2493,9 @@
       "pickerTitleEnd": "Fin de la promo",
       "clear": "Effacer",
       "ok": "OK",
-      "badgeActive": "Promo −{{percent}}%",
-      "badgeActiveGlobal": "Promo −{{percent}}% · globale",
-      "badgeInactive": "Promo −{{percent}}% · inactive",
+      "badgeActive": "Promo {{off}}",
+      "badgeActiveGlobal": "Promo {{off}} · globale",
+      "badgeInactive": "Promo {{off}} · inactive",
       "preview": {
         "title": "Aperçu des prix",
         "tapHint": "Touchez une ligne pour l'inclure ou l'exclure de la promo.",
@@ -2632,7 +2632,11 @@
         "leave": "Congés / absence",
         "training": "En formation",
         "other": "Autre…"
-      }
+      },
+      "sheetTitle": "Disponibilité",
+      "makeAvailable": "Rendre réservable",
+      "toastAvailable": "Prestation à nouveau réservable",
+      "toastUnavailable": "Prestation marquée indisponible"
     },
     "unavailableBadge": "Indisponible"
   },
