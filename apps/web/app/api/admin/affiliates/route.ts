@@ -82,6 +82,15 @@ export async function POST(request: NextRequest) {
         affiliateCode: normalizedCode,
         affiliateName: name,
       },
+      // Versements hebdomadaires : Stripe facture 0,10 € par virement à la
+      // plateforme. Même raison que pour les comptes prestataires, et un
+      // affilié touche ses commissions par à-coups — le quotidien n'a aucun
+      // intérêt pour lui.
+      settings: {
+        payouts: {
+          schedule: { interval: 'weekly', weekly_anchor: 'monday' },
+        },
+      },
     });
 
     // 2. Create Stripe Coupon if discount

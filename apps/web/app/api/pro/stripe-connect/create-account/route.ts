@@ -88,6 +88,25 @@ export async function POST(request: NextRequest) {
           transfers: { requested: true },
         },
         business_type: 'individual',
+        // Versements HEBDOMADAIRES au lieu du quotidien par défaut.
+        //
+        // Stripe facture 0,10 € par virement vers le compte du prestataire, à
+        // la charge de la plateforme. En quotidien, un pro qui encaisse tous
+        // les jours génère une trentaine de virements par mois ; en
+        // hebdomadaire, quatre. Sur juillet, 44 virements ont coûté 4,40 €
+        // pour trois prestataires seulement.
+        //
+        // Le prestataire n'attend PAS plus longtemps : le délai de mise à
+        // disposition (7 jours) est inchangé, ses paiements sont simplement
+        // regroupés en un versement le lundi au lieu d'être éparpillés.
+        //
+        // C'est un DÉFAUT, pas un verrou : un compte Express garde la main sur
+        // ce réglage depuis son propre tableau de bord Stripe.
+        settings: {
+          payouts: {
+            schedule: { interval: 'weekly', weekly_anchor: 'monday', delay_days: 7 },
+          },
+        },
         metadata: {
           providerId: uid,
           businessName: (provider.businessName as string) ?? '',
