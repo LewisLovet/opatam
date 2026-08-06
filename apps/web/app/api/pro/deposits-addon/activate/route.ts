@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripeDev, getDepositsAddonPriceId } from '@/lib/stripe';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { canUseDepositsServer } from '@/lib/feature-flags';
+import { isAccessOverrideActive, isBaseTrialActive } from '@booking-app/shared';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 /**
@@ -81,7 +82,18 @@ export async function POST(request: NextRequest) {
           ? validUntilRaw
           : null;
 
-    if (subStatus === 'trialing') {
+    // Accès offert (comp) : `accessOverride` confère les droits d'un plan
+    // Pro payé et vit hors de `subscription` pour survivre aux webhooks.
+    // Il ouvre le droit d'ACHETER Sérénité, sans rien offrir. Cette route
+    // sert Android : la règle doit rester identique à l'UI web et à la
+    // route de Checkout, sinon les deux plateformes divergent.
+    const overrideActive = isAccessOverrideActive(provider.accessOverride);
+
+    // Essai de base ENCORE EN COURS : acomptes déjà inclus, souscrire n'a
+    // pas de sens. On teste l'essai réel et non le seul statut — un essai
+    // local expire SANS webhook, donc `status` reste 'trialing' longtemps
+    // après la fin, ce qui bloquait la souscription au lieu de l'ouvrir.
+    if (isBaseTrialActive(provider.subscription)) {
       return NextResponse.json(
         {
           error:
@@ -95,7 +107,7 @@ export async function POST(request: NextRequest) {
       subStatus === 'active' &&
       validUntil !== null &&
       validUntil.getTime() > Date.now();
-    if (!baseActive) {
+    if (!baseActive && !overrideActive) {
       return NextResponse.json(
         {
           error:

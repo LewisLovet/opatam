@@ -18,7 +18,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { Input, useToast } from '@/components/ui';
 import { canUseDepositsClient } from '@/lib/feature-flags';
-import { isBaseTrialActive } from '@booking-app/shared';
+import { isAccessOverrideActive, isBaseTrialActive } from '@booking-app/shared';
 import { auth as firebaseAuth } from '@booking-app/firebase';
 
 interface ConnectStatus {
@@ -223,6 +223,20 @@ export function PaymentsSection() {
     baseValidUntil !== null &&
     baseValidUntil.getTime() > Date.now();
 
+  // ── Accès offert (comp) ────────────────────────────────────────
+  // `accessOverride` donne les droits d'un plan Pro payé, et vit
+  // VOLONTAIREMENT hors de `subscription` pour qu'aucun webhook Stripe ne
+  // puisse l'effacer. Toute la plateforme l'honore — sauf, jusqu'ici,
+  // l'éligibilité à Sérénité : un prestataire à qui l'on offrait l'accès
+  // voyait « Votre essai est terminé » et un bouton bleu inerte.
+  //
+  // Règle unique, reprise à l'identique côté serveur dans
+  // /api/pro/deposits-addon/{checkout,activate} : avoir un plan payé OU un
+  // accès offert actif ouvre le droit d'ACHETER Sérénité. Cela ne donne
+  // rien gratuitement — le paiement réel reste requis.
+  const overrideActive = isAccessOverrideActive(provider?.accessOverride);
+  const hasBaseAccessForSerenity = hasPaidSubscription || overrideActive;
+
   const connectActive = status?.status === 'active';
   // Hard gate: Connect must be fully active to subscribe to
   // Sérénité. A pending/restricted Connect account would cause
@@ -230,7 +244,7 @@ export function PaymentsSection() {
   // refusing upfront is more user-friendly than letting them pay
   // 5€/mo for a feature that won't run. Matches the server-side
   // check in /api/pro/deposits-addon/activate.
-  const canToggleAddon = hasPaidSubscription && connectActive;
+  const canToggleAddon = hasBaseAccessForSerenity && connectActive;
   const addonActive = !!provider?.depositsAddonActive;
   // Deposits are INCLUDED during the free base trial (computed at read time —
   // access drops by itself when the trial ends). Subscribing to the paid
@@ -498,6 +512,9 @@ export function PaymentsSection() {
               Encaissez un acompte au moment de la réservation pour réduire les no-shows.
               Annulable à tout moment.
             </p>
+            {/* Reste conditionné au plan PAYÉ, pas à l'accès offert : un
+                prestataire comp dont l'essai de base tourne encore a bien
+                les acomptes inclus gratuitement, le message est exact. */}
             {!hasPaidSubscription && trialActive && (
               // During the free trial, deposits are INCLUDED: the pro can do
               // the Connect onboarding above and configure deposits below.
@@ -516,7 +533,7 @@ export function PaymentsSection() {
                 </p>
               </div>
             )}
-            {!hasPaidSubscription && isTrial && !trialActive && (
+            {!hasBaseAccessForSerenity && isTrial && !trialActive && (
               // Trial expired without converting — point to the subscription page.
               <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 flex items-start gap-2">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
@@ -526,7 +543,7 @@ export function PaymentsSection() {
                 </p>
               </div>
             )}
-            {!hasPaidSubscription && !isTrial && (
+            {!hasBaseAccessForSerenity && !isTrial && (
               <Link
                 href="/pro/abonnement"
                 className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mb-3 hover:underline"
@@ -535,7 +552,7 @@ export function PaymentsSection() {
                 Souscrivez à un plan payant d&apos;abord
               </Link>
             )}
-            {hasPaidSubscription && !connectActive && (
+            {hasBaseAccessForSerenity && !connectActive && (
               <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 flex items-start gap-2">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-800 dark:text-amber-300">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripeDev, getDepositsAddonPriceId } from '@/lib/stripe';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { canUseDepositsServer } from '@/lib/feature-flags';
+import { isAccessOverrideActive, isBaseTrialActive } from '@booking-app/shared';
 import { Timestamp } from 'firebase-admin/firestore';
 
 /**
@@ -67,7 +68,19 @@ export async function POST(request: NextRequest) {
           ? validUntilRaw
           : null;
 
-    if (subStatus === 'trialing') {
+    // Accès offert (comp) : `accessOverride` confère les droits d'un plan
+    // Pro payé et vit hors de `subscription` pour survivre aux webhooks
+    // Stripe. Il ouvre donc le droit d'ACHETER Sérénité — sans rien offrir :
+    // le paiement de 5 €/mois reste bien réel. Règle identique à l'UI
+    // (PaymentsSection) et à la route d'activation utilisée par Android.
+    const overrideActive = isAccessOverrideActive(provider.accessOverride);
+
+    // Essai de base ENCORE EN COURS : les acomptes sont déjà inclus
+    // gratuitement, souscrire n'aurait aucun sens. On teste l'essai réel
+    // plutôt que le seul statut : un essai local expire SANS webhook, donc
+    // `status` reste 'trialing' bien après la fin — ce qui bloquait la
+    // souscription au lieu de l'ouvrir.
+    if (isBaseTrialActive(provider.subscription)) {
       return NextResponse.json(
         {
           error:
@@ -81,7 +94,7 @@ export async function POST(request: NextRequest) {
       subStatus === 'active' &&
       validUntil !== null &&
       validUntil.getTime() > Date.now();
-    if (!baseActive) {
+    if (!baseActive && !overrideActive) {
       return NextResponse.json(
         {
           error:
