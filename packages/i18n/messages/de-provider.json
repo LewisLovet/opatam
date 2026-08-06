@@ -1,0 +1,137 @@
+{
+  "common": {
+    "close": "Schließen",
+    "seeMore": "Mehr anzeigen",
+    "seeLess": "Weniger anzeigen"
+  },
+  "hero": {
+    "verified": "Verifiziert",
+    "today": "Heute",
+    "tomorrow": "Morgen",
+    "nextAvailability": "Nächster Termin: {date}",
+    "memberAvailabilityTitle": "Verfügbarkeit nach Mitarbeiter",
+    "membersWithoutAvailability": "{count, plural, one {# Mitarbeiter ohne freien Termin} other {# Mitarbeiter ohne freien Termin}}"
+  },
+  "nav": {
+    "services": "Leistungen",
+    "reviews": "Bewertungen",
+    "hours": "Öffnungszeiten"
+  },
+  "services": {
+    "title": "Leistungen",
+    "empty": "Zurzeit sind keine Leistungen verfügbar.",
+    "otherCategory": "Sonstige",
+    "free": "Kostenlos",
+    "from": "ab",
+    "priceRange": "Von {min} bis {max}",
+    "book": "Buchen",
+    "showMore": "Mehr Details",
+    "showLess": "Weniger",
+    "promo": {
+      "lastDay": "Letzter Tag",
+      "endsTomorrow": "Endet morgen",
+      "daysLeft": "Nur noch {days} Tage"
+    },
+    "unavailable": "Nicht verfügbar",
+    "unavailableReason": {
+      "out_of_stock": "Produkt nicht vorrätig",
+      "equipment": "Ausrüstung nicht verfügbar",
+      "leave": "Urlaub",
+      "training": "In Weiterbildung"
+    }
+  },
+  "mobileBar": {
+    "from": "Ab",
+    "book": "Buchen"
+  },
+  "about": {
+    "title": "Über uns",
+    "portfolioTitle": "Portfolio",
+    "findMeOn": "Folgen Sie mir auf"
+  },
+  "portfolio": {
+    "title": "Portfolio",
+    "photoCount": "{count, plural, one {# Foto} other {# Fotos}}",
+    "photoAlt": "Portfolio {index}",
+    "previousPhoto": "Vorheriges Foto",
+    "nextPhoto": "Nächstes Foto"
+  },
+  "reviews": {
+    "title": "Kundenbewertungen",
+    "basedOn": "Basierend auf <strong>{count}</strong> Bewertungen",
+    "noReviews": "Keine Bewertungen",
+    "distribution": "Verteilung der Bewertungen",
+    "latest": "Neueste Bewertungen",
+    "anonymousClient": "Kunde",
+    "beFirst": "Geben Sie die erste Bewertung ab!"
+  },
+  "hours": {
+    "title": "Öffnungszeiten",
+    "open": "Geöffnet",
+    "closed": "Geschlossen",
+    "today": "Heute"
+  },
+  "infos": {
+    "title": "Gut zu wissen",
+    "locationTitle": "{count, plural, one {Standort} other {Standorte}}",
+    "openingHours": "Öffnungszeiten",
+    "days": [
+      "Sonntag",
+      "Montag",
+      "Dienstag",
+      "Mittwoch",
+      "Donnerstag",
+      "Freitag",
+      "Samstag"
+    ]
+  },
+  "location": {
+    "fixed": "Salon",
+    "mobile": "Mobil",
+    "maskedAddress": "Die genaue Adresse erhalten Sie nach der Bestätigung",
+    "viewOnMaps": "Auf Google Maps ansehen",
+    "homeService": "Hausbesuch",
+    "travelRadius": "Umkreis von {radius} km"
+  },
+  "team": {
+    "title": "Das Team"
+  },
+  "share": {
+    "share": "Teilen",
+    "shareText": "Entdecken Sie {name}",
+    "copyLink": "Link kopieren"
+  },
+  "socials": {
+    "website": "Website"
+  },
+  "demo": {
+    "title": "Willkommen im Demo-Shop",
+    "intro": "Diese Seite ist ein <strong>konkretes Beispiel</strong> dafür, was Ihre Kunden sehen, wenn sie bei Ihnen buchen.",
+    "walkthrough": "Sehen Sie sich die Leistungen an, wählen Sie einen Mitarbeiter und einen Termin — genau so, wie es Ihre künftigen Kunden tun werden.",
+    "highlight": "Ihre Buchungsseite kann in 5 Minuten fertig sein, ganz ohne technische Kenntnisse.",
+    "explore": "Demo ansehen",
+    "createPage": "Meine Seite kostenlos erstellen ({days} Tage testen)"
+  },
+  "notice": {
+    "title": "Wichtiger Hinweis",
+    "back": "Zurück",
+    "accept": "Verstanden, weiter"
+  },
+  "notFound": {
+    "title": "Anbieter nicht gefunden",
+    "description": "Dieser Anbieter existiert nicht oder ist nicht mehr verfügbar. Möglicherweise wurde die Seite deaktiviert oder die Adresse geändert.",
+    "backHome": "Zurück zur Startseite"
+  },
+  "loyaltyBanner": {
+    "title": "Treueprogramm",
+    "percent": "Alle {threshold} Termine −{value} % auf Ihre nächste Buchung",
+    "amount": "Alle {threshold} Termine −{value} € auf Ihre nächste Buchung",
+    "infoAria": "Teilnehmende Leistungen ansehen",
+    "infoAll": "Alle Leistungen nehmen teil.",
+    "infoExcept": "Alle Leistungen außer: {list}.",
+    "infoOnly": "Teilnehmende Leistungen: {list}.",
+    "appCta": "Laden Sie die Opatam-App herunter, um Ihre Karte mit Ihrem Konto zu aktivieren und Termine zu sammeln.",
+    "appCtaAppStoreAria": "Opatam im App Store herunterladen",
+    "appCtaPlayAria": "Opatam bei Google Play herunterladen"
+  }
+}

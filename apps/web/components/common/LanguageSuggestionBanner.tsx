@@ -29,7 +29,7 @@ import { localizedPath, isTranslatedSurface } from '@/lib/localizedPath';
  * definition English-speaking visitors on a French page.
  */
 /** Langues proposables par détection navigateur (le français est le défaut). */
-const SUGGESTABLE = ['en', 'it', 'pt'] as const;
+const SUGGESTABLE = ['en', 'it', 'pt', 'de'] as const;
 type SuggestableLocale = (typeof SUGGESTABLE)[number];
 
 /** Copie de la carte, dans la langue proposée (jamais en français). */
@@ -37,6 +37,10 @@ const SUGGESTION_COPY: Record<SuggestableLocale, { headline: string; cta: string
   en: { headline: 'This page is also available in English', cta: 'View in English' },
   it: { headline: 'Questa pagina è disponibile anche in italiano', cta: 'Vedi in italiano' },
   pt: { headline: 'Esta página também está disponível em português', cta: 'Ver em português' },
+  de: {
+    headline: 'Diese Seite ist auch auf Deutsch verfügbar',
+    cta: 'Auf Deutsch ansehen',
+  },
 };
 
 export function LanguageSuggestionBanner() {

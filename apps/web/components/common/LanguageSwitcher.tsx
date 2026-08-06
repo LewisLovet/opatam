@@ -7,12 +7,13 @@ import { LOCALES, type AppLocale } from '@booking-app/i18n';
 import { localizedPath, isTranslatedSurface } from '@/lib/localizedPath';
 
 /** Code court (déclencheur) et nom natif (menu) — universels, pas de clé i18n. */
-const SHORT: Record<AppLocale, string> = { fr: 'FR', en: 'EN', it: 'IT', pt: 'PT' };
+const SHORT: Record<AppLocale, string> = { fr: 'FR', en: 'EN', it: 'IT', pt: 'PT', de: 'DE' };
 const NATIVE: Record<AppLocale, string> = {
   fr: 'Français',
   en: 'English',
   it: 'Italiano',
   pt: 'Português',
+  de: 'Deutsch',
 };
 
 /**

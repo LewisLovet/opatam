@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { ogLocale, localeUrl } from '@/lib/ogLocale';
 import {
   providerRepository,
   serviceRepository,
@@ -116,16 +117,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // Demo page metadata
   if (slug === 'demo') {
-    const frDemo = 'https://opatam.com/p/demo';
-    const enDemo = 'https://opatam.com/en/p/demo';
-    const itDemo = 'https://opatam.com/it/p/demo';
-    const ptDemo = 'https://opatam.com/pt/p/demo';
+    // `localeUrl` construit l'URL depuis la locale : ajouter une langue ne
+    // demande plus d'allonger une chaîne de ternaires — le seul endroit à
+    // tenir à jour est la liste LOCALES.
+    const demo = (l: string) => localeUrl('https://opatam.com', l, '/p/demo');
     return {
       title: t('demoTitle'),
       description: t('demoDescription'),
       alternates: {
-        canonical: locale === 'en' ? enDemo : locale === 'it' ? itDemo : locale === 'pt' ? ptDemo : frDemo,
-        languages: { fr: frDemo, en: enDemo, it: itDemo, pt: ptDemo, 'x-default': frDemo },
+        canonical: demo(locale),
+        languages: {
+          fr: demo('fr'),
+          en: demo('en'),
+          it: demo('it'),
+          pt: demo('pt'),
+          de: demo('de'),
+          'x-default': demo('fr'),
+        },
       },
     };
   }
@@ -149,12 +157,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         category: provider.category,
       });
 
-  const frUrl = `https://opatam.com/p/${slug}`;
-  const enUrl = `https://opatam.com/en/p/${slug}`;
-  const itUrl = `https://opatam.com/it/p/${slug}`;
-  const ptUrl = `https://opatam.com/pt/p/${slug}`;
-  const pageUrl = locale === 'en' ? enUrl : locale === 'it' ? itUrl : locale === 'pt' ? ptUrl : frUrl;
-  const languages = { fr: frUrl, en: enUrl, it: itUrl, pt: ptUrl, 'x-default': frUrl };
+  const url = (l: string) => localeUrl('https://opatam.com', l, `/p/${slug}`);
+  const pageUrl = url(locale);
+  const languages = {
+    fr: url('fr'),
+    en: url('en'),
+    it: url('it'),
+    pt: url('pt'),
+    de: url('de'),
+    'x-default': url('fr'),
+  };
 
   // Social/preview image = the PROVIDER's own identity: cover photo
   // first, then their logo. We deliberately do NOT fall back to the
@@ -184,7 +196,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: 'Opatam',
       images: ogImages,
       type: 'website',
-      locale: locale === 'en' ? 'en_GB' : locale === 'it' ? 'it_IT' : locale === 'pt' ? 'pt_PT' : 'fr_FR',
+      locale: ogLocale(locale),
     },
     twitter: {
       card: ogImage ? 'summary_large_image' : 'summary',

@@ -1,0 +1,300 @@
+{
+  "common": {
+    "back": "Zurück",
+    "backHome": "Zurück zur Startseite",
+    "error": "Ein Fehler ist aufgetreten",
+    "free": "Kostenlos",
+    "priceRange": "Von {min} bis {max}",
+    "total": "Gesamt",
+    "service": "Leistung",
+    "services": "Leistungen",
+    "professional": "Mitarbeiter",
+    "location": "Ort",
+    "dateTime": "Datum & Uhrzeit",
+    "date": "Datum",
+    "dateAtTime": "{date} um {time}",
+    "reference": "Referenz: {id}",
+    "cancelAndHome": "Abbrechen und zur Startseite",
+    "yes": "Ja",
+    "no": "Nein"
+  },
+  "steps": {
+    "service": "Leistung",
+    "member": "Mitarbeiter",
+    "slot": "Datum & Uhrzeit",
+    "confirm": "Bestätigung"
+  },
+  "page": {
+    "noServicesTitle": "Keine Leistungen verfügbar",
+    "noServicesText": "Dieser Anbieter hat seine Leistungen noch nicht eingerichtet."
+  },
+  "flow": {
+    "errorMissingInfo": "Fehlende Angaben",
+    "title": "Stellen Sie Ihren Termin zusammen",
+    "subtitle": "Fügen Sie eine oder mehrere Leistungen hinzu.",
+    "cartTitle": "Ihr Termin",
+    "cartEmpty": "Ihr Termin ist noch leer",
+    "cartEmptyHint": "Fügen Sie unten Leistungen hinzu.",
+    "removeService": "Leistung entfernen",
+    "addAnother": "Weitere Leistung hinzufügen",
+    "cancelAdd": "Abbrechen",
+    "continue": "Weiter",
+    "continueWithCart": "Weiter · {count, plural, one {# Leistung} other {# Leistungen}} · {total}",
+    "configureSubtitle": "Stellen Sie Ihre Leistung zusammen",
+    "addToCart": "Zum Termin hinzufügen",
+    "missingChoices": "Bitte auswählen: {items}",
+    "servicesCount": "{count, plural, one {# Leistung} other {# Leistungen}}",
+    "notice": {
+      "title": "Wichtiger Hinweis",
+      "accept": "Verstanden, weiter"
+    },
+    "demo": {
+      "confirmedTitle": "Buchung bestätigt!",
+      "confirmedText": "Genau das sehen Ihre Kunden, nachdem sie bei Ihnen gebucht haben.",
+      "with": "bei {name}",
+      "trialNote": "{days} Tage kostenlos, ohne Kreditkarte",
+      "backToShop": "← Zurück zum Demo-Shop"
+    }
+  },
+  "service": {
+    "title": "Leistungen hinzufügen",
+    "from": "ab",
+    "added": "{count, plural, =1 {Hinzugefügt} other {Hinzugefügt ×#}}",
+    "add": "Hinzufügen",
+    "moreDetails": "Mehr Details",
+    "less": "Weniger",
+    "others": "Sonstige",
+    "unavailable": "Nicht verfügbar"
+  },
+  "member": {
+    "title": "Wählen Sie einen Mitarbeiter"
+  },
+  "memberPicker": {
+    "any": "Egal",
+    "firstAvailable": "Erster verfügbarer"
+  },
+  "slot": {
+    "title": "Wählen Sie Datum und Uhrzeit",
+    "nextAvailability": "Nächster Termin",
+    "prevMonth": "Vorheriger Monat",
+    "nextMonth": "Nächster Monat",
+    "days": [
+      "So",
+      "Mo",
+      "Di",
+      "Mi",
+      "Do",
+      "Fr",
+      "Sa"
+    ],
+    "months": [
+      "Januar",
+      "Februar",
+      "März",
+      "April",
+      "Mai",
+      "Juni",
+      "Juli",
+      "August",
+      "September",
+      "Oktober",
+      "November",
+      "Dezember"
+    ],
+    "loadError": "Fehler beim Laden der Verfügbarkeiten",
+    "noAvailabilityTitle": "Keine Termine für diese Leistung",
+    "noAvailabilityHint": "in den nächsten {days} Tagen. Schauen Sie später noch einmal vorbei oder wenden Sie sich direkt an den Anbieter.",
+    "spotsShort": "{count} Pl.",
+    "full": "Ausgebucht",
+    "closed": "Geschlossen",
+    "available": "Verfügbar",
+    "almostFull": "Fast ausgebucht",
+    "almostFullBadge": "Fast ausgebucht · {count, plural, one {# Termin} other {# Termine}}",
+    "dayFull": "An diesem Tag ist für diese Leistung alles ausgebucht.",
+    "seeNextAvailability": "Nächsten freien Termin anzeigen"
+  },
+  "slotPicker": {
+    "prevDays": "Vorherige Tage",
+    "nextDays": "Nächste Tage",
+    "noSlot": "Kein Termin",
+    "emptyTitle": "Keine Termine verfügbar",
+    "emptyText": "Im gewählten Zeitraum ist kein Termin verfügbar.",
+    "selectedSlot": "Termin:"
+  },
+  "confirm": {
+    "title": "Ihre Daten",
+    "nameLabel": "Vollständiger Name",
+    "namePlaceholder": "Max Mustermann",
+    "nameError": "Der Name muss mindestens 2 Zeichen lang sein",
+    "emailLabel": "E-Mail",
+    "emailPlaceholder": "max@beispiel.de",
+    "emailError": "Ungültiges E-Mail-Format",
+    "phoneLabel": "Telefon",
+    "phonePlaceholder": "0151 23456789 oder +49 151 23456789",
+    "phoneError": "Ungültige Telefonnummer",
+    "pendingInfo": "Ihre Buchung muss noch vom Anbieter bestätigt werden. Sie erhalten eine E-Mail, sobald sie bestätigt ist.",
+    "submitting": "Buchung läuft …",
+    "submit": "Buchung bestätigen",
+    "terms": "Mit der Bestätigung akzeptieren Sie unsere AGB und unsere Datenschutzerklärung."
+  },
+  "clientForm": {
+    "firstNameLabel": "Vorname",
+    "firstNamePlaceholder": "Max",
+    "firstNameRequired": "Der Vorname ist erforderlich",
+    "lastNameLabel": "Nachname",
+    "lastNamePlaceholder": "Mustermann",
+    "lastNameRequired": "Der Nachname ist erforderlich",
+    "emailLabel": "E-Mail",
+    "emailPlaceholder": "max.mustermann@beispiel.de",
+    "emailRequired": "Die E-Mail-Adresse ist erforderlich",
+    "emailInvalid": "Ungültige E-Mail-Adresse",
+    "phoneLabel": "Telefon",
+    "phonePlaceholder": "0151 23456789",
+    "phoneRequired": "Die Telefonnummer ist erforderlich",
+    "phoneInvalid": "Ungültige Telefonnummer",
+    "notesLabel": "Anmerkungen (optional)",
+    "notesPlaceholder": "Weitere Informationen …",
+    "terms": "Mit der Bestätigung akzeptieren Sie unsere <cgv>AGB</cgv> und unsere <privacy>Datenschutzerklärung</privacy>."
+  },
+  "choicesPicker": {
+    "noChoices": "Keine Variante, Option oder Info — der Kunde sieht direkt den Grundpreis.",
+    "optionFallback": "Option",
+    "variationFallback": "Variante",
+    "choiceFallback": "Auswahl",
+    "infoFallback": "Information",
+    "selectPlaceholder": "Auswählen …",
+    "answerPlaceholder": "Ihre Antwort"
+  },
+  "recap": {
+    "title": "Übersicht",
+    "selectService": "Wählen Sie eine Leistung",
+    "detail": "Details",
+    "duration": "Dauer",
+    "addressAfterConfirmation": "Die genaue Adresse erhalten Sie nach der Bestätigung",
+    "promoUntil": "bis zum {date}",
+    "promoValid": "Angebot gültig {datePart}",
+    "promoSavings": "Aktion −{percent} % · Sie sparen {amount}",
+    "promoSavingsAmount": "Aktion · Sie sparen {amount}"
+  },
+  "summary": {
+    "title": "Übersicht",
+    "atTime": "um {time}"
+  },
+  "serviceCard": {
+    "selected": "Ausgewählt",
+    "select": "Auswählen",
+    "selectedIndicator": "Leistung ausgewählt"
+  },
+  "serviceList": {
+    "emptyTitle": "Keine Leistungen",
+    "emptyText": "Zurzeit sind keine Leistungen verfügbar."
+  },
+  "appCta": {
+    "title": "Laden Sie die Opatam-App herunter",
+    "subtitle": "Alle Ihre Termine im Blick, Erinnerungen erhalten und mit einem Klick buchen.",
+    "loyaltyPercent": "Treueprogramm: alle {threshold} über die App gebuchten Termine −{value} %. Laden Sie die App herunter, um Punkte zu sammeln.",
+    "loyaltyAmount": "Treueprogramm: alle {threshold} über die App gebuchten Termine −{value} €. Laden Sie die App herunter, um Punkte zu sammeln."
+  },
+  "proCta": {
+    "title": "Sind Sie auch selbstständig?",
+    "subtitle": "Erstellen Sie Ihre Buchungsseite in 5 Minuten und gewinnen Sie noch heute Ihre ersten Kunden.",
+    "subtitleOnline": "Erstellen Sie Ihre Online-Buchungsseite in 5 Minuten und gewinnen Sie noch heute Ihre ersten Kunden.",
+    "button": "Meine Seite kostenlos erstellen"
+  },
+  "confirmation": {
+    "pendingPaymentTitle": "Zahlung wird geprüft …",
+    "pendingTitle": "Anfrage gesendet!",
+    "confirmedTitle": "Buchung bestätigt!",
+    "pendingPaymentText": "Ihre Zahlung wurde soeben ausgeführt und wird gerade geprüft. Diese Seite aktualisiert sich in wenigen Sekunden.",
+    "pendingText": "Ihre Buchungsanfrage wurde übermittelt. Sie erhalten eine E-Mail, sobald der Anbieter sie bestätigt hat.",
+    "depositPaidText": "Ihre Buchung ist bestätigt und Ihre Anzahlung von {amount} wurde verbucht. Eine Bestätigungs-E-Mail ist unterwegs.",
+    "confirmedText": "Ihre Buchung wurde gespeichert. Eine Bestätigungs-E-Mail ist unterwegs.",
+    "awaitingConfirmation": "Warten auf Bestätigung",
+    "addressRevealLater": "Die genaue Adresse erhalten Sie ca. 48 Std. vor dem Termin.",
+    "savings": "Sie haben {amount} gespart",
+    "depositPaid": "Anzahlung bezahlt",
+    "remainingDue": "Restbetrag vor Ort zu zahlen",
+    "addToCalendar": "Zum Kalender hinzufügen",
+    "emailSentTo": "Eine Bestätigungs-E-Mail wurde an <email>{address}</email> gesendet",
+    "calendarTitle": "Termin – {service} bei {provider}",
+    "calendarWith": "Mit {name}",
+    "calendarAt": "Bei {name}"
+  },
+  "cancel": {
+    "notFoundTitle": "Link ungültig oder abgelaufen",
+    "notFoundText": "Dieser Stornierungslink ist nicht mehr gültig. Möglicherweise wurde der Termin bereits storniert oder der Link ist abgelaufen.",
+    "alreadyCancelledTitle": "Termin bereits storniert",
+    "alreadyCancelledText": "Dieser Termin wurde bereits storniert.",
+    "cancelledOn": "Storniert am {date} um {time}",
+    "pastTitle": "Termin bereits vergangen",
+    "pastText": "Dieser Termin liegt in der Vergangenheit und kann nicht mehr storniert werden.",
+    "successTitle": "Termin storniert",
+    "successText": "Ihr Termin wurde storniert.",
+    "refunded": "Ihre Anzahlung von {amount} wurde auf Ihr Zahlungsmittel zurückerstattet. Es dauert 5 bis 10 Werktage, bis die Gutschrift sichtbar ist.",
+    "refundDeadlinePassed": "Die Frist für die Rückerstattung der Anzahlung ist abgelaufen. Wenden Sie sich für Anfragen bitte direkt an {name}.",
+    "providerNotified": "Der Anbieter wurde über diese Stornierung informiert.",
+    "rebook": "Neuen Termin buchen",
+    "orBackHome": "Oder zurück zur Startseite",
+    "formTitle": "Termin stornieren",
+    "formSubtitle": "Möchten Sie diesen Termin wirklich stornieren?",
+    "reasonLabel": "Grund der Stornierung (optional)",
+    "reasonPlaceholder": "z. B. etwas dazwischengekommen, Planänderung …",
+    "refundEligible": "Ihre Anzahlung von <strong>{amount}</strong> wird automatisch zurückerstattet.",
+    "refundNotEligible": "Die Rückerstattungsfrist ist abgelaufen. Ihre Anzahlung von <strong>{amount}</strong> wird nicht automatisch zurückerstattet. Wenden Sie sich für Anfragen an {name}.",
+    "warning": "Dieser Schritt lässt sich nicht rückgängig machen. Der Anbieter wird über Ihre Stornierung informiert.",
+    "cancelling": "Stornierung läuft …",
+    "confirmCancel": "Stornierung bestätigen"
+  },
+  "review": {
+    "selectRatingError": "Bitte wählen Sie eine Bewertung",
+    "notFoundTitle": "Buchung nicht gefunden",
+    "notFoundText": "Diese Buchung existiert nicht oder der Link ist ungültig.",
+    "notYetPassedTitle": "Anstehender Termin",
+    "notYetPassedText": "Sie können nach Ihrem Termin eine Bewertung abgeben.",
+    "scheduledFor": "Termin am {date} um {time}",
+    "alreadyReviewedTitle": "Bewertung bereits abgegeben",
+    "alreadyReviewedText": "Sie haben diesen Termin bereits bewertet.",
+    "updatedTitle": "Bewertung aktualisiert!",
+    "thanksTitle": "Danke für Ihre Bewertung!",
+    "updatedText": "Ihre Bewertung wurde aktualisiert.",
+    "savedText": "Ihre Bewertung wurde gespeichert und erscheint auf der Seite des Anbieters.",
+    "updateFormTitle": "Bewertung bearbeiten",
+    "formTitle": "Bewertung abgeben",
+    "updateFormSubtitle": "Sie haben {name} bereits bewertet. Unten können Sie Ihre Bewertung ändern.",
+    "formSubtitle": "Wie war Ihr Termin bei {name}?",
+    "ratingLabel": "Ihre Bewertung *",
+    "rating1": "Sehr unzufrieden",
+    "rating2": "Unzufrieden",
+    "rating3": "In Ordnung",
+    "rating4": "Zufrieden",
+    "rating5": "Sehr zufrieden",
+    "commentLabel": "Ihr Kommentar (optional)",
+    "commentPlaceholder": "Erzählen Sie von Ihrer Erfahrung …",
+    "updating": "Aktualisierung läuft …",
+    "sending": "Wird gesendet …",
+    "updateSubmit": "Bewertung ändern",
+    "submit": "Bewertung senden"
+  },
+  "embed": {
+    "common": {
+      "with": "bei {name}"
+    },
+    "recap": {
+      "title": "Ihre Buchung",
+      "with": "bei <b>{name}</b>"
+    },
+    "services": {
+      "title": "Wählen Sie eine Leistung",
+      "others": "Weitere Leistungen"
+    },
+    "success": {
+      "emailSent": "Eine Bestätigungs-E-Mail wurde soeben an Sie gesendet.",
+      "appTitle": "Verwalten Sie Ihren Termin in der Opatam-App",
+      "appSubtitle": "Automatische Erinnerungen, Änderungen und neue Buchungen mit einem Klick.",
+      "newBooking": "Neue Buchung"
+    },
+    "footer": {
+      "poweredBy": "Buchung powered by <b>Opatam</b>"
+    }
+  }
+}

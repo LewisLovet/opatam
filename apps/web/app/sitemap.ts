@@ -12,6 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     en: `${BASE_URL}/en`,
     it: `${BASE_URL}/it`,
     pt: `${BASE_URL}/pt`,
+    de: `${BASE_URL}/de`,
   };
 
   // Static pages
@@ -112,6 +113,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           en: `${BASE_URL}/en/p/${p.slug}`,
           it: `${BASE_URL}/it/p/${p.slug}`,
           pt: `${BASE_URL}/pt/p/${p.slug}`,
+          de: `${BASE_URL}/de/p/${p.slug}`,
         };
         const lastModified = p.updatedAt instanceof Date ? p.updatedAt : new Date();
         return [

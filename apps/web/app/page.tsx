@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { articleRepository } from '@booking-app/firebase';
+import { ogLocale } from '@/lib/ogLocale';
 import LandingPage from './HomePage';
 import type { ArticleCardData } from './blog/components/ArticleCard';
 
@@ -16,6 +17,7 @@ const LANGUAGE_ALTERNATES = {
   en: `${BASE_URL}/en`,
   it: `${BASE_URL}/it`,
   pt: `${BASE_URL}/pt`,
+  de: `${BASE_URL}/de`,
   'x-default': BASE_URL,
 };
 
@@ -52,7 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: t('ogDescription'),
       url: canonical,
       type: 'website',
-      locale: locale === 'en' ? 'en_GB' : locale === 'it' ? 'it_IT' : locale === 'pt' ? 'pt_PT' : 'fr_FR',
+      locale: ogLocale(locale),
       siteName: 'Opatam',
     },
     twitter: {

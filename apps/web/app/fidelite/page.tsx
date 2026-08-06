@@ -64,6 +64,17 @@ const TEXTS = {
     badge: 'Descarregar na',
     soon: 'Descarregar em',
   },
+  de: {
+    title: 'Ihre Treuekarte',
+    subtitle:
+      'Ihre Treuekarten liegen in der Opatam-App: installieren Sie sie, melden Sie sich an und sehen Sie die gesammelten Termine bei jedem Ihrer Anbieter.',
+    step1: 'App herunterladen',
+    step2: 'Mit Ihrem Konto anmelden',
+    step3: 'Karte aktivieren — bereits wahrgenommene Termine werden mitgezählt',
+    back: 'Zurück zur Startseite',
+    badge: 'Laden im',
+    soon: 'Laden bei',
+  },
 } as const;
 
 export const metadata: Metadata = {
@@ -72,7 +83,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LoyaltyLandingPage() {
-  const locale = (await getLocale()) as 'fr' | 'en' | 'it' | 'pt';
+  const locale = (await getLocale()) as 'fr' | 'en' | 'it' | 'pt' | 'de';
   const t = TEXTS[locale] ?? TEXTS.fr;
 
   return (

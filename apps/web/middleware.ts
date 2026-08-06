@@ -14,13 +14,23 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
-  // Locale déduite du préfixe d'URL (/en/... → en, /it/... → it, /pt/... → pt).
+  // Locale déduite du préfixe d'URL (/en/... → en, /it/... → it, etc.).
   // Le matcher ne laisse passer que ces préfixes, d'où le repli sur 'en'.
   const seg = request.nextUrl.pathname.split('/')[1];
-  requestHeaders.set('x-app-locale', seg === 'it' || seg === 'pt' ? seg : 'en');
+  const prefixed = seg === 'it' || seg === 'pt' || seg === 'de';
+  requestHeaders.set('x-app-locale', prefixed ? seg : 'en');
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
-  matcher: ['/en', '/en/:path*', '/it', '/it/:path*', '/pt', '/pt/:path*'],
+  matcher: [
+    '/en',
+    '/en/:path*',
+    '/it',
+    '/it/:path*',
+    '/pt',
+    '/pt/:path*',
+    '/de',
+    '/de/:path*',
+  ],
 };

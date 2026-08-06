@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { localeUrl } from '@/lib/ogLocale';
 import {
   providerRepository,
   serviceRepository,
@@ -38,16 +39,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const tProvider = await getTranslations('seo.provider');
 
   if (slug === 'demo') {
-    const frDemo = 'https://opatam.com/p/demo/reserver';
-    const enDemo = 'https://opatam.com/en/p/demo/reserver';
-    const itDemo = 'https://opatam.com/it/p/demo/reserver';
-    const ptDemo = 'https://opatam.com/pt/p/demo/reserver';
+    const demo = (l: string) => localeUrl('https://opatam.com', l, '/p/demo/reserver');
     return {
       title: t('demoTitle'),
       description: t('demoDescription'),
       alternates: {
-        canonical: locale === 'en' ? enDemo : locale === 'it' ? itDemo : locale === 'pt' ? ptDemo : frDemo,
-        languages: { fr: frDemo, en: enDemo, it: itDemo, pt: ptDemo, 'x-default': frDemo },
+        canonical: demo(locale),
+        languages: {
+          fr: demo('fr'),
+          en: demo('en'),
+          it: demo('it'),
+          pt: demo('pt'),
+          de: demo('de'),
+          'x-default': demo('fr'),
+        },
       },
     };
   }
@@ -60,10 +65,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const frUrl = `https://opatam.com/p/${slug}/reserver`;
-  const enUrl = `https://opatam.com/en/p/${slug}/reserver`;
-  const itUrl = `https://opatam.com/it/p/${slug}/reserver`;
-  const ptUrl = `https://opatam.com/pt/p/${slug}/reserver`;
+  const url = (l: string) => localeUrl('https://opatam.com', l, `/p/${slug}/reserver`);
 
   return {
     title: t('title', { businessName: provider.businessName }),
@@ -72,8 +74,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       category: provider.category,
     }),
     alternates: {
-      canonical: locale === 'en' ? enUrl : locale === 'it' ? itUrl : locale === 'pt' ? ptUrl : frUrl,
-      languages: { fr: frUrl, en: enUrl, it: itUrl, pt: ptUrl, 'x-default': frUrl },
+      canonical: url(locale),
+      languages: {
+        fr: url('fr'),
+        en: url('en'),
+        it: url('it'),
+        pt: url('pt'),
+        de: url('de'),
+        'x-default': url('fr'),
+      },
     },
   };
 }

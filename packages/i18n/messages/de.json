@@ -1,0 +1,478 @@
+{
+  "common": {
+    "appStore": "App Store",
+    "googlePlay": "Google Play",
+    "language": "Sprache",
+    "french": "Français",
+    "english": "English"
+  },
+  "layout": {
+    "header": {
+      "features": "Funktionen",
+      "pricing": "Preise",
+      "testimonials": "Erfahrungen",
+      "faq": "FAQ",
+      "login": "Anmelden",
+      "createPage": "Meine Seite erstellen",
+      "start": "Loslegen",
+      "menu": "Menü",
+      "openMenu": "Menü öffnen",
+      "closeMenu": "Menü schließen"
+    },
+    "footer": {
+      "product": "Produkt",
+      "explore": "Entdecken",
+      "forWho": "Für wen",
+      "support": "Support",
+      "legal": "Rechtliches",
+      "allProviders": "Alle Anbieter",
+      "nailArtists": "Nageldesigner",
+      "contact": "Kontakt",
+      "careers": "Karriere",
+      "downloadApp": "App herunterladen",
+      "legalNotice": "Impressum",
+      "terms": "Nutzungsbedingungen",
+      "salesTerms": "AGB",
+      "privacy": "Datenschutz",
+      "allRights": "Alle Rechte vorbehalten."
+    },
+    "appBadges": {
+      "downloadOn": "Laden im",
+      "ariaAppStore": "Im App Store laden",
+      "ariaPlayStore": "Bei Google Play laden"
+    }
+  },
+  "blog": {
+    "video": "Video",
+    "read": "Lesen",
+    "new": "Neu"
+  },
+  "seo": {
+    "home": {
+      "title": "Opatam — Online-Terminbuchung für Selbstständige | Ohne Provision",
+      "description": "Opatam ist die provisionsfreie Online-Buchungsplattform für Beauty, Wellness, Coaching und Dienstleistungen. Online-Kalender, automatische Erinnerungen, eigene Buchungsseite. Kostenlos testen.",
+      "ogTitle": "Opatam — Online-Terminbuchung ohne Provision",
+      "ogDescription": "Verwalten Sie Ihre Termine online, gewinnen Sie neue Kunden und bauen Sie Ihr Geschäft aus. 0 % Provision. Kostenlos testen.",
+      "orgDescription": "Provisionsfreie Online-Buchungsplattform für Dienstleister."
+    },
+    "booking": {
+      "title": "Termin buchen bei {businessName}",
+      "description": "Buchen Sie Ihren Termin bei {businessName} – {category}",
+      "demoTitle": "Demo — Termin buchen bei Studio Beauté Élégance",
+      "demoDescription": "Testen Sie den OPATAM-Buchungsablauf mit diesem Demo-Shop."
+    },
+    "provider": {
+      "demoTitle": "Demo — Studio Beauté Élégance",
+      "demoDescription": "Sehen Sie, wie eine OPATAM-Buchungsseite aussieht. Beispiel eines Friseur- und Kosmetiksalons.",
+      "notFound": "Anbieter nicht gefunden",
+      "inCity": " in {city}",
+      "fallbackDescription": "Buchen Sie Ihre Termine bei {businessName}{cityPart} — {category}. Online-Terminbuchung auf Opatam."
+    },
+    "confirmation": {
+      "title": "Buchung bestätigt",
+      "description": "Ihre Buchung wurde gespeichert"
+    },
+    "cancel": {
+      "title": "Termin stornieren",
+      "description": "Stornieren Sie Ihren Termin mit wenigen Klicks"
+    },
+    "review": {
+      "title": "Bewertung abgeben",
+      "description": "Teilen Sie Ihre Erfahrung und helfen Sie anderen Kunden"
+    }
+  },
+  "consent": {
+    "title": "Helfen Sie uns, Opatam größer zu machen",
+    "body": "Wenn Sie Analyse-Cookies zulassen, helfen Sie uns zu verstehen, wie Sie hierher gefunden haben, und unsere Instagram- und Facebook-Kampagnen besser einzusetzen. Eine Ablehnung ändert nichts an Ihrer Nutzung.",
+    "learnMore": "Mehr erfahren",
+    "refuse": "Ablehnen",
+    "accept": "Akzeptieren"
+  },
+  "home": {
+    "hero": {
+      "title": "Ihre Termine gehören nicht in Ihre DMs.",
+      "subtitle": "Die Buchungssoftware für Selbstständige. Ihre Kunden buchen rund um die Uhr, Erinnerungen gehen automatisch raus, und Sie behalten 100 % Ihrer Einnahmen. In 5 Minuten startklar.",
+      "pillReady": "In 5 Min. startklar",
+      "pillCommission": "0 % Provision",
+      "pillPrice": "Ab {price} €/Monat",
+      "ctaCreate": "Meine Seite erstellen",
+      "ctaDemo": "Demo ansehen",
+      "disclaimer": "{days} Tage kostenlos, ohne Kreditkarte, ohne Vertragsbindung"
+    },
+    "appStrip": {
+      "caption": "Auch als App verfügbar",
+      "downloadOn": "Laden im ",
+      "playOn": "Laden bei"
+    },
+    "stats": {
+      "items": [
+        {
+          "value": "15+",
+          "label": "Branchen"
+        },
+        {
+          "value": "24/7",
+          "label": "Online buchbar"
+        },
+        {
+          "value": "0%",
+          "label": "Provision"
+        },
+        {
+          "value": "5 Min.",
+          "label": "Bis zum Start"
+        }
+      ]
+    },
+    "features": {
+      "title": "Holen Sie sich Ihren Alltag zurück",
+      "subtitle": "Schluss mit Instagram-DMs um 22 Uhr, Papierkalendern und Erinnerungs-SMS. {app} übernimmt die Verwaltung, damit Sie sich auf Ihr Handwerk konzentrieren können.",
+      "items": [
+        {
+          "title": "Ein Kalender, der sich von selbst füllt",
+          "description": "Ihre freien Zeiten, Ihre Pausen, Ihre freien Tage — alles auf einen Blick. Erinnerungen gehen automatisch an Ihre Kunden. Nie wieder Erinnerungs-SMS um 22 Uhr schreiben."
+        },
+        {
+          "title": "Ihre Kunden buchen, während Sie schlafen",
+          "description": "Ihre Buchungsseite ist rund um die Uhr online. Ihre Kunden wählen Leistung und Termin mit drei Klicks — ohne Konto, ohne DM. Beim Aufwachen ist Ihr Tag geplant."
+        },
+        {
+          "title": "Ihr ganzer Kalender in der Hosentasche",
+          "description": "Leistungen und Öffnungszeiten richten Sie am Computer ein. Im Alltag verfolgen Sie Ihren Plan, bestätigen neue Termine und erhalten Ihre Benachrichtigungen direkt in der App."
+        },
+        {
+          "title": "Das ganze Team synchron",
+          "description": "Jedes Teammitglied hat seinen eigenen Plan, seine eigenen Leistungen, seinen eigenen Zugang. Sie behalten den Überblick. Kein gemeinsames Buch mehr, kein Durcheinander."
+        }
+      ]
+    },
+    "mockups": {
+      "myAgenda": "Mein Kalender",
+      "weekOf": "Woche vom 3. Februar",
+      "days": [
+        "Mo",
+        "Di",
+        "Mi",
+        "Do",
+        "Fr"
+      ],
+      "chooseService": "Leistung wählen",
+      "services": [
+        "Damenschnitt — 35 €",
+        "Föhnen — 25 €",
+        "Färben — 55 €"
+      ],
+      "book": "Buchen",
+      "today": "Heute",
+      "todayCount": "4 Termine",
+      "nextIn": "Nächster in 25 Min.",
+      "newBooking": "Neue Buchung",
+      "newBookingDetail": "Alice M. — Schnitt + Föhnen — 14:00",
+      "myTeam": "Mein Team",
+      "teamMembers": [
+        {
+          "name": "Marie D.",
+          "role": "Friseurin",
+          "rdv": "6 Termine heute"
+        },
+        {
+          "name": "Julie K.",
+          "role": "Coloristin",
+          "rdv": "4 Termine heute"
+        },
+        {
+          "name": "Thomas R.",
+          "role": "Barbier",
+          "rdv": "5 Termine heute"
+        }
+      ],
+      "sampleBookings": [
+        {
+          "time": "10:00",
+          "name": "Marie L.",
+          "service": "Föhnen"
+        },
+        {
+          "time": "11:30",
+          "name": "Thomas R.",
+          "service": "Bart"
+        }
+      ]
+    },
+    "secondaryFeatures": {
+      "title": "Und alles andere ist schon dabei",
+      "subtitle": "Keine Module zum Freischalten, keine versteckten Zusatzkosten. Was Sie sehen, ist das, was Sie bekommen.",
+      "items": [
+        {
+          "title": "Ihre Seite im Netz",
+          "description": "Eine echte Profi-Seite mit Ihren Leistungen, Bewertungen und Fotos — teilbar über einen Link"
+        },
+        {
+          "title": "QR-Code zum Aushängen",
+          "description": "Ein QR-Code für Ihren Tresen oder Ihre Visitenkarten. Ihre Kunden scannen und buchen"
+        },
+        {
+          "title": "Nie wieder vergessene Termine",
+          "description": "Automatische Erinnerung 24 Std. und 2 Std. vor jedem Termin. Weniger No-Shows, ein Tag, der hält"
+        },
+        {
+          "title": "Ihre Zahlen im Klartext",
+          "description": "Buchungen, Seitenaufrufe, Wochenverlauf — alles auf einem Bildschirm, in Echtzeit aktualisiert"
+        },
+        {
+          "title": "Mehrere Standorte, ein Kalender",
+          "description": "Salon, Hausbesuch, unterwegs — bis zu 10 Orte mit jeweils eigenen Zeiten"
+        },
+        {
+          "title": "Der Plan für morgen, schon heute Abend",
+          "description": "Jeden Abend erhalten Sie den Kalender für den nächsten Tag per E-Mail. Keine Überraschungen mehr"
+        },
+        {
+          "title": "Die App für iOS und Android",
+          "description": "Ihr Kalender in der Hosentasche, Push bei jeder neuen Buchung"
+        },
+        {
+          "title": "Gehostet in Europa",
+          "description": "DSGVO-konform, Daten in Frankreich gehostet. Alles bleibt Ihr Eigentum"
+        }
+      ]
+    },
+    "sectors": {
+      "title": "Gemacht für Selbstständige. Für alle Selbstständigen.",
+      "subtitle": "Von der mobilen Friseurin bis zum Tätowierer im Studio, vom Personal Trainer bis zum Therapeuten — {app} passt sich Ihrem Beruf an, nicht umgekehrt.",
+      "items": [
+        {
+          "title": "Beauty & Kosmetik",
+          "examples": "Friseure, Kosmetikerinnen, Barbiere, Nageldesigner"
+        },
+        {
+          "title": "Wellness",
+          "examples": "Masseure, Entspannungstrainer, Heilpraktiker, Osteopathen"
+        },
+        {
+          "title": "Sport & Coaching",
+          "examples": "Fitnesstrainer, Personal Trainer, Fitnessstudios"
+        },
+        {
+          "title": "Coaching",
+          "examples": "Life-Coaches, Therapeuten, Entwicklungsberater"
+        },
+        {
+          "title": "Handwerk",
+          "examples": "Installateure, Elektriker, Schlüsseldienste, Maler"
+        },
+        {
+          "title": "Foto & Video",
+          "examples": "Fotografen, Videografen, Content-Creator"
+        }
+      ]
+    },
+    "testimonials": {
+      "title": "Was Selbstständige sagen, die damit arbeiten",
+      "items": [
+        {
+          "name": "BraidzTouch",
+          "role": "Friseurin",
+          "city": "",
+          "initials": "BT",
+          "text": "Ich liebe Opatam — ein sehr einfaches Werkzeug, mit dem ich meine Termine ganz automatisch verwalte."
+        },
+        {
+          "name": "Cam Beauty Studio",
+          "role": "Nageldesignerin",
+          "city": "",
+          "initials": "CB",
+          "text": "Ich bin erst seit Kurzem dabei und bereue es überhaupt nicht, gerade auch finanziell."
+        },
+        {
+          "name": "Palm Beauty",
+          "role": "Spray-Tanning & Zahnaufhellung",
+          "city": "",
+          "initials": "PB",
+          "text": "Meine erste App für automatische Terminbuchung — und ich bereue die Wahl nicht."
+        }
+      ]
+    },
+    "comparison": {
+      "title": "Warum {app} und nicht die anderen",
+      "subtitle": "Ein klarer Preis, null Provision, alle wichtigen Funktionen ab dem ersten Tag. Kein Kleingedrucktes, kein verstecktes Paket.",
+      "criterion": "Kriterium",
+      "others": "Andere Apps",
+      "rows": [
+        {
+          "label": "Monatspreis",
+          "opatam": "19,90 €",
+          "others": "Von 0 €* bis 90 €/Monat"
+        },
+        {
+          "label": "Provision auf Ihre Buchungen",
+          "opatam": "0 %",
+          "others": "Bis zu 20 % oder 1 € pro Termin"
+        },
+        {
+          "label": "Testphase",
+          "opatam": "30 Tage kostenlos",
+          "others": "Oft eingeschränkt oder gar nicht"
+        },
+        {
+          "label": "Automatische Erinnerungen",
+          "opatam": "Inklusive",
+          "others": "Teils kostenpflichtige Option"
+        },
+        {
+          "label": "Individuelle Seite im Netz",
+          "opatam": "Inklusive",
+          "others": "Enthalten, aber wenige Vorlagen"
+        },
+        {
+          "label": "Vertragsbindung",
+          "opatam": "Keine",
+          "others": "Je nach Angebot unterschiedlich"
+        },
+        {
+          "label": "Tatsächliche Jahreskosten (Beispiel)",
+          "opatam": "199,00 €",
+          "others": "Von 300 € bis 1.080 €**"
+        }
+      ],
+      "footnote": "* „Kostenlose“ Angebote enthalten in der Regel Provisionen auf jede Buchung, eingeschränkte Funktionen oder begrenzten Support. ** Schätzung auf Basis eines Durchschnittspreises von 25 € bis 90 €/Monat, ohne zusätzliche Provisionen."
+    },
+    "pricing": {
+      "title": "Ein fairer Preis, ohne Überraschungen",
+      "subtitle": "Zwei Pakete. Keine Provision. Jederzeit kündbar.",
+      "launchOffer": "Einführungsangebot",
+      "guaranteedPrefix": "Preis garantiert",
+      "guaranteedHighlight": "auf Dauer",
+      "guaranteeText": "Melden Sie sich jetzt an: Ihr Preis ist dauerhaft festgeschrieben. Selbst wenn wir morgen die Preise erhöhen, bleiben Sie bei 19,90 €.",
+      "trustLocked": "Preis dauerhaft festgeschrieben",
+      "trustNoIncrease": "Keine Erhöhung",
+      "trustEarly": "Nur für die ersten Anmeldungen",
+      "monthly": "Monatlich",
+      "yearly": "Jährlich",
+      "toggleAria": "Zwischen monatlich und jährlich wechseln",
+      "save": "17 % sparen",
+      "perMonth": "/Monat",
+      "billedYearly": "Abrechnung {total} €/Jahr",
+      "noCommitment": "Ohne Vertragsbindung",
+      "popular": "Beliebt",
+      "upTo10": "Bis zu 10 Mitglieder inklusive",
+      "ctaCreate": "Meine Seite erstellen",
+      "trialNote": "{days} Tage kostenlos testen, in allen Paketen. Keine Kreditkarte erforderlich.",
+      "pro": {
+        "name": "Pro",
+        "description": "Das Wesentliche für Selbstständige. Verwalten Sie Ihre Termine und bauen Sie Ihr Geschäft aus — ohne Provision.",
+        "features": [
+          "Unbegrenzte Buchungen, 0 % Provision",
+          "Ihre professionelle Seite im Netz",
+          "Automatische Erinnerungen per E-Mail und Push",
+          "Kalender überall erreichbar, rund um die Uhr",
+          "In 5 Minuten startklar, ohne Schulung"
+        ]
+      },
+      "studio": {
+        "name": "Studio",
+        "description": "Die Komplettlösung für Teams. Kalender abstimmen, mehrere Standorte verwalten und einen professionellen Auftritt bieten.",
+        "features": [
+          "Bis zu 10 synchronisierte Kalender",
+          "0 % Provision, auch im Team",
+          "Leistungen je Teammitglied zuweisen",
+          "Mehrere Standorte (bis zu 10 Adressen)",
+          "Professionelle Team-Seite",
+          "Alles aus dem Paket Pro inklusive"
+        ]
+      }
+    },
+    "faq": {
+      "title": "Häufige Fragen",
+      "items": [
+        {
+          "question": "Welche Online-Terminbuchungssoftware eignet sich am besten für Selbstständige?",
+          "answer": "OPATAM ist speziell für Selbstständige und kleine Teams gemacht: Online-Kalender, individuelle Buchungsseite, automatische Erinnerungen 24 Std. und 2 Std. vorher, mobile App — ohne Provision, in 5 Minuten startklar. Über 15 Dienstleistungsberufe arbeiten damit."
+        },
+        {
+          "question": "Wie können meine Kunden online buchen, ohne ein Konto anzulegen?",
+          "answer": "Ihre Kunden geben Name, E-Mail und Telefonnummer ein — mehr nicht. Kein Konto, kein Passwort. Sie erhalten einen persönlichen Link und einen QR-Code für Ihre Instagram-Bio, Ihre Flyer oder Ihren Tresen. Die Buchung ist in 3 Klicks erledigt."
+        },
+        {
+          "question": "Wie verwalte ich die Termine meines Teams in einem einzigen Werkzeug?",
+          "answer": "Das Paket Studio (29,90 €/Monat) verwaltet bis zu 10 synchronisierte Kalender. Jedes Teammitglied hat seinen eigenen Plan und seine eigenen Leistungen. Sie können sie über jeden neuen Termin benachrichtigen, ihnen am Vorabend die Tagesübersicht schicken und behalten den Überblick über das ganze Team."
+        },
+        {
+          "question": "Wie reduziere ich verpasste Termine und Vergesslichkeit bei meinen Kunden?",
+          "answer": "OPATAM verschickt automatisch eine Erinnerung 24 Std. vor dem Termin und eine zweite 2 Std. vorher. Ihre Kunden erhalten außerdem sofort nach der Buchung eine Bestätigung. Konkret: weniger vergessene Termine, mehr Termine, die halten, mehr Umsatz am Monatsende."
+        },
+        {
+          "question": "Was kostet eine professionelle Online-Buchungssoftware?",
+          "answer": "Zwei Pakete ohne Vertragsbindung: Pro für 19,90 €/Monat (oder 199 €/Jahr) für Selbstständige, Studio für 29,90 €/Monat (oder 299 €/Jahr) für Teams bis 10 Personen. 30 Tage kostenlos testen, ohne Kreditkarte. Und null Provision auf Ihre Buchungen — Sie behalten 100 % dessen, was Sie in Rechnung stellen."
+        },
+        {
+          "question": "Lässt sich ein Online-Buchungskalender auch am Handy nutzen?",
+          "answer": "Ja. Mit der App für iOS und Android sehen Sie Ihren Kalender, bestätigen neue Termine und erhalten Benachrichtigungen in Echtzeit. Eingerichtet wird am Computer, der Alltag läuft über die Hosentasche — zwischen zwei Terminen, in der Bahn, wo immer Sie wollen."
+        },
+        {
+          "question": "Eignet sich OPATAM für Beauty-, Wellness- und Coaching-Berufe?",
+          "answer": "Friseure, Kosmetikerinnen, Barbiere, Nageldesigner, Masseure, Entspannungstrainer, Fitnesstrainer, Therapeuten, Fotografen, Handwerker, Trainer … Jeder Profi legt seine Leistungen, Dauern, Preise und seinen Kalender selbst fest."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Holen Sie sich Ihren Feierabend zurück.",
+      "subtitle": "Ihre erste Buchungsseite ist in 5 Minuten online. 30 Tage kostenlos testen, ohne Kreditkarte, ohne Vertragsbindung.",
+      "cta": "Meine Seite erstellen",
+      "disclaimer": "{days} Tage kostenlos — Ohne Kreditkarte — Ohne Vertragsbindung",
+      "availableOn": "Verfügbar im ",
+      "followUs": "Folgen Sie uns",
+      "playOn": "Verfügbar bei"
+    },
+    "marketplace": {
+      "lookingFor": "Suchen Sie einen Profi in Ihrer Nähe?",
+      "searchPro": "Profi suchen"
+    },
+    "stickyCta": "{days} Tage kostenlos testen",
+    "heroLoaderTagline": "Online-Terminbuchung, ohne Provision",
+    "howItWorks": {
+      "title": "In 5 Minuten startklar, in 3 Schritten",
+      "subtitle": "Keine Schulung, kein Techniker nötig. Sie erstellen Ihre Seite und erhalten noch heute Ihre ersten Buchungen.",
+      "steps": [
+        {
+          "title": "Profil anlegen",
+          "description": "Tragen Sie Ihre Tätigkeit, Ihre Leistungen und Ihre Zeiten ein. Unser Assistent führt Sie Schritt für Schritt."
+        },
+        {
+          "title": "Seite veröffentlichen",
+          "description": "Ihre professionelle Seite ist mit einem Klick online. Teilen Sie den Link per SMS, E-Mail oder über soziale Netzwerke."
+        },
+        {
+          "title": "Buchungen erhalten",
+          "description": "Ihre Kunden buchen selbstständig, rund um die Uhr. Sie werden bei jedem neuen Termin benachrichtigt."
+        }
+      ],
+      "cta": "Mein Profil kostenlos erstellen",
+      "note": "{days} Tage kostenlos testen — Keine Kreditkarte erforderlich"
+    },
+    "story": {
+      "badge": "Instagram & Snapchat",
+      "title": "Eine Instagram-Story. Ein voller Kalender.",
+      "titleAccent": "In 30 Sekunden.",
+      "body": "Sie haben heute Nachmittag eine Lücke? Erstellen Sie mit einem Tipp eine Story mit Ihren freien Zeiten und Ihrem QR-Code. Ihre Follower sehen, scannen, buchen. Passt für Instagram, Snapchat und alle Netzwerke mit vertikalen Stories.",
+      "steps": [
+        "Sie haben am Dienstag um 14 Uhr eine Lücke.",
+        "Ein Tipp. Opatam erstellt Ihre Story mit Ihren freien Zeiten und Ihrem QR-Code.",
+        "Sie posten auf Instagram. Ihre Kunden scannen und buchen."
+      ],
+      "twoFormats": "Zwei Formate",
+      "day": "Tag",
+      "week": "Woche",
+      "sendMessage": "Nachricht senden …",
+      "storyAlt": "Story {label} — Opatam"
+    },
+    "tutorials": {
+      "badge": "Tutorials",
+      "title": "Lernen Sie Opatam in wenigen Minuten kennen",
+      "subtitle": "Kurze Videos, um die Plattform zu beherrschen und jede Funktion auszuschöpfen.",
+      "seeAll": "Alle Tutorials ansehen",
+      "carouselAria": "Tutorial auswählen",
+      "carouselItemAria": "Tutorial {index} von {total}"
+    }
+  }
+}

@@ -19,8 +19,11 @@ import itBooking from './messages/it-booking.json';
 import pt from './messages/pt.json';
 import ptProvider from './messages/pt-provider.json';
 import ptBooking from './messages/pt-booking.json';
+import de from './messages/de.json';
+import deProvider from './messages/de-provider.json';
+import deBooking from './messages/de-booking.json';
 
-export const LOCALES = ['fr', 'en', 'it', 'pt'] as const;
+export const LOCALES = ['fr', 'en', 'it', 'pt', 'de'] as const;
 export type AppLocale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: AppLocale = 'fr';
 
@@ -29,6 +32,7 @@ export const MESSAGES: Record<AppLocale, Record<string, unknown>> = {
   en: { ...en, provider: enProvider, booking: enBooking },
   it: { ...it, provider: itProvider, booking: itBooking },
   pt: { ...pt, provider: ptProvider, booking: ptBooking },
+  de: { ...de, provider: deProvider, booking: deBooking },
 };
 
 export function isAppLocale(value: string | undefined | null): value is AppLocale {

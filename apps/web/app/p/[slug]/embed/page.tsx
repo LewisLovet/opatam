@@ -76,7 +76,9 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
   // NEXT_LOCALE cookie, showing English on a widget whose integrator chose
   // the default (French).
   const embedLocale =
-    sp.lang === 'en' || sp.lang === 'it' || sp.lang === 'pt' ? sp.lang : ('fr' as const);
+    sp.lang === 'en' || sp.lang === 'it' || sp.lang === 'pt' || sp.lang === 'de'
+      ? sp.lang
+      : ('fr' as const);
   const withLocale = (children: ReactNode) => (
     <NextIntlClientProvider locale={embedLocale} messages={MESSAGES[embedLocale] as never}>
       {children}
