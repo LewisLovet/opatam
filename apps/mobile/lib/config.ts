@@ -26,12 +26,28 @@ const envApiUrl = process.env.EXPO_PUBLIC_APP_URL;
 const envStripeKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
 /**
+ * Port du serveur web en dev. Lu depuis `EXPO_PUBLIC_APP_URL` quand il y est,
+ * 3000 sinon.
+ *
+ * POURQUOI le port est séparé de l'hôte : le port 3000 n'est pas toujours
+ * libre — une autre application du poste peut l'occuper, et le web d'Opatam
+ * tourne alors ailleurs. Sans cette lecture, la dérivation ci-dessous
+ * renverrait le téléphone vers le port 3000, donc vers l'autre application,
+ * qui répondrait des choses incohérentes au lieu d'une erreur franche.
+ */
+function devApiPort(): string {
+  const m = envApiUrl?.match(/:(\d+)\s*$/);
+  return m ? m[1] : '3000';
+}
+
+/**
  * En dev, l'IP du Mac change au gré du DHCP et `.env.local` devient stale
  * (source récurrente de « ça charge indéfiniment »). Le téléphone connaît
  * forcément l'hôte du Mac : il y charge le bundle Metro. On dérive donc
- * l'URL d'API de `hostUri` (ex. « 192.168.1.147:8083 » → port 3000), avec
- * `.env.local` en secours (simulateur/cas exotiques). Jamais utilisé en
- * production (`__DEV__ === false`).
+ * l'HÔTE de `hostUri` (ex. « 192.168.1.200:8081 ») et on lui applique le PORT
+ * de `.env.local` — l'hôte ne peut pas être périmé, le port reste réglable.
+ * `.env.local` sert de secours complet (simulateur/cas exotiques). Jamais
+ * utilisé en production (`__DEV__ === false`).
  */
 function deriveDevApiUrl(): string | null {
   try {
@@ -42,7 +58,7 @@ function deriveDevApiUrl(): string | null {
     const hostUri: string | undefined =
       Constants?.expoConfig?.hostUri ?? Constants?.expoGoConfig?.debuggerHost;
     const host = hostUri?.split(':')[0];
-    return host ? `http://${host}:3000` : null;
+    return host ? `http://${host}:${devApiPort()}` : null;
   } catch {
     return null;
   }
