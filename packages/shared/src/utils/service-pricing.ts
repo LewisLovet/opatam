@@ -883,31 +883,46 @@ export function hasActivePromoFromWindows(
 }
 
 /** Short urgency label from a day count (see getDiscountDaysLeft).
- *  Inline fr/en/it/pt map — a dictionary lookup would drag react/i18n into shared. */
+ *
+ *  Table par langue plutôt qu'une cascade de `if` : ajouter une langue se
+ *  voit d'un coup d'œil, et une entrée oubliée est visible à la lecture au
+ *  lieu de retomber silencieusement en français. */
+const PROMO_COUNTDOWN = {
+  fr: {
+    lastDay: 'Dernier jour',
+    tomorrow: 'Se termine demain',
+    days: (n: number) => `Plus que ${n} jours`,
+  },
+  en: {
+    lastDay: 'Last day',
+    tomorrow: 'Ends tomorrow',
+    days: (n: number) => `Only ${n} days left`,
+  },
+  it: {
+    lastDay: 'Ultimo giorno',
+    tomorrow: 'Termina domani',
+    days: (n: number) => `Ancora ${n} giorni`,
+  },
+  pt: {
+    lastDay: 'Último dia',
+    tomorrow: 'Termina amanhã',
+    days: (n: number) => `Faltam ${n} dias`,
+  },
+  de: {
+    lastDay: 'Letzter Tag',
+    tomorrow: 'Endet morgen',
+    days: (n: number) => `Nur noch ${n} Tage`,
+  },
+} as const;
+
 export function formatPromoCountdown(daysLeft: number, locale = 'fr'): string {
-  const lang = locale.startsWith('en')
-    ? 'en'
-    : locale.startsWith('it')
-      ? 'it'
-      : locale.startsWith('pt')
-        ? 'pt'
-        : 'fr';
-  if (daysLeft <= 0) {
-    if (lang === 'en') return 'Last day';
-    if (lang === 'it') return 'Ultimo giorno';
-    if (lang === 'pt') return 'Último dia';
-    return 'Dernier jour';
-  }
-  if (daysLeft === 1) {
-    if (lang === 'en') return 'Ends tomorrow';
-    if (lang === 'it') return 'Termina domani';
-    if (lang === 'pt') return 'Termina amanhã';
-    return 'Se termine demain';
-  }
-  if (lang === 'en') return `Only ${daysLeft} days left`;
-  if (lang === 'it') return `Ancora ${daysLeft} giorni`;
-  if (lang === 'pt') return `Faltam ${daysLeft} dias`;
-  return `Plus que ${daysLeft} jours`;
+  const lang = (Object.keys(PROMO_COUNTDOWN) as (keyof typeof PROMO_COUNTDOWN)[]).find((l) =>
+    locale.startsWith(l),
+  );
+  const t = PROMO_COUNTDOWN[lang ?? 'fr'];
+  if (daysLeft <= 0) return t.lastDay;
+  if (daysLeft === 1) return t.tomorrow;
+  return t.days(daysLeft);
 }
 
 // Re-export the variation / option shapes by reference so callers

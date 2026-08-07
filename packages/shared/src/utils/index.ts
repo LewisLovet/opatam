@@ -54,6 +54,7 @@ export function formatPrice(cents: number, currency = 'EUR', locale = 'fr-FR'): 
     if (locale.startsWith('en')) return 'Free';
     if (locale.startsWith('it')) return 'Gratis';
     if (locale.startsWith('pt')) return 'Grátis';
+    if (locale.startsWith('de')) return 'Kostenlos';
     return 'Gratuit';
   }
   const amount = cents / 100;
