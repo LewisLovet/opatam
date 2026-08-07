@@ -19,9 +19,10 @@ import fr from '../locales/app/fr.json';
 import en from '../locales/app/en.json';
 import it from '../locales/app/it.json';
 import pt from '../locales/app/pt.json';
+import de from '../locales/app/de.json';
 
-export type AppLocale = 'fr' | 'en' | 'it' | 'pt';
-export const APP_LOCALES: AppLocale[] = ['fr', 'en', 'it', 'pt'];
+export type AppLocale = 'fr' | 'en' | 'it' | 'pt' | 'de';
+export const APP_LOCALES: AppLocale[] = ['fr', 'en', 'it', 'pt', 'de'];
 
 function deviceLocale(): AppLocale {
   try {
@@ -29,6 +30,7 @@ function deviceLocale(): AppLocale {
     if (resolved.startsWith('en')) return 'en';
     if (resolved.startsWith('it')) return 'it';
     if (resolved.startsWith('pt')) return 'pt';
+    if (resolved.startsWith('de')) return 'de';
     return 'fr';
   } catch {
     return 'fr';
@@ -43,6 +45,7 @@ i18n.use(initReactI18next).init({
     en: { translation: en },
     it: { translation: it },
     pt: { translation: pt },
+    de: { translation: de },
   },
   lng: deviceLocale(),
   fallbackLng: 'fr',
@@ -63,11 +66,24 @@ export function normalizeAppLocale(lang: string | undefined): AppLocale {
   return APP_LOCALES.includes(lang as AppLocale) ? (lang as AppLocale) : 'fr';
 }
 
-/** Tag BCP 47 pour Intl/toLocaleDateString — couvre les 3 langues (le
- *  ternaire binaire `'en' ? 'en-GB' : 'fr-FR'` mappait l'italien sur fr-FR). */
-export function getIntlLocale(lang?: string): 'fr-FR' | 'en-GB' | 'it-IT' | 'pt-PT' {
-  const l = normalizeAppLocale(lang ?? i18n.language);
-  return l === 'en' ? 'en-GB' : l === 'it' ? 'it-IT' : l === 'pt' ? 'pt-PT' : 'fr-FR';
+/**
+ * Tag BCP 47 pour Intl/toLocaleDateString.
+ *
+ * Une table et non une chaîne de ternaires : le ternaire binaire
+ * `'en' ? 'en-GB' : 'fr-FR'` d'origine mappait l'italien sur fr-FR, et la
+ * même faute se répète à chaque langue ajoutée. Ici, TypeScript refuse de
+ * compiler tant qu'une entrée manque.
+ */
+const INTL_LOCALES: Record<AppLocale, string> = {
+  fr: 'fr-FR',
+  en: 'en-GB',
+  it: 'it-IT',
+  pt: 'pt-PT',
+  de: 'de-DE',
+};
+
+export function getIntlLocale(lang?: string): string {
+  return INTL_LOCALES[normalizeAppLocale(lang ?? i18n.language)];
 }
 
 /** Langue courante de l'app — à snapshotter en `clientLocale` sur les résas. */

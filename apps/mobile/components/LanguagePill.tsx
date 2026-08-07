@@ -18,12 +18,13 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { APP_LOCALES, normalizeAppLocale, setAppLocale, type AppLocale } from '../lib/i18n';
 
-const SHORT: Record<AppLocale, string> = { fr: 'FR', en: 'EN', it: 'IT', pt: 'PT' };
+const SHORT: Record<AppLocale, string> = { fr: 'FR', en: 'EN', it: 'IT', pt: 'PT', de: 'DE' };
 const NATIVE_LABEL: Record<AppLocale, string> = {
   fr: 'Français',
   en: 'English',
   it: 'Italiano',
   pt: 'Português',
+  de: 'Deutsch',
 };
 
 interface LanguagePillProps {

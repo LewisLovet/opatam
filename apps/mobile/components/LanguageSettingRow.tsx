@@ -25,6 +25,7 @@ const NATIVE_LABELS: Record<AppLocale, string> = {
   en: 'English',
   it: 'Italiano',
   pt: 'Português',
+  de: 'Deutsch',
 };
 
 export function LanguageSettingRow() {

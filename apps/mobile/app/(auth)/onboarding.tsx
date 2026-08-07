@@ -35,6 +35,7 @@ const NATIVE_LABEL: Record<AppLocale, string> = {
   en: 'English',
   it: 'Italiano',
   pt: 'Português',
+  de: 'Deutsch',
 };
 const PRIMARY_DARK = '#145a8f';
 
