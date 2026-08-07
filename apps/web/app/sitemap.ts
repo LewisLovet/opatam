@@ -1,19 +1,30 @@
 import type { MetadataRoute } from 'next';
 import { providerRepository, articleRepository } from '@booking-app/firebase';
 import { ARTICLE_CATEGORIES, CATEGORIES } from '@booking-app/shared';
+import { URL_LOCALES } from '@/lib/localizedPath';
 
 const BASE_URL = 'https://opatam.com';
 
+/**
+ * Table hreflang d'une page : le français à la racine, une entrée par
+ * préfixe de langue.
+ *
+ * Construite depuis URL_LOCALES et non écrite à la main : les blocs répétés
+ * par langue avaient laissé l'allemand déclaré comme alternative sans
+ * qu'aucune URL /de ne soit listée — Google annonçait la version allemande
+ * sans jamais se la voir proposer au crawl.
+ */
+function languagesFor(path = ''): Record<string, string> {
+  const languages: Record<string, string> = { fr: `${BASE_URL}${path}` };
+  for (const locale of URL_LOCALES) languages[locale] = `${BASE_URL}/${locale}${path}`;
+  return languages;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // fr ↔ en pairing declared on every entry that exists in both languages
-  // (Google reads hreflang from the sitemap too, not only from <link> tags).
-  const homeLanguages = {
-    fr: BASE_URL,
-    en: `${BASE_URL}/en`,
-    it: `${BASE_URL}/it`,
-    pt: `${BASE_URL}/pt`,
-    de: `${BASE_URL}/de`,
-  };
+  // Appariement des langues déclaré sur chaque entrée qui existe dans
+  // plusieurs langues (Google lit aussi le hreflang du sitemap, pas
+  // seulement les balises <link>).
+  const homeLanguages = languagesFor();
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
@@ -24,30 +35,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
       alternates: { languages: homeLanguages },
     },
-    // English homepage (translated chrome; provider content stays FR).
-    {
-      url: `${BASE_URL}/en`,
+    // Accueils traduits (chrome traduit ; le contenu des pros reste dans sa
+    // langue d'auteur). Une entrée par langue, dérivée de la même liste que
+    // le hreflang — aucune ne peut être oubliée.
+    ...URL_LOCALES.map((locale) => ({
+      url: `${BASE_URL}/${locale}`,
       lastModified: new Date(),
-      changeFrequency: 'weekly',
+      changeFrequency: 'weekly' as const,
       priority: 0.9,
       alternates: { languages: homeLanguages },
-    },
-    // Italian homepage.
-    {
-      url: `${BASE_URL}/it`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
-      alternates: { languages: homeLanguages },
-    },
-    // Portuguese homepage.
-    {
-      url: `${BASE_URL}/pt`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
-      alternates: { languages: homeLanguages },
-    },
+    })),
     {
       url: `${BASE_URL}/telechargement`,
       lastModified: new Date(),
@@ -108,13 +105,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     providerPages = providers
       .filter((p) => p.slug)
       .flatMap((p) => {
-        const languages = {
-          fr: `${BASE_URL}/p/${p.slug}`,
-          en: `${BASE_URL}/en/p/${p.slug}`,
-          it: `${BASE_URL}/it/p/${p.slug}`,
-          pt: `${BASE_URL}/pt/p/${p.slug}`,
-          de: `${BASE_URL}/de/p/${p.slug}`,
-        };
+        const languages = languagesFor(`/p/${p.slug}`);
         const lastModified = p.updatedAt instanceof Date ? p.updatedAt : new Date();
         return [
           {
@@ -124,27 +115,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             priority: 0.8,
             alternates: { languages },
           },
-          {
-            url: languages.en,
+          // Les versions traduites, listées une par une : sans elles, Google
+          // les annonce en hreflang mais ne les rencontre jamais au crawl.
+          ...URL_LOCALES.map((locale) => ({
+            url: languages[locale],
             lastModified,
             changeFrequency: 'weekly' as const,
             priority: 0.6,
             alternates: { languages },
-          },
-          {
-            url: languages.it,
-            lastModified,
-            changeFrequency: 'weekly' as const,
-            priority: 0.6,
-            alternates: { languages },
-          },
-          {
-            url: languages.pt,
-            lastModified,
-            changeFrequency: 'weekly' as const,
-            priority: 0.6,
-            alternates: { languages },
-          },
+          })),
         ];
       });
 

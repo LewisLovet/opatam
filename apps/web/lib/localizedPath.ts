@@ -19,8 +19,16 @@ export function isTranslatedSurface(pathname: string): boolean {
   return TRANSLATED_PREFIXES.some((p) => clean.startsWith(p));
 }
 
-/** Préfixes de locale gérés en URL (le français vit à la racine). */
-const URL_LOCALES = ['en', 'it', 'pt', 'de'] as const;
+/**
+ * Préfixes de locale gérés en URL (le français vit à la racine).
+ *
+ * Exporté à dessein : le sitemap et les métadonnées doivent énumérer les
+ * mêmes langues. Répéter la liste à la main, c'est ce qui a fait déclarer
+ * l'allemand comme alternative sans jamais lister ses URL.
+ */
+export const URL_LOCALES = ['en', 'it', 'pt', 'de'] as const;
+
+export type UrlLocale = (typeof URL_LOCALES)[number];
 
 /** '/en/p/x' → '/p/x' ; '/it' → '/' ; anything else unchanged. */
 export function stripEnPrefix(pathname: string): string {
