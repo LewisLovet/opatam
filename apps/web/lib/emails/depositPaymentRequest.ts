@@ -33,7 +33,7 @@ export interface DepositPaymentRequestEmailData {
   /** When set, the email shows a "Annuler la réservation" link so the
    *  client can release the slot without waiting for the timeout. */
   cancelToken?: string | null;
-  /** Client language ('fr' | 'en' | 'it' | 'pt'…). Absent = French. */
+  /** Client language ('fr' | 'en' | 'it' | 'pt' | 'de'…). Absent = French. */
   locale?: string | null;
 }
 
@@ -135,19 +135,43 @@ const TEXTS = {
     cancelLink: 'Anular a marcação',
     signoff: 'Até breve,',
   },
+  de: {
+    subject: (service: string, provider: string) =>
+      `Anzahlung offen — ${service} bei ${provider}`,
+    hello: (name: string) => `Guten Tag ${name},`,
+    intro: (provider: string, deposit: string) =>
+      `<strong>${provider}</strong> hat einen Termin für Sie angelegt. Zur Bestätigung zahlen Sie bitte die Anzahlung von <strong>${deposit}</strong>.`,
+    introText: (provider: string, deposit: string) =>
+      `${provider} hat einen Termin für Sie angelegt. Zahlen Sie die Anzahlung von ${deposit}, um ihn zu bestätigen.`,
+    yourBooking: 'Ihr Termin',
+    service: 'Leistung',
+    date: 'Datum',
+    time: 'Uhrzeit',
+    deposit: 'Anzahlung',
+    holdNotice: (minutes: number) =>
+      `Der Termin bleibt <strong>${minutes} Minuten</strong> für Sie reserviert. Ohne Zahlung wird er automatisch freigegeben.`,
+    holdNoticeText: (minutes: number) =>
+      `Der Termin bleibt ${minutes} Minuten reserviert. Ohne Zahlung wird er freigegeben.`,
+    payCta: 'Anzahlung bezahlen',
+    securePayment: 'Sichere Zahlung über Stripe.',
+    cantMakeIt: 'Sie können diesen Termin nicht wahrnehmen?',
+    cancelLink: 'Termin stornieren',
+    signoff: 'Bis bald,',
+  },
 } as const;
 
-type Locale = 'fr' | 'en' | 'it' | 'pt';
+type Locale = 'fr' | 'en' | 'it' | 'pt' | 'de';
 
 const INTL_LOCALE: Record<Locale, string> = {
   fr: 'fr-FR',
   en: 'en-GB',
   it: 'it-IT',
   pt: 'pt-PT',
+  de: 'de-DE',
 };
 
 function resolveLocale(raw: string | null | undefined): Locale {
-  return raw === 'en' || raw === 'it' || raw === 'pt' ? raw : 'fr';
+  return raw === 'en' || raw === 'it' || raw === 'pt' || raw === 'de' ? raw : 'fr';
 }
 
 /** Paris-anchored formats in the recipient's language (24h clock for all). */

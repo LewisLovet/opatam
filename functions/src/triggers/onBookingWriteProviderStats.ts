@@ -35,6 +35,8 @@ import {
   isLoyaltyConfigValidMirror,
   hasLoyaltyAccessMirror,
   loyaltyRewardLabel,
+  type ClientLocale,
+  isClientLocale,
 } from '../utils/loyaltyMirror';
 import {
   aggregateBookingsToClients,
@@ -259,10 +261,9 @@ export async function recomputeClientDoc(
       .filter((b) => b.clientId === client.clientId)
       .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))[0]
       ?.clientLocale as string | undefined;
+    const resolvedLocale = isClientLocale(latestLocale) ? latestLocale : null;
     client.clientLocale =
-      latestLocale === 'en' || latestLocale === 'it' || latestLocale === 'pt'
-        ? latestLocale
-        : ((existingSnap.data()?.clientLocale as string | undefined) ?? 'fr');
+      resolvedLocale ?? ((existingSnap.data()?.clientLocale as string | undefined) ?? 'fr');
     await ref.set(client, { merge: false });
 
     // ── Notifications de jalons fidélité ─────────────────────
@@ -271,9 +272,7 @@ export async function recomputeClientDoc(
       client.clientId,
       previousLoyaltyCount,
       Math.max(0, client.loyaltyConfirmedCount + existingAdjustment),
-      latestLocale === 'en' || latestLocale === 'it' || latestLocale === 'pt'
-        ? latestLocale
-        : 'fr',
+      resolvedLocale ?? 'fr',
       ctx.providerName,
       client.email,
       client.name,
@@ -298,7 +297,7 @@ async function maybeSendLoyaltyMilestone(
   clientId: string | null,
   oldCount: number,
   newCount: number,
-  locale: 'fr' | 'en' | 'it' | 'pt',
+  locale: ClientLocale,
   providerName: string,
   clientEmail: string | null,
   clientName: string,
@@ -345,6 +344,10 @@ async function maybeSendLoyaltyMilestone(
       title: 'A sua recompensa está pronta!',
       body: `Em ${providerName}: ${reward} na sua próxima reserva na app.`,
     },
+    de: {
+      title: 'Ihre Prämie ist bereit!',
+      body: `Bei ${providerName}: ${reward} auf Ihre nächste Buchung in der App.`,
+    },
   };
   const HALFWAY: Record<typeof locale, { title: string; body: string }> = {
     fr: {
@@ -362,6 +365,10 @@ async function maybeSendLoyaltyMilestone(
     pt: {
       title: 'Cartão de fidelização a meio',
       body: `Faltam ${remaining} marca${remaining > 1 ? 'ções' : 'ção'} em ${providerName} para obter ${reward}.`,
+    },
+    de: {
+      title: 'Treuekarte zur Hälfte voll',
+      body: `Nur noch ${remaining} Termin${remaining > 1 ? 'e' : ''} bei ${providerName} für ${reward}.`,
     },
   };
   const payload = armed ? ARMED[locale] : HALFWAY[locale];

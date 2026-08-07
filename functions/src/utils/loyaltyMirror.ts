@@ -75,14 +75,30 @@ export function hasLoyaltyAccessMirror(p: FirebaseFirestore.DocumentData | undef
 export function loyaltyRewardLabel(
   rewardType: string,
   rewardValue: number,
-  locale: 'fr' | 'en' | 'it' | 'pt',
+  locale: 'fr' | 'en' | 'it' | 'pt' | 'de',
 ): string {
   if (rewardType === 'percent') {
-    // fr : espace fine avant % ; en/it/pt : pas d'espace.
-    return locale === 'fr' ? `−${rewardValue} %` : `−${rewardValue}%`;
+    // fr et de : espace avant % ; en/it/pt : pas d'espace.
+    return locale === 'fr' || locale === 'de' ? `−${rewardValue} %` : `−${rewardValue}%`;
   }
   const euros = rewardValue / 100;
   const v = Number.isInteger(euros) ? String(euros) : euros.toFixed(2);
-  // en : symbole avant ; fr/it/pt : symbole après avec espace.
+  // en : symbole avant ; fr/it/pt/de : symbole après avec espace.
   return locale === 'en' ? `−€${v}` : `−${v} €`;
+}
+
+/**
+ * Langue d'un client, telle que stockée sur `booking.clientLocale`.
+ *
+ * Déclarée une seule fois : les tests `=== 'en' || === 'it' || …` recopiés à
+ * la main sont exactement ce qui a mappé l'italien sur le français en
+ * production. Ajouter une langue ici la propage partout où le garde est
+ * utilisé.
+ */
+export type ClientLocale = 'fr' | 'en' | 'it' | 'pt' | 'de';
+
+const CLIENT_LOCALES: readonly string[] = ['fr', 'en', 'it', 'pt', 'de'];
+
+export function isClientLocale(raw: string | undefined | null): raw is ClientLocale {
+  return !!raw && CLIENT_LOCALES.includes(raw);
 }

@@ -1,14 +1,14 @@
 /**
  * Email « points de fidélité ajustés » — envoyé au client quand le pro
  * ajoute/retire des points depuis sa fiche client (fidélité v2).
- * Trilingue (locale mémorisée sur ProviderClient.clientLocale).
+ * Multilingue (locale mémorisée sur ProviderClient.clientLocale).
  */
 
 import { resend, emailConfig, getEmailWrapperHtml } from '@/lib/resend';
 
-type Locale = 'fr' | 'en' | 'it' | 'pt';
+type Locale = 'fr' | 'en' | 'it' | 'pt' | 'de';
 const resolveLocale = (raw: string | null | undefined): Locale =>
-  raw === 'en' || raw === 'it' || raw === 'pt' ? raw : 'fr';
+  raw === 'en' || raw === 'it' || raw === 'pt' || raw === 'de' ? raw : 'fr';
 
 const REASON_LABELS: Record<Locale, Record<string, string>> = {
   fr: {
@@ -42,6 +42,14 @@ const REASON_LABELS: Record<Locale, Record<string, string>> = {
     evenement: 'Evento especial',
     erreur_correction: 'Correção de um erro',
     autre: 'Atenção especial',
+  },
+  de: {
+    geste_commercial: 'Kulanz',
+    compensation_retard: 'Ausgleich für eine Verspätung',
+    parrainage: 'Empfehlung',
+    evenement: 'Besonderer Anlass',
+    erreur_correction: 'Korrektur eines Fehlers',
+    autre: 'Besondere Aufmerksamkeit',
   },
 };
 
@@ -97,6 +105,22 @@ const TEXTS = {
     remaining: (r: number) => `${r > 1 ? `Faltam apenas ${r} marcações` : 'Falta apenas 1 marcação'} para a sua recompensa.`,
     openApp: 'Ver o meu cartão na app',
     signoff: 'Até breve,',
+  },
+  de: {
+    subjectAdd: (p: string) => `${p} hat Punkte auf Ihrer Treuekarte gutgeschrieben`,
+    subjectRemove: (p: string) => `Ihre Treuekarte bei ${p} wurde aktualisiert`,
+    hello: (n: string) => `Guten Tag ${n},`,
+    added: (d: number, p: string) =>
+      `Gute Nachrichten! <strong>${p}</strong> hat Ihrer Treuekarte soeben <strong>${d} Punkt${d > 1 ? 'e' : ''}</strong> gutgeschrieben.`,
+    removed: (d: number, p: string) =>
+      `<strong>${p}</strong> hat Ihre Treuekarte aktualisiert (${d} Punkt${d < -1 ? 'e' : ''}).`,
+    yourCard: 'Ihre Karte',
+    progress: (c: number, t: number) => `${c} / ${t} Termine`,
+    armed:
+      'Ihre Prämie ist bereit! Sie wird bei Ihrer nächsten berechtigten Buchung automatisch angerechnet.',
+    remaining: (r: number) => `Nur noch ${r} Termin${r > 1 ? 'e' : ''} bis zu Ihrer Prämie.`,
+    openApp: 'Meine Karte in der App ansehen',
+    signoff: 'Bis bald,',
   },
 } as const;
 

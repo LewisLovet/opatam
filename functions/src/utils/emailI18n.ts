@@ -1,5 +1,5 @@
 /**
- * Email i18n — FR/EN/IT/PT texts for the CLIENT-facing transactional emails.
+ * Email i18n — FR/EN/IT/PT/DE texts for the CLIENT-facing transactional emails.
  *
  * DEPLOY CONSTRAINT (why this file exists): Cloud Functions never import
  * workspace packages at RUNTIME — only `import type` from @booking-app/* is
@@ -13,16 +13,21 @@
  * reschedule, review request, deposit reminder. Pro & system emails
  * (provider notifications, welcome, password reset…) stay 100% French.
  *
- * Locale source: `booking.clientLocale` ('fr' | 'en' | 'it' | 'pt', absent = fr) —
- * the language the client booked in. Anything that isn't exactly 'en', 'it'
- * or 'pt' falls back to 'fr'. Portuguese is pt-PT (Portugal), not pt-BR.
+ * Locale source: `booking.clientLocale` ('fr' | 'en' | 'it' | 'pt' | 'de',
+ * absent = fr) — the language the client booked in. Anything that isn't one
+ * of the supported locales falls back to 'fr'. Portuguese is pt-PT
+ * (Portugal), not pt-BR. German uses the formal "Sie".
  */
 
-export type EmailLocale = 'fr' | 'en' | 'it' | 'pt';
+export type EmailLocale = 'fr' | 'en' | 'it' | 'pt' | 'de';
+
+/** Les locales autres que le français, listées UNE fois. Ajouter une langue
+ *  ici la rend éligible partout où `resolveEmailLocale` est appelé. */
+const NON_DEFAULT_LOCALES: readonly EmailLocale[] = ['en', 'it', 'pt', 'de'];
 
 /** Resolve a raw locale value (booking.clientLocale) to a supported email locale. */
 export function resolveEmailLocale(raw: string | null | undefined): EmailLocale {
-  return raw === 'en' || raw === 'it' || raw === 'pt' ? raw : 'fr';
+  return NON_DEFAULT_LOCALES.includes(raw as EmailLocale) ? (raw as EmailLocale) : 'fr';
 }
 
 // ---------------------------------------------------------------------------
@@ -38,6 +43,7 @@ const INTL_LOCALE: Record<EmailLocale, string> = {
   en: 'en-GB',
   it: 'it-IT',
   pt: 'pt-PT',
+  de: 'de-DE',
 };
 
 export function formatEmailDate(date: Date, locale: EmailLocale = 'fr'): string {
@@ -76,6 +82,7 @@ export function formatEmailPrice(
     if (locale === 'en') return `From ${fmt(priceInCentimes)} to ${fmt(priceMaxInCentimes)}`;
     if (locale === 'it') return `Da ${fmt(priceInCentimes)} a ${fmt(priceMaxInCentimes)}`;
     if (locale === 'pt') return `De ${fmt(priceInCentimes)} a ${fmt(priceMaxInCentimes)}`;
+    if (locale === 'de') return `Von ${fmt(priceInCentimes)} bis ${fmt(priceMaxInCentimes)}`;
     return `De ${fmt(priceInCentimes)} à ${fmt(priceMaxInCentimes)}`;
   }
   return fmt(priceInCentimes);
@@ -120,6 +127,18 @@ export function formatEmailTimeUntil(minutesUntil: number, locale: EmailLocale =
       return hours === 1 ? 'daqui a 1 hora' : `daqui a ${hours} horas`;
     }
     return `daqui a ${hours}h${mins.toString().padStart(2, '0')}`;
+  }
+  if (locale === 'de') {
+    if (minutesUntil < 60) {
+      return minutesUntil <= 1 ? 'in 1 Minute' : `in ${minutesUntil} Minuten`;
+    }
+    const hours = Math.floor(minutesUntil / 60);
+    const mins = Math.round(minutesUntil % 60);
+    if (hours >= 24) return 'morgen';
+    if (mins === 0) {
+      return hours === 1 ? 'in 1 Stunde' : `in ${hours} Stunden`;
+    }
+    return `in ${hours}:${mins.toString().padStart(2, '0')} Std.`;
   }
   if (minutesUntil < 60) {
     const mins = minutesUntil;
@@ -368,6 +387,62 @@ export const EMAIL_TEXTS = {
         cancelLine: (url: string) => `Para anular: ${url}`,
       },
     },
+    de: {
+      greeting: (name: string) => `Guten Tag ${name},`,
+      signoff: 'Bis bald,',
+      footerAuto: (appName: string) =>
+        `Diese E-Mail wurde automatisch von ${appName} versendet.`,
+      footerIgnore: 'Falls diese Nachricht nicht für Sie bestimmt ist, ignorieren Sie sie bitte.',
+      colon: ':',
+      labels: {
+        service: 'Leistung',
+        date: 'Datum',
+        time: 'Uhrzeit',
+        duration: 'Dauer',
+        location: 'Ort',
+        address: 'Adresse',
+        area: 'Gebiet',
+        directions: 'Route',
+        with: 'Bei',
+        price: 'Preis',
+        deposit: 'Anzahlung',
+        depositPaid: 'Anzahlung bezahlt',
+        remaining: 'Restbetrag',
+        remainingOnSite: 'Restbetrag vor Ort',
+        reason: 'Grund',
+        at: 'Bei',
+      },
+      onSite: 'vor Ort',
+      addToCalendar: 'Zum Kalender hinzufügen',
+      updateCalendar: 'Kalender aktualisieren',
+      addToCalendarText: 'Zum Kalender hinzufügen:',
+      updateCalendarText: 'Kalender aktualisieren:',
+      calendarGoogle: 'Google',
+      calendarGoogleText: 'Google Calendar',
+      calendarApple: 'Apple / Outlook',
+      cancelCta: 'Termin stornieren',
+      cancelLineText: (url: string) => `Termin stornieren: ${url}`,
+      rebookCta: 'Neuen Termin buchen',
+      directionsCta: 'Route anzeigen',
+      accessInfoTitleHtml: 'Zugangsinformationen',
+      accessInfoTitleText: 'Zugangsinformationen',
+      addressPendingHtml: (when: string) =>
+        `Die genaue Adresse und die Zugangsinformationen erhalten Sie${when} zusammen mit Ihrer Erinnerung, vor dem Termin.`,
+      addressPendingText: (when: string) =>
+        `Die genaue Adresse und die Zugangsinformationen erhalten Sie${when} zusammen mit Ihrer Erinnerung, vor dem Termin.`,
+      onDate: (formattedDate: string) => ` am ${formattedDate}`,
+      promoWas: (formattedOriginal: string, formattedSaving: string) =>
+        ` (statt ${formattedOriginal}, ${formattedSaving} weniger)`,
+      providerNoticeTitle: (businessName: string) => `Hinweis von ${businessName}`,
+      ics: {
+        filename: 'termin.ics',
+        summary: (serviceName: string, businessName: string) =>
+          `Termin - ${serviceName} bei ${businessName}`,
+        withMember: (memberName: string) => `Bei ${memberName}`,
+        atBusiness: (businessName: string) => `Bei ${businessName}`,
+        cancelLine: (url: string) => `Zum Stornieren: ${url}`,
+      },
+    },
   },
 
   loyalty: {
@@ -425,6 +500,20 @@ export const EMAIL_TEXTS = {
       rewardBody: (businessName: string, reward: string) =>
         `O seu cartão de fidelização em ${businessName} está completo: ${reward} será aplicado automaticamente na sua próxima marcação na app.`,
       rewardCta: 'Marcar e usar o meu desconto',
+    },
+    de: {
+      cardTitle: (businessName: string) => `Ihre Treuekarte bei ${businessName}`,
+      counted: (count: number, threshold: number, remaining: number, reward: string) =>
+        `${count}/${threshold} wahrgenommene Termine — dieser kommt nach Ihrem Besuch dazu. Nur noch ${remaining} bis ${reward}.`,
+      applied: (reward: string) => `Treuerabatt ${reward} auf diesen Termin angerechnet.`,
+      readyForNext: (reward: string) =>
+        `Karte voll: ${reward} auf Ihre nächste Buchung in der App.`,
+      // Email « récompense prête »
+      rewardSubject: (businessName: string) => `Ihre Prämie bei ${businessName} ist bereit`,
+      rewardTitle: 'Ihre Prämie ist bereit!',
+      rewardBody: (businessName: string, reward: string) =>
+        `Ihre Treuekarte bei ${businessName} ist voll: ${reward} wird bei Ihrer nächsten Buchung in der App automatisch abgezogen.`,
+      rewardCta: 'Buchen und Rabatt einlösen',
     },
   },
   confirmation: {
@@ -518,6 +607,28 @@ export const EMAIL_TEXTS = {
         `Após a sua marcação, <a href="${url}" style="color: #6366f1; text-decoration: underline;">deixe-nos a sua opinião</a>`,
       reviewFooterText: (url: string) => `Após a sua marcação, deixe-nos a sua opinião: ${url}`,
     },
+    de: {
+      subject: (serviceName: string) => `Bestätigung Ihres Termins - ${serviceName}`,
+      subjectUpdated: (businessName: string) => `Ihr Termin wurde aktualisiert - ${businessName}`,
+      introHtml: 'Ihr Termin wurde <strong style="color: #16a34a;">bestätigt</strong>.',
+      introText: 'Ihr Termin wurde bestätigt.',
+      updateAddedHtml: (serviceName: string) =>
+        `Eine Leistung wurde Ihrem Termin <strong style="color: #16a34a;">hinzugefügt</strong>: <strong>${serviceName}</strong>.`,
+      updateRemovedHtml: (serviceName: string) =>
+        `Eine Leistung wurde von Ihrem Termin <strong style="color: #dc2626;">entfernt</strong>: <strong>${serviceName}</strong>.`,
+      updateAddedText: (serviceName: string) =>
+        `Eine Leistung wurde Ihrem Termin hinzugefügt: ${serviceName}.`,
+      updateRemovedText: (serviceName: string) =>
+        `Eine Leistung wurde von Ihrem Termin entfernt: ${serviceName}.`,
+      updatedSub: 'Hier ist Ihr aktualisierter Termin.',
+      boxTitleMulti: 'Ihre Leistungen',
+      boxTitleSingle: 'Ihr Termin',
+      detailsHeading: 'Details zu Ihrem Termin:',
+      reviewFooterHtml: (url: string) =>
+        `Nach Ihrem Termin <a href="${url}" style="color: #6366f1; text-decoration: underline;">hinterlassen Sie uns eine Bewertung</a>`,
+      reviewFooterText: (url: string) =>
+        `Nach Ihrem Termin hinterlassen Sie uns eine Bewertung: ${url}`,
+    },
   },
 
   reminder: {
@@ -571,6 +682,19 @@ export const EMAIL_TEXTS = {
       tomorrow: 'amanhã',
       inTwoDays: 'daqui a 2 dias',
       inTwoHours: 'daqui a 2 horas',
+    },
+    de: {
+      subject: (timeLabel: string, serviceName: string) =>
+        `Erinnerung: Ihr Termin ${timeLabel} - ${serviceName}`,
+      introHtml: (timeLabel: string) =>
+        `Wir erinnern Sie daran, dass Ihr Termin <strong style="color: #2563eb;">${timeLabel}</strong> stattfindet.`,
+      introText: (timeLabel: string) =>
+        `Wir erinnern Sie daran, dass Ihr Termin ${timeLabel} stattfindet.`,
+      boxTitle: 'Terminerinnerung',
+      detailsHeading: 'Details zu Ihrem Termin:',
+      tomorrow: 'morgen',
+      inTwoDays: 'in 2 Tagen',
+      inTwoHours: 'in 2 Stunden',
     },
   },
 
@@ -675,6 +799,31 @@ export const EMAIL_TEXTS = {
         `Se desejar fazer uma nova marcação, pode marcar online em ${url}`,
       apology: 'Pedimos desculpa pelo incómodo.',
     },
+    de: {
+      subject: (serviceName: string) => `Stornierung Ihres Termins - ${serviceName}`,
+      introHtml:
+        'Wir informieren Sie, dass Ihr Termin <strong style="color: #dc2626;">storniert</strong> wurde.',
+      introText: 'Wir informieren Sie, dass Ihr Termin storniert wurde.',
+      boxTitle: 'Stornierter Termin',
+      detailsHeading: 'Details zum stornierten Termin:',
+      refundedTitle: '✓ Anzahlung erstattet',
+      refundedBodyHtml: (formattedAmount: string) =>
+        `Ihre Anzahlung von <strong>${formattedAmount}</strong> wird auf Ihr Zahlungsmittel zurückerstattet. Rechnen Sie mit 5 bis 10 Werktagen, bis die Gutschrift sichtbar ist.`,
+      refundedText: (formattedAmount: string) =>
+        `✓ Ihre Anzahlung von ${formattedAmount} wird zurückerstattet (5 bis 10 Werktage).`,
+      unrefundedTitle: 'Anzahlung nicht erstattet',
+      unrefundedBodyHtml: (formattedAmount: string, businessName: string) =>
+        `Ihre Anzahlung von <strong>${formattedAmount}</strong> ist nicht erstattungsfähig, da die Stornierung nach der von ${businessName} festgelegten Frist erfolgt ist.`,
+      unrefundedContactHtml: (businessName: string) =>
+        `Für Ausnahmefälle wenden Sie sich bitte direkt an ${businessName}.`,
+      unrefundedText: (formattedAmount: string, businessName: string) =>
+        `⚠ Ihre Anzahlung von ${formattedAmount} ist nicht erstattungsfähig, da die Stornierung nach der von ${businessName} festgelegten Frist erfolgt ist.`,
+      rebookPromptHtml:
+        'Wenn Sie einen neuen Termin wünschen, melden Sie sich gern bei uns oder buchen Sie online.',
+      rebookPromptText: (url: string) =>
+        `Wenn Sie einen neuen Termin wünschen, können Sie online buchen unter ${url}`,
+      apology: 'Wir bitten die Unannehmlichkeiten zu entschuldigen.',
+    },
   },
 
   reschedule: {
@@ -721,6 +870,17 @@ export const EMAIL_TEXTS = {
       oldSlotLineText: (formattedDate: string, formattedTime: string) =>
         `Horário anterior: ${formattedDate} às ${formattedTime}`,
       newSlotHeadingText: 'Novo horário:',
+    },
+    de: {
+      subject: (serviceName: string) => `Änderung Ihres Termins - ${serviceName}`,
+      introHtml: 'Ihr Termin wurde <strong style="color: #2563eb;">verschoben</strong>.',
+      introText: 'Ihr Termin wurde verschoben.',
+      oldSlotTitle: 'Bisheriger Termin',
+      newSlotTitle: 'Neuer Termin',
+      atJoiner: 'um',
+      oldSlotLineText: (formattedDate: string, formattedTime: string) =>
+        `Bisheriger Termin: ${formattedDate} um ${formattedTime}`,
+      newSlotHeadingText: 'Neuer Termin:',
     },
   },
 
@@ -781,6 +941,20 @@ export const EMAIL_TEXTS = {
       visibleNote: (providerName: string) =>
         `A sua opinião ficará visível na página de ${providerName}.`,
       sentBy: 'Email enviado por',
+    },
+    de: {
+      subject: (serviceName: string) => `Wie war Ihr Termin? - ${serviceName}`,
+      htmlLang: 'de',
+      eyebrow: 'Ihre Meinung zählt',
+      heading: 'Wie war Ihr Termin?',
+      body: 'Wir hoffen, Ihr Termin ist gut verlaufen. Ihre Meinung hilft anderen Kunden bei der Wahl und uns dabei, besser zu werden.',
+      boxTitle: 'Ihr Termin',
+      boxTitleText: 'Ihr Termin:',
+      cta: 'Bewertung abgeben',
+      ctaLineText: 'Hier können Sie Ihre Bewertung abgeben:',
+      visibleNote: (providerName: string) =>
+        `Ihre Bewertung erscheint auf der Seite von ${providerName}.`,
+      sentBy: 'E-Mail gesendet von',
     },
   },
 
@@ -860,6 +1034,25 @@ export const EMAIL_TEXTS = {
         `Não vai poder comparecer? <a href="${url}" style="color: #dc2626; text-decoration: underline;">Anular a marcação</a>.`,
       cancelLineText: (url: string) => `Anular a marcação: ${url}`,
       signoff: 'Até já,',
+    },
+    de: {
+      subject: (serviceName: string, providerName: string) =>
+        `Anzahlung ausstehend — ${serviceName} bei ${providerName}`,
+      introHtml: (providerName: string) =>
+        `Ihre Buchung bei <strong>${providerName}</strong> <strong style="color: #d97706;">wartet auf die Zahlung der Anzahlung</strong>.`,
+      introText: (providerName: string) =>
+        `Ihre Buchung bei ${providerName} wartet auf die Zahlung der Anzahlung.`,
+      boxTitle: 'Buchung ausstehend',
+      deadlineHtml: (minutesLeft: number) =>
+        `Ohne Zahlung der Anzahlung in den nächsten <strong>${minutesLeft} Minuten</strong> wird Ihr Termin automatisch wieder freigegeben.`,
+      deadlineText: (minutesLeft: number) =>
+        `Ohne Zahlung der Anzahlung in den nächsten ${minutesLeft} Minuten wird Ihr Termin automatisch wieder freigegeben.`,
+      payCta: 'Anzahlung jetzt bezahlen',
+      payLineText: (url: string) => `Anzahlung bezahlen: ${url}`,
+      cancelQuestionHtml: (url: string) =>
+        `Sie können doch nicht kommen? <a href="${url}" style="color: #dc2626; text-decoration: underline;">Termin stornieren</a>.`,
+      cancelLineText: (url: string) => `Termin stornieren: ${url}`,
+      signoff: 'Bis gleich,',
     },
   },
 } as const;

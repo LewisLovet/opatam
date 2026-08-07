@@ -63,7 +63,7 @@ import { hasLoyaltyAccessMirror, isLoyaltyConfigValidMirror } from '../utils/loy
 const THROTTLE_MS = 7 * 24 * 60 * 60 * 1000;
 const APP_URL = 'https://opatam.com';
 
-type Locale = 'fr' | 'en' | 'it' | 'pt';
+type Locale = 'fr' | 'en' | 'it' | 'pt' | 'de';
 
 const TEXTS: Record<
   Locale,
@@ -112,16 +112,26 @@ const TEXTS: Record<
     cta: 'Marcar agora',
     unsub: 'Deixar de receber as promoções deste profissional',
   },
+  de: {
+    subject: (p) => `${p} hat ein Angebot für Sie`,
+    hello: (n) => `Guten Tag ${n},`,
+    body: (p, s, off) =>
+      `<strong>${p}</strong> bietet gerade <strong>${off}</strong> auf „${s}“ an.`,
+    until: (d) => `Angebot gültig bis ${d}.`,
+    cta: 'Jetzt buchen',
+    unsub: 'Keine Angebote dieses Anbieters mehr erhalten',
+  },
 };
 
 const resolveLocale = (raw: unknown): Locale =>
-  raw === 'en' || raw === 'it' || raw === 'pt' ? raw : 'fr';
+  raw === 'en' || raw === 'it' || raw === 'pt' || raw === 'de' ? raw : 'fr';
 
 const INTL_LOCALE: Record<Locale, string> = {
   fr: 'fr-FR',
   en: 'en-GB',
   it: 'it-IT',
   pt: 'pt-PT',
+  de: 'de-DE',
 };
 
 export type PromoRunOutcome =
