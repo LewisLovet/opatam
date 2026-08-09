@@ -78,6 +78,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.8,
     },
+    {
+      url: `${BASE_URL}/studio-enregistrement`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
     // Blog category landing pages
     ...ARTICLE_CATEGORIES.map((cat) => ({
       url: `${BASE_URL}/blog/categorie/${cat}`,
@@ -103,7 +109,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const providers = await providerRepository.getPublished();
     providerPages = providers
-      .filter((p) => p.slug)
+      // `isTest` exclut les comptes de démonstration. `getPublished()` ne
+      // filtre que `isPublished`, si bien que le salon de démo servant aux
+      // captures des stores s'est retrouvé dans le sitemap — un faux
+      // commerce, avec une fausse adresse, proposé à l'indexation en cinq
+      // langues. Le sitemap ne doit annoncer que des vitrines réelles.
+      .filter((p) => p.slug && !p.isTest)
       .flatMap((p) => {
         const languages = languagesFor(`/p/${p.slug}`);
         const lastModified = p.updatedAt instanceof Date ? p.updatedAt : new Date();
@@ -127,7 +138,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         ];
       });
 
-    const populated = new Set(providers.map((p) => p.category).filter(Boolean));
+    // Même raison pour les pages catégorie : un métier dont le seul
+    // représentant est un compte de démonstration ne doit pas ouvrir une
+    // page d'annuaire vide.
+    const populated = new Set(
+      providers.filter((p) => !p.isTest).map((p) => p.category).filter(Boolean),
+    );
     categoryPages = CATEGORIES.filter((cat) => populated.has(cat.id)).map((cat) => ({
       url: `${BASE_URL}/recherche/${cat.id}`,
       lastModified: new Date(),
