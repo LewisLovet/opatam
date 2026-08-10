@@ -17,12 +17,20 @@ interface HeaderProps {
   showAuthButtons?: boolean;
   transparent?: boolean;
   navLinks?: NavLink[];
+  /**
+   * Affiche le sélecteur de langue. À passer à `false` sur les pages qui
+   * n'existent QUE en français : proposer « EN » depuis une page sans
+   * équivalent traduit renvoie le visiteur sur un accueil traduit et lui
+   * fait perdre le fil, ce qui est pire que de ne rien proposer.
+   */
+  showLanguageSwitcher?: boolean;
 }
 
 export function Header({
   showAuthButtons = true,
   transparent = false,
   navLinks,
+  showLanguageSwitcher = true,
 }: HeaderProps) {
   const t = useTranslations('layout.header');
   const locale = useLocale();
@@ -127,7 +135,7 @@ export function Header({
 
             {/* Auth Buttons */}
             <div className="hidden md:flex items-center gap-3">
-              <LanguageSwitcher />
+              {showLanguageSwitcher && <LanguageSwitcher />}
               {showAuthButtons && (
                 <>
                   <Link

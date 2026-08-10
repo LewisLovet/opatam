@@ -62,14 +62,9 @@ export const metadata: Metadata = {
       "Un agenda par salle, des acomptes encaissés à la réservation, zéro commission. Le logiciel de planning pensé pour les studios d'enregistrement.",
     url: 'https://opatam.com/studio-enregistrement',
     type: 'website',
-    images: [
-      {
-        url: 'https://opatam.com/logo-opatam.png',
-        width: 1200,
-        height: 630,
-        alt: "Opatam — logiciel de réservation pour studio d'enregistrement",
-      },
-    ],
+    // Pas de `images` ici : `opengraph-image.tsx` du même dossier est
+    // découvert par Next et gagne. Le déclarer à la main réinstallerait le
+    // logo générique, qui ne dit rien de la page.
   },
 };
 
@@ -110,7 +105,7 @@ const moments = [
     when: 'À la réservation',
     title: "L'acompte est encaissé avant que la session existe.",
     body:
-      "Avec l'option Sérénité, vous demandez un acompte au moment de la réservation. L'artiste paie par carte depuis votre lien. S'il ne vient pas, l'acompte vous reste. C'est le seul filtre qui distingue une intention d'une réservation.",
+      "Avec l'option Sérénité, vous demandez un acompte au moment de la réservation. L'artiste paie par carte depuis votre lien. S'il ne vient pas, l'acompte vous reste — selon le délai d'annulation que vous avez fixé. C'est le seul filtre qui distingue une intention d'une réservation.",
   },
   {
     when: 'En session',
@@ -158,7 +153,7 @@ const faqItems = [
   },
   {
     q: "Est-ce que je peux demander un acompte sur une session ?",
-    a: "Oui, avec l'option Sérénité. Vous fixez un acompte en pourcentage ou en montant fixe, par prestation. L'artiste paie par carte au moment de réserver et reçoit son reçu. S'il annule hors délai ou ne vient pas, vous conservez l'acompte. Le reste se règle sur place, comme d'habitude.",
+    a: "Oui, avec l'option Sérénité. Vous fixez un acompte en pourcentage ou en montant fixe, par prestation. L'artiste paie par carte au moment de réserver et reçoit son reçu. S'il annule hors du délai que vous avez fixé, ou s'il ne vient pas, vous conservez l'acompte ; à l'intérieur du délai, il est remboursé. C'est votre politique d'annulation qui tranche, pas nous. Le reste se règle sur place, comme d'habitude.",
   },
   {
     q: "Une session de huit heures, c'est possible ?",
@@ -228,7 +223,21 @@ export default async function StudioEnregistrementPage() {
 
   return (
     <>
-      <Header />
+      {/* La navigation par défaut pointe vers les ancres de l'accueil
+          (/#tarifs, /#faq…) : depuis une verticale, chaque clic ferait
+          SORTIR le visiteur du parcours qu'on vient de construire. Elle
+          vise donc les sections de cette page. Et le sélecteur de langue
+          disparaît : cette page n'existe qu'en français, proposer « EN »
+          renverrait vers un accueil traduit sans rapport. */}
+      <Header
+        showLanguageSwitcher={false}
+        navLinks={[
+          { href: '#salles', label: 'Les salles' },
+          { href: '#demo', label: 'La démo' },
+          { href: '#tarif', label: 'Tarif' },
+          { href: '#faq', label: 'Questions' },
+        ]}
+      />
       <main className="bg-[#0B0B0D] text-[#F4F2EE]">
         {/* ─── HERO ────────────────────────────────────────────────────
             Colonnes 7/5 comme sur /nail-artist, pour la même raison : un
@@ -260,7 +269,7 @@ export default async function StudioEnregistrementPage() {
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                   <StudioDemoButton className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-8 py-4 text-base font-semibold text-[#F4F2EE] transition hover:border-white/40 hover:bg-white/5">
-                    Réserver une session de démo
+                    Voir la réservation côté artiste
                   </StudioDemoButton>
                 </div>
 
@@ -362,8 +371,81 @@ export default async function StudioEnregistrementPage() {
           </div>
         </section>
 
+        {/* ─── VOTRE STUDIO DANS OPATAM ───────────────────────────────
+            Répond à la seule question que se pose un gérant : à quoi
+            ressemblera MA page, et comment mes artistes réserveront-ils ?
+            La règle d'accès est écrite noir sur blanc — c'est ici qu'on
+            évite de laisser croire qu'Opatam affecte un ingénieur. */}
+        <section className="border-b border-white/10" id="salles">
+          <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 py-20 sm:py-24">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight max-w-3xl">
+              Votre studio,
+              <br />
+              tel que vos artistes le verront.
+            </h2>
+            <p className="mt-6 text-lg leading-relaxed text-zinc-400 max-w-2xl">
+              Voici Studio Harmonie, notre studio de démonstration : trois espaces
+              réservables, deux ingénieurs du son, et une règle d&apos;accès claire.
+            </p>
+
+            <div className="mt-14 grid lg:grid-cols-3 gap-6">
+              {[
+                {
+                  name: 'Studio A — grande salle',
+                  detail: 'Régie séparée, console analogique, cabine attenante',
+                  formats: '4 h — 180 € · journée — 320 €',
+                },
+                {
+                  name: 'Studio B — salle de prise',
+                  detail: 'Formats légers : voix, guitare, podcast à deux micros',
+                  formats: '4 h — 140 €',
+                },
+                {
+                  name: 'Cabine voix',
+                  detail: 'Cabine traitée, micro à condensateur, retour casque',
+                  formats: '2 h — 70 €',
+                },
+              ].map((room) => (
+                <div key={room.name} className="rounded-xl border border-white/10 bg-[#111114] p-6">
+                  <h3 className="text-lg font-semibold">{room.name}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{room.detail}</p>
+                  <p className="mt-4 text-sm font-medium text-primary-400">{room.formats}</p>
+                  <p className="mt-4 text-xs uppercase tracking-wider text-zinc-600">
+                    Agenda indépendant
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 grid md:grid-cols-2 gap-6">
+              <div className="rounded-xl border border-white/10 p-6">
+                <h3 className="text-sm uppercase tracking-[0.16em] text-primary-400">
+                  L&apos;équipe
+                </h3>
+                <p className="mt-4 text-[15px] leading-relaxed text-zinc-300">
+                  Naïm et Clara, ingénieurs du son. Ils apparaissent sur la page
+                  publique du studio, avec leurs spécialités — mais ils ne sont pas
+                  des agendas réservables.
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/10 p-6">
+                <h3 className="text-sm uppercase tracking-[0.16em] text-zinc-500">
+                  La règle d&apos;accès
+                </h3>
+                <p className="mt-4 text-[15px] leading-relaxed text-zinc-400">
+                  L&apos;artiste réserve <strong className="text-zinc-200">un espace</strong>,
+                  pas une personne. Le studio affecte ensuite l&apos;ingénieur selon la
+                  salle et l&apos;horaire, et le confirme par e-mail. Opatam ne réserve
+                  pas les deux en une seule ligne — mieux vaut le dire que le
+                  laisser découvrir.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ─── DÉMO EN DIRECT ─────────────────────────────────────── */}
-        <section className="border-b border-white/10 bg-[#111114]">
+        <section className="border-b border-white/10 bg-[#111114]" id="demo">
           <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 py-20 sm:py-24">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div>
@@ -379,7 +461,7 @@ export default async function StudioEnregistrementPage() {
                   confirmation.
                 </p>
                 <StudioDemoButton className="mt-9 inline-flex items-center justify-center gap-2 rounded-full bg-[#F4F2EE] px-8 py-4 text-base font-semibold text-[#0B0B0D] transition hover:bg-white">
-                  Ouvrir le tunnel de réservation
+                  Voir la réservation côté artiste
                   <ArrowRight className="h-4 w-4" />
                 </StudioDemoButton>
               </div>
@@ -541,7 +623,7 @@ export default async function StudioEnregistrementPage() {
         </section>
 
         {/* ─── FAQ ────────────────────────────────────────────────── */}
-        <section className="border-b border-white/10">
+        <section className="border-b border-white/10" id="faq">
           <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 py-20 sm:py-24">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight">
               Les questions
