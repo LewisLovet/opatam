@@ -17,9 +17,9 @@ export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 const ROOMS = [
-  { name: 'STUDIO A', slots: [true, true, false] },
-  { name: 'STUDIO B', slots: [false, true, true] },
-  { name: 'CABINE VOIX', slots: [true, false, true] },
+  { name: 'NAÏM', slots: [true, true, false] },
+  { name: 'CLARA', slots: [false, true, true] },
+  { name: 'YANIS', slots: [true, false, true] },
 ];
 
 export default function OpengraphImage() {
@@ -50,11 +50,11 @@ export default function OpengraphImage() {
             Pour les studios d&apos;enregistrement
           </span>
           <span style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.05, marginTop: 24 }}>
-            Une salle.
+            Votre équipe.
           </span>
-          <span style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.05 }}>Un agenda.</span>
+          <span style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.05 }}>Un agenda chacun.</span>
           <span style={{ fontSize: 28, color: '#A1A1AA', marginTop: 26 }}>
-            Réservation en ligne, acomptes, 0 % de commission.
+  Vos artistes choisissent avec qui ils enregistrent.
           </span>
         </div>
 

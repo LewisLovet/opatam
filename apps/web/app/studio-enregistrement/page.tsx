@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Script from 'next/script';
 import { ArrowRight, Check, Minus } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -8,18 +7,24 @@ import { articleRepository } from '@booking-app/firebase';
 import { type ArticleCardData } from '@/app/blog/components/ArticleCard';
 import { TutorialsCarousel } from '@/components/home/TutorialsCarousel';
 import { AppStoreBadges } from '@/components/common/AppStoreBadges';
-import { StudioDemoButton } from './StudioDemoButton';
+/** Studio de démonstration, créé par scripts/seed-demo-studio.mjs. */
+const DEMO_STUDIO_SLUG = 'studio-harmonie';
 
 // ---------------------------------------------------------------------------
 // /studio-enregistrement — page verticale pour les studios d'enregistrement
 // ---------------------------------------------------------------------------
 //
-// POURQUOI CETTE VERTICALE : c'est le premier métier du catalogue qui a
-// besoin du plan Studio pour une raison structurelle, et non par confort.
-// Un salon prend le plan Studio quand il embauche ; un studio le prend dès
-// le premier jour, parce qu'il a deux salles et une cabine voix, donc trois
-// agendas à ne pas télescoper. L'argumentaire tient donc en une phrase :
-// une salle = un agenda.
+// POURQUOI CETTE VERTICALE : un studio arrive rarement seul. Ingénieur de
+// prise, mixeur, beatmaker — plusieurs personnes, des spécialités qui ne se
+// recouvrent pas, et des artistes qui veulent choisir avec qui ils
+// travaillent. C'est le plan Studio dès le premier jour, pas à la première
+// embauche. L'argument tient en une phrase : chaque membre a son agenda, et
+// l'artiste choisit sa session PUIS la personne.
+//
+// LA SALLE VIT DANS LE NOM DE LA PRESTATION (« Studio A — session 4 h »).
+// Opatam n'a qu'un axe de réservation : on modélise les personnes OU les
+// espaces, pas les deux. C'est dit franchement dans la section « ce qu'il
+// ne fait pas » — un gérant qui le découvre après coup se désabonne.
 //
 // DIRECTION ARTISTIQUE : sombre, à l'opposé du crème éditorial de
 // /nail-artist. Ce n'est pas un caprice — un studio se photographie en
@@ -41,7 +46,7 @@ import { StudioDemoButton } from './StudioDemoButton';
 // « acompte session enregistrement ».
 //
 // HONNÊTETÉ DU DISCOURS : Opatam ne réserve pas une ressource combinée
-// (salle + ingénieur en une seule ligne), ne fait ni devis ni facturation.
+// (salle + personne en une seule ligne), ne fait ni devis ni facturation.
 // La section « Ce qu'Opatam ne fait pas » le dit franchement — sur un métier
 // aussi outillé, promettre trop se paie en désabonnements le mois suivant.
 // ---------------------------------------------------------------------------
@@ -54,12 +59,12 @@ export const metadata: Metadata = {
     absolute: "Logiciel de réservation pour studio d'enregistrement — Opatam",
   },
   description:
-    "Le logiciel de réservation pensé pour les studios d'enregistrement. Un agenda par salle, acomptes à la réservation, 0 % de commission. Jusqu'à 10 agendas synchronisés. Essai gratuit 30 jours.",
+    "Le logiciel de réservation pensé pour les studios d'enregistrement. Un agenda par membre de votre équipe, acomptes à la réservation, 0 % de commission. Jusqu'à 10 agendas synchronisés. Essai gratuit 30 jours.",
   alternates: { canonical: 'https://opatam.com/studio-enregistrement' },
   openGraph: {
     title: "Logiciel de réservation pour studio d'enregistrement — Opatam",
     description:
-      "Un agenda par salle, des acomptes encaissés à la réservation, zéro commission. Le logiciel de planning pensé pour les studios d'enregistrement.",
+      "Un agenda par membre, vos artistes choisissent avec qui ils enregistrent, zéro commission. Le logiciel de planning pensé pour les studios d'enregistrement.",
     url: 'https://opatam.com/studio-enregistrement',
     type: 'website',
     // Pas de `images` ici : `opengraph-image.tsx` du même dossier est
@@ -86,9 +91,9 @@ const painPoints = [
   },
   {
     label: '03',
-    title: 'Deux salles, un seul agenda, une collision par mois',
+    title: "À trois sur un seul agenda, personne ne s'y retrouve",
     body:
-      "La cabine voix est prise par le Studio A pendant que le Studio B croyait l'avoir. Vous vous en apercevez le jour même, devant deux groupes. Un agenda partagé ne suffit pas quand chaque espace se réserve indépendamment.",
+      "Votre mixeur, votre ingénieur de prise et votre beatmaker n'ont ni les mêmes horaires ni les mêmes compétences. Sur un agenda commun, un artiste réserve une session voix sur le créneau du beatmaker, et c'est vous qui rattrapez au téléphone.",
   },
 ];
 
@@ -108,10 +113,10 @@ const moments = [
       "Avec l'option Sérénité, vous demandez un acompte au moment de la réservation. L'artiste paie par carte depuis votre lien. S'il ne vient pas, l'acompte vous reste — selon le délai d'annulation que vous avez fixé. C'est le seul filtre qui distingue une intention d'une réservation.",
   },
   {
-    when: 'En session',
-    title: 'Chaque salle a son agenda. Elles ne se marchent plus dessus.',
+    when: 'Au moment de choisir',
+    title: "L'artiste choisit avec qui il enregistre.",
     body:
-      "Studio A, Studio B, cabine voix, salle de répétition : un agenda par espace, ses propres horaires, ses propres prestations. Le plan Studio en synchronise jusqu'à dix. Une réservation en cabine voix ne bloque plus le Studio A.",
+      "Chaque membre a son agenda, ses horaires et les prestations qu'il sait faire. Une session voix ne propose que ceux qui la dirigent ; une journée en grande salle, que ceux qui la tiennent. L'artiste voit les noms, les spécialités, et réserve la personne qu'il veut. Le plan Studio synchronise jusqu'à dix agendas.",
   },
   {
     when: 'La veille',
@@ -126,17 +131,18 @@ const moments = [
 // gérant de studio repère une promesse creuse en trente secondes.
 const scope = {
   does: [
-    "Un agenda par salle, jusqu'à dix salles synchronisées",
+    "Un agenda par membre, jusqu'à dix agendas synchronisés",
     "Des sessions de 30 minutes à 24 heures, au tarif que vous fixez",
     'Des acomptes encaissés par carte à la réservation',
-    "Vos horaires d'ouverture par salle, et vos fermetures",
+    "Des horaires propres à chaque membre, et vos fermetures",
     'Rappels automatiques par e-mail et notification',
     "Jusqu'à 10 adresses si vous avez plusieurs sites",
-    'Une page publique avec vos salles, vos tarifs, vos photos',
+    'Une page publique présentant votre équipe, vos tarifs, vos photos',
     '0 % de commission sur ce que vous encaissez',
   ],
   doesNot: [
-    "Réserver une salle ET un ingénieur du son en une seule ligne",
+    "Réserver une salle ET une personne en une seule ligne — la salle vit dans le nom de la prestation",
+    'Empêcher deux membres libres au même créneau de se retrouver dans la même salle',
     'Éditer des devis ou des factures',
     'Gérer un inventaire de matériel ou des cautions',
     'Vendre du temps studio en abonnement mensuel',
@@ -148,8 +154,8 @@ const scope = {
 // Google pénalise l'écart entre le visible et le structuré.
 const faqItems = [
   {
-    q: "Comment gérer plusieurs salles avec des tarifs différents ?",
-    a: "Chaque salle devient un agenda avec ses propres prestations et ses propres prix : « Studio A — 4 h » à 180 €, « Cabine voix — 2 h » à 70 €, « Journée complète » à 320 €. L'artiste choisit d'abord la salle, puis le créneau. Les agendas sont indépendants, donc deux réservations simultanées dans deux salles ne posent aucun problème.",
+    q: "Comment mes artistes choisissent-ils l'ingénieur du son ?",
+    a: "Chaque membre de votre équipe a son agenda, et vous lui assignez les prestations qu'il sait faire. L'artiste choisit d'abord la session — « Studio A — 4 h » à 180 €, « Cabine voix — 2 h » à 70 € — puis, si plusieurs personnes la proposent, celle avec qui il veut travailler. Quand une seule est habilitée, l'étape est passée automatiquement.",
   },
   {
     q: "Est-ce que je peux demander un acompte sur une session ?",
@@ -165,7 +171,11 @@ const faqItems = [
   },
   {
     q: "Quelle différence entre le plan Pro et le plan Studio ?",
-    a: "Le plan Pro à 19,90 €/mois gère un seul agenda : c'est le bon choix si vous avez une seule salle. Le plan Studio à 29,90 €/mois synchronise jusqu'à dix agendas et jusqu'à dix adresses, avec l'assignation des prestations par salle et une page publique d'équipe. Dès deux espaces réservables, c'est le plan Studio.",
+    a: "Le plan Pro à 19,90 €/mois gère un seul agenda : c'est le bon choix si vous travaillez seul. Le plan Studio à 29,90 €/mois synchronise jusqu'à dix agendas et dix adresses, avec l'assignation des prestations par membre et une page publique d'équipe. Dès que vous êtes deux à recevoir des artistes, c'est le plan Studio.",
+  },
+  {
+    q: "Et si deux ingénieurs sont réservés en même temps dans la même salle ?",
+    a: "Opatam réserve des personnes, pas des espaces : il ne bloquera pas cette situation. La salle fait partie du nom de la prestation, elle n'est pas une ressource distincte. Les studios s'en sortent en assignant les prestations d'une salle à un seul membre par plage, ou en gardant une salle de repli. L'autre approche consiste à faire de chaque salle un agenda — vous protégez alors les espaces, mais l'artiste ne choisit plus la personne.",
   },
   {
     q: "Est-ce qu'Opatam prend une commission sur mes sessions ?",
@@ -173,7 +183,7 @@ const faqItems = [
   },
   {
     q: "Je travaille aussi en déplacement, chez les artistes. Ça marche ?",
-    a: "Oui. Configurez plusieurs adresses — jusqu'à dix — et rattachez chaque salle ou chaque prestation à son lieu. Vos horaires peuvent différer d'une adresse à l'autre, et tout se pilote depuis l'application mobile entre deux prises.",
+    a: "Oui. Configurez plusieurs adresses — jusqu'à dix — et rattachez chaque membre ou chaque prestation à son lieu. Vos horaires peuvent différer d'une adresse à l'autre, et tout se pilote depuis l'application mobile entre deux prises.",
   },
 ];
 
@@ -232,7 +242,7 @@ export default async function StudioEnregistrementPage() {
       <Header
         showLanguageSwitcher={false}
         navLinks={[
-          { href: '#salles', label: 'Les salles' },
+          { href: '#salles', label: "L'équipe" },
           { href: '#demo', label: 'La démo' },
           { href: '#tarif', label: 'Tarif' },
           { href: '#faq', label: 'Questions' },
@@ -255,9 +265,9 @@ export default async function StudioEnregistrementPage() {
                   pour studio d&apos;enregistrement.
                 </h1>
                 <p className="mt-7 text-lg sm:text-xl leading-relaxed text-zinc-400 max-w-2xl">
-                  Un agenda par salle. Des acomptes encaissés avant la session.
-                  Zéro commission sur ce que vous facturez. Vos artistes réservent
-                  seuls, vous retournez derrière la console.
+                  Un agenda par membre de votre équipe. Vos artistes choisissent
+                  leur session, puis avec qui ils l&apos;enregistrent. Zéro
+                  commission, et vous retournez derrière la console.
                 </p>
 
                 <div className="mt-10 flex flex-col sm:flex-row gap-4">
@@ -268,9 +278,14 @@ export default async function StudioEnregistrementPage() {
                     Essayer 30 jours gratuitement
                     <ArrowRight className="h-4 w-4" />
                   </Link>
-                  <StudioDemoButton className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-8 py-4 text-base font-semibold text-[#F4F2EE] transition hover:border-white/40 hover:bg-white/5">
+                  <Link
+                    href={`/p/${DEMO_STUDIO_SLUG}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-8 py-4 text-base font-semibold text-[#F4F2EE] transition hover:border-white/40 hover:bg-white/5"
+                  >
                     Voir la réservation côté artiste
-                  </StudioDemoButton>
+                  </Link>
                 </div>
 
                 <p className="mt-6 text-sm text-zinc-500">
@@ -278,20 +293,20 @@ export default async function StudioEnregistrementPage() {
                 </p>
               </div>
 
-              {/* Maquette d'agenda : trois salles en parallèle. C'est
+              {/* Maquette d'agenda : trois membres en parallèle. C'est
                   l'illustration littérale de l'argument, donc elle vaut
                   mieux qu'une photo d'illustration. */}
               <div className="lg:col-span-5">
                 <div className="rounded-xl border border-white/10 bg-[#111114] p-5 sm:p-6">
                   <div className="flex items-baseline justify-between mb-5">
                     <span className="text-sm font-semibold">Samedi 14 mars</span>
-                    <span className="text-xs text-zinc-500">3 salles</span>
+                    <span className="text-xs text-zinc-500">3 membres</span>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { room: 'Studio A', slots: ['10—14', '15—19', null] },
-                      { room: 'Studio B', slots: [null, '14—18', '19—23'] },
-                      { room: 'Cabine voix', slots: ['11—13', null, '18—20'] },
+                      { room: 'Naïm', slots: ['10—14', '15—19', null] },
+                      { room: 'Clara', slots: [null, '14—18', '19—23'] },
+                      { room: 'Yanis', slots: ['11—13', null, '18—20'] },
                     ].map((col) => (
                       <div key={col.room}>
                         <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-2 truncate">
@@ -320,8 +335,8 @@ export default async function StudioEnregistrementPage() {
                     ))}
                   </div>
                   <p className="mt-5 text-xs leading-relaxed text-zinc-500">
-                    Trois espaces, trois agendas indépendants. Une réservation en
-                    cabine voix ne bloque plus le Studio A.
+                    Trois membres, trois agendas indépendants. Une session chez
+                    Clara ne bloque plus le planning de Naïm.
                   </p>
                 </div>
               </div>
@@ -371,48 +386,50 @@ export default async function StudioEnregistrementPage() {
           </div>
         </section>
 
-        {/* ─── VOTRE STUDIO DANS OPATAM ───────────────────────────────
+        {/* ─── VOTRE ÉQUIPE DANS OPATAM ───────────────────────────────
             Répond à la seule question que se pose un gérant : à quoi
             ressemblera MA page, et comment mes artistes réserveront-ils ?
-            La règle d'accès est écrite noir sur blanc — c'est ici qu'on
-            évite de laisser croire qu'Opatam affecte un ingénieur. */}
+            La dernière carte dit ce qu'Opatam ne fait pas — la salle n'est
+            pas une ressource réservable, mieux vaut le lire ici que le
+            découvrir après l'abonnement. */}
         <section className="border-b border-white/10" id="salles">
           <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 py-20 sm:py-24">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight max-w-3xl">
-              Votre studio,
+              Votre équipe,
               <br />
-              tel que vos artistes le verront.
+              telle que vos artistes la verront.
             </h2>
             <p className="mt-6 text-lg leading-relaxed text-zinc-400 max-w-2xl">
-              Voici Studio Harmonie, notre studio de démonstration : trois espaces
-              réservables, deux ingénieurs du son, et une règle d&apos;accès claire.
+              Voici Studio Harmonie, notre studio de démonstration : trois
+              ingénieurs, chacun son agenda et ses spécialités. L&apos;artiste
+              choisit sa session, puis la personne.
             </p>
 
             <div className="mt-14 grid lg:grid-cols-3 gap-6">
               {[
                 {
-                  name: 'Studio A — grande salle',
-                  detail: 'Régie séparée, console analogique, cabine attenante',
-                  formats: '4 h — 180 € · journée — 320 €',
+                  name: 'Naïm Berkaoui',
+                  role: 'Prise de son & mixage',
+                  does: 'Studio A · journée complète · mixage',
                 },
                 {
-                  name: 'Studio B — salle de prise',
-                  detail: 'Formats légers : voix, guitare, podcast à deux micros',
-                  formats: '4 h — 140 €',
+                  name: 'Clara Vasseur',
+                  role: 'Prise de son & voix',
+                  does: 'Studio A · Studio B · cabine voix',
                 },
                 {
-                  name: 'Cabine voix',
-                  detail: 'Cabine traitée, micro à condensateur, retour casque',
-                  formats: '2 h — 70 €',
+                  name: 'Yanis Delorme',
+                  role: 'Beatmaking & production',
+                  does: 'Studio B · beatmaking',
                 },
-              ].map((room) => (
-                <div key={room.name} className="rounded-xl border border-white/10 bg-[#111114] p-6">
-                  <h3 className="text-lg font-semibold">{room.name}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{room.detail}</p>
-                  <p className="mt-4 text-sm font-medium text-primary-400">{room.formats}</p>
-                  <p className="mt-4 text-xs uppercase tracking-wider text-zinc-600">
-                    Agenda indépendant
+              ].map((m) => (
+                <div key={m.name} className="rounded-xl border border-white/10 bg-[#111114] p-6">
+                  <h3 className="text-lg font-semibold">{m.name}</h3>
+                  <p className="mt-1 text-sm text-primary-400">{m.role}</p>
+                  <p className="mt-5 text-xs uppercase tracking-wider text-zinc-600">
+                    Prestations assignées
                   </p>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{m.does}</p>
                 </div>
               ))}
             </div>
@@ -420,24 +437,27 @@ export default async function StudioEnregistrementPage() {
             <div className="mt-8 grid md:grid-cols-2 gap-6">
               <div className="rounded-xl border border-white/10 p-6">
                 <h3 className="text-sm uppercase tracking-[0.16em] text-primary-400">
-                  L&apos;équipe
+                  Chacun ne voit que ses sessions
                 </h3>
                 <p className="mt-4 text-[15px] leading-relaxed text-zinc-300">
-                  Naïm et Clara, ingénieurs du son. Ils apparaissent sur la page
-                  publique du studio, avec leurs spécialités — mais ils ne sont pas
-                  des agendas réservables.
+                  Une session voix ne propose que Clara ; une journée en grande
+                  salle, que Naïm. Vos membres reçoivent leurs rendez-vous, gèrent
+                  leurs horaires et leurs absences, sans voir l&apos;agenda des
+                  autres si vous ne le voulez pas.
                 </p>
               </div>
               <div className="rounded-xl border border-white/10 p-6">
                 <h3 className="text-sm uppercase tracking-[0.16em] text-zinc-500">
-                  La règle d&apos;accès
+                  Et les salles ?
                 </h3>
                 <p className="mt-4 text-[15px] leading-relaxed text-zinc-400">
-                  L&apos;artiste réserve <strong className="text-zinc-200">un espace</strong>,
-                  pas une personne. Le studio affecte ensuite l&apos;ingénieur selon la
-                  salle et l&apos;horaire, et le confirme par e-mail. Opatam ne réserve
-                  pas les deux en une seule ligne — mieux vaut le dire que le
-                  laisser découvrir.
+                  Elles vivent dans le nom de la prestation — « Studio A — session
+                  4 h ». Opatam réserve des <strong className="text-zinc-200">personnes</strong>,
+                  pas des espaces : si deux de vos ingénieurs sont libres au même
+                  créneau, rien ne les empêche techniquement d&apos;être réservés
+                  sur la même salle. C&apos;est votre organisation qui tranche.
+                  Autre option : faire de chaque salle un agenda, mais vous perdez
+                  alors le choix de la personne.
                 </p>
               </div>
             </div>
@@ -455,15 +475,21 @@ export default async function StudioEnregistrementPage() {
                   comme un artiste.
                 </h2>
                 <p className="mt-6 text-lg leading-relaxed text-zinc-400">
-                  Studio Harmonie est un studio de démonstration, avec ses salles,
-                  ses formats et ses tarifs. Réservez-y une session : vous verrez
-                  exactement ce que vos clients verront, jusqu&apos;à l&apos;e-mail de
-                  confirmation.
+                  Studio Harmonie est un studio de démonstration. Sa page publique
+                  est celle que verront vos artistes : votre bandeau, votre
+                  description, vos salles avec leurs disponibilités du jour, vos
+                  prestations, vos horaires. La réservation part de là — comme chez
+                  vous.
                 </p>
-                <StudioDemoButton className="mt-9 inline-flex items-center justify-center gap-2 rounded-full bg-[#F4F2EE] px-8 py-4 text-base font-semibold text-[#0B0B0D] transition hover:bg-white">
-                  Voir la réservation côté artiste
+                <Link
+                  href={`/p/${DEMO_STUDIO_SLUG}`}
+                  target="_blank"
+                  rel="noopener"
+                  className="mt-9 inline-flex items-center justify-center gap-2 rounded-full bg-[#F4F2EE] px-8 py-4 text-base font-semibold text-[#0B0B0D] transition hover:bg-white"
+                >
+                  Ouvrir la page de Studio Harmonie
                   <ArrowRight className="h-4 w-4" />
-                </StudioDemoButton>
+                </Link>
               </div>
 
               <div className="rounded-xl border border-white/10 bg-[#0B0B0D] p-6 sm:p-8">
@@ -686,11 +712,6 @@ export default async function StudioEnregistrementPage() {
         </section>
       </main>
       <Footer />
-
-      {/* embed.js expose `window.Opatam.open(slug)`, qu'appelle
-          StudioDemoButton. Chargé après hydratation : il ne dispute jamais
-          sa bande passante au premier rendu. */}
-      <Script src="/embed.js" strategy="afterInteractive" />
 
       <script
         type="application/ld+json"

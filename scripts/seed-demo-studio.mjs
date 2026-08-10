@@ -6,12 +6,18 @@
  * et ouvre le vrai tunnel de réservation. Sans prestataire publié derrière le
  * slug, `/p/studio-harmonie/embed` répond 404 et la fenêtre reste blanche.
  *
- * CE QU'IL MODÉLISE — et c'est tout l'argument de la page :
- *   une salle = un agenda. Les trois « membres » sont les trois espaces
- *   réservables (Studio A, Studio B, cabine voix), pas les personnes. Les
- *   deux ingénieurs du son sont nommés dans la description : Opatam ne
- *   réserve PAS une salle et un ingénieur en une seule ligne, et la démo ne
- *   doit pas laisser croire le contraire.
+ * CE QU'IL MODÉLISE : l'ÉQUIPE. Les membres sont les trois ingénieurs du
+ * son, chacun avec son agenda, et chaque prestation est rattachée à ceux qui
+ * savent la faire. L'artiste choisit donc la session PUIS la personne — ce
+ * qui montre au gérant de studio qu'il peut mettre son équipe sur Opatam.
+ *
+ * LA SALLE VIT DANS LE NOM DE LA PRESTATION (« Studio A — session 4 h ») et
+ * non dans un agenda séparé. Opatam n'a qu'un axe de réservation : on
+ * modélise soit les personnes, soit les espaces, pas les deux à la fois.
+ * Conséquence assumée et documentée sur la page : deux ingénieurs libres au
+ * même créneau peuvent être réservés sur la même salle. Un vrai studio
+ * arbitre ça en n'affectant pas deux personnes au même espace — c'est une
+ * règle d'organisation, pas une garantie du logiciel.
  *
  * PAS D'ACOMPTE, VOLONTAIREMENT : l'encaissement exige
  * `provider.stripeConnectAccountId` (apps/web/app/api/bookings/route.ts).
@@ -64,33 +70,49 @@ const NOW = new Date();
 // ── Le studio ────────────────────────────────────────────────────────
 const LOCATION_ID = 'demo-studio-lieu';
 
-/** Les trois espaces réservables. Ce sont eux, les « membres ». */
-const ROOMS = [
+/** L'équipe. Ce sont eux, les agendas — c'est ce qui permet à l'artiste de
+ *  choisir avec qui il enregistre. */
+const ENGINEERS = [
   {
-    id: 'demo-studio-a',
-    name: 'Studio A — grande salle',
+    id: 'demo-ing-naim',
+    name: 'Naïm Berkaoui',
+    role: 'Prise de son & mixage',
     color: '#2563EB',
     sortOrder: 0,
     isDefault: true,
   },
-  { id: 'demo-studio-b', name: 'Studio B — salle de prise', color: '#7C3AED', sortOrder: 1 },
-  { id: 'demo-cabine-voix', name: 'Cabine voix', color: '#0EA5E9', sortOrder: 2 },
+  {
+    id: 'demo-ing-clara',
+    name: 'Clara Vasseur',
+    role: 'Prise de son & voix',
+    color: '#7C3AED',
+    sortOrder: 1,
+  },
+  {
+    id: 'demo-ing-yanis',
+    name: 'Yanis Delorme',
+    role: 'Beatmaking & production',
+    color: '#0EA5E9',
+    sortOrder: 2,
+  },
 ];
 
 const CATEGORY_ID = 'demo-studio-categorie';
 
-/** Les prestations, rattachées chacune à sa salle par `memberIds`. C'est ce
- *  rattachement qui empêche de réserver « Cabine voix — 2 h » sur l'agenda
- *  du Studio A. */
+/** Les prestations. `memberIds` liste qui sait faire quoi : c'est ce
+ *  rattachement qui produit l'écran « choisissez un professionnel », et qui
+ *  fait que la cabine voix ne propose que Clara. Certaines sessions laissent
+ *  le choix entre deux personnes, d'autres non — c'est la réalité d'un
+ *  studio, et c'est plus parlant qu'une liste où tout le monde fait tout. */
 const SERVICES = [
   {
     id: 'demo-svc-a-4h',
     name: 'Studio A — session 4 h',
     description:
-      'Grande salle avec régie séparée, console analogique et cabine attenante. Ingénieur du son inclus.',
+      'Grande salle, régie séparée et console analogique. Au choix avec Naïm ou Clara.',
     duration: 240,
     price: 18000,
-    memberIds: ['demo-studio-a'],
+    memberIds: ['demo-ing-naim', 'demo-ing-clara'],
     sortOrder: 0,
   },
   {
@@ -99,7 +121,7 @@ const SERVICES = [
     description: 'Huit heures dans la grande salle, pauses comprises. Le format des sessions de groupe.',
     duration: 480,
     price: 32000,
-    memberIds: ['demo-studio-a'],
+    memberIds: ['demo-ing-naim'],
     sortOrder: 1,
   },
   {
@@ -108,16 +130,16 @@ const SERVICES = [
     description: 'Salle de prise pour les formats légers : voix, guitare, podcast à deux micros.',
     duration: 240,
     price: 14000,
-    memberIds: ['demo-studio-b'],
+    memberIds: ['demo-ing-clara', 'demo-ing-yanis'],
     sortOrder: 2,
   },
   {
     id: 'demo-svc-voix-2h',
     name: 'Cabine voix — session 2 h',
-    description: 'Cabine traitée, micro à condensateur, retour casque. Idéal pour poser un topline.',
+    description: 'Cabine traitée, micro à condensateur, retour casque. Clara vous dirige.',
     duration: 120,
     price: 7000,
-    memberIds: ['demo-cabine-voix'],
+    memberIds: ['demo-ing-clara'],
     sortOrder: 3,
   },
   {
@@ -126,8 +148,17 @@ const SERVICES = [
     description: 'Mixage d’un titre en régie, avec vous ou sans vous. Deux retours inclus.',
     duration: 180,
     price: 15000,
-    memberIds: ['demo-studio-a'],
+    memberIds: ['demo-ing-naim'],
     sortOrder: 4,
+  },
+  {
+    id: 'demo-svc-beat',
+    name: 'Beatmaking — session 3 h',
+    description: 'Composition et production d’une instru avec Yanis, du sketch à la maquette.',
+    duration: 180,
+    price: 12000,
+    memberIds: ['demo-ing-yanis'],
+    sortOrder: 5,
   },
 ];
 
@@ -192,8 +223,8 @@ async function seed() {
         "Studio d'enregistrement à Lyon 7ᵉ, ouvert du lundi au samedi jusqu'à 23 h. " +
         'Trois espaces réservables séparément — Studio A avec sa régie et sa console analogique, ' +
         'Studio B pour les formats légers, et une cabine voix. ' +
-        "Deux ingénieurs du son, Naïm et Clara, se répartissent les sessions selon la salle et l'horaire : " +
-        "vous réservez l'espace, nous affectons l'ingénieur et vous le confirmons par e-mail. " +
+        'Trois ingénieurs du son — Naïm, Clara et Yanis — chacun avec ses spécialités : ' +
+        'vous choisissez la session puis la personne avec qui vous travaillez. ' +
         'Ce studio est une démonstration du produit Opatam.',
       // Une adresse de démonstration doit rester manifestement fictive : pas
       // de numéro de rue réel, pour ne pas envoyer quelqu'un sonner chez un
@@ -222,7 +253,7 @@ async function seed() {
         plan: 'team',
         status: 'active',
         tier: 'standard',
-        memberCount: ROOMS.length,
+        memberCount: ENGINEERS.length,
         paymentSource: 'comp',
         cancelAtPeriodEnd: false,
         stripeCustomerId: null,
@@ -274,10 +305,11 @@ async function seed() {
     updatedAt: ts(NOW),
   });
 
-  // ── Les salles, en tant qu'agendas ─────────────────────────────────
-  for (const room of ROOMS) {
+  // ── L'équipe, en tant qu'agendas ───────────────────────────────────
+  for (const room of ENGINEERS) {
     await ref.collection('members').doc(room.id).set({
       name: room.name,
+      role: room.role,
       email: null,
       phone: null,
       photoURL: null,
@@ -306,7 +338,7 @@ async function seed() {
       });
     }
   }
-  console.log(`${ROOMS.length} salles + horaires écrits`);
+  console.log(`${ENGINEERS.length} membres + horaires écrits`);
 
   // ── Prestations ────────────────────────────────────────────────────
   await ref.collection('serviceCategories').doc(CATEGORY_ID).set({
