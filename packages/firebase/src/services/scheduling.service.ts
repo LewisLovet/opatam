@@ -433,69 +433,67 @@ export class SchedulingService {
   async getAvailableSlots(params: AvailableSlotsParams): Promise<TimeSlotWithDate[]> {
     const { providerId, serviceId, memberId, startDate, endDate, durationOverride, excludeBookingId } = params;
 
-    // Get service duration
-    const service = await serviceRepository.getById(providerId, serviceId);
+    const [service, provider] = await Promise.all([
+      serviceRepository.getById(providerId, serviceId),
+      providerRepository.getById(providerId),
+    ]);
     if (!service) {
       throw new Error('Prestation non trouvée');
     }
 
-    // Get provider settings for buffer time and slot interval
-    const provider = await providerRepository.getById(providerId);
     const bufferTime = service.bufferTime || provider?.settings.defaultBufferTime || 0;
     // durationOverride is the full effective length (already includes the
     // chosen variations/options + buffer); otherwise fall back to base.
     const totalDuration = durationOverride ?? service.duration + bufferTime;
     const slotInterval = provider?.settings.slotInterval ?? 15;
 
+    const rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+
+    // 3 lectures pour TOUTE la plage, au lieu de 3 PAR JOUR.
+    //
+    // La version précédente rouvrait les mêmes collections à chaque tour de
+    // boucle : sur 7 jours cela faisait 23 aller-retours en série, sur 60
+    // jours 182. Or les horaires ne comptent que 7 documents (un par jour de
+    // semaine), et les réservations comme les créneaux bloqués se lisent
+    // aussi bien sur l'intervalle entier — ils n'étaient de toute façon pas
+    // filtrés par membre côté Firestore, mais en mémoire juste après.
+    //
+    // C'est exactement le schéma déjà employé par `getAvailabilitySummary`
+    // et `getOccupancySummary` ci-dessous ; `getAvailableSlots` ne l'avait
+    // jamais reçu.
+    const [weekly, allBookings, allBlocked] = await Promise.all([
+      availabilityRepository.getWeeklySchedule(providerId, memberId),
+      bookingRepository.getUpcomingByProvider(providerId, rangeStart, rangeEnd),
+      blockedSlotRepository.getInRange(providerId, rangeStart, rangeEnd),
+    ]);
+
+    const availabilityByDow = new Map<number, WithId<Availability>>();
+    for (const a of weekly) availabilityByDow.set(a.dayOfWeek, a);
+
+    const relevantBlockedSlots = allBlocked.filter((bs) => bs.memberId === memberId);
+    const relevantBookings = allBookings.filter(
+      (b) =>
+        b.memberId === memberId &&
+        b.id !== excludeBookingId && // reschedule: don't let a booking block its own slots
+        (b.status === 'confirmed' || b.status === 'pending' || b.status === 'pending_payment'),
+    );
+
+    // `now` est figé avant la boucle : le calculer à l'intérieur faisait
+    // dériver le seuil de préavis d'un jour à l'autre sur les longues plages.
+    const now = new Date();
+    const minBookingNoticeHours = provider?.settings.minBookingNotice ?? 2;
+    const earliestBookable = new Date(now.getTime() + minBookingNoticeHours * 60 * 60 * 1000);
+
     const availableSlots: TimeSlotWithDate[] = [];
+    const currentDate = new Date(rangeStart);
 
-    // Iterate through each day
-    const currentDate = new Date(startDate);
-    currentDate.setHours(0, 0, 0, 0);
-
-    const endDateNormalized = new Date(endDate);
-    endDateNormalized.setHours(23, 59, 59, 999);
-
-    while (currentDate <= endDateNormalized) {
-      const dayOfWeek = currentDate.getDay();
-
-      // Get availability for this member on this day
-      // Plus de fallback - direct lookup par memberId
-      const availability = await availabilityRepository.get(
-        providerId,
-        memberId,
-        dayOfWeek
-      );
-
-      console.log('[Scheduling] Day', dayOfWeek, '- Member', memberId, ':',
-        availability ? `${availability.slots?.length} slots, isOpen: ${availability.isOpen}` : 'NOT FOUND');
+    while (currentDate <= rangeEnd) {
+      const availability = availabilityByDow.get(currentDate.getDay());
 
       if (availability && availability.isOpen && availability.slots.length > 0) {
-        // Get blocked slots for this date range
-        const blockedSlots = await blockedSlotRepository.getInRange(
-          providerId,
-          currentDate,
-          new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)
-        );
-
-        // Filter blocked slots for this member
-        const relevantBlockedSlots = blockedSlots.filter(
-          (bs) => bs.memberId === memberId
-        );
-
-        // Get existing bookings for this date
-        const dayStart = new Date(currentDate);
-        const dayEnd = new Date(currentDate);
-        dayEnd.setDate(dayEnd.getDate() + 1);
-
-        const existingBookings = await bookingRepository.getUpcomingByProvider(providerId, dayStart, dayEnd);
-        const relevantBookings = existingBookings.filter(
-          (b) =>
-            b.memberId === memberId &&
-            b.id !== excludeBookingId && // reschedule: don't let a booking block its own slots
-            (b.status === 'confirmed' || b.status === 'pending' || b.status === 'pending_payment')
-        );
-
         // Generate slots for each availability window
         for (const slot of availability.slots) {
           const generatedSlots = this.generateTimeSlots(
@@ -507,11 +505,6 @@ export class SchedulingService {
           );
 
           // Filter out blocked, booked, and past/too-soon slots
-          let filteredCount = 0;
-          const now = new Date();
-          const minBookingNoticeHours = provider?.settings.minBookingNotice ?? 2;
-          const earliestBookable = new Date(now.getTime() + minBookingNoticeHours * 60 * 60 * 1000);
-
           for (const genSlot of generatedSlots) {
             const isBlocked = this.isTimeBlockedBySlots(
               genSlot.datetime,
@@ -529,12 +522,8 @@ export class SchedulingService {
 
             if (!isBlocked && !isBooked && !isTooSoon) {
               availableSlots.push(genSlot);
-            } else {
-              filteredCount++;
             }
           }
-
-          console.log('[Scheduling] Window', slot.start, '-', slot.end, ':', generatedSlots.length, 'generated,', filteredCount, 'filtered out');
         }
       }
 

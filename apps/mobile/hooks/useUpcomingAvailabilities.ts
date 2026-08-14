@@ -172,14 +172,22 @@ export function useUpcomingAvailabilities(
       // Bucket slots by day → set of free half-hour bucket indices, unioned
       // across the target members. Bucket = hour*2 + (mins >= 30 ? 1 : 0).
       const byDay = new Map<string, Set<number>>();
-      for (const member of effectiveMembers) {
-        const slots = await schedulingService.getAvailableSlots({
-          providerId,
-          serviceId: anchorService.id,
-          memberId: member.id,
-          startDate,
-          endDate,
-        });
+      // Les membres sont interrogés EN PARALLÈLE. La boucle `for … await`
+      // précédente les enchaînait : sur un plan Studio à dix agendas, le
+      // temps d'attente était dix fois celui d'un membre seul, alors que les
+      // requêtes sont indépendantes.
+      const perMember = await Promise.all(
+        effectiveMembers.map((member) =>
+          schedulingService.getAvailableSlots({
+            providerId,
+            serviceId: anchorService.id,
+            memberId: member.id,
+            startDate,
+            endDate,
+          }),
+        ),
+      );
+      for (const slots of perMember) {
         for (const s of slots) {
           const k = dateKey(s.date);
           if (!byDay.has(k)) byDay.set(k, new Set());

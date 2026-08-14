@@ -51,6 +51,9 @@ function formatDate(date: Date | null): string | null {
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
+/** Fenêtre de recherche de la prochaine disponibilité, en jours. */
+const LOOKAHEAD_DAYS = 60;
+
 /**
  * Find the next available date for a single member
  */
@@ -61,27 +64,36 @@ async function findNextDateForMember(
 ): Promise<Date | null> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const horizon = new Date(today);
+  horizon.setDate(horizon.getDate() + LOOKAHEAD_DAYS - 1);
+  horizon.setHours(23, 59, 59, 999);
 
-  for (let i = 0; i < 60; i++) {
-    const checkDate = new Date(today);
-    checkDate.setDate(checkDate.getDate() + i);
-    const endOfDay = new Date(checkDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    try {
-      const slots = await schedulingService.getAvailableSlots({
-        providerId,
-        serviceId,
-        memberId,
-        startDate: checkDate,
-        endDate: endOfDay,
-      });
-      if (slots.length > 0) return checkDate;
-    } catch {
-      // No availability for this day
-    }
+  // UN appel sur tout l'horizon, au lieu d'un appel par jour.
+  //
+  // La version précédente interrogeait le service jour après jour et
+  // s'arrêtait au premier succès : rapide quand le membre est libre demain,
+  // mais jusqu'à 60 tours quand il ne l'est pas — et c'est justement le cas
+  // d'un membre fraîchement ajouté dont les horaires ne sont pas encore
+  // réglés. Depuis que `getAvailableSlots` lit toute sa plage en une fois,
+  // demander 60 jours coûte le même nombre de requêtes qu'en demander un.
+  try {
+    const slots = await schedulingService.getAvailableSlots({
+      providerId,
+      serviceId,
+      memberId,
+      startDate: today,
+      endDate: horizon,
+    });
+    if (slots.length === 0) return null;
+    // Les créneaux sont déjà triés chronologiquement par le service ; on
+    // ramène la date du premier, à minuit, comme le faisait l'ancienne
+    // boucle avec son `checkDate`.
+    const first = new Date(slots[0].datetime);
+    first.setHours(0, 0, 0, 0);
+    return first;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 /**
