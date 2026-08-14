@@ -98,8 +98,24 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
     const link = document.createElement('a');
     const prefix = activeTab === 'booking' ? 'qrcode' : 'paypal-qr';
     link.download = `${prefix}-${provider?.slug || 'code'}.png`;
-    link.href = downloadCanvas.toDataURL('image/png');
+    try {
+      link.href = downloadCanvas.toDataURL('image/png');
+    } catch {
+      // Canvas contaminé par une image d'une autre origine : l'export est
+      // refusé par le navigateur. On le dit plutôt que de laisser le bouton
+      // sans effet.
+      alert(
+        "Le téléchargement a échoué : l'image du logo empêche l'export. " +
+          'Réessayez dans quelques instants ou retirez le logo de votre profil.',
+      );
+      return;
+    }
+    // Firefox n'exécute un clic programmatique que sur un lien présent dans
+    // le document.
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   }, [provider?.businessName, provider?.slug, activeTab]);
 
   return (
@@ -204,6 +220,7 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
                           height: 16,
                           width: 16,
                           excavate: true,
+                          crossOrigin: 'anonymous',
                         } : undefined}
                       />
                     </div>
@@ -240,6 +257,7 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
                           height: 16,
                           width: 16,
                           excavate: true,
+                          crossOrigin: 'anonymous',
                         }}
                       />
                     </div>

@@ -143,8 +143,24 @@ export function ShareSection() {
     const link = document.createElement('a');
     const prefix = activeTab === 'booking' ? 'qrcode' : 'paypal-qr';
     link.download = `${prefix}-${provider?.slug || 'code'}.png`;
-    link.href = downloadCanvas.toDataURL('image/png');
+    try {
+      link.href = downloadCanvas.toDataURL('image/png');
+    } catch {
+      // Canvas contaminé par une image d'une autre origine : l'export est
+      // refusé par le navigateur. On le dit plutôt que de laisser le bouton
+      // sans effet.
+      alert(
+        "Le téléchargement a échoué : l'image du logo empêche l'export. " +
+          'Réessayez dans quelques instants ou retirez le logo de votre profil.',
+      );
+      return;
+    }
+    // Firefox n'exécute un clic programmatique que sur un lien présent dans
+    // le document.
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   }, [activeTab, activeQrRef, provider?.businessName, provider?.slug, drawLogoOnCanvas]);
 
   const handlePrint = useCallback(() => {
@@ -271,11 +287,13 @@ export function ShareSection() {
                   height: 36,
                   width: 36,
                   excavate: true,
+                  crossOrigin: 'anonymous',
                 } : {
                   src: '/favicon.ico',
                   height: 36,
                   width: 36,
                   excavate: true,
+                  crossOrigin: 'anonymous',
                 }}
               />
             </div>
@@ -294,6 +312,7 @@ export function ShareSection() {
                   height: 36,
                   width: 36,
                   excavate: true,
+                  crossOrigin: 'anonymous',
                 }}
               />
             </div>

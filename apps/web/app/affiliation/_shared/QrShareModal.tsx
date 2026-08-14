@@ -72,7 +72,12 @@ export function QrShareModal({ open, onClose, url, code, name }: Props) {
     const a = document.createElement('a');
     a.href = objectUrl;
     a.download = `opatam-affiliation-${code.toLowerCase()}.png`;
+    // Firefox n'exécute un clic programmatique que sur un lien présent dans
+    // le document.
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(objectUrl);
     setDownloaded(true);
     setTimeout(() => setDownloaded(false), 2000);

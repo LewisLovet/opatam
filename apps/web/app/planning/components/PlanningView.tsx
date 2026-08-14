@@ -445,8 +445,24 @@ function ShareSection({
 
     const link = document.createElement('a');
     link.download = `qrcode-${slug}.png`;
-    link.href = downloadCanvas.toDataURL('image/png');
+    try {
+      link.href = downloadCanvas.toDataURL('image/png');
+    } catch {
+      // Canvas contaminé par une image d'une autre origine : l'export est
+      // refusé par le navigateur. On le dit plutôt que de laisser le bouton
+      // sans effet.
+      alert(
+        "Le téléchargement a échoué : l'image du logo empêche l'export. " +
+          'Réessayez dans quelques instants ou retirez le logo de votre profil.',
+      );
+      return;
+    }
+    // Firefox n'exécute un clic programmatique que sur un lien présent dans
+    // le document.
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   };
 
   const handleShare = async () => {
