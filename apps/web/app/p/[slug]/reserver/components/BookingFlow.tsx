@@ -527,6 +527,12 @@ export function BookingFlow({
   // No booking notice here — it now shows once, on "Continuer".
   const handleServiceSelect = (serviceId: string) => {
     const svc = services.find((s) => s.id === serviceId);
+    // Dernier rempart avant le panier. L'affichage neutralise déjà les cartes
+    // suspendues, mais une seule voie d'entrée oubliée suffisait à laisser
+    // configurer un rendez-vous que `createBooking` refuse ensuite : mieux
+    // vaut que la règle vive aussi ici, où passent TOUS les chemins de
+    // sélection.
+    if (svc?.isAvailable === false) return;
     if (svc && serviceHasChoices(svc)) {
       setState((prev) => ({ ...prev, selections: emptyServiceSelections() }));
       setConfiguringServiceId(serviceId);

@@ -71,6 +71,11 @@ export default function MemberSelectionScreen() {
   const handleAddService = useCallback(
     (s: WithId<Service>) => {
       setShowServicePicker(false);
+      // Symétrique du garde-fou web : la carte d'une prestation suspendue
+      // est déjà inerte, mais la règle vit ici aussi, là où passent tous
+      // les chemins d'ajout. Sans elle, un futur point d'entrée rouvrirait
+      // le trou en silence.
+      if (s.isAvailable === false) return;
       if (serviceHasChoices(s)) setPendingChoiceService(s);
       else addToCart(s);
     },

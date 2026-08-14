@@ -170,6 +170,10 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
     categoryId: s.categoryId ?? null,
     locationIds: s.locationIds,
     memberIds: s.memberIds,
+    // Même omission que dans le tunnel classique : sans ce champ, l'embed
+    // servi sur les sites des pros laisse choisir une prestation suspendue,
+    // et le refus n'arrive qu'à la validation.
+    isAvailable: s.isAvailable !== false,
   }));
 
   const serializedCategories = serviceCategories

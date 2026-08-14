@@ -234,17 +234,26 @@ function ServiceButton({
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(service.id);
-            }}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 active:bg-primary-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            {t('add')}
-          </button>
+          {/* Le bouton n'existe pas sur une prestation suspendue.
+              La carte, elle, était déjà inerte — mais ce bouton portait son
+              PROPRE `onClick` avec un `stopPropagation`, donc il restait
+              cliquable et rouvrait tout le tunnel sur une prestation que le
+              serveur refuse à la validation. C'est ce qu'on voyait en
+              ajoutant une seconde prestation, puisque la liste réapparaît à
+              ce moment-là. */}
+          {!unavailable && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(service.id);
+              }}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 active:bg-primary-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              {t('add')}
+            </button>
+          )}
         </div>
       </div>
     </div>

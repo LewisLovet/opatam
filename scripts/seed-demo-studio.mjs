@@ -150,6 +150,12 @@ const SERVICES = [
     price: 15000,
     memberIds: ['demo-ing-naim'],
     sortOrder: 4,
+    // Suspendue à dessein : la démo doit montrer qu'une prestation peut
+    // rester visible tout en étant non réservable. C'est aussi le seul
+    // moyen de vérifier ce parcours sans toucher à un compte réel.
+    isAvailable: false,
+    unavailableReason: 'equipment',
+    unavailableNote: 'Console en révision — retour prévu le 20.',
   },
   {
     id: 'demo-svc-beat',
@@ -362,7 +368,7 @@ async function seed() {
       locationIds: [LOCATION_ID],
       memberIds: svc.memberIds,
       isActive: true,
-      isAvailable: true,
+      isAvailable: svc.isAvailable !== false,
       sortOrder: svc.sortOrder,
       photoURL: null,
       color: null,
@@ -370,6 +376,8 @@ async function seed() {
       options: [],
       infoFields: [],
       discount: null,
+      unavailableReason: svc.unavailableReason ?? null,
+      unavailableNote: svc.unavailableNote ?? null,
       // Voir l'en-tête : pas d'acompte sans compte Stripe connecté.
       deposit: null,
       demoSeed: TAG,

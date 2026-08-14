@@ -14,6 +14,8 @@ interface EmbedService {
   price: number;
   priceMax: number | null;
   categoryId: string | null;
+  /** Absent = disponible, pour rester compatible avec les anciens documents. */
+  isAvailable?: boolean;
 }
 
 interface EmbedServiceCategory {
@@ -55,11 +57,20 @@ function formatPrice(cents: number, centsMax: number | null, locale: string, fre
 function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (id: string) => void }) {
   const t = useTranslations('booking');
   const locale = useLocale();
+  // Suspendue : la carte reste listée — le client doit savoir que la
+  // prestation existe — mais le bouton est désactivé plutôt que de le
+  // laisser traverser le tunnel pour se faire refuser à la validation.
+  const unavailable = service.isAvailable === false;
   return (
     <button
       type="button"
-      onClick={() => onSelect(service.id)}
-      className="w-full text-left bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md active:scale-[0.99] transition-all overflow-hidden group"
+      disabled={unavailable}
+      onClick={unavailable ? undefined : () => onSelect(service.id)}
+      className={`w-full text-left bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 transition-all overflow-hidden group ${
+        unavailable
+          ? 'opacity-60 cursor-default'
+          : 'hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md active:scale-[0.99]'
+      }`}
     >
       <div className="flex items-start gap-3 p-3">
         {service.photoURL ? (
@@ -77,6 +88,14 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-[15px] leading-snug group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
             {service.name}
+            {/* Le badge dit POURQUOI la carte est grisée. Sans lui, un
+                client conclut à un bug de la page plutôt qu'à une
+                suspension décidée par le professionnel. */}
+            {unavailable && (
+              <span className="ml-2 align-middle text-[10px] font-semibold text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40 px-1.5 py-0.5 rounded whitespace-nowrap">
+                {t('service.unavailable')}
+              </span>
+            )}
           </h3>
           {service.description && (
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">

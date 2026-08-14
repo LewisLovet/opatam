@@ -167,6 +167,15 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     infoFields: s.infoFields ?? [],
     // Per-service promotion (null = none / inherit the global one).
     discount: s.discount ?? null,
+    // Suspension temporaire. CE CHAMP MANQUAIT : sans lui, `isAvailable`
+    // arrivait `undefined` côté client, le test `=== false` était donc
+    // toujours faux, et une prestation suspendue restait sélectionnable
+    // jusqu'au refus du serveur à la validation. Les cartes et les gardes
+    // du tunnel étaient écrites, elles ne recevaient simplement pas la
+    // donnée.
+    isAvailable: s.isAvailable !== false,
+    unavailableReason: s.unavailableReason ?? null,
+    unavailableNote: s.unavailableNote ?? null,
   }));
 
   const serializedCategories = serviceCategories
