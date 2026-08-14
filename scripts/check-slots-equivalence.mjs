@@ -162,6 +162,37 @@ function batched(ctx, memberId, duration, interval, earliest, start, days) {
   return out.sort((a, b) => a.datetime - b.datetime);
 }
 
+/**
+ * « Prochaine dispo » — l'ancienne recherche testait jour après jour et
+ * renvoyait le premier jour non vide ; la nouvelle prend le premier créneau
+ * d'un seul appel sur tout l'horizon. Ce bloc vérifie qu'elles désignent la
+ * MÊME date, y compris quand le membre n'a aucune disponibilité.
+ *
+ * C'est le seul changement qui touche une surface CLIENT (la fiche
+ * prestataire mobile en plan Studio), d'où sa vérification séparée.
+ */
+function nextDateLegacy(ctx, memberId, duration, interval, earliest, start, horizonDays) {
+  for (let i = 0; i < horizonDays; i++) {
+    const day = new Date(start);
+    day.setDate(day.getDate() + i);
+    const slots = legacy(ctx, memberId, duration, interval, earliest, day, 1);
+    if (slots.length > 0) {
+      const d = new Date(day);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+  }
+  return null;
+}
+
+function nextDateBatched(ctx, memberId, duration, interval, earliest, start, horizonDays) {
+  const slots = batched(ctx, memberId, duration, interval, earliest, start, horizonDays);
+  if (slots.length === 0) return null;
+  const d = new Date(slots[0].datetime);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 const slugs = process.argv.slice(2);
 let checks = 0, diffs = 0;
 
@@ -192,6 +223,32 @@ for (const slug of slugs) {
           if (only(sa, sb).length) console.log('    seulement ancien :', only(sa, sb));
           if (only(sb, sa).length) console.log('    seulement nouveau :', only(sb, sa));
         }
+      }
+    }
+  }
+}
+
+// Deuxième passe : la « prochaine dispo » par membre.
+for (const slug of slugs) {
+  const ctx = await loadProvider(slug);
+  if (!ctx) continue;
+  const interval = ctx.provider.settings?.slotInterval ?? 15;
+  const buffer = ctx.provider.settings?.defaultBufferTime ?? 0;
+  const notice = ctx.provider.settings?.minBookingNotice ?? 2;
+  const earliest = new Date(Date.now() + notice * 3600e3);
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+
+  for (const m of ctx.members) {
+    for (const svc of ctx.services) {
+      const duration = (svc.duration ?? 0) + (svc.bufferTime || buffer);
+      const a = nextDateLegacy(ctx, m.id, duration, interval, earliest, start, 60);
+      const b = nextDateBatched(ctx, m.id, duration, interval, earliest, start, 60);
+      checks++;
+      const fa = a ? a.toISOString().slice(0, 10) : 'aucune';
+      const fb = b ? b.toISOString().slice(0, 10) : 'aucune';
+      if (fa !== fb) {
+        diffs++;
+        console.log(`  ÉCART prochaine dispo · ${m.name} · ${svc.name} : ancien ${fa}, nouveau ${fb}`);
       }
     }
   }
