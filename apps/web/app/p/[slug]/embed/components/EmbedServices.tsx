@@ -99,10 +99,13 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
                 {t('service.unavailable')}
               </span>
             )}
-            {!unavailable && (
-              <ServiceDaysBadge availableDays={service.availableDays} className="ml-2 align-middle" />
-            )}
+
           </h3>
+          {/* Sous le titre et non à côté : l'embed est étroit par nature,
+              une mention accolée au nom y serait coupée. */}
+          {!unavailable && (
+            <ServiceDaysBadge availableDays={service.availableDays} className="mt-1" />
+          )}
           {service.description && (
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
               {service.description}

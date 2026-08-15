@@ -166,10 +166,7 @@ function ServiceButton({
                 {t('unavailable')}
               </span>
             )}
-            {/* Les jours n'ont plus d'intérêt sur une prestation déjà
-                suspendue : deux pastilles côte à côte diraient deux fois
-                « vous ne pouvez pas réserver ». */}
-            {!unavailable && <ServiceDaysBadge availableDays={service.availableDays} />}
+
             {isSelected && (
               <div className="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center">
                 <Check className="w-3 h-3 text-white" />
@@ -202,6 +199,13 @@ function ServiceButton({
             <Clock className="w-4 h-4" />
             <span>{formatDuration(getServiceMinDuration(service))}</span>
           </div>
+          {/* Sur sa propre ligne : accolée au titre, elle se faisait tronquer
+              par le prix et le bouton qui se partagent cette largeur.
+              Inutile sur une prestation suspendue, dont le badge dit déjà
+              qu'elle n'est pas réservable. */}
+          {!unavailable && (
+            <ServiceDaysBadge availableDays={service.availableDays} className="mt-1" />
+          )}
         </div>
         <div className="flex-shrink-0 flex flex-col items-end gap-2">
           <div className="text-right">

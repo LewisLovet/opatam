@@ -289,19 +289,30 @@ export function ServiceCard({
                 {unavailableLabel}
               </Text>
             ) : null}
-            {/* Inutile sur une prestation déjà suspendue : deux mentions
-                diraient deux fois « vous ne pouvez pas réserver ». */}
-            {!unavailable && dayLabel ? (
-              <Text
-                variant="caption"
-                style={{ color: '#0369A1', fontSize: 10, marginTop: 2, textAlign: 'right' }}
-                numberOfLines={2}
-              >
-                {dayLabel}
-              </Text>
-            ) : null}
+
           </View>
         </View>
+
+            {/* Les jours, à côté de la durée : même famille d'information
+                (« combien de temps », « quels jours »), et surtout la pleine
+                largeur — dans la colonne du prix, la mention était écrasée.
+                Inutile sur une prestation suspendue, dont le motif est déjà
+                affiché. */}
+            {!unavailable && dayLabel ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.xs,
+                  marginTop: spacing.xs,
+                }}
+              >
+                <Ionicons name="calendar-outline" size={14} color="#0369A1" />
+                <Text variant="caption" style={{ color: '#0369A1', flex: 1 }}>
+                  {dayLabel}
+                </Text>
+              </View>
+            ) : null}
 
             {/* Duration */}
             <View style={[styles.durationContainer, { marginTop: spacing.xs }]}>

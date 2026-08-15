@@ -180,13 +180,19 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
                 <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500">
                   <Clock className="w-4 h-4" />
                   <span>{formatDuration(getServiceMinDuration(service))}</span>
-                  {/* Sur la vitrine, les jours font partie de ce qu'on vient
-                      chercher — au même titre que la durée et le prix. Rien
-                      n'est rendu quand la prestation n'a pas de restriction,
-                      donc la carte ne s'alourdit que là où c'est utile.
-                      Inutile sur une prestation déjà suspendue. */}
-                  {!unavailable && <ServiceDaysBadge availableDays={service.availableDays} />}
                 </div>
+                {/* Sur SA PROPRE LIGNE, et non accolée à la durée : cette
+                    ligne-là partage sa largeur avec le prix et le bouton, si
+                    bien que la mention s'y faisait tronquer en plein milieu.
+                    Ici elle dispose de toute la largeur de la carte.
+                    Inutile sur une prestation déjà suspendue, dont le motif
+                    est déjà affiché. */}
+                {!unavailable && (
+                  <ServiceDaysBadge
+                    availableDays={service.availableDays}
+                    className="mt-1"
+                  />
+                )}
               </div>
 
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
