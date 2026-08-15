@@ -70,7 +70,8 @@ export function ShareSection() {
 
   const drawLogoOnCanvas = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, qrSize: number, padding: number): Promise<void> => {
     return new Promise((resolve) => {
-      const logoUrl = activeTab === 'booking' ? provider?.photoURL : null;
+      const logoUrl =
+        activeTab === 'booking' ? canvasSafeImageUrl(provider?.photoURL) : null;
       const isPaypal = activeTab === 'paypal';
 
       if (!logoUrl && !isPaypal) { resolve(); return; }

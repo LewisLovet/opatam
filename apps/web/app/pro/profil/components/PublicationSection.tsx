@@ -173,7 +173,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
 
     // Draw logo on download if provider has photoURL (booking) or PayPal badge
     if (activeQRTab === 'booking' && provider?.photoURL) {
-      await drawLogoOnDownload(ctx, provider.photoURL, size, padding);
+      await drawLogoOnDownload(ctx, canvasSafeImageUrl(provider.photoURL)!, size, padding);
     } else if (activeQRTab === 'paypal') {
       drawPaypalBadgeOnDownload(ctx, size, padding);
     }
