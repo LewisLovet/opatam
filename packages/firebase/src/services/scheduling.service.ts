@@ -70,12 +70,19 @@ export interface DayAvailability {
   /** Local calendar date, YYYY-MM-DD. */
   date: string;
   /**
-   * - `closed`    : member not open that day
-   * - `full`      : open but no slot of the chosen duration fits (capacity 0)
-   * - `almost_full`: capacity ≤ ALMOST_FULL_THRESHOLD
-   * - `available` : plenty of room
+   * - `closed`        : member not open that day
+   * - `service_closed`: member open, but the service isn't offered that day
+   *                     (`availableDays`). Distinct de `closed` et de `full`
+   *                     à dessein : « fermé » accuserait le professionnel
+   *                     d'être absent, « complet » ferait croire à une forte
+   *                     demande. Ni l'un ni l'autre n'est vrai, et les deux
+   *                     découragent le client au lieu de l'orienter vers un
+   *                     jour où la prestation existe.
+   * - `full`          : open but no slot of the chosen duration fits (capacity 0)
+   * - `almost_full`   : capacity ≤ ALMOST_FULL_THRESHOLD
+   * - `available`     : plenty of room
    */
-  status: 'available' | 'almost_full' | 'full' | 'closed';
+  status: 'available' | 'almost_full' | 'full' | 'closed' | 'service_closed';
   /** Realistic remaining capacity = max non-overlapping bookings that still fit. */
   capacity: number;
   /** Selectable start-times (overlapping, every slotInterval) for instant display. */
@@ -615,8 +622,17 @@ export class SchedulingService {
       // point de vue du client, il n'y a rien à y réserver.
       const serviceOpen = isServiceOpenOnDay(service, cursor.getDay());
 
-      if (!serviceOpen || !availability || !availability.isOpen || !availability.slots.length) {
-        result.push({ date: dateKey, status: 'closed', capacity: 0, slots: [] });
+      const providerClosed = !availability || !availability.isOpen || !availability.slots.length;
+      if (providerClosed || !serviceOpen) {
+        // Le professionnel fermé prime : c'est l'information la plus simple,
+        // et elle vaut pour toutes les prestations. On ne parle de
+        // « non proposé » que lorsqu'il est ouvert par ailleurs.
+        result.push({
+          date: dateKey,
+          status: providerClosed ? 'closed' : 'service_closed',
+          capacity: 0,
+          slots: [],
+        });
       } else {
         const daySlots: TimeSlotWithDate[] = [];
         for (const window of availability.slots) {

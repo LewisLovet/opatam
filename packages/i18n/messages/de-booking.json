@@ -64,7 +64,20 @@
     "moreDetails": "Mehr Details",
     "less": "Weniger",
     "others": "Sonstige",
-    "unavailable": "Nicht verfügbar"
+    "unavailable": "Nicht verfügbar",
+    "dayBadgeOnly": "Nur {days}",
+    "dayBadgeExcept": "Außer {days}",
+    "dayClashTitle": "Diese beiden Leistungen sind nicht am selben Tag buchbar",
+    "dayClash": "„{a}“ ist {aDays} buchbar, „{b}“ ist {bDays} buchbar. Bitte buchen Sie getrennt.",
+    "weekdayLong": {
+      "0": "sonntags",
+      "1": "montags",
+      "2": "dienstags",
+      "3": "mittwochs",
+      "4": "donnerstags",
+      "5": "freitags",
+      "6": "samstags"
+    }
   },
   "member": {
     "title": "Wählen Sie einen Mitarbeiter"
@@ -111,7 +124,10 @@
     "almostFull": "Fast ausgebucht",
     "almostFullBadge": "Fast ausgebucht · {count, plural, one {# Termin} other {# Termine}}",
     "dayFull": "An diesem Tag ist für diese Leistung alles ausgebucht.",
-    "seeNextAvailability": "Nächsten freien Termin anzeigen"
+    "seeNextAvailability": "Nächsten freien Termin anzeigen",
+    "notOffered": "Nicht angeboten",
+    "onlyDays": "Diese Leistung ist {days} buchbar.",
+    "exceptDays": "Diese Leistung ist an allen Tagen außer {days} buchbar."
   },
   "slotPicker": {
     "prevDays": "Vorherige Tage",

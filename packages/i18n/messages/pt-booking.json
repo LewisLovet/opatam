@@ -64,7 +64,20 @@
     "moreDetails": "Mais detalhes",
     "less": "Menos",
     "others": "Outros",
-    "unavailable": "Indisponível"
+    "unavailable": "Indisponível",
+    "dayBadgeOnly": "Apenas {days}",
+    "dayBadgeExcept": "Exceto {days}",
+    "dayClashTitle": "Estas duas prestações não se marcam no mesmo dia",
+    "dayClash": "« {a} » marca-se {aDays}, « {b} » marca-se {bDays}. Faça duas marcações separadas.",
+    "weekdayLong": {
+      "0": "ao domingo",
+      "1": "à segunda",
+      "2": "à terça",
+      "3": "à quarta",
+      "4": "à quinta",
+      "5": "à sexta",
+      "6": "ao sábado"
+    }
   },
   "member": {
     "title": "Escolha um profissional"
@@ -111,7 +124,10 @@
     "almostFull": "Quase completo",
     "almostFullBadge": "Quase completo · {count, plural, one {# horário} other {# horários}}",
     "dayFull": "Completo nesse dia para este serviço.",
-    "seeNextAvailability": "Ver a próxima disponibilidade"
+    "seeNextAvailability": "Ver a próxima disponibilidade",
+    "notOffered": "Não proposto",
+    "onlyDays": "Esta prestação marca-se {days}.",
+    "exceptDays": "Esta prestação marca-se todos os dias exceto {days}."
   },
   "slotPicker": {
     "prevDays": "Dias anteriores",

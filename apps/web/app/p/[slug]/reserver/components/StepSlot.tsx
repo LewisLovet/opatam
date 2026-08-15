@@ -13,7 +13,7 @@ interface TimeSlotWithDate {
   endDatetime: string;
 }
 
-type DayStatus = 'available' | 'almost_full' | 'full' | 'closed';
+type DayStatus = 'available' | 'almost_full' | 'full' | 'closed' | 'service_closed';
 
 interface DayInfo {
   status: DayStatus;
@@ -312,7 +312,12 @@ export function StepSlot({
                   label = t('full');
                 } else {
                   cls = 'text-gray-300 dark:text-gray-600 cursor-not-allowed';
-                  if (status === 'closed' && !isPast) label = t('closed');
+                  // « Non proposé » et non « Fermé » : le professionnel est
+                  // ouvert ce jour-là, c'est cette prestation qui n'y est pas
+                  // au programme. Le dire évite que le client conclue à une
+                  // absence — ou pire, à un agenda plein.
+                  if (status === 'service_closed' && !isPast) label = t('notOffered');
+                  else if (status === 'closed' && !isPast) label = t('closed');
                 }
 
                 return (

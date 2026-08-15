@@ -64,7 +64,20 @@
     "moreDetails": "Più dettagli",
     "less": "Meno",
     "others": "Altri",
-    "unavailable": "Non disponibile"
+    "unavailable": "Non disponibile",
+    "dayBadgeOnly": "Solo {days}",
+    "dayBadgeExcept": "Tranne {days}",
+    "dayClashTitle": "Queste due prestazioni non si prenotano lo stesso giorno",
+    "dayClash": "« {a} » si prenota {aDays}, « {b} » si prenota {bDays}. Prenota due appuntamenti separati.",
+    "weekdayLong": {
+      "0": "la domenica",
+      "1": "il lunedì",
+      "2": "il martedì",
+      "3": "il mercoledì",
+      "4": "il giovedì",
+      "5": "il venerdì",
+      "6": "il sabato"
+    }
   },
   "member": {
     "title": "Scegli un professionista"
@@ -111,7 +124,10 @@
     "almostFull": "Quasi completo",
     "almostFullBadge": "Quasi completo · {count, plural, one {# orario} other {# orari}}",
     "dayFull": "Tutto pieno in questo giorno per questo servizio.",
-    "seeNextAvailability": "Vedi la prossima disponibilità"
+    "seeNextAvailability": "Vedi la prossima disponibilità",
+    "notOffered": "Non proposto",
+    "onlyDays": "Questa prestazione si prenota {days}.",
+    "exceptDays": "Questa prestazione si prenota tutti i giorni tranne {days}."
   },
   "slotPicker": {
     "prevDays": "Giorni precedenti",

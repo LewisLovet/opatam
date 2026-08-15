@@ -64,7 +64,20 @@
     "moreDetails": "More details",
     "less": "Less",
     "others": "Other",
-    "unavailable": "Unavailable"
+    "unavailable": "Unavailable",
+    "dayBadgeOnly": "{days} only",
+    "dayBadgeExcept": "Except {days}",
+    "dayClashTitle": "These two services cannot be booked on the same day",
+    "dayClash": "“{a}” is available {aDays}, “{b}” is available {bDays}. Please book them separately.",
+    "weekdayLong": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    }
   },
   "member": {
     "title": "Choose a professional"
@@ -111,7 +124,10 @@
     "almostFull": "Almost full",
     "almostFullBadge": "Almost full · {count, plural, one {# slot} other {# slots}}",
     "dayFull": "Fully booked that day for this service.",
-    "seeNextAvailability": "See the next availability"
+    "seeNextAvailability": "See the next availability",
+    "notOffered": "Not offered",
+    "onlyDays": "This service is available {days}.",
+    "exceptDays": "This service is available every day except {days}."
   },
   "slotPicker": {
     "prevDays": "Previous days",
