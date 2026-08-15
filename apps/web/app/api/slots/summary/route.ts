@@ -78,6 +78,10 @@ export async function GET(request: NextRequest) {
         const ds = await schedulingService.getAvailabilitySummary({
           providerId,
           serviceId,
+          // Le panier restreint les jours quel que soit le membre : cette
+          // branche agrège toute l'équipe, elle doit appliquer la même règle
+          // que celle du membre choisi.
+          extraServiceIds,
           memberId: m.id,
           startDate,
           endDate,
