@@ -22,6 +22,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { canvasSafeImageUrl } from '@/lib/canvasImage';
+import { downloadCanvasAsPng } from '@/lib/downloadCanvas';
 
 // PayPal SVG icon
 function PaypalIcon({ className }: { className?: string }) {
@@ -189,24 +190,13 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
     const link = document.createElement('a');
     const prefix = activeQRTab === 'booking' ? 'qrcode' : 'paypal-qr';
     link.download = `${prefix}-${provider?.slug || 'code'}.png`;
-    try {
-      link.href = downloadCanvas.toDataURL('image/png');
-    } catch {
-      // Canvas contaminé par une image d'une autre origine : l'export est
-      // refusé par le navigateur. On le dit plutôt que de laisser le bouton
-      // sans effet.
+    const ok = await downloadCanvasAsPng(downloadCanvas, link.download);
+    if (!ok) {
       alert(
-        "Le téléchargement a échoué : l'image du logo empêche l'export. " +
-          'Réessayez dans quelques instants ou retirez le logo de votre profil.',
+        "Le téléchargement a échoué. Réessayez, et si le problème persiste " +
+          'retirez temporairement le logo de votre profil.',
       );
-      return;
     }
-    // Firefox n'exécute un clic programmatique que sur un lien présent dans
-    // le document.
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   }, [provider?.businessName, provider?.slug, provider?.photoURL, activeQRTab]);
 
   const handlePrintQr = useCallback(() => {
