@@ -2564,7 +2564,20 @@
       "subtitle": "Locations and members involved",
       "locations": "Locations",
       "members": "Members",
-      "allMembers": "All members"
+      "allMembers": "All members",
+      "days": "Days offered",
+      "allDays": "Every day",
+      "daysHintAll": "Offered every day you are open.",
+      "daysHintRestricted": "Your opening hours still apply: a closed day stays closed.",
+      "weekday": {
+        "0": "Sun",
+        "1": "Mon",
+        "2": "Tue",
+        "3": "Wed",
+        "4": "Thu",
+        "5": "Fri",
+        "6": "Sat"
+      }
     },
     "choices": {
       "title": "Variations & options",

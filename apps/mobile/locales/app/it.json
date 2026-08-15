@@ -2564,7 +2564,20 @@
       "subtitle": "Sedi e membri interessati",
       "locations": "Sedi",
       "members": "Membri",
-      "allMembers": "Tutti i membri"
+      "allMembers": "Tutti i membri",
+      "days": "Giorni proposti",
+      "allDays": "Tutti i giorni",
+      "daysHintAll": "Proposta tutti i giorni in cui sei aperto.",
+      "daysHintRestricted": "I tuoi orari restano validi: un giorno di chiusura resta chiuso.",
+      "weekday": {
+        "0": "Dom",
+        "1": "Lun",
+        "2": "Mar",
+        "3": "Mer",
+        "4": "Gio",
+        "5": "Ven",
+        "6": "Sab"
+      }
     },
     "choices": {
       "title": "Varianti e opzioni",

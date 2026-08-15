@@ -2564,7 +2564,20 @@
       "subtitle": "Lieux et membres concernés",
       "locations": "Lieux",
       "members": "Membres",
-      "allMembers": "Tous les membres"
+      "allMembers": "Tous les membres",
+      "days": "Jours proposés",
+      "allDays": "Tous les jours",
+      "daysHintAll": "Proposée tous les jours où vous êtes ouvert.",
+      "daysHintRestricted": "Vos horaires s’appliquent toujours : un jour de fermeture reste fermé.",
+      "weekday": {
+        "0": "Dim",
+        "1": "Lun",
+        "2": "Mar",
+        "3": "Mer",
+        "4": "Jeu",
+        "5": "Ven",
+        "6": "Sam"
+      }
     },
     "choices": {
       "title": "Variations & options",

@@ -104,6 +104,8 @@ interface ServiceFormData {
   unavailableReason: ServiceUnavailableReason | null;
   /** Texte libre, utilisé uniquement quand le motif est « autre ». */
   unavailableNote: string;
+  /** Jours où la prestation est proposée (0 = dimanche). Vide = tous. */
+  availableDays: number[];
   locationIds: string[];
   memberIds: string[] | null;
   categoryId: string | null;
@@ -151,6 +153,8 @@ const DEFAULT_FORM: ServiceFormData = {
   isAvailable: true,
   unavailableReason: null,
   unavailableNote: '',
+  // Vide = tous les jours, l'attendu d'une prestation qu'on vient de créer.
+  availableDays: [],
   locationIds: [],
   memberIds: null,
   categoryId: null,
@@ -855,6 +859,7 @@ export default function ServicesScreen() {
       unavailableReason:
         service.unavailableReason ?? (service.unavailableNote ? 'other' : null),
       unavailableNote: service.unavailableNote ?? '',
+      availableDays: service.availableDays ?? [],
       locationIds: service.locationIds || [],
       memberIds: service.memberIds,
       categoryId: service.categoryId || null,
@@ -1010,6 +1015,7 @@ export default function ServicesScreen() {
       bufferTime: bufferTimeValue,
       isActive: form.isActive,
       isAvailable: form.isAvailable,
+      availableDays: form.availableDays,
       // Motif et note ne survivent pas au retour à « disponible ». La note
       // n'est écrite que pour « autre », sinon elle traînerait et pourrait
       // contredire le motif choisi.
@@ -2478,7 +2484,10 @@ export default function ServicesScreen() {
                   )}
                 </EditorSection>
 
-                {(locations.length > 1 || members.length > 1) && (
+                {/* Toujours affichée : le choix des jours vaut aussi pour un
+                    professionnel seul, alors que lieux et membres ne
+                    concernent que les comptes à plusieurs. */}
+                {(
                   <EditorSection
                     title={t('proServices.availability.title')}
                     subtitle={t('proServices.availability.subtitle')}
@@ -2555,6 +2564,64 @@ export default function ServicesScreen() {
                     })}
                   </View>
                 )}
+
+                {/* ── Jours de la semaine ──────────────────────────────
+                    Aucun jour sélectionné = tous les jours. Les horaires
+                    du membre continuent de s'appliquer par-dessus. */}
+                <View style={{ marginTop: locations.length > 1 || members.length > 1 ? spacing.lg : 0 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+                    <Text variant="bodySmall" style={{ fontWeight: '500', color: colors.text, flex: 1 }}>
+                      {t('proServices.availability.days')}
+                    </Text>
+                    {form.availableDays.length > 0 && (
+                      <Pressable onPress={() => setForm((p) => ({ ...p, availableDays: [] }))} hitSlop={8}>
+                        <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+                          {t('proServices.availability.allDays')}
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                  <Text variant="caption" style={{ color: colors.textMuted, marginBottom: spacing.sm }}>
+                    {form.availableDays.length === 0
+                      ? t('proServices.availability.daysHintAll')
+                      : t('proServices.availability.daysHintRestricted')}
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+                    {/* Affiché du lundi au dimanche ; les valeurs suivent
+                        Date.getDay(), où 0 est le dimanche. */}
+                    {([1, 2, 3, 4, 5, 6, 0] as const).map((day) => {
+                      const selected = form.availableDays.includes(day);
+                      return (
+                        <Pressable
+                          key={day}
+                          onPress={() =>
+                            setForm((p) => ({
+                              ...p,
+                              availableDays: selected
+                                ? p.availableDays.filter((d) => d !== day)
+                                : [...p.availableDays, day].sort((a, b) => a - b),
+                            }))
+                          }
+                          style={{
+                            paddingHorizontal: spacing.md,
+                            paddingVertical: spacing.sm,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: selected ? colors.primary : colors.border,
+                            backgroundColor: selected ? colors.primary : 'transparent',
+                          }}
+                        >
+                          <Text
+                            variant="bodySmall"
+                            style={{ color: selected ? '#fff' : colors.text, fontWeight: '500' }}
+                          >
+                            {t(`proServices.availability.weekday.${day}`)}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
                   </EditorSection>
                 )}
 

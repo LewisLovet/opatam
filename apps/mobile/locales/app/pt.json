@@ -2564,7 +2564,20 @@
       "subtitle": "Locais e membros abrangidos",
       "locations": "Locais",
       "members": "Membros",
-      "allMembers": "Todos os membros"
+      "allMembers": "Todos os membros",
+      "days": "Dias propostos",
+      "allDays": "Todos os dias",
+      "daysHintAll": "Proposta em todos os dias em que está aberto.",
+      "daysHintRestricted": "Os seus horários continuam a aplicar-se: um dia de fecho permanece fechado.",
+      "weekday": {
+        "0": "Dom",
+        "1": "Seg",
+        "2": "Ter",
+        "3": "Qua",
+        "4": "Qui",
+        "5": "Sex",
+        "6": "Sáb"
+      }
     },
     "choices": {
       "title": "Variantes e opções",

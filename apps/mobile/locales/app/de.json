@@ -2564,7 +2564,20 @@
       "subtitle": "Betroffene Orte und Mitglieder",
       "locations": "Orte",
       "members": "Mitglieder",
-      "allMembers": "Alle Mitglieder"
+      "allMembers": "Alle Mitglieder",
+      "days": "Angebotene Tage",
+      "allDays": "Alle Tage",
+      "daysHintAll": "An allen Tagen angeboten, an denen Sie geöffnet haben.",
+      "daysHintRestricted": "Ihre Öffnungszeiten gelten weiterhin: ein Schließtag bleibt geschlossen.",
+      "weekday": {
+        "0": "So",
+        "1": "Mo",
+        "2": "Di",
+        "3": "Mi",
+        "4": "Do",
+        "5": "Fr",
+        "6": "Sa"
+      }
     },
     "choices": {
       "title": "Varianten & Optionen",

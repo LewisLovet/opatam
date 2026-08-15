@@ -82,6 +82,8 @@ export interface ServiceFormData {
   } | null;
   /** Réservable en ligne. `false` = visible mais marquée indisponible. */
   isAvailable: boolean;
+  /** Jours réservables (0 = dimanche). Vide = tous les jours. */
+  availableDays: number[];
   /** Motif d'indisponibilité (code traduit côté client). */
   unavailableReason: ServiceUnavailableReason | null;
   /** Texte libre, utilisé uniquement quand le motif est « autre ». */
@@ -135,6 +137,7 @@ export function serviceToFormData(service: WithId<Service>): ServiceFormData {
         }
       : null,
     isAvailable: service.isAvailable !== false,
+    availableDays: service.availableDays ?? [],
     // Documents antérieurs aux motifs : une note sans code vaut « autre ».
     unavailableReason:
       service.unavailableReason ?? (service.unavailableNote ? 'other' : null),
@@ -165,6 +168,9 @@ export function emptyServiceFormData(
     deposit: null,
     discount: null,
     isAvailable: true,
+    // Vide = réservable tous les jours : c'est le comportement attendu
+    // d'une prestation qu'on vient de créer.
+    availableDays: [],
     unavailableReason: null,
     unavailableNote: null,
     variations: [],
