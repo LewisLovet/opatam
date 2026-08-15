@@ -34,6 +34,8 @@ interface StepSlotProps {
   openDays: number[]; // Array of open day numbers (0=Sunday, 1=Monday, etc.)
   /** Jours où la PRESTATION est proposée (0 = dimanche). Vide = tous. */
   serviceDays?: number[];
+  /** Prestations secondaires du panier — elles restreignent les jours. */
+  extraServiceIds?: string[];
   isDemo?: boolean;
 }
 
@@ -56,6 +58,7 @@ export function StepSlot({
   onBack,
   openDays,
   serviceDays,
+  extraServiceIds,
   isDemo = false,
 }: StepSlotProps) {
   const t = useTranslations('booking.slot');
@@ -154,6 +157,10 @@ export function StepSlot({
       to: dateKey(dateRange.max),
       duration: String(serviceDuration),
     });
+    // Sans elles, le calendrier ouvrirait des jours que la validation refuse.
+    if (extraServiceIds?.length) {
+      params.set('extraServiceIds', extraServiceIds.join(','));
+    }
 
     fetch(`/api/slots/summary?${params}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(t('loadError')))))
@@ -171,7 +178,7 @@ export function StepSlot({
       });
 
     return () => { cancelled = true; };
-  }, [providerId, serviceId, memberId, serviceDuration, isDemo, openDays, dateRange.min, dateRange.max]);
+  }, [providerId, serviceId, memberId, serviceDuration, isDemo, openDays, dateRange.min, dateRange.max, extraServiceIds]);
 
   // ── Derived ─────────────────────────────────────────────────────────────
   const selectedInfo = selectedDate ? summary[dateKey(selectedDate)] : undefined;

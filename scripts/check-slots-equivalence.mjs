@@ -64,10 +64,21 @@ const isBlocked = (s, e, blocks) =>
     return overlaps(s, e, bs, be);
   });
 
+/**
+ * ATTENTION — le document de réservation porte `datetime` et `endDatetime`,
+ * des Timestamp. Il n'a PAS de champ `date` : une première version de ce
+ * script le lisait, obtenait `undefined`, et ne détectait donc AUCUN
+ * conflit. Le test comparait deux boucles sur un agenda vide et validait
+ * tout, y compris ce qu'il aurait dû refuser.
+ */
+const toDate = (v) => (v?.toDate ? v.toDate() : new Date(v));
+
 const isBooked = (s, e, bookings) =>
   bookings.some((b) => {
-    const bs = b.date?.toDate ? b.date.toDate() : new Date(b.date);
-    const be = new Date(bs.getTime() + (b.duration ?? 0) * 60000);
+    const bs = toDate(b.datetime);
+    const be = b.endDatetime
+      ? toDate(b.endDatetime)
+      : new Date(bs.getTime() + (b.duration ?? 0) * 60000);
     return overlaps(s, e, bs, be);
   });
 
@@ -110,7 +121,7 @@ function legacy(ctx, memberId, duration, interval, earliest, start, days) {
       const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
       const dayBlocks = ctx.blocked.filter((b) => b.memberId === memberId);
       const dayBookings = ctx.bookings.filter((b) => {
-        const d = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+        const d = toDate(b.datetime);
         return (
           d >= dayStart && d < dayEnd &&
           b.memberId === memberId &&
@@ -139,7 +150,7 @@ function batched(ctx, memberId, duration, interval, earliest, start, days) {
   const rangeStart = new Date(start); rangeStart.setHours(0, 0, 0, 0);
   const rangeEnd = new Date(rangeStart); rangeEnd.setDate(rangeEnd.getDate() + days - 1); rangeEnd.setHours(23, 59, 59, 999);
   const bookings = ctx.bookings.filter((b) => {
-    const d = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+    const d = toDate(b.datetime);
     return d >= rangeStart && d <= rangeEnd && b.memberId === memberId &&
       ['confirmed', 'pending', 'pending_payment'].includes(b.status);
   });
@@ -193,6 +204,49 @@ function nextDateBatched(ctx, memberId, duration, interval, earliest, start, hor
   return d;
 }
 
+/**
+ * Réservations et blocages SYNTHÉTIQUES, injectés dans la fenêtre testée.
+ *
+ * POURQUOI : les prestataires réels n'ont aucune réservation à venir — celles
+ * du salon de démonstration sont toutes passées. Sans conflit à trancher, les
+ * deux boucles comparaient des agendas vides et validaient n'importe quoi.
+ * Ces données forcent le test à exercer le filtrage lui-même : chevauchement
+ * partiel, journée entière, statut annulé qui NE DOIT PAS bloquer.
+ */
+function withSyntheticLoad(ctx, memberId, start) {
+  const at = (dayOffset, h, durationMin) => {
+    const d = new Date(start);
+    d.setDate(d.getDate() + dayOffset);
+    d.setHours(h, 0, 0, 0);
+    return { datetime: d, endDatetime: new Date(d.getTime() + durationMin * 60000) };
+  };
+  return {
+    ...ctx,
+    bookings: [
+      { id: 'syn-1', memberId, status: 'confirmed', ...at(3, 11, 90) },
+      { id: 'syn-2', memberId, status: 'pending', ...at(3, 15, 60) },
+      { id: 'syn-3', memberId, status: 'pending_payment', ...at(10, 9, 240) },
+      // Annulée et non-présentation : le moteur doit les IGNORER. Si le test
+      // ne les distinguait pas, il masquerait une régression sur les statuts.
+      { id: 'syn-4', memberId, status: 'cancelled', ...at(4, 10, 480) },
+      { id: 'syn-5', memberId, status: 'noshow', ...at(5, 10, 480) },
+      ...ctx.bookings,
+    ],
+    blocked: [
+      {
+        id: 'syn-b1',
+        memberId,
+        allDay: false,
+        ...(() => {
+          const { datetime, endDatetime } = at(7, 14, 180);
+          return { startDate: datetime, endDate: endDatetime };
+        })(),
+      },
+      ...ctx.blocked,
+    ],
+  };
+}
+
 const slugs = process.argv.slice(2);
 let checks = 0, diffs = 0;
 
@@ -211,8 +265,9 @@ for (const slug of slugs) {
     for (const svc of ctx.services) {
       const duration = (svc.duration ?? 0) + (svc.bufferTime || buffer);
       for (const days of [1, 7, 30, 60]) {
-        const a = legacy(ctx, m.id, duration, interval, earliest, start, days);
-        const b = batched(ctx, m.id, duration, interval, earliest, start, days);
+        const loaded = withSyntheticLoad(ctx, m.id, start);
+        const a = legacy(loaded, m.id, duration, interval, earliest, start, days);
+        const b = batched(loaded, m.id, duration, interval, earliest, start, days);
         checks++;
         const ka = a.map(key).join('|'), kb = b.map(key).join('|');
         if (ka !== kb) {
@@ -252,6 +307,34 @@ for (const slug of slugs) {
       }
     }
   }
+}
+
+// Contrôle de vivacité : un test qui ne rencontre jamais de conflit
+// comparerait deux agendas vides et validerait n'importe quoi. On affiche
+// donc combien de créneaux les réservations ont réellement retirés.
+for (const slug of slugs) {
+  const ctx = await loadProvider(slug);
+  if (!ctx) continue;
+  const interval = ctx.provider.settings?.slotInterval ?? 15;
+  const buffer = ctx.provider.settings?.defaultBufferTime ?? 0;
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const past = new Date(0); // aucun préavis : on veut compter les conflits
+  let withBookings = 0, withoutBookings = 0;
+  for (const m of ctx.members) {
+    for (const svc of ctx.services) {
+      const dur = (svc.duration ?? 0) + (svc.bufferTime || buffer);
+      const loaded = withSyntheticLoad(ctx, m.id, start);
+      withBookings += batched(loaded, m.id, dur, interval, past, start, 60).length;
+      withoutBookings += batched(
+        { ...loaded, bookings: [], blocked: [] },
+        m.id, dur, interval, past, start, 60,
+      ).length;
+    }
+  }
+  console.log(
+    `  ${slug} : ${withoutBookings - withBookings} créneaux retirés par les réservations ` +
+      `(${withBookings} restants sur ${withoutBookings})`,
+  );
 }
 
 console.log(`\n${checks} comparaisons · ${diffs} écart(s)`);

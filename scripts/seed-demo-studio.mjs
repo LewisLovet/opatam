@@ -279,8 +279,10 @@ async function seed() {
         slotInterval: 30,
         defaultBufferTime: 30, // remise en place entre deux sessions
         requiresConfirmation: false,
-        // Deux heures de préavis : le temps de patcher et de préparer.
-        minBookingNotice: 120,
+        // Le champ est en HEURES, pas en minutes. La valeur 120 y créait
+        // cinq jours de préavis : la démo n'affichait aucune disponibilité
+        // avant le surlendemain de la semaine suivante.
+        minBookingNotice: 2,
         maxBookingAdvance: 60,
         allowClientCancellation: true,
         cancellationDeadline: 48,

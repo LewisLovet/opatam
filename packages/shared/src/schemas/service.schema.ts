@@ -248,7 +248,17 @@ export const createServiceSchema = z.object({
   // 0 = dimanche. Un tableau vide vaut « tous les jours », comme l'absence
   // du champ — le formulaire ne peut donc pas produire une prestation
   // réservable nulle part.
-  availableDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
+  availableDays: z
+    .array(z.number().int().min(0).max(6))
+    .max(7)
+    // Sans unicité, [1,1,1,1,1,1,1] passait : sept entrées, donc « tous les
+    // jours » pour un écran qui regarde la longueur, mais « lundi seulement »
+    // pour le moteur qui regarde le contenu. Deux lectures contradictoires
+    // de la même donnée.
+    .refine((days) => new Set(days).size === days.length, {
+      message: 'Chaque jour ne peut être sélectionné qu’une fois',
+    })
+    .optional(),
   unavailableReason: z
     .enum(SERVICE_UNAVAILABLE_REASONS, {
       errorMap: () => ({ message: "Motif d'indisponibilité invalide" }),
@@ -367,7 +377,17 @@ export const updateServiceSchema = z.object({
   // 0 = dimanche. Un tableau vide vaut « tous les jours », comme l'absence
   // du champ — le formulaire ne peut donc pas produire une prestation
   // réservable nulle part.
-  availableDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
+  availableDays: z
+    .array(z.number().int().min(0).max(6))
+    .max(7)
+    // Sans unicité, [1,1,1,1,1,1,1] passait : sept entrées, donc « tous les
+    // jours » pour un écran qui regarde la longueur, mais « lundi seulement »
+    // pour le moteur qui regarde le contenu. Deux lectures contradictoires
+    // de la même donnée.
+    .refine((days) => new Set(days).size === days.length, {
+      message: 'Chaque jour ne peut être sélectionné qu’une fois',
+    })
+    .optional(),
   unavailableReason: z
     .enum(SERVICE_UNAVAILABLE_REASONS, {
       errorMap: () => ({ message: "Motif d'indisponibilité invalide" }),

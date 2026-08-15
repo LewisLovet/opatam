@@ -24,6 +24,12 @@ export async function GET(request: NextRequest) {
 
     const providerId = searchParams.get('providerId');
     const serviceId = searchParams.get('serviceId');
+    // Prestations supplémentaires du panier, séparées par des virgules. Elles
+    // ne changent pas la durée (déjà agrégée) mais restreignent les jours.
+    const extraServiceIds = (searchParams.get('extraServiceIds') ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
     const memberId = searchParams.get('memberId');
     const fromStr = searchParams.get('from');
     const toStr = searchParams.get('to');
@@ -55,6 +61,7 @@ export async function GET(request: NextRequest) {
       days = await schedulingService.getAvailabilitySummary({
         providerId,
         serviceId,
+        extraServiceIds,
         memberId,
         startDate,
         endDate,

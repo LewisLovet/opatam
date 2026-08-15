@@ -91,12 +91,21 @@ export interface DayAvailability {
 
 interface AvailabilitySummaryParams {
   providerId: string;
+  /** Prestation principale — porte la durée et le temps de battement. */
   serviceId: string;
   memberId: string;
   startDate: Date;
   endDate: Date;
   /** Effective total slot length (service + variations/options + buffer). */
   durationOverride?: number;
+  /**
+   * Prestations SUPPLÉMENTAIRES du panier. Un rendez-vous groupé tient sur un
+   * seul créneau : un jour n'est réservable que s'il est autorisé par TOUTES.
+   * Sans elles, le calendrier ouvrait des jours que la validation refusait
+   * ensuite — A du lundi au vendredi plus B du mardi au samedi laissaient le
+   * lundi cliquable.
+   */
+  extraServiceIds?: string[];
 }
 
 /** Per-day occupancy for the service-AGNOSTIC month view (no service picked).
@@ -569,10 +578,23 @@ export class SchedulingService {
    * double-book.
    */
   async getAvailabilitySummary(params: AvailabilitySummaryParams): Promise<DayAvailability[]> {
-    const { providerId, serviceId, memberId, startDate, endDate, durationOverride } = params;
+    const { providerId, serviceId, memberId, startDate, endDate, durationOverride, extraServiceIds } =
+      params;
 
     const service = await serviceRepository.getById(providerId, serviceId);
     if (!service) throw new Error('Prestation non trouvée');
+
+    // Les prestations secondaires du panier ne servent qu'à restreindre les
+    // jours : la durée est déjà agrégée dans `durationOverride`.
+    const others = extraServiceIds?.length
+      ? (
+          await Promise.all(
+            extraServiceIds
+              .filter((id) => id !== serviceId)
+              .map((id) => serviceRepository.getById(providerId, id)),
+          )
+        ).filter((svc): svc is NonNullable<typeof svc> => Boolean(svc))
+      : [];
     const provider = await providerRepository.getById(providerId);
     const bufferTime = service.bufferTime || provider?.settings.defaultBufferTime || 0;
     const totalDuration = durationOverride ?? service.duration + bufferTime;
@@ -620,7 +642,9 @@ export class SchedulingService {
       const availability = availabilityByDow.get(cursor.getDay());
       // Un jour non couvert par la prestation se présente comme fermé : du
       // point de vue du client, il n'y a rien à y réserver.
-      const serviceOpen = isServiceOpenOnDay(service, cursor.getDay());
+      const serviceOpen =
+        isServiceOpenOnDay(service, cursor.getDay()) &&
+        others.every((svc) => isServiceOpenOnDay(svc, cursor.getDay()));
 
       const providerClosed = !availability || !availability.isOpen || !availability.slots.length;
       if (providerClosed || !serviceOpen) {

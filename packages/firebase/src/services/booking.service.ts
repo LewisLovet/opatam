@@ -716,9 +716,13 @@ export class BookingService {
       datetime: newDatetime,
       duration: totalDuration,
       excludeBookingId: bookingId,
-      // Déplacer un rendez-vous vers un jour que la prestation n'autorise
-      // pas serait le même trou, par une autre porte.
-      serviceIds: [booking.serviceId],
+      // TOUTES les prestations du rendez-vous, pas seulement la principale :
+      // un rendez-vous groupé tient sur un seul créneau, il faut donc que le
+      // jour visé les autorise toutes. `items` est absent des réservations
+      // antérieures au panier — on retombe alors sur la prestation unique.
+      serviceIds: booking.items?.length
+        ? booking.items.map((item) => item.serviceId)
+        : [booking.serviceId],
     });
 
     if (!isAvailable) {
@@ -913,6 +917,11 @@ export class BookingService {
         datetime: booking.datetime,
         duration: newServiceDuration + lastBuffer,
         excludeBookingId: bookingId,
+        // La prestation ajoutée doit accepter le jour du rendez-vous, au même
+        // titre que celles déjà présentes : sans cette liste, on pouvait
+        // greffer une prestation « lundi seulement » sur un rendez-vous du
+        // jeudi.
+        serviceIds: newItems.map((item) => item.serviceId),
       });
       if (!isAvailable) {
         throw new Error(

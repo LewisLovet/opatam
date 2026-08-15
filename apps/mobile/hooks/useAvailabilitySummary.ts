@@ -38,6 +38,9 @@ export interface UseAvailabilitySummaryParams {
   endDate: Date;
   /** Full effective visit length (variations + last service buffer). */
   durationOverride?: number;
+  /** Prestations secondaires du panier : elles restreignent les jours,
+   *  sans changer la durée (déjà agrégée dans `durationOverride`). */
+  extraServiceIds?: string[];
 }
 
 export interface UseAvailabilitySummaryResult {
@@ -51,7 +54,7 @@ export interface UseAvailabilitySummaryResult {
 export function useAvailabilitySummary(
   params: UseAvailabilitySummaryParams,
 ): UseAvailabilitySummaryResult {
-  const { providerId, serviceId, memberId, startDate, endDate, durationOverride } = params;
+  const { providerId, serviceId, memberId, startDate, endDate, durationOverride, extraServiceIds } = params;
 
   const [summary, setSummary] = useState<Record<string, DayInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -73,6 +76,7 @@ export function useAvailabilitySummary(
         startDate,
         endDate,
         durationOverride,
+        extraServiceIds,
       });
       const map: Record<string, DayInfo> = {};
       for (const d of days) {

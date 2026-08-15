@@ -1109,6 +1109,9 @@ export function BookingFlow({
                 // Intersection des jours du panier : avec plusieurs
                 // prestations, seul un jour autorisé par TOUTES est
                 // réservable — c'est cette liste-là qu'il faut annoncer.
+                extraServiceIds={state.cart
+                  .map((item) => item.serviceId)
+                  .filter((id) => id !== state.serviceId)}
                 serviceDays={getCommonAvailableDays(
                   state.cart
                     .map((item) => services.find((x) => x.id === item.serviceId))

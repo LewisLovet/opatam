@@ -171,6 +171,11 @@ export default function DateSelectionScreen() {
     startDate: summaryRange.start,
     endDate: summaryRange.end,
     durationOverride,
+    // Les autres prestations du panier restreignent aussi les jours : sans
+    // elles le calendrier ouvrirait des dates que la validation refuse.
+    extraServiceIds: cart
+      .map((item) => item.service.id)
+      .filter((id) => id !== service?.id),
   });
 
   // No day pre-selected — the client picks one from the full month calendar.
