@@ -174,6 +174,10 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
     // servi sur les sites des pros laisse choisir une prestation suspendue,
     // et le refus n'arrive qu'à la validation.
     isAvailable: s.isAvailable !== false,
+    // Jours autorisés — même vigilance que pour `isAvailable` : ces deux
+    // sérialisations sont écrites champ par champ, un oubli et la
+    // restriction n'atteint jamais le client.
+    availableDays: s.availableDays ?? [],
   }));
 
   const serializedCategories = serviceCategories

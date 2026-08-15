@@ -239,6 +239,9 @@ export class BookingService {
       memberId: effectiveMemberId as string, // Now guaranteed to be non-null
       datetime: validated.datetime,
       duration: totalDuration,
+      // Les prestations peuvent restreindre leurs jours : la vérification
+      // doit les connaître, sinon la règle ne tient que dans l'affichage.
+      serviceIds: bookingItems.map((i) => i.serviceId),
     });
 
     if (!isAvailable) {
@@ -713,6 +716,9 @@ export class BookingService {
       datetime: newDatetime,
       duration: totalDuration,
       excludeBookingId: bookingId,
+      // Déplacer un rendez-vous vers un jour que la prestation n'autorise
+      // pas serait le même trou, par une autre porte.
+      serviceIds: [booking.serviceId],
     });
 
     if (!isAvailable) {

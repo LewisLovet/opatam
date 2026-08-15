@@ -6,6 +6,7 @@ import {
   providerRepository,
 } from '../repositories';
 import type { Availability, AvailabilityConflict, BlockedSlot, TimeSlot } from '@booking-app/shared';
+import { isServiceOpenOnDay } from '@booking-app/shared';
 import {
   parseOrThrow,
   availabilitySchema,
@@ -45,6 +46,15 @@ interface SlotCheckParams {
   datetime: Date;
   duration: number;
   excludeBookingId?: string; // Pour reschedule: exclure le booking actuel de la vérification
+  /**
+   * Prestations réservées sur ce créneau. Sert à vérifier leurs jours
+   * autorisés — sans elles, la restriction par jour ne serait qu'un effet
+   * d'affichage, contournable par un appel direct à l'API.
+   *
+   * Facultatif pour ne pas casser les appelants existants : une réservation
+   * sans prestation connue est vérifiée comme avant.
+   */
+  serviceIds?: string[];
 }
 
 interface TimeSlotWithDate {
@@ -492,8 +502,12 @@ export class SchedulingService {
 
     while (currentDate <= rangeEnd) {
       const availability = availabilityByDow.get(currentDate.getDay());
+      // La prestation peut restreindre ses jours EN PLUS des horaires du
+      // membre. Les deux conditions doivent être réunies : un mardi fermé
+      // le reste, même si la prestation l'autorise.
+      const serviceOpen = isServiceOpenOnDay(service, currentDate.getDay());
 
-      if (availability && availability.isOpen && availability.slots.length > 0) {
+      if (serviceOpen && availability && availability.isOpen && availability.slots.length > 0) {
         // Generate slots for each availability window
         for (const slot of availability.slots) {
           const generatedSlots = this.generateTimeSlots(
@@ -597,8 +611,11 @@ export class SchedulingService {
     while (cursor <= rangeEnd) {
       const dateKey = this.toDateKey(cursor);
       const availability = availabilityByDow.get(cursor.getDay());
+      // Un jour non couvert par la prestation se présente comme fermé : du
+      // point de vue du client, il n'y a rien à y réserver.
+      const serviceOpen = isServiceOpenOnDay(service, cursor.getDay());
 
-      if (!availability || !availability.isOpen || !availability.slots.length) {
+      if (!serviceOpen || !availability || !availability.isOpen || !availability.slots.length) {
         result.push({ date: dateKey, status: 'closed', capacity: 0, slots: [] });
       } else {
         const daySlots: TimeSlotWithDate[] = [];
@@ -798,7 +815,19 @@ export class SchedulingService {
    * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
    */
   async isSlotAvailable(params: SlotCheckParams): Promise<boolean> {
-    const { providerId, memberId, datetime, duration, excludeBookingId } = params;
+    const { providerId, memberId, datetime, duration, excludeBookingId, serviceIds } = params;
+
+    // Jours autorisés par les prestations réservées. Toutes doivent accepter
+    // ce jour : un rendez-vous groupé tient sur un seul créneau.
+    if (serviceIds?.length) {
+      const services = await Promise.all(
+        serviceIds.map((id) => serviceRepository.getById(providerId, id)),
+      );
+      const dow = datetime.getDay();
+      if (!services.every((svc) => isServiceOpenOnDay(svc, dow))) {
+        return false;
+      }
+    }
 
     // Reject slots in the past or too close to now (minBookingNotice)
     const provider = await providerRepository.getById(providerId);

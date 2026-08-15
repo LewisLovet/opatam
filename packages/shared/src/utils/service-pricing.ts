@@ -929,3 +929,38 @@ export function formatPromoCountdown(daysLeft: number, locale = 'fr'): string {
 // only need one import. (Pure convenience — they're already typed
 // in '../types'.)
 export type { ServiceVariation, ServiceOption, ServiceDiscount };
+
+/**
+ * La prestation est-elle réservable ce jour-là ?
+ *
+ * `availableDays` absent ou vide vaut « tous les jours » : c'est ce qui rend
+ * le champ rétrocompatible sans migration, et ce qui empêche un formulaire
+ * mal rempli de produire une prestation réservable nulle part.
+ *
+ * `dayOfWeek` suit la convention de `Date.getDay()` — 0 = dimanche.
+ */
+export function isServiceOpenOnDay(
+  service: Pick<Service, 'availableDays'> | null | undefined,
+  dayOfWeek: number,
+): boolean {
+  const days = service?.availableDays;
+  if (!days || days.length === 0) return true;
+  return days.includes(dayOfWeek);
+}
+
+/**
+ * Jours communs à PLUSIEURS prestations — l'intersection de leurs
+ * `availableDays`.
+ *
+ * Sert au panier : un rendez-vous groupe des prestations sur un même
+ * créneau, donc seul un jour autorisé par TOUTES est réservable. Un
+ * résultat vide signale une combinaison impossible, que l'interface doit
+ * refuser à l'ajout plutôt que de laisser le client devant un calendrier
+ * sans aucune date.
+ */
+export function getCommonAvailableDays(
+  services: ReadonlyArray<Pick<Service, 'availableDays'>>,
+): number[] {
+  const ALL = [0, 1, 2, 3, 4, 5, 6];
+  return ALL.filter((d) => services.every((s) => isServiceOpenOnDay(s, d)));
+}

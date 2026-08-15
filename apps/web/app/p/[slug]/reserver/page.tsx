@@ -174,6 +174,10 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     // du tunnel étaient écrites, elles ne recevaient simplement pas la
     // donnée.
     isAvailable: s.isAvailable !== false,
+    // Jours autorisés — même vigilance que pour `isAvailable` : ces deux
+    // sérialisations sont écrites champ par champ, un oubli et la
+    // restriction n'atteint jamais le client.
+    availableDays: s.availableDays ?? [],
     unavailableReason: s.unavailableReason ?? null,
     unavailableNote: s.unavailableNote ?? null,
   }));

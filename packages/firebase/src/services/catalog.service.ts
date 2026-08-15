@@ -49,6 +49,10 @@ export class CatalogService {
       // le web repartait sans elle, et il fallait la rouvrir pour la poser.
       discount: validated.discount ?? null,
       isAvailable: validated.isAvailable ?? true,
+      // Recopié explicitement : `createService` construit son document champ
+      // par champ, et un oubli ici ferait perdre la restriction dès la
+      // création — c'est ainsi qu'`isAvailable` s'était déjà perdu.
+      availableDays: validated.availableDays ?? [],
       unavailableReason: validated.unavailableReason ?? null,
       unavailableNote: validated.unavailableNote ?? null,
       // Client-facing choices (variations / options / info fields).

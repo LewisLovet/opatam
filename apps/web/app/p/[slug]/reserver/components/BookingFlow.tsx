@@ -76,6 +76,8 @@ interface Service {
   discount?: ServiceDiscount | null;
   /** `false` = visible mais non réservable en ligne. */
   isAvailable?: boolean;
+  /** Jours réservables (0 = dimanche). Vide = tous les jours. */
+  availableDays?: number[];
 }
 
 interface Location {

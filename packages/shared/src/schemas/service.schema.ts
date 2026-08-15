@@ -245,6 +245,10 @@ export const createServiceSchema = z.object({
   // prestations existantes n'ont pas à être migrées, et une valeur manquante
   // ne doit jamais bloquer une réservation.
   isAvailable: z.boolean().optional(),
+  // 0 = dimanche. Un tableau vide vaut « tous les jours », comme l'absence
+  // du champ — le formulaire ne peut donc pas produire une prestation
+  // réservable nulle part.
+  availableDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
   unavailableReason: z
     .enum(SERVICE_UNAVAILABLE_REASONS, {
       errorMap: () => ({ message: "Motif d'indisponibilité invalide" }),
@@ -360,6 +364,10 @@ export const updateServiceSchema = z.object({
   // prestations existantes n'ont pas à être migrées, et une valeur manquante
   // ne doit jamais bloquer une réservation.
   isAvailable: z.boolean().optional(),
+  // 0 = dimanche. Un tableau vide vaut « tous les jours », comme l'absence
+  // du champ — le formulaire ne peut donc pas produire une prestation
+  // réservable nulle part.
+  availableDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
   unavailableReason: z
     .enum(SERVICE_UNAVAILABLE_REASONS, {
       errorMap: () => ({ message: "Motif d'indisponibilité invalide" }),

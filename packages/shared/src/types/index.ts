@@ -823,6 +823,19 @@ export interface Service {
   unavailableReason?: ServiceUnavailableReason | null;
   /** Texte libre, utilisé UNIQUEMENT quand le motif est `other`. */
   unavailableNote?: string | null;
+  /**
+   * Jours de la semaine où la prestation est réservable — 0 = dimanche,
+   * même convention que `Availability.dayOfWeek` et que `Date.getDay()`.
+   *
+   * ABSENT OU VIDE = TOUS LES JOURS. Ce choix évite toute migration : les
+   * prestations existantes restent réservables partout, et une version
+   * ancienne de l'application qui ignore le champ se comporte comme avant.
+   *
+   * Vient EN PLUS des horaires du membre, jamais à leur place : un mardi
+   * fermé le reste, même si la prestation l'autorise. Les deux conditions
+   * doivent être réunies.
+   */
+  availableDays?: number[];
   sortOrder: number;
   /** Hex color (#RRGGBB) used to tint this service's bookings on the
    *  calendar. When null, the booking falls back to the member's color.

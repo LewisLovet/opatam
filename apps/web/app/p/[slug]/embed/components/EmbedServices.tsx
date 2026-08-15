@@ -16,6 +16,8 @@ interface EmbedService {
   categoryId: string | null;
   /** Absent = disponible, pour rester compatible avec les anciens documents. */
   isAvailable?: boolean;
+  /** Jours réservables (0 = dimanche). Vide = tous les jours. */
+  availableDays?: number[];
 }
 
 interface EmbedServiceCategory {
