@@ -513,7 +513,9 @@
     "dayClashTitle": "These two services cannot be booked on the same day",
     "dayClash": "“{{a}}” is available {{aDays}}, “{{b}}” is available {{bDays}}. Please book them separately.",
     "everyDay": "every day",
-    "exceptDaysInline": "every day except {{days}}"
+    "exceptDaysInline": "every day except {{days}}",
+    "onlyDaysNotice": "This service is available {{days}}.",
+    "exceptDaysNotice": "This service is available every day except {{days}}."
   },
   "bookingDetailScreen": {
     "status": {

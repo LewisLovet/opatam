@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Check, Flame, ArrowRight, CalendarX } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Check, Flame, ArrowRight, CalendarX , CalendarDays} from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { generateDemoSlots } from '../../demoData';
+import { describeServiceDays, joinDays } from '@/lib/serviceDays';
 
 interface TimeSlotWithDate {
   date: string;
@@ -31,6 +32,8 @@ interface StepSlotProps {
   onSelect: (slot: TimeSlotWithDate) => void;
   onBack: () => void;
   openDays: number[]; // Array of open day numbers (0=Sunday, 1=Monday, etc.)
+  /** Jours où la PRESTATION est proposée (0 = dimanche). Vide = tous. */
+  serviceDays?: number[];
   isDemo?: boolean;
 }
 
@@ -52,9 +55,26 @@ export function StepSlot({
   onSelect,
   onBack,
   openDays,
+  serviceDays,
   isDemo = false,
 }: StepSlotProps) {
   const t = useTranslations('booking.slot');
+  const tService = useTranslations('booking.slot');
+  const tWeekday = useTranslations('booking.service');
+  // Mise en mots partagée avec les cartes : bascule au négatif au-delà de
+  // quatre jours ouverts.
+  const dayPhrase = (() => {
+    const phrase = describeServiceDays(serviceDays);
+    if (!phrase) return null;
+    return {
+      key: phrase.key,
+      text: joinDays(
+        phrase.days,
+        (d) => tWeekday(`weekdayLong.${d}`),
+        tWeekday('and'),
+      ),
+    };
+  })();
   const tCommon = useTranslations('booking.common');
   const locale = useLocale();
   // Localised calendar labels (arrays live in the dictionaries).
@@ -235,6 +255,20 @@ export function StepSlot({
           </button>
         )}
       </div>
+
+      {/* Dit POURQUOI des jours sont barrés, avant même que le client les
+          découvre. Sans cette ligne, une semaine à moitié grisée se lit
+          comme un agenda saturé, et le client s'en va. */}
+      {dayPhrase && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl bg-sky-50 dark:bg-sky-900/20 px-3 py-2.5 text-sm text-sky-800 dark:text-sky-300">
+          <CalendarDays className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            {dayPhrase.key === 'only'
+              ? tService('onlyDays', { days: dayPhrase.text })
+              : tService('exceptDays', { days: dayPhrase.text })}
+          </span>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

@@ -513,7 +513,9 @@
     "dayClashTitle": "Diese beiden Leistungen sind nicht am selben Tag buchbar",
     "dayClash": "„{{a}}“ ist {{aDays}} buchbar, „{{b}}“ ist {{bDays}} buchbar. Bitte buchen Sie getrennt.",
     "everyDay": "an allen Tagen",
-    "exceptDaysInline": "an allen Tagen außer {{days}}"
+    "exceptDaysInline": "an allen Tagen außer {{days}}",
+    "onlyDaysNotice": "Diese Leistung ist {{days}} buchbar.",
+    "exceptDaysNotice": "Diese Leistung ist an allen Tagen außer {{days}} buchbar."
   },
   "bookingDetailScreen": {
     "status": {

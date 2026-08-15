@@ -45,6 +45,8 @@ export interface PreviewService {
   variations: ServiceVariation[];
   options: ServiceOption[];
   infoFields: ServiceInfoField[];
+  /** Jours réservables (0 = dimanche). Vide = tous les jours. */
+  availableDays?: number[];
 }
 
 /** The editable blocks a pro can jump back to from the preview. */
@@ -146,6 +148,24 @@ export function ServiceChoicesPreview({
     ? applyLoyaltyToLine(preLoyaltyPrice, displayOriginal, loyaltyReward)
     : null;
   const displayPrice = loyAdj ? loyAdj.price : preLoyaltyPrice;
+  // Même règle que sur les cartes clientes : au-delà de quatre jours ouverts
+  // on énonce ce qui est fermé, pour que la mention tienne sur une puce.
+  const dayLabel = (() => {
+    const days = service.availableDays;
+    if (!days || days.length === 0 || days.length === 7) return null;
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    const open = order.filter((d) => days.includes(d));
+    const listed = open.length <= 4 ? open : order.filter((d) => !days.includes(d));
+    const names = listed.map((d) => t(`components.serviceCard.weekdayLong.${d}`));
+    const joined =
+      names.length <= 1
+        ? names.join('')
+        : `${names.slice(0, -1).join(', ')} ${t('components.serviceCard.and')} ${names[names.length - 1]}`;
+    return open.length <= 4
+      ? t('components.serviceCard.dayBadgeOnly', { days: joined })
+      : t('components.serviceCard.dayBadgeExcept', { days: joined });
+  })();
+
   const displayDuration = complete ? total.duration : getServiceMinDuration(service);
 
   /** A "12 € → 9,60 €" inline price (struck original when reduced). */
@@ -476,6 +496,28 @@ export function ServiceChoicesPreview({
                 {formatDuration(getServiceMinDuration(service))}
               </Text>
             </View>
+            {/* Les jours, en troisième puce. L'aperçu est censé montrer la
+                fiche TELLE QUE LE CLIENT LA VOIT : sans cette mention, le pro
+                règle une restriction puis ouvre un aperçu qui n'en dit rien,
+                et croit que le réglage n'a pas pris. */}
+            {dayLabel ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 5,
+                  paddingVertical: 5,
+                  paddingHorizontal: 10,
+                  borderRadius: 999,
+                  backgroundColor: colors.surfaceSecondary,
+                }}
+              >
+                <Ionicons name="calendar-outline" size={13} color="#0369A1" />
+                <Text variant="bodySmall" style={{ fontWeight: '600', color: '#0369A1' }}>
+                  {dayLabel}
+                </Text>
+              </View>
+            ) : null}
             <EditPencil section="price" />
           </View>
         </View>

@@ -513,7 +513,9 @@
     "dayClashTitle": "Estas duas prestações não se marcam no mesmo dia",
     "dayClash": "« {{a}} » marca-se {{aDays}}, « {{b}} » marca-se {{bDays}}. Faça duas marcações separadas.",
     "everyDay": "todos os dias",
-    "exceptDaysInline": "todos os dias exceto {{days}}"
+    "exceptDaysInline": "todos os dias exceto {{days}}",
+    "onlyDaysNotice": "Esta prestação marca-se {{days}}.",
+    "exceptDaysNotice": "Esta prestação marca-se todos os dias exceto {{days}}."
   },
   "bookingDetailScreen": {
     "status": {

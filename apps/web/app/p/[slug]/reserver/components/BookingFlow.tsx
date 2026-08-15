@@ -1106,6 +1106,14 @@ export function BookingFlow({
                 onSelect={handleSlotSelect}
                 onBack={handleBack}
                 openDays={openDays}
+                // Intersection des jours du panier : avec plusieurs
+                // prestations, seul un jour autorisé par TOUTES est
+                // réservable — c'est cette liste-là qu'il faut annoncer.
+                serviceDays={getCommonAvailableDays(
+                  state.cart
+                    .map((item) => services.find((x) => x.id === item.serviceId))
+                    .filter((x): x is (typeof services)[number] => Boolean(x)),
+                )}
                 isDemo={isDemo}
               />
             )}

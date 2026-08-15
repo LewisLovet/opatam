@@ -2803,6 +2803,7 @@ export default function ServicesScreen() {
                 variations: sanitizeVariations(form.variations),
                 options: sanitizeOptions(form.options),
                 infoFields: sanitizeInfoFields(form.infoFields),
+                availableDays: form.availableDays,
               }}
               onEditSection={jumpToFormSection}
               // Creation: the preview IS the publication step.

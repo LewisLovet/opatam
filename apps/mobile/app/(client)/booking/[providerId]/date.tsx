@@ -28,7 +28,7 @@ import {
 } from '../../../../components';
 import { useLoyaltyPreview } from '../../../../hooks/useLoyaltyPreview';
 import { useBooking } from '../../../../contexts';
-import { computeServiceTotal, computeDiscountedTotal } from '@booking-app/shared';
+import { computeServiceTotal, computeDiscountedTotal, getCommonAvailableDays } from '@booking-app/shared';
 import { useAvailabilitySummary, type TimeSlot } from '../../../../hooks';
 
 // Local YYYY-MM-DD — must match the server/summary key (not toISOString → UTC).
@@ -111,6 +111,25 @@ export default function DateSelectionScreen() {
 
   // Booking context
   const { provider, service, member, memberId, cart, setDateAndSlot } = useBooking();
+
+  // Intersection des jours du panier : avec plusieurs prestations, seul un
+  // jour autorisé par TOUTES est réservable — c'est cette liste qu'il faut
+  // annoncer, pas celle d'une seule prestation.
+  const dayNotice = (() => {
+    const days = getCommonAvailableDays(cart.map((item) => item.service));
+    if (days.length === 0 || days.length === 7) return null;
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    const open = order.filter((d) => days.includes(d));
+    const listed = open.length <= 4 ? open : order.filter((d) => !days.includes(d));
+    const names = listed.map((d) => t(`components.serviceCard.weekdayLong.${d}`));
+    const joined =
+      names.length <= 1
+        ? names.join('')
+        : `${names.slice(0, -1).join(', ')} ${t('components.serviceCard.and')} ${names[names.length - 1]}`;
+    return open.length <= 4
+      ? t('bookingFlow.onlyDaysNotice', { days: joined })
+      : t('bookingFlow.exceptDaysNotice', { days: joined });
+  })();
   const globalDiscount = provider?.settings?.globalDiscount ?? null;
 
   // Whole-visit effective totals across the cart (variations chosen) — with the
@@ -272,6 +291,28 @@ export default function DateSelectionScreen() {
             />
           </View>
         )}
+
+        {/* Dit POURQUOI des jours sont barrés, avant que le client ne les
+            découvre : une moitié de mois grisée se lit comme un agenda
+            saturé, et le client s'en va. */}
+        {dayNotice ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: spacing.xs,
+              marginTop: spacing.lg,
+              padding: spacing.md,
+              borderRadius: 12,
+              backgroundColor: colors.surfaceSecondary,
+            }}
+          >
+            <Ionicons name="calendar-outline" size={16} color="#0369A1" style={{ marginTop: 1 }} />
+            <Text variant="bodySmall" style={{ color: '#0369A1', flex: 1 }}>
+              {dayNotice}
+            </Text>
+          </View>
+        ) : null}
 
         {/* Month calendar — collapsible: full month to pick, collapses to the
             selected week to leave room for the time slots. */}

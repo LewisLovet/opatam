@@ -513,7 +513,9 @@
     "dayClashTitle": "Ces deux prestations ne se réservent pas le même jour",
     "dayClash": "« {{a}} » se réserve {{aDays}}, « {{b}} » se réserve {{bDays}}. Prenez deux rendez-vous séparés.",
     "everyDay": "tous les jours",
-    "exceptDaysInline": "tous les jours sauf {{days}}"
+    "exceptDaysInline": "tous les jours sauf {{days}}",
+    "onlyDaysNotice": "Cette prestation se réserve {{days}}.",
+    "exceptDaysNotice": "Cette prestation se réserve tous les jours sauf {{days}}."
   },
   "bookingDetailScreen": {
     "status": {

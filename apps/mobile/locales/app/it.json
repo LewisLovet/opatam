@@ -513,7 +513,9 @@
     "dayClashTitle": "Queste due prestazioni non si prenotano lo stesso giorno",
     "dayClash": "« {{a}} » si prenota {{aDays}}, « {{b}} » si prenota {{bDays}}. Prenota due appuntamenti separati.",
     "everyDay": "tutti i giorni",
-    "exceptDaysInline": "tutti i giorni tranne {{days}}"
+    "exceptDaysInline": "tutti i giorni tranne {{days}}",
+    "onlyDaysNotice": "Questa prestazione si prenota {{days}}.",
+    "exceptDaysNotice": "Questa prestazione si prenota tutti i giorni tranne {{days}}."
   },
   "bookingDetailScreen": {
     "status": {
