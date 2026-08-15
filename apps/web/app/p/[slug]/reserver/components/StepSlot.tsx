@@ -66,6 +66,9 @@ export function StepSlot({
   const tWeekday = useTranslations('booking.service');
   // Mise en mots partagée avec les cartes : bascule au négatif au-delà de
   // quatre jours ouverts.
+  // Empreinte stable du panier — voir la dépendance de l'effet plus bas.
+  const extraKey = extraServiceIds?.join(',') ?? '';
+
   const dayPhrase = (() => {
     const phrase = describeServiceDays(serviceDays);
     if (!phrase) return null;
@@ -158,8 +161,8 @@ export function StepSlot({
       duration: String(serviceDuration),
     });
     // Sans elles, le calendrier ouvrirait des jours que la validation refuse.
-    if (extraServiceIds?.length) {
-      params.set('extraServiceIds', extraServiceIds.join(','));
+    if (extraKey) {
+      params.set('extraServiceIds', extraKey);
     }
 
     fetch(`/api/slots/summary?${params}`)
@@ -178,7 +181,10 @@ export function StepSlot({
       });
 
     return () => { cancelled = true; };
-  }, [providerId, serviceId, memberId, serviceDuration, isDemo, openDays, dateRange.min, dateRange.max, extraServiceIds]);
+    // `extraKey` et NON le tableau : construit à la volée par le parent, il
+    // change de référence à chaque rendu sans changer de contenu, et
+    // relancerait donc une requête pour rien.
+  }, [providerId, serviceId, memberId, serviceDuration, isDemo, openDays, dateRange.min, dateRange.max, extraKey]);
 
   // ── Derived ─────────────────────────────────────────────────────────────
   const selectedInfo = selectedDate ? summary[dateKey(selectedDate)] : undefined;

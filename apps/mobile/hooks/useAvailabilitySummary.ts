@@ -55,6 +55,8 @@ export function useAvailabilitySummary(
   params: UseAvailabilitySummaryParams,
 ): UseAvailabilitySummaryResult {
   const { providerId, serviceId, memberId, startDate, endDate, durationOverride, extraServiceIds } = params;
+  // Empreinte stable du panier : c'est elle qui pilote le rechargement.
+  const extraServiceIdsKey = extraServiceIds?.join(',') ?? '';
 
   const [summary, setSummary] = useState<Record<string, DayInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -76,7 +78,7 @@ export function useAvailabilitySummary(
         startDate,
         endDate,
         durationOverride,
-        extraServiceIds,
+        extraServiceIds: extraServiceIdsKey ? extraServiceIdsKey.split(',') : undefined,
       });
       const map: Record<string, DayInfo> = {};
       for (const d of days) {
@@ -90,7 +92,19 @@ export function useAvailabilitySummary(
     } finally {
       setLoading(false);
     }
-  }, [providerId, serviceId, memberId, startDate.getTime(), endDate.getTime(), durationOverride]);
+    // `extraServiceIdsKey` et NON le tableau : un tableau est recréé à chaque
+    // rendu du parent, donc sa référence change sans que son contenu bouge —
+    // le mettre en dépendance déclencherait un rechargement à chaque rendu.
+    // La chaîne, elle, ne change que si le panier change vraiment.
+  }, [
+    providerId,
+    serviceId,
+    memberId,
+    startDate.getTime(),
+    endDate.getTime(),
+    durationOverride,
+    extraServiceIdsKey,
+  ]);
 
   useEffect(() => {
     fetchSummary();
