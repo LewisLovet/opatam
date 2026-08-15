@@ -141,6 +141,10 @@ const SERVICES = [
     price: 7000,
     memberIds: ['demo-ing-clara'],
     sortOrder: 3,
+    // Restreinte à dessein : la démo doit montrer qu'une prestation peut
+    // n'être proposée que certains jours, et c'est le seul moyen de vérifier
+    // ce parcours sans toucher à un compte réel.
+    availableDays: [1, 2],
   },
   {
     id: 'demo-svc-mix',
@@ -369,6 +373,7 @@ async function seed() {
       memberIds: svc.memberIds,
       isActive: true,
       isAvailable: svc.isAvailable !== false,
+      availableDays: svc.availableDays ?? [],
       sortOrder: svc.sortOrder,
       photoURL: null,
       color: null,

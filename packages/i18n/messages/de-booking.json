@@ -16,7 +16,8 @@
     "reference": "Referenz: {id}",
     "cancelAndHome": "Abbrechen und zur Startseite",
     "yes": "Ja",
-    "no": "Nein"
+    "no": "Nein",
+    "close": "Schließen"
   },
   "steps": {
     "service": "Leistung",
@@ -77,7 +78,10 @@
       "4": "donnerstags",
       "5": "freitags",
       "6": "samstags"
-    }
+    },
+    "and": "und",
+    "everyDay": "an allen Tagen",
+    "exceptDaysInline": "an allen Tagen außer {days}"
   },
   "member": {
     "title": "Wählen Sie einen Mitarbeiter"

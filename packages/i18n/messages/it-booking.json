@@ -16,7 +16,8 @@
     "reference": "Riferimento: {id}",
     "cancelAndHome": "Annulla e torna alla home",
     "yes": "Sì",
-    "no": "No"
+    "no": "No",
+    "close": "Chiudi"
   },
   "steps": {
     "service": "Servizio",
@@ -77,7 +78,10 @@
       "4": "il giovedì",
       "5": "il venerdì",
       "6": "il sabato"
-    }
+    },
+    "and": "e",
+    "everyDay": "tutti i giorni",
+    "exceptDaysInline": "tutti i giorni tranne {days}"
   },
   "member": {
     "title": "Scegli un professionista"

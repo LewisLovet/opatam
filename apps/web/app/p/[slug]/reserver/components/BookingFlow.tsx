@@ -24,6 +24,7 @@ import {
   type ServiceVariation,
   type ServiceOption,
   type ServiceInfoField,
+  getCommonAvailableDays,
 } from '@booking-app/shared';
 import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import { StepService } from './StepService';
@@ -32,6 +33,7 @@ import { StepSlot } from './StepSlot';
 import { StepConfirm } from './StepConfirm';
 import { BookingRecap } from './BookingRecap';
 import { PlayStoreButton } from '@/components/common/PlayStoreButton';
+import { describeServiceDays, joinDays } from '@/lib/serviceDays';
 
 // Types
 interface Provider {
@@ -217,6 +219,8 @@ export function BookingFlow({
 }: BookingFlowProps) {
   const router = useRouter();
   const t = useTranslations('booking');
+  const tService = useTranslations('booking.service');
+  const tCommon = useTranslations('booking.common');
   const locale = useLocale();
 
   // Determine initial service (deep-link via ?service=)
@@ -527,6 +531,20 @@ export function BookingFlow({
   // Tap a service in the list: a service with variations/options opens the
   // picker (stay on the service step); a plain one is added straight away.
   // No booking notice here — it now shows once, on "Continuer".
+  /** Jours d'une prestation, en toutes lettres, pour le message de conflit. */
+  const describeDaysText = (days: number[] | undefined): string => {
+    const phrase = describeServiceDays(days);
+    if (!phrase) return tService('everyDay');
+    const list = joinDays(phrase.days, (d) => tService(`weekdayLong.${d}`), tService('and'));
+    return phrase.key === 'only' ? list : tService('exceptDaysInline', { days: list });
+  };
+
+  /** Prestation refusée faute de jour commun, et celle qui la bloque. */
+  const [dayClash, setDayClash] = useState<{
+    incoming: (typeof services)[number];
+    existing: (typeof services)[number];
+  } | null>(null);
+
   const handleServiceSelect = (serviceId: string) => {
     const svc = services.find((s) => s.id === serviceId);
     // Dernier rempart avant le panier. L'affichage neutralise déjà les cartes
@@ -535,6 +553,24 @@ export function BookingFlow({
     // vaut que la règle vive aussi ici, où passent TOUS les chemins de
     // sélection.
     if (svc?.isAvailable === false) return;
+
+    // Jours incompatibles avec ce qui est déjà au panier. Un rendez-vous
+    // groupé tient sur UN créneau : si aucun jour n'est commun à toutes les
+    // prestations, la combinaison n'existe pas. On refuse ici, en nommant
+    // les deux prestations — laisser ajouter puis présenter un calendrier
+    // entièrement vide se lirait comme une panne.
+    if (svc) {
+      const inCart = state.cart
+        .map((item) => services.find((x) => x.id === item.serviceId))
+        .filter((x): x is (typeof services)[number] => Boolean(x));
+      if (inCart.length > 0 && getCommonAvailableDays([...inCart, svc]).length === 0) {
+        const clashing =
+          inCart.find((c) => getCommonAvailableDays([c, svc]).length === 0) ?? inCart[0];
+        setDayClash({ incoming: svc, existing: clashing });
+        return;
+      }
+    }
+
     if (svc && serviceHasChoices(svc)) {
       setState((prev) => ({ ...prev, selections: emptyServiceSelections() }));
       setConfiguringServiceId(serviceId);
@@ -893,6 +929,35 @@ export function BookingFlow({
                     the recap above stays front and centre. */}
                 {state.cart.length === 0 || isAddingService ? (
                   <div>
+                    {/* Combinaison impossible : on nomme LES DEUX prestations
+                        et leurs jours. Un message générique laisserait le
+                        client deviner laquelle retirer. */}
+                    {dayClash && (
+                      <div className="mb-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                              {tService('dayClashTitle')}
+                            </p>
+                            <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                              {tService('dayClash', {
+                                a: dayClash.existing.name,
+                                aDays: describeDaysText(dayClash.existing.availableDays),
+                                b: dayClash.incoming.name,
+                                bDays: describeDaysText(dayClash.incoming.availableDays),
+                              })}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setDayClash(null)}
+                            className="text-amber-700 dark:text-amber-300 text-sm font-medium hover:underline shrink-0"
+                          >
+                            {tCommon('close')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <StepService
                       services={services}
                       categories={serviceCategories}

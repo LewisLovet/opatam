@@ -16,6 +16,7 @@ import {
   type ServiceInfoField,
   type ServiceDiscount,
 } from '@booking-app/shared';
+import { ServiceDaysBadge } from '@/components/booking/ServiceDaysBadge';
 
 interface Service {
   id: string;
@@ -165,6 +166,10 @@ function ServiceButton({
                 {t('unavailable')}
               </span>
             )}
+            {/* Les jours n'ont plus d'intérêt sur une prestation déjà
+                suspendue : deux pastilles côte à côte diraient deux fois
+                « vous ne pouvez pas réserver ». */}
+            {!unavailable && <ServiceDaysBadge availableDays={service.availableDays} />}
             {isSelected && (
               <div className="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center">
                 <Check className="w-3 h-3 text-white" />
