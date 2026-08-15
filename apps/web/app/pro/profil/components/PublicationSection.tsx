@@ -21,6 +21,7 @@ import {
   QrCode,
   ArrowRight,
 } from 'lucide-react';
+import { canvasSafeImageUrl } from '@/lib/canvasImage';
 
 // PayPal SVG icon
 function PaypalIcon({ className }: { className?: string }) {
@@ -455,7 +456,7 @@ export function PublicationSection({ onSuccess }: PublicationSectionProps) {
                   level="H"
                   marginSize={0}
                   imageSettings={provider?.photoURL ? {
-                    src: provider.photoURL,
+                    src: canvasSafeImageUrl(provider.photoURL)!,
                     height: 28,
                     width: 28,
                     excavate: true,

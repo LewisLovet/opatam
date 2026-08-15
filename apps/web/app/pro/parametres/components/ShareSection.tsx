@@ -14,6 +14,7 @@ import {
   Link as LinkIcon,
 } from 'lucide-react';
 import { APP_CONFIG } from '@booking-app/shared/constants';
+import { canvasSafeImageUrl } from '@/lib/canvasImage';
 
 // PayPal SVG icon (lucide doesn't have one)
 function PaypalIcon({ className }: { className?: string }) {
@@ -283,7 +284,7 @@ export function ShareSection() {
                 level="H"
                 marginSize={0}
                 imageSettings={provider.photoURL ? {
-                  src: provider.photoURL,
+                  src: canvasSafeImageUrl(provider.photoURL)!,
                   height: 36,
                   width: 36,
                   excavate: true,

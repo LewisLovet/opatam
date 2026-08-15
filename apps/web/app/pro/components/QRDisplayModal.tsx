@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { X, Copy, Check, Download, QrCode, ExternalLink } from 'lucide-react';
+import { canvasSafeImageUrl } from '@/lib/canvasImage';
 
 // PayPal SVG icon
 function PaypalIcon({ className }: { className?: string }) {
@@ -87,7 +88,7 @@ export function QRDisplayModal({
 
     // Draw logo on download
     if (activeTab === 'booking' && photoURL) {
-      await drawLogoOnCanvas(ctx, photoURL, size, padding);
+      await drawLogoOnCanvas(ctx, canvasSafeImageUrl(photoURL)!, size, padding);
     } else if (activeTab === 'paypal') {
       drawPaypalBadgeOnCanvas(ctx, size, padding);
     }
@@ -188,7 +189,7 @@ export function QRDisplayModal({
                   level="H"
                   marginSize={0}
                   imageSettings={photoURL ? {
-                    src: photoURL,
+                    src: canvasSafeImageUrl(photoURL)!,
                     height: logoSize,
                     width: logoSize,
                     excavate: true,

@@ -1,8 +1,0 @@
-[
-  {
-    "origin": ["https://opatam.com", "https://www.opatam.com", "http://localhost:3000", "http://localhost:3001"],
-    "method": ["GET", "HEAD"],
-    "responseHeader": ["Content-Type"],
-    "maxAgeSeconds": 3600
-  }
-]

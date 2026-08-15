@@ -5,6 +5,7 @@ import { Plus, CalendarOff, Share2, Copy, Check, Download, ExternalLink, QrCode 
 import { QRCodeCanvas } from 'qrcode.react';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
+import { canvasSafeImageUrl } from '@/lib/canvasImage';
 
 // PayPal SVG icon
 function PaypalIcon({ className }: { className?: string }) {
@@ -216,7 +217,7 @@ export function QuickActions({ onCreateBooking, onBlockSlot }: QuickActionsProps
                         level="H"
                         marginSize={0}
                         imageSettings={provider.photoURL ? {
-                          src: provider.photoURL,
+                          src: canvasSafeImageUrl(provider.photoURL)!,
                           height: 16,
                           width: 16,
                           excavate: true,
