@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Clock, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
+import { ServiceDaysBadge } from '@/components/booking/ServiceDaysBadge';
 
 interface EmbedService {
   id: string;
@@ -97,6 +98,9 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
               <span className="ml-2 align-middle text-[10px] font-semibold text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40 px-1.5 py-0.5 rounded whitespace-nowrap">
                 {t('service.unavailable')}
               </span>
+            )}
+            {!unavailable && (
+              <ServiceDaysBadge availableDays={service.availableDays} className="ml-2 align-middle" />
             )}
           </h3>
           {service.description && (

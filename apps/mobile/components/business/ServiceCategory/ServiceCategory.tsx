@@ -43,6 +43,7 @@ export interface ServiceCategoryProps {
     promoCountdown?: string | null;
     priceFrom?: boolean;
     isAvailable?: boolean;
+    availableDays?: number[];
     unavailableReason?: string | null;
     unavailableNote?: string | null;
   }>;
@@ -242,6 +243,7 @@ export function ServiceCategory({
               promoCountdown={service.promoCountdown}
               priceFrom={service.priceFrom}
               isAvailable={service.isAvailable}
+              availableDays={service.availableDays}
               unavailableReason={service.unavailableReason}
               unavailableNote={service.unavailableNote}
               selected={selectedId === service.id}

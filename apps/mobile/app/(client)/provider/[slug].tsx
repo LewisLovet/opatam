@@ -935,6 +935,7 @@ export default function ProviderDetailScreen() {
                               : null,
                           priceFrom,
                           isAvailable: s.isAvailable !== false,
+                          availableDays: s.availableDays ?? [],
                           unavailableReason:
                             s.unavailableReason ?? (s.unavailableNote ? 'other' : null),
                           unavailableNote: s.unavailableNote ?? null,

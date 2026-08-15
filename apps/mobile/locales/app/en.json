@@ -509,7 +509,11 @@
       "loginButton": "Sign in to book",
       "loyaltyApplied": "€{{amount}} loyalty discount applied 🎉",
       "loyaltyLine": "Loyalty {{reward}} applied"
-    }
+    },
+    "dayClashTitle": "These two services cannot be booked on the same day",
+    "dayClash": "“{{a}}” is available {{aDays}}, “{{b}}” is available {{bDays}}. Please book them separately.",
+    "everyDay": "every day",
+    "exceptDaysInline": "every day except {{days}}"
   },
   "bookingDetailScreen": {
     "status": {
@@ -690,6 +694,18 @@
         "equipment": "Equipment unavailable",
         "leave": "On leave",
         "training": "In training"
+      },
+      "dayBadgeOnly": "{{days}} only",
+      "dayBadgeExcept": "Except {{days}}",
+      "and": "and",
+      "weekdayLong": {
+        "0": "Sunday",
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday"
       }
     },
     "serviceChoicesPreview": {

@@ -509,7 +509,11 @@
       "loginButton": "Iniciar sessão para reservar",
       "loyaltyApplied": "Desconto de fidelização de {{amount}} € aplicado 🎉",
       "loyaltyLine": "Fidelização {{reward}} aplicada"
-    }
+    },
+    "dayClashTitle": "Estas duas prestações não se marcam no mesmo dia",
+    "dayClash": "« {{a}} » marca-se {{aDays}}, « {{b}} » marca-se {{bDays}}. Faça duas marcações separadas.",
+    "everyDay": "todos os dias",
+    "exceptDaysInline": "todos os dias exceto {{days}}"
   },
   "bookingDetailScreen": {
     "status": {
@@ -690,6 +694,18 @@
         "equipment": "Equipamento indisponível",
         "leave": "De férias",
         "training": "Em formação"
+      },
+      "dayBadgeOnly": "Apenas {{days}}",
+      "dayBadgeExcept": "Exceto {{days}}",
+      "and": "e",
+      "weekdayLong": {
+        "0": "ao domingo",
+        "1": "à segunda",
+        "2": "à terça",
+        "3": "à quarta",
+        "4": "à quinta",
+        "5": "à sexta",
+        "6": "ao sábado"
       }
     },
     "serviceChoicesPreview": {

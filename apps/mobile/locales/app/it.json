@@ -509,7 +509,11 @@
       "loginButton": "Accedi per prenotare",
       "loyaltyApplied": "Sconto fedeltà di {{amount}} € applicato 🎉",
       "loyaltyLine": "Fedeltà {{reward}} applicata"
-    }
+    },
+    "dayClashTitle": "Queste due prestazioni non si prenotano lo stesso giorno",
+    "dayClash": "« {{a}} » si prenota {{aDays}}, « {{b}} » si prenota {{bDays}}. Prenota due appuntamenti separati.",
+    "everyDay": "tutti i giorni",
+    "exceptDaysInline": "tutti i giorni tranne {{days}}"
   },
   "bookingDetailScreen": {
     "status": {
@@ -690,6 +694,18 @@
         "equipment": "Attrezzatura non disponibile",
         "leave": "In ferie",
         "training": "In formazione"
+      },
+      "dayBadgeOnly": "Solo {{days}}",
+      "dayBadgeExcept": "Tranne {{days}}",
+      "and": "e",
+      "weekdayLong": {
+        "0": "la domenica",
+        "1": "il lunedì",
+        "2": "il martedì",
+        "3": "il mercoledì",
+        "4": "il giovedì",
+        "5": "il venerdì",
+        "6": "il sabato"
       }
     },
     "serviceChoicesPreview": {

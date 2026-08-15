@@ -17,6 +17,7 @@ import {
   type ServiceOption,
   type ServiceDiscount,
 } from '@booking-app/shared';
+import { ServiceDaysBadge } from '@/components/booking/ServiceDaysBadge';
 
 interface ServiceItemProps {
   service: {
@@ -32,6 +33,8 @@ interface ServiceItemProps {
     discount?: ServiceDiscount | null;
     /** `false` = visible mais non réservable en ligne. */
     isAvailable?: boolean;
+    /** Jours réservables (0 = dimanche). Vide = tous les jours. */
+    availableDays?: number[];
     /** Motif codé, traduit dans la langue de la cliente. */
     unavailableReason?: string | null;
     /** Texte libre, uniquement pour le motif « autre » (non traduit). */
@@ -177,6 +180,12 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
                 <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500">
                   <Clock className="w-4 h-4" />
                   <span>{formatDuration(getServiceMinDuration(service))}</span>
+                  {/* Sur la vitrine, les jours font partie de ce qu'on vient
+                      chercher — au même titre que la durée et le prix. Rien
+                      n'est rendu quand la prestation n'a pas de restriction,
+                      donc la carte ne s'alourdit que là où c'est utile.
+                      Inutile sur une prestation déjà suspendue. */}
+                  {!unavailable && <ServiceDaysBadge availableDays={service.availableDays} />}
                 </div>
               </div>
 

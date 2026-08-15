@@ -36,6 +36,8 @@ export interface ServiceCardProps {
   discountAmount?: number | null;
   /** `false` = visible mais non réservable : carte grisée, pastille. */
   isAvailable?: boolean;
+  /** Jours réservables (0 = dimanche). Vide = tous les jours. */
+  availableDays?: number[];
   /** Motif codé, traduit dans la langue de la cliente. */
   unavailableReason?: string | null;
   /** Texte libre, uniquement pour le motif « autre » (non traduit). */
@@ -78,6 +80,7 @@ export function ServiceCard({
   discountPercent,
   discountAmount,
   isAvailable = true,
+  availableDays,
   unavailableReason,
   unavailableNote,
   promoCountdown,
@@ -113,6 +116,25 @@ export function ServiceCard({
     : unavailableReason && unavailableReason !== 'other'
       ? t(`components.serviceCard.unavailableReason.${unavailableReason}`)
       : (unavailableNote ?? null);
+  // Même règle que sur le web : au-delà de quatre jours ouverts, on énonce
+  // ce qui est FERMÉ. « Sauf le dimanche » tient sur une ligne, la liste des
+  // six autres jours n'y tiendrait pas — et sur mobile la place manque.
+  const dayLabel = (() => {
+    const days = availableDays;
+    if (!days || days.length === 0 || days.length === 7) return null;
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    const open = order.filter((d) => days.includes(d));
+    const listed = open.length <= 4 ? open : order.filter((d) => !days.includes(d));
+    const names = listed.map((d) => t(`components.serviceCard.weekdayLong.${d}`));
+    const joined =
+      names.length <= 1
+        ? names.join('')
+        : `${names.slice(0, -1).join(', ')} ${t('components.serviceCard.and')} ${names[names.length - 1]}`;
+    return open.length <= 4
+      ? t('components.serviceCard.dayBadgeOnly', { days: joined })
+      : t('components.serviceCard.dayBadgeExcept', { days: joined });
+  })();
+
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
@@ -265,6 +287,17 @@ export function ServiceCard({
                 numberOfLines={2}
               >
                 {unavailableLabel}
+              </Text>
+            ) : null}
+            {/* Inutile sur une prestation déjà suspendue : deux mentions
+                diraient deux fois « vous ne pouvez pas réserver ». */}
+            {!unavailable && dayLabel ? (
+              <Text
+                variant="caption"
+                style={{ color: '#0369A1', fontSize: 10, marginTop: 2, textAlign: 'right' }}
+                numberOfLines={2}
+              >
+                {dayLabel}
               </Text>
             ) : null}
           </View>

@@ -13,13 +13,16 @@ import {
   Image,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../../theme';
 import { Text, Card, EmptyState, ServiceCategory, useToast } from '../../../../components';
-import { isServiceLoyaltyEligible } from '@booking-app/shared';
+import { isServiceLoyaltyEligible,
+  getCommonAvailableDays,
+} from '@booking-app/shared';
 import { useLoyaltyPreview } from '../../../../hooks/useLoyaltyPreview';
 import { useBooking } from '../../../../contexts';
 import { useProviderById, useServices, useServiceCategories, useMembers, useLocations } from '../../../../hooks';
@@ -67,6 +70,23 @@ export default function MemberSelectionScreen() {
   // "Ajouter une prestation" modal (provider's full service list).
   const [showServicePicker, setShowServicePicker] = useState(false);
 
+  /** Jours d'une prestation, en toutes lettres, pour le message de conflit. */
+  const describeDays = useCallback(
+    (days: number[] | undefined): string => {
+      if (!days || days.length === 0 || days.length === 7) return t('bookingFlow.everyDay');
+      const order = [1, 2, 3, 4, 5, 6, 0];
+      const open = order.filter((d) => days.includes(d));
+      const listed = open.length <= 4 ? open : order.filter((d) => !days.includes(d));
+      const names = listed.map((d) => t(`components.serviceCard.weekdayLong.${d}`));
+      const joined =
+        names.length <= 1
+          ? names.join('')
+          : `${names.slice(0, -1).join(', ')} ${t('components.serviceCard.and')} ${names[names.length - 1]}`;
+      return open.length <= 4 ? joined : t('bookingFlow.exceptDaysInline', { days: joined });
+    },
+    [t],
+  );
+
   // Add a service to the cart — open its choices picker first when it has any.
   const handleAddService = useCallback(
     (s: WithId<Service>) => {
@@ -76,10 +96,31 @@ export default function MemberSelectionScreen() {
       // les chemins d'ajout. Sans elle, un futur point d'entrée rouvrirait
       // le trou en silence.
       if (s.isAvailable === false) return;
+
+      // Jours incompatibles avec le panier. Un rendez-vous groupé tient sur
+      // UN créneau : sans jour commun à toutes les prestations, la
+      // combinaison n'existe pas. On refuse en nommant les deux prestations,
+      // plutôt que de laisser le client devant un calendrier vide.
+      const inCart = cart.map((item) => item.service);
+      if (inCart.length > 0 && getCommonAvailableDays([...inCart, s]).length === 0) {
+        const clashing =
+          inCart.find((c) => getCommonAvailableDays([c, s]).length === 0) ?? inCart[0];
+        Alert.alert(
+          t('bookingFlow.dayClashTitle'),
+          t('bookingFlow.dayClash', {
+            a: clashing.name,
+            aDays: describeDays(clashing.availableDays),
+            b: s.name,
+            bDays: describeDays(s.availableDays),
+          }),
+        );
+        return;
+      }
+
       if (serviceHasChoices(s)) setPendingChoiceService(s);
       else addToCart(s);
     },
-    [addToCart],
+    [addToCart, cart, t],
   );
 
   // Initialise the provider + seed the cart with the deep-linked first service.
@@ -495,6 +536,7 @@ export default function MemberSelectionScreen() {
                           : null,
                       priceFrom,
                       isAvailable: s.isAvailable !== false,
+                      availableDays: s.availableDays ?? [],
                       unavailableReason:
                             s.unavailableReason ?? (s.unavailableNote ? 'other' : null),
                           unavailableNote: s.unavailableNote ?? null,

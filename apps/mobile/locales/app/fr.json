@@ -509,7 +509,11 @@
       "loginButton": "Se connecter pour réserver",
       "loyaltyApplied": "Réduction fidélité de {{amount}} € appliquée 🎉",
       "loyaltyLine": "Fidélité {{reward}} appliquée"
-    }
+    },
+    "dayClashTitle": "Ces deux prestations ne se réservent pas le même jour",
+    "dayClash": "« {{a}} » se réserve {{aDays}}, « {{b}} » se réserve {{bDays}}. Prenez deux rendez-vous séparés.",
+    "everyDay": "tous les jours",
+    "exceptDaysInline": "tous les jours sauf {{days}}"
   },
   "bookingDetailScreen": {
     "status": {
@@ -690,6 +694,18 @@
         "equipment": "Matériel indisponible",
         "leave": "Congés",
         "training": "En formation"
+      },
+      "dayBadgeOnly": "{{days}} uniquement",
+      "dayBadgeExcept": "Sauf {{days}}",
+      "and": "et",
+      "weekdayLong": {
+        "0": "le dimanche",
+        "1": "le lundi",
+        "2": "le mardi",
+        "3": "le mercredi",
+        "4": "le jeudi",
+        "5": "le vendredi",
+        "6": "le samedi"
       }
     },
     "serviceChoicesPreview": {
