@@ -749,7 +749,8 @@
       "full": "Ausgebucht",
       "seeFullMonth": "Ganzen Monat anzeigen",
       "available": "Frei",
-      "almostFull": "Fast ausgebucht"
+      "almostFull": "Fast ausgebucht",
+      "notOffered": "Nicht angeboten"
     },
     "calendarStrip": {
       "shortDays": [

@@ -749,7 +749,8 @@
       "full": "Esgotado",
       "seeFullMonth": "Ver o mês inteiro",
       "available": "Livre",
-      "almostFull": "Quase esgotado"
+      "almostFull": "Quase esgotado",
+      "notOffered": "Não proposto"
     },
     "calendarStrip": {
       "shortDays": [

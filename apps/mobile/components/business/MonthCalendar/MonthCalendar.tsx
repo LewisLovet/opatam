@@ -19,7 +19,10 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 export interface DayState {
-  status: 'available' | 'almost_full' | 'full' | 'closed';
+  /** `service_closed` = professionnel ouvert, prestation non proposée ce
+   *  jour-là. Libellé distinct de « fermé » et de « complet », qui
+   *  induiraient tous deux le client en erreur. */
+  status: 'available' | 'almost_full' | 'full' | 'closed' | 'service_closed';
   capacity: number;
 }
 
@@ -136,6 +139,10 @@ export function MonthCalendar({ selectedDate, onSelectDate, dayStatus, minDate, 
       struck = true;
       bottomLabel = t('components.monthCalendar.full');
       opacity = 0.7;
+    } else if (status === 'service_closed') {
+      numberColor = colors.textMuted;
+      bottomLabel = t('components.monthCalendar.notOffered');
+      opacity = 0.5;
     } else {
       numberColor = colors.textMuted;
       opacity = 0.4;

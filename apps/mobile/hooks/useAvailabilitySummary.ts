@@ -13,7 +13,16 @@ import { schedulingService } from '@booking-app/firebase';
 import type { TimeSlot } from './useAvailableSlots';
 import i18n from '../lib/i18n';
 
-export type DayStatus = 'available' | 'almost_full' | 'full' | 'closed';
+export type DayStatus =
+  | 'available'
+  | 'almost_full'
+  | 'full'
+  | 'closed'
+  /** Le professionnel est ouvert, mais la prestation choisie n'est pas
+   *  proposée ce jour-là. Distinct de `closed` et de `full` : dire « fermé »
+   *  accuserait le professionnel d'être absent, « complet » ferait croire à
+   *  une forte demande. */
+  | 'service_closed';
 
 export interface DayInfo {
   status: DayStatus;

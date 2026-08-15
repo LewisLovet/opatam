@@ -749,7 +749,8 @@
       "full": "Full",
       "seeFullMonth": "See full month",
       "available": "Available",
-      "almostFull": "Almost full"
+      "almostFull": "Almost full",
+      "notOffered": "Not offered"
     },
     "calendarStrip": {
       "shortDays": [

@@ -749,7 +749,8 @@
       "full": "Complet",
       "seeFullMonth": "Voir tout le mois",
       "available": "Dispo",
-      "almostFull": "Bientôt complet"
+      "almostFull": "Bientôt complet",
+      "notOffered": "Non proposé"
     },
     "calendarStrip": {
       "shortDays": [

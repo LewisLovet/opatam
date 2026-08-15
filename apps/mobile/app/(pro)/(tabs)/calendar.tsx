@@ -394,7 +394,11 @@ function ViewToggle({ mode, onChange }: ViewToggleProps) {
 // Month View Component (availability overview — mirrors the client calendar)
 // ---------------------------------------------------------------------------
 
-type MonthDayStatus = 'available' | 'almost_full' | 'full' | 'closed';
+// `service_closed` vient du moteur quand la prestation choisie n'est pas
+// proposée ce jour-là. Sur CE calendrier — la vue mensuelle du
+// professionnel, qui n'est liée à aucune prestation — le cas ne se produit
+// pas, mais le type doit l'accepter puisqu'il vient de la même source.
+type MonthDayStatus = 'available' | 'almost_full' | 'full' | 'closed' | 'service_closed';
 
 function monthDateKey(d: Date): string {
   const y = d.getFullYear();
@@ -545,6 +549,7 @@ function MonthCalendar({
     almost_full: '#f59e0b',
     full: '#f43f5e',
     closed: colors.border,
+    service_closed: colors.border,
   };
   const WEEK = getNarrowDayLabels();
 
