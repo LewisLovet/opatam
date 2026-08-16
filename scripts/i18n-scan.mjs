@@ -105,6 +105,17 @@ for (const p of providers.docs) {
       status: i18n ? 'stale' : 'never',
       current: text,
       hash,
+      // LANGUE DANS LAQUELLE LE PROFESSIONNEL A ÉCRIT, à renseigner en
+      // traduisant. Elle ne se devine pas depuis le compte : un même
+      // catalogue mélange les langues (Salon de Coiffure a des prestations
+      // en français et d'autres en anglais).
+      //
+      // Ce n'est pas une métadonnée décorative : `getServiceText` renvoie le
+      // texte ORIGINAL quand la langue demandée est la langue source. La
+      // supposer française sur une prestation écrite en anglais ferait lire
+      // l'anglais aux visiteurs francophones — traduction en base ou non.
+      // `i18n-apply.mjs` refuse donc d'écrire tant qu'elle vaut null.
+      sourceLocale: i18n?.sourceLocale ?? null,
     };
 
     if (i18n) {
@@ -158,7 +169,26 @@ if (lines.length) console.log(lines.join('\n'));
 else console.log('  Rien à faire : tout est à jour.');
 
 if (total > 0) {
-  writeFileSync(outPath, JSON.stringify({ locales: LOCALES, providers: todo }, null, 2));
+  writeFileSync(
+    outPath,
+    JSON.stringify(
+      {
+        locales: LOCALES,
+        // Rappel de la marche à suivre, dans le fichier lui-même : il se
+        // relit des semaines plus tard, hors du contexte qui l'a produit.
+        howTo: [
+          'Pour chaque prestation : renseigner "sourceLocale" (la langue dans laquelle',
+          'le professionnel a écrit, telle qu\'elle est — pas celle attendue), puis',
+          'ajouter un bloc "translations" contenant les AUTRES langues de "locales".',
+          'Ne pas fournir d\'entrée pour la langue source : elle ne serait jamais lue.',
+          'Ne jamais modifier "current" ni "hash" : ils identifient le texte traduit.',
+        ].join(' '),
+        providers: todo,
+      },
+      null,
+      2,
+    ),
+  );
   console.log(
     `\n${chars.toLocaleString('fr-FR')} caractères source · ` +
       `${(chars * (LOCALES.length - 1)).toLocaleString('fr-FR')} à produire`,

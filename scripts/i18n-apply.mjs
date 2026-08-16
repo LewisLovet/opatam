@@ -45,8 +45,28 @@ function sourceHash(name, description) {
   return createHash('sha1').update(`${name ?? ''}\u0000${description ?? ''}`).digest('hex');
 }
 
+/** Les seules langues que les surfaces publiques savent lire. */
+const LOCALES = ['fr', 'en', 'it', 'pt', 'de'];
+
+/**
+ * La langue source est la seule métadonnée que ce script ne peut pas
+ * reconstituer. `getServiceText` renvoie le texte ORIGINAL quand la langue
+ * demandée est la langue source : une valeur par défaut ferait donc lire
+ * l'anglais aux francophones sur une prestation écrite en anglais — sans
+ * qu'aucune erreur ne soit visible nulle part. Mieux vaut refuser d'écrire.
+ *
+ * Elle n'est PAS restreinte à `LOCALES` : un professionnel peut écrire en
+ * espagnol sans que le site soit traduit en espagnol. Seule exigence, un
+ * code de langue plausible.
+ */
+function badSourceLocale(value) {
+  return typeof value !== 'string' || !/^[a-z]{2}(-[A-Za-z0-9]{2,8})?$/.test(value);
+}
+
 const payload = JSON.parse(readFileSync(file, 'utf-8'));
 let written = 0;
+let skippedNoSource = 0;
+let droppedEntries = 0;
 let skippedStale = 0;
 let skippedEdited = 0;
 let missing = 0;
@@ -55,6 +75,17 @@ for (const prov of payload.providers ?? []) {
   for (const svc of prov.services ?? []) {
     if (!svc.translations) {
       missing++;
+      continue;
+    }
+
+    // Avant toute lecture : sans langue source, la traduction serait écrite
+    // mais jamais affichée dans la bonne langue. Voir `badSourceLocale`.
+    if (badSourceLocale(svc.sourceLocale)) {
+      console.log(
+        `  ✗ ${svc.current?.name ?? svc.serviceId} : sourceLocale manquante ou invalide ` +
+          `(${JSON.stringify(svc.sourceLocale)}), ignorée`,
+      );
+      skippedNoSource++;
       continue;
     }
 
@@ -80,23 +111,51 @@ for (const prov of payload.providers ?? []) {
     const existing = d.i18n?.entries ?? {};
     const entries = {};
     for (const [locale, entry] of Object.entries(svc.translations)) {
+      // Une entrée qu'aucune surface ne lira jamais ne doit pas être écrite :
+      // stockée, elle passerait pour du travail fait. Trois cas :
+      //   - une langue hors des cinq servies (faute de frappe, langue en trop) ;
+      //   - la langue source, que `getServiceText` court-circuite ;
+      //   - une entrée entièrement vide, qui retombe sur l'original.
+      if (!LOCALES.includes(locale)) {
+        console.log(`  · ${d.name} : « ${locale} » n'est pas une langue servie, entrée ignorée`);
+        droppedEntries++;
+        continue;
+      }
+      if (locale === svc.sourceLocale) {
+        console.log(`  · ${d.name} : entrée « ${locale} » = langue source, jamais lue, ignorée`);
+        droppedEntries++;
+        continue;
+      }
+      const name = entry?.name ?? '';
+      const description = entry?.description ?? '';
+      if (!name && !description) {
+        console.log(`  · ${d.name} : entrée « ${locale} » vide, ignorée`);
+        droppedEntries++;
+        continue;
+      }
+
       if (existing[locale]?.edited) {
         entries[locale] = existing[locale];
         skippedEdited++;
         continue;
       }
-      entries[locale] = {
-        name: entry.name ?? '',
-        description: entry.description ?? '',
-      };
+      entries[locale] = { name, description };
     }
     // Une entrée éditée dans une langue absente du fichier survit aussi.
     for (const [locale, entry] of Object.entries(existing)) {
       if (entry?.edited && !entries[locale]) entries[locale] = entry;
     }
 
+    // Écrire malgré un lot entièrement écarté poserait `sourceHash` sur le
+    // texte courant : le scan suivant considérerait la prestation à jour et
+    // elle ne réapparaîtrait plus jamais dans la liste à traduire.
+    if (Object.keys(entries).length === 0) {
+      console.log(`  ✗ ${d.name} : aucune traduction exploitable, rien écrit`);
+      continue;
+    }
+
     const i18n = {
-      sourceLocale: svc.sourceLocale ?? 'fr',
+      sourceLocale: svc.sourceLocale,
       sourceHash: liveHash,
       sourceText: { name: d.name ?? '', description: d.description ?? '' },
       entries,
@@ -120,6 +179,8 @@ console.log(
   `\n${written} prestation(s) ${dry ? 'seraient écrites' : 'écrites'}` +
     `${skippedStale ? ` · ${skippedStale} ignorée(s) pour texte modifié` : ''}` +
     `${skippedEdited ? ` · ${skippedEdited} entrée(s) éditée(s) préservée(s)` : ''}` +
+    `${skippedNoSource ? ` · ${skippedNoSource} sans langue source` : ''}` +
+    `${droppedEntries ? ` · ${droppedEntries} entrée(s) inutilisable(s) écartée(s)` : ''}` +
     `${missing ? ` · ${missing} sans traduction fournie` : ''}`,
 );
 if (dry) console.log('(--dry : rien n’a été écrit)');
