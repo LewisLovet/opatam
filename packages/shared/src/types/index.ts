@@ -832,6 +832,13 @@ export interface ServiceTranslations {
    * l'affichage sert alors l'original.
    */
   entries: Partial<Record<ServiceLocale, ServiceTranslationEntry>>;
+  /**
+   * Le texte d'origine TEL QU'IL ÉTAIT au moment de la traduction. Redondant
+   * avec `name`/`description` tant que rien ne bouge — mais c'est ce qui
+   * permet de montrer ce qui a changé quand le professionnel corrige son
+   * texte, plutôt qu'un simple « à retraduire » sans contexte.
+   */
+  sourceText: { name: string; description: string };
   /** Modèle utilisé — permet de retraduire un lot après un changement. */
   model: string;
   translatedAt: Date;
