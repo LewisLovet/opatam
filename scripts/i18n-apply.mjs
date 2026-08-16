@@ -28,9 +28,10 @@ import { createHash } from 'crypto';
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--'));
 const dry = args.includes('--dry');
+const allowPromoNotify = args.includes('--allow-promo-notify');
 
 if (!file) {
-  console.error('Usage : node scripts/i18n-apply.mjs <fichier.json> [--dry]');
+  console.error('Usage : node scripts/i18n-apply.mjs <fichier.json> [--dry] [--allow-promo-notify]');
   process.exit(1);
 }
 
@@ -67,6 +68,7 @@ const payload = JSON.parse(readFileSync(file, 'utf-8'));
 let written = 0;
 let skippedNoSource = 0;
 let droppedEntries = 0;
+let skippedPromo = 0;
 let skippedStale = 0;
 let skippedEdited = 0;
 let missing = 0;
@@ -97,6 +99,33 @@ for (const prov of payload.providers ?? []) {
     }
 
     const d = snap.data();
+
+    // ⚠️ POSER UNE TRADUCTION EST UNE ÉCRITURE, ET UNE ÉCRITURE RÉVEILLE
+    // `onServiceDiscountPromoEmail`, qui écoute providers/*/services/*.
+    //
+    // Le déclencheur ne regarde pas CE qui a changé : il rejoue sa décision
+    // sur l'état d'après. Sur une prestation dont le pro a demandé
+    // « prévenir mes clients » et dont l'offre n'a jamais été notifiée, le
+    // registre d'idempotence est vide — rien ne retient l'envoi. Traduire un
+    // libellé enverrait donc une campagne promotionnelle aux clientes du
+    // professionnel, en son nom, sans qu'il l'ait décidé aujourd'hui.
+    //
+    // Constaté le 2026-08-16 : quatre prestations dans ce cas, promo de 10 %
+    // sans date de fin, prestataire publié. Zéro destinataire inscrit ce
+    // jour-là — donc rien n'est parti — mais c'est une propriété de la base
+    // à l'instant T, pas une garantie.
+    //
+    // Ces prestations se traduisent depuis l'espace pro, ou ici une fois
+    // l'option retirée, ou avec --allow-promo-notify en connaissance de cause.
+    if (d.discount?.notifyLoyaltyClients === true && !allowPromoNotify) {
+      console.log(
+        `  ✗ ${d.name} : promo « prévenir mes clients » active — écriture ignorée ` +
+          `(elle déclencherait l'envoi). --allow-promo-notify pour passer outre.`,
+      );
+      skippedPromo++;
+      continue;
+    }
+
     const liveHash = sourceHash(d.name, d.description);
 
     // Le texte a bougé entre le scan et maintenant : la traduction porterait
@@ -180,6 +209,7 @@ console.log(
     `${skippedStale ? ` · ${skippedStale} ignorée(s) pour texte modifié` : ''}` +
     `${skippedEdited ? ` · ${skippedEdited} entrée(s) éditée(s) préservée(s)` : ''}` +
     `${skippedNoSource ? ` · ${skippedNoSource} sans langue source` : ''}` +
+    `${skippedPromo ? ` · ${skippedPromo} écartée(s) : promo notifiable` : ''}` +
     `${droppedEntries ? ` · ${droppedEntries} entrée(s) inutilisable(s) écartée(s)` : ''}` +
     `${missing ? ` · ${missing} sans traduction fournie` : ''}`,
 );
