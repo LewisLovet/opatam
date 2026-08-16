@@ -809,6 +809,17 @@ export interface ServiceTranslationEntry {
    * correction faite à la main ne doit jamais être écrasée par une machine.
    */
   edited?: boolean;
+  /**
+   * Empreinte du texte source QUE CETTE ENTRÉE traduit — pas celle de la
+   * prestation. Les deux divergent dès qu'une langue n'est pas retraduite en
+   * même temps que les autres : entrée reprise d'un lot partiel, ou entrée
+   * `edited` conservée alors que le professionnel a réécrit son texte.
+   *
+   * Sans elle, la fraîcheur ne se mesure qu'à l'échelle de la prestation, et
+   * une traduction périmée devient indétectable dès qu'une seule autre langue
+   * est à jour. Absente = provenance inconnue, donc traitée comme périmée.
+   */
+  sourceHash?: string;
 }
 
 export interface ServiceTranslations {
@@ -824,8 +835,18 @@ export interface ServiceTranslations {
    * répond à une seule question : les traductions correspondent-elles encore
    * au texte actuel ? C'est aussi elle qui empêche le déclencheur de se
    * rappeler en boucle, puisqu'il écrit sur le document qu'il surveille.
+   *
+   * `null` = la prestation n'est PAS entièrement traduite : au moins une
+   * langue manque, ou traduit une version antérieure du texte. Le scan la
+   * reprend alors dans sa liste, ce qu'une empreinte posée trop tôt aurait
+   * empêché à jamais. Voir `pendingLocales` pour le détail.
    */
-  sourceHash: string;
+  sourceHash: string | null;
+  /**
+   * Langues encore à produire ou à revoir, quand `sourceHash` vaut `null`.
+   * Renseigné pour que le travail restant se lise sans recalcul.
+   */
+  pendingLocales?: ServiceLocale[];
   /**
    * Une entrée par langue produite. Une langue ABSENTE n'est pas une erreur :
    * elle signifie que la traduction a été refusée par les garde-fous, et

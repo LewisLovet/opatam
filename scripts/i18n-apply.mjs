@@ -69,6 +69,7 @@ let written = 0;
 let skippedNoSource = 0;
 let droppedEntries = 0;
 let skippedPromo = 0;
+let incomplete = 0;
 let skippedStale = 0;
 let skippedEdited = 0;
 let missing = 0;
@@ -136,9 +137,28 @@ for (const prov of payload.providers ?? []) {
       continue;
     }
 
-    // Les entrées retouchées à la main sont reprises telles quelles.
+    // ── Les entrées déjà en base sont REPRISES, jamais perdues ────────────
+    //
+    // Un lot ne contient pas forcément les cinq langues : corriger le seul
+    // allemand est un cas normal. Reconstruire `entries` à partir du seul
+    // fichier effacerait alors les quatre autres — et comme l'empreinte
+    // avancerait dans la foulée, le scan les déclarerait à jour. Perte
+    // silencieuse, constatée en reproduction le 2026-08-16.
+    //
+    // Chaque entrée reprise garde SA propre empreinte. Pour les entrées
+    // écrites avant l'existence de ce champ, l'empreinte de la prestation
+    // fait foi : si elle vaut le texte actuel, ces entrées le traduisent
+    // bien. Sinon leur provenance est inconnue, donc périmée.
     const existing = d.i18n?.entries ?? {};
+    const previousDocHash = d.i18n?.sourceHash ?? null;
     const entries = {};
+    for (const [locale, entry] of Object.entries(existing)) {
+      if (!entry) continue;
+      entries[locale] = {
+        ...entry,
+        sourceHash: entry.sourceHash ?? (previousDocHash === liveHash ? liveHash : null),
+      };
+    }
     for (const [locale, entry] of Object.entries(svc.translations)) {
       // Une entrée qu'aucune surface ne lira jamais ne doit pas être écrite :
       // stockée, elle passerait pour du travail fait. Trois cas :
@@ -164,15 +184,13 @@ for (const prov of payload.providers ?? []) {
       }
 
       if (existing[locale]?.edited) {
-        entries[locale] = existing[locale];
+        // Conservée telle quelle — y compris son empreinte d'origine, qui
+        // peut être plus ancienne que le texte actuel. C'est précisément ce
+        // qui la fera ressortir comme « à revoir » plus bas.
         skippedEdited++;
         continue;
       }
-      entries[locale] = { name, description };
-    }
-    // Une entrée éditée dans une langue absente du fichier survit aussi.
-    for (const [locale, entry] of Object.entries(existing)) {
-      if (entry?.edited && !entries[locale]) entries[locale] = entry;
+      entries[locale] = { name, description, sourceHash: liveHash };
     }
 
     // Écrire malgré un lot entièrement écarté poserait `sourceHash` sur le
@@ -183,9 +201,29 @@ for (const prov of payload.providers ?? []) {
       continue;
     }
 
+    // ── L'empreinte n'avance que si TOUT est à jour ───────────────────────
+    //
+    // La poser signifie « cette prestation est traduite dans toutes les
+    // langues servies, pour CE texte-ci ». Le scan s'y fie pour ne plus la
+    // proposer. La poser alors qu'une langue manque, ou qu'une entrée
+    // retouchée à la main traduit encore l'ancien texte, fige l'erreur : la
+    // prestation ne réapparaîtra jamais dans la liste.
+    //
+    // C'est le seul remède au cas « Coupe femme » renommée « Coupe homme » :
+    // la traduction anglaise corrigée à la main est protégée de l'écrasement,
+    // mais son empreinte reste celle de l'ancien nom — donc la prestation
+    // reste signalée jusqu'à ce qu'un humain tranche.
+    const targets = LOCALES.filter((l) => l !== svc.sourceLocale);
+    const pending = targets.filter((l) => entries[l]?.sourceHash !== liveHash);
+    if (pending.length) {
+      console.log(`  ⚠ ${d.name} : reste à traiter → ${pending.join(', ')} (empreinte non avancée)`);
+      incomplete++;
+    }
+
     const i18n = {
       sourceLocale: svc.sourceLocale,
-      sourceHash: liveHash,
+      sourceHash: pending.length ? null : liveHash,
+      pendingLocales: pending,
       sourceText: { name: d.name ?? '', description: d.description ?? '' },
       entries,
       model: svc.model ?? 'manuel',
@@ -210,6 +248,7 @@ console.log(
     `${skippedEdited ? ` · ${skippedEdited} entrée(s) éditée(s) préservée(s)` : ''}` +
     `${skippedNoSource ? ` · ${skippedNoSource} sans langue source` : ''}` +
     `${skippedPromo ? ` · ${skippedPromo} écartée(s) : promo notifiable` : ''}` +
+    `${incomplete ? ` · ${incomplete} incomplète(s), toujours signalée(s) au scan` : ''}` +
     `${droppedEntries ? ` · ${droppedEntries} entrée(s) inutilisable(s) écartée(s)` : ''}` +
     `${missing ? ` · ${missing} sans traduction fournie` : ''}`,
 );

@@ -101,8 +101,11 @@ for (const p of providers.docs) {
     const entry = {
       providerId: p.id,
       serviceId: s.id,
-      // `never` = jamais traduite. `stale` = le texte a changé depuis.
-      status: i18n ? 'stale' : 'never',
+      // `never`      = jamais traduite.
+      // `incomplete` = traduite pour le texte actuel, mais pas dans toutes
+      //                les langues (empreinte laissée à `null` à dessein).
+      // `stale`      = le texte a changé depuis la traduction.
+      status: !i18n ? 'never' : i18n.sourceHash === null ? 'incomplete' : 'stale',
       current: text,
       hash,
       // LANGUE DANS LAQUELLE LE PROFESSIONNEL A ÉCRIT, à renseigner en
@@ -132,6 +135,15 @@ for (const p of providers.docs) {
       entry.protectedLocales = Object.entries(i18n.entries ?? {})
         .filter(([, v]) => v?.edited)
         .map(([k]) => k);
+      // Ce qui reste à faire, tel que l'application l'a laissé.
+      entry.pendingLocales = i18n.pendingLocales ?? null;
+      // Les entrées présentes MAIS qui traduisent une autre version du texte.
+      // C'est ici qu'apparaît une correction humaine devenue fausse : elle est
+      // protégée de l'écrasement, donc elle survit — et il faut bien que
+      // quelqu'un finisse par la relire.
+      entry.staleLocales = Object.entries(i18n.entries ?? {})
+        .filter(([, v]) => v?.sourceHash !== hash)
+        .map(([k]) => k);
     }
 
     items.push(entry);
@@ -150,11 +162,16 @@ for (const p of providers.docs) {
   });
 
   const never = items.filter((i) => i.status === 'never').length;
-  const stale = items.length - never;
+  const partial = items.filter((i) => i.status === 'incomplete').length;
+  const stale = items.length - never - partial;
+  const parts = [
+    never ? `${never} jamais traduites` : null,
+    partial ? `${partial} incomplètes` : null,
+    stale ? `${stale} modifiées` : null,
+  ].filter(Boolean);
   lines.push(
     `  ${(prov.businessName ?? '?').padEnd(24)} ${String(items.length).padStart(3)} à traiter` +
-      `   ${never ? `${never} jamais traduites` : ''}${never && stale ? ' · ' : ''}` +
-      `${stale ? `${stale} modifiées` : ''}`,
+      `   ${parts.join(' · ')}`,
   );
 }
 
