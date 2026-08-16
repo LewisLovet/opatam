@@ -2287,7 +2287,9 @@
       "selectCategory": "Wählen Sie eine Kategorie",
       "descriptionLabel": "Beschreibung",
       "descriptionPlaceholder": "Beschreiben Sie Ihre Tätigkeit in ein paar Zeilen …",
-      "descriptionHelper": "Sichtbar auf Ihrer öffentlichen Seite"
+      "descriptionHelper": "Sichtbar auf Ihrer öffentlichen Seite",
+      "themeLabel": "Farbe Ihrer Seite",
+      "themeHelper": "Gilt für Ihre öffentliche Seite, Ihre Buchungsstrecke und Ihr Widget: Buttons, Badges und Links."
     },
     "portfolio": {
       "title": "Portfolio",

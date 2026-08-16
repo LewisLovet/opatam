@@ -28,7 +28,7 @@ import { useTheme } from '../../theme';
 import { Text, Button, Input, Card, useToast, SubscriptionRequiredModal } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import { providerService, uploadFile, storagePaths } from '@booking-app/firebase';
-import { CATEGORIES, APP_CONFIG } from '@booking-app/shared/constants';
+import { CATEGORIES, APP_CONFIG, PROVIDER_THEMES, THEME_FAMILIES, DEFAULT_THEME_ID, getProviderTheme } from '@booking-app/shared/constants';
 import QRCode from 'react-native-qrcode-svg';
 
 // ---------------------------------------------------------------------------
@@ -39,6 +39,9 @@ interface ProfileFormData {
   businessName: string;
   category: string;
   description: string;
+  /** Vide = aucune gamme choisie, donc le bleu par défaut. Voir le commentaire
+   *  à l'enregistrement : on n'écrit PAS de chaîne vide en base. */
+  themeId: string;
 }
 
 interface SocialLinksData {
@@ -164,6 +167,7 @@ export default function ProfileScreen() {
     businessName: '',
     category: '',
     description: '',
+    themeId: '',
   });
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -192,6 +196,7 @@ export default function ProfileScreen() {
 
   // Category picker
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
 
   // QR code tab
   const [activeQR, setActiveQR] = useState<'booking' | 'paypal'>('booking');
@@ -205,6 +210,7 @@ export default function ProfileScreen() {
         businessName: provider.businessName || '',
         category: provider.category || '',
         description: provider.description || '',
+        themeId: provider.themeId || '',
       });
       setSocialForm({
         instagram: provider.socialLinks?.instagram || '',
@@ -380,6 +386,10 @@ export default function ProfileScreen() {
         businessName: profileForm.businessName.trim(),
         category: profileForm.category,
         description: profileForm.description.trim(),
+        // Non envoyé tant que rien n'a été choisi : `updateDoc` fusionne, et
+        // une chaîne vide inscrirait un identifiant invalide là où l'ABSENCE
+        // du champ veut dire « bleu ».
+        ...(profileForm.themeId ? { themeId: profileForm.themeId } : {}),
       });
       await refreshProvider();
       showToast({ variant: 'success', message: t('proProfile.profileUpdated') });
@@ -994,6 +1004,42 @@ export default function ProfileScreen() {
                 </Pressable>
               </View>
 
+              {/* Couleur de la vitrine — la pastille montre trois nuances :
+                  ce qui distingue deux gammes voisines n'est pas leur couleur
+                  de bouton mais la façon dont elles s'éclaircissent. */}
+              <View style={{ marginTop: spacing.md }}>
+                <Text variant="label" style={{ marginBottom: spacing.xs }}>
+                  {t('proProfile.form.themeLabel')}
+                </Text>
+                <Pressable
+                  onPress={() => setShowThemePicker(true)}
+                  style={[
+                    styles.pickerButton,
+                    {
+                      backgroundColor: colors.surfaceSecondary,
+                      borderRadius: radius.md,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <View style={{ flexDirection: 'row', borderRadius: 4, overflow: 'hidden', marginRight: spacing.sm }}>
+                    {[1, 4, 6].map((i) => (
+                      <View
+                        key={i}
+                        style={{ width: 10, height: 22, backgroundColor: `rgb(${getProviderTheme(profileForm.themeId).ramp[i]})` }}
+                      />
+                    ))}
+                  </View>
+                  <Text variant="body" style={{ flex: 1, color: colors.text }}>
+                    {getProviderTheme(profileForm.themeId).label}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+                </Pressable>
+                <Text variant="caption" color="textMuted" style={{ marginTop: 4 }}>
+                  {t('proProfile.form.themeHelper')}
+                </Text>
+              </View>
+
               <View style={{ marginTop: spacing.md }}>
                 <Input
                   label={t('proProfile.form.descriptionLabel')}
@@ -1257,6 +1303,77 @@ export default function ProfileScreen() {
                     </Text>
                     {isSelected && <Ionicons name="checkmark" size={20} color="#FFFFFF" />}
                   </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Sélecteur de gamme — groupé par famille, comme sur le web. Une liste
+          fermée et non une roue chromatique : sur onze nuances dérivées d'une
+          couleur libre, le contraste n'est garanti ni en clair ni en sombre. */}
+      <Modal visible={showThemePicker} transparent animationType="slide">
+        <Pressable style={styles.modalOverlay} onPress={() => setShowThemePicker(false)}>
+          <Pressable
+            style={[
+              styles.pickerModal,
+              { backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.pickerHandle}>
+              <View style={[styles.handleBar, { backgroundColor: colors.border }]} />
+            </View>
+            <Text variant="h3" align="center" style={{ marginBottom: spacing.md }}>
+              {t('proProfile.form.themeLabel')}
+            </Text>
+            <ScrollView style={{ maxHeight: 460 }}>
+              {THEME_FAMILIES.map((famille) => {
+                const gammes = PROVIDER_THEMES.filter((g) => g.family === famille.id);
+                if (gammes.length === 0) return null;
+                return (
+                  <View key={famille.id} style={{ marginBottom: spacing.sm }}>
+                    <Text
+                      variant="caption"
+                      color="textMuted"
+                      style={{ textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}
+                    >
+                      {famille.label}
+                    </Text>
+                    {gammes.map((g) => {
+                      const isSelected = (profileForm.themeId || DEFAULT_THEME_ID) === g.id;
+                      return (
+                        <Pressable
+                          key={g.id}
+                          onPress={() => {
+                            setProfileForm((p) => ({ ...p, themeId: g.id }));
+                            setShowThemePicker(false);
+                          }}
+                          style={[
+                            styles.categoryOption,
+                            {
+                              backgroundColor: isSelected ? colors.surfaceSecondary : 'transparent',
+                              borderRadius: radius.sm,
+                            },
+                          ]}
+                        >
+                          <View style={{ flexDirection: 'row', borderRadius: 4, overflow: 'hidden', marginRight: spacing.sm }}>
+                            {[1, 4, 6].map((i) => (
+                              <View key={i} style={{ width: 12, height: 24, backgroundColor: `rgb(${g.ramp[i]})` }} />
+                            ))}
+                          </View>
+                          <Text
+                            variant="body"
+                            style={{ flex: 1, color: colors.text, fontWeight: isSelected ? '600' : '400' }}
+                          >
+                            {g.label}
+                          </Text>
+                          {isSelected && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 );
               })}
             </ScrollView>
