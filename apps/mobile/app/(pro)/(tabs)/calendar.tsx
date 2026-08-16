@@ -2953,7 +2953,11 @@ export default function CalendarScreen() {
                           numberOfLines={1}
                           style={{ fontWeight: '500' }}
                         >
-                          {activity.title || meta?.label || t('proCalendar.activityFallback')}
+                          {activity.title ||
+                            (activity.category
+                              ? t(`activityCategories.${activity.category}`, { defaultValue: meta?.label })
+                              : null) ||
+                            t('proCalendar.activityFallback')}
                         </Text>
                         {meta && (
                           <Text
@@ -2961,7 +2965,7 @@ export default function CalendarScreen() {
                             color="textSecondary"
                             numberOfLines={1}
                           >
-                            {meta.label}
+                            {t(`activityCategories.${activity.category}`, { defaultValue: meta.label })}
                           </Text>
                         )}
                       </View>

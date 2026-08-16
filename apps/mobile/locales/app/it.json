@@ -1713,16 +1713,6 @@
       "activitiesCount_one": "{{count}} attività",
       "activitiesCount_other": "{{count}} attività"
     },
-    "activityCategories": {
-      "prestation": "Servizio",
-      "sport": "Sport",
-      "meeting": "Riunione",
-      "personal": "Personale",
-      "admin": "Amministrazione",
-      "travel": "Spostamento",
-      "imprevu": "Imprevisto",
-      "other": "Altro"
-    },
     "breakdownTitle": "Ripartizione degli appuntamenti",
     "confirmed": "Confermati",
     "cancelled": "Annullati",
@@ -3163,5 +3153,15 @@
     "pets": "Animali",
     "arts": "Arte & Tempo libero",
     "other": "Altri servizi"
+  },
+  "activityCategories": {
+    "prestation": "Servizio",
+    "sport": "Sport",
+    "meeting": "Riunione",
+    "personal": "Personale",
+    "admin": "Amministrazione",
+    "travel": "Spostamento",
+    "imprevu": "Imprevisto",
+    "other": "Altro"
   }
 }

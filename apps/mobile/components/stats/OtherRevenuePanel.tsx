@@ -95,7 +95,7 @@ export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
                 style={{ flex: 1, fontWeight: '500' }}
                 numberOfLines={1}
               >
-                {t(`proStats.activityCategories.${c.category}`, {
+                {t(`activityCategories.${c.category}`, {
                   defaultValue: meta?.label ?? c.category,
                 })}
               </Text>

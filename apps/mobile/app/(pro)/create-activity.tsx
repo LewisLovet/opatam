@@ -16,7 +16,7 @@
  *     reach for "Bloquer une période" instead.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -75,12 +75,33 @@ interface CategoryDef {
   icon: keyof typeof Ionicons.glyphMap;
 }
 
-const CATEGORIES: CategoryDef[] = ACTIVITY_CATEGORY_ORDER.map((key) => ({
-  key,
-  label: ACTIVITY_CATEGORY_META[key].label,
-  color: ACTIVITY_CATEGORY_META[key].color,
-  icon: ACTIVITY_CATEGORY_META[key].icon as keyof typeof Ionicons.glyphMap,
-}));
+/**
+ * Les catégories, dans la langue de l'app.
+ *
+ * `ACTIVITY_CATEGORY_META` porte un `label` en dur, en français : vivant dans
+ * une constante partagée et non dans les dictionnaires, il a échappé à la
+ * campagne de traduction de l'espace pro. Un professionnel en anglais voyait
+ * « Prestation », « Imprévu », « Trajet » au milieu d'une interface anglaise.
+ *
+ * Recalculé à chaque rendu, jamais figé au chargement du module : changer de
+ * langue ne remonte pas le module, et une liste construite une fois pour
+ * toutes resterait dans la langue du démarrage.
+ */
+function useActivityCategories(): CategoryDef[] {
+  const { t } = useTranslation();
+  return useMemo(
+    () =>
+      ACTIVITY_CATEGORY_ORDER.map((key) => ({
+        key,
+        // `defaultValue` : une catégorie ajoutée sans sa clé retombe sur le
+        // libellé français plutôt que d'afficher son identifiant brut.
+        label: t(`activityCategories.${key}`, { defaultValue: ACTIVITY_CATEGORY_META[key].label }),
+        color: ACTIVITY_CATEGORY_META[key].color,
+        icon: ACTIVITY_CATEGORY_META[key].icon as keyof typeof Ionicons.glyphMap,
+      })),
+    [t],
+  );
+}
 
 // ─── Time wheel picker ────────────────────────────────────────────────
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -253,6 +274,7 @@ type PickerMode = 'date' | 'startTime' | 'endTime' | null;
 export default function CreateActivityScreen() {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
+  const CATEGORIES = useActivityCategories();
   const router = useRouter();
   const { providerId } = useProvider();
   const sub = useSubscriptionStatus();

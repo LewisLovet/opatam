@@ -1014,10 +1014,16 @@ export default function ProBookingsScreen() {
                 </View>
                 <View style={styles.clientInfo}>
                   <Text variant="body" numberOfLines={1} style={styles.clientName}>
-                    {slot.title || meta?.label || t('proBookings.activity.fallback')}
+                    {slot.title ||
+                      (slot.category
+                        ? t(`activityCategories.${slot.category}`, { defaultValue: meta?.label })
+                        : null) ||
+                      t('proBookings.activity.fallback')}
                   </Text>
                   <Text variant="caption" color="textSecondary" numberOfLines={1}>
-                    {meta?.label ?? t('proBookings.activity.fallback')}
+                    {(slot.category
+                      ? t(`activityCategories.${slot.category}`, { defaultValue: meta?.label })
+                      : null) ?? t('proBookings.activity.fallback')}
                     {slot.address ? ` · ${slot.address}` : ''}
                   </Text>
                 </View>

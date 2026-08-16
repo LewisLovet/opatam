@@ -1713,16 +1713,6 @@
       "activitiesCount_one": "{{count}} activity",
       "activitiesCount_other": "{{count}} activities"
     },
-    "activityCategories": {
-      "prestation": "Service",
-      "sport": "Sports",
-      "meeting": "Meeting",
-      "personal": "Personal",
-      "admin": "Admin",
-      "travel": "Travel",
-      "imprevu": "Unexpected",
-      "other": "Other"
-    },
     "breakdownTitle": "Booking breakdown",
     "confirmed": "Confirmed",
     "cancelled": "Cancelled",
@@ -3163,5 +3153,15 @@
     "pets": "Pets",
     "arts": "Arts & Leisure",
     "other": "Other Services"
+  },
+  "activityCategories": {
+    "prestation": "Service",
+    "sport": "Sports",
+    "meeting": "Meeting",
+    "personal": "Personal",
+    "admin": "Admin",
+    "travel": "Travel",
+    "imprevu": "Unexpected",
+    "other": "Other"
   }
 }

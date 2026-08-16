@@ -1713,16 +1713,6 @@
       "activitiesCount_one": "{{count}} activité",
       "activitiesCount_other": "{{count}} activités"
     },
-    "activityCategories": {
-      "prestation": "Prestation",
-      "sport": "Sport",
-      "meeting": "Meeting",
-      "personal": "Perso",
-      "admin": "Admin",
-      "travel": "Trajet",
-      "imprevu": "Imprévu",
-      "other": "Autre"
-    },
     "breakdownTitle": "Répartition des RDV",
     "confirmed": "Confirmés",
     "cancelled": "Annulés",
@@ -3163,5 +3153,15 @@
     "pets": "Animaux",
     "arts": "Art & Loisirs",
     "other": "Autres services"
+  },
+  "activityCategories": {
+    "prestation": "Prestation",
+    "sport": "Sport",
+    "meeting": "Meeting",
+    "personal": "Perso",
+    "admin": "Admin",
+    "travel": "Trajet",
+    "imprevu": "Imprévu",
+    "other": "Autre"
   }
 }

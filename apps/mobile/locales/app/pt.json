@@ -1713,16 +1713,6 @@
       "activitiesCount_one": "{{count}} atividade",
       "activitiesCount_other": "{{count}} atividades"
     },
-    "activityCategories": {
-      "prestation": "Serviço",
-      "sport": "Desporto",
-      "meeting": "Reunião",
-      "personal": "Pessoal",
-      "admin": "Admin",
-      "travel": "Deslocação",
-      "imprevu": "Imprevisto",
-      "other": "Outro"
-    },
     "breakdownTitle": "Distribuição das marcações",
     "confirmed": "Confirmadas",
     "cancelled": "Canceladas",
@@ -3163,5 +3153,15 @@
     "pets": "Animais",
     "arts": "Arte & Lazer",
     "other": "Outros serviços"
+  },
+  "activityCategories": {
+    "prestation": "Serviço",
+    "sport": "Desporto",
+    "meeting": "Reunião",
+    "personal": "Pessoal",
+    "admin": "Admin",
+    "travel": "Deslocação",
+    "imprevu": "Imprevisto",
+    "other": "Outro"
   }
 }
