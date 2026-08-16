@@ -88,6 +88,15 @@ export interface Provider {
   slug: string;
   photoURL: string | null;
   coverPhotoURL: string | null;
+  /**
+   * Thème de couleur de la vitrine publique (voir PROVIDER_THEMES).
+   *
+   * Absent = « bleu », c'est-à-dire l'apparence actuelle : aucune migration,
+   * et un professionnel qui n'a jamais ouvert le réglage ne voit rien changer.
+   * Un identifiant inconnu retombe aussi sur le bleu — `getProviderTheme` ne
+   * renvoie jamais `undefined`, une page ne peut pas se retrouver sans couleur.
+   */
+  themeId?: string;
   portfolioPhotos: string[];
   socialLinks: SocialLinks;
   rating: Rating;

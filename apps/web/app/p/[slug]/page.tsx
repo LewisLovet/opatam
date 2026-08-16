@@ -15,6 +15,7 @@ import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
 import { getServiceMinPrice } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
+import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import {
   demoProvider,
   demoServices,
@@ -454,6 +455,11 @@ export default async function ProviderPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {/* Thème du prestataire : la balise <style> pose les jetons, l'attribut
+          délimite leur portée. Rendu côté serveur, sinon la page s'afficherait
+          brièvement en bleu avant de virer à la bonne couleur. */}
+      <ProviderThemeStyle themeId={provider.themeId} />
+      <div data-provider-theme>
       <ProviderPageClient
         provider={serializedProvider}
         services={serializedServices}
@@ -466,6 +472,7 @@ export default async function ProviderPage({ params }: PageProps) {
         nextAvailableDate={nextAvailableDate}
         memberAvailabilities={memberAvailabilities}
       />
+      </div>
     </>
   );
 }

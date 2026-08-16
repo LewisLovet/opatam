@@ -1,6 +1,9 @@
 // Regions
 export * from './regions';
 
+// Thèmes de couleur des pages prestataires (fichier généré)
+export * from './themes';
+
 /**
  * Supported countries (France + neighboring EU countries)
  * Used for address autocomplete filtering and provider search
