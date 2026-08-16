@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { PROVIDER_THEMES } from '@booking-app/shared';
 import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
 import { NextIntlClientProvider } from 'next-intl';
@@ -32,6 +33,16 @@ interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{
     primary?: string;
+    /**
+     * Gamme de couleur, par identifiant (« terracotta », « noir »…).
+     *
+     * Distinct de `theme`, qui désigne clair/sombre/auto — deux notions que
+     * le même mot aurait confondues dans les codes d'intégration.
+     *
+     * Priorité : `primary` (hex libre, historique) > `palette` > gamme
+     * choisie par le professionnel > bleu par défaut.
+     */
+    palette?: string;
     radius?: string;
     theme?: string;
     /** "modal" = popup/floating mode (show mini-header). Default / "inline" = no header. */
@@ -66,6 +77,11 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
   const sp = await searchParams;
 
   const primaryColor = sp.primary || null;
+  // Une gamme inconnue est IGNORÉE, pas appliquée : `getProviderTheme`
+  // retomberait sur le bleu, et une coquille dans un code d'intégration
+  // effacerait la couleur du salon sans que personne comprenne pourquoi.
+  const paletteId =
+    sp.palette && PROVIDER_THEMES.some((t) => t.id === sp.palette) ? sp.palette : null;
   const radius = parseRadius(sp.radius);
   const theme = parseTheme(sp.theme);
   const showHeader = sp.mode === 'modal';
@@ -88,7 +104,7 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
   // ── Demo flow — mock data, no Firestore ────────────────────────────────
   if (slug === 'demo') {
     return withLocale(
-      <EmbedShell primaryColor={primaryColor} radius={radius} theme={theme}>
+      <EmbedShell primaryColor={primaryColor} radius={radius} theme={theme} themeId={paletteId}>
         <EmbedBookingFlow
           provider={demoBookingProvider}
           services={demoBookingServices.map((s) => ({
@@ -218,7 +234,7 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
       primaryColor={primaryColor}
       radius={radius}
       theme={theme}
-      themeId={provider.themeId}
+      themeId={paletteId ?? provider.themeId}
       providerId={provider.id}
     >
       <EmbedBookingFlow
