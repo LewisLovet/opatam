@@ -174,6 +174,9 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
     // servi sur les sites des pros laisse choisir une prestation suspendue,
     // et le refus n'arrive qu'à la validation.
     isAvailable: s.isAvailable !== false,
+    // Traductions automatiques. Sans ce champ, `getServiceText` n'aurait
+    // rien à lire et servirait toujours l'original.
+    i18n: s.i18n ?? null,
     // Jours autorisés — même vigilance que pour `isAvailable` : ces deux
     // sérialisations sont écrites champ par champ, un oubli et la
     // restriction n'atteint jamais le client.

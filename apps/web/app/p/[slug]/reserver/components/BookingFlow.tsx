@@ -34,6 +34,7 @@ import { StepConfirm } from './StepConfirm';
 import { BookingRecap } from './BookingRecap';
 import { PlayStoreButton } from '@/components/common/PlayStoreButton';
 import { describeServiceDays, joinDays } from '@/lib/serviceDays';
+import type { ServiceTranslations } from '@booking-app/shared';
 
 // Types
 interface Provider {
@@ -80,6 +81,8 @@ interface Service {
   isAvailable?: boolean;
   /** Jours réservables (0 = dimanche). Vide = tous les jours. */
   availableDays?: number[];
+  /** Traductions automatiques (null = jamais traduit). */
+  i18n?: ServiceTranslations | null;
 }
 
 interface Location {

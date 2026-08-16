@@ -38,6 +38,7 @@ import type {
   BookingSelectedOption,
   BookingSelectedInfo,
   ServiceLocale,
+  ServiceTranslations,
 } from '../types';
 
 /**
@@ -981,7 +982,14 @@ export function getCommonAvailableDays(
  * les garde-fous. Le visiteur lit alors le texte du professionnel.
  */
 export function getServiceText(
-  service: Pick<Service, 'name' | 'description' | 'i18n'>,
+  // Signature volontairement tolérante : les surfaces sérialisent leurs
+  // prestations à la main et posent `null` là où le modèle a `undefined`.
+  // Exiger la forme exacte obligerait chaque appelant à convertir.
+  service: {
+    name: string;
+    description?: string | null;
+    i18n?: ServiceTranslations | null;
+  },
   locale: string,
 ): { name: string; description: string } {
   const original = { name: service.name, description: service.description ?? '' };

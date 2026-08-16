@@ -16,8 +16,10 @@ import {
   type ServiceVariation,
   type ServiceOption,
   type ServiceDiscount,
+  getServiceText,
 } from '@booking-app/shared';
 import { ServiceDaysBadge } from '@/components/booking/ServiceDaysBadge';
+import type { ServiceTranslations } from '@booking-app/shared';
 
 interface ServiceItemProps {
   service: {
@@ -35,6 +37,8 @@ interface ServiceItemProps {
     isAvailable?: boolean;
     /** Jours réservables (0 = dimanche). Vide = tous les jours. */
     availableDays?: number[];
+  /** Traductions automatiques (null = jamais traduit). */
+  i18n?: ServiceTranslations | null;
     /** Motif codé, traduit dans la langue de la cliente. */
     unavailableReason?: string | null;
     /** Texte libre, uniquement pour le motif « autre » (non traduit). */
@@ -94,6 +98,8 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
   // lien — laisser cliquer pour buter sur un refus serveur serait pire que
   // de ne pas cliquer du tout.
   const unavailable = service.isAvailable === false;
+  // Texte dans la langue de la page ; repli sur l'original si absent.
+  const shown = getServiceText(service, locale);
   // Motif dans la langue de la CLIENTE. « other » (ou un document antérieur
   // aux motifs, qui n'a qu'une note) retombe sur le texte libre du pro.
   const unavailableLabel = !unavailable
@@ -169,13 +175,13 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
                   }}
                   className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden relative cursor-zoom-in hover:opacity-90 transition-opacity"
                 >
-                  <Image src={service.photoURL} alt={service.name} fill className="object-cover" />
+                  <Image src={service.photoURL} alt={shown.name} fill className="object-cover" />
                 </button>
               )}
 
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                  {service.name}
+                  {shown.name}
                 </h3>
                 <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500">
                   <Clock className="w-4 h-4" />
@@ -248,15 +254,15 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
             </div>
 
             {/* Description below */}
-            {service.description && (
+            {shown.description && (
               <div className="mt-3">
                 <p
                   ref={descRef}
                   className={`text-sm text-gray-500 dark:text-gray-400 ${!descExpanded ? 'line-clamp-2' : ''}`}
                 >
-                  {service.description}
+                  {shown.description}
                 </p>
-                {(descClamped || (service.description && service.description.length > 100)) && (
+                {(descClamped || (service.description && shown.description.length > 100)) && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -290,7 +296,7 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
           </button>
           <Image
             src={service.photoURL}
-            alt={service.name}
+            alt={shown.name}
             width={800}
             height={800}
             className="max-w-full max-h-[85vh] object-contain rounded-xl"

@@ -174,6 +174,9 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     // du tunnel étaient écrites, elles ne recevaient simplement pas la
     // donnée.
     isAvailable: s.isAvailable !== false,
+    // Traductions automatiques. Sans ce champ, `getServiceText` n'aurait
+    // rien à lire et servirait toujours l'original.
+    i18n: s.i18n ?? null,
     // Jours autorisés — même vigilance que pour `isAvailable` : ces deux
     // sérialisations sont écrites champ par champ, un oubli et la
     // restriction n'atteint jamais le client.

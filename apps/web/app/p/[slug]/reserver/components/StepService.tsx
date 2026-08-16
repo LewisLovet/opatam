@@ -15,8 +15,10 @@ import {
   type ServiceOption,
   type ServiceInfoField,
   type ServiceDiscount,
+  getServiceText,
 } from '@booking-app/shared';
 import { ServiceDaysBadge } from '@/components/booking/ServiceDaysBadge';
+import type { ServiceTranslations } from '@booking-app/shared';
 
 interface Service {
   id: string;
@@ -36,6 +38,8 @@ interface Service {
   isAvailable?: boolean;
   /** Jours réservables (0 = dimanche). Vide = tous les jours. */
   availableDays?: number[];
+  /** Traductions automatiques (null = jamais traduit). */
+  i18n?: ServiceTranslations | null;
 }
 
 interface ServiceCategory {
@@ -133,6 +137,8 @@ function ServiceButton({
   // prestation existe — mais devient inerte. La bloquer ici évite qu'elle
   // configure tout un rendez-vous pour se faire refuser à la validation.
   const unavailable = service.isAvailable === false;
+  // Texte dans la langue de la page ; repli sur l'original si absent.
+  const shown = getServiceText(service, locale);
 
   return (
     <div
@@ -159,7 +165,7 @@ function ServiceButton({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-gray-900 dark:text-white">
-              {service.name}
+              {shown.name}
             </h3>
             {unavailable && (
               <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40 px-1.5 py-0.5 rounded whitespace-nowrap">
@@ -173,13 +179,13 @@ function ServiceButton({
               </div>
             )}
           </div>
-          {service.description && (
+          {shown.description && (
             <div className="mt-1">
               <p
                 ref={descRef}
                 className={`text-sm text-gray-500 dark:text-gray-400 ${!descExpanded ? 'line-clamp-2' : ''}`}
               >
-                {service.description}
+                {shown.description}
               </p>
               {descClamped && (
                 <span

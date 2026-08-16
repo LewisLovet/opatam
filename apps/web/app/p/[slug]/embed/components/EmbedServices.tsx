@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { Clock, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { ServiceDaysBadge } from '@/components/booking/ServiceDaysBadge';
+import type { ServiceTranslations } from '@booking-app/shared';
+import { getServiceText } from '@booking-app/shared';
 
 interface EmbedService {
   id: string;
@@ -19,6 +21,8 @@ interface EmbedService {
   isAvailable?: boolean;
   /** Jours réservables (0 = dimanche). Vide = tous les jours. */
   availableDays?: number[];
+  /** Traductions automatiques (null = jamais traduit). */
+  i18n?: ServiceTranslations | null;
 }
 
 interface EmbedServiceCategory {
@@ -64,6 +68,8 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
   // prestation existe — mais le bouton est désactivé plutôt que de le
   // laisser traverser le tunnel pour se faire refuser à la validation.
   const unavailable = service.isAvailable === false;
+  // Texte dans la langue de l'embed ; repli sur l'original si absent.
+  const shown = getServiceText(service, locale);
   return (
     <button
       type="button"
@@ -90,7 +96,7 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
 
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-[15px] leading-snug group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
-            {service.name}
+            {shown.name}
             {/* Le badge dit POURQUOI la carte est grisée. Sans lui, un
                 client conclut à un bug de la page plutôt qu'à une
                 suspension décidée par le professionnel. */}
@@ -106,9 +112,9 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
           {!unavailable && (
             <ServiceDaysBadge availableDays={service.availableDays} className="mt-1" />
           )}
-          {service.description && (
+          {shown.description && (
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
-              {service.description}
+              {shown.description}
             </p>
           )}
           <div className="mt-1.5 flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
