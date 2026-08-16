@@ -51,7 +51,16 @@ export function ConsentBanner() {
             <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
               {t('body')}{' '}
               <Link
-                href="/legal/confidentialite"
+                // La page vit à la racine, PAS sous /legal : l'ancien chemin
+                // renvoyait un 404 depuis le bandeau de consentement, soit
+                // l'endroit précis où l'on demande au visiteur de s'informer
+                // avant de choisir.
+                //
+                // Pas de préfixe de langue non plus : /de/confidentialite et
+                // /en/confidentialite n'existent pas, les pages légales ne
+                // sont publiées qu'en français. Une page française vaut mieux
+                // qu'une page absente.
+                href="/confidentialite"
                 className="text-primary-600 dark:text-primary-400 hover:underline"
               >
                 {t('learnMore')}
