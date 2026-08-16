@@ -10,6 +10,7 @@ import {
   memberRepository,
   availabilityRepository,
 } from '@booking-app/firebase';
+import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { BookingFlow } from './components/BookingFlow';
 import {
   demoBookingProvider,
@@ -226,6 +227,11 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
   const isTeam = provider.plan === 'team' && members.length > 1;
 
   return (
+    <>
+      {/* Le tunnel hérite de la couleur de la vitrine : la continuité compte
+          surtout au moment où la cliente réserve. */}
+      <ProviderThemeStyle themeId={provider.themeId} />
+      <div data-provider-theme>
     <BookingFlow
       provider={serializedProvider}
       services={serializedServices}
@@ -236,5 +242,7 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
       isTeam={isTeam}
       preselectedServiceId={preselectedServiceId}
     />
+      </div>
+    </>
   );
 }

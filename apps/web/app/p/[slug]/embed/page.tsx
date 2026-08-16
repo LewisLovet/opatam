@@ -218,6 +218,7 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
       primaryColor={primaryColor}
       radius={radius}
       theme={theme}
+      themeId={provider.themeId}
       providerId={provider.id}
     >
       <EmbedBookingFlow

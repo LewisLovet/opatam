@@ -2,10 +2,18 @@
 
 import { useEffect, useMemo } from 'react';
 import { generatePrimaryPalette, paletteToCss } from '@/lib/embed-palette';
+import { providerThemeVars } from '@/lib/providerTheme';
 
 interface EmbedShellProps {
   /** Hex color (with or without #) for the primary palette override. */
   primaryColor?: string | null;
+  /**
+   * Thème choisi par le professionnel. Sert de DÉFAUT quand l'intégration
+   * ne porte pas de `?primaryColor` : les codes d'intégration déjà collés
+   * sur les sites des pros continuent de gagner, mais un nouvel embed hérite
+   * de la couleur de la vitrine sans rien à configurer.
+   */
+  themeId?: string | null;
   /** Border radius in px (0-24). Default: 12. */
   radius?: number | null;
   /** Force a theme regardless of host prefers-color-scheme. Default: 'light'. */
@@ -27,6 +35,7 @@ export type EmbedTheme = 'light' | 'dark' | 'auto';
  */
 export function EmbedShell({
   primaryColor,
+  themeId,
   radius = 12,
   theme = 'light',
   providerId,
@@ -35,9 +44,17 @@ export function EmbedShell({
 
   // Generate and inject the primary palette as CSS variables
   const paletteCss = useMemo(() => {
-    const palette = generatePrimaryPalette(primaryColor);
-    return paletteToCss(palette);
-  }, [primaryColor]);
+    // Le paramètre explicite l'emporte : il vient d'un code d'intégration
+    // déjà en place sur le site d'un professionnel, le casser serait une
+    // régression visible chez lui. À défaut, on sert la gamme curatée du
+    // thème — dessinée et éprouvée, là où `generatePrimaryPalette` déduit
+    // ses nuances de paliers de luminosité fixes.
+    if (primaryColor) return paletteToCss(generatePrimaryPalette(primaryColor));
+    // `paletteToCss` renvoie une RÈGLE complète (`:root { … }`) là où
+    // `providerThemeVars` ne renvoie que des déclarations. Les injecter
+    // telles quelles produisait un CSS invalide — sans erreur, sans effet.
+    return `:root{${providerThemeVars(themeId)}}`;
+  }, [primaryColor, themeId]);
 
   // Clamp radius to [0, 32]
   const clampedRadius = Math.max(0, Math.min(32, typeof radius === 'number' ? radius : 12));
