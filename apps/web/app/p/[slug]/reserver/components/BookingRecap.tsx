@@ -3,7 +3,12 @@
 import { Clock, MapPin, User, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
-import { formatPromoCountdown, PROMO_URGENCY_DAYS } from '@booking-app/shared';
+import {
+  formatPromoCountdown,
+  PROMO_URGENCY_DAYS,
+  getServiceText,
+  type ServiceTranslations,
+} from '@booking-app/shared';
 
 interface TimeSlotWithDate {
   date: string;
@@ -23,6 +28,8 @@ interface Service {
   bufferTime: number;
   locationIds: string[];
   memberIds: string[] | null;
+  /** Traductions automatiques (null = jamais traduit). */
+  i18n?: ServiceTranslations | null;
 }
 
 interface Member {
@@ -148,7 +155,7 @@ export function BookingRecap({
     return fmtCurrency(cents, locale);
   };
 
-  const displayName = serviceLabel ?? service?.name ?? '';
+  const displayName = serviceLabel ?? (service ? getServiceText(service, locale).name : '');
   // When an effective price is given (variations/options), it's an exact
   // amount — drop the base range.
   const displayPrice = effectivePrice ?? service?.price ?? 0;

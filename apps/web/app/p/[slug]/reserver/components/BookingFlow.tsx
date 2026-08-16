@@ -25,6 +25,7 @@ import {
   type ServiceOption,
   type ServiceInfoField,
   getCommonAvailableDays,
+  getServiceText,
 } from '@booking-app/shared';
 import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import { StepService } from './StepService';
@@ -400,11 +401,11 @@ export function BookingFlow({
       const itemLabels = buildChoiceLabels(line.service, line.item.selections, locale);
       if (multi) {
         // Always surface the service name (with its choices appended).
-        labels.push(
-          itemLabels.length > 0
-            ? `${line.service.name} · ${itemLabels.join(' · ')}`
-            : line.service.name,
-        );
+        // Le nom AFFICHÉ suit la langue du visiteur ; celui envoyé au serveur
+        // reste l'original (voir le corps du POST /api/bookings, qui
+        // n'envoie que `serviceId` — le libellé est figé côté serveur).
+        const shown = getServiceText(line.service, locale).name;
+        labels.push(itemLabels.length > 0 ? `${shown} · ${itemLabels.join(' · ')}` : shown);
       } else {
         labels.push(...itemLabels);
       }
@@ -891,7 +892,7 @@ export function BookingFlow({
                           >
                             <div className="min-w-0 flex-1">
                               <p className="font-medium text-gray-900 dark:text-white">
-                                {line.service.name}
+                                {getServiceText(line.service, locale).name}
                               </p>
                               {itemLabels.length > 0 && (
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -1027,7 +1028,7 @@ export function BookingFlow({
                   {t('common.back')}
                 </button>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {configuringService.name}
+                  {getServiceText(configuringService, locale).name}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-5">
                   {t('flow.configureSubtitle')}
@@ -1151,7 +1152,7 @@ export function BookingFlow({
                 {/* Recap */}
                 {selectedService && state.slot && (
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 mb-8 max-w-sm mx-auto text-left">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedService.name}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{getServiceText(selectedService, locale).name}</p>
                     {selectedMember && (
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('flow.demo.with', { name: selectedMember.name })}</p>
                     )}

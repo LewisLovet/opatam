@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Loader2, Info } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
+import { getServiceText, type ServiceTranslations } from '@booking-app/shared';
 import { StepMember } from '../../reserver/components/StepMember';
 import { StepSlot } from '../../reserver/components/StepSlot';
 import { StepConfirm } from '../../reserver/components/StepConfirm';
@@ -39,6 +40,8 @@ interface EmbedService {
   categoryId: string | null;
   locationIds: string[];
   memberIds: string[] | null;
+  /** Traductions automatiques (null = jamais traduit). */
+  i18n?: ServiceTranslations | null;
 }
 
 interface EmbedServiceCategory {
@@ -311,7 +314,7 @@ export function EmbedBookingFlow({
           {t('common.service')}
         </p>
         <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-          {selectedService.name}
+          {getServiceText(selectedService, locale).name}
         </p>
       </div>
     );
@@ -385,7 +388,7 @@ export function EmbedBookingFlow({
 
       {step === 'success' && selectedService && slot && (
         <EmbedSuccess
-          serviceName={selectedService.name}
+          serviceName={getServiceText(selectedService, locale).name}
           memberName={selectedMember?.name || null}
           locationName={selectedLocation?.name || null}
           datetime={slot.datetime}
@@ -420,7 +423,7 @@ export function EmbedBookingFlow({
             <aside className="md:w-60 md:flex-shrink-0 md:sticky md:top-4 md:self-start md:mt-14">
               <EmbedRecap
                 service={{
-                  name: selectedService!.name,
+                  name: getServiceText(selectedService!, locale).name,
                   duration: selectedService!.duration,
                   price: selectedService!.price,
                   priceMax: selectedService!.priceMax,
