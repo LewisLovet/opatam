@@ -30,6 +30,7 @@ import { useLoyaltyPreview } from '../../../../hooks/useLoyaltyPreview';
 import { useBooking } from '../../../../contexts';
 import { computeServiceTotal, computeDiscountedTotal, getCommonAvailableDays } from '@booking-app/shared';
 import { useAvailabilitySummary, type TimeSlot } from '../../../../hooks';
+import { getServiceText } from '@booking-app/shared';
 
 // Local YYYY-MM-DD — must match the server/summary key (not toISOString → UTC).
 function dateKeyLocal(date: Date): string {
@@ -106,7 +107,9 @@ export default function DateSelectionScreen() {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { t } = useTranslation();
+  // `i18n` en plus de `t` : la langue courante sert à choisir la traduction
+  // de la prestation, pas seulement celle de l'interface.
+  const { t, i18n } = useTranslation();
   const { providerId } = useLocalSearchParams<{ providerId: string }>();
 
   // Booking context
@@ -287,7 +290,7 @@ export default function DateSelectionScreen() {
         {service && provider && (
           <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
             <BookingSummary
-              serviceName={cart.length > 1 ? t('bookingFlow.date.servicesCount', { count: cart.length }) : service.name}
+              serviceName={cart.length > 1 ? t('bookingFlow.date.servicesCount', { count: cart.length }) : getServiceText(service, i18n.language).name}
               duration={cartDuration}
               price={cartPrice}
               providerName={provider.businessName}

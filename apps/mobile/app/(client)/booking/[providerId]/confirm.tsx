@@ -31,6 +31,7 @@ import { bookingService } from '@booking-app/firebase';
 import { API_URL } from '../../../../lib/config';
 import i18n, { getAppLocale, getIntlLocale, normalizeAppLocale } from '../../../../lib/i18n';
 import { recordPositiveMomentAndMaybeAskReview } from '../../../../lib/appReview';
+import { getServiceText } from '@booking-app/shared';
 
 /** App Store / Play Store URLs for the "update" CTA. iOS app id +
  *  Android package come from app.json. The `itms-apps://` /
@@ -509,7 +510,7 @@ export default function ConfirmBookingScreen() {
                     return (
                       <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, marginTop: idx ? 2 : 0 }}>
                         <Text variant="body" style={{ fontWeight: '600', flex: 1 }} numberOfLines={1}>
-                          {idx + 1}. {c.service.name}
+                          {idx + 1}. {getServiceText(c.service, i18n.language).name}
                         </Text>
                         <Text variant="caption" color="textSecondary">
                           {e.duration} min ·{' '}
@@ -532,7 +533,7 @@ export default function ConfirmBookingScreen() {
                 </>
               ) : (
                 <>
-                  <Text variant="body" style={{ fontWeight: '600' }}>{service.name}</Text>
+                  <Text variant="body" style={{ fontWeight: '600' }}>{getServiceText(service, i18n.language).name}</Text>
                   <Text variant="caption" color="textSecondary">
                     {cartDuration} min -{' '}
                     {cartHasPromo ? (

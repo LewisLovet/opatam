@@ -74,6 +74,7 @@ import {
   getServiceMinDuration,
 } from '@booking-app/shared';
 import { analyticsService, type WithId } from '@booking-app/firebase';
+import { getServiceText } from '@booking-app/shared';
 
 type TabId = 'prestations' | 'avis' | 'infos';
 
@@ -908,8 +909,10 @@ export default function ProviderDetailScreen() {
                           : null;
                         return {
                           id: s.id,
-                          name: s.name,
-                          description: s.description,
+                          // Texte dans la langue de l'application ; repli sur l'original
+                          // quand la prestation n'est pas traduite dans cette langue.
+                          name: getServiceText(s, i18n.language).name,
+                          description: getServiceText(s, i18n.language).description,
                           photoURL: s.photoURL,
                           // Durée du MÊME combo que le prix affiché : la valeur
                       // brute annonçait la durée de base alors que le prix

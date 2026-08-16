@@ -40,6 +40,7 @@ import type { Member, Service } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { ServiceChoicesPreview } from '../../../../components/business/ServiceChoicesPreview';
 import { BookingStepHeader } from '../../../../components/business/BookingStepHeader';
+import { getServiceText } from '@booking-app/shared';
 
 export default function MemberSelectionScreen() {
   const { colors, spacing, radius } = useTheme();
@@ -250,7 +251,10 @@ export default function MemberSelectionScreen() {
             setPendingChoiceService(null);
           }}
           service={{
-            name: pendingChoiceService.name,
+            // Le titre de la feuille de choix doit suivre la langue comme
+            // le reste du tunnel, sinon le client bascule d'un allemand à
+            // un français en ouvrant les variations.
+            name: getServiceText(pendingChoiceService, i18n.language).name,
             price: pendingChoiceService.price,
             duration: pendingChoiceService.duration,
             photoURL: pendingChoiceService.photoURL,
@@ -296,7 +300,7 @@ export default function MemberSelectionScreen() {
                   <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                     <View style={{ flex: 1 }}>
                       <Text variant="body" style={{ fontWeight: '600' }} numberOfLines={1}>
-                        {item.service.name}
+                        {getServiceText(item.service, i18n.language).name}
                       </Text>
                       <Text variant="caption" color="textSecondary">
                         {eff.duration} min ·{' '}
@@ -516,8 +520,10 @@ export default function MemberSelectionScreen() {
                       (s.variations?.length ?? 0) > 0 || (s.options?.length ?? 0) > 0;
                     return {
                       id: s.id,
-                      name: s.name,
-                      description: s.description,
+                      // Texte dans la langue de l'application ; repli sur l'original
+                      // quand la prestation n'est pas traduite dans cette langue.
+                      name: getServiceText(s, i18n.language).name,
+                      description: getServiceText(s, i18n.language).description,
                       photoURL: s.photoURL,
                       // Durée du MÊME combo que le prix affiché : la valeur
                       // brute annonçait la durée de base alors que le prix
