@@ -75,6 +75,7 @@ import {
 } from '@booking-app/shared';
 import { analyticsService, type WithId } from '@booking-app/firebase';
 import { getServiceText } from '@booking-app/shared';
+import { ProviderAccent } from '../../../components/ProviderAccent';
 
 type TabId = 'prestations' | 'avis' | 'infos';
 
@@ -122,10 +123,40 @@ function groupServices(
   return groups;
 }
 
-export default function ProviderDetailScreen() {
+/**
+ * Point d'entrée de la route.
+ *
+ * Ne fait qu'UNE chose : charger le prestataire et poser sa couleur autour de
+ * l'écran. La séparation est imposée par React — un composant ne peut pas
+ * consommer le contexte qu'il fournit, et les quarante `colors.primary` de
+ * l'écran sont dans son propre JSX.
+ *
+ * `useProvider` est appelé ICI et le résultat descend en props : ce hook est
+ * un `useState` + `useEffect` sans cache, et l'appeler des deux côtés
+ * doublerait la lecture Firestore à chaque ouverture de fiche.
+ */
+export default function ProviderDetailRoute() {
+  const { slug, preview } = useLocalSearchParams<{ slug: string; preview?: string }>();
+  const providerState = useProvider(slug);
+
+  return (
+    <ProviderAccent themeId={providerState.provider?.themeId}>
+      <ProviderDetailScreen slug={slug} preview={preview} providerState={providerState} />
+    </ProviderAccent>
+  );
+}
+
+function ProviderDetailScreen({
+  slug,
+  preview,
+  providerState,
+}: {
+  slug: string;
+  preview?: string;
+  providerState: ReturnType<typeof useProvider>;
+}) {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
-  const { slug, preview } = useLocalSearchParams<{ slug: string; preview?: string }>();
   const isPreview = preview === '1';
   const router = useRouter();
   const { showToast } = useToast();
@@ -135,8 +166,8 @@ export default function ProviderDetailScreen() {
   const { getCachedProvider } = useProvidersCache();
   const cachedProvider = getCachedProvider(slug);
 
-  // Fetch provider data
-  const { provider, loading: loadingProvider, error: providerError, refresh: refreshProvider } = useProvider(slug);
+  // Chargé par la route, pas ici — voir le commentaire sur ProviderDetailRoute.
+  const { provider, loading: loadingProvider, error: providerError, refresh: refreshProvider } = providerState;
   // Shop-wide promo applied to services without their own discount.
   const globalDiscount = provider?.settings?.globalDiscount ?? null;
 
