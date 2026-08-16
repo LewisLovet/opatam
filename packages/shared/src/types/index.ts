@@ -795,6 +795,52 @@ export interface ServiceDiscount {
   endsAt?: string | null;
 }
 
+/** Langues servies par les surfaces publiques. */
+export const SERVICE_LOCALES = ['fr', 'en', 'it', 'pt', 'de'] as const;
+export type ServiceLocale = (typeof SERVICE_LOCALES)[number];
+
+/** Le nom et la description dans une langue donnée. */
+export interface ServiceTranslationEntry {
+  name: string;
+  description: string;
+  /**
+   * Vrai quand un humain a retouché cette entrée. Le traducteur automatique
+   * ne la remplacera plus, même si le texte d'origine change ensuite : une
+   * correction faite à la main ne doit jamais être écrasée par une machine.
+   */
+  edited?: boolean;
+}
+
+export interface ServiceTranslations {
+  /**
+   * Langue du texte d'origine, détectée à la traduction. Peut valoir une
+   * langue NON servie par le site — un professionnel peut écrire en espagnol.
+   * Détectée par prestation et non par prestataire : un même catalogue peut
+   * mélanger deux langues, c'est observé en production.
+   */
+  sourceLocale: string;
+  /**
+   * Empreinte du couple (nom, description) au moment de la traduction. Elle
+   * répond à une seule question : les traductions correspondent-elles encore
+   * au texte actuel ? C'est aussi elle qui empêche le déclencheur de se
+   * rappeler en boucle, puisqu'il écrit sur le document qu'il surveille.
+   */
+  sourceHash: string;
+  /**
+   * Une entrée par langue produite. Une langue ABSENTE n'est pas une erreur :
+   * elle signifie que la traduction a été refusée par les garde-fous, et
+   * l'affichage sert alors l'original.
+   */
+  entries: Partial<Record<ServiceLocale, ServiceTranslationEntry>>;
+  /** Modèle utilisé — permet de retraduire un lot après un changement. */
+  model: string;
+  translatedAt: Date;
+  /** Auto-évaluation du modèle, 0 à 1. Sert au tri de la revue en admin. */
+  confidence: number;
+  /** Termes que le modèle déclare avoir volontairement conservés. */
+  keptTerms: string[];
+}
+
 export interface Service {
   name: string;
   description: string | null;
@@ -836,6 +882,15 @@ export interface Service {
    * doivent être réunies.
    */
   availableDays?: number[];
+  /**
+   * Traductions automatiques du nom et de la description.
+   *
+   * Absent = jamais traduit, ce qui est le cas de toutes les prestations
+   * créées avant cette fonctionnalité. L'affichage retombe alors sur `name`
+   * et `description`, qui ne sont JAMAIS modifiés : ce que le professionnel
+   * a saisi reste intact quoi qu'il arrive au système de traduction.
+   */
+  i18n?: ServiceTranslations;
   sortOrder: number;
   /** Hex color (#RRGGBB) used to tint this service's bookings on the
    *  calendar. When null, the booking falls back to the member's color.

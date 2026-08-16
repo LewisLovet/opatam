@@ -37,6 +37,7 @@ import type {
   BookingSelectedVariation,
   BookingSelectedOption,
   BookingSelectedInfo,
+  ServiceLocale,
 } from '../types';
 
 /**
@@ -963,4 +964,37 @@ export function getCommonAvailableDays(
 ): number[] {
   const ALL = [0, 1, 2, 3, 4, 5, 6];
   return ALL.filter((d) => services.every((s) => isServiceOpenOnDay(s, d)));
+}
+
+/**
+ * Le nom et la description à AFFICHER dans une langue donnée.
+ *
+ * Trois temps, dans cet ordre :
+ *   1. la traduction dans la langue demandée, si elle existe ;
+ *   2. sinon le texte d'origine — c'est le repli, jamais une chaîne vide ;
+ *   3. et quand la langue demandée EST la langue d'origine, on sert
+ *      directement l'original sans repasser par une traduction, qui serait
+ *      au mieux identique, au pire une reformulation inutile.
+ *
+ * Une traduction absente n'est donc pas une panne : c'est le cas normal
+ * d'une prestation jamais traduite, ou dont la traduction a été refusée par
+ * les garde-fous. Le visiteur lit alors le texte du professionnel.
+ */
+export function getServiceText(
+  service: Pick<Service, 'name' | 'description' | 'i18n'>,
+  locale: string,
+): { name: string; description: string } {
+  const original = { name: service.name, description: service.description ?? '' };
+  const i18n = service.i18n;
+  if (!i18n || locale === i18n.sourceLocale) return original;
+
+  const entry = i18n.entries?.[locale as ServiceLocale];
+  if (!entry) return original;
+
+  return {
+    // Champ par champ : le nom peut avoir été conservé tel quel alors que la
+    // description est traduite. Une chaîne vide vaut « pas de traduction ».
+    name: entry.name || original.name,
+    description: entry.description || original.description,
+  };
 }
