@@ -4,7 +4,7 @@
  * User must select a region first (via GPS or manual pick) before seeing results
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -60,8 +60,25 @@ import type { WithId } from '@booking-app/firebase';
 const PAGE_SIZE = 10;
 const MAX_BROWSE_RESULTS = 100;
 
-// Map CATEGORIES constant to the format CategorySelect expects
-const categoryOptions = CATEGORIES.map((c) => ({ id: c.id, label: c.label, icon: c.icon }));
+/**
+ * Les catégories, dans la langue de l'app.
+ *
+ * `CATEGORIES` porte un `label` en dur, en français : vivant dans une
+ * constante partagée et non dans les dictionnaires, il a échappé à toute la
+ * campagne de traduction. Résultat, une recherche en anglais affichait
+ * « Beauté & Esthétique » au milieu d'une interface anglaise.
+ *
+ * Calculé à CHAQUE rendu et non une fois pour toutes au chargement du
+ * module : le changement de langue ne remonte pas le module, et une liste
+ * figée serait restée dans la langue du démarrage.
+ */
+function useCategoryOptions() {
+  const { t } = useTranslation();
+  return useMemo(
+    () => CATEGORIES.map((c) => ({ id: c.id, label: t(`businessCategories.${c.id}`), icon: c.icon })),
+    [t],
+  );
+}
 
 /** Largeur d'une carte du carrousel de suggestions : on laisse dépasser la
  *  suivante pour signaler que la rangée défile horizontalement. */
@@ -71,6 +88,7 @@ export default function SearchScreen() {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const categoryOptions = useCategoryOptions();
 
   // "🇫🇷 France" — flag from COUNTRY_OPTIONS, localized country name
   const countryLabel = (code: string) => {

@@ -512,9 +512,11 @@ export default function ProfileScreen() {
     router.push({ pathname: '/(client)/provider/[slug]', params: { slug: provider.slug, preview: '1' } } as any);
   };
 
+  // Le libellé vient du dictionnaire : celui porté par `CATEGORIES` est figé
+  // en français. L'identifiant sert de repli si la clé venait à manquer.
   const getCategoryLabel = (id: string) => {
     const cat = CATEGORIES.find((c) => c.id === id);
-    return cat ? cat.label : id;
+    return cat ? t(`businessCategories.${cat.id}`) : id;
   };
 
   const paypalUrl = provider?.socialLinks?.paypal
@@ -1251,7 +1253,7 @@ export default function ProfileScreen() {
                         fontWeight: isSelected ? '600' : '400',
                       }}
                     >
-                      {cat.label}
+                      {t(`businessCategories.${cat.id}`)}
                     </Text>
                     {isSelected && <Ionicons name="checkmark" size={20} color="#FFFFFF" />}
                   </Pressable>

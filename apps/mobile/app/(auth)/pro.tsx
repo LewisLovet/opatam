@@ -1234,7 +1234,7 @@ export default function ProRegisterScreen() {
                 color={colors.primary}
               />
               <Text variant="body" style={{ flex: 1 }}>
-                {CATEGORIES.find((c) => c.id === data.category)?.label}
+                {t(`businessCategories.${data.category}`)}
               </Text>
             </View>
           ) : (
@@ -2145,7 +2145,7 @@ export default function ProRegisterScreen() {
             <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>{t('auth.pro.steps.activity.label')}</Text>
           </View>
           <Text variant="h3">{data.businessName}</Text>
-          <Text variant="bodySmall" color="textSecondary">{selectedCategory?.label}</Text>
+          <Text variant="bodySmall" color="textSecondary">{selectedCategory ? t(`businessCategories.${selectedCategory.id}`) : null}</Text>
           {data.description ? <Text variant="caption" color="textMuted" style={{ marginTop: spacing.xs }}>{data.description}</Text> : null}
         </View>
 
@@ -2544,7 +2544,7 @@ export default function ProRegisterScreen() {
                     style={{ flex: 1, marginLeft: spacing.sm, fontWeight: data.category === item.id ? '600' : '400' }}
                     color={data.category === item.id ? 'primary' : 'text'}
                   >
-                    {item.label}
+                    {t(`businessCategories.${item.id}`)}
                   </Text>
                   {data.category === item.id && (
                     <Ionicons name="checkmark-circle" size={22} color={colors.primary} />

@@ -3146,5 +3146,22 @@
     "button": "Synchroniser",
     "addToGoogle": "Ajouter à Google Agenda",
     "googleHint": "Google n'autorise l'ajout d'un calendrier que depuis un ordinateur. Une fois fait, il apparaît aussi dans l'app mobile."
+  },
+  "businessCategories": {
+    "beauty": "Beauté & Esthétique",
+    "wellness": "Bien-être & Santé douce",
+    "sport": "Sport & Coaching",
+    "coaching": "Coaching & Développement personnel",
+    "audiovisual": "Création & Audiovisuel",
+    "digital": "Digital & Informatique",
+    "artisan": "Artisans & Services techniques",
+    "home": "Services à domicile",
+    "training": "Formation & Cours",
+    "events": "Événementiel",
+    "consulting": "Conseil & Services professionnels",
+    "mobility": "Mobilité & Auto",
+    "pets": "Animaux",
+    "arts": "Art & Loisirs",
+    "other": "Autres services"
   }
 }

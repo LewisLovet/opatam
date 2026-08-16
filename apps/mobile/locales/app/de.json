@@ -3146,5 +3146,22 @@
     "button": "Synchronisieren",
     "addToGoogle": "Zu Google Kalender hinzufügen",
     "googleHint": "Google erlaubt das Hinzufügen eines Kalenders nur vom Computer aus. Danach erscheint er auch in der mobilen App."
+  },
+  "businessCategories": {
+    "beauty": "Beauty & Kosmetik",
+    "wellness": "Wellness & Sanfte Medizin",
+    "sport": "Sport & Coaching",
+    "coaching": "Coaching & Persönlichkeitsentwicklung",
+    "audiovisual": "Kreativ & Audiovisuell",
+    "digital": "Digital & IT",
+    "artisan": "Handwerk & Technische Dienste",
+    "home": "Dienstleistungen zu Hause",
+    "training": "Aus- und Weiterbildung",
+    "events": "Events",
+    "consulting": "Beratung & Unternehmensdienste",
+    "mobility": "Mobilität & Auto",
+    "pets": "Tiere",
+    "arts": "Kunst & Freizeit",
+    "other": "Weitere Dienstleistungen"
   }
 }
