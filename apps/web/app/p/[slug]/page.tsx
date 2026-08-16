@@ -146,7 +146,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const city = provider.cities?.[0] || '';
+  // ── Le titre est le champ le plus disputé d'une page ────────────────────
+  //
+  // Il portait `provider.category` brut : « Braidztouch — lyon · beauty ».
+  // « beauty » est un identifiant de base de données, pas un mot que
+  // quelqu'un tape dans un moteur — et il s'affichait en anglais sur une
+  // page française. La ville, elle, arrive telle que le professionnel l'a
+  // saisie, souvent en minuscules.
+  const tCat = await getTranslations('businessCategories');
+  const rawCity = provider.cities?.[0] || '';
+  // « saint-étienne » → « Saint-Étienne » : chaque partie est capitalisée,
+  // traits d'union et apostrophes compris (Aix-en-Provence, L'Haÿ-les-Roses).
+  const city = rawCity.replace(
+    /(^|[\s\-'’])(\p{L})/gu,
+    (_, sep, ch) => sep + ch.toLocaleUpperCase('fr-FR'),
+  );
+  // Un identifiant absent du dictionnaire ne doit pas faire échouer la page :
+  // mieux vaut un titre sans mention de métier qu'une erreur de rendu.
+  let categoryLabel = '';
+  try {
+    categoryLabel = tCat(provider.category);
+  } catch {
+    categoryLabel = '';
+  }
+
   // The pro's own description (their content, kept verbatim in any locale);
   // the generated fallback sentence follows the page language.
   const description = provider.description
@@ -154,7 +177,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     : t('fallbackDescription', {
         businessName: provider.businessName,
         cityPart: city ? t('inCity', { city }) : '',
-        category: provider.category,
+        category: categoryLabel || provider.category,
       });
 
   const url = (l: string) => localeUrl('https://opatam.com', l, `/p/${slug}`);
@@ -179,7 +202,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     // Note: the root layout title template already appends " | OPATAM",
     // so we must NOT add it here (avoids the duplicated suffix).
-    title: `${provider.businessName}${city ? ` — ${city}` : ''} · ${provider.category}`,
+    title: `${provider.businessName}${city ? ` — ${city}` : ''}${categoryLabel ? ` · ${categoryLabel}` : ''}`,
     description,
     alternates: {
       canonical: pageUrl,
@@ -327,7 +350,16 @@ export default async function ProviderPage({ params }: PageProps) {
   const city = provider.cities?.[0] || '';
   const location = locations[0];
   const primaryCity = provider.cities?.[0] || '';
-  const categoryLabel = provider.category.charAt(0).toUpperCase() + provider.category.slice(1);
+  // Même correction que pour le titre : capitaliser l'identifiant donnait
+  // « Beauty » dans des données structurées lues par les moteurs. Le
+  // dictionnaire porte le libellé métier, dans la langue de la page.
+  const tCatLd = await getTranslations('businessCategories');
+  let categoryLabel: string;
+  try {
+    categoryLabel = tCatLd(provider.category);
+  } catch {
+    categoryLabel = provider.category.charAt(0).toUpperCase() + provider.category.slice(1);
+  }
 
   const jsonLd = {
     '@context': 'https://schema.org',

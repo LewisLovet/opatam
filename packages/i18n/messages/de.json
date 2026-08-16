@@ -474,5 +474,22 @@
       "carouselAria": "Tutorial auswählen",
       "carouselItemAria": "Tutorial {index} von {total}"
     }
+  },
+  "businessCategories": {
+    "beauty": "Beauty & Kosmetik",
+    "wellness": "Wellness & Sanfte Medizin",
+    "sport": "Sport & Coaching",
+    "coaching": "Coaching & Persönlichkeitsentwicklung",
+    "audiovisual": "Kreativ & Audiovisuell",
+    "digital": "Digital & IT",
+    "artisan": "Handwerk & Technische Dienste",
+    "home": "Dienstleistungen zu Hause",
+    "training": "Aus- und Weiterbildung",
+    "events": "Events",
+    "consulting": "Beratung & Unternehmensdienste",
+    "mobility": "Mobilität & Auto",
+    "pets": "Tiere",
+    "arts": "Kunst & Freizeit",
+    "other": "Weitere Dienstleistungen"
   }
 }
