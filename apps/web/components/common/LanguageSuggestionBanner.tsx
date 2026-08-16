@@ -10,15 +10,16 @@ import type { AppLocale } from '@booking-app/i18n';
 import { localizedPath, isTranslatedSurface } from '@/lib/localizedPath';
 
 /**
- * Small card PROPOSING English when the browser prefers it — detection never
- * forces the locale (a French speaker with an English OS must never land on
- * an unwanted English page; see i18n/request.ts).
+ * Small card PROPOSING the browser's language when it is one we serve —
+ * detection never forces the locale (a French speaker with an English OS
+ * must never land on an unwanted English page; see i18n/request.ts).
  *
  * Shows only when ALL of:
  *   - the page is currently French (default locale, no explicit choice yet),
  *   - no NEXT_LOCALE cookie exists (any value = the visitor already decided,
- *     via this card or the FR/EN switcher),
- *   - the browser's preferred languages include English.
+ *     via this card or the language switcher),
+ *   - the browser's preferred languages include one of `SUGGESTABLE`
+ *     (en, it, pt, de — pas seulement l'anglais).
  *
  * Both answers write the cookie, so the card never comes back: "View in
  * English" reloads in English; the ✕ / "Continuer en français" records
