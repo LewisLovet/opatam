@@ -6,6 +6,32 @@ import { URL_LOCALES } from '@/lib/localizedPath';
 const BASE_URL = 'https://opatam.com';
 
 /**
+ * Date de dernière retouche des pages dont le contenu est écrit dans le dépôt
+ * (accueil éditorial, /recrutement, /telechargement, les pages métier…).
+ *
+ * À BUMPER quand on modifie réellement une de ces pages.
+ *
+ * Pourquoi une constante et non `new Date()` : Google se sert de `lastmod`
+ * pour décider quand repasser sur une URL qu'il connaît déjà. En appelant
+ * `new Date()` à la génération, le sitemap annonçait « modifiée à l'instant »
+ * sur toutes ces pages, à chaque lecture — quinze d'entre elles partageaient
+ * l'horodatage exact de la génération. Un `lastmod` qui ment sur tout finit
+ * par être ignoré, et c'est le seul signal de planification qui reste depuis
+ * que Google a supprimé le ping des sitemaps (juin 2023).
+ *
+ * Oublier de la bumper est sans gravité : Google repassera un peu plus tard
+ * sur une page qui, par construction, ne change presque jamais. L'inverse —
+ * tout dater à maintenant — coûte la crédibilité de TOUT le fichier.
+ */
+const EDITORIAL_LAST_MODIFIED = new Date('2026-08-16T00:00:00.000Z');
+
+/** La plus récente d'une série de dates, ou un repli si la série est vide. */
+function newestOf(dates: (Date | undefined)[], fallback: Date): Date {
+  const valid = dates.filter((d): d is Date => d instanceof Date);
+  return valid.length ? new Date(Math.max(...valid.map((d) => d.getTime()))) : fallback;
+}
+
+/**
  * Table hreflang d'une page : le français à la racine, une entrée par
  * préfixe de langue.
  *
@@ -21,6 +47,37 @@ function languagesFor(path = ''): Record<string, string> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Les données sont chargées AVANT de composer les pages fixes : l'accueil,
+  // l'annuaire et le blog n'ont pas de contenu propre, ils affichent celui des
+  // prestataires et des articles. Leur vraie date de modification est donc la
+  // plus récente de ce qu'ils listent — pas l'instant présent.
+  let providers: Awaited<ReturnType<typeof providerRepository.getPublished>> = [];
+  try {
+    providers = await providerRepository.getPublished();
+  } catch (error) {
+    console.error('[Sitemap] Error fetching providers:', error);
+  }
+  let articles: Awaited<ReturnType<typeof articleRepository.getPublished>> = [];
+  try {
+    articles = await articleRepository.getPublished(200);
+  } catch (error) {
+    console.error('[Sitemap] Error fetching articles:', error);
+  }
+
+  const listedProviders = providers.filter((p) => p.slug && !p.isTest);
+  const providersLastModified = newestOf(
+    listedProviders.map((p) => (p.updatedAt instanceof Date ? p.updatedAt : undefined)),
+    EDITORIAL_LAST_MODIFIED,
+  );
+  const articlesLastModified = newestOf(
+    articles.map((a) => (a.updatedAt instanceof Date ? a.updatedAt : undefined)),
+    EDITORIAL_LAST_MODIFIED,
+  );
+  // L'accueil met en avant les prestataires ET renvoie vers le blog.
+  const homeLastModified = newestOf(
+    [providersLastModified, articlesLastModified],
+    EDITORIAL_LAST_MODIFIED,
+  );
   // Appariement des langues déclaré sur chaque entrée qui existe dans
   // plusieurs langues (Google lit aussi le hreflang du sitemap, pas
   // seulement les balises <link>).
@@ -30,7 +87,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: BASE_URL,
-      lastModified: new Date(),
+      lastModified: homeLastModified,
       changeFrequency: 'weekly',
       priority: 1,
       alternates: { languages: homeLanguages },
@@ -40,32 +97,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // le hreflang — aucune ne peut être oubliée.
     ...URL_LOCALES.map((locale) => ({
       url: `${BASE_URL}/${locale}`,
-      lastModified: new Date(),
+      lastModified: homeLastModified,
       changeFrequency: 'weekly' as const,
       priority: 0.9,
       alternates: { languages: homeLanguages },
     })),
     {
       url: `${BASE_URL}/telechargement`,
-      lastModified: new Date(),
+      lastModified: EDITORIAL_LAST_MODIFIED,
       changeFrequency: 'monthly',
       priority: 0.6,
     },
     {
       url: `${BASE_URL}/contact`,
-      lastModified: new Date(),
+      lastModified: EDITORIAL_LAST_MODIFIED,
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${BASE_URL}/recrutement`,
-      lastModified: new Date(),
+      lastModified: EDITORIAL_LAST_MODIFIED,
       changeFrequency: 'monthly',
       priority: 0.6,
     },
     {
       url: `${BASE_URL}/blog`,
-      lastModified: new Date(),
+      lastModified: articlesLastModified,
       changeFrequency: 'weekly',
       priority: 0.7,
     },
@@ -74,20 +131,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // for organic search on trade-specific keywords.
     {
       url: `${BASE_URL}/nail-artist`,
-      lastModified: new Date(),
+      lastModified: EDITORIAL_LAST_MODIFIED,
       changeFrequency: 'monthly',
       priority: 0.8,
     },
     {
       url: `${BASE_URL}/studio-enregistrement`,
-      lastModified: new Date(),
+      lastModified: EDITORIAL_LAST_MODIFIED,
       changeFrequency: 'monthly',
       priority: 0.8,
     },
     // Blog category landing pages
     ...ARTICLE_CATEGORIES.map((cat) => ({
       url: `${BASE_URL}/blog/categorie/${cat}`,
-      lastModified: new Date(),
+      lastModified: articlesLastModified,
       changeFrequency: 'weekly' as const,
       priority: 0.5,
     })),
@@ -95,7 +152,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // plus one indexable landing page per trade category.
     {
       url: `${BASE_URL}/recherche`,
-      lastModified: new Date(),
+      lastModified: providersLastModified,
       changeFrequency: 'daily' as const,
       priority: 0.7,
     },
@@ -104,20 +161,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Dynamic provider pages — the most important for SEO.
   // Also emit a category landing page ONLY for categories that actually
   // have at least one published provider (no empty/thin pages in the index).
-  let providerPages: MetadataRoute.Sitemap = [];
-  let categoryPages: MetadataRoute.Sitemap = [];
-  try {
-    const providers = await providerRepository.getPublished();
-    providerPages = providers
-      // `isTest` exclut les comptes de démonstration. `getPublished()` ne
-      // filtre que `isPublished`, si bien que le salon de démo servant aux
-      // captures des stores s'est retrouvé dans le sitemap — un faux
-      // commerce, avec une fausse adresse, proposé à l'indexation en cinq
-      // langues. Le sitemap ne doit annoncer que des vitrines réelles.
-      .filter((p) => p.slug && !p.isTest)
+  // `listedProviders` applique déjà le filtre : `isTest` exclut les comptes de
+  // démonstration. `getPublished()` ne filtre que `isPublished`, si bien que le
+  // salon de démo servant aux captures des stores s'est retrouvé dans le
+  // sitemap — un faux commerce, avec une fausse adresse, proposé à
+  // l'indexation en cinq langues. Le sitemap ne doit annoncer que des
+  // vitrines réelles.
+  const providerPages: MetadataRoute.Sitemap = listedProviders
       .flatMap((p) => {
         const languages = languagesFor(`/p/${p.slug}`);
-        const lastModified = p.updatedAt instanceof Date ? p.updatedAt : new Date();
+        // Même repli que pour les articles : une fiche sans `updatedAt` n'a
+        // pas été modifiée à l'instant où Google lit le sitemap.
+        const lastModified =
+          p.updatedAt instanceof Date ? p.updatedAt : EDITORIAL_LAST_MODIFIED;
         return [
           {
             url: languages.fr,
@@ -138,37 +194,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         ];
       });
 
-    // Même raison pour les pages catégorie : un métier dont le seul
-    // représentant est un compte de démonstration ne doit pas ouvrir une
-    // page d'annuaire vide.
-    const populated = new Set(
-      providers.filter((p) => !p.isTest).map((p) => p.category).filter(Boolean),
-    );
-    categoryPages = CATEGORIES.filter((cat) => populated.has(cat.id)).map((cat) => ({
-      url: `${BASE_URL}/recherche/${cat.id}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.7,
-    }));
-  } catch (error) {
-    console.error('[Sitemap] Error fetching providers:', error);
-  }
+  // Même raison pour les pages catégorie : un métier dont le seul
+  // représentant est un compte de démonstration ne doit pas ouvrir une
+  // page d'annuaire vide.
+  const populated = new Set(listedProviders.map((p) => p.category).filter(Boolean));
+  const categoryPages: MetadataRoute.Sitemap = CATEGORIES.filter((cat) =>
+    populated.has(cat.id),
+  ).map((cat) => ({
+    url: `${BASE_URL}/recherche/${cat.id}`,
+    lastModified: providersLastModified,
+    changeFrequency: 'daily' as const,
+    priority: 0.7,
+  }));
 
   // Blog articles
-  let articlePages: MetadataRoute.Sitemap = [];
-  try {
-    const articles = await articleRepository.getPublished(200);
-    articlePages = articles
-      .filter((a) => a.slug)
-      .map((a) => ({
-        url: `${BASE_URL}/blog/${a.slug}`,
-        lastModified: a.updatedAt instanceof Date ? a.updatedAt : new Date(),
-        changeFrequency: 'monthly' as const,
-        priority: 0.7,
-      }));
-  } catch (error) {
-    console.error('[Sitemap] Error fetching articles:', error);
-  }
+  const articlePages: MetadataRoute.Sitemap = articles
+    .filter((a) => a.slug)
+    .map((a) => ({
+      url: `${BASE_URL}/blog/${a.slug}`,
+      // Repli sur la date éditoriale, jamais sur l'instant présent : un
+      // article sans `updatedAt` n'a pas été modifié maintenant.
+      lastModified: a.updatedAt instanceof Date ? a.updatedAt : EDITORIAL_LAST_MODIFIED,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    }));
 
   return [...staticPages, ...categoryPages, ...providerPages, ...articlePages];
 }
