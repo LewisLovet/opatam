@@ -6,6 +6,7 @@ import { Input, Textarea, Select, Button } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
 import { CATEGORIES, APP_CONFIG } from '@booking-app/shared';
 import { Loader2, ExternalLink, Copy, Check } from 'lucide-react';
+import { ThemePicker } from '@/components/theme/ThemePicker';
 
 interface ProfileFormProps {
   onSuccess?: () => void;
@@ -21,6 +22,10 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
     businessName: '',
     category: '',
     description: '',
+    // Absent en base = bleu, l'apparence actuelle. On garde la chaîne vide
+    // plutôt que d'écrire « bleu » d'office : un professionnel qui n'a jamais
+    // ouvert ce réglage ne doit pas voir son document modifié pour autant.
+    themeId: '',
   });
 
   // Initialize form with provider data
@@ -30,6 +35,7 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
         businessName: provider.businessName || '',
         category: provider.category || '',
         description: provider.description || '',
+        themeId: provider.themeId || '',
       });
     }
   }, [provider]);
@@ -61,6 +67,10 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
         businessName: formData.businessName,
         category: formData.category,
         description: formData.description,
+        // Non envoyé tant que rien n'a été choisi : `updateDoc` fusionne, et
+        // écrire une chaîne vide donnerait un identifiant de thème invalide
+        // en base là où l'absence du champ veut dire « bleu ».
+        ...(formData.themeId ? { themeId: formData.themeId } : {}),
       });
 
       await refreshProvider();
@@ -128,6 +138,26 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
         rows={4}
         hint="Cette description sera visible sur votre page publique"
       />
+
+      {/* Couleur de la vitrine */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Couleur de votre page
+        </label>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Elle habille votre page publique, votre tunnel de réservation et votre
+          widget : boutons, pastilles et liens. Le reste de la page ne bouge pas.
+        </p>
+        <ThemePicker
+          value={formData.themeId}
+          onChange={(themeId) => {
+            setFormData((prev) => ({ ...prev, themeId }));
+            setError(null);
+            setSuccess(false);
+          }}
+          disabled={loading}
+        />
+      </div>
 
       {/* Slug Preview */}
       {provider?.slug && publicUrl && (

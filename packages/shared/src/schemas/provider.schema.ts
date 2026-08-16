@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { serviceDiscountSchema } from './service.schema';
+import { PROVIDER_THEMES } from '../constants/themes';
 
 // Social links schema
 export const socialLinksSchema = z.object({
@@ -159,6 +160,22 @@ export const updateProviderSchema = z.object({
   // at checkout. Kept nullable so it can be cleared.
   affiliateCode: z.string().max(50).nullable().optional(),
   affiliateId: z.string().nullable().optional(),
+  /**
+   * Gamme de couleur de la vitrine. MÊME PIÈGE que `affiliateCode` juste
+   * au-dessus : zod retire les clés qu'il ne déclare pas, sans rien signaler.
+   * Le sélecteur envoyait `themeId`, le formulaire affichait « enregistré »,
+   * et le champ n'arrivait jamais en base.
+   *
+   * Validé contre le catalogue plutôt que par une longueur : un identifiant
+   * inventé serait accepté ici et retomberait silencieusement sur le bleu à
+   * l'affichage — le professionnel croirait avoir choisi une couleur.
+   */
+  themeId: z
+    .string()
+    .refine((id) => PROVIDER_THEMES.some((t) => t.id === id), {
+      message: 'Thème inconnu',
+    })
+    .optional(),
 });
 
 // Export types
