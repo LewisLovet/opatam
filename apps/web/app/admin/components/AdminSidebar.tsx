@@ -25,8 +25,7 @@ import {
   Images,
   Smartphone,
   Bell,
-  MailWarning,
-} from 'lucide-react';
+  MailWarning, CreditCard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { LogoWhite } from '@/components/ui';
@@ -60,6 +59,10 @@ const navGroups: NavGroup[] = [
       { label: 'Réservations', href: '/admin/bookings', icon: <Calendar className="w-5 h-5" /> },
       { label: 'Avis', href: '/admin/reviews', icon: <Star className="w-5 h-5" /> },
       { label: 'Revenue', href: '/admin/revenue', icon: <Euro className="w-5 h-5" /> },
+      // Distinct de « Revenue » : celui-ci montre ce qu'on ENCAISSE, celui-là
+      // ce que Stripe PRÉLÈVE — dont les frais Connect, qui n'apparaissent
+      // sur aucune facture client.
+      { label: 'Stripe', href: '/admin/stripe', icon: <CreditCard className="w-5 h-5" /> },
       { label: 'Affiliés', href: '/admin/affiliates', icon: <Handshake className="w-5 h-5" /> },
       { label: 'Marketing', href: '/admin/marketing', icon: <Megaphone className="w-5 h-5" /> },
       {

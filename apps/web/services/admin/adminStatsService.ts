@@ -1,4 +1,4 @@
-import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent, RecentSignups } from './types';
+import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent, RecentSignups, StripeEconomics } from './types';
 
 const BASE_URL = '/api/admin/stats';
 
@@ -57,6 +57,15 @@ export const adminStatsService = {
       headers: headers(adminUid),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des revenus');
+    return res.json();
+  },
+
+  /** Économie Stripe complète — recettes ET coûts. Route distincte de
+   *  `?type=revenue` : elle lit les transactions de solde, seul endroit où
+   *  apparaissent les frais Connect. */
+  async getStripeEconomics(adminUid: string): Promise<StripeEconomics> {
+    const res = await fetch('/api/admin/stripe', { headers: headers(adminUid) });
+    if (!res.ok) throw new Error('Erreur lors du chargement des données Stripe');
     return res.json();
   },
 

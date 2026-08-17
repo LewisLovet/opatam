@@ -239,3 +239,51 @@ export interface ProviderDetail {
     price: number;
   }[];
 }
+
+/**
+ * Économie Stripe complète — recettes ET coûts.
+ *
+ * Distinct de `RevenueStats`, qui ne montre que ce qui entre. Les frais
+ * Connect n'apparaissent sur aucune facture client : ils ne se lisent que
+ * dans les transactions de solde, d'où ce second jeu de données.
+ *
+ * Tous les montants sont en CENTIMES, comme partout ailleurs.
+ */
+export interface StripeEconomics {
+  /** MRR net des abonnements actifs, centimes/mois. */
+  mrrActive: number;
+  /** MRR des essais en cours — du revenu à venir, pas encore encaissé. */
+  mrrTrialing: number;
+  activeCount: number;
+  trialingCount: number;
+  /** Ventilation par PRODUIT, pas par abonnement : un abonnement peut porter
+   *  un plan et le Pack sérénité, et les deux doivent apparaître séparément. */
+  byProduct: { label: string; subscribers: number; mrr: number }[];
+  months: {
+    month: string;
+    /** Encaissé brut (abonnements + acomptes). */
+    collected: number;
+    processingFees: number;
+    /** Négatif. */
+    refunded: number;
+    /** Négatif : l'argent reversé aux prestataires, qui ne vous appartient pas. */
+    transferred: number;
+    /** Négatif. */
+    connectFees: number;
+    /** Négatif. */
+    billingFees: number;
+  }[];
+  /** Frais Connect par nature (abonnement de compte, virement, volume). */
+  connectByKind: { kind: string; amount: number }[];
+  /** L'économie de la fonctionnalité acompte, isolée. */
+  deposits: {
+    volume: number;
+    count: number;
+    processingFees: number;
+    connectFees: number;
+    /** Commission plateforme perçue. Zéro aujourd'hui. */
+    commission: number;
+  };
+  accounts: { connected: number; chargesEnabled: number };
+  generatedAt: string;
+}
