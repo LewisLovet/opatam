@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Loader } from '@/components/ui';
 import { AlertTriangle, ArrowRight, Gift, TrendingDown, TrendingUp, Users, Wallet } from 'lucide-react';
 import { useStripeData } from './StripeDataContext';
-import { Chiffre, Titre, eur } from './components';
+import { Chiffre, Titre, eur, moisCourt } from './components';
 
 /** Renvoie vers la vue qui détaille le chiffre, avec le filtre déjà posé. */
 function Creuser({ href, children }: { href: string; children: React.ReactNode }) {
@@ -48,18 +48,55 @@ export default function AdminStripePage() {
         else rembourse += t.amount;
       }
     }
+    // Nets de ce qui vous revient sur les versements aux salons : sinon ce
+    // tableau et le solde cumulé plus bas annonceraient deux résultats
+    // différents pour la même période.
     const frais = data.months.reduce(
-      (s, m) => s + m.processingFees - m.connectFees - m.billingFees,
+      (s, m) => s + m.processingFees - m.connectFees - m.billingFees - m.depositFeesRecovered,
       0,
     );
     return {
       revenu, acomptes, rembourse, rembourseAcompte, frais,
+      recupere: data.deposits.feesRecovered,
       resultat: revenu + rembourse - frais,
     };
   }, [data]);
 
+  /**
+   * Le solde mois par mois, et ce qui le compose.
+   *
+   * Les acomptes sont absents des deux côtés : ni leur encaissement, ni leur
+   * remboursement, ni la part de leur commission qui vous revient. Un solde
+   * qui mélangerait l'argent des salons ne serait pas votre solde.
+   */
+  const soldes = useMemo(() => {
+    if (!data) return [];
+    let cumul = 0;
+    return data.months.map((m) => {
+      const frais = m.processingFees - m.connectFees - m.billingFees - m.depositFeesRecovered;
+      const solde = m.revenue + m.refundedRevenue - frais;
+      cumul += solde;
+      return {
+        mois: m.month,
+        revenus: m.revenue,
+        rembourse: m.refundedRevenue,
+        frais,
+        solde,
+        cumul,
+      };
+    });
+  }, [data]);
+
   if (erreur) return <p className="text-red-600">{erreur}</p>;
   if (!data || !bilan) return <Loader />;
+
+  // Échelle commune aux deux moitiés du graphique : sans elle, une dépense de
+  // 18 € et une recette de 30 € auraient la même hauteur de part et d'autre
+  // de l'axe, ce qui inverserait la lecture.
+  const echelle = Math.max(
+    1,
+    ...soldes.map((s) => Math.max(s.revenus, s.frais - s.rembourse, Math.abs(s.solde))),
+  );
 
   const d = data.deposits;
   const coutAcomptes = d.processingFees - d.connectFees;
@@ -105,7 +142,14 @@ export default function AdminStripePage() {
                 </td>
               </tr>
               <tr className="border-b border-gray-100 dark:border-gray-800">
-                <td className="px-4 py-3 text-gray-700 dark:text-gray-300">Frais Stripe (traitement, Connect, Billing)</td>
+                <td className="px-4 py-3">
+                  <p className="text-gray-700 dark:text-gray-300">Frais Stripe (traitement, Connect, Billing)</p>
+                  {bilan.recupere > 0 && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      net des {eur(bilan.recupere)} retenus sur les versements aux salons
+                    </p>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right tabular-nums font-medium text-red-600 dark:text-red-400">
                   {eur(-bilan.frais)}
                 </td>
@@ -128,6 +172,126 @@ export default function AdminStripePage() {
           {bilan.rembourseAcompte !== 0 && <> (dont {eur(-bilan.rembourseAcompte)} remboursés aux clientes)</>}, puis
           reversés aux salons. Cet argent traverse le compte sans jamais vous appartenir — c&apos;est lui qui rendait
           le relevé Stripe illisible. Leur coût de traitement, lui, reste à votre charge : voir plus bas.
+        </p>
+      </section>
+
+      {/* ── Recettes, dépenses, solde ─────────────────────────────────── */}
+      <section>
+        <Titre note="Recettes vers le haut, dépenses vers le bas, solde en trait. Les acomptes sont exclus des deux côtés : ils ne vous appartiennent pas.">
+          Recettes, dépenses et solde
+        </Titre>
+
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+          <div className="flex gap-3">
+            {soldes.map((s) => {
+              const depenses = s.frais - s.rembourse;
+              // Position du repère de solde, mesurée depuis l'axe central.
+              const decalage = (s.solde / echelle) * 50;
+              return (
+                <div key={s.mois} className="flex-1 min-w-0">
+                  <div className="relative h-48">
+                    {/* Axe zéro */}
+                    <div className="absolute inset-x-0 top-1/2 border-t border-gray-300 dark:border-gray-600" />
+
+                    {/* Recettes, au-dessus */}
+                    <div className="absolute inset-x-0 top-0 h-1/2 flex flex-col justify-end">
+                      <div
+                        className="bg-emerald-500 rounded-t-sm"
+                        style={{ height: `${(s.revenus / echelle) * 100}%` }}
+                        title={`Recettes ${moisCourt(s.mois)} — ${eur(s.revenus)}`}
+                      />
+                    </div>
+
+                    {/* Dépenses, en dessous */}
+                    <div className="absolute inset-x-0 bottom-0 h-1/2">
+                      <div
+                        className="bg-red-500 rounded-b-sm"
+                        style={{ height: `${(depenses / echelle) * 100}%` }}
+                        title={`Dépenses ${moisCourt(s.mois)} — ${eur(-depenses)}`}
+                      />
+                    </div>
+
+                    {/* Le solde : un trait, pas une barre — c'est un résultat,
+                        pas un flux, et le confondre avec les deux autres
+                        laisserait croire qu'il s'y ajoute. */}
+                    <div
+                      className="absolute inset-x-1"
+                      style={{ top: `calc(50% - ${decalage}% - 1px)` }}
+                      title={`Solde ${moisCourt(s.mois)} — ${eur(s.solde)}`}
+                    >
+                      <div className={`h-0.5 ${s.solde >= 0 ? 'bg-gray-900 dark:bg-white' : 'bg-red-700 dark:bg-red-300'}`} />
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-center text-gray-500 dark:text-gray-400 mt-2 truncate">
+                    {moisCourt(s.mois)}
+                  </p>
+                  <p className={`text-[11px] text-center tabular-nums font-medium truncate ${
+                    s.solde >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {(s.solde / 100).toFixed(0)} €
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500" />Recettes</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500" />Dépenses</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-gray-900 dark:bg-white" />Solde du mois</span>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
+              <tr>
+                <th className="text-left font-medium px-4 py-2">Mois</th>
+                <th className="text-right font-medium px-4 py-2">Encaissé</th>
+                <th className="text-right font-medium px-4 py-2">Remboursé</th>
+                <th className="text-right font-medium px-4 py-2">Frais</th>
+                <th className="text-right font-medium px-4 py-2">Solde</th>
+                <th className="text-right font-medium px-4 py-2">Cumulé</th>
+              </tr>
+            </thead>
+            <tbody>
+              {soldes.map((s) => (
+                <tr key={s.mois} className="border-t border-gray-100 dark:border-gray-800">
+                  <td className="px-4 py-2 text-gray-900 dark:text-white">{moisCourt(s.mois)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {s.revenus > 0 ? eur(s.revenus) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums text-red-600 dark:text-red-400">
+                    {s.rembourse < 0 ? eur(s.rembourse) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums text-red-600 dark:text-red-400">{eur(-s.frais)}</td>
+                  <td className={`px-4 py-2 text-right tabular-nums font-semibold ${
+                    s.solde >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {eur(s.solde)}
+                  </td>
+                  <td className={`px-4 py-2 text-right tabular-nums ${
+                    s.cumul >= 0 ? 'text-gray-600 dark:text-gray-300' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {eur(s.cumul)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {soldes.at(-1)?.mois === new Date().toISOString().slice(0, 7) && (
+          <p className="mt-3 text-xs text-amber-700 dark:text-amber-500 leading-snug">
+            Le mois en cours paraît toujours meilleur qu&apos;il ne sera : Stripe facture Connect à terme
+            échu, donc les frais de {moisCourt(soldes.at(-1)!.mois)} ne seront prélevés qu&apos;au début du
+            mois prochain. Comptez environ {eur(-(soldes.at(-2)?.frais ?? 0))} de plus, au vu du mois précédent.
+          </p>
+        )}
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-snug">
+          La colonne « Frais » est nette de ce qui vous revient sur les versements aux salons —{' '}
+          {eur(data.deposits.feesRecovered)} sur la période. Le détail poste par poste est dans{' '}
+          <Creuser href="/admin/stripe/frais">la vue Frais</Creuser>.
         </p>
       </section>
 

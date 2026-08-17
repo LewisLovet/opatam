@@ -189,6 +189,12 @@ export async function GET(request: NextRequest) {
     const months: Record<string, {
       collected: number; processingFees: number; refunded: number;
       transferred: number; connectFees: number; billingFees: number;
+      /** Encaissements qui vous appartiennent : abonnements, hors acomptes. */
+      revenue: number;
+      /** Remboursements d'abonnement. Les acomptes remboursés sont hors bilan. */
+      refundedRevenue: number;
+      /** Part des frais de traitement retenue sur le versement au salon. */
+      depositFeesRecovered: number;
     }> = {};
     const connectByKind: Record<string, number> = {};
     let depositVolume = 0;
@@ -201,6 +207,7 @@ export async function GET(request: NextRequest) {
       months[key] = months[key] ?? {
         collected: 0, processingFees: 0, refunded: 0,
         transferred: 0, connectFees: 0, billingFees: 0,
+        revenue: 0, refundedRevenue: 0, depositFeesRecovered: 0,
       };
       return months[key];
     };
@@ -249,13 +256,21 @@ export async function GET(request: NextRequest) {
             const charge = tx.source as Stripe.Charge | null;
             const reverse = charge?.transfer_data?.amount;
             if (typeof reverse === 'number') {
-              depositFeesRecovered += Math.max(0, Math.min(tx.fee, tx.amount - reverse));
+              const rendu = Math.max(0, Math.min(tx.fee, tx.amount - reverse));
+              depositFeesRecovered += rendu;
+              m.depositFeesRecovered += rendu;
             }
+          } else {
+            m.revenue += tx.amount;
           }
           break;
         case 'refund':
         case 'payment_refund':
           m.refunded += tx.amount;
+          // Un acompte remboursé sort du bilan comme il y est entré : par la
+          // porte de service. Seuls les remboursements d'abonnement pèsent
+          // sur le solde.
+          if (!isDeposit) m.refundedRevenue += tx.amount;
           break;
         case 'transfer':
         case 'transfer_refund':

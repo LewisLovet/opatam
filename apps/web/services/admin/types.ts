@@ -308,6 +308,14 @@ export interface StripeEconomics {
     connectFees: number;
     /** Négatif. */
     billingFees: number;
+    /** Encaissements qui vous appartiennent : abonnements, acomptes exclus. */
+    revenue: number;
+    /** Négatif. Remboursements d'abonnement seuls — un acompte remboursé est
+     *  hors bilan, comme l'acompte lui-même. */
+    refundedRevenue: number;
+    /** Part des frais de traitement retenue sur le versement au salon, donc
+     *  non supportée par la plateforme. */
+    depositFeesRecovered: number;
   }[];
   connectByKind: { kind: string; amount: number }[];
   deposits: {
