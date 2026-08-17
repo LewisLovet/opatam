@@ -96,15 +96,29 @@ export async function POST(request: NextRequest) {
         // hebdomadaire, quatre. Sur juillet, 44 virements ont coûté 4,40 €
         // pour trois prestataires seulement.
         //
-        // Le prestataire n'attend PAS plus longtemps : le délai de mise à
-        // disposition (7 jours) est inchangé, ses paiements sont simplement
-        // regroupés en un versement le lundi au lieu d'être éparpillés.
+        // Le prestataire n'attend PAS plus longtemps : la cadence ne décide
+        // que du REGROUPEMENT des paiements, pas de la date à laquelle les
+        // fonds deviennent disponibles. C'est `delay_days` qui la fixe, et les
+        // deux réglages sont indépendants.
+        //
+        // `delay_days: 'minimum'` applique le plancher du pays du compte —
+        // 3 jours ouvrés en France — au lieu des 7 jours calendaires figés
+        // ici auparavant. Écrire 7 en dur empêchait Stripe d'appliquer son
+        // propre minimum, et donc de le raccourcir à mesure que l'historique
+        // du prestataire se construit.
+        //
+        // Ancre au VENDREDI et non au lundi : avec un délai compté en jours
+        // OUVRÉS, un versement le lundi rate systématiquement les
+        // encaissements du mercredi au vendredi, qui doivent alors attendre
+        // la semaine suivante. Rejoué sur les 279 paiements réels, l'attente
+        // moyenne passe de 10,1 jours (lundi, délai 7) à 5,9 jours
+        // (vendredi, délai minimum), pour le même nombre de virements.
         //
         // C'est un DÉFAUT, pas un verrou : un compte Express garde la main sur
         // ce réglage depuis son propre tableau de bord Stripe.
         settings: {
           payouts: {
-            schedule: { interval: 'weekly', weekly_anchor: 'monday', delay_days: 7 },
+            schedule: { interval: 'weekly', weekly_anchor: 'friday', delay_days: 'minimum' },
           },
         },
         metadata: {
