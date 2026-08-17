@@ -37,7 +37,10 @@ export default function TransactionsPage() {
     return data.transactions.filter((t) => {
       if (poste !== 'tous' && t.category !== poste) return false;
       if (mois !== 'tous' && !t.created.startsWith(mois)) return false;
-      if (q && !(t.description ?? '').toLowerCase().includes(q) && !t.id.toLowerCase().includes(q)) return false;
+      if (q) {
+        const foin = `${t.description ?? ''} ${t.who ?? ''} ${t.id}`.toLowerCase();
+        if (!foin.includes(q)) return false;
+      }
       return true;
     });
   }, [data, poste, mois, recherche]);
@@ -78,7 +81,7 @@ export default function TransactionsPage() {
             type="search"
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
-            placeholder="Rechercher un libellé ou un identifiant…"
+            placeholder="Rechercher un prestataire, un libellé, un identifiant…"
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400"
           />
         </div>

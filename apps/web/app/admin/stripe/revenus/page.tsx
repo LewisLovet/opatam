@@ -39,6 +39,29 @@ export default function RevenusPage() {
       .map(([mois, v]) => ({ mois, ...v }));
   }, [data]);
 
+  /**
+   * Qui a payé, et combien.
+   *
+   * Le MRR dit ce qui rentre chaque mois ; ceci dit d'où c'est venu. Les deux
+   * ne coïncident pas : un abonné résilié a encaissé sans plus figurer au MRR,
+   * et un abonné à 0 € figure au MRR sans avoir jamais rien versé.
+   */
+  const payeurs = useMemo(() => {
+    if (!data) return [];
+    const par: Record<string, { encaisse: number; nb: number; dernier: string }> = {};
+    for (const t of data.transactions) {
+      if (t.category !== 'revenu') continue;
+      const qui = t.who ?? 'Origine inconnue';
+      par[qui] = par[qui] ?? { encaisse: 0, nb: 0, dernier: t.created };
+      par[qui].encaisse += t.amount;
+      par[qui].nb++;
+      if (t.created > par[qui].dernier) par[qui].dernier = t.created;
+    }
+    return Object.entries(par)
+      .map(([qui, v]) => ({ qui, ...v }))
+      .sort((a, b) => b.encaisse - a.encaisse);
+  }, [data]);
+
   const detail = useMemo(() => {
     if (!data) return [];
     return data.transactions.filter(
@@ -131,6 +154,44 @@ export default function RevenusPage() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section>
+        <Titre note="Le nom vient du rapprochement entre le client Stripe et la fiche prestataire ; à défaut, l'e-mail de facturation.">
+          D&apos;où vient l&apos;argent
+        </Titre>
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto">
+          <table className="w-full text-sm min-w-[520px]">
+            <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
+              <tr>
+                <th className="text-left font-medium px-4 py-2">Prestataire</th>
+                <th className="text-right font-medium px-4 py-2">Paiements</th>
+                <th className="text-right font-medium px-4 py-2">Dernier</th>
+                <th className="text-right font-medium px-4 py-2">Total encaissé</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payeurs.map((p) => (
+                <tr key={p.qui} className="border-t border-gray-100 dark:border-gray-800">
+                  <td className="px-4 py-2 text-gray-900 dark:text-white max-w-[260px]">
+                    <span className="block truncate" title={p.qui}>{p.qui}</span>
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums text-gray-600 dark:text-gray-300">{p.nb}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {new Date(p.dernier).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' })}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums font-medium text-gray-900 dark:text-white">
+                    {eur(p.encaisse)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-snug">
+          Ce total ne recoupe pas le MRR : un abonné résilié a encaissé sans plus y figurer, et un abonné
+          ramené à 0 € par un code y figure sans avoir jamais rien versé.
+        </p>
       </section>
 
       <section>

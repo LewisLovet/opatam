@@ -83,11 +83,12 @@ export function TableauTransactions({
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto">
-      <table className="w-full text-sm min-w-[680px]">
+      <table className="w-full text-sm min-w-[820px]">
         <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
           <tr>
             <th className="text-left font-medium px-4 py-2">Date</th>
             <th className="text-left font-medium px-4 py-2">Poste</th>
+            <th className="text-left font-medium px-4 py-2">Origine</th>
             <th className="text-left font-medium px-4 py-2">Libellé</th>
             <th className="text-right font-medium px-4 py-2">Montant</th>
             <th className="text-right font-medium px-4 py-2">Frais</th>
@@ -98,6 +99,11 @@ export function TableauTransactions({
             <tr key={t.id} className="border-t border-gray-100 dark:border-gray-800">
               <td className="px-4 py-2 whitespace-nowrap tabular-nums text-gray-500 dark:text-gray-400">{jour(t.created)}</td>
               <td className="px-4 py-2"><Etiquette categorie={t.category} /></td>
+              <td className="px-4 py-2 text-gray-900 dark:text-white max-w-[200px]">
+                {t.who
+                  ? <span className="block truncate" title={t.who}>{t.who}</span>
+                  : <span className="text-gray-300 dark:text-gray-600">—</span>}
+              </td>
               <td className="px-4 py-2 text-gray-700 dark:text-gray-300 max-w-md">
                 <span className="line-clamp-2">{t.description || <span className="text-gray-400">—</span>}</span>
               </td>

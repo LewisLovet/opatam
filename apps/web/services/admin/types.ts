@@ -278,6 +278,12 @@ export interface StripeTx {
   /** Pour un frais facturé à terme échu, le mois qu'il COUVRE (`YYYY-MM`).
    *  Null partout ailleurs. Voir `feePeriod` dans la route. */
   period?: string | null;
+  /**
+   * De qui vient — ou vers qui va — cet argent. Le nom du prestataire quand on
+   * sait le retrouver, son e-mail de facturation sinon, et null pour les
+   * lignes qui n'ont pas de contrepartie (frais Stripe, virements bancaires).
+   */
+  who?: string | null;
 }
 
 export interface StripeEconomics {

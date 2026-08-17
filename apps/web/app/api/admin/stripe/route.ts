@@ -202,6 +202,14 @@ export async function GET(request: NextRequest) {
     let depositFeesRecovered = 0;
     let depositCount = 0;
     const transactions: StripeTx[] = [];
+    /**
+     * Les identifiants bruts de contrepartie, dans l'ordre des transactions.
+     *
+     * Stripe ne connaît que des `cus_…` et des `acct_…` ; le nom du salon vit
+     * dans Firestore, lu plus bas. Ce tableau garde le lien le temps d'arriver
+     * jusqu'à lui, plutôt que de refaire un tour de pagination Stripe.
+     */
+    const origines: { customer?: string | null; account?: string | null; email?: string | null }[] = [];
 
     const bucket = (key: string) => {
       months[key] = months[key] ?? {
@@ -237,6 +245,26 @@ export async function GET(request: NextRequest) {
         fee: tx.fee,
         net: tx.net,
         period: periode,
+      });
+
+      // `source` est déjà étendu : la charge porte son client, le transfert sa
+      // destination. On ne garde que les identifiants — la résolution en noms
+      // attend d'avoir lu Firestore.
+      // Type structurel plutôt que `Charge & Transfer` : les deux déclarent
+      // `object` avec des littéraux incompatibles, et TypeScript réduit leur
+      // intersection à `never`. On ne décrit donc que les champs qu'on lit.
+      const src = tx.source as {
+        customer?: unknown;
+        destination?: unknown;
+        transfer_data?: { destination?: unknown } | null;
+        billing_details?: { email?: string | null } | null;
+      } | null;
+      const idDe = (v: unknown) =>
+        typeof v === 'string' ? v : v && typeof v === 'object' && 'id' in v ? String((v as { id: string }).id) : null;
+      origines.push({
+        customer: idDe(src?.customer),
+        account: idDe(src?.destination) ?? idDe(src?.transfer_data?.destination),
+        email: src?.billing_details?.email ?? null,
       });
 
       switch (tx.type) {
@@ -343,6 +371,29 @@ export async function GET(request: NextRequest) {
     // Stripe seul — c'est exactement ce qui manquait.
     const providersSnap = await db.collection('providers').get();
     const now = Date.now();
+
+    // Stripe → nom du salon. Un prestataire peut porter DEUX identifiants
+    // client — le plan et le Pack sérénité sont facturés séparément quand la
+    // base passe par Apple ou Google — donc les deux sont indexés.
+    const parClient = new Map<string, string>();
+    const parCompte = new Map<string, string>();
+    for (const doc of providersSnap.docs) {
+      const p = doc.data();
+      const nom = (p.businessName as string) ?? '(sans nom)';
+      for (const id of [p.subscription?.stripeCustomerId, p.serenity?.stripeCustomerId]) {
+        if (id) parClient.set(id, nom);
+      }
+      if (p.stripeConnectAccountId) parCompte.set(p.stripeConnectAccountId, nom);
+    }
+
+    transactions.forEach((t, i) => {
+      const o = origines[i];
+      t.who =
+        (o.customer && parClient.get(o.customer)) ??
+        (o.account && parCompte.get(o.account)) ??
+        o.email ??
+        null;
+    });
     let realProviders = 0;
     let trialActive = 0;
     let trialExpiredNeverPaid = 0;
