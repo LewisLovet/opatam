@@ -339,10 +339,16 @@ export function estimateStripeCardFee(amountCents: number): number {
  * Aligne le tunnel mobile sur le tunnel web. Le web crée le paiement SUR le
  * compte du prestataire (paiement direct) : Stripe y prélève sa commission,
  * le prestataire reçoit le net. Le mobile passe par un paiement à destination
- * — contrainte de la SDK React Native — et transférait jusqu'ici la TOTALITÉ,
- * laissant la commission à la charge de la plateforme. Le même acompte
- * rapportait donc au prestataire 0,45 € de plus selon l'appareil de sa
- * cliente, aux frais d'Opatam.
+ * et transférait jusqu'ici la TOTALITÉ, laissant la commission à la charge de
+ * la plateforme. Le même acompte rapportait donc au prestataire 0,45 € de plus
+ * selon l'appareil de sa cliente, aux frais d'Opatam.
+ *
+ * Le paiement à destination est un CHOIX d'intégration, pas une contrainte :
+ * `@stripe/stripe-react-native` expose `stripeAccountId` sur `StripeProvider`
+ * et `initStripe`, donc le paiement direct y est possible. Ce qu'il coûterait,
+ * c'est le partage des cartes enregistrées : en direct, le Customer appartient
+ * au compte du salon, et une cliente qui réserve chez deux salons ressaisit sa
+ * carte. Déduire les frais ici règle le problème d'argent sans ce prix-là.
  *
  * Ce n'est PAS une commission de plateforme : Opatam ne prélève rien, elle
  * cesse simplement de payer les frais de Stripe à la place du prestataire.
