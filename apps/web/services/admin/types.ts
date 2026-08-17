@@ -275,6 +275,9 @@ export interface StripeTx {
   /** Frais de traitement prélevés SUR cette transaction. */
   fee: number;
   net: number;
+  /** Pour un frais facturé à terme échu, le mois qu'il COUVRE (`YYYY-MM`).
+   *  Null partout ailleurs. Voir `feePeriod` dans la route. */
+  period?: string | null;
 }
 
 export interface StripeEconomics {
@@ -314,6 +317,12 @@ export interface StripeEconomics {
     connectFees: number;
     /** Commission plateforme perçue. Zéro aujourd'hui. */
     commission: number;
+    /**
+     * Les paiements encaissés DIRECTEMENT sur les comptes prestataires — le
+     * tunnel web. Ils n'apparaissent nulle part dans le solde de la
+     * plateforme, et leurs frais sont supportés par le prestataire.
+     */
+    direct: { count: number; volume: number; fees: number };
   };
   accounts: { connected: number; chargesEnabled: number };
   /** Le relevé complet, du plus récent au plus ancien. */

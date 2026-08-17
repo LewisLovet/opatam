@@ -77,6 +77,19 @@ function applyCoupon(monthlyCents: number, coupon: Stripe.Coupon | null): number
  * pas si l'argent est à nous. Cette classification-ci répond à la seule
  * question utile : est-ce un revenu, de l'argent qui transite, ou un coût ?
  */
+/**
+ * Le mois que le frais COUVRE, et non celui où il est prélevé.
+ *
+ * Stripe facture Connect à terme échu : les frais de juillet tombent début
+ * août, avec la période dans le libellé — « Connect (2026-07-01 - 2026-07-31):
+ * Payout Fee ». Les ranger à leur date de prélèvement empile deux mois de
+ * Connect sur août et invente une flambée qui n'a pas eu lieu.
+ */
+function feePeriod(description: string | null): string | null {
+  const m = /\((\d{4}-\d{2})-\d{2}\s*-\s*\d{4}-\d{2}-\d{2}\)/.exec(description ?? '');
+  return m ? m[1] : null;
+}
+
 function classify(tx: Stripe.BalanceTransaction): StripeTx['category'] {
   const desc = tx.description ?? '';
   switch (tx.type) {
@@ -183,14 +196,19 @@ export async function GET(request: NextRequest) {
     let depositCount = 0;
     const transactions: StripeTx[] = [];
 
-    for await (const tx of stripe.balanceTransactions.list({ limit: 100 })) {
-      const month = new Date(tx.created * 1000).toISOString().slice(0, 7);
-      months[month] = months[month] ?? {
+    const bucket = (key: string) => {
+      months[key] = months[key] ?? {
         collected: 0, processingFees: 0, refunded: 0,
         transferred: 0, connectFees: 0, billingFees: 0,
       };
-      const m = months[month];
+      return months[key];
+    };
+
+    for await (const tx of stripe.balanceTransactions.list({ limit: 100 })) {
+      const month = new Date(tx.created * 1000).toISOString().slice(0, 7);
+      const m = bucket(month);
       const isDeposit = (tx.description ?? '').includes('Acompte');
+      const periode = feePeriod(tx.description);
 
       // Chaque ligne est conservée telle quelle : c'est ce qui permet de
       // remonter d'un total à la transaction qui l'a produit. Le volume est
@@ -205,6 +223,7 @@ export async function GET(request: NextRequest) {
         amount: tx.amount,
         fee: tx.fee,
         net: tx.net,
+        period: periode,
       });
 
       switch (tx.type) {
@@ -228,24 +247,61 @@ export async function GET(request: NextRequest) {
           break;
         case 'stripe_fee': {
           const desc = tx.description ?? '';
+          // Rangés au mois qu'ils COUVRENT quand le libellé le donne, pas au
+          // mois du prélèvement — cf. `feePeriod`.
+          const cible = periode ? bucket(periode) : m;
           if (desc.startsWith('Connect')) {
-            m.connectFees += tx.amount;
+            cible.connectFees += tx.amount;
             connectByKind[desc.split(': ')[1] ?? 'Autre'] =
               (connectByKind[desc.split(': ')[1] ?? 'Autre'] ?? 0) + tx.amount;
           } else {
-            m.billingFees += tx.amount;
+            cible.billingFees += tx.amount;
           }
           break;
         }
       }
     }
 
+    // ── L'AUTRE moitié des acomptes ──────────────────────────────────────
+    //
+    // Le tunnel web encaisse en paiement DIRECT sur le compte du prestataire
+    // (en-tête `Stripe-Account`) : l'argent naît chez lui, et rien n'apparaît
+    // dans le solde de la plateforme. Le tunnel mobile passe par un paiement à
+    // destination, qui lui transite par la plateforme.
+    //
+    // C'est toute l'explication du « beaucoup d'acomptes, peu de frais » : les
+    // acomptes web sont invisibles du relevé ci-dessus, et leur commission est
+    // supportée par le prestataire. Les compter demande d'interroger chaque
+    // compte connecté, d'où cette seconde boucle.
     let connected = 0;
     let chargesEnabled = 0;
+    const direct = { count: 0, volume: 0, fees: 0 };
+    const comptesActifs: string[] = [];
     for await (const acc of stripe.accounts.list({ limit: 100 })) {
       connected++;
-      if (acc.charges_enabled) chargesEnabled++;
+      if (acc.charges_enabled) {
+        chargesEnabled++;
+        comptesActifs.push(acc.id);
+      }
     }
+
+    await Promise.all(
+      comptesActifs.map(async (id) => {
+        try {
+          for await (const tx of stripe.balanceTransactions.list(
+            { limit: 100, type: 'charge' },
+            { stripeAccount: id },
+          )) {
+            direct.count++;
+            direct.volume += tx.amount;
+            direct.fees += tx.fee;
+          }
+        } catch {
+          // Un compte peut être restreint ou fermé : on l'ignore plutôt que de
+          // faire échouer toute la page pour un compte marginal.
+        }
+      }),
+    );
 
     // ── Ce qui N'ENTRE PAS ───────────────────────────────────────────────
     //
@@ -306,6 +362,7 @@ export async function GET(request: NextRequest) {
         processingFees: depositProcessingFees,
         connectFees: connectFeesTotal,
         commission: 0,
+        direct,
       },
       accounts: { connected, chargesEnabled },
       transactions: transactions.sort((a, b) => b.created.localeCompare(a.created)),

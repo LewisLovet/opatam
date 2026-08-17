@@ -117,8 +117,9 @@ export default function TransactionsPage() {
       <TableauTransactions transactions={lignes} vide="Aucune transaction ne correspond à ces filtres." />
 
       <p className="text-xs text-gray-400">
-        Relevé arrêté au {new Date(data.generatedAt).toLocaleString('fr-FR')}. Les 100 dernières
-        transactions de solde sont chargées ; au-delà, consultez Stripe directement.
+        Relevé arrêté au {new Date(data.generatedAt).toLocaleString('fr-FR')} · {data.transactions.length} lignes,
+        soit l&apos;intégralité du solde de la plateforme depuis son ouverture. Les paiements encaissés
+        directement sur les comptes prestataires n&apos;y figurent pas : ils ne transitent jamais par ce compte.
       </p>
     </div>
   );

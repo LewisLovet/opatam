@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -25,19 +25,21 @@ import {
   Images,
   Smartphone,
   Bell,
-  MailWarning, CreditCard } from 'lucide-react';
+  MailWarning, CreditCard, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { LogoWhite } from '@/components/ui';
 import { ChangeCodeModal } from './ChangeCodeModal';
 
 /** Entrées ayant une sous-page listée séparément dans le menu. */
-const EXACT_MATCH_ONLY = new Set(['/admin/marketing']);
+const EXACT_MATCH_ONLY = new Set(['/admin/marketing', '/admin/stripe']);
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  /** Sous-pages dépliables. Le parent reste cliquable et mène à sa propre page. */
+  children?: { label: string; href: string }[];
 }
 
 interface NavGroup {
@@ -62,7 +64,17 @@ const navGroups: NavGroup[] = [
       // Distinct de « Revenue » : celui-ci montre ce qu'on ENCAISSE, celui-là
       // ce que Stripe PRÉLÈVE — dont les frais Connect, qui n'apparaissent
       // sur aucune facture client.
-      { label: 'Stripe', href: '/admin/stripe', icon: <CreditCard className="w-5 h-5" /> },
+      {
+        label: 'Stripe',
+        href: '/admin/stripe',
+        icon: <CreditCard className="w-5 h-5" />,
+        children: [
+          { label: 'Vue consolidée', href: '/admin/stripe' },
+          { label: 'Revenus', href: '/admin/stripe/revenus' },
+          { label: 'Frais', href: '/admin/stripe/frais' },
+          { label: 'Transactions', href: '/admin/stripe/transactions' },
+        ],
+      },
       { label: 'Affiliés', href: '/admin/affiliates', icon: <Handshake className="w-5 h-5" /> },
       { label: 'Marketing', href: '/admin/marketing', icon: <Megaphone className="w-5 h-5" /> },
       {
@@ -94,6 +106,93 @@ const navGroups: NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * Une entrée de menu, avec ses sous-pages si elle en a.
+ *
+ * Écrite une fois et utilisée par la sidebar bureau ET le tiroir mobile : les
+ * deux listes étaient déjà des copies l'une de l'autre, en dupliquer une
+ * troisième fois la logique de dépliage aurait garanti qu'elles divergent.
+ */
+function NavEntry({
+  item, collapsed = false, actif, onNavigate,
+}: {
+  item: NavItem; collapsed?: boolean;
+  actif: (href: string) => boolean;
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+  const dansLaSection = !!item.children && pathname.startsWith(item.href);
+  const [ouvert, setOuvert] = useState(dansLaSection);
+
+  // Le `useState` ci-dessus ne lit son argument qu'au montage : sans cet effet,
+  // arriver sur une sous-page par un lien externe laisserait le groupe fermé.
+  // On ouvre seulement — jamais on ne referme — pour que replier reste possible
+  // même en étant dans la section.
+  useEffect(() => {
+    if (dansLaSection) setOuvert(true);
+  }, [dansLaSection]);
+
+  const classeLien = (estActif: boolean) =>
+    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+      collapsed ? 'justify-center' : 'flex-1'
+    } ${
+      estActif
+        ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+    }`;
+
+  const depliable = !!item.children && !collapsed;
+
+  return (
+    <li>
+      <div className="flex items-center gap-1">
+        <Link
+          href={item.href}
+          className={classeLien(actif(item.href))}
+          title={collapsed ? item.label : undefined}
+          onClick={onNavigate}
+        >
+          {item.icon}
+          {!collapsed && <span className="flex-1">{item.label}</span>}
+        </Link>
+        {depliable && (
+          <button
+            type="button"
+            onClick={() => setOuvert((o) => !o)}
+            aria-expanded={ouvert}
+            aria-label={ouvert ? `Replier ${item.label}` : `Déplier ${item.label}`}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          >
+            <ChevronRight
+              className={`w-4 h-4 transition-transform duration-200 ${ouvert ? 'rotate-90' : ''}`}
+            />
+          </button>
+        )}
+      </div>
+
+      {depliable && ouvert && (
+        <ul className="mt-1 mb-1 ml-6 pl-3 border-l border-gray-800 space-y-0.5">
+          {item.children!.map((enfant) => (
+            <li key={enfant.href}>
+              <Link
+                href={enfant.href}
+                onClick={onNavigate}
+                className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  pathname === enfant.href
+                    ? 'text-white bg-gray-800 font-medium'
+                    : 'text-gray-500 hover:text-white hover:bg-gray-800/60'
+                }`}
+              >
+                {enfant.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -162,24 +261,7 @@ export function AdminSidebar({ collapsed = false }: SidebarProps) {
                 </li>
               )}
               {group.items.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={`
-                      flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                      ${collapsed ? 'justify-center' : ''}
-                      ${
-                        isActive(item.href)
-                          ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
-                          : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                      }
-                    `}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    {item.icon}
-                    {!collapsed && <span className="flex-1">{item.label}</span>}
-                  </Link>
-                </li>
+                <NavEntry key={item.href} item={item} collapsed={collapsed} actif={isActive} />
               ))}
             </ul>
           ))}
@@ -346,23 +428,7 @@ export function AdminMobileSidebar({ open, onClose }: MobileSidebarProps) {
                   </li>
                 )}
                 {group.items.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`
-                        flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                        ${
-                          isActive(item.href)
-                            ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
-                            : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                        }
-                      `}
-                      onClick={onClose}
-                    >
-                      {item.icon}
-                      <span className="flex-1">{item.label}</span>
-                    </Link>
-                  </li>
+                  <NavEntry key={item.href} item={item} actif={isActive} onNavigate={onClose} />
                 ))}
               </ul>
             ))}

@@ -225,6 +225,45 @@ export default function AdminStripePage() {
             aide={`${partVolume.toFixed(1)} % du volume, pour ${eur(d.commission)} de revenu`}
           />
         </div>
+
+        {/* Le point qui rend le relevé Stripe déroutant : la moitié des
+            acomptes ne s'y trouve tout simplement pas. */}
+        <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+            Pourquoi si peu d&apos;acomptes portent des frais chez vous
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1.5 leading-snug">
+            Il existe deux tunnels de paiement, et un seul passe par votre compte.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 mt-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Mobile — paiement à destination
+              </p>
+              <p className="text-xl font-bold tabular-nums text-gray-900 dark:text-white mt-1">
+                {d.count} acomptes · {eur(d.volume)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">
+                Encaissés par la plateforme puis reversés. Ils apparaissent dans votre relevé et{' '}
+                <span className="text-red-600 dark:text-red-400 font-medium">{eur(d.processingFees)}</span> de
+                commission y est prélevée.
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Web — paiement direct
+              </p>
+              <p className="text-xl font-bold tabular-nums text-gray-900 dark:text-white mt-1">
+                {d.direct.count} paiements · {eur(d.direct.volume)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">
+                Encaissés directement sur le compte du salon. Invisibles de votre relevé, et leurs{' '}
+                {eur(d.direct.fees)} de commission sont supportés par le prestataire, pas par vous.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="mt-3">
           <Creuser href="/admin/stripe/transactions">Voir les acomptes ligne à ligne</Creuser>
         </div>
