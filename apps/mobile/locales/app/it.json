@@ -2289,7 +2289,8 @@
       "descriptionPlaceholder": "Descrivi la tua attività in poche righe...",
       "descriptionHelper": "Visibile sulla tua pagina pubblica",
       "themeLabel": "Colore della tua pagina",
-      "themeHelper": "Si applica alla tua pagina pubblica, al percorso di prenotazione e al widget: pulsanti, badge e link."
+      "themeHelper": "Si applica alla tua pagina pubblica, al percorso di prenotazione e al widget: pulsanti, badge e link.",
+      "themePreviewCta": "Prenota"
     },
     "portfolio": {
       "title": "Portfolio",

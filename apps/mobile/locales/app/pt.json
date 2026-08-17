@@ -2289,7 +2289,8 @@
       "descriptionPlaceholder": "Descreva a sua atividade em algumas linhas...",
       "descriptionHelper": "Visível na sua página pública",
       "themeLabel": "Cor da sua página",
-      "themeHelper": "Aplica-se à sua página pública, ao percurso de reserva e ao widget: botões, etiquetas e links."
+      "themeHelper": "Aplica-se à sua página pública, ao percurso de reserva e ao widget: botões, etiquetas e links.",
+      "themePreviewCta": "Reservar"
     },
     "portfolio": {
       "title": "Portefólio",

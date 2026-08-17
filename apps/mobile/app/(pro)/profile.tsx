@@ -1328,7 +1328,42 @@ export default function ProfileScreen() {
             <Text variant="h3" align="center" style={{ marginBottom: spacing.md }}>
               {t('proProfile.form.themeLabel')}
             </Text>
-            <ScrollView style={{ maxHeight: 460 }}>
+
+            {/* Aperçu : les pastilles montrent la gamme, pas le résultat. Un
+                professionnel qui choisit « Or » ne sait pas à quoi ressemblera
+                son bouton. Reprend les éléments réels de sa fiche. */}
+            {(() => {
+              const g = getProviderTheme(profileForm.themeId);
+              const c = (i: number) => `rgb(${g.ramp[i]})`;
+              return (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: spacing.sm,
+                    padding: spacing.md,
+                    marginBottom: spacing.md,
+                    borderRadius: radius.md,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <View style={{ backgroundColor: c(6), paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.sm }}>
+                    <Text variant="bodySmall" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+                      {t('proProfile.form.themePreviewCta')}
+                    </Text>
+                  </View>
+                  <View style={{ backgroundColor: c(1), paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 }}>
+                    <Text variant="caption" style={{ color: c(7), fontWeight: '700' }}>−20 %</Text>
+                  </View>
+                  <Text variant="bodySmall" style={{ fontWeight: '700' }}>45,00 €</Text>
+                  <Text variant="body" style={{ color: c(6), letterSpacing: 1 }}>★★★★★</Text>
+                </View>
+              );
+            })()}
+
+            <ScrollView style={{ maxHeight: 400 }}>
               {THEME_FAMILIES.map((famille) => {
                 const gammes = PROVIDER_THEMES.filter((g) => g.family === famille.id);
                 if (gammes.length === 0) return null;

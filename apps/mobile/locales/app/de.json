@@ -2289,7 +2289,8 @@
       "descriptionPlaceholder": "Beschreiben Sie Ihre Tätigkeit in ein paar Zeilen …",
       "descriptionHelper": "Sichtbar auf Ihrer öffentlichen Seite",
       "themeLabel": "Farbe Ihrer Seite",
-      "themeHelper": "Gilt für Ihre öffentliche Seite, Ihre Buchungsstrecke und Ihr Widget: Buttons, Badges und Links."
+      "themeHelper": "Gilt für Ihre öffentliche Seite, Ihre Buchungsstrecke und Ihr Widget: Buttons, Badges und Links.",
+      "themePreviewCta": "Buchen"
     },
     "portfolio": {
       "title": "Portfolio",

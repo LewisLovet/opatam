@@ -2289,7 +2289,8 @@
       "descriptionPlaceholder": "Describe your business in a few lines...",
       "descriptionHelper": "Visible on your public page",
       "themeLabel": "Your page colour",
-      "themeHelper": "Applies to your public page, your booking flow and your widget: buttons, badges and links."
+      "themeHelper": "Applies to your public page, your booking flow and your widget: buttons, badges and links.",
+      "themePreviewCta": "Book"
     },
     "portfolio": {
       "title": "Portfolio",

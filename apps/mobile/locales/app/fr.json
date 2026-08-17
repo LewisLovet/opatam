@@ -2289,7 +2289,8 @@
       "descriptionPlaceholder": "Décrivez votre activité en quelques lignes...",
       "descriptionHelper": "Visible sur votre page publique",
       "themeLabel": "Couleur de votre page",
-      "themeHelper": "Habille votre page publique, votre tunnel de réservation et votre widget : boutons, pastilles et liens."
+      "themeHelper": "Habille votre page publique, votre tunnel de réservation et votre widget : boutons, pastilles et liens.",
+      "themePreviewCta": "Réserver"
     },
     "portfolio": {
       "title": "Portfolio",
