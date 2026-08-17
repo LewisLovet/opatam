@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { generatePrimaryPalette, paletteToCss } from '@/lib/embed-palette';
-import { providerThemeVars } from '@/lib/providerTheme';
+import { providerThemeVars, providerThemeDarkVars } from '@/lib/providerTheme';
 
 interface EmbedShellProps {
   /** Hex color (with or without #) for the primary palette override. */
@@ -53,7 +53,19 @@ export function EmbedShell({
     // `paletteToCss` renvoie une RÈGLE complète (`:root { … }`) là où
     // `providerThemeVars` ne renvoie que des déclarations. Les injecter
     // telles quelles produisait un CSS invalide — sans erreur, sans effet.
-    return `:root{${providerThemeVars(themeId)}}`;
+    const base = `:root{${providerThemeVars(themeId)}}`;
+
+    // Les gammes trop sombres pour un fond sombre — le thème « Noir » — ont
+    // des nuances de remplacement. Sans elles, l'aplat primary-600 se confond
+    // avec le fond du widget et le bouton disparaît.
+    //
+    // Ciblé par la CLASSE `dark` et non par une media query : c'est ainsi que
+    // cet écran bascule, et pour les TROIS modes. `theme=dark` l'ajoute,
+    // `theme=light` la retire, `theme=auto` la suit du site hôte. Une media
+    // query aurait appliqué le correctif sur un widget forcé en clair chez un
+    // visiteur dont le système est sombre.
+    const dark = providerThemeDarkVars(themeId);
+    return dark ? `${base}:root.dark{${dark}}` : base;
   }, [primaryColor, themeId]);
 
   // Clamp radius to [0, 32]
