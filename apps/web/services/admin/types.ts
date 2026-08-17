@@ -250,32 +250,35 @@ export interface ProviderDetail {
  * Tous les montants sont en CENTIMES, comme partout ailleurs.
  */
 export interface StripeEconomics {
-  /** MRR net des abonnements actifs, centimes/mois. */
+  /** MRR des abonnements ACTIFS, net de remise. N'inclut JAMAIS les essais. */
   mrrActive: number;
-  /** MRR des essais en cours — du revenu à venir, pas encore encaissé. */
-  mrrTrialing: number;
+  /** Ce que les essais en cours rapporteraient s'ils convertissaient tous.
+   *  Ce n'est PAS un revenu : jamais additionné au MRR, affiché à part. */
+  pipelineTrials: number;
+  /** Manque à gagner des coupons sur les abonnements actifs. Un code à 100 %
+   *  donne un abonné actif qui ne rapporte rien. */
+  mrrForfeitedToCoupons: number;
   activeCount: number;
   trialingCount: number;
-  /** Ventilation par PRODUIT, pas par abonnement : un abonnement peut porter
-   *  un plan et le Pack sérénité, et les deux doivent apparaître séparément. */
+  /** Abonnements actifs ramenés à zéro par un coupon. */
+  freeByCouponCount: number;
+  /** Ventilation par LIGNE d'abonnement : un abonnement peut porter un plan
+   *  et le Pack sérénité, et les deux doivent apparaître séparément. */
   byProduct: { label: string; subscribers: number; mrr: number }[];
   months: {
     month: string;
-    /** Encaissé brut (abonnements + acomptes). */
     collected: number;
     processingFees: number;
     /** Négatif. */
     refunded: number;
-    /** Négatif : l'argent reversé aux prestataires, qui ne vous appartient pas. */
+    /** Négatif : argent reversé aux prestataires, qui ne vous appartient pas. */
     transferred: number;
     /** Négatif. */
     connectFees: number;
     /** Négatif. */
     billingFees: number;
   }[];
-  /** Frais Connect par nature (abonnement de compte, virement, volume). */
   connectByKind: { kind: string; amount: number }[];
-  /** L'économie de la fonctionnalité acompte, isolée. */
   deposits: {
     volume: number;
     count: number;
@@ -285,5 +288,17 @@ export interface StripeEconomics {
     commission: number;
   };
   accounts: { connected: number; chargesEnabled: number };
+  /**
+   * Ce qui n'entre pas — lu dans Firestore, invisible depuis Stripe seul :
+   * l'essai de l'application et l'accès offert n'y créent aucun abonnement.
+   */
+  funnel: {
+    realProviders: number;
+    paying: number;
+    trialActive: number;
+    /** Essai terminé, jamais converti. */
+    trialExpiredNeverPaid: number;
+    compAccess: { name: string; plan: string; until: string | null }[];
+  };
   generatedAt: string;
 }
