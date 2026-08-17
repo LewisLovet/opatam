@@ -1,104 +1,65 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { adminStatsService } from '@/services/admin';
-import type { StripeEconomics } from '@/services/admin/types';
+import { useMemo } from 'react';
+import Link from 'next/link';
 import { Loader } from '@/components/ui';
-import { AlertTriangle, Gift, TrendingDown, TrendingUp, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Gift, TrendingDown, TrendingUp, Users, Wallet } from 'lucide-react';
+import { useStripeData } from './StripeDataContext';
+import { Chiffre, Titre, eur } from './components';
 
-const eur = (cents: number) =>
-  (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-
-const moisCourt = (m: string) =>
-  new Date(m + '-01').toLocaleDateString('fr-FR', { month: 'short' });
-
-function Chiffre({
-  label, valeur, aide, ton = 'neutre', icone: Icone,
-}: {
-  label: string; valeur: string; aide?: string;
-  ton?: 'neutre' | 'positif' | 'negatif' | 'attention'; icone?: typeof Wallet;
-}) {
-  const couleur =
-    ton === 'positif' ? 'text-emerald-600 dark:text-emerald-400'
-    : ton === 'negatif' ? 'text-red-600 dark:text-red-400'
-    : ton === 'attention' ? 'text-amber-600 dark:text-amber-500'
-    : 'text-gray-900 dark:text-white';
+/** Renvoie vers la vue qui détaille le chiffre, avec le filtre déjà posé. */
+function Creuser({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-      <div className="flex items-center gap-2 mb-1">
-        {Icone && <Icone className="w-4 h-4 text-gray-400" />}
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
-      </div>
-      <p className={`text-2xl font-bold tabular-nums ${couleur}`}>{valeur}</p>
-      {aide && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">{aide}</p>}
-    </div>
-  );
-}
-
-function Titre({ children, note }: { children: React.ReactNode; note?: string }) {
-  return (
-    <div className="mb-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{children}</h2>
-      {note && <p className="text-xs text-gray-400 mt-1">{note}</p>}
-    </div>
-  );
-}
-
-/**
- * Évolution des frais, en barres empilées.
- *
- * Trois postes seulement, et la même couleur d'un mois à l'autre : ce qu'on
- * cherche à voir ici n'est pas le montant d'un mois mais la PENTE — les frais
- * Connect croissent avec le nombre de comptes, pas avec le chiffre d'affaires.
- */
-function EvolutionFrais({ months }: { months: StripeEconomics['months'] }) {
-  const total = (m: StripeEconomics['months'][number]) =>
-    m.processingFees - m.connectFees - m.billingFees;
-  const max = Math.max(1, ...months.map(total));
-
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-      <div className="flex items-end gap-3 h-48">
-        {months.map((m) => {
-          const t = total(m);
-          const h = (v: number) => `${(v / max) * 100}%`;
-          return (
-            <div key={m.month} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-              <span className="text-[11px] tabular-nums font-medium text-gray-700 dark:text-gray-300">
-                {t > 0 ? (t / 100).toFixed(2) : '—'}
-              </span>
-              <div className="w-full flex flex-col-reverse rounded-md overflow-hidden" style={{ height: h(t) }}>
-                <div className="bg-red-500" style={{ height: h(-m.connectFees) }} title="Connect" />
-                <div className="bg-orange-400" style={{ height: h(m.processingFees) }} title="Traitement" />
-                <div className="bg-amber-300" style={{ height: h(-m.billingFees) }} title="Billing" />
-              </div>
-              <span className="text-[11px] text-gray-500 dark:text-gray-400">{moisCourt(m.month)}</span>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex gap-4 mt-4 text-xs text-gray-500 dark:text-gray-400">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500" />Connect</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-400" />Traitement</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-300" />Billing</span>
-      </div>
-    </div>
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
+    >
+      {children}
+      <ArrowRight className="w-3 h-3" />
+    </Link>
   );
 }
 
 export default function AdminStripePage() {
-  const { user } = useAuth();
-  const [data, setData] = useState<StripeEconomics | null>(null);
-  const [erreur, setErreur] = useState<string | null>(null);
+  const { data, erreur } = useStripeData();
 
-  useEffect(() => {
-    if (!user?.id) return;
-    adminStatsService.getStripeEconomics(user.id).then(setData).catch((e) => setErreur(e.message));
-  }, [user?.id]);
+  /**
+   * Le compte de résultat de la période.
+   *
+   * Séparer l'acompte de l'encaissement est le geste qui rend le relevé
+   * lisible : les deux arrivent sur le même compte, mais l'un vous appartient
+   * et l'autre traverse pour aller au salon. Les additionner faisait croire à
+   * un chiffre d'affaires trois fois supérieur au réel.
+   */
+  const bilan = useMemo(() => {
+    if (!data) return null;
+    let revenu = 0;
+    let acomptes = 0;
+    let rembourse = 0;
+    let rembourseAcompte = 0;
+    for (const t of data.transactions) {
+      if (t.category === 'revenu') revenu += t.amount;
+      else if (t.category === 'acompte') acomptes += t.amount;
+      else if (t.category === 'remboursement') {
+        // Un acompte remboursé sort du bilan comme il y est entré : par la
+        // porte de service. Le compter ici retrancherait du résultat un
+        // argent qui n'y avait jamais été ajouté.
+        if ((t.description ?? '').includes('Acompte')) rembourseAcompte += t.amount;
+        else rembourse += t.amount;
+      }
+    }
+    const frais = data.months.reduce(
+      (s, m) => s + m.processingFees - m.connectFees - m.billingFees,
+      0,
+    );
+    return {
+      revenu, acomptes, rembourse, rembourseAcompte, frais,
+      resultat: revenu + rembourse - frais,
+    };
+  }, [data]);
 
-  if (erreur) return <p className="text-red-600 p-6">{erreur}</p>;
-  if (!data) return <Loader />;
+  if (erreur) return <p className="text-red-600">{erreur}</p>;
+  if (!data || !bilan) return <Loader />;
 
   const d = data.deposits;
   const coutAcomptes = d.processingFees - d.connectFees;
@@ -118,18 +79,62 @@ export default function AdminStripePage() {
   const sansFin = f.compAccess.filter((c) => !c.until).length;
 
   return (
-    <div className="space-y-10 p-6 max-w-6xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Stripe</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Ce qui entre, ce que ça coûte, et ce qui n&apos;entre pas.
+    <div className="space-y-10">
+      {/* ── Le résultat, en une ligne ──────────────────────────────────── */}
+      <section>
+        <Titre note="Sur toute la période couverte par le relevé. Les acomptes en sont exclus : ils ne vous appartiennent pas.">
+          Résultat de la période
+        </Titre>
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <table className="w-full text-sm">
+            <tbody>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="px-4 py-3 text-gray-700 dark:text-gray-300">Encaissé (abonnements)</td>
+                <td className="px-4 py-3 text-right tabular-nums font-medium text-emerald-600 dark:text-emerald-400">
+                  {eur(bilan.revenu)}
+                </td>
+                <td className="px-4 py-3 text-right w-40"><Creuser href="/admin/stripe/revenus">Détail</Creuser></td>
+              </tr>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="px-4 py-3 text-gray-700 dark:text-gray-300">Remboursements d&apos;abonnement</td>
+                <td className="px-4 py-3 text-right tabular-nums font-medium text-red-600 dark:text-red-400">
+                  {eur(bilan.rembourse)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <Creuser href="/admin/stripe/transactions">Voir les lignes</Creuser>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="px-4 py-3 text-gray-700 dark:text-gray-300">Frais Stripe (traitement, Connect, Billing)</td>
+                <td className="px-4 py-3 text-right tabular-nums font-medium text-red-600 dark:text-red-400">
+                  {eur(-bilan.frais)}
+                </td>
+                <td className="px-4 py-3 text-right"><Creuser href="/admin/stripe/frais">Détail</Creuser></td>
+              </tr>
+              <tr className="bg-gray-50 dark:bg-gray-800/50">
+                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">Résultat</td>
+                <td className={`px-4 py-3 text-right tabular-nums text-lg font-bold ${
+                  bilan.resultat >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                }`}>
+                  {eur(bilan.resultat)}
+                </td>
+                <td />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-snug">
+          Hors bilan : {eur(bilan.acomptes)} d&apos;acomptes encaissés
+          {bilan.rembourseAcompte !== 0 && <> (dont {eur(-bilan.rembourseAcompte)} remboursés aux clientes)</>}, puis
+          reversés aux salons. Cet argent traverse le compte sans jamais vous appartenir — c&apos;est lui qui rendait
+          le relevé Stripe illisible. Leur coût de traitement, lui, reste à votre charge : voir plus bas.
         </p>
-      </div>
+      </section>
 
-      {/* ── Revenu réel ───────────────────────────────────────────────── */}
+      {/* ── Le récurrent ──────────────────────────────────────────────── */}
       <section>
         <Titre note="Un essai n'est pas un revenu, un code à 100 % non plus. Ni l'un ni l'autre n'entre dans le MRR.">
-          Revenu récurrent réel
+          Revenu récurrent
         </Titre>
         <div className="grid gap-4 sm:grid-cols-4">
           <Chiffre
@@ -153,37 +158,18 @@ export default function AdminStripePage() {
               : undefined}
           />
         </div>
-
-        <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
-              <tr>
-                <th className="text-left font-medium px-4 py-2">Produit</th>
-                <th className="text-right font-medium px-4 py-2">Abonnés</th>
-                <th className="text-right font-medium px-4 py-2">MRR net</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.byProduct.map((p) => (
-                <tr key={p.label} className="border-t border-gray-100 dark:border-gray-800">
-                  <td className="px-4 py-2 text-gray-900 dark:text-white">{p.label}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-600 dark:text-gray-300">{p.subscribers}</td>
-                  <td className="px-4 py-2 text-right tabular-nums font-medium text-gray-900 dark:text-white">{eur(p.mrr)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-3 flex gap-4">
+          <Creuser href="/admin/stripe/revenus">Répartition par produit et courbe mensuelle</Creuser>
+          <Creuser href="/admin/stripe/frais">Évolution des frais</Creuser>
         </div>
       </section>
 
-      {/* ── Ce qu'on paye ─────────────────────────────────────────────── */}
+      {/* ── Les comptes connectés ─────────────────────────────────────── */}
       <section>
-        <Titre note="La pente compte plus que le montant : les frais Connect suivent le nombre de comptes actifs, pas le chiffre d'affaires.">
-          Ce que l&apos;on paye, mois par mois
+        <Titre note="Ce poste suit le nombre de comptes actifs, pas le chiffre d'affaires : il augmente quand vous réussissez à recruter.">
+          Comptes connectés
         </Titre>
-        <EvolutionFrais months={data.months} />
-
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
@@ -204,9 +190,8 @@ export default function AdminStripePage() {
           </div>
 
           <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3 text-sm">
-            <p className="font-semibold text-gray-900 dark:text-white">Comptes connectés</p>
-            <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Reliés</span><span className="tabular-nums">{data.accounts.connected}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Opérationnels</span><span className="tabular-nums">{data.accounts.chargesEnabled}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Reliés</span><span className="tabular-nums text-gray-900 dark:text-white">{data.accounts.connected}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Opérationnels</span><span className="tabular-nums text-gray-900 dark:text-white">{data.accounts.chargesEnabled}</span></div>
             <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Facturés ce mois</span><span className="tabular-nums text-red-600 dark:text-red-400">{comptesFactures}</span></div>
             <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug pt-2 border-t border-gray-100 dark:border-gray-800">
               Stripe facture 2 €/mois par compte ayant eu de l&apos;activité. Si les {data.accounts.chargesEnabled} comptes
@@ -214,39 +199,6 @@ export default function AdminStripePage() {
             </p>
           </div>
         </div>
-
-        <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto">
-          <table className="w-full text-sm min-w-[720px]">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
-              <tr>
-                <th className="text-left font-medium px-4 py-2">Mois</th>
-                <th className="text-right font-medium px-4 py-2">Encaissé</th>
-                <th className="text-right font-medium px-4 py-2">Traitement</th>
-                <th className="text-right font-medium px-4 py-2">Connect</th>
-                <th className="text-right font-medium px-4 py-2">Billing</th>
-                <th className="text-right font-medium px-4 py-2">Remboursé</th>
-                <th className="text-right font-medium px-4 py-2">Reversé aux pros</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.months.map((m) => (
-                <tr key={m.month} className="border-t border-gray-100 dark:border-gray-800">
-                  <td className="px-4 py-2 text-gray-900 dark:text-white">{m.month}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">{eur(m.collected)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-red-600 dark:text-red-400">{eur(-m.processingFees)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-red-600 dark:text-red-400">{eur(m.connectFees)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-red-600 dark:text-red-400">{eur(m.billingFees)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-red-600 dark:text-red-400">{eur(m.refunded)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-500 dark:text-gray-400">{eur(m.transferred)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-snug">
-          « Reversé aux pros » n&apos;est pas une charge : c&apos;est l&apos;argent des clientes qui transite par votre
-          compte pour aller au salon. C&apos;est la colonne qui fait croire à des pertes.
-        </p>
       </section>
 
       {/* ── L'acompte ─────────────────────────────────────────────────── */}
@@ -272,6 +224,9 @@ export default function AdminStripePage() {
             label="Coût total" valeur={eur(coutAcomptes)} ton="negatif"
             aide={`${partVolume.toFixed(1)} % du volume, pour ${eur(d.commission)} de revenu`}
           />
+        </div>
+        <div className="mt-3">
+          <Creuser href="/admin/stripe/transactions">Voir les acomptes ligne à ligne</Creuser>
         </div>
       </section>
 

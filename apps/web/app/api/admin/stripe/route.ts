@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { getStripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
-import type { StripeEconomics } from '@/services/admin/types';
+import type { StripeEconomics, StripeTx } from '@/services/admin/types';
 
 /**
  * Économie Stripe complète : ce qui entre, ce qui sort, et ce qui n'entre pas.
@@ -67,6 +67,41 @@ function applyCoupon(monthlyCents: number, coupon: Stripe.Coupon | null): number
   if (coupon.percent_off) return monthlyCents * (1 - coupon.percent_off / 100);
   if (coupon.amount_off) return Math.max(0, monthlyCents - coupon.amount_off);
   return monthlyCents;
+}
+
+
+/**
+ * Le poste comptable d'une transaction, tel qu'on veut le lire.
+ *
+ * Stripe donne un `type` technique (charge, payment, transfer…) qui ne dit
+ * pas si l'argent est à nous. Cette classification-ci répond à la seule
+ * question utile : est-ce un revenu, de l'argent qui transite, ou un coût ?
+ */
+function classify(tx: Stripe.BalanceTransaction): StripeTx['category'] {
+  const desc = tx.description ?? '';
+  switch (tx.type) {
+    case 'charge':
+    case 'payment':
+      return desc.includes('Acompte') ? 'acompte' : 'revenu';
+    case 'refund':
+    case 'payment_refund':
+      return 'remboursement';
+    case 'transfer':
+    case 'transfer_refund':
+      return 'reversement';
+    case 'payout':
+      return 'virement';
+    // Fonds immobilisés par Stripe le temps qu'un compte connecté se
+    // régularise. Ce n'est ni un revenu ni un frais : l'argent revient.
+    // Sans cette catégorie, ces lignes tombaient dans « Autre » et
+    // laissaient croire à un coût de plus.
+    case 'reserve_transaction':
+      return 'reserve';
+    case 'stripe_fee':
+      return desc.startsWith('Connect') ? 'frais-connect' : 'frais-billing';
+    default:
+      return 'autre';
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -146,6 +181,7 @@ export async function GET(request: NextRequest) {
     let depositVolume = 0;
     let depositProcessingFees = 0;
     let depositCount = 0;
+    const transactions: StripeTx[] = [];
 
     for await (const tx of stripe.balanceTransactions.list({ limit: 100 })) {
       const month = new Date(tx.created * 1000).toISOString().slice(0, 7);
@@ -155,6 +191,21 @@ export async function GET(request: NextRequest) {
       };
       const m = months[month];
       const isDeposit = (tx.description ?? '').includes('Acompte');
+
+      // Chaque ligne est conservée telle quelle : c'est ce qui permet de
+      // remonter d'un total à la transaction qui l'a produit. Le volume est
+      // faible (une centaine), donc tout est envoyé d'un coup et filtré à
+      // l'écran — un aller-retour par filtre serait plus lent et plus cher.
+      transactions.push({
+        id: tx.id,
+        created: new Date(tx.created * 1000).toISOString(),
+        type: tx.type,
+        category: classify(tx),
+        description: tx.description ?? null,
+        amount: tx.amount,
+        fee: tx.fee,
+        net: tx.net,
+      });
 
       switch (tx.type) {
         case 'charge':
@@ -257,6 +308,7 @@ export async function GET(request: NextRequest) {
         commission: 0,
       },
       accounts: { connected, chargesEnabled },
+      transactions: transactions.sort((a, b) => b.created.localeCompare(a.created)),
       funnel: {
         realProviders,
         paying,

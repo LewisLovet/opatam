@@ -249,6 +249,34 @@ export interface ProviderDetail {
  *
  * Tous les montants sont en CENTIMES, comme partout ailleurs.
  */
+/**
+ * Une ligne du relevé Stripe, conservée telle quelle.
+ *
+ * C'est la brique de traçabilité : tout total affiché doit pouvoir être
+ * rouvert jusqu'aux transactions qui le composent, sinon un chiffre qui
+ * surprend reste invérifiable.
+ */
+export interface StripeTx {
+  id: string;
+  /** ISO. */
+  created: string;
+  /** Type technique Stripe (charge, transfer, stripe_fee…). */
+  type: string;
+  /**
+   * Poste comptable tel qu'on veut le lire. Le type Stripe ne dit pas si
+   * l'argent nous appartient : un `transfer` est de l'argent qui transite,
+   * un `charge` peut être un revenu ou un acompte selon sa description.
+   */
+  category:
+    | 'revenu' | 'acompte' | 'frais-connect' | 'frais-billing'
+    | 'remboursement' | 'reversement' | 'virement' | 'reserve' | 'autre';
+  description: string | null;
+  amount: number;
+  /** Frais de traitement prélevés SUR cette transaction. */
+  fee: number;
+  net: number;
+}
+
 export interface StripeEconomics {
   /** MRR des abonnements ACTIFS, net de remise. N'inclut JAMAIS les essais. */
   mrrActive: number;
@@ -288,6 +316,8 @@ export interface StripeEconomics {
     commission: number;
   };
   accounts: { connected: number; chargesEnabled: number };
+  /** Le relevé complet, du plus récent au plus ancien. */
+  transactions: StripeTx[];
   /**
    * Ce qui n'entre pas — lu dans Firestore, invisible depuis Stripe seul :
    * l'essai de l'application et l'accès offert n'y créent aucun abonnement.
