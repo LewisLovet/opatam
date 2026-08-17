@@ -114,8 +114,12 @@ export async function POST(request: NextRequest) {
         // moyenne passe de 10,1 jours (lundi, délai 7) à 5,9 jours
         // (vendredi, délai minimum), pour le même nombre de virements.
         //
-        // C'est un DÉFAUT, pas un verrou : un compte Express garde la main sur
-        // ce réglage depuis son propre tableau de bord Stripe.
+        // La cadence est décidée ICI, et nulle part ailleurs. Un compte Express
+        // ne choisit PAS son intervalle : son tableau de bord ne propose que
+        // « automatique ou manuel », et seulement si la plateforme a activé
+        // cette fonctionnalité. C'est Opatam qui porte la responsabilité des
+        // litiges (`losses.payments: 'application'`), donc c'est Opatam qui
+        // règle le calendrier de versement.
         settings: {
           payouts: {
             schedule: { interval: 'weekly', weekly_anchor: 'friday', delay_days: 'minimum' },
