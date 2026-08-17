@@ -7,6 +7,7 @@ import { providerService } from '@booking-app/firebase';
 import { CATEGORIES, APP_CONFIG } from '@booking-app/shared';
 import { Loader2, ExternalLink, Copy, Check } from 'lucide-react';
 import { ThemePicker } from '@/components/theme/ThemePicker';
+import { ThemePreview } from '@/components/theme/ThemePreview';
 
 interface ProfileFormProps {
   onSuccess?: () => void;
@@ -148,6 +149,11 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
           Elle habille votre page publique, votre tunnel de réservation et votre
           widget : boutons, pastilles et liens. Le reste de la page ne bouge pas.
         </p>
+        {/* L'aperçu est AU-DESSUS de la grille : le professionnel voit sa
+            couleur sans que la liste des gammes le repousse hors de l'écran. */}
+        <div className="mb-4">
+          <ThemePreview themeId={formData.themeId} />
+        </div>
         <ThemePicker
           value={formData.themeId}
           onChange={(themeId) => {
