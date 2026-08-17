@@ -155,6 +155,7 @@ export {
   userService,
   // Provider
   ProviderService,
+  ActiveSubscriptionError,
   providerService,
   // Member
   MemberService,

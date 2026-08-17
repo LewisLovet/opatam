@@ -276,6 +276,26 @@ export async function DELETE(
     const providerData = providerDoc.data()!;
     const userId = providerData.userId;
 
+    // Un abonnement encore facturable interdit la suppression.
+    //
+    // Le document qu'on va détruire porte `stripeSubscriptionId` : une fois
+    // parti, plus rien ne relie le client Stripe à un compte, et la
+    // facturation continue en silence. Deux abonnements actifs ont déjà
+    // survécu à leur compte de cette manière. On résilie d'abord.
+    const statuts = [providerData.subscription?.status, providerData.serenity?.status];
+    if (statuts.some((s) => s === 'active' || s === 'past_due')) {
+      return NextResponse.json(
+        {
+          error:
+            'Ce prestataire a un abonnement actif. Résiliez-le dans Stripe avant de supprimer le compte, sinon la facturation continuera sans qu’aucun compte n’y corresponde.',
+          subscriptionStatus: providerData.subscription?.status ?? null,
+          serenityStatus: providerData.serenity?.status ?? null,
+          stripeCustomerId: providerData.subscription?.stripeCustomerId ?? null,
+        },
+        { status: 409 }
+      );
+    }
+
     // 1. Delete all provider subcollections in parallel
     const subcollections = ['members', 'locations', 'services', 'availabilities', 'blockedSlots'];
     await Promise.all(

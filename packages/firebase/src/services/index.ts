@@ -5,7 +5,7 @@ export { AuthService, authService } from './auth.service';
 export { UserService, userService } from './user.service';
 
 // Provider Service
-export { ProviderService, providerService } from './provider.service';
+export { ProviderService, providerService, ActiveSubscriptionError } from './provider.service';
 
 // Member Service
 export { MemberService, memberService } from './member.service';

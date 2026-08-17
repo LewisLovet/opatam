@@ -11,6 +11,7 @@ import {
   deleteCurrentUser,
   providerService,
   userRepository,
+  ActiveSubscriptionError,
 } from '@booking-app/firebase';
 import { Loader2, Mail, Lock, AlertTriangle, Info, Trash2, X } from 'lucide-react';
 
@@ -178,8 +179,12 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
       // Delete provider data if exists
       try {
         await providerService.deleteProvider(user.id);
-      } catch {
-        // Provider might not exist, that's ok
+      } catch (e) {
+        // « Le prestataire n'existait pas » est sans conséquence. Un abonnement
+        // encore facturable, non : le laisser passer supprimerait le compte en
+        // laissant Stripe débiter dans le vide, sans plus aucun moyen de
+        // relier le client à quoi que ce soit.
+        if (e instanceof ActiveSubscriptionError) throw e;
       }
 
       // Delete user document

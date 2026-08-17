@@ -42,6 +42,23 @@ interface SearchFilters {
 // Durée du trial en jours
 const TRIAL_DURATION_DAYS = 30;
 
+/**
+ * La suppression est refusée : un abonnement peut encore facturer.
+ *
+ * Classe dédiée et non `Error` nue, parce que les appelants entourent
+ * `deleteProvider` d'un `catch` qui absorbe « le prestataire n'existait pas ».
+ * Sans type reconnaissable, ce refus-ci serait avalé avec les autres et la
+ * suppression se poursuivrait — exactement ce qu'on cherche à empêcher.
+ */
+export class ActiveSubscriptionError extends Error {
+  constructor() {
+    super(
+      'Un abonnement est encore actif sur ce compte. Résiliez-le depuis « Gérer mon abonnement » avant de supprimer le compte, sans quoi la facturation continuerait.'
+    );
+    this.name = 'ActiveSubscriptionError';
+  }
+}
+
 export class ProviderService {
   /**
    * Create a new provider for a user
@@ -570,6 +587,29 @@ export class ProviderService {
   }
 
   /**
+   * Refuse la suppression tant qu'un abonnement peut encore facturer.
+   *
+   * POURQUOI C'EST UN REFUS ET NON UNE RÉSILIATION AUTOMATIQUE : le document
+   * qu'on s'apprête à détruire est le SEUL endroit où vit
+   * `stripeSubscriptionId`. S'il part et que la résiliation échoue — réseau,
+   * clé, abonnement déjà migré — plus personne ne sait qu'un client continue
+   * d'être débité. C'est exactement ce qui s'est produit : deux abonnements
+   * actifs ont survécu à leur compte, dont un à 19,90 €/mois pendant deux mois.
+   *
+   * Le prestataire résilie donc d'abord, depuis son espace de facturation, et
+   * supprime ensuite. L'ordre inverse n'a aucun rattrapage possible.
+   */
+  private assertNoLiveSubscription(provider: Provider): void {
+    const facturables: Array<string | null | undefined> = [
+      provider.subscription?.status,
+      provider.serenity?.status,
+    ];
+    // `past_due` compte : l'abonnement n'est pas résilié, Stripe réessaie.
+    const vivant = facturables.some((s) => s === 'active' || s === 'past_due');
+    if (vivant) throw new ActiveSubscriptionError();
+  }
+
+  /**
    * Delete provider and all associated data
    * WARNING: This is an irreversible operation
    * Deletes: Members, Locations, Services, Availabilities, BlockedSlots
@@ -580,6 +620,8 @@ export class ProviderService {
     if (!provider) {
       throw new Error('Prestataire non trouvé');
     }
+
+    this.assertNoLiveSubscription(provider);
 
     // Delete all subcollections in parallel
     const [members, locations, services, availabilities, blockedSlots] = await Promise.all([
