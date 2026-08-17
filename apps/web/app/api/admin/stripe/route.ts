@@ -193,6 +193,7 @@ export async function GET(request: NextRequest) {
     const connectByKind: Record<string, number> = {};
     let depositVolume = 0;
     let depositProcessingFees = 0;
+    let depositFeesRecovered = 0;
     let depositCount = 0;
     const transactions: StripeTx[] = [];
 
@@ -204,7 +205,12 @@ export async function GET(request: NextRequest) {
       return months[key];
     };
 
-    for await (const tx of stripe.balanceTransactions.list({ limit: 100 })) {
+    // `source` étendu : sur un acompte, la charge porte `transfer_data.amount`,
+    // donc le montant reversé au salon se lit sans un appel de plus.
+    for await (const tx of stripe.balanceTransactions.list({
+      limit: 100,
+      expand: ['data.source'],
+    })) {
       const month = new Date(tx.created * 1000).toISOString().slice(0, 7);
       const m = bucket(month);
       const isDeposit = (tx.description ?? '').includes('Acompte');
@@ -235,6 +241,16 @@ export async function GET(request: NextRequest) {
             depositVolume += tx.amount;
             depositProcessingFees += tx.fee;
             depositCount++;
+
+            // Ce que la commission NE vous coûte pas, parce qu'elle est
+            // retenue sur le versement au salon (depuis le 5 août).
+            // Le relevé continue de l'afficher en frais : Stripe la prélève
+            // bien sur votre compte, elle vous est rendue ailleurs.
+            const charge = tx.source as Stripe.Charge | null;
+            const reverse = charge?.transfer_data?.amount;
+            if (typeof reverse === 'number') {
+              depositFeesRecovered += Math.max(0, Math.min(tx.fee, tx.amount - reverse));
+            }
           }
           break;
         case 'refund':
@@ -360,6 +376,7 @@ export async function GET(request: NextRequest) {
         volume: depositVolume,
         count: depositCount,
         processingFees: depositProcessingFees,
+        feesRecovered: depositFeesRecovered,
         connectFees: connectFeesTotal,
         commission: 0,
         direct,

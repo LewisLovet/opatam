@@ -314,6 +314,13 @@ export interface StripeEconomics {
     volume: number;
     count: number;
     processingFees: number;
+    /**
+     * La part de `processingFees` retenue sur le versement au salon, donc
+     * effectivement NON supportée par la plateforme. Le relevé continue
+     * d'afficher le frais entier : Stripe le prélève bien sur votre compte,
+     * il vous est rendu ailleurs.
+     */
+    feesRecovered: number;
     connectFees: number;
     /** Commission plateforme perçue. Zéro aujourd'hui. */
     commission: number;

@@ -87,6 +87,7 @@ export default function FraisPage() {
 
   const cumul = totaux.reduce((s, t) => s + t.total, 0);
   const dernier = totaux.at(-1);
+  const d = data.deposits;
 
   const selectionLisible = [
     moisChoisi ? moisCourt(moisChoisi) : null,
@@ -108,6 +109,58 @@ export default function FraisPage() {
             aide="frais du dernier mois rapportés au MRR encaissable"
           />
         </div>
+      </section>
+
+      {/*
+        La question à laquelle tout le reste de la page ne répondait pas :
+        ces frais sont-ils à votre charge ? Stripe les prélève tous sur votre
+        compte — donc oui, ils sortent. Mais une partie vous revient par la
+        retenue sur le versement au salon, et cette compensation n'est pas une
+        ligne de frais : elle n'apparaît nulle part ailleurs.
+      */}
+      <section>
+        <Titre>Est-ce que vous les payez ?</Titre>
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <table className="w-full text-sm">
+            <tbody>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="px-4 py-3">
+                  <p className="text-gray-900 dark:text-white">Prélevé par Stripe sur votre compte</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Le total des trois postes ci-dessus. Cet argent sort bien.
+                  </p>
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
+                  {eur(-cumul)}
+                </td>
+              </tr>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="px-4 py-3">
+                  <p className="text-gray-900 dark:text-white">Récupéré sur les versements aux salons</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Depuis le 5 août, la commission d&apos;un acompte est retenue sur ce qui est reversé au
+                    salon. Elle reste comptée en frais ci-dessus, mais elle vous revient.
+                  </p>
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                  +{eur(d.feesRecovered)}
+                </td>
+              </tr>
+              <tr className="bg-gray-50 dark:bg-gray-800/50">
+                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
+                  Coût réellement supporté
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums text-lg font-bold text-red-600 dark:text-red-400 whitespace-nowrap">
+                  {eur(-(cumul - d.feesRecovered))}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-snug">
+          Les acomptes du tunnel web n&apos;entrent dans aucune de ces lignes : encaissés directement sur le
+          compte du salon, leur commission ne transite jamais par vous.
+        </p>
       </section>
 
       {/* ── Un poste, une explication, une courbe ─────────────────────── */}
