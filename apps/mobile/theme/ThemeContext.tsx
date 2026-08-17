@@ -7,6 +7,7 @@ import React, {
   createContext,
   useContext,
   useState,
+  useEffect,
   useCallback,
   useMemo,
   ReactNode,
@@ -161,6 +162,29 @@ export function ThemeProvider({
     ...defaultConfig,
     ...initialConfig,
   });
+
+  /**
+   * `useState` ne lit son argument QU'AU MONTAGE : une `initialConfig` qui
+   * change ensuite était purement et simplement ignorée.
+   *
+   * Ça ne se voyait pas tant que le seul fournisseur était celui de la racine,
+   * monté sans configuration. La couleur par prestataire l'a révélé : au
+   * premier rendu la fiche n'est pas encore chargée, donc la gamme vaut
+   * « bleu », et quand les données arrivent le contexte ne relisait jamais la
+   * prop — la fiche restait bleue pour toujours.
+   *
+   * On resynchronise plutôt que de remonter le fournisseur avec une `key` :
+   * remonter détruirait tout le sous-arbre, donc la position de défilement et
+   * les cartes dépliées, à chaque arrivée des données.
+   *
+   * La comparaison se fait sur la valeur sérialisée, sinon un objet littéral
+   * recréé à chaque rendu par l'appelant relancerait l'effet en boucle.
+   */
+  const configKey = JSON.stringify(initialConfig);
+  useEffect(() => {
+    setConfig({ ...defaultConfig, ...initialConfig });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configKey]);
 
   const updateConfig = useCallback((newConfig: Partial<ThemeConfig>) => {
     setConfig((prev) => ({ ...prev, ...newConfig }));
