@@ -1035,20 +1035,55 @@ export class SchedulingService {
       return true;
     }
 
-    // Check time range — en minutes, avec normalisation d'une fin à "00:00"
-    // (= minuit = 1440). Un créneau réservable peut désormais finir à minuit
-    // (ex. 23:00→00:00) : une comparaison de strings laisserait passer une pause
-    // (« 00:00 » < « 23:45 ») → faux négatif.
-    if (blockedSlot.startTime && blockedSlot.endTime) {
-      const slotStartMin = this.hhmmToMinutes(this.formatTime(start));
-      const slotEndMin = this.endMin(this.formatTime(end));
-      const blockStartMin = this.hhmmToMinutes(blockedSlot.startTime);
-      const blockEndMin = this.endMin(blockedSlot.endTime);
-
-      return slotStartMin < blockEndMin && blockStartMin < slotEndMin;
+    if (!blockedSlot.startTime || !blockedSlot.endTime) {
+      return false;
     }
 
-    return false;
+    // ── Une période sur PLUSIEURS jours est continue, pas répétée ──────────
+    //
+    // Les heures d'un blocage multi-jours décrivent un DÉBUT le premier jour
+    // et une FIN le dernier, pas une plage rejouée chaque matin. C'est
+    // d'ailleurs ce que la création autorise explicitement : « different days
+    // allow any time combination » (voir `blockPeriod`), et un test de
+    // `isBlockedPeriodValid` fige 18:00 → 09:00 sur deux jours comme valide.
+    //
+    // La lecture, elle, appliquait la même fenêtre à chaque jour. Sur un
+    // blocage 20:36 → 14:00 la fin tombait AVANT le début : la comparaison
+    // `slotStartMin < 840 && 1236 < slotEndMin` ne pouvait jamais être vraie,
+    // et le blocage n'écartait aucun créneau. Un professionnel voyait sa
+    // période barrée dans son agenda pendant que les clientes réservaient
+    // dedans — constaté chez Grs.hair du 18 au 22 août 2026.
+    const slotStartMin = this.hhmmToMinutes(this.formatTime(start));
+    const slotEndMin = this.endMin(this.formatTime(end));
+    const isFirstDay = slotDate.getTime() === blockStart.getTime();
+    const blockEndDay = new Date(blockedSlot.endDate);
+    blockEndDay.setHours(0, 0, 0, 0);
+    const isLastDay = slotDate.getTime() === blockEndDay.getTime();
+
+    // Minuit vaut 1440 : un créneau peut finir à « 00:00 » (23:00→00:00), et
+    // une comparaison de chaînes y laisserait passer une pause (« 00:00 » <
+    // « 23:45 ») → faux négatif.
+    let blockStartMin: number;
+    let blockEndMin: number;
+
+    if (isFirstDay && isLastDay) {
+      // Période d'un seul jour : la fenêtre saisie, telle quelle.
+      blockStartMin = this.hhmmToMinutes(blockedSlot.startTime);
+      blockEndMin = this.endMin(blockedSlot.endTime);
+    } else if (isFirstDay) {
+      // Premier jour : de l'heure de début jusqu'à minuit.
+      blockStartMin = this.hhmmToMinutes(blockedSlot.startTime);
+      blockEndMin = 1440;
+    } else if (isLastDay) {
+      // Dernier jour : de minuit à l'heure de fin.
+      blockStartMin = 0;
+      blockEndMin = this.endMin(blockedSlot.endTime);
+    } else {
+      // Jour intercalaire : entièrement pris.
+      return true;
+    }
+
+    return slotStartMin < blockEndMin && blockStartMin < slotEndMin;
   }
 
   /**
