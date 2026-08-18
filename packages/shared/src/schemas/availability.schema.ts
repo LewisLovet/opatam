@@ -86,6 +86,10 @@ export const blockedSlotSchema = z.object({
     .regex(timeRegex, { message: 'Format d\'heure invalide (HH:mm)' })
     .nullable()
     .optional(),
+  // Lecture des heures sur une période multi-jours. Doit être DÉCLARÉ ici :
+  // zod retire les clés inconnues sans rien signaler, et le champ n'arriverait
+  // jamais en base — c'est déjà arrivé à `affiliateCode` et à `themeId`.
+  spanMode: z.enum(['continuous', 'daily']).optional(),
   reason: z
     .string()
     .max(200, { message: 'La raison ne peut pas dépasser 200 caractères' })

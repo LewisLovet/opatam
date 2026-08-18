@@ -2942,7 +2942,18 @@
     "startTime": "Hora de início",
     "endTime": "Hora de fim",
     "updated": "Período bloqueado atualizado",
-    "endBeforeStart": "A hora de fim deve ser posterior à hora de início."
+    "endBeforeStart": "A hora de fim deve ser posterior à hora de início.",
+    "spanMode": {
+      "label": "Neste período, estes horários significam",
+      "continuous": {
+        "title": "Uma ausência contínua",
+        "detail": "De {{from}} às {{start}} até {{to}} às {{end}}, sem interrupção — noites e dias inteiros incluídos."
+      },
+      "daily": {
+        "title": "Todos os dias, a estas horas",
+        "detail": "Das {{start}} às {{end}} todos os dias, de {{from}} a {{to}}. O resto do dia continua reservável."
+      }
+    }
   },
   "proBlockedSlots": {
     "title": "Horários bloqueados",

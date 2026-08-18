@@ -2942,7 +2942,18 @@
     "startTime": "Start time",
     "endTime": "End time",
     "updated": "Blocked period updated",
-    "endBeforeStart": "The end time must be after the start time."
+    "endBeforeStart": "The end time must be after the start time.",
+    "spanMode": {
+      "label": "Over this period, these times mean",
+      "continuous": {
+        "title": "One continuous absence",
+        "detail": "From {{from}} at {{start}} until {{to}} at {{end}}, without interruption — nights and full days included."
+      },
+      "daily": {
+        "title": "Every day, at these times",
+        "detail": "From {{start}} to {{end}} every day, from {{from}} to {{to}}. The rest of the day stays bookable."
+      }
+    }
   },
   "proBlockedSlots": {
     "title": "Blocked slots",

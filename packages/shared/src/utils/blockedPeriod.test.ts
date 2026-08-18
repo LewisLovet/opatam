@@ -73,3 +73,32 @@ describe('isBlockedPeriodValid — autres cas', () => {
     ).toBe(false);
   });
 });
+
+describe('spanMode', () => {
+  it('accepte une inversion sur une période continue (départ vendredi soir, retour lundi matin)', () => {
+    expect(
+      isBlockedPeriodValid({ allDay: false, sameDay: false, startTime: '18:00', endTime: '09:00' }),
+    ).toBe(true);
+    expect(
+      isBlockedPeriodValid({
+        allDay: false, sameDay: false, startTime: '18:00', endTime: '09:00', spanMode: 'continuous',
+      }),
+    ).toBe(true);
+  });
+
+  it('refuse une inversion quand la tranche est rejouée chaque jour', () => {
+    expect(
+      isBlockedPeriodValid({
+        allDay: false, sameDay: false, startTime: '18:00', endTime: '09:00', spanMode: 'daily',
+      }),
+    ).toBe(false);
+  });
+
+  it('accepte une tranche quotidienne cohérente', () => {
+    expect(
+      isBlockedPeriodValid({
+        allDay: false, sameDay: false, startTime: '12:00', endTime: '14:00', spanMode: 'daily',
+      }),
+    ).toBe(true);
+  });
+});

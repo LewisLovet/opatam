@@ -1039,6 +1039,28 @@ export interface BlockedSlot {
   allDay: boolean;
   startTime: string | null;  // Si allDay=false
   endTime: string | null;    // Si allDay=false
+  /**
+   * Comment lire les heures quand la période couvre PLUSIEURS jours.
+   *
+   *   'continuous' — du premier jour à `startTime` jusqu'au dernier à
+   *                  `endTime`, nuits et jours intercalaires compris.
+   *                  C'est un départ en congés.
+   *   'daily'      — la même tranche `startTime`→`endTime` chaque jour de
+   *                  la période. C'est « je ferme tous les midis cette
+   *                  semaine ».
+   *
+   * Sans effet quand `allDay` est vrai, ou quand la période tient sur un
+   * seul jour : les deux lectures y donnent le même résultat.
+   *
+   * Absent = 'continuous'. Les deux sens ont coexisté sans être distingués :
+   * la création acceptait des heures inversées (donc une période continue)
+   * pendant que la lecture rejouait la tranche chaque jour, ce qui ne
+   * bloquait alors plus rien du tout. Sur les 982 blocages existants, 8
+   * seulement sont multi-jours avec des heures — et aucun n'était à venir
+   * au moment du correctif, d'où un défaut choisi pour sa clarté plutôt que
+   * pour préserver un comportement que personne n'avait vraiment demandé.
+   */
+  spanMode?: 'continuous' | 'daily';
   reason: string | null;
   /** When set, this entry is treated as a personal activity instead of
    *  a generic blocked period. Drives calendar styling and the

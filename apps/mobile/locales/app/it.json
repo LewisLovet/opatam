@@ -2942,7 +2942,18 @@
     "startTime": "Ora di inizio",
     "endTime": "Ora di fine",
     "updated": "Periodo bloccato modificato",
-    "endBeforeStart": "L'ora di fine deve essere successiva all'ora di inizio."
+    "endBeforeStart": "L'ora di fine deve essere successiva all'ora di inizio.",
+    "spanMode": {
+      "label": "In questo periodo, questi orari significano",
+      "continuous": {
+        "title": "Un'assenza continua",
+        "detail": "Dal {{from}} alle {{start}} fino al {{to}} alle {{end}}, senza interruzioni — notti e giornate intere comprese."
+      },
+      "daily": {
+        "title": "Ogni giorno, a questi orari",
+        "detail": "Dalle {{start}} alle {{end}} ogni giorno, dal {{from}} al {{to}}. Il resto della giornata resta prenotabile."
+      }
+    }
   },
   "proBlockedSlots": {
     "title": "Orari bloccati",

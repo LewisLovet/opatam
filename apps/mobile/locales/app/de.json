@@ -2942,7 +2942,18 @@
     "startTime": "Beginn",
     "endTime": "Ende",
     "updated": "Gesperrter Zeitraum geändert",
-    "endBeforeStart": "Die Endzeit muss nach der Startzeit liegen."
+    "endBeforeStart": "Die Endzeit muss nach der Startzeit liegen.",
+    "spanMode": {
+      "label": "In diesem Zeitraum bedeuten diese Uhrzeiten",
+      "continuous": {
+        "title": "Eine durchgehende Abwesenheit",
+        "detail": "Vom {{from}} um {{start}} bis zum {{to}} um {{end}}, ohne Unterbrechung — Nächte und ganze Tage inbegriffen."
+      },
+      "daily": {
+        "title": "Jeden Tag, zu diesen Uhrzeiten",
+        "detail": "Von {{start}} bis {{end}} an jedem Tag, vom {{from}} bis {{to}}. Der Rest des Tages bleibt buchbar."
+      }
+    }
   },
   "proBlockedSlots": {
     "title": "Gesperrte Zeiten",

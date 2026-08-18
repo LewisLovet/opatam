@@ -2942,7 +2942,18 @@
     "startTime": "Heure de début",
     "endTime": "Heure de fin",
     "updated": "Créneau bloqué modifié",
-    "endBeforeStart": "L'heure de fin doit être après l'heure de début."
+    "endBeforeStart": "L'heure de fin doit être après l'heure de début.",
+    "spanMode": {
+      "label": "Sur cette période, ces heures signifient",
+      "continuous": {
+        "title": "Une absence continue",
+        "detail": "Du {{from}} à {{start}} jusqu'au {{to}} à {{end}}, sans interruption — nuits et journées entières comprises."
+      },
+      "daily": {
+        "title": "Tous les jours, à ces heures",
+        "detail": "De {{start}} à {{end}} chaque jour, du {{from}} au {{to}}. Le reste de la journée reste réservable."
+      }
+    }
   },
   "proBlockedSlots": {
     "title": "Créneaux bloqués",

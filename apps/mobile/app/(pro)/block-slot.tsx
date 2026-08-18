@@ -391,6 +391,9 @@ export default function BlockSlotScreen() {
   const [startDate, setStartDate] = useState(initialDate);
   const [endDate, setEndDate] = useState(initialDate);
   const [allDay, setAllDay] = useState(true);
+  /** Voir le sélecteur plus bas : deux intentions très différentes se
+   *  saisissaient de la même façon sans que rien ne les distingue. */
+  const [spanMode, setSpanMode] = useState<'continuous' | 'daily'>('continuous');
   const [reason, setReason] = useState('');
   const [isCustomReason, setIsCustomReason] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -433,6 +436,7 @@ export default function BlockSlotScreen() {
         setStartDate(sd);
         setEndDate(ed);
         setAllDay(existing.allDay);
+        setSpanMode(existing.spanMode === 'daily' ? 'daily' : 'continuous');
         setReason(existing.reason ?? '');
         // Un motif absent des propositions est forcément une saisie libre.
         const presetLabels = REASON_KEYS.map((k) => i18n.t(`proBlockSlot.reasons.${k}`));
@@ -500,6 +504,7 @@ export default function BlockSlotScreen() {
       sameDay: startDate.toDateString() === endDate.toDateString(),
       startTime: formatTime(startDate),
       endTime: formatTime(endDate),
+      spanMode,
     })
       ? null
       : t('proBlockSlot.endBeforeStart');
@@ -532,6 +537,7 @@ export default function BlockSlotScreen() {
           allDay,
           startTime: allDay ? null : formatTime(startDate),
           endTime: allDay ? null : formatTime(endDate),
+          spanMode,
           reason: reason.trim() || null,
         });
         Alert.alert(t('proBlockSlot.successTitle'), t('proBlockSlot.updated'), [
@@ -551,6 +557,7 @@ export default function BlockSlotScreen() {
             isRecurring: false,
             startTime: allDay ? null : formatTime(startDate),
             endTime: allDay ? null : formatTime(endDate),
+            spanMode,
             reason: reason.trim() || null,
           }),
         ),
@@ -718,6 +725,52 @@ export default function BlockSlotScreen() {
             )}
           </Pressable>
         </Card>
+
+        {/* Lecture des heures — visible UNIQUEMENT sur plusieurs jours. Sur un
+            seul jour les deux lectures donnent le même résultat, et poser la
+            question n'ajouterait que du doute. */}
+        {!allDay && startDate.toDateString() !== endDate.toDateString() && (
+          <>
+            <Text
+              variant="caption"
+              color="textSecondary"
+              style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}
+            >
+              {t('proBlockSlot.spanMode.label')}
+            </Text>
+            <View style={{ gap: spacing.xs, marginBottom: spacing.xl }}>
+              {(['continuous', 'daily'] as const).map((mode) => {
+                const isSelected = spanMode === mode;
+                const vars = {
+                  start: formatTime(startDate),
+                  end: formatTime(endDate),
+                  from: formatDateShort(startDate),
+                  to: formatDateShort(endDate),
+                };
+                return (
+                  <Pressable
+                    key={mode}
+                    onPress={() => setSpanMode(mode)}
+                    style={{
+                      padding: spacing.md,
+                      borderRadius: radius.md,
+                      borderWidth: 1,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: isSelected ? colors.primaryLight : colors.surface,
+                    }}
+                  >
+                    <Text variant="body" style={{ fontWeight: isSelected ? '700' : '500' }}>
+                      {t(`proBlockSlot.spanMode.${mode}.title`)}
+                    </Text>
+                    <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                      {t(`proBlockSlot.spanMode.${mode}.detail`, vars)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* Reason section */}
         <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}>

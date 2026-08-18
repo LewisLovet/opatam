@@ -364,13 +364,19 @@ export class SchedulingService {
       if (!validated.startTime || !validated.endTime) {
         throw new Error('Les heures sont requises si ce n\'est pas une journée entière');
       }
-      // Only compare times if same day — different days allow any time combination.
-      // Même règle que les disponibilités : une fin "00:00" = minuit = fin de
-      // journée (1440) → un blocage/activité 22:00→00:00 même jour est valide.
-      // `start === end` (dont 00:00→00:00) reste refusé comme saisie ambiguë.
+      // Une fin "00:00" vaut minuit = fin de journée (1440), donc un blocage
+      // 22:00→00:00 le même jour est valide. `start === end` (00:00→00:00
+      // compris) reste refusé : saisie ambiguë.
+      //
+      // La comparaison s'applique dès que les heures décrivent UNE MÊME
+      // journée — période d'un seul jour, ou tranche répétée sur plusieurs.
+      // Elle ne s'applique PAS à une période continue sur plusieurs jours :
+      // partir un vendredi à 18:00 pour revenir le lundi à 09:00 est
+      // parfaitement légitime, et c'est justement l'inversion qui l'exprime.
       const sameDay = validated.startDate.toDateString() === validated.endDate.toDateString();
+      const trancheQuotidienne = sameDay || validated.spanMode === 'daily';
       if (
-        sameDay &&
+        trancheQuotidienne &&
         (validated.startTime === validated.endTime ||
           this.hhmmToMinutes(validated.startTime) >= this.endMin(validated.endTime))
       ) {
@@ -386,6 +392,9 @@ export class SchedulingService {
       allDay: validated.allDay,
       startTime: validated.allDay ? null : (validated.startTime ?? null),
       endTime: validated.allDay ? null : (validated.endTime ?? null),
+      // Sans effet si `allDay` ou si la période tient sur un jour : les deux
+      // lectures y donnent le même résultat, autant ne rien écrire.
+      spanMode: validated.spanMode ?? 'continuous',
       reason: validated.reason || null,
       // Activity fields — `category` flips this entry from a generic
       // blocked period into a typed planner activity (sport, meeting,
@@ -1039,20 +1048,23 @@ export class SchedulingService {
       return false;
     }
 
-    // ── Une période sur PLUSIEURS jours est continue, pas répétée ──────────
+    // ── Deux lectures possibles sur plusieurs jours ───────────────────────
     //
-    // Les heures d'un blocage multi-jours décrivent un DÉBUT le premier jour
-    // et une FIN le dernier, pas une plage rejouée chaque matin. C'est
-    // d'ailleurs ce que la création autorise explicitement : « different days
-    // allow any time combination » (voir `blockPeriod`), et un test de
-    // `isBlockedPeriodValid` fige 18:00 → 09:00 sur deux jours comme valide.
+    // 'daily'      — la même tranche chaque jour (« je ferme tous les midis »).
+    // 'continuous' — du premier jour à `startTime` jusqu'au dernier à
+    //                `endTime`, nuits comprises (un départ en congés).
     //
-    // La lecture, elle, appliquait la même fenêtre à chaque jour. Sur un
-    // blocage 20:36 → 14:00 la fin tombait AVANT le début : la comparaison
-    // `slotStartMin < 840 && 1236 < slotEndMin` ne pouvait jamais être vraie,
-    // et le blocage n'écartait aucun créneau. Un professionnel voyait sa
-    // période barrée dans son agenda pendant que les clientes réservaient
-    // dedans — constaté chez Grs.hair du 18 au 22 août 2026.
+    // Les deux sens ont longtemps coexisté sans jamais être distingués : la
+    // création acceptait des heures inversées — donc une intention continue —
+    // pendant que la lecture rejouait la tranche chaque jour. Sur un blocage
+    // 20:36 → 14:00 la fin tombait alors AVANT le début, et
+    // `slotStartMin < 840 && 1236 < slotEndMin` ne pouvait jamais être vraie :
+    // le blocage n'écartait AUCUN créneau. Le professionnel voyait sa période
+    // barrée dans son agenda pendant que les clientes réservaient dedans —
+    // constaté chez Grs.hair du 18 au 22 août 2026.
+    //
+    // Absent = 'continuous' : c'est la lecture que la saisie laissait déjà
+    // exprimer, et la seule qui donne un sens à des heures inversées.
     const slotStartMin = this.hhmmToMinutes(this.formatTime(start));
     const slotEndMin = this.endMin(this.formatTime(end));
     const isFirstDay = slotDate.getTime() === blockStart.getTime();
@@ -1066,8 +1078,8 @@ export class SchedulingService {
     let blockStartMin: number;
     let blockEndMin: number;
 
-    if (isFirstDay && isLastDay) {
-      // Période d'un seul jour : la fenêtre saisie, telle quelle.
+    // Un seul jour, ou tranche répétée : la fenêtre saisie, telle quelle.
+    if ((isFirstDay && isLastDay) || blockedSlot.spanMode === 'daily') {
       blockStartMin = this.hhmmToMinutes(blockedSlot.startTime);
       blockEndMin = this.endMin(blockedSlot.endTime);
     } else if (isFirstDay) {

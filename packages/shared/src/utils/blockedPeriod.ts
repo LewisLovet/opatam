@@ -41,6 +41,14 @@ export interface BlockedPeriodInput {
   /** `HH:mm`. Ignorés quand `allDay`. */
   startTime?: string | null;
   endTime?: string | null;
+  /**
+   * Lecture des heures sur une période multi-jours. `'daily'` répète la même
+   * tranche chaque jour : la fin doit donc être après le début, exactement
+   * comme sur une période d'un seul jour. `'continuous'` (défaut) décrit un
+   * départ et un retour — l'inversion y est légitime, et même attendue :
+   * partir vendredi 18:00 pour revenir lundi 09:00.
+   */
+  spanMode?: 'continuous' | 'daily';
 }
 
 /**
@@ -50,7 +58,8 @@ export interface BlockedPeriodInput {
 export function isBlockedPeriodValid(input: BlockedPeriodInput): boolean {
   if (input.allDay) return true;
   if (!input.startTime || !input.endTime) return false;
-  if (!input.sameDay) return true;
+  // Une tranche quotidienne obéit à la même règle qu'une journée unique.
+  if (!input.sameDay && input.spanMode !== 'daily') return true;
   // Bornes identiques = saisie ambiguë, refusée telle quelle. Ce test
   // vient AVANT la conversion, sinon `00:00 → 00:00` deviendrait
   // `0 → 1440` et passerait pour une journée valide.

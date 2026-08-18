@@ -70,6 +70,15 @@ interface BlockPeriodModalProps {
   onSaved?: () => void;
 }
 
+/** « 2026-08-18 » → « 18 août ». Sert uniquement aux phrases explicatives. */
+function formatDayLabel(isoDay: string): string {
+  const [y, m, d] = isoDay.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+  });
+}
+
 export function BlockPeriodModal({
   isOpen,
   onClose,
@@ -94,6 +103,13 @@ export function BlockPeriodModal({
     formatDateInput(initialEndDate ?? today),
   );
   const [allDay, setAllDay] = useState(!initialStartTime && !initialEndTime);
+  /**
+   * Comment lire les heures quand la période couvre plusieurs jours. Deux
+   * intentions très différentes se saisissaient jusqu'ici de la même façon —
+   * un départ en congés et une fermeture quotidienne — sans que rien ne les
+   * distingue à l'écran ni en base.
+   */
+  const [spanMode, setSpanMode] = useState<'continuous' | 'daily'>('continuous');
   const [startTime, setStartTime] = useState(initialStartTime ?? '09:00');
   const [endTime, setEndTime] = useState(initialEndTime ?? '18:00');
   const [reason, setReason] = useState('');
@@ -137,6 +153,7 @@ export function BlockPeriodModal({
           setStartDate(formatDateInput(startDt));
           setEndDate(formatDateInput(endDt));
           setAllDay(existing.allDay);
+          setSpanMode(existing.spanMode === 'daily' ? 'daily' : 'continuous');
           setStartTime(existing.startTime ?? '09:00');
           setEndTime(existing.endTime ?? '18:00');
           setReason(existing.reason ?? '');
@@ -243,6 +260,7 @@ export function BlockPeriodModal({
           allDay,
           startTime: allDay ? null : startTime,
           endTime: allDay ? null : endTime,
+          spanMode,
           reason: reason.trim() || null,
         });
         toast.success('Période modifiée');
@@ -259,6 +277,7 @@ export function BlockPeriodModal({
               isRecurring: false,
               startTime: allDay ? null : startTime,
               endTime: allDay ? null : endTime,
+              spanMode,
               reason: reason.trim() || null,
             }),
           ),
@@ -401,6 +420,50 @@ export function BlockPeriodModal({
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
                 />
+              </div>
+            )}
+
+            {/* Lecture des heures — n'apparaît QUE si la période couvre
+                plusieurs jours. Sur un seul jour les deux lectures donnent le
+                même résultat, et poser la question n'ajouterait que du doute. */}
+            {!allDay && endDate > startDate && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Sur cette période, ces heures signifient
+                </p>
+                {(
+                  [
+                    {
+                      value: 'continuous' as const,
+                      titre: 'Une absence continue',
+                      detail: `Du ${formatDayLabel(startDate)} à ${startTime} jusqu'au ${formatDayLabel(endDate)} à ${endTime}, sans interruption — nuits et journées entières comprises.`,
+                    },
+                    {
+                      value: 'daily' as const,
+                      titre: 'Tous les jours, à ces heures',
+                      detail: `De ${startTime} à ${endTime} chaque jour, du ${formatDayLabel(startDate)} au ${formatDayLabel(endDate)}. Le reste de la journée reste réservable.`,
+                    },
+                  ]
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSpanMode(opt.value)}
+                    aria-pressed={spanMode === opt.value}
+                    className={`w-full text-left rounded-xl border p-3 transition-colors ${
+                      spanMode === opt.value
+                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold text-gray-900 dark:text-white">
+                      {opt.titre}
+                    </span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {opt.detail}
+                    </span>
+                  </button>
+                ))}
               </div>
             )}
 
