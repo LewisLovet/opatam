@@ -31,6 +31,12 @@ export interface BlockedSlotFormData {
   allDay: boolean;
   startTime: string | null;
   endTime: string | null;
+  /**
+   * Lecture des heures quand la période couvre plusieurs jours. Sans objet
+   * en journée entière ou sur un jour unique, où les deux lectures donnent
+   * le même résultat. Voir le contrôle dédié dans le formulaire.
+   */
+  spanMode: 'continuous' | 'daily';
   reason: string | null;
   memberId: string; // Obligatoire
   locationId: string; // Obligatoire (dénormalisé depuis member.locationId)
@@ -51,6 +57,13 @@ const formatDateRange = (start: Date, end: Date): string => {
   if (startStr === endStr) return startStr;
   return `${startStr} - ${endStr}`;
 };
+
+/** Clé de jour, identique à celle qu'affichent les champs date du formulaire. */
+const toDayKey = (date: Date): string => date.toISOString().split('T')[0];
+
+/** « 18 août ». Sert uniquement aux phrases qui expliquent les deux lectures. */
+const formatDayLabel = (date: Date): string =>
+  date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
 
 const formatTimeRange = (startTime: string | null, endTime: string | null): string => {
   if (!startTime || !endTime) return 'Journée entière';
@@ -79,6 +92,7 @@ export function BlockedSlotsSection({
     allDay: true,
     startTime: null,
     endTime: null,
+    spanMode: 'continuous',
     reason: null,
     memberId: defaultMember?.id || '',
     locationId: defaultMember?.locationId || '',
@@ -297,6 +311,53 @@ export function BlockedSlotsSection({
                 />
               </div>
             )}
+
+            {/* Lecture des heures — n'apparaît QUE si la période couvre
+                plusieurs jours. Sur un seul jour les deux lectures donnent le
+                même résultat, et poser la question n'ajouterait que du doute. */}
+            {!formData.allDay &&
+              toDayKey(formData.endDate) > toDayKey(formData.startDate) && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Sur cette période, ces heures signifient
+                  </p>
+                  {(
+                    [
+                      {
+                        value: 'continuous' as const,
+                        titre: 'Une absence continue',
+                        detail: `Du ${formatDayLabel(formData.startDate)} à ${formData.startTime} jusqu'au ${formatDayLabel(formData.endDate)} à ${formData.endTime}, sans interruption — nuits et journées entières comprises.`,
+                      },
+                      {
+                        value: 'daily' as const,
+                        titre: 'Tous les jours, à ces heures',
+                        detail: `De ${formData.startTime} à ${formData.endTime} chaque jour, du ${formatDayLabel(formData.startDate)} au ${formatDayLabel(formData.endDate)}. Le reste de la journée reste réservable.`,
+                      },
+                    ]
+                  ).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, spanMode: opt.value }))
+                      }
+                      aria-pressed={formData.spanMode === opt.value}
+                      className={`w-full text-left rounded-xl border p-3 transition-colors ${
+                        formData.spanMode === opt.value
+                          ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-400'
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold text-gray-900 dark:text-white">
+                        {opt.titre}
+                      </span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {opt.detail}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
             {/* Reason */}
             <Input

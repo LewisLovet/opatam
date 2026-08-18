@@ -198,6 +198,7 @@ export function DisponibilitesTab() {
         isRecurring: false,
         startTime: data.startTime,
         endTime: data.endTime,
+        spanMode: data.spanMode,
         reason: data.reason,
         memberId: data.memberId,
         locationId: data.locationId,
