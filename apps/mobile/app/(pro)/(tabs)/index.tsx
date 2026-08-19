@@ -97,6 +97,7 @@ import {
 } from '../../../hooks/useNewFeatures';
 import * as WebBrowser from 'expo-web-browser';
 import { providerPublicUrl } from '../../../lib/config';
+import { isStoryNudgeForced, subscribeDevPreview } from '../../../lib/devPreview';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 
@@ -1156,7 +1157,20 @@ export default function ProDashboardScreen() {
    */
   const vuesTrenteJours = provider?.stats?.pageViews?.last30Days ?? 0;
   const storiesPartagees = provider?.stats?.stories?.shared ?? 0;
-  const inciterAStory = isPublished && vuesTrenteJours < 5 && storiesPartagees === 0;
+
+  /**
+   * Aperçu forcé depuis le menu de développement.
+   *
+   * Les conditions ci-dessus sont rares par construction : un compte de
+   * démonstration actif n'en remplit aucune, et le bandeau restait donc
+   * invisible à qui voulait juger sa mise en page. Sans effet en production
+   * — `isStoryNudgeForced` renvoie toujours faux hors `__DEV__`.
+   */
+  const [apercuForce, setApercuForce] = useState(isStoryNudgeForced());
+  useEffect(() => subscribeDevPreview(() => setApercuForce(isStoryNudgeForced())), []);
+
+  const inciterAStory =
+    apercuForce || (isPublished && vuesTrenteJours < 5 && storiesPartagees === 0);
 
   // Find the next upcoming booking (first one not yet passed)
   const sortedToday = [...todayBookings].sort((a, b) => toDate(a.datetime).getTime() - toDate(b.datetime).getTime());

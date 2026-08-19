@@ -23,6 +23,7 @@ import { Text } from '../Text';
 import { ThemeConfigurator } from './ThemeConfigurator';
 import { APP_LOCALES, setAppLocale, type AppLocale } from '../../lib/i18n';
 import { previewOtaSplash } from '../OtaUpdateGate';
+import { toggleStoryNudgePreview, isStoryNudgeForced } from '../../lib/devPreview';
 import {
   resetAllOpatamStorage,
   resetNewFeaturesSeen,
@@ -183,6 +184,16 @@ export function DevFAB() {
         // Laisse la modale du menu finir sa disparition : elle est native
         // et couvre tout, zIndex compris.
         setTimeout(() => previewOtaSplash(), 350);
+      },
+    },
+    {
+      // Le bandeau ne s'affiche qu'à un professionnel peu vu et qui n'a
+      // jamais partagé : sur un compte actif, aucun moyen de le regarder.
+      icon: 'trending-up-outline',
+      label: `▶︎ Bandeau « faites une story » ${isStoryNudgeForced() ? '(activé)' : ''}`,
+      action: () => {
+        setIsMenuOpen(false);
+        toggleStoryNudgePreview();
       },
     },
     {
