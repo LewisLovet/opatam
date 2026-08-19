@@ -6,7 +6,7 @@ import {
   providerRepository,
 } from '../repositories';
 import type { Availability, AvailabilityConflict, BlockedSlot, TimeSlot } from '@booking-app/shared';
-import { isServiceOpenOnDay } from '@booking-app/shared';
+import { isServiceOpenOnDay, blockedWindowForDay } from '@booking-app/shared';
 import {
   parseOrThrow,
   availabilitySchema,
@@ -1025,77 +1025,32 @@ export class SchedulingService {
    * Check if a time is blocked by a specific blocked slot
    */
   private isTimeBlockedBySlot(start: Date, end: Date, blockedSlot: BlockedSlot): boolean {
-    // Check date range
-    const slotDate = new Date(start);
-    slotDate.setHours(0, 0, 0, 0);
-
-    const blockStart = new Date(blockedSlot.startDate);
-    blockStart.setHours(0, 0, 0, 0);
-
-    const blockEnd = new Date(blockedSlot.endDate);
-    blockEnd.setHours(23, 59, 59, 999);
-
-    if (slotDate < blockStart || slotDate > blockEnd) {
-      return false;
-    }
-
-    // If all day, the entire day is blocked
-    if (blockedSlot.allDay) {
-      return true;
-    }
-
-    if (!blockedSlot.startTime || !blockedSlot.endTime) {
-      return false;
-    }
-
-    // ── Deux lectures possibles sur plusieurs jours ───────────────────────
+    // ── Une seule définition de la règle ──────────────────────────────────
     //
-    // 'daily'      — la même tranche chaque jour (« je ferme tous les midis »).
-    // 'continuous' — du premier jour à `startTime` jusqu'au dernier à
-    //                `endTime`, nuits comprises (un départ en congés).
-    //
-    // Les deux sens ont longtemps coexisté sans jamais être distingués : la
-    // création acceptait des heures inversées — donc une intention continue —
-    // pendant que la lecture rejouait la tranche chaque jour. Sur un blocage
-    // 20:36 → 14:00 la fin tombait alors AVANT le début, et
-    // `slotStartMin < 840 && 1236 < slotEndMin` ne pouvait jamais être vraie :
-    // le blocage n'écartait AUCUN créneau. Le professionnel voyait sa période
-    // barrée dans son agenda pendant que les clientes réservaient dedans —
-    // constaté chez Grs.hair du 18 au 22 août 2026.
-    //
-    // Absent = 'continuous' : c'est la lecture que la saisie laissait déjà
-    // exprimer, et la seule qui donne un sens à des heures inversées.
+    // Elle vivait ici, et une SECONDE interprétation vivait côté Cloud
+    // Functions (`calculateNextAvailableSlot`), qui ne lisait que `allDay` :
+    // une fermeture horaire n'y comptait pour rien et `nextAvailableSlot`
+    // annonçait disponible un jour entièrement bloqué. Deux exemplaires,
+    // deux comportements — c'est déjà comme ça qu'un blocage multi-jours
+    // avait fini par n'écarter aucun créneau chez Grs.hair du 18 au 22 août
+    // 2026. La règle est donc remontée dans `@booking-app/shared`, testée,
+    // et `functions` en garde un miroir explicite faute de pouvoir importer.
+    const fenetre = blockedWindowForDay(
+      {
+        allDay: blockedSlot.allDay,
+        startDate: blockedSlot.startDate,
+        endDate: blockedSlot.endDate,
+        startTime: blockedSlot.startTime,
+        endTime: blockedSlot.endTime,
+        spanMode: blockedSlot.spanMode,
+      },
+      start
+    );
+    if (!fenetre) return false;
+
     const slotStartMin = this.hhmmToMinutes(this.formatTime(start));
     const slotEndMin = this.endMin(this.formatTime(end));
-    const isFirstDay = slotDate.getTime() === blockStart.getTime();
-    const blockEndDay = new Date(blockedSlot.endDate);
-    blockEndDay.setHours(0, 0, 0, 0);
-    const isLastDay = slotDate.getTime() === blockEndDay.getTime();
-
-    // Minuit vaut 1440 : un créneau peut finir à « 00:00 » (23:00→00:00), et
-    // une comparaison de chaînes y laisserait passer une pause (« 00:00 » <
-    // « 23:45 ») → faux négatif.
-    let blockStartMin: number;
-    let blockEndMin: number;
-
-    // Un seul jour, ou tranche répétée : la fenêtre saisie, telle quelle.
-    if ((isFirstDay && isLastDay) || blockedSlot.spanMode === 'daily') {
-      blockStartMin = this.hhmmToMinutes(blockedSlot.startTime);
-      blockEndMin = this.endMin(blockedSlot.endTime);
-    } else if (isFirstDay) {
-      // Premier jour : de l'heure de début jusqu'à minuit.
-      blockStartMin = this.hhmmToMinutes(blockedSlot.startTime);
-      blockEndMin = 1440;
-    } else if (isLastDay) {
-      // Dernier jour : de minuit à l'heure de fin.
-      blockStartMin = 0;
-      blockEndMin = this.endMin(blockedSlot.endTime);
-    } else {
-      // Jour intercalaire : entièrement pris.
-      return true;
-    }
-
-    return slotStartMin < blockEndMin && blockStartMin < slotEndMin;
+    return slotStartMin < fenetre.endMin && fenetre.startMin < slotEndMin;
   }
 
   /**

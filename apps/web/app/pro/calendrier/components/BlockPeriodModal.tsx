@@ -201,6 +201,12 @@ export function BlockPeriodModal({
         setStartDate(formatDateInput(initialDate ?? new Date()));
         setEndDate(formatDateInput(initialEndDate ?? initialDate ?? new Date()));
         setAllDay(!initialStartTime && !initialEndTime);
+        // La modale n'est pas démontée entre deux ouvertures : sans cette
+        // remise à zéro, le mode restait celui de la dernière ÉDITION. Après
+        // avoir ouvert une fermeture quotidienne, la période suivante partait
+        // en quotidien — un défaut que rien n'annonce, puisque le choix ne
+        // s'affiche qu'une fois la période étalée sur plusieurs jours.
+        setSpanMode('continuous');
         setStartTime(initialStartTime ?? '09:00');
         setEndTime(initialEndTime ?? '18:00');
         setReason('');

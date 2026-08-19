@@ -66,3 +66,89 @@ export function isBlockedPeriodValid(input: BlockedPeriodInput): boolean {
   if (input.startTime === input.endTime) return false;
   return hhmmToMinutes(input.startTime) < endHhmmToMinutes(input.endTime);
 }
+
+/** Minutes dans une journée. Une fenêtre `[0, 1440]` couvre le jour entier. */
+export const MINUTES_PAR_JOUR = 24 * 60;
+
+/** Fenêtre bloquée sur UN jour, en minutes depuis minuit. */
+export interface BlockedWindow {
+  startMin: number;
+  endMin: number;
+}
+
+/**
+ * Ce qu'un blocage retire d'un jour donné. Volontairement détaché de
+ * Firestore : dates simples en entrée, minutes en sortie.
+ */
+export interface BlockedPeriodShape {
+  allDay: boolean;
+  startDate: Date;
+  endDate: Date;
+  /** `HH:mm`. Ignorés quand `allDay`. */
+  startTime?: string | null;
+  endTime?: string | null;
+  /** Absent = `'continuous'`. Voir `BlockedPeriodInput.spanMode`. */
+  spanMode?: 'continuous' | 'daily';
+}
+
+/** Le jour calendaire de `d`, à minuit. */
+function auMinuit(d: Date): Date {
+  const copie = new Date(d);
+  copie.setHours(0, 0, 0, 0);
+  return copie;
+}
+
+/**
+ * Quelle tranche du jour `jour` ce blocage retire-t-il ? `null` s'il ne le
+ * touche pas.
+ *
+ * Cette règle existait en DEUX exemplaires : le moteur de créneaux
+ * (`scheduling.service.ts`) et le calcul de prochaine disponibilité côté
+ * Cloud Functions. Le second n'a jamais lu que `allDay` — une fermeture
+ * horaire n'y comptait pour rien, et `nextAvailableSlot` annonçait
+ * disponible un jour entièrement bloqué. Le moteur, lui, refusait bien la
+ * réservation : impossible de réserver pour de vrai, mais l'indicateur
+ * mentait, ce qui est le pire des deux mondes pour la cliente qui s'y fie.
+ *
+ * D'où l'extraction ici, à côté du validateur de saisie qui partage
+ * exactement le même vocabulaire. `functions` ne pouvant pas importer ce
+ * paquet, il en garde un miroir — mais un miroir d'une source unique et
+ * testée, plus d'une seconde interprétation écrite de mémoire.
+ *
+ * Les quatre lectures d'un blocage horaire multi-jours :
+ *
+ *  - `'daily'` : la même tranche chaque jour, telle quelle ;
+ *  - premier jour d'une absence continue : du début jusqu'à minuit ;
+ *  - dernier jour : de minuit jusqu'à la fin ;
+ *  - jour intercalaire : la journée entière.
+ */
+export function blockedWindowForDay(
+  periode: BlockedPeriodShape,
+  jour: Date
+): BlockedWindow | null {
+  const cible = auMinuit(jour);
+  const premierJour = auMinuit(periode.startDate);
+  const dernierJour = auMinuit(periode.endDate);
+
+  if (cible < premierJour || cible > dernierJour) return null;
+  if (periode.allDay) return { startMin: 0, endMin: MINUTES_PAR_JOUR };
+  if (!periode.startTime || !periode.endTime) return null;
+
+  const estPremier = cible.getTime() === premierJour.getTime();
+  const estDernier = cible.getTime() === dernierJour.getTime();
+
+  // Un seul jour, ou tranche répétée : la fenêtre saisie, telle quelle.
+  if ((estPremier && estDernier) || periode.spanMode === 'daily') {
+    return {
+      startMin: hhmmToMinutes(periode.startTime),
+      endMin: endHhmmToMinutes(periode.endTime),
+    };
+  }
+  if (estPremier) {
+    return { startMin: hhmmToMinutes(periode.startTime), endMin: MINUTES_PAR_JOUR };
+  }
+  if (estDernier) {
+    return { startMin: 0, endMin: endHhmmToMinutes(periode.endTime) };
+  }
+  return { startMin: 0, endMin: MINUTES_PAR_JOUR };
+}

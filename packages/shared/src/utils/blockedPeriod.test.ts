@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { endHhmmToMinutes, hhmmToMinutes, isBlockedPeriodValid } from './blockedPeriod';
+import {
+  blockedWindowForDay,
+  endHhmmToMinutes,
+  hhmmToMinutes,
+  isBlockedPeriodValid,
+} from './blockedPeriod';
 
 /** Raccourci : période sur UN SEUL jour, hors journée entière. */
 const sameDay = (startTime: string, endTime: string) =>
@@ -100,5 +105,95 @@ describe('spanMode', () => {
         allDay: false, sameDay: false, startTime: '12:00', endTime: '14:00', spanMode: 'daily',
       }),
     ).toBe(true);
+  });
+});
+
+describe('blockedWindowForDay', () => {
+  const jour = (n: number) => new Date(2026, 7, n);
+  /** Fermeture du 18 au 22 août, 09:00 → 12:00. */
+  const periode = (spanMode?: 'continuous' | 'daily') => ({
+    allDay: false,
+    startDate: jour(18),
+    endDate: jour(22),
+    startTime: '09:00',
+    endTime: '12:00',
+    spanMode,
+  });
+
+  it('ne retient rien hors de la plage de dates', () => {
+    expect(blockedWindowForDay(periode(), jour(17))).toBeNull();
+    expect(blockedWindowForDay(periode(), jour(23))).toBeNull();
+  });
+
+  it('prend la journée entière quand allDay', () => {
+    expect(
+      blockedWindowForDay({ ...periode(), allDay: true }, jour(20))
+    ).toEqual({ startMin: 0, endMin: 1440 });
+  });
+
+  describe('absence continue', () => {
+    it('part de l’heure de début jusqu’à minuit le premier jour', () => {
+      expect(blockedWindowForDay(periode('continuous'), jour(18))).toEqual({
+        startMin: 540,
+        endMin: 1440,
+      });
+    });
+
+    it('prend les jours intercalaires en entier', () => {
+      expect(blockedWindowForDay(periode('continuous'), jour(20))).toEqual({
+        startMin: 0,
+        endMin: 1440,
+      });
+    });
+
+    it('s’arrête à l’heure de fin le dernier jour', () => {
+      expect(blockedWindowForDay(periode('continuous'), jour(22))).toEqual({
+        startMin: 0,
+        endMin: 720,
+      });
+    });
+
+    it('se comporte comme continu quand spanMode est absent', () => {
+      expect(blockedWindowForDay(periode(), jour(20))).toEqual(
+        blockedWindowForDay(periode('continuous'), jour(20))
+      );
+    });
+  });
+
+  describe('fermeture quotidienne', () => {
+    it('rejoue la même tranche chaque jour, bornes comprises', () => {
+      for (const j of [18, 19, 20, 21, 22]) {
+        expect(blockedWindowForDay(periode('daily'), jour(j))).toEqual({
+          startMin: 540,
+          endMin: 720,
+        });
+      }
+    });
+
+    it('laisse le reste de la journée libre, contrairement au mode continu', () => {
+      const quotidien = blockedWindowForDay(periode('daily'), jour(20));
+      const continu = blockedWindowForDay(periode('continuous'), jour(20));
+      expect(quotidien).not.toEqual(continu);
+    });
+  });
+
+  it('sur un seul jour, les deux lectures se confondent', () => {
+    const unJour = { ...periode(), startDate: jour(18), endDate: jour(18) };
+    expect(blockedWindowForDay(unJour, jour(18))).toEqual({ startMin: 540, endMin: 720 });
+    expect(blockedWindowForDay({ ...unJour, spanMode: 'daily' }, jour(18))).toEqual({
+      startMin: 540,
+      endMin: 720,
+    });
+  });
+
+  it('une fin à minuit vaut fin de journée, jamais début', () => {
+    const soir = { ...periode('daily'), startTime: '22:00', endTime: '00:00' };
+    expect(blockedWindowForDay(soir, jour(20))).toEqual({ startMin: 1320, endMin: 1440 });
+  });
+
+  it('ne retient rien si les heures manquent hors journée entière', () => {
+    expect(
+      blockedWindowForDay({ ...periode(), startTime: null, endTime: null }, jour(20))
+    ).toBeNull();
   });
 });
