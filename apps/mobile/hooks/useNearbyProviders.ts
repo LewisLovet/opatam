@@ -32,12 +32,30 @@ export function useNearbyProviders(
   const [isNearby, setIsNearby] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  /**
+   * A-t-on déjà quelque chose à montrer ?
+   *
+   * `load` se relance quand la position arrive — elle n'est pas connue au
+   * premier rendu. Chaque relance repassait `loading` à vrai, donc la liste
+   * déjà affichée redevenait des squelettes avant de réapparaître : des
+   * cartes, des rectangles gris, des cartes. C'est ce clignotement qu'on
+   * voit à l'ouverture de l'accueil, et il ne dit rien d'utile — on a déjà
+   * des prestataires à l'écran, autant les y laisser pendant qu'on cherche
+   * mieux.
+   *
+   * Un `ref` et non l'état : `load` est mémorisée sur ses propres
+   * dépendances, et lire `providers` dedans y figerait la valeur du rendu où
+   * elle a été créée.
+   */
+  const dejaGarniRef = useRef(false);
 
   const load = useCallback(async () => {
     // Wait for location to finish loading
     if (locationLoading) return;
 
-    setLoading(true);
+    // Squelettes seulement quand l'écran est vide. Sinon on garde la liste
+    // en place et on la remplace d'un coup, quand la nouvelle est prête.
+    setLoading(!dejaGarniRef.current);
     setError(null);
 
     try {
@@ -54,11 +72,13 @@ export function useNearbyProviders(
           if (result.length > 0) {
             setProviders(result);
             setIsNearby(true);
+            dejaGarniRef.current = true;
           } else {
             // No providers within 50km — fallback to top rated
             const fallback = await providerService.getTopRated(limit);
             setProviders(fallback.map((p) => ({ ...p, distance: Infinity })));
             setIsNearby(false);
+            dejaGarniRef.current = fallback.length > 0;
           }
         }
       } else {
@@ -67,6 +87,7 @@ export function useNearbyProviders(
         if (mountedRef.current) {
           setProviders(result.map((p) => ({ ...p, distance: Infinity })));
           setIsNearby(false);
+          dejaGarniRef.current = result.length > 0;
         }
       }
     } catch (err) {
