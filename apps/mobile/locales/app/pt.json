@@ -2430,7 +2430,8 @@
       "outOf_one": "em {{count}} avaliação",
       "outOf_other": "em {{count}} avaliações",
       "empty": "Ainda sem avaliações públicas",
-      "another": "Outra avaliação"
+      "section": "Avaliação em destaque",
+      "average": "Nota global"
     }
   },
   "proServices": {

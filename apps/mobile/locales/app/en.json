@@ -2430,7 +2430,8 @@
       "outOf_one": "from {{count}} review",
       "outOf_other": "from {{count}} reviews",
       "empty": "No public review yet",
-      "another": "Another review"
+      "section": "Featured review",
+      "average": "Overall rating"
     }
   },
   "proServices": {

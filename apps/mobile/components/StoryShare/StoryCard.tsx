@@ -1437,7 +1437,10 @@ function ReviewStoryLayout({
   // Un accent pâle — « Or », « Ambre » — porterait mal du blanc.
   const encreSurAccent = luminance(c600) > 0.45 ? '#111827' : '#ffffff';
 
-  const etoiles = '★'.repeat(review ? Math.round(review.rating) : 5);
+  // Sur la note d'ensemble, les étoiles suivent la MOYENNE. Figées à cinq,
+  // elles auraient affiché une note parfaite à un salon noté 3,2.
+  const noteAffichee = review ? review.rating : (ratingAverage ?? 5);
+  const etoiles = '★'.repeat(Math.max(1, Math.min(5, Math.round(noteAffichee))));
   const commentaire = review?.comment?.trim() || null;
 
   return (

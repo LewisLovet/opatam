@@ -2430,7 +2430,8 @@
       "outOf_one": "sur {{count}} avis",
       "outOf_other": "sur {{count}} avis",
       "empty": "Aucun avis public pour l'instant",
-      "another": "Un autre avis"
+      "section": "Avis mis en avant",
+      "average": "Note globale"
     }
   },
   "proServices": {

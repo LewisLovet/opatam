@@ -2430,7 +2430,8 @@
       "outOf_one": "su {{count}} recensione",
       "outOf_other": "su {{count}} recensioni",
       "empty": "Nessuna recensione pubblica per ora",
-      "another": "Un'altra recensione"
+      "section": "Recensione in evidenza",
+      "average": "Voto complessivo"
     }
   },
   "proServices": {

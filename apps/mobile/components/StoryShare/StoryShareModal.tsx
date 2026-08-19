@@ -202,7 +202,14 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
    * et sur un salon qui n'a que des notes la story reste possible.
    */
   const [reviews, setReviews] = useState<StoryReview[]>([]);
-  const [reviewIndex, setReviewIndex] = useState(0);
+  /**
+   * Ce qu'on met en avant : la note d'ensemble, ou un avis précis.
+   *
+   * `'average'` n'est pas un repli mais une option à part entière — sur un
+   * salon très bien noté, « 4,9 sur 7 avis » dit souvent plus qu'un
+   * témoignage isolé.
+   */
+  const [reviewChoice, setReviewChoice] = useState<'average' | number>('average');
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
   const [showLinkReminder, setShowLinkReminder] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -564,7 +571,10 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           // Les commentés d'abord ; à égalité, l'ordre de la source.
           .sort((a, b) => Number(!!b.comment) - Number(!!a.comment));
         setReviews(utilisables);
-        setReviewIndex(0);
+        // On ouvre sur le premier avis COMMENTÉ s'il en existe : c'est ce que
+        // le professionnel veut montrer neuf fois sur dix. Sinon la note
+        // d'ensemble, seule chose qu'un salon sans témoignage puisse dire.
+        setReviewChoice(utilisables.some((r) => r.comment) ? 0 : 'average');
       })
       .catch((e) => console.warn('Chargement des avis pour la story:', e));
     return () => {
@@ -576,11 +586,19 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   useEffect(() => {
     if (!visible) {
       setReviews([]);
-      setReviewIndex(0);
+      setReviewChoice('average');
     }
   }, [visible]);
 
-  const avisCourant = reviews.length > 0 ? reviews[reviewIndex % reviews.length] : null;
+  /**
+   * Seuls les avis COMMENTÉS se proposent un par un : un avis réduit à cinq
+   * étoiles n'a rien à dire tout seul, et la note d'ensemble est la façon
+   * honnête de le faire compter. Les proposer quand même produirait des
+   * cartes vides à choisir entre elles.
+   */
+  const avisCommentes = reviews.filter((r) => !!r.comment);
+  const avisCourant =
+    reviewChoice === 'average' ? null : (avisCommentes[reviewChoice] ?? null);
 
   /**
    * Un salon sans le moindre avis ne peut pas en publier un.
@@ -774,36 +792,113 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             </View>
           </View>
 
-          {/* Mode « Avis » — on fait défiler plutôt que de choisir dans une
-              liste : un écran de sélection pour un objet aussi court que
-              « cinq étoiles et deux phrases » coûterait plus d'attention
-              qu'il n'en fait gagner. */}
+          {/* Mode « Avis » — le professionnel DÉSIGNE ce qu'il met en avant.
+              Un défilement au hasard l'obligeait à repasser devant tous les
+              autres pour retrouver celui qu'il avait en tête. */}
           {displayMode === 'review' && (
             <View style={styles.sectionSpacing}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                {t('storyShare.review.section')}
+              </Text>
               {reviews.length === 0 ? (
                 <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
                   {t('storyShare.review.empty')}
                 </Text>
-              ) : reviews.length > 1 ? (
-                <Pressable
-                  onPress={() => setReviewIndex((i) => (i + 1) % reviews.length)}
-                  style={({ pressed }) => [
-                    styles.reviewCycler,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
-                    },
-                  ]}
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8, paddingRight: 8 }}
                 >
-                  <Ionicons name="shuffle-outline" size={16} color={colors.text} />
-                  <Text style={{ color: colors.text, fontWeight: '600' }}>
-                    {t('storyShare.review.another')}
-                  </Text>
-                  <Text style={{ color: colors.textSecondary }}>
-                    {reviewIndex + 1}/{reviews.length}
-                  </Text>
-                </Pressable>
-              ) : null}
+                  {/* La note d'ensemble, en tête : c'est le choix qui vaut
+                      pour tous les salons, y compris ceux dont personne n'a
+                      pris la peine d'écrire quoi que ce soit. */}
+                  <Pressable
+                    onPress={() => setReviewChoice('average')}
+                    style={[
+                      styles.reviewPick,
+                      {
+                        backgroundColor:
+                          reviewChoice === 'average' ? colors.primary : colors.surface,
+                        borderColor:
+                          reviewChoice === 'average' ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.reviewPickTitle,
+                        { color: reviewChoice === 'average' ? '#FFFFFF' : colors.text },
+                      ]}
+                    >
+                      {t('storyShare.review.average')}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.reviewPickBody,
+                        {
+                          color:
+                            reviewChoice === 'average'
+                              ? 'rgba(255,255,255,0.85)'
+                              : colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {(provider.rating?.average ?? 0).toLocaleString(i18n.language, {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })}
+                      {' · '}
+                      {t('storyShare.review.outOf', {
+                        count: provider.rating?.count ?? 0,
+                      })}
+                    </Text>
+                  </Pressable>
+
+                  {avisCommentes.map((avis, k) => {
+                    const actif = reviewChoice === k;
+                    return (
+                      <Pressable
+                        key={`${avis.authorName}-${k}`}
+                        onPress={() => setReviewChoice(k)}
+                        style={[
+                          styles.reviewPick,
+                          {
+                            backgroundColor: actif ? colors.primary : colors.surface,
+                            borderColor: actif ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.reviewPickTitle,
+                            { color: actif ? '#FFFFFF' : colors.text },
+                          ]}
+                        >
+                          {'★'.repeat(Math.round(avis.rating))}
+                          {avis.authorName ? `  ${avis.authorName}` : ''}
+                        </Text>
+                        {/* Deux lignes du commentaire : de quoi reconnaître
+                            l'avis sans transformer le sélecteur en mur de
+                            texte. */}
+                        <Text
+                          numberOfLines={2}
+                          style={[
+                            styles.reviewPickBody,
+                            {
+                              color: actif
+                                ? 'rgba(255,255,255,0.85)'
+                                : colors.textSecondary,
+                            },
+                          ]}
+                        >
+                          {avis.comment}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              )}
             </View>
           )}
 
@@ -1468,15 +1563,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 10,
   },
-  reviewCycler: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderWidth: 1,
+  reviewPick: {
+    width: 190,
+    padding: 12,
     borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
   },
+  reviewPickTitle: { fontSize: 13, fontWeight: '700' },
+  reviewPickBody: { fontSize: 12, lineHeight: 16 },
   sectionSpacing: {
     gap: 10,
   },

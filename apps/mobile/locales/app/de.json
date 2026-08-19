@@ -2430,7 +2430,8 @@
       "outOf_one": "von {{count}} Bewertung",
       "outOf_other": "von {{count}} Bewertungen",
       "empty": "Noch keine öffentliche Bewertung",
-      "another": "Andere Bewertung"
+      "section": "Hervorgehobene Bewertung",
+      "average": "Gesamtnote"
     }
   },
   "proServices": {
