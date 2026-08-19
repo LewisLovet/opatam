@@ -2364,7 +2364,8 @@
     "modes": {
       "services": "Services",
       "availabilities": "Availability",
-      "none": "QR code"
+      "none": "QR code",
+      "review": "Review"
     },
     "errorTitle": "Error",
     "shareUnavailable": "Sharing is not available on this device.",
@@ -2424,6 +2425,12 @@
       "copyError": "Unable to copy the link.",
       "shareMessage": "Book with {{businessName}}: {{url}}",
       "createStory": "Create a story"
+    },
+    "review": {
+      "outOf_one": "from {{count}} review",
+      "outOf_other": "from {{count}} reviews",
+      "empty": "No public review yet",
+      "another": "Another review"
     }
   },
   "proServices": {

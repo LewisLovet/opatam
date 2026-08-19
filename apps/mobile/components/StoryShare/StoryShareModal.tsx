@@ -36,9 +36,9 @@ try {
 }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { catalogService, memberService, schedulingService } from '@booking-app/firebase';
+import { catalogService, memberService, schedulingService, reviewService } from '@booking-app/firebase';
 import type { Service, Member } from '@booking-app/shared';
-import { APP_CONFIG } from '@booking-app/shared';
+import { APP_CONFIG, publicReviewAuthor } from '@booking-app/shared';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
@@ -48,7 +48,7 @@ import { useUpcomingAvailabilities } from '../../hooks/useUpcomingAvailabilities
 import { useServiceCategories } from '../../hooks/useServiceCategories';
 import { ServicePickerModal } from '../business';
 import { StatusBar } from 'expo-status-bar';
-import { StoryCard, type MonthAvailabilityGrid, type MonthAvailabilityDay } from './StoryCard';
+import { StoryCard, type MonthAvailabilityGrid, type MonthAvailabilityDay, type StoryReview } from './StoryCard';
 
 // Try to import react-native-share (only available in dev client / production builds)
 let RNShare: typeof import('react-native-share').default | null = null;
@@ -132,7 +132,7 @@ function formatDayOffsetSubtitle(offset: number): string {
 
 type WithId<T> = { id: string } & T;
 
-type DisplayMode = 'services' | 'availabilities' | 'none';
+type DisplayMode = 'services' | 'availabilities' | 'none' | 'review';
 /**
  * Sub-toggle inside the "Dispos" mode — week-grid (the historical
  * heatmap) vs the new today-only list of free time slots. Picked
@@ -172,6 +172,7 @@ const NETWORKS: SocialNetwork[] = [
 const DISPLAY_MODES: { key: DisplayMode; icon: string }[] = [
   { key: 'services', icon: 'pricetags-outline' },
   { key: 'availabilities', icon: 'calendar-outline' },
+  { key: 'review', icon: 'star-outline' },
   { key: 'none', icon: 'qr-code-outline' },
 ];
 
@@ -191,6 +192,17 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const [services, setServices] = useState<WithId<Service>[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('services');
+
+  /**
+   * Les avis publics du salon, chargés une fois par ouverture de la modale.
+   *
+   * Le professionnel ne choisit pas dans une liste : il fait défiler. Les
+   * avis commentés passent devant, parce qu'un commentaire fait une bien
+   * meilleure story qu'une note nue — mais les autres restent accessibles,
+   * et sur un salon qui n'a que des notes la story reste possible.
+   */
+  const [reviews, setReviews] = useState<StoryReview[]>([]);
+  const [reviewIndex, setReviewIndex] = useState(0);
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
   const [showLinkReminder, setShowLinkReminder] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -530,6 +542,45 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   if (!provider) return null;
 
   const location = provider.cities?.[0] || '';
+
+  /**
+   * Chargement des avis, seulement quand le mode est choisi — un salon qui
+   * ne partage que ses prestations ne doit pas payer cette lecture.
+   */
+  useEffect(() => {
+    if (!visible || displayMode !== 'review' || !provider?.id) return;
+    if (reviews.length > 0) return;
+    let vivant = true;
+    reviewService
+      .getPublicProviderReviews(provider.id)
+      .then((liste) => {
+        if (!vivant) return;
+        const utilisables = liste
+          .map((r) => ({
+            rating: r.rating,
+            comment: r.comment?.trim() ? r.comment.trim() : null,
+            authorName: publicReviewAuthor(r.clientName),
+          }))
+          // Les commentés d'abord ; à égalité, l'ordre de la source.
+          .sort((a, b) => Number(!!b.comment) - Number(!!a.comment));
+        setReviews(utilisables);
+        setReviewIndex(0);
+      })
+      .catch((e) => console.warn('Chargement des avis pour la story:', e));
+    return () => {
+      vivant = false;
+    };
+  }, [visible, displayMode, provider?.id, reviews.length]);
+
+  // La modale se referme : on repart d'une ardoise propre au prochain appel.
+  useEffect(() => {
+    if (!visible) {
+      setReviews([]);
+      setReviewIndex(0);
+    }
+  }, [visible]);
+
+  const avisCourant = reviews.length > 0 ? reviews[reviewIndex % reviews.length] : null;
   const isSharing = sharing !== null;
   const isLoading =
     loadingServices ||
@@ -568,6 +619,10 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     monthGrid,
     availabilityScope,
     storyTheme,
+    themeId: provider.themeId,
+    review: avisCourant,
+    ratingAverage: provider.rating?.average,
+    ratingCount: provider.rating?.count,
   };
 
   return (
@@ -701,6 +756,39 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
               })}
             </View>
           </View>
+
+          {/* Mode « Avis » — on fait défiler plutôt que de choisir dans une
+              liste : un écran de sélection pour un objet aussi court que
+              « cinq étoiles et deux phrases » coûterait plus d'attention
+              qu'il n'en fait gagner. */}
+          {displayMode === 'review' && (
+            <View style={styles.sectionSpacing}>
+              {reviews.length === 0 ? (
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  {t('storyShare.review.empty')}
+                </Text>
+              ) : reviews.length > 1 ? (
+                <Pressable
+                  onPress={() => setReviewIndex((i) => (i + 1) % reviews.length)}
+                  style={({ pressed }) => [
+                    styles.reviewCycler,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+                    },
+                  ]}
+                >
+                  <Ionicons name="shuffle-outline" size={16} color={colors.text} />
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>
+                    {t('storyShare.review.another')}
+                  </Text>
+                  <Text style={{ color: colors.textSecondary }}>
+                    {reviewIndex + 1}/{reviews.length}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          )}
 
           {/* Scope sub-toggle inside "Dispos" — pick between the
               7-day heatmap and the today-only slot list. Sits above
@@ -1362,6 +1450,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
+  },
+  reviewCycler: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderRadius: 12,
   },
   sectionSpacing: {
     gap: 10,

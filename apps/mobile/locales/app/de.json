@@ -2364,7 +2364,8 @@
     "modes": {
       "services": "Leistungen",
       "availabilities": "Freie Zeiten",
-      "none": "QR-Code"
+      "none": "QR-Code",
+      "review": "Bewertung"
     },
     "errorTitle": "Fehler",
     "shareUnavailable": "Teilen ist auf diesem Gerät nicht verfügbar.",
@@ -2424,6 +2425,12 @@
       "copyError": "Der Link kann nicht kopiert werden.",
       "shareMessage": "Buchen Sie bei {{businessName}}: {{url}}",
       "createStory": "Story erstellen"
+    },
+    "review": {
+      "outOf_one": "von {{count}} Bewertung",
+      "outOf_other": "von {{count}} Bewertungen",
+      "empty": "Noch keine öffentliche Bewertung",
+      "another": "Andere Bewertung"
     }
   },
   "proServices": {

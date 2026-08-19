@@ -2364,7 +2364,8 @@
     "modes": {
       "services": "Prestations",
       "availabilities": "Dispos",
-      "none": "QR Code"
+      "none": "QR Code",
+      "review": "Avis"
     },
     "errorTitle": "Erreur",
     "shareUnavailable": "Le partage n'est pas disponible sur cet appareil.",
@@ -2424,6 +2425,12 @@
       "copyError": "Impossible de copier le lien.",
       "shareMessage": "Réservez chez {{businessName}} : {{url}}",
       "createStory": "Créer une story"
+    },
+    "review": {
+      "outOf_one": "sur {{count}} avis",
+      "outOf_other": "sur {{count}} avis",
+      "empty": "Aucun avis public pour l'instant",
+      "another": "Un autre avis"
     }
   },
   "proServices": {

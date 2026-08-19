@@ -2364,7 +2364,8 @@
     "modes": {
       "services": "Serviços",
       "availabilities": "Disponibilidades",
-      "none": "QR Code"
+      "none": "QR Code",
+      "review": "Avaliação"
     },
     "errorTitle": "Erro",
     "shareUnavailable": "A partilha não está disponível neste dispositivo.",
@@ -2424,6 +2425,12 @@
       "copyError": "Não foi possível copiar o link.",
       "shareMessage": "Reserve em {{businessName}}: {{url}}",
       "createStory": "Criar uma story"
+    },
+    "review": {
+      "outOf_one": "em {{count}} avaliação",
+      "outOf_other": "em {{count}} avaliações",
+      "empty": "Ainda sem avaliações públicas",
+      "another": "Outra avaliação"
     }
   },
   "proServices": {
