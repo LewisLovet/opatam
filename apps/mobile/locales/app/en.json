@@ -2943,6 +2943,7 @@
     "endTime": "End time",
     "updated": "Blocked period updated",
     "endBeforeStart": "The end time must be after the start time.",
+    "endBeforeStartDaily": "For a daily repeat, the end time must be after the start time: otherwise the slot is empty and nothing is blocked at all. Choose « One continuous absence » to leave in the evening and return in the morning.",
     "spanMode": {
       "label": "Over this period, these times mean",
       "continuous": {

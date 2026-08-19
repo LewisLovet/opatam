@@ -498,16 +498,23 @@ export default function BlockSlotScreen() {
    * La règle elle-même vit dans `isBlockedPeriodValid` (shared), testée :
    * une copie locale avait déjà laissé passer `00:00 → 00:00`.
    */
-  const periodError = (): string | null =>
-    isBlockedPeriodValid({
-      allDay,
-      sameDay: startDate.toDateString() === endDate.toDateString(),
-      startTime: formatTime(startDate),
-      endTime: formatTime(endDate),
-      spanMode,
-    })
-      ? null
-      : t('proBlockSlot.endBeforeStart');
+  const periodError = (): string | null => {
+    const sameDay = startDate.toDateString() === endDate.toDateString();
+    if (
+      isBlockedPeriodValid({
+        allDay,
+        sameDay,
+        startTime: formatTime(startDate),
+        endTime: formatTime(endDate),
+        spanMode,
+      })
+    ) {
+      return null;
+    }
+    return t(sameDay ? 'proBlockSlot.endBeforeStart' : 'proBlockSlot.endBeforeStartDaily');
+  };
+
+  const invalidPeriod = periodError();
 
   const handleSubmit = async () => {
     if (!providerId || selectedMemberIds.length === 0) {
@@ -515,7 +522,6 @@ export default function BlockSlotScreen() {
       return;
     }
 
-    const invalidPeriod = periodError();
     if (invalidPeriod) {
       Alert.alert(t('proBlockSlot.errorTitle'), invalidPeriod);
       return;
@@ -849,11 +855,20 @@ export default function BlockSlotScreen() {
         )}
 
         {/* Submit */}
+        {invalidPeriod && (
+          <Text
+            variant="bodySmall"
+            color="error"
+            style={{ marginBottom: spacing.sm }}
+          >
+            {invalidPeriod}
+          </Text>
+        )}
         <Button
           title={isSubmitting ? t('proBlockSlot.submitting') : t('proBlockSlot.submit')}
           variant="primary"
           onPress={handleSubmit}
-          disabled={isSubmitting || selectedMemberIds.length === 0}
+          disabled={isSubmitting || selectedMemberIds.length === 0 || invalidPeriod !== null}
         />
       </ScrollView>
 

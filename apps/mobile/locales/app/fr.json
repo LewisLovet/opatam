@@ -2943,6 +2943,7 @@
     "endTime": "Heure de fin",
     "updated": "Créneau bloqué modifié",
     "endBeforeStart": "L'heure de fin doit être après l'heure de début.",
+    "endBeforeStartDaily": "En répétition quotidienne, l'heure de fin doit être après l'heure de début : sinon la tranche est vide et plus rien n'est bloqué. Choisissez « Une absence continue » pour partir le soir et revenir le matin.",
     "spanMode": {
       "label": "Sur cette période, ces heures signifient",
       "continuous": {

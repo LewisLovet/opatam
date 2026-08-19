@@ -11,6 +11,7 @@ import {
   Switch,
 } from '@/components/ui';
 import { Plus, Trash2, Calendar, Clock, Loader2 } from 'lucide-react';
+import { isBlockedPeriodValid } from '@booking-app/shared';
 import type { BlockedSlot, Location, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -100,6 +101,30 @@ export function BlockedSlotsSection({
 
   const [formData, setFormData] = useState<BlockedSlotFormData>(getDefaultFormData());
 
+  /**
+   * Période invalide, recalculée à chaque frappe.
+   *
+   * Ce formulaire ne vérifiait RIEN : une fin antérieure au début partait au
+   * service, qui la refusait, et le rejet finissait dans un `console.error`.
+   * Le professionnel voyait la modale se fermer sans rien enregistrer.
+   *
+   * Le message nomme le cas plutôt que d'énoncer la règle : l'inversion est
+   * interdite le même jour pour une raison évidente, et en répétition
+   * quotidienne pour une raison qui ne l'est pas.
+   */
+  const sameDayForm = toDayKey(formData.startDate) === toDayKey(formData.endDate);
+  const periodError: string | null = isBlockedPeriodValid({
+    allDay: formData.allDay,
+    sameDay: sameDayForm,
+    startTime: formData.startTime,
+    endTime: formData.endTime,
+    spanMode: formData.spanMode,
+  })
+    ? null
+    : sameDayForm
+      ? "Sur une même journée, l'heure de fin doit être après l'heure de début."
+      : "En répétition quotidienne, l'heure de fin doit être après l'heure de début : sinon la tranche est vide et plus rien n'est bloqué. Choisissez « Une absence continue » pour partir le soir et revenir le matin.";
+
   const resetForm = () => {
     setFormData(getDefaultFormData());
   };
@@ -116,6 +141,8 @@ export function BlockedSlotsSection({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Garde de dernier recours : le bouton est déjà éteint dans ce cas.
+    if (periodError) return;
     setLoading(true);
     try {
       await onAdd(formData);
@@ -359,6 +386,15 @@ export function BlockedSlotsSection({
                 </div>
               )}
 
+            {periodError && (
+              <p
+                role="alert"
+                className="rounded-lg bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300"
+              >
+                {periodError}
+              </p>
+            )}
+
             {/* Reason */}
             <Input
               label="Raison (optionnel)"
@@ -412,7 +448,7 @@ export function BlockedSlotsSection({
             <Button type="button" variant="outline" onClick={handleCloseModal}>
               Annuler
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || periodError !== null}>
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

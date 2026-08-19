@@ -118,6 +118,36 @@ export function BlockPeriodModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  /**
+   * Période invalide, recalculée à chaque frappe — et non plus au clic.
+   *
+   * Deux raisons de la remonter en amont. D'abord parce qu'un refus qui
+   * n'arrive qu'au moment d'enregistrer laisse le professionnel composer
+   * tranquillement une saisie impossible ; le bouton doit être éteint pendant
+   * qu'il la compose. Ensuite parce que le message peut alors NOMMER le cas :
+   * même journée et répétition quotidienne interdisent l'inversion pour des
+   * raisons différentes, et la seconde est la moins évidente des deux.
+   *
+   * `spanMode` manquait à l'appel de `isBlockedPeriodValid` : sur plusieurs
+   * jours le validateur concluait « départ et retour », donc valide, alors
+   * même que le professionnel venait de choisir « tous les jours ». Une
+   * tranche 18:00 → 09:00 répétée quotidiennement s'enregistrait sans un mot
+   * et ne bloquait RIEN — exactement la panne silencieuse qu'on venait de
+   * corriger dans le moteur.
+   */
+  const sameDay = startDate === endDate;
+  const periodError: string | null = isBlockedPeriodValid({
+    allDay,
+    sameDay,
+    startTime,
+    endTime,
+    spanMode,
+  })
+    ? null
+    : sameDay
+      ? "Sur une même journée, l'heure de fin doit être après l'heure de début."
+      : "En répétition quotidienne, l'heure de fin doit être après l'heure de début : sinon la tranche est vide et plus rien n'est bloqué. Choisissez « Une absence continue » pour partir le soir et revenir le matin.";
+
   // Reset whenever the modal opens. In edit mode we hydrate from the
   // existing blockedSlot doc; otherwise we fall back to the create
   // defaults derived from the props.
@@ -229,15 +259,9 @@ export function BlockPeriodModal({
     // elle écrit directement via le repository.
     //
     // Placée AVANT les deux branches, la vérification couvre les deux.
-    if (
-      !isBlockedPeriodValid({
-        allDay,
-        sameDay: startDate === endDate,
-        startTime,
-        endTime,
-      })
-    ) {
-      toast.error("L'heure de fin doit être après l'heure de début");
+    // Garde de dernier recours : le bouton est déjà éteint dans ce cas.
+    if (periodError) {
+      toast.error(periodError);
       return;
     }
 
@@ -467,6 +491,15 @@ export function BlockPeriodModal({
               </div>
             )}
 
+            {periodError && (
+              <p
+                role="alert"
+                className="rounded-lg bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300"
+              >
+                {periodError}
+              </p>
+            )}
+
             {/* Reason */}
             <Textarea
               label="Motif (optionnel)"
@@ -497,7 +530,10 @@ export function BlockPeriodModal({
             <Button variant="outline" onClick={onClose} disabled={saving || deleting}>
               Annuler
             </Button>
-            <Button onClick={handleSave} disabled={saving || deleting || loading}>
+            <Button
+              onClick={handleSave}
+              disabled={saving || deleting || loading || periodError !== null}
+            >
               {saving ? (
                 <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
               ) : (

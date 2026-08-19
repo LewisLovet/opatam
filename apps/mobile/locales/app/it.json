@@ -2943,6 +2943,7 @@
     "endTime": "Ora di fine",
     "updated": "Periodo bloccato modificato",
     "endBeforeStart": "L'ora di fine deve essere successiva all'ora di inizio.",
+    "endBeforeStartDaily": "In ripetizione quotidiana, l'ora di fine deve essere successiva all'ora di inizio: altrimenti la fascia è vuota e non viene bloccato più nulla. Scegli « Un'assenza continua » per partire la sera e tornare la mattina.",
     "spanMode": {
       "label": "In questo periodo, questi orari significano",
       "continuous": {
