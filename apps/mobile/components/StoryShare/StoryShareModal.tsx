@@ -154,6 +154,14 @@ function monthLabelForOffset(offset: number): string {
 interface StoryShareModalProps {
   visible: boolean;
   onClose: () => void;
+  /**
+   * Contenu affiché à l'ouverture. Sert aux raccourcis qui entrent dans la
+   * modale avec une intention déjà formée — « faire une story de CET avis »
+   * depuis l'accueil, plutôt que d'ouvrir sur les prestations puis chercher.
+   */
+  initialDisplayMode?: DisplayMode;
+  /** Avis à mettre en avant d'emblée. Ignoré s'il n'a pas de commentaire. */
+  initialReviewId?: string | null;
 }
 
 interface SocialNetwork {
@@ -242,7 +250,12 @@ function PickerRow({
   );
 }
 
-export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
+export function StoryShareModal({
+  visible,
+  onClose,
+  initialDisplayMode,
+  initialReviewId,
+}: StoryShareModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -267,7 +280,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
    * meilleure story qu'une note nue — mais les autres restent accessibles,
    * et sur un salon qui n'a que des notes la story reste possible.
    */
-  const [reviews, setReviews] = useState<StoryReview[]>([]);
+  const [reviews, setReviews] = useState<Array<StoryReview & { id: string }>>([]);
   /**
    * Ce qu'on met en avant : la note d'ensemble, ou un avis précis.
    *
@@ -277,6 +290,13 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
    */
   const [reviewChoice, setReviewChoice] = useState<'average' | number>('average');
   const [reviewPickerOpen, setReviewPickerOpen] = useState(false);
+
+  // `useState` ne lit son argument qu'au MONTAGE, et rien ne garantit que la
+  // modale soit démontée entre deux ouvertures. On applique donc l'intention
+  // à chaque fois qu'elle s'ouvre.
+  useEffect(() => {
+    if (visible && initialDisplayMode) setDisplayMode(initialDisplayMode);
+  }, [visible, initialDisplayMode]);
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
   const [showLinkReminder, setShowLinkReminder] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -631,6 +651,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
         if (!vivant) return;
         const utilisables = liste
           .map((r) => ({
+            id: r.id,
             rating: r.rating,
             comment: r.comment?.trim() ? r.comment.trim() : null,
             authorName: publicReviewAuthor(r.clientName),
@@ -643,16 +664,23 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
         // récent au plus ancien. Le re-trier ici ne ferait que masquer d'où
         // vient l'ordre.
         setReviews(utilisables);
-        // On ouvre sur l'avis commenté le plus récent : c'est ce que le
-        // professionnel veut montrer neuf fois sur dix. Sinon la note
-        // d'ensemble, seule chose qu'un salon sans témoignage puisse dire.
-        setReviewChoice(utilisables.some((r) => r.comment) ? 0 : 'average');
+        // Un avis demandé explicitement l'emporte. À défaut, on ouvre sur le
+        // commenté le plus récent — ce que le professionnel veut montrer neuf
+        // fois sur dix. Sinon la note d'ensemble, seule chose qu'un salon sans
+        // témoignage puisse dire.
+        const commentes = utilisables.filter((r) => r.comment);
+        const demande = initialReviewId
+          ? commentes.findIndex((r) => r.id === initialReviewId)
+          : -1;
+        setReviewChoice(
+          demande >= 0 ? demande : commentes.length > 0 ? 0 : 'average'
+        );
       })
       .catch((e) => console.warn('Chargement des avis pour la story:', e));
     return () => {
       vivant = false;
     };
-  }, [visible, displayMode, provider?.id, reviews.length]);
+  }, [visible, displayMode, provider?.id, reviews.length, initialReviewId]);
 
   // La modale se referme : on repart d'une ardoise propre au prochain appel.
   useEffect(() => {

@@ -1935,7 +1935,8 @@
       "paypalNotConfiguredDesc": "Adicione a sua ligação PayPal a partir da interface web para gerar um QR code de pagamento.",
       "configurePaypal": "Configurar o PayPal"
     },
-    "openPageError": "Não foi possível abrir a sua página."
+    "openPageError": "Não foi possível abrir a sua página.",
+    "reviewToStory": "Criar uma story"
   },
   "proCalendar": {
     "title": "Agenda",

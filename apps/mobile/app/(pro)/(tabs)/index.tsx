@@ -930,6 +930,11 @@ export default function ProDashboardScreen() {
 
   const [showQRModal, setShowQRModal] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
+  /**
+   * Avis à mettre en avant quand la modale s'ouvre depuis la section des
+   * derniers avis. `null` = ouverture normale, par le bouton flottant.
+   */
+  const [storyReviewId, setStoryReviewId] = useState<string | null>(null);
   const [activeQRTab, setActiveQRTab] = useState<'booking' | 'paypal'>('booking');
   const shopUrl = provider?.slug ? `https://opatam.com/p/${provider.slug}` : null;
   const paypalLink = provider?.socialLinks?.paypal || null;
@@ -1922,27 +1927,49 @@ export default function ProDashboardScreen() {
               </Pressable>
             </View>
 
+            {/* Un avis se transforme en story d'un geste. C'est le moment où
+                le professionnel le lit et se dit qu'il est beau ; l'envoyer
+                chercher le même avis dans le bouton flottant, puis dans une
+                liste, perdrait cette impulsion. */}
             {recentReviews.map((review) => (
-              <Card key={review.id} padding="md" shadow="sm" style={{ marginBottom: spacing.sm }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
-                  <View style={{ flexDirection: 'row' }}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Ionicons
-                        key={star}
-                        name={star <= review.rating ? 'star' : 'star-outline'}
-                        size={14}
-                        color={star <= review.rating ? '#FBBF24' : colors.border}
-                      />
-                    ))}
+              <Pressable
+                key={review.id}
+                onPress={() => {
+                  setStoryReviewId(review.id);
+                  setShowStoryModal(true);
+                }}
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              >
+                <Card padding="md" shadow="sm" style={{ marginBottom: spacing.sm }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+                    <View style={{ flexDirection: 'row' }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Ionicons
+                          key={star}
+                          name={star <= review.rating ? 'star' : 'star-outline'}
+                          size={14}
+                          color={star <= review.rating ? '#FBBF24' : colors.border}
+                        />
+                      ))}
+                    </View>
+                    <Text variant="caption" color="textMuted">{review.clientName}</Text>
+                    {/* L'intitulé, et pas seulement une icône : « on peut
+                        toucher » ne dit pas CE QUE ça fait, et un avis
+                        cliquable évoque plutôt son ouverture en détail. */}
+                    <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="share-social-outline" size={13} color={colors.primary} />
+                      <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
+                        {t('proHome.reviewToStory')}
+                      </Text>
+                    </View>
                   </View>
-                  <Text variant="caption" color="textMuted">{review.clientName}</Text>
-                </View>
-                {review.comment && (
-                  <Text variant="bodySmall" color="textSecondary" numberOfLines={2}>
-                    "{review.comment}"
-                  </Text>
-                )}
-              </Card>
+                  {review.comment && (
+                    <Text variant="bodySmall" color="textSecondary" numberOfLines={2}>
+                      "{review.comment}"
+                    </Text>
+                  )}
+                </Card>
+              </Pressable>
             ))}
           </View>
         )}
@@ -2132,7 +2159,12 @@ export default function ProDashboardScreen() {
         <Suspense fallback={null}>
           <LazyStoryShareModal
             visible={showStoryModal}
-            onClose={() => setShowStoryModal(false)}
+            initialDisplayMode={storyReviewId ? 'review' : undefined}
+            initialReviewId={storyReviewId}
+            onClose={() => {
+              setShowStoryModal(false);
+              setStoryReviewId(null);
+            }}
           />
         </Suspense>
       </NativeModuleBoundary>
