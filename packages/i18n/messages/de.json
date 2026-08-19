@@ -4,7 +4,8 @@
     "googlePlay": "Google Play",
     "language": "Sprache",
     "french": "Français",
-    "english": "English"
+    "english": "English",
+    "loading": "Seite wird geladen…"
   },
   "layout": {
     "header": {

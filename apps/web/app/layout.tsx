@@ -81,6 +81,16 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} className={inter.variable}>
+      <head>
+        {/* Toutes les photos du site — couvertures, logos, prestations —
+            viennent de Firebase Storage. Sans cette annonce, la première
+            d'entre elles paie la résolution DNS et la poignée de main TLS
+            avant même de commencer à descendre, et c'est ce délai qu'on voit
+            sous forme de cadres gris qui se remplissent après coup. On ouvre
+            donc la connexion pendant que le HTML arrive encore. */}
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
+      </head>
       <body className="antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
         <Providers>

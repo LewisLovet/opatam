@@ -16,6 +16,7 @@ import type { Availability, Member } from '@booking-app/shared';
 import { getServiceMinPrice } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
+import { PageRevealGate } from '@/components/loading/PageRevealGate';
 import {
   demoProvider,
   demoServices,
@@ -355,6 +356,7 @@ export default async function ProviderPage({ params }: PageProps) {
   // « Beauty » dans des données structurées lues par les moteurs. Le
   // dictionnaire porte le libellé métier, dans la langue de la page.
   const tCatLd = await getTranslations('businessCategories');
+  const tCommun = await getTranslations('common');
   let categoryLabel: string;
   try {
     categoryLabel = tCatLd(provider.category);
@@ -454,6 +456,23 @@ export default async function ProviderPage({ params }: PageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* Les deux images du haut de page, annoncées AVANT d'être rencontrées.
+          Sans ça le navigateur ne les découvre qu'une fois le HTML analysé,
+          et la page s'affiche pendant qu'elles descendent encore : cadre gris
+          à la place de la couverture, pastille vide à la place du logo. Elles
+          sont connues côté serveur, autant le dire tout de suite. */}
+      {provider.coverPhotoURL && (
+        <link rel="preload" as="image" href={provider.coverPhotoURL} fetchPriority="high" />
+      )}
+      {provider.photoURL && (
+        <link rel="preload" as="image" href={provider.photoURL} fetchPriority="high" />
+      )}
+      {/* Rideau le temps que la couverture et le logo arrivent. Plafonné à
+          1,5 s, et le plafond est écrit en CSS pour ne dépendre de rien. */}
+      <PageRevealGate
+        images={[provider.coverPhotoURL, provider.photoURL]}
+        label={tCommun('loading')}
       />
       {/* Thème du prestataire : la balise <style> pose les jetons, l'attribut
           délimite leur portée. Rendu côté serveur, sinon la page s'afficherait
