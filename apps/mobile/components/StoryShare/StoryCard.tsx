@@ -1465,11 +1465,16 @@ function ReviewStoryLayout({
 
         {commentaire ? (
           <Text style={reviewStyles.quote}>{commentaire}</Text>
-        ) : (
+        ) : (ratingCount ?? 0) > 0 ? (
           /**
            * Un avis 5★ sur deux n'a AUCUN texte. Ce n'est pas un cas
            * dégradé mais le cas courant : plutôt qu'une carte vide, on
            * montre ce qui reste vrai — la note d'ensemble et son assise.
+           *
+           * Conditionné à un nombre d'avis NON NUL : sans cette garde, un
+           * salon sans le moindre avis produisait « 0,0 / sur 0 avis », une
+           * story qui dit exactement ce qu'il ne faut pas publier. La modale
+           * interdit déjà d'en arriver là ; ceci en est le second verrou.
            */
           <View style={reviewStyles.noteBloc}>
             <Text style={reviewStyles.noteChiffre}>
@@ -1482,7 +1487,7 @@ function ReviewStoryLayout({
               {i18n.t('storyShare.review.outOf', { count: ratingCount ?? 0 })}
             </Text>
           </View>
-        )}
+        ) : null}
 
         {review?.authorName ? (
           <Text style={reviewStyles.author}>{review.authorName}</Text>
@@ -1547,7 +1552,15 @@ const reviewStyles = StyleSheet.create({
     textAlign: 'center',
   },
   noteBloc: { alignItems: 'center', paddingVertical: 4 },
-  noteChiffre: { fontSize: 52, fontWeight: '800', color: '#2b2825', letterSpacing: -1.5 },
+  noteChiffre: {
+    fontSize: 52,
+    // Hauteur de ligne EXPLICITE : sans elle React Native rognait le haut et
+    // le bas du chiffre — « 5,0 » n'apparaissait qu'en tranche.
+    lineHeight: 60,
+    fontWeight: '800',
+    color: '#2b2825',
+    letterSpacing: -1.5,
+  },
   noteLegende: { fontSize: 13, color: '#6d6862', marginTop: 4 },
   author: { fontSize: 13, color: '#6d6862', marginTop: 16 },
   signature: {

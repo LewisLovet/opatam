@@ -39,4 +39,26 @@ const existingBlockArr = existingBlock
   : [];
 config.resolver.blockList = [...existingBlockArr, ...extraBlock];
 
+// Sur le WEB, `@stripe/stripe-react-native` est remplacé par une coquille.
+//
+// Metro analyse les `require` statiquement : le garde
+// `Platform.OS === 'web' ? … : require('@stripe/stripe-react-native')` du
+// layout racine ne l'empêchait donc pas d'entrer dans le paquet web, où le
+// module tire des internes de React Native inexistants. Résultat, `expo start
+// --web` ne démarrait plus du tout — l'application entière échouait sur un
+// test censé la protéger.
+//
+// La résolution est le seul endroit où la plateforme est connue AVANT
+// l'analyse des imports. Le natif n'est pas touché.
+const resolutionParDefaut = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === 'web' && moduleName === '@stripe/stripe-react-native') {
+    return {
+      filePath: path.resolve(projectRoot, 'lib/stripeWebStub.js'),
+      type: 'sourceFile',
+    };
+  }
+  return (resolutionParDefaut ?? context.resolveRequest)(context, moduleName, platform);
+};
+
 module.exports = config;

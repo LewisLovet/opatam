@@ -581,6 +581,17 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   }, [visible]);
 
   const avisCourant = reviews.length > 0 ? reviews[reviewIndex % reviews.length] : null;
+
+  /**
+   * Un salon sans le moindre avis ne peut pas en publier un.
+   *
+   * `provider.rating.count` est déjà chargé, donc la pastille sait dès
+   * l'ouverture si elle a lieu d'être — inutile d'attendre une lecture pour
+   * proposer un contenu qui n'existe pas. Sans cette garde, choisir « Avis »
+   * produisait une carte « 0,0 · sur 0 avis » : exactement ce qu'un
+   * professionnel ne doit pas pouvoir publier.
+   */
+  const peutPublierUnAvis = (provider.rating?.count ?? 0) > 0 || reviews.length > 0;
   const isSharing = sharing !== null;
   const isLoading =
     loadingServices ||
@@ -693,9 +704,14 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                 // in sync: pick Dispos here → both go away.
                 const showNewPill =
                   mode.key === 'availabilities' && showDisposNew;
+                // Contenu sans matière : la pastille est visible mais éteinte.
+                // La masquer ferait croire que la fonction n'existe pas ;
+                // l'éteindre dit qu'elle attend quelque chose.
+                const indisponible = mode.key === 'review' && !peutPublierUnAvis;
                 return (
                   <Pressable
                     key={mode.key}
+                    disabled={indisponible}
                     onPress={() => {
                       setDisplayMode(mode.key);
                       if (mode.key === 'availabilities' && showDisposNew) {
@@ -708,6 +724,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                         backgroundColor: isActive ? colors.primary : colors.surface,
                         borderWidth: 1,
                         borderColor: isActive ? colors.primary : colors.border,
+                        opacity: indisponible ? 0.4 : 1,
                       },
                     ]}
                   >
@@ -764,7 +781,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
           {displayMode === 'review' && (
             <View style={styles.sectionSpacing}>
               {reviews.length === 0 ? (
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
                   {t('storyShare.review.empty')}
                 </Text>
               ) : reviews.length > 1 ? (
