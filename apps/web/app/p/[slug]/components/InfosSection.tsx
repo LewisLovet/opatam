@@ -37,36 +37,87 @@ interface InfosSectionProps {
   isTeam: boolean;
 }
 
+/** « 09:30 » → 570. */
+function enMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** Une fin à « 00:00 » désigne minuit de FIN de journée, pas le début. */
+function finEnMinutes(hhmm: string): number {
+  const m = enMinutes(hhmm);
+  return m === 0 ? 24 * 60 : m;
+}
+
+const enHhmm = (minutes: number): string =>
+  `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+
+/**
+ * Réunit les plages de plusieurs agendas en une seule lecture.
+ *
+ * Un lieu peut compter plusieurs professionnels aux horaires décalés. Pour la
+ * cliente, le lieu est ouvert dès que QUELQU'UN y travaille : c'est donc bien
+ * l'union qu'il faut montrer, pas l'agenda de l'un d'eux.
+ */
+function fusionnerPlages(plages: { start: string; end: string }[]): { start: string; end: string }[] {
+  const bornes = plages
+    .map((p) => ({ debut: enMinutes(p.start), fin: finEnMinutes(p.end) }))
+    .filter((p) => p.fin > p.debut)
+    .sort((a, b) => a.debut - b.debut);
+
+  const sortie: { debut: number; fin: number }[] = [];
+  for (const p of bornes) {
+    const derniere = sortie[sortie.length - 1];
+    if (derniere && p.debut <= derniere.fin) {
+      derniere.fin = Math.max(derniere.fin, p.fin);
+    } else {
+      sortie.push({ ...p });
+    }
+  }
+  return sortie.map((p) => ({ start: enHhmm(p.debut), end: enHhmm(p.fin) }));
+}
+
 export function InfosSection({ locations, members, availabilities, isTeam }: InfosSectionProps) {
   const t = useTranslations('provider');
   // Localized day names, Sunday-first (indexable by JS getDay()).
   const dayNames = t.raw('infos.days') as string[];
 
-  // Get default member for schedule display (in solo mode)
-  const defaultMember = members.find((m) => m.name === 'Principal') || members[0];
+  /**
+   * La semaine d'un lieu, réunie depuis les agendas des membres qui y
+   * travaillent.
+   *
+   * Ce bloc n'affichait que l'agenda d'UN membre — « Principal », ou le
+   * premier de la liste — pendant qu'il listait TOUS les lieux au-dessus. Un
+   * prestataire à deux adresses voyait donc deux adresses et une seule plage
+   * horaire, celle d'un membre qui ne travaille peut-être même pas là. Et en
+   * solo à plusieurs membres, les horaires des autres disparaissaient
+   * purement et simplement.
+   */
+  const semainePourMembres = (idsMembres: string[]) => {
+    const agendas = availabilities.filter((a) => idsMembres.includes(a.memberId));
+    return [1, 2, 3, 4, 5, 6, 0].map((dayOfWeek) => {
+      const duJour = agendas.filter((a) => a.dayOfWeek === dayOfWeek && a.isOpen);
+      const slots = fusionnerPlages(duJour.flatMap((a) => a.slots ?? []));
+      return { day: dayNames[dayOfWeek], isOpen: slots.length > 0, slots };
+    });
+  };
 
-  // Get schedule for display (use default member's schedule)
-  const schedule = defaultMember
-    ? availabilities.filter((a) => a.memberId === defaultMember.id)
-    : [];
+  /**
+   * Un bloc d'horaires par lieu quand il y en a plusieurs. Le modèle du
+   * produit est explicite côté professionnel — « 1 membre = 1 lieu = 1
+   * agenda » — donc les horaires SONT propres à chaque adresse ; les
+   * fusionner en une seule semaine mentirait à la cliente sur celle où elle
+   * se rend.
+   */
+  const horairesParLieu = locations.map((lieu) => ({
+    lieu,
+    semaine: semainePourMembres(
+      members.filter((m) => m.locationId === lieu.id).map((m) => m.id)
+    ),
+  }));
 
-  // Sort schedule by day (Monday first)
-  const sortedSchedule = [...schedule].sort((a, b) => {
-    // Convert to Monday-first (0=Mon, 6=Sun)
-    const dayA = a.dayOfWeek === 0 ? 6 : a.dayOfWeek - 1;
-    const dayB = b.dayOfWeek === 0 ? 6 : b.dayOfWeek - 1;
-    return dayA - dayB;
-  });
-
-  // Build full week schedule
-  const weekSchedule = [1, 2, 3, 4, 5, 6, 0].map((dayOfWeek) => {
-    const daySchedule = sortedSchedule.find((s) => s.dayOfWeek === dayOfWeek);
-    return {
-      day: dayNames[dayOfWeek],
-      isOpen: daySchedule?.isOpen ?? false,
-      slots: daySchedule?.slots ?? [],
-    };
-  });
+  // Filet : des membres sans lieu rattaché, ou aucun lieu déclaré.
+  const semaineGlobale = semainePourMembres(members.map((m) => m.id));
 
   return (
     <section className="py-10 border-t border-gray-200 dark:border-gray-700">
@@ -100,7 +151,22 @@ export function InfosSection({ locations, members, availabilities, isTeam }: Inf
             <Clock className="w-5 h-5 text-primary-500" />
             {t('infos.openingHours')}
           </h3>
-          <HoursCard weekSchedule={weekSchedule} />
+          {horairesParLieu.length > 1 ? (
+            <div className="space-y-5">
+              {horairesParLieu.map(({ lieu, semaine }) => (
+                <div key={lieu.id}>
+                  <p className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    {lieu.name}
+                  </p>
+                  <HoursCard weekSchedule={semaine} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <HoursCard
+              weekSchedule={horairesParLieu[0]?.semaine ?? semaineGlobale}
+            />
+          )}
         </div>
       </div>
 

@@ -48,8 +48,8 @@ export function BrandLoading({ label }: { label: string }) {
   .opatam-ring { animation: none; opacity: .18; transform: scale(1.4); }
   .opatam-dot  { animation: none; opacity: .55; }
 }
-/* Le monogramme est bleu nuit : sur fond sombre il disparaissait presque.
-   Repeint en blanc, comme le logo du splash mobile.
+/* Les points seuls demandent un eclaircissement en mode sombre ; le
+   monogramme, lui, est blanc sur aplat plein dans les deux cas.
 
    La regle est ecrite ICI et non avec un variant "dark:" de Tailwind : la
    configuration est en darkMode "class", or les pages PUBLIQUES ne portent
@@ -58,15 +58,13 @@ export function BrandLoading({ label }: { label: string }) {
    ProviderThemeStyle, pour que le choix explicite l'emporte dans les deux
    sens. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .opatam-logo { filter: brightness(0) invert(1); }
-  :root:not([data-theme="light"]) .opatam-dot  { background-color: rgb(147 197 253); }
+  :root:not([data-theme="light"]) .opatam-dot { background-color: rgb(147 197 253); }
 }
-:root[data-theme="dark"] .opatam-logo { filter: brightness(0) invert(1); }
-:root[data-theme="dark"] .opatam-dot  { background-color: rgb(147 197 253); }`,
+:root[data-theme="dark"] .opatam-dot { background-color: rgb(147 197 253); }`,
         }}
       />
 
-      <div className="relative flex items-center justify-center w-28 h-28">
+      <div className="relative flex items-center justify-center w-32 h-32">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
@@ -75,13 +73,20 @@ export function BrandLoading({ label }: { label: string }) {
             style={{ animationDelay: `${i * 0.7}s` }}
           />
         ))}
+        {/* L'ICÔNE DE L'APPLICATION telle quelle : monogramme blanc sur son
+            bleu. Le monogramme bleu nuit se posait auparavant sur des anneaux
+            bleus — du bleu sur du bleu, illisible d'un coup d'œil.
+            Reconstituer la pastille avec `bg-primary-600` ne marchait pas non
+            plus : hors de la portée `data-provider-theme`, ce jeton prend une
+            valeur qui n'est ni celle du salon ni celle de la marque. L'image
+            porte sa propre couleur, elle ne dépend de rien. */}
         <Image
-          src="/logo-opatam.png"
+          src="/icone-app-opatam.png"
           alt=""
           width={80}
           height={80}
           priority
-          className="opatam-logo relative"
+          className="relative rounded-2xl"
         />
       </div>
 

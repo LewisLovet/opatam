@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
 import { ArrowLeft, Check, CalendarCheck, Store, Info, ArrowRight, Trash2, Plus } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import { localizedPath } from '@/lib/localizedPath';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
@@ -1172,9 +1173,16 @@ export function BookingFlow({
                 {/* App download CTA */}
                 <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }} className="rounded-xl p-5 mb-4 max-w-sm mx-auto">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#111827' }}>
-                      <span className="font-bold text-sm" style={{ color: '#ffffff' }}>O</span>
-                    </div>
+                    {/* L'icône RÉELLE de l'application, et non plus un « O »
+                        blanc sur carré noir : c'est ce que la cliente
+                        cherchera sur sa boutique, autant le lui montrer. */}
+                    <Image
+                      src="/icone-app-opatam.png"
+                      alt="Opatam"
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-xl flex-shrink-0"
+                    />
                     <div className="flex-1 text-left">
                       <p className="text-sm font-semibold mb-0.5" style={{ color: '#111827' }}>
                         {t('appCta.title')}
