@@ -17,12 +17,6 @@
     "scheme": "opatam",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
-    "splash": {
-      "image": "./assets/splash-icon-white.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1a6daf",
-      "imageWidth": 220
-    },
     "primaryLanguage": "fr-FR",
     "locales": {
       "fr": "./locales/fr.json"
@@ -60,13 +54,7 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "com.google.android.gms.permission.AD_ID"
-      ],
-      "splash": {
-        "image": "./assets/splash-icon-white.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#1a6daf",
-        "imageWidth": 200
-      }
+      ]
     },
     "notification": {
       "icon": "./assets/notification-icon.png",
@@ -79,6 +67,21 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon-white.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#1a6daf",
+          "android": {
+            "image": "./assets/splash-icon-white.png",
+            "imageWidth": 200,
+            "resizeMode": "contain",
+            "backgroundColor": "#1a6daf"
+          }
+        }
+      ],
       "expo-font",
       "expo-apple-authentication",
       [

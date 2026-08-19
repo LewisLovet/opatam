@@ -9,7 +9,10 @@ import * as Font from 'expo-font';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 
-// Critical images to preload (home categories)
+/**
+ * Vignettes des catégories de l'accueil. Préchargées pour que la grille
+ * n'apparaisse pas case par case — mais SANS retenir le démarrage.
+ */
 const CRITICAL_IMAGES = [
   'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
   'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=400',
@@ -25,13 +28,12 @@ export function useAppReady() {
   useEffect(() => {
     async function prepare() {
       try {
-        // 1. Load fonts
+        // Les polices, elles, doivent être là : sans elles les icônes
+        // s'affichent en carrés puis se remplacent, et c'est un fichier
+        // local, borné.
         await Font.loadAsync({
           ...Ionicons.font,
         });
-
-        // 2. Preload critical images (categories)
-        await Image.prefetch(CRITICAL_IMAGES);
       } catch (e) {
         console.warn('Error during app preparation:', e);
       } finally {
@@ -40,6 +42,26 @@ export function useAppReady() {
     }
 
     prepare();
+
+    /**
+     * Les vignettes se chargent À CÔTÉ, sans être attendues.
+     *
+     * Elles l'étaient : le démarrage entier dépendait de six photos servies
+     * par un CDN tiers. Or `RootLayout` ne rend rien tant que ce n'est pas
+     * fini, donc l'application restait sur le splash natif pendant toute la
+     * durée du téléchargement, et l'écran de chargement au logo — celui qui
+     * anime, `AppBootSplash` — ne pouvait pas apparaître avant. D'où
+     * l'impression que le logo met du temps à venir : ce n'est pas le logo
+     * qui est lent, c'est qu'on l'attend derrière Unsplash. Sur réseau lent
+     * ou coupé, l'attente allait jusqu'à l'expiration des requêtes.
+     *
+     * Rien ici n'est nécessaire pour afficher le premier écran. Au pire les
+     * vignettes de l'accueil arrivent avec un instant de retard, ce qui est
+     * précisément ce que fait n'importe quelle image d'une liste.
+     */
+    Image.prefetch(CRITICAL_IMAGES).catch((e) => {
+      console.warn('Prefetch des vignettes de catégories:', e);
+    });
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
