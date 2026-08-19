@@ -25,6 +25,10 @@ interface Member {
 
 interface Availability {
   memberId: string;
+  /** Dénormalisé depuis le membre. Ce type local l'OMETTAIT, alors que la
+   *  page le sérialise et que la base le porte : le champ arrivait bien à
+   *  l'exécution, mais TypeScript prétendait qu'il n'existait pas. */
+  locationId: string;
   dayOfWeek: number;
   slots: { start: string; end: string }[];
   isOpen: boolean;
@@ -93,31 +97,40 @@ export function InfosSection({ locations, members, availabilities, isTeam }: Inf
    * solo à plusieurs membres, les horaires des autres disparaissaient
    * purement et simplement.
    */
-  const semainePourMembres = (idsMembres: string[]) => {
-    const agendas = availabilities.filter((a) => idsMembres.includes(a.memberId));
-    return [1, 2, 3, 4, 5, 6, 0].map((dayOfWeek) => {
+  const semainePourAgendas = (agendas: Availability[]) =>
+    [1, 2, 3, 4, 5, 6, 0].map((dayOfWeek) => {
       const duJour = agendas.filter((a) => a.dayOfWeek === dayOfWeek && a.isOpen);
       const slots = fusionnerPlages(duJour.flatMap((a) => a.slots ?? []));
       return { day: dayNames[dayOfWeek], isOpen: slots.length > 0, slots };
     });
-  };
 
   /**
-   * Un bloc d'horaires par lieu quand il y en a plusieurs. Le modèle du
-   * produit est explicite côté professionnel — « 1 membre = 1 lieu = 1
-   * agenda » — donc les horaires SONT propres à chaque adresse ; les
-   * fusionner en une seule semaine mentirait à la cliente sur celle où elle
-   * se rend.
+   * Le lieu d'un agenda vient du document lui-même, où il est dénormalisé, et
+   * non du membre : si un professionnel change de rattachement, l'agenda
+   * garde le lieu pour lequel il a été saisi.
    */
-  const horairesParLieu = locations.map((lieu) => ({
-    lieu,
-    semaine: semainePourMembres(
-      members.filter((m) => m.locationId === lieu.id).map((m) => m.id)
-    ),
-  }));
+  const lieuDeLAgenda = (a: Availability) =>
+    a.locationId || members.find((m) => m.id === a.memberId)?.locationId || '';
 
-  // Filet : des membres sans lieu rattaché, ou aucun lieu déclaré.
-  const semaineGlobale = semainePourMembres(members.map((m) => m.id));
+  /**
+   * Les lieux qui ont RÉELLEMENT des horaires.
+   *
+   * Un agenda appartient à un membre, et un membre à un seul lieu : un
+   * prestataire à deux adresses mais un seul professionnel n'a donc qu'un
+   * agenda, pour l'adresse où ce professionnel travaille. Le second lieu
+   * n'est pas « fermé », il n'a simplement rien de saisi — et afficher une
+   * semaine entière de « Fermé » sous son nom annoncerait une fermeture que
+   * personne n'a déclarée. On ne montre d'horaires que là où il y en a.
+   */
+  const lieuxAvecHoraires = locations
+    .map((lieu) => ({
+      lieu,
+      semaine: semainePourAgendas(availabilities.filter((a) => lieuDeLAgenda(a) === lieu.id)),
+    }))
+    .filter(({ semaine }) => semaine.some((j) => j.isOpen));
+
+  // Filet : agendas rattachés à aucun lieu connu, ou aucun lieu déclaré.
+  const semaineGlobale = semainePourAgendas(availabilities);
 
   return (
     <section className="py-10 border-t border-gray-200 dark:border-gray-700">
@@ -151,9 +164,13 @@ export function InfosSection({ locations, members, availabilities, isTeam }: Inf
             <Clock className="w-5 h-5 text-primary-500" />
             {t('infos.openingHours')}
           </h3>
-          {horairesParLieu.length > 1 ? (
+          {/* Le nom du lieu ne coiffe les horaires que s'il y a VRAIMENT
+              plusieurs semaines distinctes à distinguer. Avec une seule, le
+              sous-titre laisserait croire que les autres adresses ont leurs
+              propres horaires ailleurs sur la page. */}
+          {lieuxAvecHoraires.length > 1 ? (
             <div className="space-y-5">
-              {horairesParLieu.map(({ lieu, semaine }) => (
+              {lieuxAvecHoraires.map(({ lieu, semaine }) => (
                 <div key={lieu.id}>
                   <p className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
                     {lieu.name}
@@ -164,7 +181,7 @@ export function InfosSection({ locations, members, availabilities, isTeam }: Inf
             </div>
           ) : (
             <HoursCard
-              weekSchedule={horairesParLieu[0]?.semaine ?? semaineGlobale}
+              weekSchedule={lieuxAvecHoraires[0]?.semaine ?? semaineGlobale}
             />
           )}
         </div>
