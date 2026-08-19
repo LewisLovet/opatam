@@ -37,7 +37,13 @@ try {
 }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { catalogService, memberService, schedulingService, reviewService } from '@booking-app/firebase';
+import {
+  catalogService,
+  memberService,
+  schedulingService,
+  reviewService,
+  storyTrackingService,
+} from '@booking-app/firebase';
 import type { Service, Member } from '@booking-app/shared';
 import { APP_CONFIG, publicReviewAuthor } from '@booking-app/shared';
 import i18n from '../../lib/i18n';
@@ -604,6 +610,10 @@ export function StoryShareModal({
       } else {
         await fallbackShare(fileUri);
       }
+      // Comptabilisé APRÈS coup, jamais au clic : un partage annulé ou
+      // avorté n'est pas un partage, et gonflerait un compteur censé
+      // servir un jour à décerner des récompenses.
+      void storyTrackingService.shared(provider!.id, displayMode, 'instagram');
     } catch (error: any) {
       if (error?.message?.includes?.('User did not share')) return;
       if (error?.code === 'ECANCELLED' || error?.code === 'ERR_SHARING_ABORTED') return;
@@ -612,7 +622,7 @@ export function StoryShareModal({
     } finally {
       setSharing(null);
     }
-  }, [captureStory, fallbackShare, checkAppInstalled]);
+  }, [captureStory, fallbackShare, checkAppInstalled, provider, displayMode]);
 
   // Generic share — opens system share sheet
   const handleGenericShare = useCallback(async () => {
@@ -621,12 +631,13 @@ export function StoryShareModal({
       const fileUri = await captureStory();
       if (!fileUri) { Alert.alert(i18n.t('storyShare.errorTitle'), i18n.t('storyShare.captureFailed')); return; }
       await fallbackShare(fileUri);
+      void storyTrackingService.shared(provider!.id, displayMode, 'system');
     } catch {
       // Ignore
     } finally {
       setSharing(null);
     }
-  }, [captureStory, fallbackShare]);
+  }, [captureStory, fallbackShare, provider, displayMode]);
 
   const networkHandlers: Record<string, () => void> = {
     instagram: handleShareInstagram,

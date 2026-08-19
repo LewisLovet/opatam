@@ -44,6 +44,24 @@ service cloud.firestore {
       }
     }
 
+    // === STORIES ===
+    //
+    // Un événement par story effectivement partagée. Sert deux choses : le
+    // compteur affiché au professionnel, et plus tard « qui est le plus actif
+    // sur les réseaux ».
+    //
+    // Chaque prestataire n'inscrit que pour LUI-MÊME — sans quoi n'importe
+    // quel compte pourrait gonfler le compteur d'un autre, ou le sien, ce qui
+    // viderait de son sens une mesure destinée à récompenser.
+    //
+    // Écriture seule : ni modification ni suppression, un événement est un
+    // fait daté. La lecture passe par l'administration, côté serveur, qui
+    // n'est pas soumise à ces règles.
+    match /storyEvents/{eventId} {
+      allow create: if isProviderAdmin(request.resource.data.providerId);
+      allow read, update, delete: if false;
+    }
+
     // === PROVIDERS ===
 
     match /providers/{providerId} {

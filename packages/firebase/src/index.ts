@@ -184,4 +184,7 @@ export {
   // Analytics
   AnalyticsService,
   analyticsService,
+  // Stories
+  storyTrackingService,
 } from './services';
+export type { StoryContent, StoryChannel } from './services';

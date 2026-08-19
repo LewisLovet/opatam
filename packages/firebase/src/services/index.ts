@@ -33,3 +33,10 @@ export { NotificationService, notificationService } from './notification.service
 
 // Analytics Service
 export { AnalyticsService, analyticsService } from './analytics.service';
+
+// Suivi des stories (partages)
+export {
+  storyTrackingService,
+  type StoryContent,
+  type StoryChannel,
+} from './story-tracking.service';

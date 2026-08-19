@@ -184,9 +184,21 @@ export interface Provider {
   // Analytics (pageViews.today incremented in real-time, rest updated nightly)
   stats?: {
     pageViews: PageViewStats;
+    /**
+     * Stories effectivement partagées. Compteur dénormalisé pour l'affichage ;
+     * le détail daté vit dans la collection `storyEvents`, seule capable de
+     * répondre à « qui a été le plus actif sur telle période ».
+     */
+    stories?: StoryShareStats;
   };
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** Compteur de stories partagées, dénormalisé sur Provider. */
+export interface StoryShareStats {
+  shared: number;
+  lastSharedAt: Date | null;
 }
 
 // Page view stats (denormalized on Provider, updated nightly by Cloud Function)
