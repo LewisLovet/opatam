@@ -2943,7 +2943,7 @@
     "endTime": "Hora de fim",
     "updated": "Período bloqueado atualizado",
     "endBeforeStart": "A hora de fim deve ser posterior à hora de início.",
-    "endBeforeStartDaily": "Em repetição diária, a hora de fim deve ser posterior à hora de início: caso contrário a faixa fica vazia e deixa de bloquear seja o que for. Escolha « Uma ausência contínua » para sair à noite e voltar de manhã.",
+    "endBeforeStartDaily": "Em repetição diária, a hora de fim deve ser posterior à hora de início.",
     "spanMode": {
       "label": "Neste período, estes horários significam",
       "continuous": {

@@ -146,7 +146,7 @@ export function BlockPeriodModal({
     ? null
     : sameDay
       ? "Sur une même journée, l'heure de fin doit être après l'heure de début."
-      : "En répétition quotidienne, l'heure de fin doit être après l'heure de début : sinon la tranche est vide et plus rien n'est bloqué. Choisissez « Une absence continue » pour partir le soir et revenir le matin.";
+      : "En répétition quotidienne, l'heure de fin doit être après l'heure de début.";
 
   // Reset whenever the modal opens. In edit mode we hydrate from the
   // existing blockedSlot doc; otherwise we fall back to the create

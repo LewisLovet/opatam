@@ -2943,7 +2943,7 @@
     "endTime": "Ende",
     "updated": "Gesperrter Zeitraum geändert",
     "endBeforeStart": "Die Endzeit muss nach der Startzeit liegen.",
-    "endBeforeStartDaily": "Bei täglicher Wiederholung muss die Endzeit nach der Startzeit liegen: sonst ist der Zeitraum leer und es wird gar nichts mehr blockiert. Wählen Sie « Eine durchgehende Abwesenheit », um abends zu gehen und morgens zurückzukommen.",
+    "endBeforeStartDaily": "Bei täglicher Wiederholung muss die Endzeit nach der Startzeit liegen.",
     "spanMode": {
       "label": "In diesem Zeitraum bedeuten diese Uhrzeiten",
       "continuous": {

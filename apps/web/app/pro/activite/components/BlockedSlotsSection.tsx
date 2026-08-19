@@ -123,7 +123,7 @@ export function BlockedSlotsSection({
     ? null
     : sameDayForm
       ? "Sur une même journée, l'heure de fin doit être après l'heure de début."
-      : "En répétition quotidienne, l'heure de fin doit être après l'heure de début : sinon la tranche est vide et plus rien n'est bloqué. Choisissez « Une absence continue » pour partir le soir et revenir le matin.";
+      : "En répétition quotidienne, l'heure de fin doit être après l'heure de début.";
 
   const resetForm = () => {
     setFormData(getDefaultFormData());
