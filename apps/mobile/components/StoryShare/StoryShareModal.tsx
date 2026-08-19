@@ -177,6 +177,71 @@ const DISPLAY_MODES: { key: DisplayMode; icon: string }[] = [
   { key: 'none', icon: 'qr-code-outline' },
 ];
 
+/**
+ * Une option de la feuille de sélection.
+ *
+ * TOUTES les rangées portent la même pastille de choix, remplie ou vide.
+ * N'afficher une coche que sur la ligne retenue ne dit rien aux autres : on
+ * ne devine pas qu'elles sont prenables, et la note d'ensemble — sans étoiles
+ * ni pastille — passait carrément pour un titre de section.
+ *
+ * Les étoiles sont dorées comme dans la story : la rangée annonce ce qu'on
+ * obtiendra, elle ne le décrit pas dans un autre langage.
+ */
+function PickerRow({
+  selected,
+  title,
+  stars,
+  body,
+  colors,
+  onPress,
+}: {
+  selected: boolean;
+  title: string;
+  stars: number;
+  body: string;
+  colors: { text: string; textSecondary: string; border: string; primary: string };
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      style={({ pressed }) => [
+        styles.pickerRow,
+        { borderBottomColor: colors.border, opacity: pressed ? 0.6 : 1 },
+      ]}
+    >
+      <Ionicons
+        name={selected ? 'radio-button-on' : 'radio-button-off'}
+        size={22}
+        color={selected ? colors.primary : colors.textSecondary}
+      />
+      <View style={{ flex: 1, gap: 3 }}>
+        <View style={styles.pickerRowHead}>
+          <Text style={styles.pickerStars}>{'★'.repeat(stars)}</Text>
+          {title ? (
+            <Text style={[styles.reviewPickTitle, { color: colors.text }]} numberOfLines={1}>
+              {title}
+            </Text>
+          ) : null}
+        </View>
+        {body ? (
+          /* Trois lignes : de quoi juger un avis sans l'ouvrir, tout en
+             gardant des rangées de hauteur comparable. */
+          <Text
+            numberOfLines={3}
+            style={[styles.reviewPickBody, { color: colors.textSecondary }]}
+          >
+            {body}
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
 export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -825,11 +890,31 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                   ]}
                 >
                   <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={[styles.reviewPickTitle, { color: colors.text }]}>
-                      {reviewChoice === 'average'
-                        ? t('storyShare.review.average')
-                        : `${'★'.repeat(Math.round(avisCourant?.rating ?? 5))}  ${avisCourant?.authorName ?? ''}`}
-                    </Text>
+                    {/* Mêmes étoiles dorées que dans la story et dans la
+                        liste : trois langages visuels pour une seule chose
+                        obligeraient à retraduire à chaque écran. */}
+                    <View style={styles.pickerRowHead}>
+                      <Text style={styles.pickerStars}>
+                        {'★'.repeat(
+                          Math.max(
+                            1,
+                            Math.min(
+                              5,
+                              Math.round(
+                                reviewChoice === 'average'
+                                  ? (provider.rating?.average ?? 5)
+                                  : (avisCourant?.rating ?? 5)
+                              )
+                            )
+                          )
+                        )}
+                      </Text>
+                      <Text style={[styles.reviewPickTitle, { color: colors.text }]}>
+                        {reviewChoice === 'average'
+                          ? t('storyShare.review.average')
+                          : (avisCourant?.authorName ?? '')}
+                      </Text>
+                    </View>
                     <Text
                       numberOfLines={1}
                       style={[styles.reviewPickBody, { color: colors.textSecondary }]}
@@ -1481,57 +1566,36 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                  professionnel choisit UNE chose, elle mérite la même rangée
                  que les autres. */
               ListHeaderComponent={
-                <Pressable
+                /* La note d'ensemble est une OPTION, pas un en-tête. Sans
+                   étoiles ni pastille de choix, elle se lisait comme un titre
+                   de section : on ne devinait pas qu'on pouvait la prendre. */
+                <PickerRow
+                  selected={reviewChoice === 'average'}
+                  title={t('storyShare.review.average')}
+                  stars={Math.max(1, Math.min(5, Math.round(provider.rating?.average ?? 5)))}
+                  body={`${(provider.rating?.average ?? 0).toLocaleString(i18n.language, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })} · ${t('storyShare.review.outOf', { count: provider.rating?.count ?? 0 })}`}
+                  colors={colors}
                   onPress={() => {
                     setReviewChoice('average');
                     setReviewPickerOpen(false);
                   }}
-                  style={[styles.pickerRow, { borderBottomColor: colors.border }]}
-                >
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={[styles.reviewPickTitle, { color: colors.text }]}>
-                      {t('storyShare.review.average')}
-                    </Text>
-                    <Text style={[styles.reviewPickBody, { color: colors.textSecondary }]}>
-                      {(provider.rating?.average ?? 0).toLocaleString(i18n.language, {
-                        minimumFractionDigits: 1,
-                        maximumFractionDigits: 1,
-                      })}
-                      {' · '}
-                      {t('storyShare.review.outOf', { count: provider.rating?.count ?? 0 })}
-                    </Text>
-                  </View>
-                  {reviewChoice === 'average' && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </Pressable>
+                />
               }
               renderItem={({ item, index }) => (
-                <Pressable
+                <PickerRow
+                  selected={reviewChoice === index}
+                  title={item.authorName}
+                  stars={Math.max(1, Math.min(5, Math.round(item.rating)))}
+                  body={item.comment ?? ''}
+                  colors={colors}
                   onPress={() => {
                     setReviewChoice(index);
                     setReviewPickerOpen(false);
                   }}
-                  style={[styles.pickerRow, { borderBottomColor: colors.border }]}
-                >
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={[styles.reviewPickTitle, { color: colors.text }]}>
-                      {'★'.repeat(Math.round(item.rating))}
-                      {item.authorName ? `  ${item.authorName}` : ''}
-                    </Text>
-                    {/* Trois lignes : de quoi juger un avis sans l'ouvrir,
-                        tout en gardant des rangées de hauteur comparable. */}
-                    <Text
-                      numberOfLines={3}
-                      style={[styles.reviewPickBody, { color: colors.textSecondary }]}
-                    >
-                      {item.comment}
-                    </Text>
-                  </View>
-                  {reviewChoice === index && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </Pressable>
+                />
               )}
             />
           </View>
@@ -1573,6 +1637,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
+    // L'aperçu touchait le bandeau bleu de l'en-tête : deux aplats colorés
+    // qui se rejoignent sans respiration se lisent comme un seul bloc, et
+    // la story perd son cadre.
+    paddingTop: 16,
     gap: 20,
   },
   previewWrapper: {
@@ -1632,6 +1700,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
   },
+  pickerRowHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  // Le même doré que la story : la rangée montre ce qu'on obtiendra.
+  pickerStars: { color: '#f6c445', fontSize: 14, letterSpacing: 1.5 },
   sectionSpacing: {
     gap: 10,
   },
