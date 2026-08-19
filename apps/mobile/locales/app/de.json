@@ -2436,7 +2436,8 @@
       "badge": "KUNDENBEWERTUNG",
       "verified": "verifizierter Kunde",
       "bookAt": "Jetzt buchen bei {{name}}"
-    }
+    },
+    "whyShare": "Wenn Sie Ihre Storys teilen, gewinnen Sie an Sichtbarkeit und erhöhen Ihre Chancen auf Buchungen."
   },
   "proServices": {
     "title": "Leistungen",

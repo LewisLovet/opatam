@@ -2436,7 +2436,8 @@
       "badge": "AVIS CLIENT",
       "verified": "client vérifié",
       "bookAt": "Réservez chez {{name}}"
-    }
+    },
+    "whyShare": "En partageant vos stories, vous gagnez en visibilité et augmentez vos chances d'obtenir des rendez-vous."
   },
   "proServices": {
     "title": "Prestations",

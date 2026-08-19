@@ -2436,7 +2436,8 @@
       "badge": "CLIENT REVIEW",
       "verified": "verified client",
       "bookAt": "Book at {{name}}"
-    }
+    },
+    "whyShare": "Sharing your stories increases your visibility — and your chances of getting booked."
   },
   "proServices": {
     "title": "Services",

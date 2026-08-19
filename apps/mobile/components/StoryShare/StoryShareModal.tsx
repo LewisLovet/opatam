@@ -1373,6 +1373,23 @@ export function StoryShareModal({
             </View>
           )}
 
+          {/*
+            L'argument, juste avant les boutons de partage — au moment où le
+            professionnel hésite, pas à l'ouverture où il n'écoute pas encore.
+
+            « Augmente vos CHANCES d'obtenir des rendez-vous », et non « génère
+            des rendez-vous » : une story est une image, sans lien cliquable,
+            donc sans attribution possible. Promettre un résultat qu'on ne
+            saura jamais mesurer se retourne au deuxième mois, quand le
+            professionnel demande à voir.
+          */}
+          <View style={[styles.whyShare, { backgroundColor: colors.surfaceSecondary }]}>
+            <Ionicons name="trending-up-outline" size={18} color={colors.primary} />
+            <Text style={{ flex: 1, fontSize: 13, lineHeight: 18, color: colors.textSecondary }}>
+              {t('storyShare.whyShare')}
+            </Text>
+          </View>
+
           {/* Network buttons */}
           <View style={styles.sectionSpacing}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -1738,6 +1755,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
+  },
+  whyShare: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
   },
   pickerRowHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   // Le même doré que la story : la rangée montre ce qu'on obtiendra.

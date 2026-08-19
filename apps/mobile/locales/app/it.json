@@ -2436,7 +2436,8 @@
       "badge": "RECENSIONE",
       "verified": "cliente verificato",
       "bookAt": "Prenota da {{name}}"
-    }
+    },
+    "whyShare": "Condividendo le tue storie guadagni visibilità e aumenti le tue possibilità di ottenere appuntamenti."
   },
   "proServices": {
     "title": "Servizi",

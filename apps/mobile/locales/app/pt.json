@@ -2436,7 +2436,8 @@
       "badge": "AVALIAÇÃO",
       "verified": "cliente verificado",
       "bookAt": "Reserve em {{name}}"
-    }
+    },
+    "whyShare": "Ao partilhar as suas stories, ganha visibilidade e aumenta as suas hipóteses de conseguir marcações."
   },
   "proServices": {
     "title": "Serviços",
