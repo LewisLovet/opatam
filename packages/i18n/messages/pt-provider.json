@@ -15,7 +15,7 @@
   "nav": {
     "services": "Serviços",
     "reviews": "Avaliações",
-    "hours": "Horários"
+    "hours": "Horários e moradas"
   },
   "services": {
     "title": "Serviços",
@@ -72,7 +72,7 @@
     "today": "Hoje"
   },
   "infos": {
-    "title": "Informações úteis",
+    "title": "Horários e moradas",
     "locationTitle": "{count, plural, one {Local} other {Locais}}",
     "openingHours": "Horário de funcionamento",
     "days": [

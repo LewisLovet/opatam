@@ -15,7 +15,7 @@
   "nav": {
     "services": "Leistungen",
     "reviews": "Bewertungen",
-    "hours": "Öffnungszeiten"
+    "hours": "Zeiten & Adressen"
   },
   "services": {
     "title": "Leistungen",
@@ -72,7 +72,7 @@
     "today": "Heute"
   },
   "infos": {
-    "title": "Gut zu wissen",
+    "title": "Öffnungszeiten und Adressen",
     "locationTitle": "{count, plural, one {Standort} other {Standorte}}",
     "openingHours": "Öffnungszeiten",
     "days": [

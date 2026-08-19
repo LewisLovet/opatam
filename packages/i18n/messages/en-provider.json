@@ -15,7 +15,7 @@
   "nav": {
     "services": "Services",
     "reviews": "Reviews",
-    "hours": "Hours"
+    "hours": "Hours & addresses"
   },
   "services": {
     "title": "Services",
@@ -72,7 +72,7 @@
     "today": "Today"
   },
   "infos": {
-    "title": "Practical information",
+    "title": "Hours and addresses",
     "locationTitle": "{count, plural, one {Location} other {Locations}}",
     "openingHours": "Opening hours",
     "days": [
