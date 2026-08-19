@@ -2431,7 +2431,10 @@
       "outOf_other": "sur {{count}} avis",
       "empty": "Aucun avis public pour l'instant",
       "section": "Avis mis en avant",
-      "average": "Note globale"
+      "average": "Note globale",
+      "badge": "AVIS CLIENT",
+      "verified": "client vérifié",
+      "bookAt": "Réservez chez {{name}}"
     }
   },
   "proServices": {

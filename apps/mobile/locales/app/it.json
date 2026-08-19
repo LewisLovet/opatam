@@ -2431,7 +2431,10 @@
       "outOf_other": "su {{count}} recensioni",
       "empty": "Nessuna recensione pubblica per ora",
       "section": "Recensione in evidenza",
-      "average": "Voto complessivo"
+      "average": "Voto complessivo",
+      "badge": "RECENSIONE",
+      "verified": "cliente verificato",
+      "bookAt": "Prenota da {{name}}"
     }
   },
   "proServices": {

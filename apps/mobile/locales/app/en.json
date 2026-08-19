@@ -2431,7 +2431,10 @@
       "outOf_other": "from {{count}} reviews",
       "empty": "No public review yet",
       "section": "Featured review",
-      "average": "Overall rating"
+      "average": "Overall rating",
+      "badge": "CLIENT REVIEW",
+      "verified": "verified client",
+      "bookAt": "Book at {{name}}"
     }
   },
   "proServices": {

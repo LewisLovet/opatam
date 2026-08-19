@@ -2431,7 +2431,10 @@
       "outOf_other": "em {{count}} avaliações",
       "empty": "Ainda sem avaliações públicas",
       "section": "Avaliação em destaque",
-      "average": "Nota global"
+      "average": "Nota global",
+      "badge": "AVALIAÇÃO",
+      "verified": "cliente verificado",
+      "bookAt": "Reserve em {{name}}"
     }
   },
   "proServices": {

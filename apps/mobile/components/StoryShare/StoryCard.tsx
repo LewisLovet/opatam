@@ -28,7 +28,7 @@ try {
 } catch {
   // Native module not available
 }
-import { APP_CONFIG, ASSETS, getProviderTheme } from '@booking-app/shared/constants';
+import { APP_CONFIG, ASSETS, getCategoryLabel } from '@booking-app/shared/constants';
 
 /** A single day in the "Disponibilités" story mode (computed from real
  *  bookings + opening hours, see useUpcomingAvailabilities). */
@@ -78,9 +78,6 @@ export interface StoryCardProps {
   /** Override the standard layout gradient — only used in light mode
    *  (dark mode pulls its own gradient from the palette). */
   gradientColors?: [string, string, string];
-  /** Gamme du salon (`provider.themeId`). Utilisée par la story d'avis, qui
-   *  tire d'elle son halo et ses étoiles. Absent = gamme par défaut. */
-  themeId?: string | null;
   /** L'avis mis en avant. Absent = la story bascule sur la note globale. */
   review?: StoryReview | null;
   /** Note moyenne et nombre d'avis, pour le repli sans commentaire. */
@@ -93,8 +90,14 @@ export interface StoryReview {
   rating: number;
   /** `null` quand la cliente n'a laissé qu'une note. */
   comment: string | null;
-  /** Déjà réduit en « Prénom I. » — la story n'assainit rien elle-même. */
+  /** Déjà réduit au prénom — la story n'assainit rien elle-même. */
   authorName: string;
+  /**
+   * Avis rattaché à une vraie réservation. Seuls ceux-là portent la mention
+   * « cliente vérifiée » : l'apposer partout en ferait un ornement, et un
+   * avis importé ou anonyme n'a rien vérifié du tout.
+   */
+  verified: boolean;
 }
 
 // Story dimensions (9:16 ratio, scaled down for rendering — captured at high res)
@@ -1348,75 +1351,34 @@ const STANDARD_DARK: StandardPalette = {
 
 // ─── Story « avis » ───────────────────────────────────────────────────────
 //
-// Composition validée avec le client : un carré arrondi clair posé sur un
-// fond dans la gamme du salon, le logo à cheval sur son bord haut, les
-// étoiles, le texte, le prénom, puis la signature SALON · OPATAM.
+// Direction arrêtée le 2026-08-20 : l'identité est celle d'OPATAM, pas celle
+// du salon. Dégradé bleu de marque, accents dorés, carte blanche.
 //
-// SEULS LE HALO ET LES ÉTOILES CHANGENT d'un prestataire à l'autre. Le reste
-// est identique partout, pour qu'une story reste reconnaissable comme « une
-// story Opatam » quel que soit le salon qui la publie.
+// C'est un renversement par rapport à la première version, qui tirait ses
+// couleurs de la gamme du prestataire. La raison est commerciale : ces images
+// circulent sur les comptes des salons, et c'est l'occasion de faire
+// connaître Opatam. Une story reconnaissable au premier coup d'œil vaut mieux
+// qu'une story assortie au salon qui la publie — celui-ci est déjà identifié
+// par son logo, son nom et son adresse.
 //
-// Le cercle porte LE LOGO DU SALON, jamais la photo de la cliente : un avis
-// public sur une page et un visage poussé à des milliers d'abonnés ne
-// relèvent pas du même consentement.
+// PAS DE BOUTON, malgré la maquette : une story est une image, rien n'y est
+// cliquable. Dessiner un bouton promettrait une action impossible. Une phrase
+// et l'adresse disent la même chose sans mentir sur ce qu'on peut faire.
 
-/** `'31 31 31'` → `'#1f1f1f'`. Le catalogue est stocké en canaux RVB. */
-function canauxVersHex(canaux: string): string {
-  return (
-    '#' +
-    canaux
-      .split(' ')
-      .map((n) => Number(n).toString(16).padStart(2, '0'))
-      .join('')
-  );
-}
+/** Bleu de marque — exactement celui de l'icône de l'application. */
+const OPATAM_BLEU = '#133b8f';
+/** Doré des accents : étoiles, filet, étiquette d'en-tête. */
+const OPATAM_OR = '#f6c445';
 
-/** Luminance perçue, 0 = noir, 1 = blanc. */
-function luminance(hex: string): number {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-}
-
-function avecAlpha(hex: string, a: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-}
-
-/**
- * Le halo, en anneaux concentriques.
- *
- * La maquette web le faisait au flou CSS (`filter: blur(46px)`), que React
- * Native ne connaît pas. Six disques de rayon croissant et d'opacité
- * décroissante donnent la même impression de tache diffuse, sans module
- * natif ni image à charger — et la capture les rend exactement comme
- * l'écran.
- */
-function Halo({ couleur, taille }: { couleur: string; taille: number }) {
-  return (
-    <View pointerEvents="none" style={reviewStyles.haloWrap}>
-      {[1, 0.86, 0.72, 0.58, 0.44, 0.3].map((ratio, i) => (
-        <View
-          key={i}
-          style={{
-            position: 'absolute',
-            width: taille * ratio,
-            height: taille * ratio,
-            borderRadius: (taille * ratio) / 2,
-            backgroundColor: avecAlpha(couleur, 0.09),
-          }}
-        />
-      ))}
-    </View>
-  );
-}
+/** Le monogramme blanc, empaqueté avec l'application. */
+const LOGO_BLANC = require('../../assets/splash-icon-white.png');
 
 interface ReviewStoryLayoutProps {
   businessName: string;
+  category: string;
+  city?: string;
   photoURL?: string | null;
-  themeId?: string | null;
+  bookingUrl: string;
   review?: StoryReview | null;
   ratingAverage?: number;
   ratingCount?: number;
@@ -1424,155 +1386,177 @@ interface ReviewStoryLayoutProps {
 
 function ReviewStoryLayout({
   businessName,
+  category,
+  city,
   photoURL,
-  themeId,
+  bookingUrl,
   review,
   ratingAverage,
   ratingCount,
 }: ReviewStoryLayoutProps) {
-  const gamme = getProviderTheme(themeId);
-  const c100 = canauxVersHex(gamme.ramp[1]);
-  const c400 = canauxVersHex(gamme.ramp[4]);
-  const c600 = canauxVersHex(gamme.ramp[6]);
-  // Un accent pâle — « Or », « Ambre » — porterait mal du blanc.
-  const encreSurAccent = luminance(c600) > 0.45 ? '#111827' : '#ffffff';
-
   // Sur la note d'ensemble, les étoiles suivent la MOYENNE. Figées à cinq,
   // elles auraient affiché une note parfaite à un salon noté 3,2.
   const noteAffichee = review ? review.rating : (ratingAverage ?? 5);
-  const etoiles = '★'.repeat(Math.max(1, Math.min(5, Math.round(noteAffichee))));
+  const etoiles = Math.max(1, Math.min(5, Math.round(noteAffichee)));
   const commentaire = review?.comment?.trim() || null;
+  const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
+  // « https://opatam.com/p/x » → « opatam.com/p/x » : le protocole ne dit rien
+  // à personne et mange de la place sur une ligne déjà étroite.
+  const adresse = bookingUrl.replace(/^https?:\/\//, '');
 
   return (
     <LinearGradient
-      colors={[avecAlpha(c100, 0.9), '#eceae7', '#dedbd7']}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
+      colors={['#2b53c4', '#1a3f97', '#102a63']}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
       style={reviewStyles.canvas}
     >
-      <Halo couleur={c400} taille={STORY_WIDTH * 0.78} />
-
-      <View style={reviewStyles.card}>
-        {/* Le logo à cheval sur le bord du carré. */}
-        <View style={[reviewStyles.avatar, { backgroundColor: c600 }]}>
-          {photoURL ? (
-            <Image source={{ uri: photoURL }} style={reviewStyles.avatarImg} />
-          ) : (
-            <Text style={[reviewStyles.avatarInitial, { color: encreSurAccent }]}>
-              {businessName.charAt(0).toUpperCase()}
-            </Text>
-          )}
+      {/* En-tête de marque */}
+      <View style={reviewStyles.header}>
+        <View style={reviewStyles.brand}>
+          <Image source={LOGO_BLANC} style={reviewStyles.brandMark} resizeMode="contain" />
+          <Text style={reviewStyles.brandName}>OPATAM</Text>
         </View>
+        <Text style={reviewStyles.badge}>{i18n.t('storyShare.review.badge')}</Text>
+      </View>
 
-        <Text style={[reviewStyles.stars, { color: c600 }]}>{etoiles}</Text>
+      <View style={reviewStyles.middle}>
+        <View style={reviewStyles.cardWrap}>
+          {/* La photo du SALON, à cheval sur le bord de la carte. Jamais celle
+              de la cliente : un avis public sur une page et un visage poussé à
+              des milliers d'abonnés ne relèvent pas du même consentement. */}
+          <View style={reviewStyles.avatar}>
+            {photoURL ? (
+              <Image source={{ uri: photoURL }} style={reviewStyles.avatarImg} />
+            ) : (
+              <View style={reviewStyles.avatarFallback}>
+                <Text style={reviewStyles.avatarInitial}>
+                  {businessName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
 
-        {commentaire ? (
-          <Text style={reviewStyles.quote}>{commentaire}</Text>
-        ) : (ratingCount ?? 0) > 0 ? (
-          /**
-           * Un avis 5★ sur deux n'a AUCUN texte. Ce n'est pas un cas
-           * dégradé mais le cas courant : plutôt qu'une carte vide, on
-           * montre ce qui reste vrai — la note d'ensemble et son assise.
-           *
-           * Conditionné à un nombre d'avis NON NUL : sans cette garde, un
-           * salon sans le moindre avis produisait « 0,0 / sur 0 avis », une
-           * story qui dit exactement ce qu'il ne faut pas publier. La modale
-           * interdit déjà d'en arriver là ; ceci en est le second verrou.
-           */
-          <View style={reviewStyles.noteBloc}>
-            <Text style={reviewStyles.noteChiffre}>
-              {(ratingAverage ?? 5).toLocaleString(i18n.language, {
+          <View style={reviewStyles.card}>
+            <Text style={reviewStyles.business} numberOfLines={2}>
+              {businessName}
+            </Text>
+            {sousTitre ? <Text style={reviewStyles.subtitle}>{sousTitre}</Text> : null}
+
+            <Text style={reviewStyles.stars}>{'★'.repeat(etoiles)}</Text>
+            <Text style={reviewStyles.note}>
+              {noteAffichee.toLocaleString(i18n.language, {
                 minimumFractionDigits: 1,
                 maximumFractionDigits: 1,
               })}
+              {' / 5'}
             </Text>
-            <Text style={reviewStyles.noteLegende}>
-              {i18n.t('storyShare.review.outOf', { count: ratingCount ?? 0 })}
-            </Text>
+
+            <View style={reviewStyles.filet} />
+
+            {commentaire ? (
+              <Text style={reviewStyles.quote}>{`« ${commentaire} »`}</Text>
+            ) : (ratingCount ?? 0) > 0 ? (
+              /**
+               * Un avis 5★ sur deux n'a AUCUN texte. Ce n'est pas un cas
+               * dégradé mais le cas courant : à défaut de citation, on montre
+               * ce qui reste vrai — sur combien d'avis repose cette note.
+               */
+              <Text style={reviewStyles.quote}>
+                {i18n.t('storyShare.review.outOf', { count: ratingCount ?? 0 })}
+              </Text>
+            ) : null}
+
+            {review?.authorName ? (
+              <Text style={reviewStyles.author}>
+                {`— ${review.authorName}`}
+                {review.verified ? `, ${i18n.t('storyShare.review.verified')}` : ''}
+              </Text>
+            ) : null}
           </View>
-        ) : null}
+        </View>
+      </View>
 
-        {review?.authorName ? (
-          <Text style={reviewStyles.author}>{review.authorName}</Text>
-        ) : null}
-
-        {/*
-          La signature est DANS LE FLUX, pas posée en absolu comme sur la
-          maquette web : là-bas elle était ancrée au bas de la carte, si
-          bien qu'un commentaire un peu long faisait passer le prénom
-          par-dessus. Les avis étant de longueur libre, le cas se serait
-          présenté tout de suite.
-        */}
-        <Text style={reviewStyles.signature}>
-          {businessName.toUpperCase()} · OPATAM
+      {/* Appel à l'action, en TEXTE : rien n'est cliquable dans une image. */}
+      <View style={reviewStyles.footer}>
+        <Text style={reviewStyles.cta}>
+          {i18n.t('storyShare.review.bookAt', { name: businessName })}
         </Text>
+        <Text style={reviewStyles.url}>{adresse}</Text>
       </View>
     </LinearGradient>
   );
 }
 
 const reviewStyles = StyleSheet.create({
-  canvas: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  haloWrap: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  card: {
-    width: '76%',
-    backgroundColor: '#f4f2ef',
-    borderRadius: 26,
-    paddingTop: 55,
-    paddingHorizontal: 24,
-    paddingBottom: 22,
-    alignItems: 'center',
-    marginTop: 40,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 8,
-  },
+  canvas: { flex: 1, paddingHorizontal: 22, paddingTop: 24, paddingBottom: 28 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brandMark: { width: 26, height: 26 },
+  brandName: { color: '#ffffff', fontSize: 15, fontWeight: '800', letterSpacing: 2.5 },
+  badge: { color: OPATAM_OR, fontSize: 10, fontWeight: '700', letterSpacing: 2 },
+
+  middle: { flex: 1, justifyContent: 'center' },
+  cardWrap: { alignItems: 'center', paddingTop: 42 },
   avatar: {
     position: 'absolute',
-    top: -38,
-    width: 77,
-    height: 77,
-    borderRadius: 39,
+    top: 0,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     borderWidth: 4,
-    borderColor: '#f4f2ef',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: '#ffffff',
     overflow: 'hidden',
+    zIndex: 2,
   },
   avatarImg: { width: '100%', height: '100%' },
-  avatarInitial: { fontSize: 26, fontWeight: '700' },
-  stars: { fontSize: 24, letterSpacing: 3.6, marginBottom: 14 },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: OPATAM_BLEU,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: { color: '#ffffff', fontSize: 30, fontWeight: '800' },
+
+  card: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 26,
+    paddingTop: 56,
+    paddingHorizontal: 24,
+    paddingBottom: 26,
+    alignItems: 'center',
+  },
+  business: {
+    color: OPATAM_BLEU,
+    fontSize: 27,
+    lineHeight: 33,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  subtitle: { color: '#7b8390', fontSize: 12.5, marginTop: 4, textAlign: 'center' },
+  stars: { color: OPATAM_OR, fontSize: 26, letterSpacing: 4, marginTop: 14 },
+  note: { color: OPATAM_BLEU, fontSize: 13, fontWeight: '800', marginTop: 6 },
+  filet: {
+    width: 38,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: OPATAM_OR,
+    marginVertical: 16,
+  },
   quote: {
+    color: '#2f3437',
     fontSize: 14,
     lineHeight: 22,
-    color: '#35322e',
     textAlign: 'center',
   },
-  noteBloc: { alignItems: 'center', paddingVertical: 4 },
-  noteChiffre: {
-    fontSize: 52,
-    // Hauteur de ligne EXPLICITE : sans elle React Native rognait le haut et
-    // le bas du chiffre — « 5,0 » n'apparaissait qu'en tranche.
-    lineHeight: 60,
-    fontWeight: '800',
-    color: '#2b2825',
-    letterSpacing: -1.5,
-  },
-  noteLegende: { fontSize: 13, color: '#6d6862', marginTop: 4 },
-  author: { fontSize: 13, color: '#6d6862', marginTop: 16 },
-  signature: {
-    fontSize: 11,
-    letterSpacing: 2,
-    color: 'rgba(0,0,0,0.32)',
-    marginTop: 22,
-    textAlign: 'center',
-  },
+  author: { color: '#9aa0a8', fontSize: 12, marginTop: 14, textAlign: 'center' },
+
+  footer: { alignItems: 'center', gap: 5 },
+  cta: { color: '#ffffff', fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  url: { color: 'rgba(255,255,255,0.78)', fontSize: 12 },
 });
 
 export function StoryCard({
@@ -1588,7 +1572,6 @@ export function StoryCard({
   availabilityScope = 'week',
   storyTheme = 'light',
   gradientColors,
-  themeId,
   review,
   ratingAverage,
   ratingCount,
@@ -1611,8 +1594,10 @@ export function StoryCard({
       <View style={styles.container}>
         <ReviewStoryLayout
           businessName={businessName}
+          category={category}
+          city={city}
           photoURL={photoURL}
-          themeId={themeId}
+          bookingUrl={bookingUrl}
           review={review}
           ratingAverage={ratingAverage}
           ratingCount={ratingCount}

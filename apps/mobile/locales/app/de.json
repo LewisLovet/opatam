@@ -2431,7 +2431,10 @@
       "outOf_other": "von {{count}} Bewertungen",
       "empty": "Noch keine öffentliche Bewertung",
       "section": "Hervorgehobene Bewertung",
-      "average": "Gesamtnote"
+      "average": "Gesamtnote",
+      "badge": "KUNDENBEWERTUNG",
+      "verified": "verifizierter Kunde",
+      "bookAt": "Jetzt buchen bei {{name}}"
     }
   },
   "proServices": {

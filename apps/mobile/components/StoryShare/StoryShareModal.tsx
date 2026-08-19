@@ -567,6 +567,10 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             rating: r.rating,
             comment: r.comment?.trim() ? r.comment.trim() : null,
             authorName: publicReviewAuthor(r.clientName),
+            // « Cliente vérifiée » n'est vrai que d'un avis né d'une vraie
+            // réservation. Les avis importés d'un autre outil, ou déposés
+            // depuis un lien e-mail sans compte, n'ont rien vérifié.
+            verified: !!r.bookingId && r.imported !== true,
           }))
           // Les commentés d'abord ; à égalité, l'ordre de la source.
           .sort((a, b) => Number(!!b.comment) - Number(!!a.comment));
@@ -648,7 +652,6 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
     monthGrid,
     availabilityScope,
     storyTheme,
-    themeId: provider.themeId,
     review: avisCourant,
     ratingAverage: provider.rating?.average,
     ratingCount: provider.rating?.count,
@@ -1216,7 +1219,13 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
 
           {/* Theme selector — applies to every story mode (services /
               dispos / QR Code), so the toggle stays visible regardless
-              of what the pro wants to share. */}
+              of what the pro wants to share.
+
+              SAUF le mode « Avis » : cette story porte l'identité Opatam,
+              dégradé bleu et accents dorés, et n'a pas de variante sombre.
+              Laisser un réglage sans effet apprend au professionnel que les
+              réglages ne servent à rien. */}
+          {displayMode !== 'review' && (
           <View style={styles.sectionSpacing}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
               {t('storyShare.sections.theme')}
@@ -1258,6 +1267,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
               })}
             </View>
           </View>
+          )}
 
           {/* Service selection (only when mode = services) */}
           {displayMode === 'services' && services.length > 0 && (
