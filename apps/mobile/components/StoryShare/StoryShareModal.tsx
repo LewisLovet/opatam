@@ -19,6 +19,7 @@ import {
   Linking,
   ActivityIndicator,
   ScrollView,
+  FlatList,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
@@ -210,6 +211,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
    * témoignage isolé.
    */
   const [reviewChoice, setReviewChoice] = useState<'average' | number>('average');
+  const [reviewPickerOpen, setReviewPickerOpen] = useState(false);
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
   const [showLinkReminder, setShowLinkReminder] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -571,12 +573,13 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             // réservation. Les avis importés d'un autre outil, ou déposés
             // depuis un lien e-mail sans compte, n'ont rien vérifié.
             verified: !!r.bookingId && r.imported !== true,
-          }))
-          // Les commentés d'abord ; à égalité, l'ordre de la source.
-          .sort((a, b) => Number(!!b.comment) - Number(!!a.comment));
+          }));
+        // L'ordre vient de la requête : `getByProvider` trie déjà du plus
+        // récent au plus ancien. Le re-trier ici ne ferait que masquer d'où
+        // vient l'ordre.
         setReviews(utilisables);
-        // On ouvre sur le premier avis COMMENTÉ s'il en existe : c'est ce que
-        // le professionnel veut montrer neuf fois sur dix. Sinon la note
+        // On ouvre sur l'avis commenté le plus récent : c'est ce que le
+        // professionnel veut montrer neuf fois sur dix. Sinon la note
         // d'ensemble, seule chose qu'un salon sans témoignage puisse dire.
         setReviewChoice(utilisables.some((r) => r.comment) ? 0 : 'average');
       })
@@ -795,9 +798,12 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             </View>
           </View>
 
-          {/* Mode « Avis » — le professionnel DÉSIGNE ce qu'il met en avant.
-              Un défilement au hasard l'obligeait à repasser devant tous les
-              autres pour retrouver celui qu'il avait en tête. */}
+          {/* Mode « Avis » — un RÉSUMÉ de ce qui est retenu, et une porte
+              vers la liste complète.
+              Une grille de cartes tenait tant qu'un salon avait cinq avis ;
+              à cent trente elle devient un mur illisible et interminable à
+              parcourir. Le choix passe donc par une liste virtualisée, dans
+              sa propre feuille. */}
           {displayMode === 'review' && (
             <View style={styles.sectionSpacing}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -808,107 +814,36 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                   {t('storyShare.review.empty')}
                 </Text>
               ) : (
-                /**
-                 * Une grille qui RETOURNE À LA LIGNE, pas une rangée qui
-                 * défile.
-                 *
-                 * En rangée horizontale, deux cartes remplissaient déjà la
-                 * largeur : les avis suivants n'étaient atteignables qu'en
-                 * faisant glisser un défilement imbriqué dans le défilement
-                 * vertical de la modale — geste que le parent capte. On ne
-                 * voyait donc que le premier avis, sans moyen d'en choisir un
-                 * autre. Tout est visible d'un coup, et rien ne dépend d'un
-                 * geste qui peut être intercepté.
-                 */
-                <View style={styles.reviewPickGrid}>
-                  {/* La note d'ensemble, en tête : c'est le choix qui vaut
-                      pour tous les salons, y compris ceux dont personne n'a
-                      pris la peine d'écrire quoi que ce soit. */}
-                  <Pressable
-                    onPress={() => setReviewChoice('average')}
-                    style={[
-                      styles.reviewPick,
-                      {
-                        backgroundColor:
-                          reviewChoice === 'average' ? colors.primary : colors.surface,
-                        borderColor:
-                          reviewChoice === 'average' ? colors.primary : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.reviewPickTitle,
-                        { color: reviewChoice === 'average' ? '#FFFFFF' : colors.text },
-                      ]}
-                    >
-                      {t('storyShare.review.average')}
+                <Pressable
+                  onPress={() => setReviewPickerOpen(true)}
+                  style={({ pressed }) => [
+                    styles.reviewSummary,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: pressed ? colors.surfaceSecondary : colors.surface,
+                    },
+                  ]}
+                >
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={[styles.reviewPickTitle, { color: colors.text }]}>
+                      {reviewChoice === 'average'
+                        ? t('storyShare.review.average')
+                        : `${'★'.repeat(Math.round(avisCourant?.rating ?? 5))}  ${avisCourant?.authorName ?? ''}`}
                     </Text>
                     <Text
-                      style={[
-                        styles.reviewPickBody,
-                        {
-                          color:
-                            reviewChoice === 'average'
-                              ? 'rgba(255,255,255,0.85)'
-                              : colors.textSecondary,
-                        },
-                      ]}
+                      numberOfLines={1}
+                      style={[styles.reviewPickBody, { color: colors.textSecondary }]}
                     >
-                      {(provider.rating?.average ?? 0).toLocaleString(i18n.language, {
-                        minimumFractionDigits: 1,
-                        maximumFractionDigits: 1,
-                      })}
-                      {' · '}
-                      {t('storyShare.review.outOf', {
-                        count: provider.rating?.count ?? 0,
-                      })}
+                      {reviewChoice === 'average'
+                        ? `${(provider.rating?.average ?? 0).toLocaleString(i18n.language, {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1,
+                          })} · ${t('storyShare.review.outOf', { count: provider.rating?.count ?? 0 })}`
+                        : (avisCourant?.comment ?? '')}
                     </Text>
-                  </Pressable>
-
-                  {avisCommentes.map((avis, k) => {
-                    const actif = reviewChoice === k;
-                    return (
-                      <Pressable
-                        key={`${avis.authorName}-${k}`}
-                        onPress={() => setReviewChoice(k)}
-                        style={[
-                          styles.reviewPick,
-                          {
-                            backgroundColor: actif ? colors.primary : colors.surface,
-                            borderColor: actif ? colors.primary : colors.border,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.reviewPickTitle,
-                            { color: actif ? '#FFFFFF' : colors.text },
-                          ]}
-                        >
-                          {'★'.repeat(Math.round(avis.rating))}
-                          {avis.authorName ? `  ${avis.authorName}` : ''}
-                        </Text>
-                        {/* Deux lignes du commentaire : de quoi reconnaître
-                            l'avis sans transformer le sélecteur en mur de
-                            texte. */}
-                        <Text
-                          numberOfLines={2}
-                          style={[
-                            styles.reviewPickBody,
-                            {
-                              color: actif
-                                ? 'rgba(255,255,255,0.85)'
-                                : colors.textSecondary,
-                            },
-                          ]}
-                        >
-                          {avis.comment}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                </Pressable>
               )}
             </View>
           )}
@@ -1515,6 +1450,92 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
             </Pressable>
           </Modal>
         )}
+
+        {/*
+          La sélection de l'avis, dans sa propre feuille.
+          `FlatList` et non une boucle : un salon peut avoir cent trente avis,
+          et une liste virtualisée n'en monte que ce qui est à l'écran. Une
+          grille de cartes, ou même un `map`, ferait payer les cent trente à
+          chaque ouverture pour n'en montrer que six.
+        */}
+        <Modal
+          visible={reviewPickerOpen}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setReviewPickerOpen(false)}
+        >
+          <View style={[styles.pickerSheet, { backgroundColor: colors.background }]}>
+            <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.pickerTitle, { color: colors.text }]}>
+                {t('storyShare.review.section')}
+              </Text>
+              <Pressable onPress={() => setReviewPickerOpen(false)} hitSlop={12}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <FlatList
+              data={avisCommentes}
+              keyExtractor={(_, k) => String(k)}
+              /* La note d'ensemble est en tête de liste plutôt qu'à part : le
+                 professionnel choisit UNE chose, elle mérite la même rangée
+                 que les autres. */
+              ListHeaderComponent={
+                <Pressable
+                  onPress={() => {
+                    setReviewChoice('average');
+                    setReviewPickerOpen(false);
+                  }}
+                  style={[styles.pickerRow, { borderBottomColor: colors.border }]}
+                >
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={[styles.reviewPickTitle, { color: colors.text }]}>
+                      {t('storyShare.review.average')}
+                    </Text>
+                    <Text style={[styles.reviewPickBody, { color: colors.textSecondary }]}>
+                      {(provider.rating?.average ?? 0).toLocaleString(i18n.language, {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })}
+                      {' · '}
+                      {t('storyShare.review.outOf', { count: provider.rating?.count ?? 0 })}
+                    </Text>
+                  </View>
+                  {reviewChoice === 'average' && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  )}
+                </Pressable>
+              }
+              renderItem={({ item, index }) => (
+                <Pressable
+                  onPress={() => {
+                    setReviewChoice(index);
+                    setReviewPickerOpen(false);
+                  }}
+                  style={[styles.pickerRow, { borderBottomColor: colors.border }]}
+                >
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={[styles.reviewPickTitle, { color: colors.text }]}>
+                      {'★'.repeat(Math.round(item.rating))}
+                      {item.authorName ? `  ${item.authorName}` : ''}
+                    </Text>
+                    {/* Trois lignes : de quoi juger un avis sans l'ouvrir,
+                        tout en gardant des rangées de hauteur comparable. */}
+                    <Text
+                      numberOfLines={3}
+                      style={[styles.reviewPickBody, { color: colors.textSecondary }]}
+                    >
+                      {item.comment}
+                    </Text>
+                  </View>
+                  {reviewChoice === index && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  )}
+                </Pressable>
+              )}
+            />
+          </View>
+        </Modal>
       </View>
     </Modal>
   );
@@ -1581,23 +1602,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 10,
   },
-  reviewPickGrid: {
+  /** Ce qui est retenu, et la porte vers la liste complète. */
+  reviewSummary: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  reviewPick: {
-    // Deux par ligne : assez large pour lire deux lignes de commentaire,
-    // assez étroit pour que tout tienne sans défilement.
-    flexBasis: '48%',
-    flexGrow: 1,
-    padding: 12,
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 4,
   },
   reviewPickTitle: { fontSize: 13, fontWeight: '700' },
   reviewPickBody: { fontSize: 12, lineHeight: 16 },
+  /** La feuille de sélection. */
+  pickerSheet: { flex: 1 },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  pickerTitle: { fontSize: 17, fontWeight: '700' },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
   sectionSpacing: {
     gap: 10,
   },
