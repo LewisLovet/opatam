@@ -138,9 +138,35 @@ function groupServices(
 export default function ProviderDetailRoute() {
   const { slug, preview } = useLocalSearchParams<{ slug: string; preview?: string }>();
   const providerState = useProvider(slug);
+  const { getCachedProvider, addToCache } = useProvidersCache();
+
+  /**
+   * La couleur avant la lecture Firestore.
+   *
+   * `useProvider` part de `null` : l'écran s'ouvrait donc en bleu Opatam puis
+   * basculait sur la couleur du salon à l'arrivée des données. Bref, mais
+   * franchement visible sur réseau lent — et c'est le premier instant de la
+   * fiche, celui qui donne le ton.
+   *
+   * Le cache a presque toujours la réponse : `navigateToProvider` charge le
+   * prestataire AVANT de pousser l'écran, pour préparer ses images. La
+   * couleur est donc connue au premier rendu, et la lecture qui suit ne fait
+   * que confirmer la même valeur — aucun second rendu.
+   *
+   * Restent les arrivées par lien direct, sans cache : le passage par le bleu
+   * y est inévitable, faute de savoir quoi afficher d'autre.
+   */
+  const themeId = providerState.provider?.themeId ?? getCachedProvider(slug)?.themeId;
+
+  // Ce qu'on vient de charger profitera au tunnel de réservation, routé par
+  // identifiant — sans quoi il repartirait sur le bleu à l'étape suivante.
+  const charge = providerState.provider;
+  useEffect(() => {
+    if (charge) addToCache(charge);
+  }, [charge, addToCache]);
 
   return (
-    <ProviderAccent themeId={providerState.provider?.themeId}>
+    <ProviderAccent themeId={themeId}>
       <ProviderDetailScreen slug={slug} preview={preview} providerState={providerState} />
     </ProviderAccent>
   );

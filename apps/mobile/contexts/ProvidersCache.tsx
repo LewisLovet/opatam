@@ -69,6 +69,8 @@ interface ProvidersCacheContextValue {
   loadTopProviders: (limit?: number, forceRefresh?: boolean) => Promise<WithId<Provider>[]>;
   /** Get provider from cache by slug (returns null if not cached) */
   getCachedProvider: (slug: string) => WithId<Provider> | null;
+  /** Get provider from cache by id (returns null if not cached) */
+  getCachedProviderById: (id: string) => WithId<Provider> | null;
   /** Fetch provider by slug (from cache or Firebase) */
   fetchProviderBySlug: (slug: string) => Promise<WithId<Provider> | null>;
   /** Add a provider to cache manually */
@@ -327,6 +329,24 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
     []
   );
 
+  /**
+   * Même cache, mais par identifiant.
+   *
+   * Le tunnel de réservation est routé par `providerId`, pas par slug : sans
+   * cette entrée, il ne pouvait pas retrouver un prestataire pourtant déjà
+   * chargé, et repartait sur le bleu Opatam le temps de la lecture Firestore.
+   *
+   * Un parcours linéaire plutôt qu'un second index : le cache contient les
+   * quelques prestataires vus pendant la session, et un index parallèle est
+   * une occasion de désynchronisation pour un gain nul à cette taille.
+   */
+  const getCachedProviderById = useCallback((id: string): WithId<Provider> | null => {
+    for (const provider of Object.values(stateRef.current.providersBySlug)) {
+      if (provider.id === id) return provider;
+    }
+    return null;
+  }, []);
+
   // Fetch provider by slug (from cache or Firebase)
   const fetchProviderBySlug = useCallback(
     async (slug: string): Promise<WithId<Provider> | null> => {
@@ -368,11 +388,12 @@ export function ProvidersCacheProvider({ children }: { children: React.ReactNode
       loadMoreProviders,
       loadTopProviders,
       getCachedProvider,
+      getCachedProviderById,
       fetchProviderBySlug,
       addToCache,
       clearCache,
     }),
-    [state, searchProviders, loadMoreProviders, loadTopProviders, getCachedProvider, fetchProviderBySlug, addToCache, clearCache]
+    [state, searchProviders, loadMoreProviders, loadTopProviders, getCachedProvider, getCachedProviderById, fetchProviderBySlug, addToCache, clearCache]
   );
 
   return (

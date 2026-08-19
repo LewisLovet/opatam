@@ -4,7 +4,7 @@
  */
 
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { BookingProvider } from '../../../../contexts';
+import { BookingProvider, useProvidersCache } from '../../../../contexts';
 import { useTheme } from '../../../../theme';
 import { useProviderById } from '../../../../hooks';
 import { ProviderAccent } from '../../../../components/ProviderAccent';
@@ -27,12 +27,26 @@ export default function BookingLayout() {
    * qu'il économise, sur un écran qui en lit déjà cinq.
    */
   const { provider } = useProviderById(providerId);
+  const { getCachedProviderById } = useProvidersCache();
+
+  /**
+   * Comme sur la fiche, la couleur est connue avant la lecture Firestore.
+   *
+   * Ici l'enjeu est plus fort : la cliente ARRIVE de la fiche, déjà aux
+   * couleurs du salon. Un tunnel qui s'ouvre en bleu avant de virer au
+   * bordeaux annule précisément la continuité que ce layout cherche à
+   * établir, et au moment le plus mal choisi — celui où elle s'engage.
+   *
+   * La fiche dépose ce qu'elle a chargé dans le cache, ce tunnel l'y reprend
+   * par identifiant.
+   */
+  const themeId = provider?.themeId ?? getCachedProviderById(providerId)?.themeId;
 
   // `useTheme()` ci-dessus lit le thème EXTÉRIEUR, et c'est voulu : seul
   // `colors.background` en dépend, une couleur que l'accent ne touche pas.
   return (
     <BookingProvider>
-      <ProviderAccent themeId={provider?.themeId}>
+      <ProviderAccent themeId={themeId}>
         <Stack
           screenOptions={{
             headerShown: false,
