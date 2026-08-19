@@ -805,11 +805,19 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                   {t('storyShare.review.empty')}
                 </Text>
               ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 8, paddingRight: 8 }}
-                >
+                /**
+                 * Une grille qui RETOURNE À LA LIGNE, pas une rangée qui
+                 * défile.
+                 *
+                 * En rangée horizontale, deux cartes remplissaient déjà la
+                 * largeur : les avis suivants n'étaient atteignables qu'en
+                 * faisant glisser un défilement imbriqué dans le défilement
+                 * vertical de la modale — geste que le parent capte. On ne
+                 * voyait donc que le premier avis, sans moyen d'en choisir un
+                 * autre. Tout est visible d'un coup, et rien ne dépend d'un
+                 * geste qui peut être intercepté.
+                 */
+                <View style={styles.reviewPickGrid}>
                   {/* La note d'ensemble, en tête : c'est le choix qui vaut
                       pour tous les salons, y compris ceux dont personne n'a
                       pris la peine d'écrire quoi que ce soit. */}
@@ -897,7 +905,7 @@ export function StoryShareModal({ visible, onClose }: StoryShareModalProps) {
                       </Pressable>
                     );
                   })}
-                </ScrollView>
+                </View>
               )}
             </View>
           )}
@@ -1563,8 +1571,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 10,
   },
+  reviewPickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   reviewPick: {
-    width: 190,
+    // Deux par ligne : assez large pour lire deux lignes de commentaire,
+    // assez étroit pour que tout tienne sans défilement.
+    flexBasis: '48%',
+    flexGrow: 1,
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
