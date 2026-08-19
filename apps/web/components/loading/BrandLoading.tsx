@@ -28,15 +28,20 @@ export function BrandLoading({ label }: { label: string }) {
     <div
       role="status"
       aria-busy="true"
-      className="min-h-[70vh] flex flex-col items-center justify-center gap-8 px-6"
+      className="min-h-[70vh] flex flex-col items-center justify-center gap-2 px-6"
     >
       <style
         dangerouslySetInnerHTML={{
           __html: `
+/* L'onde part EXACTEMENT de la silhouette de l'icone : meme boite, meme
+   rayon de coin. un scale agrandit le rayon dans la meme proportion, donc
+   chaque onde reste un carre arrondi homothetique de l'icone au lieu de la
+   contredire. Les anneaux etaient ronds et plus petits que l'icone carree :
+   on voyait un carre pose au milieu de disques, deux formes qui ne se
+   rejoignaient nulle part. */
 @keyframes opatam-ring {
-  0%   { transform: scale(.72); opacity: 0; }
-  15%  { opacity: .18; }
-  100% { transform: scale(2.1); opacity: 0; }
+  0%   { transform: scale(1); opacity: .22; }
+  100% { transform: scale(2.4); opacity: 0; }
 }
 @keyframes opatam-dot {
   0%, 100% { transform: translateY(0);    opacity: .35; }
@@ -45,7 +50,7 @@ export function BrandLoading({ label }: { label: string }) {
 .opatam-ring { animation: opatam-ring 2.1s ease-out infinite; }
 .opatam-dot  { animation: opatam-dot .84s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .opatam-ring { animation: none; opacity: .18; transform: scale(1.4); }
+  .opatam-ring { animation: none; opacity: .14; transform: scale(1.5); }
   .opatam-dot  { animation: none; opacity: .55; }
 }
 /* Les points seuls demandent un eclaircissement en mode sombre ; le
@@ -64,12 +69,20 @@ export function BrandLoading({ label }: { label: string }) {
         }}
       />
 
-      <div className="relative flex items-center justify-center w-32 h-32">
+      {/* La boîte fait la taille de l'onde LA PLUS LARGE (80 px × 2,4), pas
+          celle de l'icône : dimensionnée sur l'icône, les ondes débordaient
+          par-dessus les points en dessous. L'espace qu'une animation occupe
+          doit être réservé dans le flux, sans quoi elle bouscule ses
+          voisins. */}
+      <div className="relative flex items-center justify-center w-48 h-48">
         {[0, 1, 2].map((i) => (
+          // `rounded-[20%]` et non `rounded-2xl` : 16 px sur une boîte de
+          // 80 px, soit exactement le rayon de l'icône — mais exprimé en
+          // proportion, il suit l'agrandissement au lieu de s'aplatir.
           <span
             key={i}
             aria-hidden
-            className="opatam-ring absolute w-24 h-24 rounded-full bg-primary-500"
+            className="opatam-ring absolute inset-0 m-auto w-20 h-20 rounded-[20%] bg-primary-500"
             style={{ animationDelay: `${i * 0.7}s` }}
           />
         ))}
