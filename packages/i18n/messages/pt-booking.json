@@ -17,7 +17,8 @@
     "cancelAndHome": "Cancelar e voltar à página inicial",
     "yes": "Sim",
     "no": "Não",
-    "close": "Fechar"
+    "close": "Fechar",
+    "loading": "A preparar a sua reserva…"
   },
   "steps": {
     "service": "Serviço",

@@ -17,7 +17,8 @@
     "cancelAndHome": "Annuler et retourner à l'accueil",
     "yes": "Oui",
     "no": "Non",
-    "close": "Fermer"
+    "close": "Fermer",
+    "loading": "Préparation de votre réservation…"
   },
   "steps": {
     "service": "Prestation",

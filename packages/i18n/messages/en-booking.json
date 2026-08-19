@@ -17,7 +17,8 @@
     "cancelAndHome": "Cancel and return to home",
     "yes": "Yes",
     "no": "No",
-    "close": "Close"
+    "close": "Close",
+    "loading": "Preparing your booking…"
   },
   "steps": {
     "service": "Service",

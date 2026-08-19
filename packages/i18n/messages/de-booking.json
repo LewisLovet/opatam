@@ -17,7 +17,8 @@
     "cancelAndHome": "Abbrechen und zur Startseite",
     "yes": "Ja",
     "no": "Nein",
-    "close": "Schließen"
+    "close": "Schließen",
+    "loading": "Ihre Buchung wird vorbereitet…"
   },
   "steps": {
     "service": "Leistung",
