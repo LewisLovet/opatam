@@ -50,6 +50,14 @@ export async function GET(request: NextRequest) {
       return jsonWithCache(data, 120);
     }
 
+    // Entonnoir du site : visites de l'accueil, clics vers les stores,
+    // inscriptions professionnelles. Cache 2 min comme les autres tendances.
+    if (type === 'site-funnel') {
+      const days = parseInt(request.nextUrl.searchParams.get('days') || '30');
+      const data = await getSiteFunnel(db, days);
+      return jsonWithCache(data, 120);
+    }
+
     if (type === 'by-category') {
       const data = await getBookingsByCategory(db);
       return jsonWithCache(data, 120);
@@ -822,4 +830,94 @@ async function getRevenueStats(): Promise<RevenueStats> {
     subscriptionsByPlan: subRev.byPlan,
     recentPayments,
   };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Entonnoir du site
+// ────────────────────────────────────────────────────────────────────────
+
+/** `YYYY-MM-DD` en heure de Paris — même convention que l'écriture. */
+function jourParis(d: Date): string {
+  return new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+/**
+ * Visites de l'accueil, clics vers les stores et inscriptions
+ * professionnelles, jour par jour.
+ *
+ * Les deux premières viennent de `siteMetricsDaily`, écrite par le site. La
+ * troisième est RECALCULÉE depuis `users` : une inscription est déjà un fait
+ * en base, l'instrumenter en doublerait la source de vérité et priverait la
+ * mesure de tout l'historique antérieur.
+ *
+ * Ce sont des AGRÉGATS, pas une attribution : on ne saura pas si tel visiteur
+ * s'est inscrit, seulement combien de visites et combien d'inscriptions le
+ * même jour. Une attribution demanderait un cookie, donc un consentement,
+ * donc une mesure qui s'effondre dès qu'on le refuse.
+ */
+async function getSiteFunnel(
+  db: FirebaseFirestore.Firestore,
+  days: number
+): Promise<{
+  days: Array<{ day: string; views: number; storeClicks: number; signups: number }>;
+  totals: { views: number; storeClicks: number; signups: number };
+}> {
+  const now = new Date();
+  const depuis = new Date(now.getTime() - (days - 1) * 86400000);
+  const premierJour = jourParis(depuis);
+
+  const parJour: Record<string, { views: number; storeClicks: number; signups: number }> = {};
+  for (let i = days - 1; i >= 0; i--) {
+    parJour[jourParis(new Date(now.getTime() - i * 86400000))] = {
+      views: 0,
+      storeClicks: 0,
+      signups: 0,
+    };
+  }
+
+  const [metriques, utilisateurs] = await Promise.all([
+    db.collection('siteMetricsDaily').where('day', '>=', premierJour).get(),
+    db
+      .collection('users')
+      .where('role', '==', 'provider')
+      .where('createdAt', '>=', depuis)
+      .get()
+      // Un compte sans index sur ce couple ne doit pas faire tomber la page :
+      // on rend l'entonnoir sans les inscriptions plutôt que rien du tout.
+      .catch(() => null),
+  ]);
+
+  metriques.docs.forEach((doc) => {
+    const d = doc.data() as { day?: string; key?: string; count?: number };
+    const jour = d.day && parJour[d.day];
+    if (!jour || typeof d.count !== 'number') return;
+    if (d.key === 'view:home') jour.views += d.count;
+    else if (d.key === 'download:ios' || d.key === 'download:android') {
+      jour.storeClicks += d.count;
+    }
+  });
+
+  utilisateurs?.docs.forEach((doc) => {
+    const cree = doc.data().createdAt?.toDate?.();
+    if (!cree) return;
+    const jour = parJour[jourParis(cree)];
+    if (jour) jour.signups++;
+  });
+
+  const liste = Object.entries(parJour).map(([day, v]) => ({ day, ...v }));
+  const totals = liste.reduce(
+    (acc, j) => ({
+      views: acc.views + j.views,
+      storeClicks: acc.storeClicks + j.storeClicks,
+      signups: acc.signups + j.signups,
+    }),
+    { views: 0, storeClicks: 0, signups: 0 }
+  );
+
+  return { days: liste, totals };
 }

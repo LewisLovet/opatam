@@ -3,6 +3,7 @@
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import { APP_CONFIG, SUBSCRIPTION_PLANS } from '@booking-app/shared/constants';
+import { trackSite } from '@/lib/trackSite';
 import {
   ArrowRight,
   BadgePercent,
@@ -129,6 +130,21 @@ export default function LandingPage({ tutorials = [] }: LandingPageProps) {
   const [isYearly, setIsYearly] = useState(false);
   const [showStickyCta, setShowStickyCta] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
+
+  /**
+   * Une vue d'accueil, comptée UNE FOIS par session.
+   *
+   * Sans cette déduplication, un rechargement ou un aller-retour depuis le
+   * blog gonflerait le chiffre, et le rapport visites/inscriptions —
+   * justement ce qu'on cherche à lire — deviendrait faux dans le sens
+   * flatteur. Même mécanique que les vues de fiche prestataire.
+   */
+  useEffect(() => {
+    const cle = 'pv_site_home';
+    if (sessionStorage.getItem(cle)) return;
+    sessionStorage.setItem(cle, '1');
+    trackSite('view:home');
+  }, []);
 
   // ── Sticky CTA observer ───────────────────────────────────────────
   useEffect(() => {

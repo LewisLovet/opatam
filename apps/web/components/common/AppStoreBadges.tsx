@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { APP_STORE_URL, PLAY_STORE_URL } from '@/lib/store-links';
+import { trackSite } from '@/lib/trackSite';
 
 interface AppStoreBadgesProps {
   appStoreUrl?: string;
@@ -22,6 +23,7 @@ export function AppStoreBadges({
         {/* App Store Badge */}
         <a
           href={appStoreUrl}
+          onClick={() => trackSite('download:ios')}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
@@ -39,6 +41,7 @@ export function AppStoreBadges({
         {/* Play Store Badge */}
         <a
           href={PLAY_STORE_URL}
+          onClick={() => trackSite('download:android')}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
