@@ -11,12 +11,24 @@ import {
   StyleSheet,
   RefreshControl,
   Pressable,
-  Image,
   Linking,
   Animated,
   Modal,
   Alert,
 } from 'react-native';
+/**
+ * `Image` vient d'expo-image, PAS de react-native, et c'est le coeur du
+ * problème d'affichage du logo sur cet écran.
+ *
+ * `useNavigateToProvider` précharge la photo du salon avec `Image.prefetch`
+ * d'expo-image AVANT de pousser cette page — c'est même pour ça que le tap
+ * marquait un temps. Mais l'écran d'attente affichait cette photo avec le
+ * `Image` de react-native, qui a son PROPRE cache : le préchargement
+ * remplissait un cache que personne ne lisait, et l'image se retéléchargeait
+ * de zéro. D'où un logo qui apparaît après coup, alors qu'on venait
+ * précisément d'attendre son téléchargement.
+ */
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -454,6 +466,10 @@ function ProviderDetailScreen({
                 <Image
                   source={{ uri: cachedProvider?.photoURL || provider?.photoURL || undefined }}
                   style={styles.splashAvatar}
+                  // Fondu court : quand l'image n'est pas encore en cache,
+                  // une apparition sèche se lit comme un raté. Le fondu la
+                  // fait arriver, au lieu de la faire surgir.
+                  transition={200}
                 />
               ) : (
                 <Ionicons name="storefront-outline" size={48} color={colors.primary} />

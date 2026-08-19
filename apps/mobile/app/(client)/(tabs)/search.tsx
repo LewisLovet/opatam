@@ -96,7 +96,7 @@ export default function SearchScreen() {
     return option ? `${option.flag} ${t(`search.countries.${option.code}`)}` : '';
   };
   const params = useLocalSearchParams<{ category?: string }>();
-  const { navigateToProvider, isLoading } = useNavigateToProvider();
+  const { navigateToProvider } = useNavigateToProvider();
 
   // User location
   const { location: userLocation, loading: locationLoading, refresh: refreshLocation } = useUserLocation();
@@ -246,11 +246,10 @@ export default function SearchScreen() {
         nextAvailableSlot={item.nextAvailableSlot}
         isVerified={item.isVerified}
         hasLoyalty={isLoyaltyConfigValid(item.settings?.loyalty) && hasLoyaltyAccess(item)}
-        onPress={() => navigateToProvider(item.slug)}
-        isLoading={isLoading(item.slug)}
+        onPress={() => navigateToProvider(item.slug, item)}
       />
     </View>
-  ), [spacing.lg, spacing.md, navigateToProvider, isLoading]);
+  ), [spacing.lg, spacing.md, navigateToProvider]);
 
   // Handle end reached for infinite scroll
   const handleEndReached = useCallback(() => {
@@ -436,8 +435,7 @@ export default function SearchScreen() {
                     minPrice={provider.minPrice}
                     nextAvailableSlot={provider.nextAvailableSlot}
                     isVerified={provider.isVerified}
-                    onPress={() => navigateToProvider(provider.slug)}
-                    isLoading={isLoading(provider.slug)}
+                    onPress={() => navigateToProvider(provider.slug, provider)}
                   />
                 </View>
               ))}

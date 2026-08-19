@@ -148,7 +148,7 @@ export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   // Locale for date/time rendering (24h clock in both languages)
   const dateLocale = getIntlLocale(i18n.language);
-  const { navigateToProvider, isLoading } = useNavigateToProvider();
+  const { navigateToProvider } = useNavigateToProvider();
   const { userData, isAuthenticated } = useAuth();
   const { bookings, upcoming, past, loading: loadingBookings, refresh: refreshBookings } = useClientBookings();
 
@@ -535,8 +535,7 @@ export default function HomeScreen() {
                     minPrice={provider.minPrice}
                     isVerified={provider.isVerified}
                     distance={isNearby ? provider.distance : undefined}
-                    onPress={() => navigateToProvider(provider.slug)}
-                    isLoading={isLoading(provider.slug)}
+                    onPress={() => navigateToProvider(provider.slug, provider)}
                   />
                 </View>
               ))}
