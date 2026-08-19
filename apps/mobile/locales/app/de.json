@@ -1936,7 +1936,12 @@
       "configurePaypal": "PayPal einrichten"
     },
     "openPageError": "Ihre Seite kann nicht geöffnet werden.",
-    "reviewToStory": "Story erstellen"
+    "reviewToStory": "Story erstellen",
+    "storyNudge": {
+      "title": "Ihre Seite wird noch selten gesehen",
+      "body": "Teilen Sie eine Story in Ihren Netzwerken: Sie gewinnen an Sichtbarkeit und erhöhen Ihre Chancen auf Buchungen.",
+      "cta": "Story erstellen"
+    }
   },
   "proCalendar": {
     "title": "Kalender",

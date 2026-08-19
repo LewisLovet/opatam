@@ -1936,7 +1936,12 @@
       "configurePaypal": "Set up PayPal"
     },
     "openPageError": "Unable to open your page.",
-    "reviewToStory": "Make a story"
+    "reviewToStory": "Make a story",
+    "storyNudge": {
+      "title": "Your page is still rarely seen",
+      "body": "Share a story on your social media: you gain visibility and increase your chances of getting booked.",
+      "cta": "Create a story"
+    }
   },
   "proCalendar": {
     "title": "Calendar",

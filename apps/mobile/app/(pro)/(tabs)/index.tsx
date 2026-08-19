@@ -1137,6 +1137,27 @@ export default function ProDashboardScreen() {
   const isSetupComplete = completedSteps === totalSteps;
   const isPublished = !!provider?.isPublished;
 
+  /**
+   * Faut-il inciter à faire une story ?
+   *
+   * TROIS conditions, et les deux dernières sont là pour ne pas donner un
+   * mauvais conseil :
+   *
+   *  - peu de vues sur trente jours (moins de cinq) — le symptôme ;
+   *  - la page est PUBLIÉE. Sinon zéro vue est normal et le remède n'est pas
+   *    une story mais la publication, ce que dit déjà l'alerte de
+   *    configuration. Deux conseils contradictoires en haut du même écran, et
+   *    le professionnel ne suit ni l'un ni l'autre ;
+   *  - aucune story encore partagée. Répéter le conseil à quelqu'un qui l'a
+   *    déjà suivi le transforme en reproche.
+   *
+   * `last30Days` et non `today` : une journée creuse ne dit rien, un mois
+   * creux si.
+   */
+  const vuesTrenteJours = provider?.stats?.pageViews?.last30Days ?? 0;
+  const storiesPartagees = provider?.stats?.stories?.shared ?? 0;
+  const inciterAStory = isPublished && vuesTrenteJours < 5 && storiesPartagees === 0;
+
   // Find the next upcoming booking (first one not yet passed)
   const sortedToday = [...todayBookings].sort((a, b) => toDate(a.datetime).getTime() - toDate(b.datetime).getTime());
   const nextBookingId = sortedToday.find((b) => toDate(b.datetime).getTime() > now.getTime())?.id ?? null;
@@ -1391,6 +1412,57 @@ export default function ProDashboardScreen() {
           </Pressable>
         )}
 
+        {/* ── Incitation à la story ──
+              Volontairement SANS croix : la condition se lève d'elle-même dès
+              que les vues montent ou qu'une story est partagée. Un bandeau
+              qu'on peut faire taire sans rien changer se fait taire tout de
+              suite, et l'on perd l'information au lieu de traiter la cause.
+
+              Une carte claire, pas un second dégradé bleu : deux bandeaux de
+              même facture se lisent comme un seul bloc décoratif. ── */}
+        {inciterAStory && (
+          <Pressable
+            onPress={() => setShowStoryModal(true)}
+            style={({ pressed }) => ({
+              marginHorizontal: spacing.lg,
+              marginTop: spacing.md,
+              padding: spacing.md,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.md,
+              opacity: pressed ? 0.9 : 1,
+            })}
+          >
+            <View
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: colors.primaryLight,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="trending-up" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="bodySmall" style={{ fontWeight: '700' }}>
+                {t('proHome.storyNudge.title')}
+              </Text>
+              <Text variant="caption" color="textSecondary">
+                {t('proHome.storyNudge.body')}
+              </Text>
+              <Text variant="caption" color="primary" style={{ fontWeight: '700', marginTop: 2 }}>
+                {t('proHome.storyNudge.cta')}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
+        )}
 
         {/* ── Setup Alerts ── */}
         {setupAlerts.length > 0 && (
