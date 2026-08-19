@@ -29,6 +29,9 @@ import {
  * précisément d'attendre son téléchargement.
  */
 import { Image } from 'expo-image';
+
+/** Tient la place de la photo du salon le temps qu'elle descende. */
+const OPATAM_LOGO = require('../../../assets/icon.png');
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -466,13 +469,39 @@ function ProviderDetailScreen({
                 <Image
                   source={{ uri: cachedProvider?.photoURL || provider?.photoURL || undefined }}
                   style={styles.splashAvatar}
+                  /**
+                   * Le logo Opatam TIENT LA PLACE pendant le téléchargement.
+                   *
+                   * La pastille restait vide à la première ouverture d'une
+                   * fiche : on connaît l'adresse de l'image, pas encore ses
+                   * octets. Un trou au centre d'un écran d'attente se lit
+                   * comme une panne, alors qu'il ne se passe rien d'anormal.
+                   *
+                   * `placeholder` d'expo-image est fait pour ça : l'image
+                   * locale s'affiche immédiatement et cède la place en fondu
+                   * dès que celle du salon arrive. Une image empaquetée avec
+                   * l'application, donc jamais en attente d'elle-même.
+                   */
+                  placeholder={OPATAM_LOGO}
+                  placeholderContentFit="contain"
                   // Fondu court : quand l'image n'est pas encore en cache,
                   // une apparition sèche se lit comme un raté. Le fondu la
                   // fait arriver, au lieu de la faire surgir.
                   transition={200}
                 />
-              ) : (
+              ) : provider ? (
+                // Le prestataire est chargé et n'a PAS de logo : l'icône
+                // générique est alors la bonne réponse, définitive.
                 <Ionicons name="storefront-outline" size={48} color={colors.primary} />
+              ) : (
+                // On ne sait pas encore s'il en a un. Le logo Opatam occupe
+                // la place plutôt qu'une icône « pas de logo » qu'on devrait
+                // ensuite démentir.
+                <Image
+                  source={OPATAM_LOGO}
+                  style={styles.splashAvatar}
+                  contentFit="contain"
+                />
               )}
 
               {(cachedProvider?.businessName || provider?.businessName) ? (

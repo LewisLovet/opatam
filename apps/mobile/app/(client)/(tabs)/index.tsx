@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
 import type { TFunction } from 'i18next';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -20,6 +20,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
 import {
@@ -32,6 +33,7 @@ import {
   Avatar,
 } from '../../../components';
 import { MyProvidersRow } from '../../../components/MyProvidersRow';
+import { AppBootSplash } from '../../../components/AppBootSplash';
 import { useUserLocation, useNearbyProviders, useNavigateToProvider, useClientBookings } from '../../../hooks';
 import { useAuth } from '../../../contexts';
 import { getIntlLocale } from '../../../lib/i18n';
@@ -229,12 +231,62 @@ export default function HomeScreen() {
     }
   }, [router]);
 
+  /**
+   * L'accueil ne se dévoile qu'une fois ses vignettes descendues.
+   *
+   * Sans ça les cartes arrivaient nues puis se remplissaient une à une —
+   * catégories, puis logos des salons — et ce remplissage par à-coups donne
+   * l'impression d'une page mal tenue plutôt que d'une page qui charge.
+   *
+   * TROIS PRÉCAUTIONS, parce qu'un écran d'attente est vite pire que le mal :
+   *
+   *  1. UNE SEULE FOIS PAR SESSION. C'est un onglet : le revoir à chaque
+   *     retour depuis la recherche ou le profil serait insupportable. D'où le
+   *     `ref`, qui survit aux rendus sans les déclencher.
+   *  2. UN PLAFOND de 2,5 s. Les vignettes viennent d'un CDN tiers ; rien de
+   *     tout cela ne doit pouvoir retenir l'accueil, et sûrement pas hors
+   *     ligne. Passé le délai, on montre ce qu'on a.
+   *  3. AUCUNE ATTENTE DE DONNÉES au-delà des prestataires proches : les
+   *     rendez-vous et le reste se chargent derrière, ils ne portent pas
+   *     d'image et n'ont pas besoin d'être là au premier coup d'œil.
+   */
+  const [accueilPret, setAccueilPret] = useState(false);
+  const attenteDejaVue = useRef(false);
+
+  useEffect(() => {
+    if (attenteDejaVue.current) return;
+    if (loadingSuggestions) return;
+
+    attenteDejaVue.current = true;
+    let vivant = true;
+    const devoiler = () => vivant && setAccueilPret(true);
+    const plafond = setTimeout(devoiler, 2500);
+
+    const vignettes = [
+      ...Object.values(categoryImages),
+      ...suggestions.flatMap((p) => [p.photoURL, p.coverPhotoURL]),
+    ].filter((url): url is string => !!url);
+
+    ExpoImage.prefetch(vignettes)
+      .catch(() => undefined)
+      .finally(devoiler);
+
+    return () => {
+      vivant = false;
+      clearTimeout(plafond);
+    };
+  }, [loadingSuggestions, suggestions]);
+
   const handleCategoryPress = (categoryId: string) => {
     router.push({
       pathname: '/(client)/(tabs)/search',
       params: { category: categoryId },
     });
   };
+
+  if (!accueilPret) {
+    return <AppBootSplash />;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
