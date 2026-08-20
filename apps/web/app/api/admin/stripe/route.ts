@@ -37,46 +37,49 @@ function itemMonthlyCents(item: Stripe.SubscriptionItem): number {
 }
 
 /**
- * Le coupon actif sur un abonnement, s'il y en a un.
+ * Ce que l'abonnement facturera RÉELLEMENT au prochain cycle, en centimes.
  *
- * Stripe a migré `discount` (singulier) vers `discounts` (tableau). Les deux
- * coexistent : lire seulement le nouveau rate les abonnements créés avant la
- * migration, lire seulement l'ancien rate les récents.
+ * POURQUOI PAS LE PRIX DU CATALOGUE MOINS LA REMISE : parce que ce calcul a
+ * menti pendant tout le temps où il a tourné. L'objet Discount de Stripe ne
+ * porte plus `coupon` mais `source: { coupon }`, si bien que la remise n'était
+ * jamais vue et que chaque abonné était compté à plein tarif. Le MRR affiché
+ * était de 245,67 € alors que 10,00 € étaient réellement facturés — treize
+ * « payeurs » sur quinze sont remisés à zéro.
+ *
+ * La facture à venir, elle, intègre tout sans qu'on ait à le rejouer : coupons
+ * d'abonnement, de client, codes promotionnels, crédits, proratas et taxes.
+ * C'est la seule source qui ne peut pas se désynchroniser d'un changement de
+ * forme de l'API.
+ *
+ * Renvoie null quand Stripe n'a pas de prochaine facture (`invoice_upcoming_none`) :
+ * l'abonnement ne facturera plus rien, ce qui n'est pas la même chose que zéro.
  */
-function activeCoupon(sub: Stripe.Subscription): Stripe.Coupon | null {
-  // Typé à la main : le SDK décrit `discounts` comme un tableau d'identifiants
-  // OU d'objets étendus, et `discount` reste hors du type public. Un accès
-  // structurel évite de dépendre d'une forme que la version du SDK peut
-  // changer sous nos pieds.
-  type PorteurDeCoupon = { coupon?: Stripe.Coupon | null };
-  const brut = sub as unknown as {
-    discounts?: unknown[];
-    discount?: PorteurDeCoupon | null;
-  };
-
-  const premier = brut.discounts?.[0];
-  if (premier && typeof premier === 'object' && 'coupon' in premier) {
-    return (premier as PorteurDeCoupon).coupon ?? null;
+async function prochaineFacture(
+  stripe: Stripe,
+  customerId: string,
+  subscriptionId: string
+): Promise<number | null> {
+  try {
+    const apercu = await stripe.invoices.createPreview({
+      customer: customerId,
+      subscription: subscriptionId,
+    });
+    return apercu.amount_due;
+  } catch {
+    return null;
   }
-  return brut.discount?.coupon ?? null;
 }
 
-/** Applique la remise à un montant mensuel. Un coupon 100 % ramène à zéro. */
-function applyCoupon(monthlyCents: number, coupon: Stripe.Coupon | null): number {
-  if (!coupon) return monthlyCents;
-  if (coupon.percent_off) return monthlyCents * (1 - coupon.percent_off / 100);
-  if (coupon.amount_off) return Math.max(0, monthlyCents - coupon.amount_off);
-  return monthlyCents;
+/** Ramène un montant facturé à son équivalent mensuel. */
+function parMois(cents: number, interval: Stripe.Price.Recurring.Interval | undefined, count: number): number {
+  switch (interval) {
+    case 'year': return cents / 12 / count;
+    case 'week': return (cents * 52) / 12 / count;
+    case 'day': return (cents * 365) / 12 / count;
+    default: return cents / count;
+  }
 }
 
-
-/**
- * Le poste comptable d'une transaction, tel qu'on veut le lire.
- *
- * Stripe donne un `type` technique (charge, payment, transfer…) qui ne dit
- * pas si l'argent est à nous. Cette classification-ci répond à la seule
- * question utile : est-ce un revenu, de l'argent qui transite, ou un coût ?
- */
 /**
  * Le mois que le frais COUVRE, et non celui où il est prélevé.
  *
@@ -146,24 +149,41 @@ export async function GET(request: NextRequest) {
     let trialingCount = 0;
     let freeByCouponCount = 0;
 
-    for await (const sub of stripe.subscriptions.list({
-      status: 'all',
-      limit: 100,
-      expand: ['data.discounts'],
-    })) {
-      if (sub.status !== 'active' && sub.status !== 'trialing') continue;
-      const coupon = activeCoupon(sub);
-      const grossTotal = sub.items.data.reduce((s, i) => s + itemMonthlyCents(i), 0);
-      const netTotal = applyCoupon(grossTotal, coupon);
+    // On collecte d'abord, on interroge ensuite. La facture à venir demande un
+    // appel par abonnement : les enchaîner au fil de la pagination multiplierait
+    // la latence de la page par le nombre d'abonnés.
+    const abos: Stripe.Subscription[] = [];
+    for await (const sub of stripe.subscriptions.list({ status: 'all', limit: 100 })) {
+      if (sub.status === 'active' || sub.status === 'past_due' || sub.status === 'trialing') {
+        abos.push(sub);
+      }
+    }
+
+    const facturesAVenir = await Promise.all(
+      abos.map((s) =>
+        prochaineFacture(stripe, typeof s.customer === 'string' ? s.customer : s.customer.id, s.id)
+      )
+    );
+
+    abos.forEach((sub, i) => {
+      const grossTotal = sub.items.data.reduce((s, it) => s + itemMonthlyCents(it), 0);
+
+      // La facture à venir porte le montant d'UN CYCLE — 199 € pour un annuel.
+      // La comparer telle quelle à un total mensuel gonflerait le MRR d'un
+      // facteur douze, donc on la ramène au mois avec la cadence de la ligne.
+      const cadence = sub.items.data[0]?.price.recurring;
+      const facture = facturesAVenir[i];
+      const netTotal =
+        facture === null ? 0 : parMois(facture, cadence?.interval, cadence?.interval_count ?? 1);
 
       if (sub.status === 'trialing') {
         trialingCount++;
         pipelineTrials += Math.round(netTotal);
-        continue; // JAMAIS additionné au MRR.
+        return; // JAMAIS additionné au MRR.
       }
 
       activeCount++;
-      mrrForfeitedToCoupons += Math.round(grossTotal - netTotal);
+      mrrForfeitedToCoupons += Math.round(Math.max(0, grossTotal - netTotal));
       if (netTotal === 0) freeByCouponCount++;
       mrrActive += Math.round(netTotal);
 
@@ -180,7 +200,7 @@ export async function GET(request: NextRequest) {
         byProduct[key].subscribers++;
         byProduct[key].mrr += cents;
       }
-    }
+    });
 
     const products = await stripe.products.list({ limit: 100 });
     for (const p of products.data) if (byProduct[p.id]) byProduct[p.id].label = p.name;
