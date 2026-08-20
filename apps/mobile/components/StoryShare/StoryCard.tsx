@@ -1643,16 +1643,21 @@ function LoyaltyStoryLayout({
             réserve il mordrait sur le sous-titre au lieu de flotter. */}
         <View style={loyaltyStyles.cardWrap}>
         <View style={loyaltyStyles.card}>
-          <View style={loyaltyStyles.avatar}>
-            {photoURL ? (
-              <Image source={{ uri: photoURL }} style={loyaltyStyles.avatarImg} />
-            ) : (
-              <View style={loyaltyStyles.avatarFallback}>
-                <Text style={loyaltyStyles.avatarInitial}>
-                  {businessName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
+          {/* Même anneau que sur la story d'avis : blanc opaque, puis le
+              trait de couleur — l'avatar étant à cheval sur deux fonds, un
+              liseré translucide n'aurait été visible qu'à moitié. */}
+          <View style={[loyaltyStyles.avatarRing, { borderColor: pal.eyebrow }]}>
+            <View style={loyaltyStyles.avatar}>
+              {photoURL ? (
+                <Image source={{ uri: photoURL }} style={loyaltyStyles.avatarImg} />
+              ) : (
+                <View style={loyaltyStyles.avatarFallback}>
+                  <Text style={loyaltyStyles.avatarInitial}>
+                    {businessName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
 
           <Text style={loyaltyStyles.enseigne} numberOfLines={2}>
@@ -1858,7 +1863,7 @@ const loyaltyStyles = StyleSheet.create({
   // souvent recouvert par l'interface du réseau, et un titre qui y monte se
   // fait manger.
   hook: { alignItems: 'center', marginTop: 26, marginBottom: 18 },
-  cardWrap: { alignItems: 'center', paddingTop: 42 },
+  cardWrap: { alignItems: 'center', paddingTop: 47 },
   hookTitle: {
     fontSize: 24,
     lineHeight: 26,
@@ -1889,17 +1894,26 @@ const loyaltyStyles = StyleSheet.create({
     paddingBottom: 22,
     alignItems: 'center',
   },
-  avatar: {
+  avatarRing: {
     position: 'absolute',
-    top: -42,
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    borderWidth: 4,
-    borderColor: '#ffffff',
-    backgroundColor: '#dfe4f2',
-    overflow: 'hidden',
+    top: -47,
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+    borderWidth: 2,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 2,
+  },
+  avatar: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: '#dfe4f2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   avatarImg: { width: '100%', height: '100%' },
   avatarFallback: {
@@ -2053,17 +2067,26 @@ const reviewStyles = StyleSheet.create({
   badge: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },
 
   middle: { flex: 1, justifyContent: 'center' },
-  cardWrap: { alignItems: 'center', paddingTop: 42 },
-  avatar: {
+  cardWrap: { alignItems: 'center', paddingTop: 47 },
+  avatarRing: {
     position: 'absolute',
     top: 0,
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    borderWidth: 4,
-    borderColor: '#ffffff',
-    overflow: 'hidden',
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+    borderWidth: 2,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 2,
+  },
+  avatar: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   avatarImg: { width: '100%', height: '100%' },
   avatarFallback: {
