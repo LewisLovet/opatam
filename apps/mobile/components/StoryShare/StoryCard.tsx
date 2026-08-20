@@ -1636,14 +1636,6 @@ function LoyaltyStoryLayout({
               {i18n.t('storyShare.loyalty.headlineReward', { reward: loyalty.reward })}
             </Text>
           </Text>
-          <Text
-            style={[
-              loyaltyStyles.hookSub,
-              { color: theme === 'light' ? 'rgba(27,47,110,0.72)' : 'rgba(255,255,255,0.78)' },
-            ]}
-          >
-            {i18n.t('storyShare.loyalty.launch')}
-          </Text>
         </View>
 
         {/* La place de l'avatar est RÉSERVÉE par le conteneur, comme sur la
@@ -1865,20 +1857,13 @@ const loyaltyStyles = StyleSheet.create({
   // L'accroche collait à l'en-tête : sur une story, le haut de l'image est
   // souvent recouvert par l'interface du réseau, et un titre qui y monte se
   // fait manger.
-  hook: { alignItems: 'center', marginTop: 26, marginBottom: 4 },
+  hook: { alignItems: 'center', marginTop: 26, marginBottom: 18 },
   cardWrap: { alignItems: 'center', paddingTop: 42 },
   hookTitle: {
     fontSize: 24,
     lineHeight: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
-    textAlign: 'center',
-  },
-  hookSub: {
-    marginTop: 9,
-    fontSize: 10,
-    lineHeight: 14,
-    fontWeight: '500',
     textAlign: 'center',
   },
 
@@ -1893,12 +1878,15 @@ const loyaltyStyles = StyleSheet.create({
    * différemment.
    */
   card: {
-    width: '100%',
+    // 93 % et non 100 % : cette carte porte un titre au-dessus et bien plus
+    // de contenu que celle des avis. À pleine largeur, elle touchait les
+    // bords et l'accroche semblait posée dessus.
+    width: '93%',
     backgroundColor: '#ffffff',
     borderRadius: 26,
-    paddingTop: 56,
-    paddingHorizontal: 24,
-    paddingBottom: 26,
+    paddingTop: 54,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
     alignItems: 'center',
   },
   avatar: {
