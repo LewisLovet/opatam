@@ -198,8 +198,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Opatam default — a provider's share card should show THEM, not the
   // platform. (The small favicon in Google results is domain-level and
   // stays Opatam — that's expected and fine.)
-  const ogImage = provider.coverPhotoURL || provider.photoURL;
-  const ogImages = ogImage ? [ogImage] : [];
+  /*
+   * Plus d'image déclarée ici : `opengraph-image.tsx` la GÉNÈRE pour cette
+   * route, et Next pose la balise tout seul.
+   *
+   * On y renvoyait la couverture du salon — joignable et valide, mais de
+   * rapport et de poids quelconques : celle de « Salon de Coiffure » fait
+   * 1200 × 400 pour 678 Ko, loin du 1,91:1 attendu. Messages la refusait et
+   * retombait sur le favicon, un PNG transparent, sur un fond que
+   * l'application inventait. Le professionnel partageait sa page et voyait
+   * apparaître le logo Opatam sur une couleur que personne n'avait décidée.
+   *
+   * Déclarer les deux ferait cohabiter deux balises `og:image` et laisserait
+   * le client choisir — c'est précisément ce qu'on cherche à lui retirer.
+   */
 
   return {
     // Note: the root layout title template already appends " | OPATAM",
@@ -219,15 +231,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url: pageUrl,
       siteName: 'Opatam',
-      images: ogImages,
       type: 'website',
       locale: ogLocale(locale),
     },
     twitter: {
-      card: ogImage ? 'summary_large_image' : 'summary',
+      // L'image générée fait toujours 1200 × 630 : la grande carte est
+      // désormais garantie, plus conditionnelle.
+      card: 'summary_large_image',
       title: `${provider.businessName}${city ? ` — ${city}` : ''}`,
       description,
-      images: ogImages,
     },
   };
 }
