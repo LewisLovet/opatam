@@ -41,7 +41,7 @@ try {
   // Module natif indisponible.
 }
 import { Ionicons } from '@expo/vector-icons';
-import { APP_CONFIG, ASSETS, getCategoryLabel } from '@booking-app/shared/constants';
+import { APP_CONFIG, getCategoryLabel } from '@booking-app/shared/constants';
 
 /** A single day in the "Disponibilités" story mode (computed from real
  *  bookings + opening hours, see useUpcomingAvailabilities). */
@@ -2410,9 +2410,17 @@ export function StoryCard({
           <View style={styles.brandingSection}>
             <View style={[styles.brandingDivider, { backgroundColor: palette.brandingDivider }]} />
             <View style={styles.brandingCenter}>
+              {/*
+                Le logo EMPAQUETÉ, pas celui de Firebase Storage.
+                `ASSETS.logos.default` est une URL distante : l'aperçu
+                s'ouvrait sur un trou à l'emplacement du logo, le temps d'un
+                aller-retour réseau — pour une image qui voyage déjà avec
+                l'application. Et une capture déclenchée avant son arrivée
+                aurait produit une story sans marque.
+              */}
               <Image
-                source={{ uri: ASSETS.logos.default }}
-                style={styles.brandingLogo}
+                source={LOGO_BLEU}
+                style={[styles.brandingLogo, { borderRadius: 5 }]}
                 resizeMode="contain"
               />
               <Text style={[styles.brandingText, { color: palette.brandingText }]}>

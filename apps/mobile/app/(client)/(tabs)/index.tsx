@@ -14,6 +14,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -285,7 +286,24 @@ export default function HomeScreen() {
   };
 
   if (!accueilPret) {
-    return <AppBootSplash />;
+    /**
+     * Dans une MODALE, et non rendu à même l'écran.
+     *
+     * L'accueil est un onglet : rendu à sa place, l'écran d'attente s'arrête
+     * au-dessus de la barre d'onglets, qui reste visible et cliquable
+     * par-dessus un écran qui se veut plein. On voyait une barre de
+     * navigation posée sur un dégradé — l'application semblait à moitié
+     * chargée, ce qui est précisément l'impression qu'on cherchait à éviter.
+     *
+     * Une modale React Native est montée dans une vue native au-dessus de
+     * tout, barre d'onglets comprise. `animationType="none"` : cet écran
+     * prend la suite du splash natif, une transition l'en séparerait.
+     */
+    return (
+      <Modal visible animationType="none" presentationStyle="fullScreen">
+        <AppBootSplash />
+      </Modal>
+    );
   }
 
   return (

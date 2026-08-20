@@ -783,8 +783,26 @@ export function StoryShareModal({
    */
   const peutPublierUnAvis = (provider?.rating?.count ?? 0) > 0 || reviews.length > 0;
   const isSharing = sharing !== null;
+  /**
+   * L'aperçu n'attend QUE ce dont il a besoin.
+   *
+   * `loadingServices` bloquait toutes les stories, y compris celles qui ne
+   * lisent ni prestations ni membres : choisir « Avis » sur l'écran de choix
+   * ouvrait sur un tourniquet, le temps de deux lectures Firestore sans
+   * rapport. Le logo est empaqueté avec l'application — il n'y avait aucune
+   * raison d'attendre quoi que ce soit.
+   *
+   * La fidélité fait exception, et seulement si le programme exclut des
+   * prestations : leurs NOMS viennent de cette lecture, et afficher « sauf : »
+   * suivi du vide serait pire qu'un instant d'attente.
+   */
+  const attendNomsExclus =
+    displayMode === 'loyalty' &&
+    (provider?.settings?.loyalty?.excludedServiceIds?.length ?? 0) > 0;
+
   const isLoading =
-    loadingServices ||
+    (displayMode === 'services' && loadingServices) ||
+    (attendNomsExclus && loadingServices) ||
     (displayMode === 'availabilities' &&
       (availabilityScope === 'month'
         ? loadingMonth || !monthGrid
