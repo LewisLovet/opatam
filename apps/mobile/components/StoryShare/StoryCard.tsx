@@ -1463,19 +1463,27 @@ function ReviewStoryLayout({
 
       <View style={reviewStyles.middle}>
         <View style={reviewStyles.cardWrap}>
-          {/* La photo du SALON, à cheval sur le bord de la carte. Jamais celle
-              de la cliente : un avis public sur une page et un visage poussé à
-              des milliers d'abonnés ne relèvent pas du même consentement. */}
-          <View style={reviewStyles.avatar}>
-            {photoURL ? (
-              <Image source={{ uri: photoURL }} style={reviewStyles.avatarImg} />
-            ) : (
-              <View style={reviewStyles.avatarFallback}>
-                <Text style={reviewStyles.avatarInitial}>
-                  {businessName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
+          {/*
+            La photo du SALON, à cheval sur le bord de la carte. Jamais celle
+            de la cliente : un avis public sur une page et un visage poussé à
+            des milliers d'abonnés ne relèvent pas du même consentement.
+
+            Deux anneaux, comme sur la story fidélité : blanc opaque puis le
+            trait de couleur. L'avatar chevauchant deux fonds, un liseré
+            translucide n'aurait été visible que sur sa moitié haute.
+          */}
+          <View style={[reviewStyles.avatarRing, { borderColor: pal.eyebrow }]}>
+            <View style={reviewStyles.avatar}>
+              {photoURL ? (
+                <Image source={{ uri: photoURL }} style={reviewStyles.avatarImg} />
+              ) : (
+                <View style={reviewStyles.avatarFallback}>
+                  <Text style={reviewStyles.avatarInitial}>
+                    {businessName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
 
           <View style={reviewStyles.card}>
