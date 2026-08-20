@@ -20,6 +20,7 @@ import {
   ActivityIndicator,
   ScrollView,
   FlatList,
+  Image as RNImage,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
@@ -300,6 +301,24 @@ export function StoryShareModal({
    */
   const [reviewChoice, setReviewChoice] = useState<'average' | number>('average');
   const [reviewPickerOpen, setReviewPickerOpen] = useState(false);
+
+  /**
+   * La photo du salon est mise en cache DÈS L'OUVERTURE de la modale.
+   *
+   * Elle vient de Firebase Storage. Sans ça, la story s'affichait d'abord
+   * sans elle, puis le logo arrivait par-dessus — et le pire n'était pas
+   * l'inconfort : une capture déclenchée pendant cet intervalle aurait
+   * produit une image publiée SANS le logo du salon.
+   *
+   * L'écran de choix offre exactement la fenêtre qu'il faut : le temps que le
+   * professionnel lise les cinq propositions, l'image est arrivée. Aucun
+   * chargement supplémentaire n'est donc visible — on déplace l'attente là
+   * où elle ne coûte rien plutôt que de l'afficher.
+   */
+  useEffect(() => {
+    if (!visible || !provider?.photoURL) return;
+    RNImage.prefetch(provider.photoURL).catch(() => undefined);
+  }, [visible, provider?.photoURL]);
   /**
    * Le choix du contenu est passé d'une rangée de pastilles à un ÉCRAN.
    *
@@ -541,6 +560,22 @@ export function StoryShareModal({
     if (!viewRef.current || !captureRef) return null;
 
     try {
+      /*
+        S'assurer que la photo du salon est là AVANT de figer l'image.
+        C'est le seul instant où son absence devient irréversible : une story
+        publiée sans le logo ne se rattrape pas. Le préchargement à
+        l'ouverture rend cet appel quasi instantané dans les faits — il n'est
+        là que pour le professionnel qui va plus vite que le réseau.
+      */
+      if (provider?.photoURL) {
+        await Promise.race([
+          RNImage.prefetch(provider.photoURL).catch(() => undefined),
+          // Un Storage injoignable ne doit pas empêcher de partager : passé
+          // deux secondes, on capture avec l'initiale plutôt que rien.
+          new Promise((r) => setTimeout(r, 2000)),
+        ]);
+      }
+
       const uri = await captureRef(viewRef, {
         format: 'png',
         quality: 1,
@@ -554,7 +589,7 @@ export function StoryShareModal({
       console.error('[StoryShare] Capture error:', err);
       return null;
     }
-  }, []);
+  }, [provider?.photoURL]);
 
   // Fallback share via expo-sharing
   const fallbackShare = useCallback(async (fileUri: string) => {

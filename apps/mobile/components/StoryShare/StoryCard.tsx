@@ -1474,15 +1474,25 @@ function ReviewStoryLayout({
           */}
           <View style={[reviewStyles.avatarRing, { borderColor: pal.eyebrow }]}>
             <View style={reviewStyles.avatar}>
+              {/*
+                L'initiale est TOUJOURS rendue, la photo par-dessus.
+                Elle servait de remplacement quand aucune photo n'existe ;
+                elle sert maintenant aussi de fond pendant que la photo
+                descend. Sans elle, un salon dont l'image n'est pas encore en
+                cache montrait un disque vide au milieu de la story — et une
+                capture prise à cet instant l'aurait figé ainsi.
+              */}
+              <View style={reviewStyles.avatarFallback}>
+                <Text style={reviewStyles.avatarInitial}>
+                  {businessName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
               {photoURL ? (
-                <Image source={{ uri: photoURL }} style={reviewStyles.avatarImg} />
-              ) : (
-                <View style={reviewStyles.avatarFallback}>
-                  <Text style={reviewStyles.avatarInitial}>
-                    {businessName.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
+                <Image
+                  source={{ uri: photoURL }}
+                  style={[StyleSheet.absoluteFill, reviewStyles.avatarImg]}
+                />
+              ) : null}
             </View>
           </View>
 
@@ -1669,15 +1679,19 @@ function LoyaltyStoryLayout({
               liseré translucide n'aurait été visible qu'à moitié. */}
           <View style={[loyaltyStyles.avatarRing, { borderColor: pal.eyebrow }]}>
             <View style={loyaltyStyles.avatar}>
+              {/* Même principe que sur la story d'avis : l'initiale tient la
+                  place, la photo se pose dessus quand elle arrive. */}
+              <View style={loyaltyStyles.avatarFallback}>
+                <Text style={loyaltyStyles.avatarInitial}>
+                  {businessName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
               {photoURL ? (
-                <Image source={{ uri: photoURL }} style={loyaltyStyles.avatarImg} />
-              ) : (
-                <View style={loyaltyStyles.avatarFallback}>
-                  <Text style={loyaltyStyles.avatarInitial}>
-                    {businessName.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
+                <Image
+                  source={{ uri: photoURL }}
+                  style={[StyleSheet.absoluteFill, loyaltyStyles.avatarImg]}
+                />
+              ) : null}
             </View>
           </View>
 
