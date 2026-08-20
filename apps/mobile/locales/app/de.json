@@ -2462,7 +2462,9 @@
         "review": "Die Worte einer Kundin, ansprechend gesetzt. Der überzeugendste Beweis kommt von ihnen.",
         "loyalty": "Ihr Treueprogramm. Gibt einen Grund wiederzukommen, statt es woanders zu versuchen.",
         "none": "Nur Ihr QR-Code. Zum Aushängen im Salon oder für eine Story."
-      }
+      },
+      "intro": "Eine Story pro Woche genügt, um Ihre Seite lebendig zu halten. Wählen Sie, was Sie zeigen möchten.",
+      "configure": "Einrichten"
     }
   },
   "proServices": {

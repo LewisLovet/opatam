@@ -2462,7 +2462,9 @@
         "review": "A client's own words, beautifully laid out. The most convincing proof comes from them.",
         "loyalty": "Your loyalty programme. Gives a reason to come back rather than try elsewhere.",
         "none": "Your QR code alone. To display in your shop or drop into a story."
-      }
+      },
+      "intro": "One story a week is enough to keep your page alive. Pick what you want to show.",
+      "configure": "Set up"
     }
   },
   "proServices": {

@@ -2462,7 +2462,9 @@
         "review": "As palavras de uma cliente, bem apresentadas. A prova mais convincente vem delas.",
         "loyalty": "O seu programa de fidelidade. Dá uma razão para voltar em vez de experimentar noutro sítio.",
         "none": "Apenas o seu código QR. Para expor na loja ou colocar numa story."
-      }
+      },
+      "intro": "Uma story por semana chega para manter a sua página viva. Escolha o que quer mostrar.",
+      "configure": "Configurar"
     }
   },
   "proServices": {

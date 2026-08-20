@@ -23,6 +23,8 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import DateTimePicker, {
   type DateTimePickerEvent,
@@ -264,6 +266,7 @@ export function StoryShareModal({
   initialReviewId,
 }: StoryShareModalProps) {
   const { colors } = useTheme();
+  const router = useRouter();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { provider } = useProvider();
@@ -855,9 +858,14 @@ export function StoryShareModal({
             ]}
             showsVerticalScrollIndicator={false}
           >
-            <Text style={[styles.chooserTitle, { color: colors.text }]}>
-              {t('storyShare.chooser.title')}
-            </Text>
+            <View style={styles.chooserIntro}>
+              <Text style={[styles.chooserTitle, { color: colors.text }]}>
+                {t('storyShare.chooser.title')}
+              </Text>
+              <Text style={[styles.chooserLead, { color: colors.textSecondary }]}>
+                {t('storyShare.chooser.intro')}
+              </Text>
+            </View>
 
             {DISPLAY_MODES.map((mode) => {
               // Un contenu sans matière reste VISIBLE mais éteint, avec la
@@ -870,6 +878,11 @@ export function StoryShareModal({
                     ? t('storyShare.chooser.loyaltyOff')
                     : null;
               const eteint = raison !== null;
+              // La fidélité porte l'or de sa story ; les autres le bleu de
+              // marque. La tuile annonce la couleur de ce qu'on va produire,
+              // plutôt que de répéter cinq fois le même rond.
+              const teinte: [string, string] =
+                mode.key === 'loyalty' ? ['#F6D45A', '#E8B713'] : ['#2A4AA5', '#1B2F6E'];
               return (
                 <Pressable
                   key={mode.key}
@@ -886,32 +899,58 @@ export function StoryShareModal({
                     {
                       borderColor: colors.border,
                       backgroundColor: pressed ? colors.surfaceSecondary : colors.surface,
-                      opacity: eteint ? 0.5 : 1,
+                      opacity: eteint ? 0.62 : 1,
                     },
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.chooserIcon,
-                      { backgroundColor: colors.primaryLight },
-                    ]}
+                  <LinearGradient
+                    colors={eteint ? [colors.border, colors.border] : teinte}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.chooserIcon}
                   >
-                    <Ionicons name={mode.icon as any} size={20} color={colors.primary} />
-                  </View>
+                    <Ionicons
+                      name={mode.icon as any}
+                      size={21}
+                      color={mode.key === 'loyalty' && !eteint ? '#1B2F6E' : '#FFFFFF'}
+                    />
+                  </LinearGradient>
+
                   <View style={{ flex: 1, gap: 3 }}>
                     <Text style={[styles.chooserRowTitle, { color: colors.text }]}>
                       {t(`storyShare.modes.${mode.key}`)}
                     </Text>
                     <Text style={[styles.chooserRowBody, { color: colors.textSecondary }]}>
-                      {raison ?? t(`storyShare.chooser.why.${mode.key}`)}
+                      {t(`storyShare.chooser.why.${mode.key}`)}
                     </Text>
+                    {raison ? (
+                      <View style={styles.chooserBlocked}>
+                        <Ionicons name="alert-circle-outline" size={13} color={colors.warning} />
+                        <Text style={[styles.chooserBlockedText, { color: colors.warning }]}>
+                          {raison}
+                        </Text>
+                        {/* Le programme se configure en deux écrans : dire
+                            « non configuré » sans y mener laisse le
+                            professionnel devant une porte close. */}
+                        {mode.key === 'loyalty' && (
+                          <Pressable
+                            onPress={() => {
+                              onClose();
+                              router.push('/(pro)/loyalty' as never);
+                            }}
+                            hitSlop={8}
+                          >
+                            <Text style={[styles.chooserConfigure, { color: colors.primary }]}>
+                              {t('storyShare.chooser.configure')}
+                            </Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    ) : null}
                   </View>
+
                   {!eteint && (
-                    <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color={colors.textSecondary}
-                    />
+                    <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                   )}
                 </Pressable>
               );
@@ -1776,24 +1815,37 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   /** L'écran de choix du contenu. */
-  chooserTitle: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  chooserIntro: { gap: 6, marginBottom: 4 },
+  chooserTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
+  chooserLead: { fontSize: 13.5, lineHeight: 19 },
   chooserRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 13,
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
   },
+  /** Tuile carrée arrondie, pas un rond : elle rappelle l'icône de l'app et
+   *  laisse la couleur porter davantage de surface. */
   chooserIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chooserRowTitle: { fontSize: 15, fontWeight: '700' },
+  chooserRowTitle: { fontSize: 15.5, fontWeight: '700' },
   chooserRowBody: { fontSize: 12.5, lineHeight: 17 },
+  chooserBlocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 3,
+    flexWrap: 'wrap',
+  },
+  chooserBlockedText: { fontSize: 12, fontWeight: '600' },
+  chooserConfigure: { fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' },
 
   /** Ce qui est retenu, et la porte vers la liste complète. */
   reviewSummary: {
