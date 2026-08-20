@@ -12,6 +12,11 @@
  * que la question intéressante est le RAPPORT entre elles, et qu'on ne
  * rapporte bien que des grandeurs comparables.
  *
+ * CHIFFRES INDICATIFS, jamais une source de vérité. Le point d'entrée est
+ * public par nécessité — la mesure a lieu avant toute authentification — et
+ * ses garde-fous (origine attendue, fenêtre anti-rafale) arrêtent le script
+ * naïf, pas un adversaire décidé. À lire comme une tendance.
+ *
  * AGRÉGATS SEULEMENT, jamais de visiteur suivi. On ne saura donc pas si CE
  * visiteur-là s'est inscrit, seulement combien de visites et combien
  * d'inscriptions le même jour. C'est moins précis qu'une attribution, et

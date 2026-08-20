@@ -47,7 +47,7 @@ import {
   storyTrackingService,
 } from '@booking-app/firebase';
 import type { Service, Member } from '@booking-app/shared';
-import { APP_CONFIG, publicReviewAuthor } from '@booking-app/shared';
+import { APP_CONFIG, publicReviewAuthor, storyReviewExcerpt } from '@booking-app/shared';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
@@ -666,9 +666,20 @@ export function StoryShareModal({
     share: handleGenericShare,
   };
 
-  if (!provider) return null;
-
-  const location = provider.cities?.[0] || '';
+  /*
+   * Aucun retour anticipé AVANT ce point.
+   *
+   * `if (!provider) return null` se trouvait ici, devant un `useMemo` et deux
+   * `useEffect`. Au premier rendu le prestataire est encore en chargement :
+   * la modale sortait sans appeler ces hooks, puis les appelait dès qu'il
+   * arrivait. React compte les hooks d'un rendu à l'autre — c'est
+   * « Rendered more hooks than during the previous render », et l'accueil
+   * professionnel tombait avec.
+   *
+   * Les hooks ci-dessous tolèrent donc `provider === null`, et le seul retour
+   * conditionnel est descendu juste avant le JSX.
+   */
+  const location = provider?.cities?.[0] || '';
 
   /**
    * Le programme de fidélité, mis en forme pour la story.
@@ -681,7 +692,7 @@ export function StoryShareModal({
    * sert pour éteindre le contenu plutôt que de produire une carte vide.
    */
   const loyaltyStory = useMemo(() => {
-    const l = provider.settings?.loyalty;
+    const l = provider?.settings?.loyalty;
     if (!l?.enabled || !l.threshold || !l.rewardValue) return null;
     const reward =
       l.rewardType === 'amount'
@@ -694,7 +705,7 @@ export function StoryShareModal({
       .map((id) => services.find((sv) => sv.id === id)?.name)
       .filter((n): n is string => !!n);
     return { threshold: l.threshold, reward, excluded: exclus };
-  }, [provider.settings?.loyalty, services]);
+  }, [provider?.settings?.loyalty, services]);
 
   /**
    * Chargement des avis, seulement quand le mode est choisi — un salon qui
@@ -712,7 +723,9 @@ export function StoryShareModal({
           .map((r) => ({
             id: r.id,
             rating: r.rating,
-            comment: r.comment?.trim() ? r.comment.trim() : null,
+            // Tronqué POUR LA STORY seulement : l'avis reste intact en base,
+            // c'est la parole d'une cliente.
+            comment: storyReviewExcerpt(r.comment),
             authorName: publicReviewAuthor(r.clientName),
             // « Cliente vérifiée » n'est vrai que d'un avis né d'une vraie
             // réservation. Les avis importés d'un autre outil, ou déposés
@@ -768,7 +781,7 @@ export function StoryShareModal({
    * produisait une carte « 0,0 · sur 0 avis » : exactement ce qu'un
    * professionnel ne doit pas pouvoir publier.
    */
-  const peutPublierUnAvis = (provider.rating?.count ?? 0) > 0 || reviews.length > 0;
+  const peutPublierUnAvis = (provider?.rating?.count ?? 0) > 0 || reviews.length > 0;
   const isSharing = sharing !== null;
   const isLoading =
     loadingServices ||
@@ -794,6 +807,9 @@ export function StoryShareModal({
   const filteredServices = services
     .filter((s) => selectedServiceIds.has(s.id))
     .map((s) => ({ name: s.name, price: s.price, duration: s.duration }));
+
+  // Le SEUL retour conditionnel, et il vient après tous les hooks.
+  if (!provider) return null;
 
   const storyCardProps = {
     businessName: provider.businessName,

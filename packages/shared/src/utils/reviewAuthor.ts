@@ -22,3 +22,38 @@ export function publicReviewAuthor(clientName: string | null | undefined): strin
   // Les saisies en capitales ou tout en minuscules sont fréquentes.
   return premier.charAt(0).toLocaleUpperCase() + premier.slice(1);
 }
+
+/**
+ * Longueur maximale d'une citation en story.
+ *
+ * Un avis peut faire 1 000 caractères — 2 000 pour un avis importé. Rien ne
+ * bornait la citation : elle étirait la carte, repoussait l'appel à l'action
+ * hors de l'image, ou se faisait couper au découpage 1080×1920. Un avis long
+ * ne se lit de toute façon pas sur une story qu'on fait défiler en deux
+ * secondes.
+ */
+export const STORY_EXCERPT_MAX = 260;
+
+/**
+ * L'extrait publiable d'un commentaire. L'avis d'origine n'est JAMAIS
+ * modifié : c'est la parole d'une cliente, on n'y touche pas en base.
+ *
+ * La coupe se fait sur un blanc, pas au milieu d'un mot, et la ponctuation
+ * traînante est retirée avant les points de suspension — « chaleureux, … »
+ * se lit comme une faute.
+ */
+export function storyReviewExcerpt(
+  comment: string | null | undefined,
+  max: number = STORY_EXCERPT_MAX
+): string | null {
+  const t = (comment ?? '').trim();
+  if (!t) return null;
+  if (t.length <= max) return t;
+
+  const coupe = t.slice(0, max);
+  const dernierBlanc = coupe.lastIndexOf(' ');
+  // Un mot unique plus long que la limite n'a pas de blanc où couper : on
+  // tronque alors franchement plutôt que de tout jeter.
+  const base = dernierBlanc > max * 0.6 ? coupe.slice(0, dernierBlanc) : coupe;
+  return base.replace(/[\s,;:.!?…-]+$/u, '') + '…';
+}
