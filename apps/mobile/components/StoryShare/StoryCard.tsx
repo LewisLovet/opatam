@@ -1646,6 +1646,10 @@ function LoyaltyStoryLayout({
           </Text>
         </View>
 
+        {/* La place de l'avatar est RÉSERVÉE par le conteneur, comme sur la
+            story d'avis : il déborde de 42 px vers le haut, et sans cette
+            réserve il mordrait sur le sous-titre au lieu de flotter. */}
+        <View style={loyaltyStyles.cardWrap}>
         <View style={loyaltyStyles.card}>
           <View style={loyaltyStyles.avatar}>
             {photoURL ? (
@@ -1792,6 +1796,7 @@ function LoyaltyStoryLayout({
 
           <Text style={loyaltyStyles.detail}>{i18n.t('storyShare.loyalty.automatic')}</Text>
         </View>
+        </View>
 
         {/* Pas de pastille : rien n'est cliquable dans une image, et un
             bouton dessiné promet une action impossible. */}
@@ -1850,12 +1855,18 @@ const loyaltyStyles = StyleSheet.create({
   canvas: { flex: 1, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 32 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  brandMark: { width: 19, height: 19 },
+  // `icon.png` est le carré bleu de l'icône, pas un monogramme détouré :
+  // sans rayon, il pose un rectangle net sur le fond clair.
+  brandMark: { width: 19, height: 19, borderRadius: 4.5 },
   wordmark: { fontSize: 13, fontWeight: '800', letterSpacing: 1.7 },
   eyebrow: { fontSize: 7.5, fontWeight: '800', letterSpacing: 2.5 },
 
   stage: { flex: 1, justifyContent: 'center' },
-  hook: { alignItems: 'center', marginBottom: 44 },
+  // L'accroche collait à l'en-tête : sur une story, le haut de l'image est
+  // souvent recouvert par l'interface du réseau, et un titre qui y monte se
+  // fait manger.
+  hook: { alignItems: 'center', marginTop: 26, marginBottom: 4 },
+  cardWrap: { alignItems: 'center', paddingTop: 42 },
   hookTitle: {
     fontSize: 24,
     lineHeight: 26,
@@ -1871,29 +1882,36 @@ const loyaltyStyles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  /**
+   * Identique à la carte de la story d'avis — mêmes rayon, marges et
+   * absence d'ombre.
+   *
+   * Elle portait une ombre portée profonde, reprise de la référence HTML où
+   * elle se détache sur un fond bleu. Sur le fond CLAIR elle devenait une
+   * tache grise sous un rectangle blanc, alors que la carte des avis, elle,
+   * posait proprement. Deux cartes de la même famille n'ont pas à se traiter
+   * différemment.
+   */
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 19,
-    paddingTop: 49,
-    paddingHorizontal: 20,
-    paddingBottom: 21,
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 26,
+    paddingTop: 56,
+    paddingHorizontal: 24,
+    paddingBottom: 26,
     alignItems: 'center',
-    shadowColor: '#091436',
-    shadowOpacity: 0.42,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: 20 },
-    elevation: 12,
   },
   avatar: {
     position: 'absolute',
-    top: -37,
-    width: 75,
-    height: 75,
-    borderRadius: 38,
-    borderWidth: 3.5,
-    borderColor: '#fff',
+    top: -42,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 4,
+    borderColor: '#ffffff',
     backgroundColor: '#dfe4f2',
     overflow: 'hidden',
+    zIndex: 2,
   },
   avatarImg: { width: '100%', height: '100%' },
   avatarFallback: {
@@ -2042,7 +2060,7 @@ const reviewStyles = StyleSheet.create({
   canvas: { flex: 1, paddingHorizontal: 22, paddingTop: 24, paddingBottom: 28 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandMark: { width: 26, height: 26 },
+  brandMark: { width: 26, height: 26, borderRadius: 6 },
   brandName: { fontSize: 15, fontWeight: '800', letterSpacing: 2.5 },
   badge: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },
 
