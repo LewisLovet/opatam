@@ -28,6 +28,19 @@ try {
 } catch {
   // Native module not available
 }
+// Import protégé, comme pour le QR code : `react-native-svg` est un module
+// natif, absent de certains binaires (Expo Go, pods non installés). Le sceau
+// cranté cède alors la place à un disque plein — la story reste publiable.
+let Svg: React.ComponentType<any> | null = null;
+let SvgPolygon: React.ComponentType<any> | null = null;
+try {
+  const mod = require('react-native-svg');
+  Svg = mod.default ?? mod.Svg;
+  SvgPolygon = mod.Polygon;
+} catch {
+  // Module natif indisponible.
+}
+import { Ionicons } from '@expo/vector-icons';
 import { APP_CONFIG, ASSETS, getCategoryLabel } from '@booking-app/shared/constants';
 
 /** A single day in the "Disponibilités" story mode (computed from real
@@ -1506,14 +1519,38 @@ function ReviewStoryLayout({
 
 // ─── Story « fidélité » ───────────────────────────────────────────────────
 //
-// Même identité que la story d'avis — dégradé bleu, accents dorés, carte
-// blanche — avec un titre en tête, parce que l'offre EST le message : une
-// carte de fidélité qu'il faut déchiffrer ne se lit pas en story.
+// Transposition du gabarit HTML fourni par le client (docs/), à l'échelle
+// 1/3 — la référence est dessinée en 1080 de large, la carte est rendue en
+// 360 puis capturée en 1080.
 //
-// LA CARTE EST VIDE. On ne pré-remplit pas deux cases comme sur une carte
-// tamponnée : cette image s'adresse à tout un compte, et des cases cochées y
-// laisseraient croire à chacune qu'elle a déjà des rendez-vous acquis. La
-// dernière case porte la récompense, ce qui suffit à faire lire le principe.
+// CE QUI FAIT LE CARACTÈRE, et qu'une version sobre perdait : un vrai ticket
+// cartonné. Fond ivoire rayé, bordure pointillée, encoches latérales, tampons
+// à l'encre POSÉS DE TRAVERS, et un sceau cranté pour la récompense. Sans ces
+// détails l'objet redevient un encadré, et un encadré ne donne envie à
+// personne.
+//
+// Les cases cochées sont ILLUSTRATIVES et assumées comme telles : elles
+// montrent comment la carte se remplit. Une carte vierge se lit comme une
+// grille inerte.
+
+/** Le sceau cranté de la récompense. Dégradé impossible en SVG simple : on
+ *  s'en tient à la découpe, qui est ce qui se remarque. */
+function SceauCrante({ taille, couleur }: { taille: number; couleur: string }) {
+  if (!Svg || !SvgPolygon) return null;
+  const r = taille / 2;
+  const dents = 12;
+  const points: string[] = [];
+  for (let i = 0; i < dents * 2; i++) {
+    const rayon = i % 2 === 0 ? r : r * 0.84;
+    const angle = (Math.PI * i) / dents - Math.PI / 2;
+    points.push(`${r + rayon * Math.cos(angle)},${r + rayon * Math.sin(angle)}`);
+  }
+  return (
+    <Svg width={taille} height={taille} style={StyleSheet.absoluteFill}>
+      <SvgPolygon points={points.join(' ')} fill={couleur} />
+    </Svg>
+  );
+}
 
 interface LoyaltyStoryLayoutProps {
   businessName: string;
@@ -1534,206 +1571,448 @@ function LoyaltyStoryLayout({
 }: LoyaltyStoryLayoutProps) {
   const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
   const adresse = bookingUrl.replace(/^https?:\/\//, '');
-  // Au-delà de dix cases la grille devient illisible sur une story ; on
-  // montre alors le principe sans dessiner chaque rendez-vous.
-  const cases = loyalty.threshold <= 10 ? loyalty.threshold : 0;
+
+  // `seuil - 1` cases numérotées, puis la case récompense. Au-delà de dix,
+  // les tampons deviendraient illisibles : on montre alors la récompense
+  // seule, sans dessiner chaque rendez-vous.
+  const grilleLisible = loyalty.threshold >= 2 && loyalty.threshold <= 10;
+  const parRangee = loyalty.threshold <= 5 ? loyalty.threshold : Math.ceil(loyalty.threshold / 2);
+  const tailleTampon = Math.min(37, Math.floor((262 - (parRangee - 1) * 7) / parRangee));
+  // Deux tampons apposés : assez pour montrer l'usage, pas assez pour laisser
+  // croire à la lectrice que ce sont les siens.
+  const remplis = Math.min(2, Math.max(0, loyalty.threshold - 1));
 
   return (
     <LinearGradient
-      colors={['#2b53c4', '#1a3f97', '#102a63']}
+      colors={['#2A4AA5', '#1B2F6E', '#152551']}
+      locations={[0, 0.58, 1]}
       start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
-      style={reviewStyles.canvas}
+      end={{ x: 0.85, y: 1 }}
+      style={loyaltyStyles.canvas}
     >
-      <View style={reviewStyles.header}>
-        <View style={reviewStyles.brand}>
-          <Image source={LOGO_BLANC} style={reviewStyles.brandMark} resizeMode="contain" />
-          <Text style={reviewStyles.brandName}>OPATAM</Text>
+      {/* Halo haut — le `radial-gradient` de la référence, en anneaux : React
+          Native ne connaît pas les dégradés radiaux. */}
+      <View pointerEvents="none" style={loyaltyStyles.halo}>
+        {[1, 0.82, 0.64, 0.46, 0.3].map((k, i) => (
+          <View
+            key={i}
+            style={{
+              position: 'absolute',
+              width: STORY_WIDTH * 1.25 * k,
+              height: STORY_WIDTH * 1.25 * k,
+              borderRadius: (STORY_WIDTH * 1.25 * k) / 2,
+              backgroundColor: 'rgba(86,126,224,0.10)',
+            }}
+          />
+        ))}
+      </View>
+
+      <View style={loyaltyStyles.head}>
+        <View style={loyaltyStyles.brand}>
+          <Image source={LOGO_BLANC} style={loyaltyStyles.brandMark} resizeMode="contain" />
+          <Text style={loyaltyStyles.wordmark}>OPATAM</Text>
         </View>
-        <Text style={reviewStyles.badge}>{i18n.t('storyShare.loyalty.badge')}</Text>
+        <Text style={loyaltyStyles.eyebrow}>{i18n.t('storyShare.loyalty.badge')}</Text>
       </View>
 
-      {/* L'offre, en toutes lettres et en tête. */}
-      <View style={loyaltyStyles.titleBlock}>
-        <Text style={loyaltyStyles.title}>
-          {i18n.t('storyShare.loyalty.headline', { count: loyalty.threshold })}
-          {'\n'}
-          <Text style={loyaltyStyles.titleReward}>
-            {i18n.t('storyShare.loyalty.headlineReward', { reward: loyalty.reward })}
+      <View style={loyaltyStyles.stage}>
+        <View style={loyaltyStyles.hook}>
+          <Text style={loyaltyStyles.hookTitle}>
+            {i18n.t('storyShare.loyalty.headline', { count: loyalty.threshold })}
+            {'\n'}
+            <Text style={loyaltyStyles.hookReward}>
+              {i18n.t('storyShare.loyalty.headlineReward', { reward: loyalty.reward })}
+            </Text>
           </Text>
-        </Text>
-      </View>
+          <Text style={loyaltyStyles.hookSub}>
+            {i18n.t('storyShare.loyalty.launch')}
+          </Text>
+        </View>
 
-      <View style={reviewStyles.middle}>
-        <View style={reviewStyles.cardWrap}>
-          <View style={reviewStyles.avatar}>
+        <View style={loyaltyStyles.card}>
+          <View style={loyaltyStyles.avatar}>
             {photoURL ? (
-              <Image source={{ uri: photoURL }} style={reviewStyles.avatarImg} />
+              <Image source={{ uri: photoURL }} style={loyaltyStyles.avatarImg} />
             ) : (
-              <View style={reviewStyles.avatarFallback}>
-                <Text style={reviewStyles.avatarInitial}>
+              <View style={loyaltyStyles.avatarFallback}>
+                <Text style={loyaltyStyles.avatarInitial}>
                   {businessName.charAt(0).toUpperCase()}
                 </Text>
               </View>
             )}
           </View>
 
-          <View style={reviewStyles.card}>
-            <Text style={reviewStyles.business} numberOfLines={2}>
-              {businessName}
-            </Text>
-            {sousTitre ? <Text style={reviewStyles.subtitle}>{sousTitre}</Text> : null}
+          <Text style={loyaltyStyles.enseigne} numberOfLines={2}>
+            {businessName}
+          </Text>
+          {sousTitre ? <Text style={loyaltyStyles.meta}>{sousTitre}</Text> : null}
 
-            {/* La carte proprement dite. */}
-            <View style={loyaltyStyles.punchCard}>
-              <View style={loyaltyStyles.punchHead}>
-                <Text style={loyaltyStyles.punchLabel}>
+          {/* ── Le ticket ── */}
+          <View style={loyaltyStyles.ticketWrap}>
+            <View style={loyaltyStyles.ticket}>
+              {/* Rayures verticales du carton. */}
+              <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                {Array.from({ length: 60 }).map((_, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      position: 'absolute',
+                      left: i * 5,
+                      top: 0,
+                      bottom: 0,
+                      width: 2,
+                      backgroundColor: 'rgba(27,47,110,0.022)',
+                    }}
+                  />
+                ))}
+              </View>
+
+              <View style={loyaltyStyles.ticketHead}>
+                <Text style={loyaltyStyles.ticketTitre}>
                   {i18n.t('storyShare.loyalty.cardLabel')}
                 </Text>
-                <View style={loyaltyStyles.punchPill}>
-                  <Text style={loyaltyStyles.punchPillText}>
+                <View style={loyaltyStyles.ticketGain}>
+                  <Text style={loyaltyStyles.ticketGainText}>
                     {i18n.t('storyShare.loyalty.count', { count: loyalty.threshold })}
                   </Text>
                 </View>
               </View>
 
-              {cases > 0 ? (
-                <View style={loyaltyStyles.slots}>
-                  {Array.from({ length: cases }).map((_, i) => {
-                    const derniere = i === cases - 1;
-                    return derniere ? (
-                      <View key={i} style={loyaltyStyles.slotReward}>
-                        <Text style={loyaltyStyles.slotRewardText}>{loyalty.reward}</Text>
-                      </View>
-                    ) : (
-                      <View key={i} style={loyaltyStyles.slot}>
-                        <Text style={loyaltyStyles.slotNumber}>{i + 1}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : (
-                <View style={loyaltyStyles.slotsWide}>
-                  <Text style={loyaltyStyles.slotRewardText}>{loyalty.reward}</Text>
-                </View>
-              )}
+              <View style={loyaltyStyles.tampons}>
+                {grilleLisible ? (
+                  <>
+                    {Array.from({ length: loyalty.threshold - 1 }).map((_, i) => {
+                      const pose = i < remplis;
+                      const dim = {
+                        width: tailleTampon,
+                        height: tailleTampon,
+                        borderRadius: tailleTampon / 2,
+                      };
+                      return pose ? (
+                        <View
+                          key={i}
+                          style={[
+                            loyaltyStyles.tamponPlein,
+                            dim,
+                            // Un tampon se pose de travers. Alterner les
+                            // angles évite l'alignement mécanique qui trahit
+                            // le dessin.
+                            { transform: [{ rotate: i % 2 === 0 ? '-9deg' : '7deg' }] },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              loyaltyStyles.tamponAnneau,
+                              { borderRadius: tailleTampon / 2 },
+                            ]}
+                          />
+                          <Ionicons
+                            name="checkmark"
+                            size={Math.round(tailleTampon * 0.42)}
+                            color={LOYAL_BLEU}
+                          />
+                        </View>
+                      ) : (
+                        <View key={i} style={[loyaltyStyles.tampon, dim]}>
+                          <Text
+                            style={[
+                              loyaltyStyles.tamponNum,
+                              { fontSize: Math.round(tailleTampon * 0.29) },
+                            ]}
+                          >
+                            {i + 1}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                    <View
+                      style={[
+                        loyaltyStyles.tamponRecompense,
+                        { width: tailleTampon, height: tailleTampon },
+                      ]}
+                    >
+                      <SceauCrante taille={tailleTampon} couleur={LOYAL_OR} />
+                      {!Svg && (
+                        <View
+                          style={{
+                            ...StyleSheet.absoluteFillObject,
+                            borderRadius: tailleTampon / 2,
+                            backgroundColor: LOYAL_OR,
+                          }}
+                        />
+                      )}
+                      <Text
+                        style={[
+                          loyaltyStyles.tamponRecompenseText,
+                          { fontSize: Math.round(tailleTampon * 0.27) },
+                        ]}
+                      >
+                        {loyalty.reward}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <View style={loyaltyStyles.recompenseLarge}>
+                    <Text style={loyaltyStyles.recompenseLargeText}>{loyalty.reward}</Text>
+                  </View>
+                )}
+              </View>
 
-              {loyalty.excluded.length > 0 ? (
-                <Text style={loyaltyStyles.exclusions} numberOfLines={2}>
-                  {i18n.t('storyShare.loyalty.except', {
-                    list: loyalty.excluded.join(', '),
-                  })}
+              <View style={loyaltyStyles.ticketPied}>
+                <View style={loyaltyStyles.puce} />
+                <Text style={loyaltyStyles.ticketPiedText} numberOfLines={2}>
+                  {loyalty.excluded.length > 0
+                    ? i18n.t('storyShare.loyalty.except', { list: loyalty.excluded.join(', ') })
+                    : i18n.t('storyShare.loyalty.allServices')}
                 </Text>
-              ) : (
-                <Text style={loyaltyStyles.exclusions}>
-                  {i18n.t('storyShare.loyalty.allServices')}
-                </Text>
-              )}
+              </View>
             </View>
 
-            <Text style={loyaltyStyles.automatic}>
-              {i18n.t('storyShare.loyalty.automatic')}
+            {/* Encoches : le repère visuel du ticket. */}
+            <View style={[loyaltyStyles.encoche, loyaltyStyles.encocheG]} />
+            <View style={[loyaltyStyles.encoche, loyaltyStyles.encocheD]} />
+          </View>
+
+          <Text style={loyaltyStyles.detail}>{i18n.t('storyShare.loyalty.automatic')}</Text>
+        </View>
+
+        <View style={loyaltyStyles.foot}>
+          {/*
+            La pastille dorée vient de la référence. Elle n'est PAS cliquable
+            — rien ne l'est dans une image — mais elle ancre le regard en fin
+            de story, ce qu'une ligne de texte ne fait pas. À retirer d'un mot
+            si vous préférez la consigne précédente.
+          */}
+          <View style={loyaltyStyles.cta}>
+            <Text style={loyaltyStyles.ctaText}>
+              {i18n.t('storyShare.review.bookAt', { name: businessName })}
             </Text>
           </View>
+          <Text style={loyaltyStyles.url}>{adresse}</Text>
         </View>
-      </View>
-
-      <View style={reviewStyles.footer}>
-        <Text style={reviewStyles.cta}>
-          {i18n.t('storyShare.review.bookAt', { name: businessName })}
-        </Text>
-        <Text style={reviewStyles.url}>{adresse}</Text>
       </View>
     </LinearGradient>
   );
 }
 
+const LOYAL_BLEU = '#1B2F6E';
+const LOYAL_OR = '#F4C928';
+const LOYAL_GRIS = '#6B7793';
+
 const loyaltyStyles = StyleSheet.create({
-  titleBlock: { marginTop: 14, alignItems: 'center' },
-  title: {
-    color: '#ffffff',
-    fontSize: 25,
-    lineHeight: 31,
+  canvas: { flex: 1, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 32 },
+  halo: {
+    position: 'absolute',
+    top: -STORY_WIDTH * 0.5,
+    left: 0,
+    right: 0,
+    height: STORY_WIDTH * 1.3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  brandMark: { width: 19, height: 19 },
+  wordmark: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1.7 },
+  eyebrow: { color: LOYAL_OR, fontSize: 7.5, fontWeight: '800', letterSpacing: 2.5 },
+
+  stage: { flex: 1, justifyContent: 'center' },
+  hook: { alignItems: 'center', marginBottom: 44 },
+  hookTitle: {
+    color: '#fff',
+    fontSize: 24,
+    lineHeight: 26,
     fontWeight: '800',
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
     textAlign: 'center',
   },
-  titleReward: { color: OPATAM_OR },
-
-  punchCard: {
-    width: '100%',
-    marginTop: 16,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#d9dbe6',
-    backgroundColor: '#faf6e8',
-  },
-  punchHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  punchLabel: {
-    color: OPATAM_BLEU,
+  hookReward: { color: LOYAL_OR },
+  hookSub: {
+    marginTop: 9,
+    color: 'rgba(255,255,255,0.78)',
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.6,
+    lineHeight: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
-  punchPill: {
-    backgroundColor: OPATAM_OR,
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 19,
+    paddingTop: 49,
+    paddingHorizontal: 20,
+    paddingBottom: 21,
+    alignItems: 'center',
+    shadowColor: '#091436',
+    shadowOpacity: 0.42,
+    shadowRadius: 40,
+    shadowOffset: { width: 0, height: 20 },
+    elevation: 12,
+  },
+  avatar: {
+    position: 'absolute',
+    top: -37,
+    width: 75,
+    height: 75,
+    borderRadius: 38,
+    borderWidth: 3.5,
+    borderColor: '#fff',
+    backgroundColor: '#dfe4f2',
+    overflow: 'hidden',
+  },
+  avatarImg: { width: '100%', height: '100%' },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: LOYAL_BLEU,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: { color: '#fff', fontSize: 28, fontWeight: '800' },
+
+  enseigne: {
+    color: LOYAL_BLEU,
+    fontSize: 21,
+    lineHeight: 23,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+  },
+  meta: { marginTop: 4, color: LOYAL_GRIS, fontSize: 9.5, fontWeight: '500' },
+
+  ticketWrap: { width: '100%', marginTop: 12, marginHorizontal: -5, position: 'relative' },
+  ticket: {
+    paddingTop: 11,
+    paddingHorizontal: 13,
+    paddingBottom: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#C6CEE2',
+    backgroundColor: '#F8F4E6',
+    overflow: 'hidden',
+  },
+  encoche: {
+    position: 'absolute',
+    top: '50%',
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    backgroundColor: '#fff',
+    marginTop: -9,
+  },
+  encocheG: { left: -9 },
+  encocheD: { right: -9 },
+
+  ticketHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 7,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderStyle: 'dashed',
+    borderBottomColor: '#D6DCEA',
+  },
+  ticketTitre: {
+    color: LOYAL_BLEU,
+    fontSize: 8,
+    fontWeight: '700',
+    letterSpacing: 1.8,
+  },
+  ticketGain: {
+    backgroundColor: LOYAL_OR,
     borderRadius: 999,
-    paddingHorizontal: 9,
+    paddingHorizontal: 7,
     paddingVertical: 3,
   },
-  punchPillText: { color: OPATAM_BLEU, fontSize: 10, fontWeight: '800' },
+  ticketGainText: { color: LOYAL_BLEU, fontSize: 9, fontWeight: '800' },
 
-  slots: {
+  tampons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 14,
+    gap: 7,
+    marginTop: 10,
   },
-  slot: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1.5,
+  tampon: {
+    borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#c9ccd8',
+    borderColor: '#BFC8DD',
+    backgroundColor: 'rgba(255,255,255,0.62)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  slotNumber: { color: '#9aa0b0', fontSize: 13, fontWeight: '700' },
-  slotReward: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: OPATAM_OR,
+  tamponNum: { color: '#A6AFC6', fontWeight: '700' },
+  tamponPlein: {
+    borderWidth: 1.7,
+    borderColor: LOYAL_BLEU,
     alignItems: 'center',
     justifyContent: 'center',
+    opacity: 0.94,
   },
-  slotRewardText: { color: OPATAM_BLEU, fontSize: 12, fontWeight: '800' },
-  slotsWide: {
-    marginTop: 14,
-    alignSelf: 'center',
-    backgroundColor: OPATAM_OR,
+  tamponAnneau: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    right: 3,
+    bottom: 3,
+    borderWidth: 0.8,
+    borderColor: 'rgba(27,47,110,0.45)',
+  },
+  tamponRecompense: { alignItems: 'center', justifyContent: 'center' },
+  tamponRecompenseText: { color: LOYAL_BLEU, fontWeight: '800' },
+  recompenseLarge: {
+    backgroundColor: LOYAL_OR,
     borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  recompenseLargeText: { color: LOYAL_BLEU, fontSize: 14, fontWeight: '800' },
+
+  ticketPied: {
+    marginTop: 10,
+    paddingTop: 7,
+    borderTopWidth: 1,
+    borderStyle: 'dashed',
+    borderTopColor: '#D6DCEA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  puce: { width: 3, height: 3, borderRadius: 2, backgroundColor: LOYAL_OR },
+  ticketPiedText: { color: '#7C87A0', fontSize: 8, fontWeight: '600', flexShrink: 1 },
+
+  detail: {
+    marginTop: 11,
+    color: LOYAL_GRIS,
+    fontSize: 8.7,
+    lineHeight: 12.5,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 
-  exclusions: {
-    marginTop: 14,
-    color: '#7b8390',
-    fontSize: 11,
-    lineHeight: 15,
-    textAlign: 'center',
+  foot: { alignItems: 'center', paddingTop: 23 },
+  cta: {
+    backgroundColor: LOYAL_OR,
+    borderRadius: 999,
+    paddingHorizontal: 17,
+    paddingVertical: 9,
+    shadowColor: '#000',
+    shadowOpacity: 0.22,
+    shadowRadius: 13,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
-  automatic: {
-    marginTop: 14,
-    color: '#5c6470',
-    fontSize: 12,
-    lineHeight: 17,
-    textAlign: 'center',
+  ctaText: { color: LOYAL_BLEU, fontSize: 10.5, fontWeight: '800' },
+  url: {
+    marginTop: 8,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 8.3,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });
 

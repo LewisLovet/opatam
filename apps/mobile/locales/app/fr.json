@@ -2450,7 +2450,8 @@
       "count": "{{count}} RDV",
       "except": "Toutes les prestations sauf : {{list}}.",
       "allServices": "Valable sur toutes les prestations.",
-      "automatic": "Rien à remplir : vos rendez-vous pris sur Opatam se cumulent tout seuls."
+      "automatic": "Rien à remplir : vos rendez-vous pris sur Opatam se cumulent tout seuls.",
+      "launch": "Notre carte de fidélité démarre aujourd'hui."
     },
     "chooser": {
       "title": "Que voulez-vous publier ?",

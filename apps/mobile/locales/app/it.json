@@ -2450,7 +2450,8 @@
       "count": "{{count}} app.",
       "except": "Tutti i servizi tranne: {{list}}.",
       "allServices": "Valida su tutti i servizi.",
-      "automatic": "Niente da compilare: gli appuntamenti presi su Opatam si sommano da soli."
+      "automatic": "Niente da compilare: gli appuntamenti presi su Opatam si sommano da soli.",
+      "launch": "La nostra carta fedeltà parte oggi."
     },
     "chooser": {
       "title": "Cosa vuoi pubblicare?",

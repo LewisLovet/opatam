@@ -2450,7 +2450,8 @@
       "count": "{{count}} Termine",
       "except": "Alle Leistungen außer: {{list}}.",
       "allServices": "Gültig für alle Leistungen.",
-      "automatic": "Nichts auszufüllen: über Opatam gebuchte Termine zählen automatisch."
+      "automatic": "Nichts auszufüllen: über Opatam gebuchte Termine zählen automatisch.",
+      "launch": "Unsere Treuekarte startet heute."
     },
     "chooser": {
       "title": "Was möchten Sie posten?",

@@ -2450,7 +2450,8 @@
       "count": "{{count}} marcações",
       "except": "Todos os serviços exceto: {{list}}.",
       "allServices": "Válido em todos os serviços.",
-      "automatic": "Nada a preencher: as marcações feitas na Opatam somam-se sozinhas."
+      "automatic": "Nada a preencher: as marcações feitas na Opatam somam-se sozinhas.",
+      "launch": "O nosso cartão de fidelidade começa hoje."
     },
     "chooser": {
       "title": "O que quer publicar?",

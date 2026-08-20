@@ -2450,7 +2450,8 @@
       "count": "{{count}} visits",
       "except": "All services except: {{list}}.",
       "allServices": "Valid on every service.",
-      "automatic": "Nothing to fill in: appointments booked on Opatam add up on their own."
+      "automatic": "Nothing to fill in: appointments booked on Opatam add up on their own.",
+      "launch": "Our loyalty card starts today."
     },
     "chooser": {
       "title": "What do you want to post?",
