@@ -2371,7 +2371,8 @@
       "services": "Prestations",
       "availabilities": "Dispos",
       "none": "QR Code",
-      "review": "Avis"
+      "review": "Avis",
+      "loyalty": "Fidélité"
     },
     "errorTitle": "Erreur",
     "shareUnavailable": "Le partage n'est pas disponible sur cet appareil.",
@@ -2383,7 +2384,6 @@
     "us": "nous",
     "headerTitle": "Créer une story",
     "sections": {
-      "content": "Contenu affiché",
       "when": "Quand ?",
       "member": "Membre",
       "week": "Semaine",
@@ -2394,7 +2394,6 @@
       "servicesShown": "Prestations affichées (5 max)",
       "shareOn": "Partager sur"
     },
-    "newPill": "Nouveau",
     "allMembers": "Tous les membres",
     "thisWeek": "Cette semaine",
     "nextWeek": "Semaine prochaine",
@@ -2442,7 +2441,28 @@
       "verified": "client vérifié",
       "bookAt": "Réservez chez {{name}}"
     },
-    "whyShare": "En partageant vos stories, vous gagnez en visibilité et augmentez vos chances d'obtenir des rendez-vous."
+    "whyShare": "En partageant vos stories, vous gagnez en visibilité et augmentez vos chances d'obtenir des rendez-vous.",
+    "loyalty": {
+      "badge": "NOUVEAU",
+      "headline": "Tous les {{count}} rendez-vous,",
+      "headlineReward": "{{reward}} sur le suivant.",
+      "cardLabel": "CARTE DE FIDÉLITÉ",
+      "count": "{{count}} RDV",
+      "except": "Toutes les prestations sauf : {{list}}.",
+      "allServices": "Valable sur toutes les prestations.",
+      "automatic": "Rien à remplir : vos rendez-vous pris sur Opatam se cumulent tout seuls."
+    },
+    "chooser": {
+      "title": "Que voulez-vous publier ?",
+      "loyaltyOff": "Programme de fidélité non configuré",
+      "why": {
+        "services": "Vos prestations et vos prix d'un coup d'œil — pour faire découvrir ce que vous proposez.",
+        "availabilities": "Vos créneaux libres des prochains jours. C'est ce qui fait réserver le plus vite.",
+        "review": "Le mot d'une cliente, mis en page. La preuve la plus convaincante, ce sont vos clientes qui la donnent.",
+        "loyalty": "Votre programme de fidélité. Donne une raison de revenir plutôt que d'essayer ailleurs.",
+        "none": "Votre QR code seul. À afficher en boutique ou à glisser dans une story."
+      }
+    }
   },
   "proServices": {
     "title": "Prestations",

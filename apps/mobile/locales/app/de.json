@@ -2371,7 +2371,8 @@
       "services": "Leistungen",
       "availabilities": "Freie Zeiten",
       "none": "QR-Code",
-      "review": "Bewertung"
+      "review": "Bewertung",
+      "loyalty": "Treue"
     },
     "errorTitle": "Fehler",
     "shareUnavailable": "Teilen ist auf diesem Gerät nicht verfügbar.",
@@ -2383,7 +2384,6 @@
     "us": "uns",
     "headerTitle": "Story erstellen",
     "sections": {
-      "content": "Angezeigter Inhalt",
       "when": "Wann?",
       "member": "Mitglied",
       "week": "Woche",
@@ -2394,7 +2394,6 @@
       "servicesShown": "Angezeigte Leistungen (max. 5)",
       "shareOn": "Teilen auf"
     },
-    "newPill": "Neu",
     "allMembers": "Alle Mitglieder",
     "thisWeek": "Diese Woche",
     "nextWeek": "Nächste Woche",
@@ -2442,7 +2441,28 @@
       "verified": "verifizierter Kunde",
       "bookAt": "Jetzt buchen bei {{name}}"
     },
-    "whyShare": "Wenn Sie Ihre Storys teilen, gewinnen Sie an Sichtbarkeit und erhöhen Ihre Chancen auf Buchungen."
+    "whyShare": "Wenn Sie Ihre Storys teilen, gewinnen Sie an Sichtbarkeit und erhöhen Ihre Chancen auf Buchungen.",
+    "loyalty": {
+      "badge": "NEU",
+      "headline": "Alle {{count}} Termine,",
+      "headlineReward": "{{reward}} auf den nächsten.",
+      "cardLabel": "TREUEKARTE",
+      "count": "{{count}} Termine",
+      "except": "Alle Leistungen außer: {{list}}.",
+      "allServices": "Gültig für alle Leistungen.",
+      "automatic": "Nichts auszufüllen: über Opatam gebuchte Termine zählen automatisch."
+    },
+    "chooser": {
+      "title": "Was möchten Sie posten?",
+      "loyaltyOff": "Treueprogramm nicht eingerichtet",
+      "why": {
+        "services": "Ihre Leistungen und Preise auf einen Blick — damit man sieht, was Sie anbieten.",
+        "availabilities": "Ihre freien Termine der nächsten Tage. Das führt am schnellsten zu Buchungen.",
+        "review": "Die Worte einer Kundin, ansprechend gesetzt. Der überzeugendste Beweis kommt von ihnen.",
+        "loyalty": "Ihr Treueprogramm. Gibt einen Grund wiederzukommen, statt es woanders zu versuchen.",
+        "none": "Nur Ihr QR-Code. Zum Aushängen im Salon oder für eine Story."
+      }
+    }
   },
   "proServices": {
     "title": "Leistungen",

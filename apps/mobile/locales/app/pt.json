@@ -2371,7 +2371,8 @@
       "services": "Serviços",
       "availabilities": "Disponibilidades",
       "none": "QR Code",
-      "review": "Avaliação"
+      "review": "Avaliação",
+      "loyalty": "Fidelidade"
     },
     "errorTitle": "Erro",
     "shareUnavailable": "A partilha não está disponível neste dispositivo.",
@@ -2383,7 +2384,6 @@
     "us": "nós",
     "headerTitle": "Criar uma story",
     "sections": {
-      "content": "Conteúdo apresentado",
       "when": "Quando?",
       "member": "Membro",
       "week": "Semana",
@@ -2394,7 +2394,6 @@
       "servicesShown": "Serviços apresentados (máx. 5)",
       "shareOn": "Partilhar em"
     },
-    "newPill": "Novo",
     "allMembers": "Todos os membros",
     "thisWeek": "Esta semana",
     "nextWeek": "Próxima semana",
@@ -2442,7 +2441,28 @@
       "verified": "cliente verificado",
       "bookAt": "Reserve em {{name}}"
     },
-    "whyShare": "Ao partilhar as suas stories, ganha visibilidade e aumenta as suas hipóteses de conseguir marcações."
+    "whyShare": "Ao partilhar as suas stories, ganha visibilidade e aumenta as suas hipóteses de conseguir marcações.",
+    "loyalty": {
+      "badge": "NOVO",
+      "headline": "A cada {{count}} marcações,",
+      "headlineReward": "{{reward}} na seguinte.",
+      "cardLabel": "CARTÃO DE FIDELIDADE",
+      "count": "{{count}} marcações",
+      "except": "Todos os serviços exceto: {{list}}.",
+      "allServices": "Válido em todos os serviços.",
+      "automatic": "Nada a preencher: as marcações feitas na Opatam somam-se sozinhas."
+    },
+    "chooser": {
+      "title": "O que quer publicar?",
+      "loyaltyOff": "Programa de fidelidade não configurado",
+      "why": {
+        "services": "Os seus serviços e preços num relance — para dar a conhecer o que propõe.",
+        "availabilities": "Os seus horários livres dos próximos dias. É o que faz reservar mais depressa.",
+        "review": "As palavras de uma cliente, bem apresentadas. A prova mais convincente vem delas.",
+        "loyalty": "O seu programa de fidelidade. Dá uma razão para voltar em vez de experimentar noutro sítio.",
+        "none": "Apenas o seu código QR. Para expor na loja ou colocar numa story."
+      }
+    }
   },
   "proServices": {
     "title": "Serviços",

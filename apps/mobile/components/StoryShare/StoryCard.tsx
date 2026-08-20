@@ -60,7 +60,7 @@ export interface StoryCardProps {
   photoURL?: string | null;
   services: Array<{ name: string; price: number; duration: number }>;
   bookingUrl: string;
-  displayMode?: 'services' | 'availabilities' | 'none' | 'review';
+  displayMode?: 'services' | 'availabilities' | 'none' | 'review' | 'loyalty';
   availabilityGrid?: AvailabilityGrid;
   /** Month availability grid (per-day status) — used when availabilityScope
    *  is 'month'. Adapts to the chosen prestation (or the general view). */
@@ -83,6 +83,22 @@ export interface StoryCardProps {
   /** Note moyenne et nombre d'avis, pour le repli sans commentaire. */
   ratingAverage?: number;
   ratingCount?: number;
+  /** Programme de fidélité, pour la story du même nom. */
+  loyalty?: StoryLoyalty | null;
+}
+
+/** Le programme de fidélité, tel que la story l'affiche. */
+export interface StoryLoyalty {
+  /** Nombre de rendez-vous honorés qui arment la récompense. */
+  threshold: number;
+  /** Récompense déjà mise en forme : « −25 % », « −10 € ». */
+  reward: string;
+  /**
+   * Prestations exclues, par leur nom. Vide = toutes éligibles.
+   * Affichées parce qu'une carte de fidélité qui tait ses exceptions se
+   * retourne au comptoir, le jour où la cliente réclame sa réduction.
+   */
+  excluded: string[];
 }
 
 /** L'avis tel que la story l'affiche — déjà nettoyé par l'appelant. */
@@ -1488,6 +1504,239 @@ function ReviewStoryLayout({
   );
 }
 
+// ─── Story « fidélité » ───────────────────────────────────────────────────
+//
+// Même identité que la story d'avis — dégradé bleu, accents dorés, carte
+// blanche — avec un titre en tête, parce que l'offre EST le message : une
+// carte de fidélité qu'il faut déchiffrer ne se lit pas en story.
+//
+// LA CARTE EST VIDE. On ne pré-remplit pas deux cases comme sur une carte
+// tamponnée : cette image s'adresse à tout un compte, et des cases cochées y
+// laisseraient croire à chacune qu'elle a déjà des rendez-vous acquis. La
+// dernière case porte la récompense, ce qui suffit à faire lire le principe.
+
+interface LoyaltyStoryLayoutProps {
+  businessName: string;
+  category: string;
+  city?: string;
+  photoURL?: string | null;
+  bookingUrl: string;
+  loyalty: StoryLoyalty;
+}
+
+function LoyaltyStoryLayout({
+  businessName,
+  category,
+  city,
+  photoURL,
+  bookingUrl,
+  loyalty,
+}: LoyaltyStoryLayoutProps) {
+  const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
+  const adresse = bookingUrl.replace(/^https?:\/\//, '');
+  // Au-delà de dix cases la grille devient illisible sur une story ; on
+  // montre alors le principe sans dessiner chaque rendez-vous.
+  const cases = loyalty.threshold <= 10 ? loyalty.threshold : 0;
+
+  return (
+    <LinearGradient
+      colors={['#2b53c4', '#1a3f97', '#102a63']}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
+      style={reviewStyles.canvas}
+    >
+      <View style={reviewStyles.header}>
+        <View style={reviewStyles.brand}>
+          <Image source={LOGO_BLANC} style={reviewStyles.brandMark} resizeMode="contain" />
+          <Text style={reviewStyles.brandName}>OPATAM</Text>
+        </View>
+        <Text style={reviewStyles.badge}>{i18n.t('storyShare.loyalty.badge')}</Text>
+      </View>
+
+      {/* L'offre, en toutes lettres et en tête. */}
+      <View style={loyaltyStyles.titleBlock}>
+        <Text style={loyaltyStyles.title}>
+          {i18n.t('storyShare.loyalty.headline', { count: loyalty.threshold })}
+          {'\n'}
+          <Text style={loyaltyStyles.titleReward}>
+            {i18n.t('storyShare.loyalty.headlineReward', { reward: loyalty.reward })}
+          </Text>
+        </Text>
+      </View>
+
+      <View style={reviewStyles.middle}>
+        <View style={reviewStyles.cardWrap}>
+          <View style={reviewStyles.avatar}>
+            {photoURL ? (
+              <Image source={{ uri: photoURL }} style={reviewStyles.avatarImg} />
+            ) : (
+              <View style={reviewStyles.avatarFallback}>
+                <Text style={reviewStyles.avatarInitial}>
+                  {businessName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={reviewStyles.card}>
+            <Text style={reviewStyles.business} numberOfLines={2}>
+              {businessName}
+            </Text>
+            {sousTitre ? <Text style={reviewStyles.subtitle}>{sousTitre}</Text> : null}
+
+            {/* La carte proprement dite. */}
+            <View style={loyaltyStyles.punchCard}>
+              <View style={loyaltyStyles.punchHead}>
+                <Text style={loyaltyStyles.punchLabel}>
+                  {i18n.t('storyShare.loyalty.cardLabel')}
+                </Text>
+                <View style={loyaltyStyles.punchPill}>
+                  <Text style={loyaltyStyles.punchPillText}>
+                    {i18n.t('storyShare.loyalty.count', { count: loyalty.threshold })}
+                  </Text>
+                </View>
+              </View>
+
+              {cases > 0 ? (
+                <View style={loyaltyStyles.slots}>
+                  {Array.from({ length: cases }).map((_, i) => {
+                    const derniere = i === cases - 1;
+                    return derniere ? (
+                      <View key={i} style={loyaltyStyles.slotReward}>
+                        <Text style={loyaltyStyles.slotRewardText}>{loyalty.reward}</Text>
+                      </View>
+                    ) : (
+                      <View key={i} style={loyaltyStyles.slot}>
+                        <Text style={loyaltyStyles.slotNumber}>{i + 1}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={loyaltyStyles.slotsWide}>
+                  <Text style={loyaltyStyles.slotRewardText}>{loyalty.reward}</Text>
+                </View>
+              )}
+
+              {loyalty.excluded.length > 0 ? (
+                <Text style={loyaltyStyles.exclusions} numberOfLines={2}>
+                  {i18n.t('storyShare.loyalty.except', {
+                    list: loyalty.excluded.join(', '),
+                  })}
+                </Text>
+              ) : (
+                <Text style={loyaltyStyles.exclusions}>
+                  {i18n.t('storyShare.loyalty.allServices')}
+                </Text>
+              )}
+            </View>
+
+            <Text style={loyaltyStyles.automatic}>
+              {i18n.t('storyShare.loyalty.automatic')}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={reviewStyles.footer}>
+        <Text style={reviewStyles.cta}>
+          {i18n.t('storyShare.review.bookAt', { name: businessName })}
+        </Text>
+        <Text style={reviewStyles.url}>{adresse}</Text>
+      </View>
+    </LinearGradient>
+  );
+}
+
+const loyaltyStyles = StyleSheet.create({
+  titleBlock: { marginTop: 14, alignItems: 'center' },
+  title: {
+    color: '#ffffff',
+    fontSize: 25,
+    lineHeight: 31,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    textAlign: 'center',
+  },
+  titleReward: { color: OPATAM_OR },
+
+  punchCard: {
+    width: '100%',
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#d9dbe6',
+    backgroundColor: '#faf6e8',
+  },
+  punchHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  punchLabel: {
+    color: OPATAM_BLEU,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.6,
+  },
+  punchPill: {
+    backgroundColor: OPATAM_OR,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  punchPillText: { color: OPATAM_BLEU, fontSize: 10, fontWeight: '800' },
+
+  slots: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+  },
+  slot: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#c9ccd8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotNumber: { color: '#9aa0b0', fontSize: 13, fontWeight: '700' },
+  slotReward: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: OPATAM_OR,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotRewardText: { color: OPATAM_BLEU, fontSize: 12, fontWeight: '800' },
+  slotsWide: {
+    marginTop: 14,
+    alignSelf: 'center',
+    backgroundColor: OPATAM_OR,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+
+  exclusions: {
+    marginTop: 14,
+    color: '#7b8390',
+    fontSize: 11,
+    lineHeight: 15,
+    textAlign: 'center',
+  },
+  automatic: {
+    marginTop: 14,
+    color: '#5c6470',
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+  },
+});
+
 const reviewStyles = StyleSheet.create({
   canvas: { flex: 1, paddingHorizontal: 22, paddingTop: 24, paddingBottom: 28 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -1575,6 +1824,7 @@ export function StoryCard({
   review,
   ratingAverage,
   ratingCount,
+  loyalty,
 }: StoryCardProps) {
   const topServices = services.slice(0, 5);
   const subtitle = [category, city].filter(Boolean).join(' • ').toUpperCase();
@@ -1586,6 +1836,21 @@ export function StoryCard({
 
   // QR code only shown in 'none' mode (renamed "QR Code")
   const showQR = displayMode === 'none';
+
+  if (displayMode === 'loyalty' && loyalty) {
+    return (
+      <View style={styles.container}>
+        <LoyaltyStoryLayout
+          businessName={businessName}
+          category={category}
+          city={city}
+          photoURL={photoURL}
+          bookingUrl={bookingUrl}
+          loyalty={loyalty}
+        />
+      </View>
+    );
+  }
 
   // La story d'avis a sa propre toile, comme les disponibilités : la coque
   // dégradée générique ne saurait pas produire cette composition.

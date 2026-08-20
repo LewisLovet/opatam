@@ -28,7 +28,12 @@ import { db } from '../lib/config';
  */
 
 /** Ce que la story montrait. Reprend les modes de la modale de partage. */
-export type StoryContent = 'services' | 'availabilities' | 'review' | 'none';
+export type StoryContent =
+  | 'services'
+  | 'availabilities'
+  | 'review'
+  | 'loyalty'
+  | 'none';
 
 /** Par où elle est sortie. `system` = feuille de partage du téléphone. */
 export type StoryChannel = 'instagram' | 'system';

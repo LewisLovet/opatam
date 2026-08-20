@@ -2371,7 +2371,8 @@
       "services": "Services",
       "availabilities": "Availability",
       "none": "QR code",
-      "review": "Review"
+      "review": "Review",
+      "loyalty": "Loyalty"
     },
     "errorTitle": "Error",
     "shareUnavailable": "Sharing is not available on this device.",
@@ -2383,7 +2384,6 @@
     "us": "us",
     "headerTitle": "Create a story",
     "sections": {
-      "content": "Displayed content",
       "when": "When?",
       "member": "Member",
       "week": "Week",
@@ -2394,7 +2394,6 @@
       "servicesShown": "Displayed services (5 max)",
       "shareOn": "Share on"
     },
-    "newPill": "New",
     "allMembers": "All members",
     "thisWeek": "This week",
     "nextWeek": "Next week",
@@ -2442,7 +2441,28 @@
       "verified": "verified client",
       "bookAt": "Book at {{name}}"
     },
-    "whyShare": "Sharing your stories increases your visibility — and your chances of getting booked."
+    "whyShare": "Sharing your stories increases your visibility — and your chances of getting booked.",
+    "loyalty": {
+      "badge": "NEW",
+      "headline": "Every {{count}} appointments,",
+      "headlineReward": "{{reward}} on the next one.",
+      "cardLabel": "LOYALTY CARD",
+      "count": "{{count}} visits",
+      "except": "All services except: {{list}}.",
+      "allServices": "Valid on every service.",
+      "automatic": "Nothing to fill in: appointments booked on Opatam add up on their own."
+    },
+    "chooser": {
+      "title": "What do you want to post?",
+      "loyaltyOff": "Loyalty programme not set up",
+      "why": {
+        "services": "Your services and prices at a glance — to show what you offer.",
+        "availabilities": "Your free slots for the coming days. This is what gets you booked fastest.",
+        "review": "A client's own words, beautifully laid out. The most convincing proof comes from them.",
+        "loyalty": "Your loyalty programme. Gives a reason to come back rather than try elsewhere.",
+        "none": "Your QR code alone. To display in your shop or drop into a story."
+      }
+    }
   },
   "proServices": {
     "title": "Services",

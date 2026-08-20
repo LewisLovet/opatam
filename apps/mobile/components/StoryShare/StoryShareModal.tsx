@@ -8,7 +8,7 @@
  * 4. Shares via react-native-share (dev client/production) or expo-sharing (Expo Go)
  */
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -139,7 +139,7 @@ function formatDayOffsetSubtitle(offset: number): string {
 
 type WithId<T> = { id: string } & T;
 
-type DisplayMode = 'services' | 'availabilities' | 'none' | 'review';
+type DisplayMode = 'services' | 'availabilities' | 'none' | 'review' | 'loyalty';
 /**
  * Sub-toggle inside the "Dispos" mode — week-grid (the historical
  * heatmap) vs the new today-only list of free time slots. Picked
@@ -188,6 +188,7 @@ const DISPLAY_MODES: { key: DisplayMode; icon: string }[] = [
   { key: 'services', icon: 'pricetags-outline' },
   { key: 'availabilities', icon: 'calendar-outline' },
   { key: 'review', icon: 'star-outline' },
+  { key: 'loyalty', icon: 'gift-outline' },
   { key: 'none', icon: 'qr-code-outline' },
 ];
 
@@ -296,12 +297,30 @@ export function StoryShareModal({
    */
   const [reviewChoice, setReviewChoice] = useState<'average' | number>('average');
   const [reviewPickerOpen, setReviewPickerOpen] = useState(false);
+  /**
+   * Le choix du contenu est passé d'une rangée de pastilles à un ÉCRAN.
+   *
+   * À cinq contenus, une rangée ne tient plus, et surtout elle ne dit pas à
+   * quoi ils servent : le professionnel choisissait au hasard ou restait sur
+   * le premier. Un écran laisse la place d'expliquer, en une phrase, ce que
+   * chaque story lui apporte.
+   *
+   * Les raccourcis — « faire une story de cet avis » — sautent cette étape :
+   * l'intention est déjà formée, la reposer serait une contrariété.
+   */
+  const [step, setStep] = useState<'choose' | 'edit'>('choose');
 
   // `useState` ne lit son argument qu'au MONTAGE, et rien ne garantit que la
   // modale soit démontée entre deux ouvertures. On applique donc l'intention
   // à chaque fois qu'elle s'ouvre.
   useEffect(() => {
-    if (visible && initialDisplayMode) setDisplayMode(initialDisplayMode);
+    if (!visible) return;
+    if (initialDisplayMode) {
+      setDisplayMode(initialDisplayMode);
+      setStep('edit');
+    } else {
+      setStep('choose');
+    }
   }, [visible, initialDisplayMode]);
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
   const [showLinkReminder, setShowLinkReminder] = useState(false);
@@ -649,6 +668,32 @@ export function StoryShareModal({
   const location = provider.cities?.[0] || '';
 
   /**
+   * Le programme de fidélité, mis en forme pour la story.
+   *
+   * Les exclusions sont RÉSOLUES EN NOMS ici, et affichées : une carte qui
+   * tait ses exceptions se retourne au comptoir, le jour où une cliente
+   * réclame une réduction sur la prestation qui n'y donnait pas droit.
+   *
+   * `null` quand le programme est désactivé ou incomplet — la modale s'en
+   * sert pour éteindre le contenu plutôt que de produire une carte vide.
+   */
+  const loyaltyStory = useMemo(() => {
+    const l = provider.settings?.loyalty;
+    if (!l?.enabled || !l.threshold || !l.rewardValue) return null;
+    const reward =
+      l.rewardType === 'amount'
+        ? `−${(l.rewardValue / 100).toLocaleString(i18n.language, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          })} €`
+        : `−${l.rewardValue} %`;
+    const exclus = (l.excludedServiceIds ?? [])
+      .map((id) => services.find((sv) => sv.id === id)?.name)
+      .filter((n): n is string => !!n);
+    return { threshold: l.threshold, reward, excluded: exclus };
+  }, [provider.settings?.loyalty, services]);
+
+  /**
    * Chargement des avis, seulement quand le mode est choisi — un salon qui
    * ne partage que ses prestations ne doit pas payer cette lecture.
    */
@@ -762,6 +807,7 @@ export function StoryShareModal({
     review: avisCourant,
     ratingAverage: provider.rating?.average,
     ratingCount: provider.rating?.count,
+    loyalty: loyaltyStory,
   };
 
   return (
@@ -782,7 +828,16 @@ export function StoryShareModal({
             { paddingTop: insets.top + 8, backgroundColor: colors.primary },
           ]}
         >
-          <Pressable onPress={onClose} hitSlop={12} style={styles.backButton}>
+          {/* Depuis l'éditeur, la flèche revient au CHOIX — sauf si l'on y
+              est entré par un raccourci, auquel cas il n'y a rien derrière. */}
+          <Pressable
+            onPress={() => {
+              if (step === 'edit' && !initialDisplayMode) setStep('choose');
+              else onClose();
+            }}
+            hitSlop={12}
+            style={styles.backButton}
+          >
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </Pressable>
           <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>
@@ -791,6 +846,81 @@ export function StoryShareModal({
           <View style={{ width: 24 }} />
         </View>
 
+        {step === 'choose' && (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: insets.bottom + 24 },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={[styles.chooserTitle, { color: colors.text }]}>
+              {t('storyShare.chooser.title')}
+            </Text>
+
+            {DISPLAY_MODES.map((mode) => {
+              // Un contenu sans matière reste VISIBLE mais éteint, avec la
+              // raison : le masquer ferait croire que la fonction n'existe
+              // pas, alors qu'il suffit d'un avis ou d'un programme.
+              const raison =
+                mode.key === 'review' && !peutPublierUnAvis
+                  ? t('storyShare.review.empty')
+                  : mode.key === 'loyalty' && !loyaltyStory
+                    ? t('storyShare.chooser.loyaltyOff')
+                    : null;
+              const eteint = raison !== null;
+              return (
+                <Pressable
+                  key={mode.key}
+                  disabled={eteint}
+                  onPress={() => {
+                    setDisplayMode(mode.key);
+                    setStep('edit');
+                    if (mode.key === 'availabilities' && showDisposNew) {
+                      markSeen('story-share-2026-05');
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.chooserRow,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: pressed ? colors.surfaceSecondary : colors.surface,
+                      opacity: eteint ? 0.5 : 1,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.chooserIcon,
+                      { backgroundColor: colors.primaryLight },
+                    ]}
+                  >
+                    <Ionicons name={mode.icon as any} size={20} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={[styles.chooserRowTitle, { color: colors.text }]}>
+                      {t(`storyShare.modes.${mode.key}`)}
+                    </Text>
+                    <Text style={[styles.chooserRowBody, { color: colors.textSecondary }]}>
+                      {raison ?? t(`storyShare.chooser.why.${mode.key}`)}
+                    </Text>
+                  </View>
+                  {!eteint && (
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={colors.textSecondary}
+                    />
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {step === 'edit' && (
+        <>
         {/* Off-screen capture target (full size, hidden) */}
         <View style={styles.offScreen} pointerEvents="none">
           <View ref={viewRef} collapsable={false}>
@@ -818,89 +948,6 @@ export function StoryShareModal({
             )}
           </View>
 
-          {/* Display mode selector */}
-          <View style={styles.sectionSpacing}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {t('storyShare.sections.content')}
-            </Text>
-            <View style={styles.modeRow}>
-              {DISPLAY_MODES.map((mode) => {
-                const isActive = displayMode === mode.key;
-                // Dispos is the recently-shipped sub-mode — flag it
-                // until the pro taps it at least once. The pill
-                // mirrors the FAB indicator (same key) so they stay
-                // in sync: pick Dispos here → both go away.
-                const showNewPill =
-                  mode.key === 'availabilities' && showDisposNew;
-                // Contenu sans matière : la pastille est visible mais éteinte.
-                // La masquer ferait croire que la fonction n'existe pas ;
-                // l'éteindre dit qu'elle attend quelque chose.
-                const indisponible = mode.key === 'review' && !peutPublierUnAvis;
-                return (
-                  <Pressable
-                    key={mode.key}
-                    disabled={indisponible}
-                    onPress={() => {
-                      setDisplayMode(mode.key);
-                      if (mode.key === 'availabilities' && showDisposNew) {
-                        markSeen('story-share-2026-05');
-                      }
-                    }}
-                    style={[
-                      styles.modeButton,
-                      {
-                        backgroundColor: isActive ? colors.primary : colors.surface,
-                        borderWidth: 1,
-                        borderColor: isActive ? colors.primary : colors.border,
-                        opacity: indisponible ? 0.4 : 1,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={mode.icon as any}
-                      size={18}
-                      color={isActive ? '#fff' : colors.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.modeLabel,
-                        { color: isActive ? '#fff' : colors.text },
-                      ]}
-                    >
-                      {t(`storyShare.modes.${mode.key}`)}
-                    </Text>
-                    {showNewPill && (
-                      <View
-                        style={{
-                          position: 'absolute',
-                          top: -8,
-                          right: -6,
-                          paddingHorizontal: 6,
-                          paddingVertical: 2,
-                          borderRadius: 999,
-                          backgroundColor: '#E1306C',
-                          borderWidth: 1.5,
-                          borderColor: colors.surface,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: '#FFFFFF',
-                            fontSize: 9,
-                            fontWeight: '800',
-                            textTransform: 'uppercase',
-                            letterSpacing: 0.4,
-                          }}
-                        >
-                          {t('storyShare.newPill')}
-                        </Text>
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
 
           {/* Mode « Avis » — un RÉSUMÉ de ce qui est retenu, et une porte
               vers la liste complète.
@@ -1656,6 +1703,8 @@ export function StoryShareModal({
             />
           </View>
         </Modal>
+        </>
+        )}
       </View>
     </Modal>
   );
@@ -1726,6 +1775,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 10,
   },
+  /** L'écran de choix du contenu. */
+  chooserTitle: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  chooserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  chooserIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chooserRowTitle: { fontSize: 15, fontWeight: '700' },
+  chooserRowBody: { fontSize: 12.5, lineHeight: 17 },
+
   /** Ce qui est retenu, et la porte vers la liste complète. */
   reviewSummary: {
     flexDirection: 'row',

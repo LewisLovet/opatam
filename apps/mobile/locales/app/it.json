@@ -2371,7 +2371,8 @@
       "services": "Servizi",
       "availabilities": "Disponibilità",
       "none": "QR Code",
-      "review": "Recensione"
+      "review": "Recensione",
+      "loyalty": "Fedeltà"
     },
     "errorTitle": "Errore",
     "shareUnavailable": "La condivisione non è disponibile su questo dispositivo.",
@@ -2383,7 +2384,6 @@
     "us": "noi",
     "headerTitle": "Crea una story",
     "sections": {
-      "content": "Contenuto mostrato",
       "when": "Quando?",
       "member": "Membro",
       "week": "Settimana",
@@ -2394,7 +2394,6 @@
       "servicesShown": "Servizi mostrati (max 5)",
       "shareOn": "Condividi su"
     },
-    "newPill": "Novità",
     "allMembers": "Tutti i membri",
     "thisWeek": "Questa settimana",
     "nextWeek": "Settimana prossima",
@@ -2442,7 +2441,28 @@
       "verified": "cliente verificato",
       "bookAt": "Prenota da {{name}}"
     },
-    "whyShare": "Condividendo le tue storie guadagni visibilità e aumenti le tue possibilità di ottenere appuntamenti."
+    "whyShare": "Condividendo le tue storie guadagni visibilità e aumenti le tue possibilità di ottenere appuntamenti.",
+    "loyalty": {
+      "badge": "NOVITÀ",
+      "headline": "Ogni {{count}} appuntamenti,",
+      "headlineReward": "{{reward}} sul successivo.",
+      "cardLabel": "CARTA FEDELTÀ",
+      "count": "{{count}} app.",
+      "except": "Tutti i servizi tranne: {{list}}.",
+      "allServices": "Valida su tutti i servizi.",
+      "automatic": "Niente da compilare: gli appuntamenti presi su Opatam si sommano da soli."
+    },
+    "chooser": {
+      "title": "Cosa vuoi pubblicare?",
+      "loyaltyOff": "Programma fedeltà non configurato",
+      "why": {
+        "services": "I tuoi servizi e i prezzi a colpo d’occhio — per far scoprire cosa proponi.",
+        "availabilities": "I tuoi orari liberi dei prossimi giorni. È ciò che fa prenotare più in fretta.",
+        "review": "Le parole di una cliente, impaginate. La prova più convincente la danno loro.",
+        "loyalty": "Il tuo programma fedeltà. Dà un motivo per tornare invece di provare altrove.",
+        "none": "Solo il tuo codice QR. Da esporre in negozio o da mettere in una storia."
+      }
+    }
   },
   "proServices": {
     "title": "Servizi",
