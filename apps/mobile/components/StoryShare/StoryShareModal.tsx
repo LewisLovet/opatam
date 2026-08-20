@@ -1366,11 +1366,9 @@ export function StoryShareModal({
               dispos / QR Code), so the toggle stays visible regardless
               of what the pro wants to share.
 
-              SAUF le mode « Avis » : cette story porte l'identité Opatam,
-              dégradé bleu et accents dorés, et n'a pas de variante sombre.
-              Laisser un réglage sans effet apprend au professionnel que les
-              réglages ne servent à rien. */}
-          {displayMode !== 'review' && (
+              Y COMPRIS les stories de marque : elles ont désormais leurs
+              deux ambiances, la toile et les textes basculant autour d'une
+              carte blanche qui, elle, ne change pas. */}
           <View style={styles.sectionSpacing}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
               {t('storyShare.sections.theme')}
@@ -1412,7 +1410,6 @@ export function StoryShareModal({
               })}
             </View>
           </View>
-          )}
 
           {/* Service selection (only when mode = services) */}
           {displayMode === 'services' && services.length > 0 && (

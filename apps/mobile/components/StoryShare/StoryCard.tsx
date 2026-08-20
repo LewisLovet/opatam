@@ -1401,6 +1401,8 @@ const OPATAM_OR = '#f6c445';
 
 /** Le monogramme blanc, empaqueté avec l'application. */
 const LOGO_BLANC = require('../../assets/splash-icon-white.png');
+/** Sa contrepartie sur fond clair : le monogramme blanc y disparaîtrait. */
+const LOGO_BLEU = require('../../assets/icon.png');
 
 interface ReviewStoryLayoutProps {
   businessName: string;
@@ -1411,6 +1413,7 @@ interface ReviewStoryLayoutProps {
   review?: StoryReview | null;
   ratingAverage?: number;
   ratingCount?: number;
+  theme: StoryTheme;
 }
 
 function ReviewStoryLayout({
@@ -1422,7 +1425,9 @@ function ReviewStoryLayout({
   review,
   ratingAverage,
   ratingCount,
+  theme,
 }: ReviewStoryLayoutProps) {
+  const pal = theme === 'light' ? BRAND_LIGHT : BRAND_DARK;
   // Sur la note d'ensemble, les étoiles suivent la MOYENNE. Figées à cinq,
   // elles auraient affiché une note parfaite à un salon noté 3,2.
   const noteAffichee = review ? review.rating : (ratingAverage ?? 5);
@@ -1435,18 +1440,25 @@ function ReviewStoryLayout({
 
   return (
     <LinearGradient
-      colors={['#2b53c4', '#1a3f97', '#102a63']}
+      colors={pal.gradient}
+      locations={[0, 0.58, 1]}
       start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
+      end={{ x: 0.85, y: 1 }}
       style={reviewStyles.canvas}
     >
       {/* En-tête de marque */}
       <View style={reviewStyles.header}>
         <View style={reviewStyles.brand}>
-          <Image source={LOGO_BLANC} style={reviewStyles.brandMark} resizeMode="contain" />
-          <Text style={reviewStyles.brandName}>OPATAM</Text>
+          <Image
+            source={theme === 'light' ? LOGO_BLEU : LOGO_BLANC}
+            style={reviewStyles.brandMark}
+            resizeMode="contain"
+          />
+          <Text style={[reviewStyles.brandName, { color: pal.wordmark }]}>OPATAM</Text>
         </View>
-        <Text style={reviewStyles.badge}>{i18n.t('storyShare.review.badge')}</Text>
+        <Text style={[reviewStyles.badge, { color: pal.eyebrow }]}>
+          {i18n.t('storyShare.review.badge')}
+        </Text>
       </View>
 
       <View style={reviewStyles.middle}>
@@ -1508,10 +1520,10 @@ function ReviewStoryLayout({
 
       {/* Appel à l'action, en TEXTE : rien n'est cliquable dans une image. */}
       <View style={reviewStyles.footer}>
-        <Text style={reviewStyles.cta}>
+        <Text style={[reviewStyles.cta, { color: pal.footText }]}>
           {i18n.t('storyShare.review.bookAt', { name: businessName })}
         </Text>
-        <Text style={reviewStyles.url}>{adresse}</Text>
+        <Text style={[reviewStyles.url, { color: pal.footUrl }]}>{adresse}</Text>
       </View>
     </LinearGradient>
   );
@@ -1559,6 +1571,7 @@ interface LoyaltyStoryLayoutProps {
   photoURL?: string | null;
   bookingUrl: string;
   loyalty: StoryLoyalty;
+  theme: StoryTheme;
 }
 
 function LoyaltyStoryLayout({
@@ -1568,7 +1581,9 @@ function LoyaltyStoryLayout({
   photoURL,
   bookingUrl,
   loyalty,
+  theme,
 }: LoyaltyStoryLayoutProps) {
+  const pal = theme === 'light' ? BRAND_LIGHT : BRAND_DARK;
   const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
   const adresse = bookingUrl.replace(/^https?:\/\//, '');
 
@@ -1583,48 +1598,50 @@ function LoyaltyStoryLayout({
   const remplis = Math.min(2, Math.max(0, loyalty.threshold - 1));
 
   return (
+    /*
+      Un dégradé FRANC, sans halo. La référence pose un `radial-gradient` par
+      dessus ; faute de dégradé radial en React Native, je l'avais approché
+      par des anneaux concentriques — et cinq cercles d'opacité fixe ne font
+      pas un dégradé, ils font cinq paliers bien visibles. Mieux vaut une
+      transition propre qu'une imitation ratée.
+    */
     <LinearGradient
-      colors={['#2A4AA5', '#1B2F6E', '#152551']}
+      colors={pal.gradient}
       locations={[0, 0.58, 1]}
       start={{ x: 0.1, y: 0 }}
       end={{ x: 0.85, y: 1 }}
       style={loyaltyStyles.canvas}
     >
-      {/* Halo haut — le `radial-gradient` de la référence, en anneaux : React
-          Native ne connaît pas les dégradés radiaux. */}
-      <View pointerEvents="none" style={loyaltyStyles.halo}>
-        {[1, 0.82, 0.64, 0.46, 0.3].map((k, i) => (
-          <View
-            key={i}
-            style={{
-              position: 'absolute',
-              width: STORY_WIDTH * 1.25 * k,
-              height: STORY_WIDTH * 1.25 * k,
-              borderRadius: (STORY_WIDTH * 1.25 * k) / 2,
-              backgroundColor: 'rgba(86,126,224,0.10)',
-            }}
-          />
-        ))}
-      </View>
 
       <View style={loyaltyStyles.head}>
         <View style={loyaltyStyles.brand}>
-          <Image source={LOGO_BLANC} style={loyaltyStyles.brandMark} resizeMode="contain" />
-          <Text style={loyaltyStyles.wordmark}>OPATAM</Text>
+          <Image
+            source={theme === 'light' ? LOGO_BLEU : LOGO_BLANC}
+            style={loyaltyStyles.brandMark}
+            resizeMode="contain"
+          />
+          <Text style={[loyaltyStyles.wordmark, { color: pal.wordmark }]}>OPATAM</Text>
         </View>
-        <Text style={loyaltyStyles.eyebrow}>{i18n.t('storyShare.loyalty.badge')}</Text>
+        <Text style={[loyaltyStyles.eyebrow, { color: pal.eyebrow }]}>
+          {i18n.t('storyShare.loyalty.badge')}
+        </Text>
       </View>
 
       <View style={loyaltyStyles.stage}>
         <View style={loyaltyStyles.hook}>
-          <Text style={loyaltyStyles.hookTitle}>
+          <Text style={[loyaltyStyles.hookTitle, { color: pal.wordmark }]}>
             {i18n.t('storyShare.loyalty.headline', { count: loyalty.threshold })}
             {'\n'}
-            <Text style={loyaltyStyles.hookReward}>
+            <Text style={{ color: pal.eyebrow }}>
               {i18n.t('storyShare.loyalty.headlineReward', { reward: loyalty.reward })}
             </Text>
           </Text>
-          <Text style={loyaltyStyles.hookSub}>
+          <Text
+            style={[
+              loyaltyStyles.hookSub,
+              { color: theme === 'light' ? 'rgba(27,47,110,0.72)' : 'rgba(255,255,255,0.78)' },
+            ]}
+          >
             {i18n.t('storyShare.loyalty.launch')}
           </Text>
         </View>
@@ -1776,24 +1793,54 @@ function LoyaltyStoryLayout({
           <Text style={loyaltyStyles.detail}>{i18n.t('storyShare.loyalty.automatic')}</Text>
         </View>
 
+        {/* Pas de pastille : rien n'est cliquable dans une image, et un
+            bouton dessiné promet une action impossible. */}
         <View style={loyaltyStyles.foot}>
-          {/*
-            La pastille dorée vient de la référence. Elle n'est PAS cliquable
-            — rien ne l'est dans une image — mais elle ancre le regard en fin
-            de story, ce qu'une ligne de texte ne fait pas. À retirer d'un mot
-            si vous préférez la consigne précédente.
-          */}
-          <View style={loyaltyStyles.cta}>
-            <Text style={loyaltyStyles.ctaText}>
-              {i18n.t('storyShare.review.bookAt', { name: businessName })}
-            </Text>
-          </View>
-          <Text style={loyaltyStyles.url}>{adresse}</Text>
+          <Text style={[loyaltyStyles.ctaText, { color: pal.footText }]}>
+            {i18n.t('storyShare.review.bookAt', { name: businessName })}
+          </Text>
+          <Text style={[loyaltyStyles.url, { color: pal.footUrl }]}>{adresse}</Text>
         </View>
       </View>
     </LinearGradient>
   );
 }
+
+/**
+ * Les deux ambiances des stories de marque.
+ *
+ * LA CARTE BLANCHE NE CHANGE PAS d'un mode à l'autre : seuls la toile, l'en-
+ * tête et le pied basculent. C'est ce qui rend le mode clair tenable sans
+ * redessiner chaque élément — et ce qui garde les deux versions
+ * reconnaissables comme la même story.
+ *
+ * L'or ne tient pas sur fond clair : il y devient illisible. Le mode clair
+ * lui substitue un ambre profond, qui garde l'intention sans le contraste
+ * raté.
+ */
+interface StoryBrandPalette {
+  gradient: [string, string, string];
+  wordmark: string;
+  eyebrow: string;
+  footText: string;
+  footUrl: string;
+}
+
+const BRAND_DARK: StoryBrandPalette = {
+  gradient: ['#2A4AA5', '#1B2F6E', '#152551'],
+  wordmark: '#FFFFFF',
+  eyebrow: '#F4C928',
+  footText: '#FFFFFF',
+  footUrl: 'rgba(255,255,255,0.8)',
+};
+
+const BRAND_LIGHT: StoryBrandPalette = {
+  gradient: ['#FFFFFF', '#F1F4FB', '#E3E9F6'],
+  wordmark: '#1B2F6E',
+  eyebrow: '#A8811E',
+  footText: '#1B2F6E',
+  footUrl: 'rgba(27,47,110,0.7)',
+};
 
 const LOYAL_BLEU = '#1B2F6E';
 const LOYAL_OR = '#F4C928';
@@ -1801,36 +1848,23 @@ const LOYAL_GRIS = '#6B7793';
 
 const loyaltyStyles = StyleSheet.create({
   canvas: { flex: 1, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 32 },
-  halo: {
-    position: 'absolute',
-    top: -STORY_WIDTH * 0.5,
-    left: 0,
-    right: 0,
-    height: STORY_WIDTH * 1.3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   brandMark: { width: 19, height: 19 },
-  wordmark: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1.7 },
-  eyebrow: { color: LOYAL_OR, fontSize: 7.5, fontWeight: '800', letterSpacing: 2.5 },
+  wordmark: { fontSize: 13, fontWeight: '800', letterSpacing: 1.7 },
+  eyebrow: { fontSize: 7.5, fontWeight: '800', letterSpacing: 2.5 },
 
   stage: { flex: 1, justifyContent: 'center' },
   hook: { alignItems: 'center', marginBottom: 44 },
   hookTitle: {
-    color: '#fff',
     fontSize: 24,
     lineHeight: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
     textAlign: 'center',
   },
-  hookReward: { color: LOYAL_OR },
   hookSub: {
     marginTop: 9,
-    color: 'rgba(255,255,255,0.78)',
     fontSize: 10,
     lineHeight: 14,
     fontWeight: '500',
@@ -1995,22 +2029,10 @@ const loyaltyStyles = StyleSheet.create({
   },
 
   foot: { alignItems: 'center', paddingTop: 23 },
-  cta: {
-    backgroundColor: LOYAL_OR,
-    borderRadius: 999,
-    paddingHorizontal: 17,
-    paddingVertical: 9,
-    shadowColor: '#000',
-    shadowOpacity: 0.22,
-    shadowRadius: 13,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  ctaText: { color: LOYAL_BLEU, fontSize: 10.5, fontWeight: '800' },
+  ctaText: { fontSize: 12, fontWeight: '800', textAlign: 'center' },
   url: {
-    marginTop: 8,
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 8.3,
+    marginTop: 6,
+    fontSize: 9,
     fontWeight: '600',
     letterSpacing: 0.3,
   },
@@ -2021,8 +2043,8 @@ const reviewStyles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   brandMark: { width: 26, height: 26 },
-  brandName: { color: '#ffffff', fontSize: 15, fontWeight: '800', letterSpacing: 2.5 },
-  badge: { color: OPATAM_OR, fontSize: 10, fontWeight: '700', letterSpacing: 2 },
+  brandName: { fontSize: 15, fontWeight: '800', letterSpacing: 2.5 },
+  badge: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },
 
   middle: { flex: 1, justifyContent: 'center' },
   cardWrap: { alignItems: 'center', paddingTop: 42 },
@@ -2083,8 +2105,8 @@ const reviewStyles = StyleSheet.create({
   author: { color: '#9aa0a8', fontSize: 12, marginTop: 14, textAlign: 'center' },
 
   footer: { alignItems: 'center', gap: 5 },
-  cta: { color: '#ffffff', fontSize: 14, fontWeight: '700', textAlign: 'center' },
-  url: { color: 'rgba(255,255,255,0.78)', fontSize: 12 },
+  cta: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  url: { fontSize: 12 },
 });
 
 export function StoryCard({
@@ -2126,6 +2148,7 @@ export function StoryCard({
           photoURL={photoURL}
           bookingUrl={bookingUrl}
           loyalty={loyalty}
+          theme={storyTheme}
         />
       </View>
     );
@@ -2145,6 +2168,7 @@ export function StoryCard({
           review={review}
           ratingAverage={ratingAverage}
           ratingCount={ratingCount}
+          theme={storyTheme}
         />
       </View>
     );
