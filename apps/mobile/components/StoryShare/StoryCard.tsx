@@ -1496,7 +1496,17 @@ function ReviewStoryLayout({
             <View style={reviewStyles.filet} />
 
             {commentaire ? (
-              <Text style={reviewStyles.quote}>{`« ${commentaire} »`}</Text>
+              /*
+                PLAFOND DUR sur le nombre de lignes.
+                La toile fait 640 de haut et déborde en `overflow: hidden` :
+                une citation longue faisait grandir la carte, poussait le pied
+                de story hors du cadre et se faisait couper à la capture. La
+                troncature à 220 caractères rend le cas rare ; ce plafond le
+                rend impossible.
+              */
+              <Text style={reviewStyles.quote} numberOfLines={7} ellipsizeMode="tail">
+                {`« ${commentaire} »`}
+              </Text>
             ) : (ratingCount ?? 0) > 0 ? (
               /**
                * Un avis 5★ sur deux n'a AUCUN texte. Ce n'est pas un cas
@@ -1629,7 +1639,10 @@ function LoyaltyStoryLayout({
 
       <View style={loyaltyStyles.stage}>
         <View style={loyaltyStyles.hook}>
-          <Text style={[loyaltyStyles.hookTitle, { color: pal.wordmark }]}>
+          <Text
+            style={[loyaltyStyles.hookTitle, { color: pal.wordmark }]}
+            numberOfLines={3}
+          >
             {i18n.t('storyShare.loyalty.headline', { count: loyalty.threshold })}
             {'\n'}
             <Text style={{ color: pal.eyebrow }}>
@@ -2048,7 +2061,7 @@ const loyaltyStyles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  foot: { alignItems: 'center', paddingTop: 23 },
+  foot: { alignItems: 'center', paddingTop: 20 },
   ctaText: { fontSize: 12, fontWeight: '800', textAlign: 'center' },
   url: {
     marginTop: 6,
@@ -2133,7 +2146,7 @@ const reviewStyles = StyleSheet.create({
   },
   author: { color: '#9aa0a8', fontSize: 12, marginTop: 14, textAlign: 'center' },
 
-  footer: { alignItems: 'center', gap: 5 },
+  footer: { alignItems: 'center', gap: 5, paddingTop: 18 },
   cta: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
   url: { fontSize: 12 },
 });

@@ -31,8 +31,13 @@ export function publicReviewAuthor(clientName: string | null | undefined): strin
  * hors de l'image, ou se faisait couper au découpage 1080×1920. Un avis long
  * ne se lit de toute façon pas sur une story qu'on fait défiler en deux
  * secondes.
+ *
+ * 220 et non 260 : à environ 38 caractères par ligne, 260 remplissait les
+ * sept lignes que la carte peut accueillir, sans aucune marge pour un nom de
+ * salon sur deux lignes. La citation doit tenir SANS que le plafond de lignes
+ * ait à s'en mêler — celui-ci est un filet, pas un outil de mise en page.
  */
-export const STORY_EXCERPT_MAX = 260;
+export const STORY_EXCERPT_MAX = 220;
 
 /**
  * L'extrait publiable d'un commentaire. L'avis d'origine n'est JAMAIS
