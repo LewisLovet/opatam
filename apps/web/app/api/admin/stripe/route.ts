@@ -51,22 +51,37 @@ function itemMonthlyCents(item: Stripe.SubscriptionItem): number {
  * C'est la seule source qui ne peut pas se désynchroniser d'un changement de
  * forme de l'API.
  *
- * Renvoie null quand Stripe n'a pas de prochaine facture (`invoice_upcoming_none`) :
- * l'abonnement ne facturera plus rien, ce qui n'est pas la même chose que zéro.
+ * TROIS RÉPONSES, et les distinguer n'est pas un détail de style.
+ *
+ * `aucune` signifie que Stripe n'a pas de prochaine facture — l'abonnement
+ * ne facturera plus rien, donc zéro est la bonne valeur. `erreur` signifie
+ * qu'on NE SAIT PAS : panne réseau, limite de débit, changement d'API. Les
+ * confondre ferait disparaître un abonné payant du revenu et le classerait
+ * parmi les gratuits, sans que rien ne l'indique — un incident passager
+ * suffirait à faire chuter le MRR affiché, et personne ne saurait pourquoi.
  */
+type ApercuFacture =
+  | { etat: 'montant'; cents: number }
+  | { etat: 'aucune' }
+  | { etat: 'erreur' };
+
 async function prochaineFacture(
   stripe: Stripe,
   customerId: string,
   subscriptionId: string
-): Promise<number | null> {
+): Promise<ApercuFacture> {
   try {
     const apercu = await stripe.invoices.createPreview({
       customer: customerId,
       subscription: subscriptionId,
     });
-    return apercu.amount_due;
-  } catch {
-    return null;
+    return { etat: 'montant', cents: apercu.amount_due };
+  } catch (e) {
+    const code = (e as { code?: string; raw?: { code?: string } })?.code
+      ?? (e as { raw?: { code?: string } })?.raw?.code;
+    if (code === 'invoice_upcoming_none') return { etat: 'aucune' };
+    console.error('[STRIPE] aperçu de facture indisponible', subscriptionId, e);
+    return { etat: 'erreur' };
   }
 }
 
@@ -148,6 +163,8 @@ export async function GET(request: NextRequest) {
     let activeCount = 0;
     let trialingCount = 0;
     let freeByCouponCount = 0;
+    /** Abonnements dont Stripe n'a pas su donner la prochaine facture. */
+    let mrrIndisponibleCount = 0;
 
     // On collecte d'abord, on interroge ensuite. La facture à venir demande un
     // appel par abonnement : les enchaîner au fil de la pagination multiplierait
@@ -173,8 +190,24 @@ export async function GET(request: NextRequest) {
       // facteur douze, donc on la ramène au mois avec la cadence de la ligne.
       const cadence = sub.items.data[0]?.price.recurring;
       const facture = facturesAVenir[i];
+
+      /*
+       * Un aperçu indisponible n'est PAS un abonnement à zéro.
+       * On l'écarte du revenu et on le compte à part, pour que le tableau de
+       * bord puisse dire « n abonnements non chiffrés » plutôt que d'afficher
+       * un MRR amputé qui aurait l'air d'une vérité.
+       */
+      if (facture.etat === 'erreur') {
+        if (sub.status === 'trialing') trialingCount++;
+        else activeCount++;
+        mrrIndisponibleCount++;
+        return;
+      }
+
       const netTotal =
-        facture === null ? 0 : parMois(facture, cadence?.interval, cadence?.interval_count ?? 1);
+        facture.etat === 'aucune'
+          ? 0
+          : parMois(facture.cents, cadence?.interval, cadence?.interval_count ?? 1);
 
       if (sub.status === 'trialing') {
         trialingCount++;
@@ -451,6 +484,7 @@ export async function GET(request: NextRequest) {
       activeCount,
       trialingCount,
       freeByCouponCount,
+      mrrIndisponibleCount,
       byProduct: Object.values(byProduct).sort((a, b) => b.mrr - a.mrr),
       months: Object.entries(months)
         .sort(([a], [b]) => a.localeCompare(b))

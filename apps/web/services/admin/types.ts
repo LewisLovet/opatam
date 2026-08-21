@@ -299,6 +299,14 @@ export interface StripeEconomics {
   trialingCount: number;
   /** Abonnements actifs ramenés à zéro par un coupon. */
   freeByCouponCount: number;
+  /**
+   * Abonnements dont Stripe n'a pas su donner la prochaine facture.
+   *
+   * Ils sont ÉCARTÉS du MRR plutôt que comptés à zéro : un incident passager
+   * ferait sinon chuter le revenu affiché sans que rien ne l'explique. Tant
+   * que ce nombre n'est pas nul, le MRR est un minorant.
+   */
+  mrrIndisponibleCount: number;
   /** Ventilation par LIGNE d'abonnement : un abonnement peut porter un plan
    *  et le Pack sérénité, et les deux doivent apparaître séparément. */
   byProduct: { label: string; subscribers: number; mrr: number }[];

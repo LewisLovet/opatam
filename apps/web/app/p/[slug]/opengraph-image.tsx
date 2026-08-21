@@ -35,6 +35,47 @@ function canauxVersHex(canaux: string): string {
   );
 }
 
+/**
+ * Hôtes admis pour une image chargée côté serveur.
+ *
+ * `photoURL` et `coverPhotoURL` sont écrites par le prestataire : ce sont des
+ * chaînes libres en base, pas des références contrôlées. Les charger sans
+ * regarder ferait de la génération d'image un client HTTP pointé par
+ * l'utilisateur — et une URL lente ou morte ferait échouer TOUTE l'image
+ * sociale, pas seulement la vignette.
+ */
+const HOTES_ADMIS = ['firebasestorage.googleapis.com', 'storage.googleapis.com'];
+
+/**
+ * L'URL si elle est utilisable ici, `null` sinon.
+ *
+ * Deux vérifications, et la seconde compte autant que la première : l'hôte
+ * doit être le nôtre, ET l'image doit répondre. On préfère un fond de gamme
+ * et une initiale à une image sociale qui échoue — le repli est correct, son
+ * absence ne l'est pas.
+ */
+async function imageUtilisable(url: string | null | undefined): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:' || !HOTES_ADMIS.includes(u.hostname)) return null;
+  } catch {
+    return null;
+  }
+  try {
+    const controleur = new AbortController();
+    const minuteur = setTimeout(() => controleur.abort(), 2500);
+    const r = await fetch(url, { method: 'HEAD', signal: controleur.signal });
+    clearTimeout(minuteur);
+    if (!r.ok) return null;
+    if (!(r.headers.get('content-type') ?? '').startsWith('image/')) return null;
+    return url;
+  } catch {
+    // Injoignable ou trop lente : la story sociale ne doit pas l'attendre.
+    return null;
+  }
+}
+
 function luminance(hex: string): number {
   const n = parseInt(hex.slice(1), 16);
   return (
@@ -52,8 +93,12 @@ export default async function ProviderOgImage({
 
   const nom = provider?.businessName ?? 'Opatam';
   const ville = provider?.cities?.[0] ?? '';
-  const photo = provider?.photoURL ?? null;
-  const couverture = provider?.coverPhotoURL ?? null;
+  // Les deux vérifications partent EN PARALLÈLE : sérialisées, elles
+  // ajouteraient jusqu'à cinq secondes à la génération.
+  const [photo, couverture] = await Promise.all([
+    imageUtilisable(provider?.photoURL),
+    imageUtilisable(provider?.coverPhotoURL),
+  ]);
 
   // La gamme du salon habille l'image, comme elle habille sa page. C'est la
   // seule couleur choisie ici — et elle est choisie, non devinée.
