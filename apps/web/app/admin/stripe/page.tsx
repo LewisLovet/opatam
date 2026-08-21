@@ -302,8 +302,18 @@ export default function AdminStripePage() {
         </Titre>
         <div className="grid gap-4 sm:grid-cols-4">
           <Chiffre
-            label="MRR encaissable" valeur={eur(data.mrrActive)} icone={TrendingUp} ton="positif"
-            aide={`${data.activeCount} abonnements actifs, net de remise`}
+            label="MRR encaissable"
+            valeur={eur(data.mrrActive)}
+            icone={TrendingUp}
+            /* L'indisponibilité se dit SUR le chiffre, pas ailleurs : un
+               compteur d'erreurs relégué en bas de page laisserait lire le MRR
+               comme une valeur exacte. */
+            ton={data.mrrIndisponibleCount > 0 ? 'attention' : 'positif'}
+            aide={
+              data.mrrIndisponibleCount > 0
+                ? `${data.activeCount} abonnements actifs — ${data.mrrIndisponibleCount} non chiffrés par Stripe, le montant est un minorant`
+                : `${data.activeCount} abonnements actifs, net de remise`
+            }
           />
           <Chiffre
             label="Essais en cours" valeur={eur(data.pipelineTrials)} icone={Users} ton="attention"

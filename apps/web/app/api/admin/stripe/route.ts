@@ -60,6 +60,36 @@ function itemMonthlyCents(item: Stripe.SubscriptionItem): number {
  * parmi les gratuits, sans que rien ne l'indique — un incident passager
  * suffirait à faire chuter le MRR affiché, et personne ne saurait pourquoi.
  */
+/**
+ * La part RÉCURRENTE d'une facture à venir, en centimes.
+ *
+ * `amount_due` répondait à une autre question : c'est le prochain montant à
+ * PRÉLEVER, taxes, crédits et proratas compris. Utile pour la trésorerie,
+ * faux comme revenu mensuel récurrent — un changement d'offre en milieu de
+ * mois y injecte un prorata qu'on retrouverait ensuite dans une courbe
+ * censée décrire un abonnement stable.
+ *
+ * On ne garde donc que les lignes nées d'un ABONNEMENT et NON proratisées, et
+ * on en retire les remises. Le résultat est net de coupon, hors taxe, hors
+ * prorata, hors article ponctuel.
+ *
+ * Deux mots sur le choix de la source : c'est encore Stripe qui a calculé
+ * chaque ligne et chaque remise ; on ne fait qu'additionner ce qu'il annonce.
+ * C'est ce qui distingue ce calcul de celui qui a menti des mois durant —
+ * lequel devinait la forme de l'objet Discount au lieu de lire un montant.
+ */
+function partRecurrente(facture: Stripe.Invoice): number {
+  let total = 0;
+  for (const ligne of facture.lines?.data ?? []) {
+    const details = ligne.parent?.subscription_item_details;
+    if (!details) continue;      // article ponctuel : pas du récurrent
+    if (details.proration) continue; // ajustement de cycle : pas du récurrent
+    const remises = (ligne.discount_amounts ?? []).reduce((s, d) => s + d.amount, 0);
+    total += ligne.amount - remises;
+  }
+  return Math.max(0, total);
+}
+
 type ApercuFacture =
   | { etat: 'montant'; cents: number }
   | { etat: 'aucune' }
@@ -75,7 +105,7 @@ async function prochaineFacture(
       customer: customerId,
       subscription: subscriptionId,
     });
-    return { etat: 'montant', cents: apercu.amount_due };
+    return { etat: 'montant', cents: partRecurrente(apercu) };
   } catch (e) {
     const code = (e as { code?: string; raw?: { code?: string } })?.code
       ?? (e as { raw?: { code?: string } })?.raw?.code;
