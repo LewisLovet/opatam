@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { generateStaffWelcomeEmail } from '@/lib/emails/staffWelcome';
 
 /**
  * Gestion de l'équipe commerciale — réservée aux administrateurs.
  *
  * GET  → liste des commerciaux (actifs et désactivés).
- * POST → { email, role: 'sales'|'sales_manager', displayName? } crée ou met à
- *        jour le rôle d'un compte EXISTANT. Le commercial s'inscrit d'abord
- *        comme n'importe quel utilisateur ; l'admin le promeut ensuite par
- *        son adresse e-mail — le rôle est rattaché à l'uid Firebase, jamais
- *        déclaré par le client.
+ * POST → { email, role: 'sales'|'sales_manager', displayName? } INVITE un
+ *        commercial : crée le compte s'il n'existe pas (rôle 'staff', hors
+ *        stats clients), pose le rôle, et envoie le lien de définition du
+ *        mot de passe avec atterrissage /sales. Jamais d'inscription
+ *        publique pour l'équipe.
  * PATCH → { uid, active } active/désactive sans perdre l'historique.
  *
  * `staffMembers/{uid}` est inscriptible UNIQUEMENT ici (Admin SDK) : les
@@ -48,35 +49,93 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+  const cleanEmail = String(email).trim().toLowerCase();
+  const db = getAdminFirestore();
+  const adminAuth = getAdminAuth();
 
-  // Le compte doit exister : on rattache un rôle à une identité vérifiable,
-  // on ne crée pas de comptes fantômes.
+  // INVITATION, pas inscription : si aucun compte n'existe, il est créé ICI,
+  // par l'Admin SDK, avec le rôle 'staff' — le commercial ne passe jamais
+  // par le signup public, qui mène à l'expérience client. S'il avait déjà un
+  // compte Opatam, on le promeut sans toucher à son rôle applicatif.
   let uid: string;
-  let userDisplayName: string | null = null;
+  let mode: 'new' | 'existing';
+  let name = displayName || '';
   try {
-    const user = await getAdminAuth().getUserByEmail(String(email).trim().toLowerCase());
-    uid = user.uid;
-    userDisplayName = user.displayName ?? null;
+    const existing = await adminAuth.getUserByEmail(cleanEmail);
+    uid = existing.uid;
+    mode = 'existing';
+    name = name || existing.displayName || cleanEmail.split('@')[0];
   } catch {
-    return NextResponse.json(
-      { error: "Aucun compte avec cette adresse. Le commercial doit d'abord créer son compte Opatam." },
-      { status: 404 },
-    );
+    mode = 'new';
+    name = name || cleanEmail.split('@')[0];
+    const created = await adminAuth.createUser({ email: cleanEmail, displayName: name });
+    uid = created.uid;
+    await db.collection('users').doc(uid).set({
+      email: cleanEmail,
+      displayName: name,
+      phone: null,
+      photoURL: null,
+      role: 'staff', // hors des statistiques clients/prestataires
+      providerId: null,
+      affiliateId: null,
+      city: null,
+      birthYear: null,
+      gender: null,
+      cancellationCount: 0,
+      pushTokens: [],
+      isDisabled: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   }
 
-  await getAdminFirestore().collection('staffMembers').doc(uid).set(
+  await db.collection('staffMembers').doc(uid).set(
     {
       role,
       active: true,
-      email: String(email).trim().toLowerCase(),
-      displayName: displayName || userDisplayName || '',
+      email: cleanEmail,
+      displayName: name,
       createdAt: FieldValue.serverTimestamp(),
       createdBy: auth.identity.uid,
     },
     { merge: true },
   );
 
-  return NextResponse.json({ success: true, uid, role });
+  // Lien de définition du mot de passe (nouveaux comptes), atterrissage /sales.
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
+  let inviteLink: string | null = null;
+  if (mode === 'new') {
+    inviteLink = await adminAuth.generatePasswordResetLink(cleanEmail, {
+      url: `${baseUrl}/sales`,
+    });
+  }
+
+  // E-mail de bienvenue — best-effort : le lien est AUSSI retourné à l'admin,
+  // qui peut le transmettre lui-même si l'e-mail n'arrive pas.
+  let emailSent = false;
+  try {
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (resendApiKey) {
+      const { Resend } = await import('resend');
+      const { subject, html } = generateStaffWelcomeEmail({
+        name,
+        role,
+        mode,
+        resetLink: inviteLink ?? undefined,
+      });
+      await new Resend(resendApiKey).emails.send({
+        from: 'Opatam <noreply@kamerleontech.com>',
+        to: cleanEmail,
+        subject,
+        html,
+      });
+      emailSent = true;
+    }
+  } catch (e) {
+    console.error('[admin/staff] invitation email failed (non-blocking):', e);
+  }
+
+  return NextResponse.json({ success: true, uid, role, mode, emailSent, inviteLink });
 }
 
 export async function PATCH(request: NextRequest) {

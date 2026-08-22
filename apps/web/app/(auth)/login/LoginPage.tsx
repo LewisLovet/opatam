@@ -93,6 +93,9 @@ function LoginContent() {
         router.push(redirectUrl);
       } else if (user.isAdmin) {
         router.push('/admin');
+      } else if (user.role === 'staff') {
+        // Personnel commercial — compte créé par invitation, espace dédié.
+        router.push('/sales');
       } else if (user.role === 'affiliate') {
         router.push('/affiliation/dashboard');
       } else if (user.providerId) {

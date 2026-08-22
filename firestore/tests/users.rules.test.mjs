@@ -47,6 +47,8 @@ console.log("\nESCALADE DE PRIVILÈGE (refus attendus)");
 await test('s\'écrire isAdmin: true → REFUSÉ', () => assertFails(me().update({ isAdmin: true })));
 await test('s\'écrire adminCodeHash → REFUSÉ', () => assertFails(me().update({ adminCodeHash: '$2a$10$x' })));
 await test("se donner un rôle inventé → REFUSÉ", () => assertFails(me().update({ role: 'admin' })));
+await test("se donner le rôle 'staff' → REFUSÉ (invitation Admin SDK uniquement)", () =>
+  assertFails(me().update({ role: 'staff' })));
 await test("se rattacher au prestataire d'un tiers → REFUSÉ", () => assertFails(me().update({ providerId: 'autre-pro' })));
 await test('s\'attribuer un affiliateId → REFUSÉ', () => assertFails(me().update({ affiliateId: 'aff-x' })));
 await test('modifier son email hors flux serveur → REFUSÉ', () => assertFails(me().update({ email: 'autre@b.c' })));
@@ -62,6 +64,31 @@ await test("devenir prestataire (rôle + providerId = son propre uid)", () =>
 await test('suppression de compte : retour à client', () =>
   assertSucceeds(me().update({ role: 'client', providerId: null })));
 await test("compteur d'annulations", () => assertSucceeds(me().update({ cancellationCount: 1 })));
+
+// Un commercial (rôle posé par l'Admin SDK) doit pouvoir modifier son profil
+// sans perdre son rôle — la règle n'exige plus que le rôle FINAL soit dans la
+// liste publique, seulement qu'il ne CHANGE pas vers un rôle interdit.
+await test("un compte 'staff' modifie son profil sans perdre son rôle", async () => {
+  await env.withSecurityRulesDisabled(async (c) =>
+    c.firestore().collection('users').doc('staff-1').set({ email: 's@o.c', role: 'staff', displayName: 'Sam' }));
+  await assertSucceeds(
+    env.authenticatedContext('staff-1').firestore().collection('users').doc('staff-1')
+      .update({ displayName: 'Samuel' }));
+});
+await test("le SDK client ne lit pas la fiche staffMembers d'un autre", async () => {
+  await env.withSecurityRulesDisabled(async (c) =>
+    c.firestore().collection('staffMembers').doc('staff-1').set({ role: 'sales', active: true }));
+  await assertFails(
+    env.authenticatedContext('intrus').firestore().collection('staffMembers').doc('staff-1').get());
+  await assertSucceeds(
+    env.authenticatedContext('staff-1').firestore().collection('staffMembers').doc('staff-1').get());
+});
+await test('staffMembers inscriptible par personne côté client', () =>
+  assertFails(env.authenticatedContext('staff-1').firestore().collection('staffMembers').doc('staff-1')
+    .update({ role: 'sales_manager' })));
+await test('salesLeads fermé au SDK client', () =>
+  assertFails(env.authenticatedContext('staff-1').firestore().collection('salesLeads').doc('l1')
+    .set({ businessName: 'X' })));
 
 await env.cleanup();
 console.log(`\n${passed} réussis, ${failed} échoués`);

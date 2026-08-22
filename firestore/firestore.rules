@@ -62,7 +62,14 @@ service cloud.firestore {
           'cancellationCount',
           'updatedAt'
         ])
-        && request.resource.data.get('role', 'client') in ['client', 'provider', 'affiliate']
+        // Le rôle 'staff' n'est posable QUE par l'Admin SDK (invitation) :
+        // côté client, soit le rôle ne change pas — un commercial modifie
+        // son profil sans perdre son rôle — soit il reste dans la liste
+        // publique.
+        && (
+          request.resource.data.get('role', 'client') == resource.data.get('role', 'client') ||
+          request.resource.data.get('role', 'client') in ['client', 'provider', 'affiliate']
+        )
         && (
           request.resource.data.get('providerId', null) == null ||
           request.resource.data.get('providerId', null) == userId

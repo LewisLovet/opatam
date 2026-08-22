@@ -50,7 +50,10 @@ export interface User {
    * The affiliate dimension is orthogonal to client/provider: any role can
    * ALSO have an affiliateId (a provider who promotes Opatam, for instance).
    */
-  role: 'client' | 'provider' | 'affiliate';
+  /** `staff` = personnel commercial, compte créé PAR INVITATION admin —
+   *  jamais par l'inscription publique. Son espace est /sales ; le détail du
+   *  rôle (sales | sales_manager) vit dans staffMembers/{uid}. */
+  role: 'client' | 'provider' | 'affiliate' | 'staff';
   providerId: string | null;
   city: string | null;
   birthYear: number | null;
