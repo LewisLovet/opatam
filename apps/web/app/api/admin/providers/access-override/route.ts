@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const { providerId, action, plan, until, reason, code, serenity } = await request.json();
+    const body = await request.json();
+    const { providerId, action, plan, until, reason, code, serenity } = body;
     if (!providerId || (action !== 'grant' && action !== 'revoke' && action !== 'set-serenity')) {
       return NextResponse.json({ error: 'providerId + action (grant|revoke|set-serenity) requis' }, { status: 400 });
     }
@@ -168,10 +169,10 @@ export async function POST(request: NextRequest) {
     // donc l'expiration du comp rend les droits sous-jacents toute seule —
     // aucune écriture ne survit qu'il faudrait nettoyer.
     //
-    // `isPublished: true` reste : c'est une RECONCILIATION, pas une
-    // simulation — la page a pu être dépubliée par le cron d'expiration
-    // d'essai, et l'octroi la remet en ligne. Ce flag est un état de
-    // publication, pas un droit ; les droits, eux, sont dérivés.
+    // La republication est un CHOIX EXPLICITE de l'admin (`republish: true`),
+    // plus un effet de bord : la page a pu être dépubliée par le prestataire
+    // lui-même, et l'octroi n'a pas à défaire cette intention en silence.
+    const republish = body.republish === true;
     await ref.update({
       accessOverride: {
         active: true,
@@ -182,12 +183,13 @@ export async function POST(request: NextRequest) {
         grantedAt: Timestamp.now(),
         serenity: grantSerenity,
       },
-      isPublished: true,
+      ...(republish ? { isPublished: true } : {}),
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // La page vient de repasser publique → purge immédiate du cache public
-    // pour ne pas laisser un 404 figé (le filet ISR de 30 s prend le relais).
+    // La page vient de (re)gagner ses droits — dans TOUS les cas, purge du
+    // cache public : même sans republication, isPubliclyVisible peut basculer
+    // de faux à vrai pour une fiche restée isPublished mais privée de droits.
     revalidateProviderPublicPages(snap.data()?.slug as string | undefined);
 
     // Notify the provider with a branded email (best-effort, non-blocking).

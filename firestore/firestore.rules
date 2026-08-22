@@ -68,18 +68,31 @@ service cloud.firestore {
       // Lecture publique (fiches prestataires, recherche, booking flow)
       allow read: if true;
 
-      // Création : le signup client seed le document entier (plan 'trial',
-      // subscription d'essai, flags Stripe Connect à faux…). On l'autorise,
-      // mais les champs qui donneraient des DROITS sont contraints : pas
-      // d'accès offert auto-attribué, pas de compte pré-publié/vérifié, pas
-      // d'add-on acompte déjà actif.
+      // Création : le signup client seed le document entier. Autorisé, mais
+      // TOUT ce que `computeEntitlements` lit pour accorder un droit est
+      // verrouillé sur l'état « essai neuf » : un client qui fabriquerait
+      // `subscription.status: 'active'` ou un objet `serenity` obtiendrait
+      // sinon les droits payants dès l'inscription.
       allow create: if isAuthenticated()
         && request.auth.uid == providerId
         && !('accessOverride' in request.resource.data)
+        && !('serenity' in request.resource.data)
         && request.resource.data.get('isPublished', false) == false
         && request.resource.data.get('isVerified', false) == false
         && request.resource.data.get('depositsAddonActive', false) == false
-        && request.resource.data.get('plan', 'trial') == 'trial';
+        && request.resource.data.get('plan', 'trial') == 'trial'
+        // L'abonnement seedé ne peut être QU'un essai local sans moyen de
+        // paiement : statut 'trialing', plan 'trial', aucun identifiant
+        // Stripe ou RevenueCat.
+        && request.resource.data.subscription.status == 'trialing'
+        && request.resource.data.subscription.plan == 'trial'
+        && request.resource.data.subscription.get('stripeCustomerId', null) == null
+        && request.resource.data.subscription.get('stripeSubscriptionId', null) == null
+        && request.resource.data.subscription.get('revenuecatAppUserId', null) == null
+        // Stripe Connect ne peut pas naître opérationnel côté client.
+        && request.resource.data.get('stripeConnectAccountId', null) == null
+        && request.resource.data.get('stripeConnectChargesEnabled', false) == false
+        && request.resource.data.get('stripeConnectPayoutsEnabled', false) == false;
 
       // Mise à jour : ALLOWLIST stricte. Un prestataire modifie son profil,
       // ses réglages et son contenu — jamais ses droits commerciaux.
@@ -96,6 +109,14 @@ service cloud.firestore {
       // choix du prestataire (publishProvider/unpublishProvider). Se
       // republier sans droits ne donne rien : les gates serveur refusent la
       // réservation et le cron d'expiration redépublie.
+      // Exclus de l'allowlist, écrits UNIQUEMENT par l'Admin SDK :
+      //   - affiliateCode/affiliateId → route serveur qui valide le code
+      //     (POST /api/affiliates/verify), sinon n'importe qui s'attribue
+      //     une réduction et fausse l'attribution d'affiliation ;
+      //   - stats → callable `recordStoryShare` et agrégats serveur, sinon
+      //     les analytics se gonflent depuis la console du navigateur ;
+      //   - nextAvailableSlot → recalculé par les functions à partir des
+      //     horaires, buffers et réservations, jamais déclaré.
       allow update: if isProviderAdmin(providerId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           // Profil et contenu
@@ -104,13 +125,12 @@ service cloud.firestore {
           'slug', 'searchTokens',
           // Réglages (horaires, acomptes par défaut, fidélité, promos, notifs)
           'settings',
-          // Publication (choix du prestataire)
+          // Publication (choix du prestataire — l'accès PUBLIC exige en plus
+          // les droits calculés, voir isPubliclyVisible côté app)
           'isPublished',
-          // Géographie, dérivés catalogue et stats côté client
+          // Géographie et dérivés catalogue côté client
           'cities', 'geopoint', 'region', 'countryCode',
-          'minPrice', 'promoSummary', 'stats', 'nextAvailableSlot',
-          // Parrainage saisi à l'inscription
-          'affiliateCode', 'affiliateId',
+          'minPrice', 'promoSummary',
           'updatedAt'
         ]);
 

@@ -144,7 +144,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Code invalide' }, { status: 404 });
     }
 
-    await db.collection('affiliates').doc(snapshot.docs[0].id).update({
+    const affiliateId = snapshot.docs[0].id;
+
+    // Le lien code→prestataire s'écrit ICI, côté Admin SDK, après validation
+    // réelle du code. Les inscriptions n'écrivent plus ces champs depuis le
+    // SDK client : l'allowlist Firestore les refuse désormais — sans quoi
+    // n'importe qui s'attribuait un code (réduction + attribution faussée).
+    const providerRef = db.collection('providers').doc(providerId);
+    const providerSnap = await providerRef.get();
+    if (!providerSnap.exists) {
+      return NextResponse.json({ error: 'Prestataire introuvable' }, { status: 404 });
+    }
+    // Un seul rattachement : re-poster un code ne réécrit pas l'attribution.
+    if (providerSnap.data()?.affiliateId) {
+      return NextResponse.json({ success: true, alreadyLinked: true });
+    }
+    await providerRef.update({
+      affiliateCode: code.toUpperCase().trim(),
+      affiliateId,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    await db.collection('affiliates').doc(affiliateId).update({
       'stats.totalReferrals': FieldValue.increment(1),
       'stats.trialReferrals': FieldValue.increment(1),
       updatedAt: new Date(),

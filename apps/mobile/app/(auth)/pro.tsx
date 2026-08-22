@@ -70,6 +70,7 @@ import { OverlaySheet } from '../../components/OverlaySheet';
 import { LoadingTips } from '../../components/LoadingTips';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { trackEvent } from '../../lib/metaSdk';
+import { API_URL } from '../../lib/config';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -991,9 +992,16 @@ export default function ProRegisterScreen() {
       // web checkout). Best-effort — never block registration.
       if (data.referralAffiliateId) {
         try {
-          await providerService.updateProvider(provider.id, {
-            affiliateCode: data.referralCode.trim().toUpperCase(),
-            affiliateId: data.referralAffiliateId,
+          // Même route serveur que l'inscription web : elle valide le code et
+          // écrit affiliateCode/affiliateId côté Admin SDK. Le SDK client n'a
+          // plus le droit d'écrire ces champs (allowlist Firestore).
+          await fetch(`${API_URL}/api/affiliates/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: data.referralCode.trim().toUpperCase(),
+              providerId: provider.id,
+            }),
           });
         } catch (affErr) {
           console.warn('[register] affiliate link failed', affErr);

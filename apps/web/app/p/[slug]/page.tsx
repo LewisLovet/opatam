@@ -13,7 +13,7 @@ import {
 } from '@booking-app/firebase';
 import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
-import { getServiceMinPrice, isTeamTier } from '@booking-app/shared';
+import { getServiceMinPrice, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { PageRevealGate } from '@/components/loading/PageRevealGate';
@@ -142,7 +142,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const provider = await providerRepository.getBySlug(slug);
 
-  if (!provider || !provider.isPublished) {
+  if (!provider || !isPubliclyVisible(provider)) {
     return {
       title: t('notFound'),
     };
@@ -271,7 +271,7 @@ export default async function ProviderPage({ params }: PageProps) {
   const provider = await providerRepository.getBySlug(slug);
 
   // 404 if provider not found or not published
-  if (!provider || !provider.isPublished) {
+  if (!provider || !isPubliclyVisible(provider)) {
     notFound();
   }
 

@@ -22,7 +22,7 @@ import { Text } from './Text';
 import { Button } from './Button';
 import { useTheme } from '../theme';
 import { useAuth, useProvider } from '../contexts';
-import { isAccessOverrideActive } from '@booking-app/shared';
+import { computeEntitlements } from '@booking-app/shared';
 
 interface WebRedirectModalProps {
   visible: boolean;
@@ -40,22 +40,10 @@ export function WebRedirectModal({ visible }: WebRedirectModalProps) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
   // Check if subscription is now valid
-  const isNowActive = (() => {
-    if (!provider) return false;
-    const { plan, subscription } = provider;
-    if (isAccessOverrideActive(provider.accessOverride)) return true;
-    if (subscription?.status === 'active') return true;
-    if ((plan === 'solo' || plan === 'team') && subscription?.status === 'trialing') return true;
-    if (plan === 'trial') {
-      const raw = subscription?.validUntil;
-      const validDate = raw instanceof Date
-        ? raw
-        : (raw as any)?.toDate?.()
-          || (raw ? new Date(raw as any) : null);
-      if (validDate && new Date() <= validDate) return true;
-    }
-    return false;
-  })();
+  // Même calcul central que partout ailleurs : payant, essai en cours, ou
+  // accès offert actif. La recomposition locale plan+status divergeait du
+  // reste de l'app.
+  const isNowActive = computeEntitlements(provider).canAccessPro;
 
   // Show success ONLY after user clicked refresh AND provider data shows active
   useEffect(() => {

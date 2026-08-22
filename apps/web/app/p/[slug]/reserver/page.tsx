@@ -10,7 +10,7 @@ import {
   memberRepository,
   availabilityRepository,
 } from '@booking-app/firebase';
-import { isTeamTier } from '@booking-app/shared';
+import { isTeamTier, isPubliclyVisible } from '@booking-app/shared';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { BookingFlow } from './components/BookingFlow';
 import {
@@ -61,7 +61,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const provider = await providerRepository.getBySlug(slug);
 
-  if (!provider || !provider.isPublished) {
+  if (!provider || !isPubliclyVisible(provider)) {
     return {
       title: tProvider('notFound'),
     };
@@ -113,7 +113,7 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
   // Fetch provider by slug
   const provider = await providerRepository.getBySlug(slug);
 
-  if (!provider || !provider.isPublished) {
+  if (!provider || !isPubliclyVisible(provider)) {
     notFound();
   }
 

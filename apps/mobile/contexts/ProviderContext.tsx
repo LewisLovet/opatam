@@ -9,7 +9,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { providerService, collections, doc, onSnapshot } from '@booking-app/firebase';
 import type { Provider } from '@booking-app/shared';
-import { isAccessOverrideActive } from '@booking-app/shared';
+import { computeEntitlements } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useAuth } from './AuthContext';
 
@@ -101,24 +101,18 @@ export function useSubscriptionStatus() {
   }
 
   const { plan, subscription } = provider;
-  // Manual "comp" grant (admin-given, independent of Stripe) → full access.
-  const overrideActive = isAccessOverrideActive(provider.accessOverride);
+  // LE calcul central des droits — même règle que le web, l'API de
+  // réservation et les webhooks. L'ancienne logique locale recomposait
+  // plan + status à sa façon et divergeait dès que l'octroi d'un accès
+  // offert a cessé de muter `plan`.
+  const entitlements = computeEntitlements(provider);
+  const overrideActive = entitlements.compActive;
 
   const isActive = overrideActive || subscription?.status === 'active';
   const isTrialing = (plan === 'solo' || plan === 'team') && subscription?.status === 'trialing';
 
-  let trialValid = false;
-  if (plan === 'trial') {
-    const raw = subscription?.validUntil;
-    const validDate = raw instanceof Date
-      ? raw
-      : (raw as any)?.toDate?.()
-        || (raw ? new Date(raw as any) : null);
-    trialValid = !!validDate && new Date() <= validDate;
-  }
-
   const isTest = plan === 'test';
-  const needsSubscription = !overrideActive && !isActive && !isTrialing && !trialValid && !isTest;
+  const needsSubscription = !entitlements.canAccessPro && !isTest;
 
   // Calculate days remaining for trial
   let daysRemaining: number | null = null;
@@ -136,7 +130,7 @@ export function useSubscriptionStatus() {
 
   return {
     isActive,
-    isTrialing: isTrialing || trialValid,
+    isTrialing: isTrialing || entitlements.source === 'trial',
     isExpired: needsSubscription,
     needsSubscription,
     plan: (overrideActive ? provider.accessOverride?.plan ?? plan : plan) || null,

@@ -1,12 +1,5 @@
-import {
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  increment,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from '../lib/config';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '../lib/config';
 
 /**
  * Suivi des stories : qui en produit, lesquelles, et sur quel canal.
@@ -46,18 +39,12 @@ class StoryTrackingService {
   ): Promise<void> {
     if (!providerId) return;
     try {
-      await Promise.all([
-        addDoc(collection(db, 'storyEvents'), {
-          providerId,
-          content,
-          channel,
-          createdAt: serverTimestamp(),
-        }),
-        updateDoc(doc(db, 'providers', providerId), {
-          'stats.stories.shared': increment(1),
-          'stats.stories.lastSharedAt': serverTimestamp(),
-        }),
-      ]);
+      // Callable serveur : le compteur `stats.stories` n'est plus accessible
+      // au SDK client (allowlist Firestore) — un compteur qui récompense
+      // l'activité ne doit pas être gonflable depuis la console. L'événement
+      // et le compteur sont écrits ensemble côté Admin SDK.
+      const fns = getFunctions(app, 'europe-west1');
+      await httpsCallable(fns, 'recordStoryShare')({ providerId, content, channel });
     } catch (e) {
       console.warn('[stories] comptabilisation du partage:', e);
     }

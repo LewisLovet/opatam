@@ -68,3 +68,4 @@ web-build
 *.ipa
 *.app
 .vercel
+scripts/reports/

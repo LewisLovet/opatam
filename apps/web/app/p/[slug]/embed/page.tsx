@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { PROVIDER_THEMES, isTeamTier } from '@booking-app/shared';
+import { PROVIDER_THEMES, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
 import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
 import { NextIntlClientProvider } from 'next-intl';
@@ -134,7 +134,7 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
 
   // ── Live provider ──────────────────────────────────────────────────────
   const provider = await providerRepository.getBySlug(slug);
-  if (!provider || !provider.isPublished) notFound();
+  if (!provider || !isPubliclyVisible(provider)) notFound();
 
   const [services, serviceCategories, locations, members, availabilities] = await Promise.all([
     serviceRepository.getActiveByProvider(provider.id),

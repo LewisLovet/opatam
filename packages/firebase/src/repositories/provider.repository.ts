@@ -1,6 +1,6 @@
 import { where, limit, orderBy, type QueryConstraint, type DocumentSnapshot } from 'firebase/firestore';
 import type { Provider } from '@booking-app/shared';
-import { normalizeCity } from '@booking-app/shared';
+import { normalizeCity, computeEntitlements } from '@booking-app/shared';
 import { BaseRepository, type WithId } from './base.repository';
 
 export interface PaginatedResult<T> {
@@ -20,6 +20,18 @@ export interface ProviderSearchFilters {
  * Repository for providers collection
  */
 export class ProviderRepository extends BaseRepository<Provider> {
+  /**
+   * Filtre des surfaces PUBLIQUES : `isPublished` (déjà dans la requête) dit
+   * l'intention du prestataire, mais les droits calculés disent s'il peut
+   * encore l'exercer. Sans ce second test, un compte expiré qui se republie
+   * depuis le SDK resterait visible dans la recherche, les listes et le
+   * sitemap — la réservation refuserait, mais la vitrine survivrait.
+   * Filtre en post-lecture : les droits ne sont pas requêtables Firestore.
+   */
+  private keepEntitled(rows: WithId<Provider>[]): WithId<Provider>[] {
+    return rows.filter((p) => computeEntitlements(p).canPublish);
+  }
+
   protected collectionName = 'providers';
 
   /**
@@ -50,11 +62,11 @@ export class ProviderRepository extends BaseRepository<Provider> {
    * Get providers by category
    */
   async getByCategory(category: string): Promise<WithId<Provider>[]> {
-    return this.query([
+    return this.keepEntitled(await this.query([
       where('category', '==', category),
       where('isPublished', '==', true),
       orderBy('rating.average', 'desc'),
-    ]);
+    ]));
   }
 
   /**
@@ -70,17 +82,17 @@ export class ProviderRepository extends BaseRepository<Provider> {
       constraints.push(limit(maxResults) as unknown as typeof constraints[0]);
     }
 
-    return this.query(constraints);
+    return this.keepEntitled(await this.query(constraints));
   }
 
   /**
    * Get verified providers
    */
   async getVerified(): Promise<WithId<Provider>[]> {
-    return this.query([
+    return this.keepEntitled(await this.query([
       where('isVerified', '==', true),
       where('isPublished', '==', true),
-    ]);
+    ]));
   }
 
   /**
@@ -94,13 +106,13 @@ export class ProviderRepository extends BaseRepository<Provider> {
    * Get top rated providers
    */
   async getTopRated(maxResults: number = 10): Promise<WithId<Provider>[]> {
-    return this.query([
+    return this.keepEntitled(await this.query([
       where('isPublished', '==', true),
       where('rating.count', '>', 0),
       orderBy('rating.count', 'desc'),
       orderBy('rating.average', 'desc'),
       limit(maxResults),
-    ]);
+    ]));
   }
 
   /**
@@ -108,35 +120,35 @@ export class ProviderRepository extends BaseRepository<Provider> {
    */
   async getPublishedByCity(city: string, maxResults: number = 50): Promise<WithId<Provider>[]> {
     const normalizedCity = normalizeCity(city);
-    return this.query([
+    return this.keepEntitled(await this.query([
       where('isPublished', '==', true),
       where('cities', 'array-contains', normalizedCity),
       orderBy('rating.average', 'desc'),
       limit(maxResults),
-    ]);
+    ]));
   }
 
   /**
    * Get all published providers (limited, for nearby fallback when no city match)
    */
   async getPublishedAll(maxResults: number = 30): Promise<WithId<Provider>[]> {
-    return this.query([
+    return this.keepEntitled(await this.query([
       where('isPublished', '==', true),
       orderBy('rating.average', 'desc'),
       limit(maxResults),
-    ]);
+    ]));
   }
 
   /**
    * Get published providers by region
    */
   async getPublishedByRegion(region: string, maxResults: number = 50): Promise<WithId<Provider>[]> {
-    return this.query([
+    return this.keepEntitled(await this.query([
       where('isPublished', '==', true),
       where('region', '==', region),
       orderBy('rating.average', 'desc'),
       limit(maxResults),
-    ]);
+    ]));
   }
 
   /**
@@ -270,7 +282,7 @@ export class ProviderRepository extends BaseRepository<Provider> {
       }
     }
 
-    return results;
+    return this.keepEntitled(results);
   }
 
   /**
@@ -343,7 +355,11 @@ export class ProviderRepository extends BaseRepository<Provider> {
     // Order by rating
     constraints.push(orderBy('rating.average', 'desc'));
 
-    return this.queryPaginated(constraints, pageSize, cursor);
+    const page = await this.queryPaginated(constraints, pageSize, cursor);
+    // Filtre de droits en post-lecture : la page peut revenir plus courte que
+    // pageSize quand des fiches sans droits sont écartées — le curseur, lui,
+    // reste celui de la requête brute, la pagination ne saute donc rien.
+    return { ...page, items: this.keepEntitled(page.items) };
   }
 }
 

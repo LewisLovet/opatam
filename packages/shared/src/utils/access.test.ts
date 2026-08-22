@@ -111,7 +111,7 @@ describe('isAccessOverrideActive (régression après refactor toDate)', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // computeEntitlements — la matrice des accès offerts
 // ─────────────────────────────────────────────────────────────────────────────
-import { computeEntitlements, isTeamTier, canSystemUnpublish } from './access';
+import { computeEntitlements, isTeamTier, canSystemUnpublish, isPubliclyVisible } from './access';
 
 const paidSolo = { status: 'active', plan: 'solo', stripeSubscriptionId: 'sub_x' };
 const rcTeam = { status: 'active', plan: 'team', revenuecatAppUserId: 'rc_x' };
@@ -228,5 +228,21 @@ describe('canSystemUnpublish — garde webhooks/crons (cas 8 et 9)', () => {
       accessOverride: { active: true, plan: 'solo', until: past } as never,
       subscription: { status: 'cancelled', plan: 'solo' },
     })).toBe(true);
+  });
+});
+
+describe('isPubliclyVisible — la vitrine exige intention ET droits', () => {
+  it("isPublished: true sans AUCUN droit → invisible sur toutes les surfaces publiques", () => {
+    expect(isPubliclyVisible({ isPublished: true, subscription: expiredLocalTrial })).toBe(false);
+  });
+  it('isPublished: true + comp actif → visible', () => {
+    expect(isPubliclyVisible({
+      isPublished: true,
+      accessOverride: { active: true, plan: 'solo', until: null } as never,
+      subscription: expiredLocalTrial,
+    })).toBe(true);
+  });
+  it('droits valides mais isPublished: false → invisible (le choix du pro prime)', () => {
+    expect(isPubliclyVisible({ isPublished: false, subscription: paidSolo })).toBe(false);
   });
 });

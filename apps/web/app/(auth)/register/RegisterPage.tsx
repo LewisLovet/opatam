@@ -472,12 +472,9 @@ export default function RegisterPage() {
 
     // If referral code, link affiliate to provider + increment stats
     if (data.referralInfo?.valid && data.referralInfo.affiliateId) {
-      await providerService.updateProvider(provider.id, {
-        affiliateCode: data.referralCode,
-        affiliateId: data.referralInfo.affiliateId,
-      } as any);
-
-      // Increment affiliate trialReferrals
+      // Le serveur valide le code et écrit affiliateCode/affiliateId sur le
+      // provider (Admin SDK) — l'allowlist Firestore interdit désormais ces
+      // champs au SDK client. Best-effort : ne bloque jamais l'inscription.
       fetch('/api/affiliates/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

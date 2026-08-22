@@ -232,3 +232,21 @@ export function isTeamTier(provider: EntitlementsInput | null | undefined): bool
 export function canSystemUnpublish(provider: EntitlementsInput | null | undefined): boolean {
   return !computeEntitlements(provider).compActive;
 }
+
+/**
+ * Une fiche est PUBLIQUEMENT accessible si le prestataire veut la publier
+ * (`isPublished` — son intention) ET que ses droits le permettent encore
+ * (`canPublish` — calculé). L'intention seule ne suffit plus : les règles
+ * Firestore laissent le prestataire écrire `isPublished`, donc un compte
+ * expiré pouvait remettre sa fiche en ligne — réservation refusée par l'API,
+ * mais page, prestations et présence dans la recherche restaient visibles.
+ *
+ * À appliquer sur TOUTES les surfaces publiques : pages /p/[slug], réservation,
+ * embed, recherche, listes, sitemap.
+ */
+export function isPubliclyVisible(
+  provider: (EntitlementsInput & { isPublished?: boolean | null }) | null | undefined,
+): boolean {
+  if (!provider?.isPublished) return false;
+  return computeEntitlements(provider).canPublish;
+}

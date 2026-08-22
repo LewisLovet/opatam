@@ -71,6 +71,7 @@ export default function AdminProviderDetailPage() {
   const [compUntil, setCompUntil] = useState('');
   const [compReason, setCompReason] = useState('');
   const [compSerenity, setCompSerenity] = useState(false);
+  const [compRepublish, setCompRepublish] = useState(true);
   const [compCode, setCompCode] = useState('');
 
   const handleComp = async (action: 'grant' | 'revoke' | 'set-serenity') => {
@@ -92,6 +93,7 @@ export default function AdminProviderDetailPage() {
           until: compUntil ? new Date(compUntil).toISOString() : null,
           reason: compReason.trim() || null,
           serenity: compSerenity,
+          republish: compRepublish,
           code: compCode,
         }),
       });
@@ -118,8 +120,9 @@ export default function AdminProviderDetailPage() {
             ...d.provider,
             accessOverride: newAO,
             // `plan` n'est plus muté par l'octroi : le tier est calculé à la
-            // lecture depuis l'override. Seule la republication est reflétée.
-            ...(action === 'grant' ? { isPublished: true } : {}),
+            // lecture depuis l'override. La republication n'est reflétée que
+            // si l'admin l'a demandée explicitement.
+            ...(action === 'grant' && compRepublish ? { isPublished: true } : {}),
           } as typeof d.provider,
         };
       });
@@ -741,6 +744,15 @@ export default function AdminProviderDetailPage() {
                           className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                         />
                         Offrir aussi <strong>Sérénité</strong> (acomptes)
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={compRepublish}
+                          onChange={(e) => setCompRepublish(e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                        />
+                        Réactiver la page publique
                       </label>
                     </div>
                   )}
