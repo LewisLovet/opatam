@@ -4,6 +4,8 @@
  */
 
 import * as admin from 'firebase-admin';
+import { providerLocale, PUSH_TEXTS, INTL_LOCALE, type ProviderLocale } from '../lib/providerPushI18n';
+import { providerTimeZone } from '../lib/morningAgenda';
 import { sendPushNotifications, type SendNotificationResult } from '../utils/expoPushService';
 
 // Types for booking data from Firestore
@@ -36,6 +38,17 @@ interface BookingData {
  * Format a date in French format
  * Example: "lundi 3 février à 14h30"
  */
+/**
+ * Date longue dans la langue ET le fuseau du prestataire.
+ * `formatDateFr` reste utilisée pour les notifications CLIENT, qui suivent
+ * la langue de réservation.
+ */
+function formatDateProvider(date: Date, intl: string, timeZone: string): string {
+  return date.toLocaleDateString(intl, {
+    weekday: 'long', day: 'numeric', month: 'long', timeZone,
+  });
+}
+
 function formatDateFr(date: Date): string {
   const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
@@ -101,51 +114,70 @@ async function isClientPushAllowed(clientId: string, type: ClientNotifType): Pro
   }
 }
 
+
 /**
- * Check if a provider has push enabled for a given notification type
- * Returns true by default if no preferences are configured (opt-out model)
+ * Tout ce qu'il faut savoir du prestataire pour lui écrire : à qui, dans
+ * quelle langue, et a-t-il autorisé ce type de notification.
+ *
+ * UNE seule lecture Firestore. Les deux helpers précédents — vérification de
+ * préférence et récupération du userId — lisaient chacun la même fiche : deux
+ * lectures par notification, et aucun des deux ne rapportait la langue.
  */
-async function isProviderPushAllowed(providerId: string, type: ProviderNotifType): Promise<boolean> {
-  try {
-    const providerDoc = await admin.firestore().collection('providers').doc(providerId).get();
-    if (!providerDoc.exists) return false;
-
-    const prefs = providerDoc.data()?.settings?.notificationPreferences;
-    if (!prefs) return true; // No preferences = all enabled (default)
-    if (!prefs.pushEnabled) return false; // Master toggle off
-
-    const map: Record<ProviderNotifType, string> = {
-      newBooking: 'newBookingNotifications',
-      confirmation: 'confirmationNotifications',
-      cancellation: 'cancellationNotifications',
-      reminder: 'reminderNotifications',
-      // Résumé du matin : la clé n'existe pas sur les préférences déjà
-      // enregistrées → `!== false` la laisse ACTIVE par défaut, comme voulu.
-      dailyAgenda: 'dailyAgendaPush',
-    };
-    return prefs[map[type]] !== false;
-  } catch (error) {
-    console.error(`Error checking provider push prefs for ${providerId}:`, error);
-    return true; // Fail-open
-  }
+export interface ProviderPushContext {
+  userId: string;
+  locale: ProviderLocale;
+  /** Libellés dans la langue du prestataire. */
+  t: (typeof PUSH_TEXTS)[ProviderLocale];
+  /** Étiquette Intl correspondante, pour les dates et heures. */
+  intl: string;
+  /** Fuseau du prestataire — une notification annonce SON heure. */
+  timeZone: string;
+  allowed: (type: ProviderNotifType) => boolean;
 }
 
-/**
- * Get provider's userId from provider document
- */
-async function getProviderUserId(providerId: string): Promise<string | null> {
+export async function loadProviderPushContext(
+  providerId: string,
+): Promise<ProviderPushContext | null> {
   try {
-    const providerDoc = await admin.firestore().collection('providers').doc(providerId).get();
-    if (!providerDoc.exists) {
+    const doc = await admin.firestore().collection('providers').doc(providerId).get();
+    if (!doc.exists) {
       console.log(`Provider ${providerId} not found`);
       return null;
     }
-    return providerDoc.data()?.userId || null;
+    const data = doc.data()!;
+    const userId = data.userId;
+    if (!userId) return null;
+
+    const prefs = data.settings?.notificationPreferences;
+    const locale = providerLocale(data);
+
+    return {
+      userId,
+      locale,
+      t: PUSH_TEXTS[locale],
+      intl: INTL_LOCALE[locale],
+      timeZone: providerTimeZone(data.countryCode),
+      allowed: (type) => {
+        if (!prefs) return true; // Aucune préférence = tout activé (défaut)
+        if (!prefs.pushEnabled) return false; // Interrupteur général
+        const map: Record<ProviderNotifType, string> = {
+          newBooking: 'newBookingNotifications',
+          confirmation: 'confirmationNotifications',
+          cancellation: 'cancellationNotifications',
+          reminder: 'reminderNotifications',
+          // Résumé du matin : la clé n'existe pas sur les préférences déjà
+          // enregistrées → `!== false` la laisse ACTIVE par défaut.
+          dailyAgenda: 'dailyAgendaPush',
+        };
+        return prefs[map[type]] !== false;
+      },
+    };
   } catch (error) {
-    console.error(`Error fetching provider ${providerId}:`, error);
+    console.error(`Error loading provider push context ${providerId}:`, error);
     return null;
   }
 }
+
 
 /**
  * Remove invalid tokens from user's pushTokens array
@@ -178,16 +210,13 @@ async function removeInvalidTokens(userId: string, invalidTokens: string[]): Pro
 export async function notifyProviderNewBooking(booking: BookingData, bookingId: string): Promise<void> {
   console.log('notifyProviderNewBooking:', booking.providerId, bookingId);
 
-  if (!(await isProviderPushAllowed(booking.providerId, 'newBooking'))) {
+  const ctx = await loadProviderPushContext(booking.providerId);
+  if (!ctx) return;
+  if (!ctx.allowed('newBooking')) {
     console.log('Provider has disabled newBooking push notifications, skipping');
     return;
   }
-
-  const providerUserId = await getProviderUserId(booking.providerId);
-  if (!providerUserId) {
-    console.log('Provider userId not found, skipping notification');
-    return;
-  }
+  const providerUserId = ctx.userId;
 
   const pushTokens = await getUserPushTokens(providerUserId);
   if (pushTokens.length === 0) {
@@ -196,7 +225,7 @@ export async function notifyProviderNewBooking(booking: BookingData, bookingId: 
   }
 
   const datetime = booking.datetime.toDate();
-  const dateStr = formatDateFr(datetime);
+  const dateStr = formatDateProvider(datetime, ctx.intl, ctx.timeZone);
 
   // Highlight the deposit when one was paid as part of the booking.
   // Surfaces the value of the Sérénité add-on at every relevant push.
@@ -210,12 +239,11 @@ export async function notifyProviderNewBooking(booking: BookingData, bookingId: 
     ? formatDepositAmount(booking.deposit!.amount)
     : null;
 
-  const title = depositPaid
-    ? 'Nouveau RDV avec acompte'
-    : 'Nouveau rendez-vous';
+  const title = depositPaid ? ctx.t.nouveauRdvAcompte : ctx.t.nouveauRdv;
+  const ligne = ctx.t.ligneRdv(booking.clientInfo.name, booking.serviceName, dateStr);
   const body = depositPaid
-    ? `${booking.clientInfo.name} · ${booking.serviceName} le ${dateStr} · ${depositEuros} encaissés`
-    : `${booking.clientInfo.name} - ${booking.serviceName} le ${dateStr}`;
+    ? `${ligne} · ${ctx.t.acompteEncaisse(depositEuros!)}`
+    : ligne;
 
   const result = await sendPushNotifications(pushTokens, {
     title,
@@ -300,25 +328,25 @@ export async function notifyProviderBookingSoon(
 ): Promise<void> {
   console.log('notifyProviderBookingSoon:', booking.providerId, bookingId);
 
-  if (!(await isProviderPushAllowed(booking.providerId, 'reminder'))) {
+  const ctx = await loadProviderPushContext(booking.providerId);
+  if (!ctx) return;
+  if (!ctx.allowed('reminder')) {
     console.log('Provider has disabled reminder push notifications, skipping');
     return;
   }
-  const providerUserId = await getProviderUserId(booking.providerId);
-  if (!providerUserId) return;
+  const providerUserId = ctx.userId;
   const pushTokens = await getUserPushTokens(providerUserId);
   if (pushTokens.length === 0) return;
 
   const datetime = booking.datetime.toDate();
-  const timeStr = datetime.toLocaleTimeString('fr-FR', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
+  const timeStr = datetime.toLocaleTimeString(ctx.intl, {
+    hour: '2-digit', minute: '2-digit', timeZone: ctx.timeZone,
   });
-  const clientName = booking.clientInfo?.name || 'Une cliente';
+  const clientName = booking.clientInfo?.name || ctx.t.uneCliente;
   const mins = Math.round(minutesUntil);
-  const timeLabel = mins >= 55 ? 'dans 1 heure' : `dans ${mins} minutes`;
 
   const result = await sendPushNotifications(pushTokens, {
-    title: `Rendez-vous ${timeLabel}`,
+    title: mins >= 55 ? ctx.t.rdvDansUneHeure : ctx.t.rdvDansNMinutes(mins),
     body: `${timeStr} — ${clientName} · ${booking.serviceName}`,
     data: { type: 'provider_booking_soon', bookingId },
   });
@@ -337,22 +365,23 @@ export async function notifyProviderDailyAgenda(
   bookingsCount: number,
   firstTime: string
 ): Promise<void> {
-  if (!(await isProviderPushAllowed(providerId, 'dailyAgenda'))) {
+  const ctx = await loadProviderPushContext(providerId);
+  if (!ctx) return;
+  if (!ctx.allowed('dailyAgenda')) {
     console.log(`Provider ${providerId} has disabled daily agenda push, skipping`);
     return;
   }
-  const providerUserId = await getProviderUserId(providerId);
-  if (!providerUserId) return;
+  const providerUserId = ctx.userId;
   const pushTokens = await getUserPushTokens(providerUserId);
   if (pushTokens.length === 0) return;
 
   const body =
     bookingsCount === 1
-      ? `Vous avez 1 rendez-vous, à ${firstTime}.`
-      : `Vous avez ${bookingsCount} rendez-vous. Le premier commence à ${firstTime}.`;
+      ? ctx.t.journeeUn(firstTime)
+      : ctx.t.journeePlusieurs(bookingsCount, firstTime);
 
   const result = await sendPushNotifications(pushTokens, {
-    title: "Votre journée d'aujourd'hui",
+    title: ctx.t.journee,
     body,
     data: { type: 'provider_daily_agenda' },
   });
@@ -367,16 +396,13 @@ export async function notifyProviderDailyAgenda(
 export async function notifyProviderBookingCancelled(booking: BookingData): Promise<void> {
   console.log('notifyProviderBookingCancelled:', booking.providerId);
 
-  if (!(await isProviderPushAllowed(booking.providerId, 'cancellation'))) {
+  const ctx = await loadProviderPushContext(booking.providerId);
+  if (!ctx) return;
+  if (!ctx.allowed('cancellation')) {
     console.log('Provider has disabled cancellation push notifications, skipping');
     return;
   }
-
-  const providerUserId = await getProviderUserId(booking.providerId);
-  if (!providerUserId) {
-    console.log('Provider userId not found, skipping notification');
-    return;
-  }
+  const providerUserId = ctx.userId;
 
   const pushTokens = await getUserPushTokens(providerUserId);
   if (pushTokens.length === 0) {
@@ -385,11 +411,11 @@ export async function notifyProviderBookingCancelled(booking: BookingData): Prom
   }
 
   const datetime = booking.datetime.toDate();
-  const dateStr = formatDateFr(datetime);
+  const dateStr = formatDateProvider(datetime, ctx.intl, ctx.timeZone);
 
   const result = await sendPushNotifications(pushTokens, {
-    title: 'Rendez-vous annulé',
-    body: `${booking.clientInfo.name} a annulé son RDV du ${dateStr}`,
+    title: ctx.t.rdvAnnule,
+    body: ctx.t.annuleParClient(booking.clientInfo.name, dateStr),
     data: {
       type: 'booking_cancelled_by_client',
     },
@@ -497,22 +523,22 @@ export async function notifyProviderServiceChange(
 ): Promise<void> {
   console.log('notifyProviderServiceChange:', booking.providerId, bookingId, added);
 
-  if (!(await isProviderPushAllowed(booking.providerId, 'newBooking'))) {
+  const ctx = await loadProviderPushContext(booking.providerId);
+  if (!ctx) return;
+  if (!ctx.allowed('newBooking')) {
     console.log('Provider has disabled newBooking push notifications, skipping');
     return;
   }
-
-  const providerUserId = await getProviderUserId(booking.providerId);
-  if (!providerUserId) return;
+  const providerUserId = ctx.userId;
 
   const pushTokens = await getUserPushTokens(providerUserId);
   if (pushTokens.length === 0) return;
 
-  const dateStr = formatDateFr(booking.datetime.toDate());
+  const dateStr = formatDateProvider(booking.datetime.toDate(), ctx.intl, ctx.timeZone);
 
   const result = await sendPushNotifications(pushTokens, {
-    title: added ? 'Prestation ajoutée' : 'Prestation retirée',
-    body: `${booking.clientInfo.name} · ${booking.serviceName} le ${dateStr}`,
+    title: added ? ctx.t.prestationAjoutee : ctx.t.prestationRetiree,
+    body: ctx.t.ligneRdv(booking.clientInfo.name, booking.serviceName, dateStr),
     data: { type: 'booking_updated', bookingId },
   });
 
