@@ -24,6 +24,12 @@ export interface ProviderNotificationPreferences {
    * booking/review pushes). Undefined = enabled (backward-compatible).
    */
   centerPushEnabled?: boolean;
+  /**
+   * Résumé du matin : un push quotidien « aujourd'hui N rendez-vous, le
+   * premier à HH:MM ». Absent = ACTIVÉ — c'est le comportement par défaut
+   * voulu, et les préférences déjà enregistrées n'ont pas cette clé.
+   */
+  dailyAgendaPush?: boolean;
 }
 
 // User types
@@ -1207,6 +1213,9 @@ export interface Booking {
   cancelReason: string | null;
   cancelToken: string | null;
   remindersSent: Date[];
+  /** Rappel « rendez-vous dans 1 h » envoyé AU PRESTATAIRE — dédupliqué à
+   *  part des rappels clientes ci-dessus. */
+  providerReminderSentAt?: Date | null;
   reviewRequestSentAt: Date | null;
 
   /**

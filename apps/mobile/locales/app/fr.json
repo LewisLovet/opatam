@@ -1789,7 +1789,11 @@
     },
     "reminders": {
       "label": "Rappels",
-      "description": "Avant vos rendez-vous"
+      "description": "Une notification 1 h avant chacun de vos rendez-vous"
+    },
+    "dailyAgenda": {
+      "label": "Résumé du matin",
+      "description": "Chaque matin, le nombre de rendez-vous du jour et l'heure du premier"
     },
     "warning": "Activez au moins un canal pour recevoir des notifications.",
     "autoSave": "Les modifications sont enregistrées automatiquement."

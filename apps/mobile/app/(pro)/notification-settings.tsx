@@ -27,6 +27,8 @@ const DEFAULT_PREFS: ProviderNotificationPreferences = {
   confirmationNotifications: true,
   cancellationNotifications: true,
   reminderNotifications: true,
+  // Résumé du matin — activé par défaut, la clé peut manquer en base.
+  dailyAgendaPush: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -188,6 +190,16 @@ export default function ProNotificationSettingsScreen() {
               description={t('proNotifSettings.reminders.description')}
               value={prefs.reminderNotifications}
               onValueChange={(val) => updatePref('reminderNotifications', val)}
+              disabled={channelsDisabled}
+              colors={colors}
+            />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <SettingRow
+              icon="sunny-outline"
+              label={t('proNotifSettings.dailyAgenda.label')}
+              description={t('proNotifSettings.dailyAgenda.description')}
+              value={prefs.dailyAgendaPush !== false}
+              onValueChange={(val) => updatePref('dailyAgendaPush', val)}
               disabled={channelsDisabled}
               colors={colors}
             />

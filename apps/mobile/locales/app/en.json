@@ -1789,7 +1789,11 @@
     },
     "reminders": {
       "label": "Reminders",
-      "description": "Before your appointments"
+      "description": "A notification 1 hour before each of your appointments"
+    },
+    "dailyAgenda": {
+      "label": "Morning summary",
+      "description": "Every morning, the number of appointments for the day and the time of the first one"
     },
     "warning": "Enable at least one channel to receive notifications.",
     "autoSave": "Changes are saved automatically."

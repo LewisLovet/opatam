@@ -23,6 +23,7 @@ const DEFAULT_PREFS: ProviderNotificationPreferences = {
   confirmationNotifications: true,
   cancellationNotifications: true,
   reminderNotifications: true,
+  dailyAgendaPush: true,
 };
 
 export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
@@ -88,7 +89,8 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
     { key: 'newBookingNotifications' as const, label: 'Nouvelle réservation', desc: 'Quand un client réserve un créneau' },
     { key: 'confirmationNotifications' as const, label: 'Confirmation', desc: 'Quand une réservation est confirmée' },
     { key: 'cancellationNotifications' as const, label: 'Annulation', desc: 'Quand une réservation est annulée' },
-    { key: 'reminderNotifications' as const, label: 'Rappels', desc: 'Rappels avant les rendez-vous' },
+    { key: 'reminderNotifications' as const, label: 'Rappels', desc: 'Une notification 1 h avant chacun de vos rendez-vous' },
+    { key: 'dailyAgendaPush' as const, label: 'Résumé du matin', desc: 'Chaque matin, le nombre de rendez-vous du jour et l\'heure du premier' },
   ];
 
   return (

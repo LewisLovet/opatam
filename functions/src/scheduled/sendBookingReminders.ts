@@ -10,7 +10,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
-import { notifyClientBookingReminder } from '../notifications/bookingNotifications';
+import { notifyClientBookingReminder, notifyProviderBookingSoon } from '../notifications/bookingNotifications';
 import { emailClientBookingReminder } from '../notifications/bookingEmails';
 import { serverTracker } from '../utils/serverTracker';
 
@@ -74,6 +74,16 @@ export const sendBookingReminders = onSchedule(
         kind: 'near' | 'reveal';
       }> = [];
 
+      // Rappel PRESTATAIRE ~1 h avant — dédupliqué à part
+      // (`providerReminderSentAt`), indépendant des rappels clientes. Le cron
+      // est horaire : la fenêtre (0, 75] garantit UN envoi entre ~15 et
+      // 75 minutes avant chaque rendez-vous.
+      const providerReminders: Array<{
+        id: string;
+        data: FirebaseFirestore.DocumentData;
+        minutesUntil: number;
+      }> = [];
+
       for (const doc of snapshot.docs) {
         const data = doc.data();
         // Résa de démo seedée : pas de rappel (clients fictifs).
@@ -102,6 +112,14 @@ export const sendBookingReminders = onSchedule(
           nearType = '2h'; // Still today — use dynamic timing, NOT "demain"
         } else if (isTomorrow && hoursUntil <= 25) {
           nearType = '24h'; // Actually tomorrow — safe to say "demain"
+        }
+
+        if (
+          minutesUntil > 0 &&
+          minutesUntil <= 75 &&
+          !data.providerReminderSentAt
+        ) {
+          providerReminders.push({ id: doc.id, data, minutesUntil });
         }
 
         const nearAlreadySent = (data.remindersSent || []).length > 0;
@@ -218,6 +236,41 @@ export const sendBookingReminders = onSchedule(
           console.error(`[${clientName}] Error:`, errorMessage);
           return { bookingId: id, clientName, reminderType, pushSent, emailSent, error: errorMessage };
         }
+      }
+
+      // 3bis. Rappels prestataire — envoi + marqueur, best-effort par résa.
+      let providerSent = 0;
+      for (let i = 0; i < providerReminders.length; i += BATCH_SIZE) {
+        const batch = providerReminders.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(async ({ id, data, minutesUntil }) => {
+            try {
+              await notifyProviderBookingSoon(
+                {
+                  providerId: data.providerId,
+                  clientId: data.clientId,
+                  serviceName: data.serviceName,
+                  datetime: data.datetime,
+                  clientInfo: data.clientInfo,
+                  providerName: data.providerName,
+                  status: data.status,
+                },
+                minutesUntil,
+                id
+              );
+              await db.collection('bookings').doc(id).update({
+                providerReminderSentAt: Timestamp.fromDate(now),
+              });
+              serverTracker.trackWrite('bookings', 1);
+              providerSent++;
+            } catch (error) {
+              console.error(`[PROVIDER-REMINDER] Error for booking ${id}:`, error);
+            }
+          })
+        );
+      }
+      if (providerReminders.length > 0) {
+        console.log(`Provider reminders: ${providerSent}/${providerReminders.length} sent`);
       }
 
       // 4. Process in batches of 10 in parallel

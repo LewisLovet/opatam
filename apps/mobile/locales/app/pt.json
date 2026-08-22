@@ -1789,7 +1789,11 @@
     },
     "reminders": {
       "label": "Lembretes",
-      "description": "Antes das suas marcações"
+      "description": "Uma notificação 1 hora antes de cada marcação"
+    },
+    "dailyAgenda": {
+      "label": "Resumo da manhã",
+      "description": "Todas as manhãs, o número de marcações do dia e a hora da primeira"
     },
     "warning": "Ative pelo menos um canal para receber notificações.",
     "autoSave": "As alterações são guardadas automaticamente."

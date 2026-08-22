@@ -54,7 +54,7 @@ function formatDateFr(date: Date): string {
 
 // Notification event types for preference checks
 type ClientNotifType = 'confirmation' | 'cancellation' | 'reschedule' | 'reminder';
-type ProviderNotifType = 'newBooking' | 'confirmation' | 'cancellation' | 'reminder';
+type ProviderNotifType = 'newBooking' | 'confirmation' | 'cancellation' | 'reminder' | 'dailyAgenda';
 
 /**
  * Get user's push tokens from Firestore
@@ -119,6 +119,9 @@ async function isProviderPushAllowed(providerId: string, type: ProviderNotifType
       confirmation: 'confirmationNotifications',
       cancellation: 'cancellationNotifications',
       reminder: 'reminderNotifications',
+      // Résumé du matin : la clé n'existe pas sur les préférences déjà
+      // enregistrées → `!== false` la laisse ACTIVE par défaut, comme voulu.
+      dailyAgenda: 'dailyAgendaPush',
     };
     return prefs[map[type]] !== false;
   } catch (error) {
@@ -280,6 +283,81 @@ export async function notifyClientBookingConfirmed(booking: BookingData): Promis
 
   if (result.invalidTokens.length > 0) {
     await removeInvalidTokens(booking.clientId, result.invalidTokens);
+  }
+}
+
+/**
+ * Rappel PRESTATAIRE ~1 h avant un rendez-vous.
+ *
+ * Les rappels 24 h / 2 h existants ne partent qu'aux CLIENTES — le
+ * prestataire n'était jamais prévenu qu'un rendez-vous approche. Gate :
+ * `reminderNotifications`, qui cesse d'être un réglage sans effet.
+ */
+export async function notifyProviderBookingSoon(
+  booking: BookingData,
+  minutesUntil: number,
+  bookingId: string
+): Promise<void> {
+  console.log('notifyProviderBookingSoon:', booking.providerId, bookingId);
+
+  if (!(await isProviderPushAllowed(booking.providerId, 'reminder'))) {
+    console.log('Provider has disabled reminder push notifications, skipping');
+    return;
+  }
+  const providerUserId = await getProviderUserId(booking.providerId);
+  if (!providerUserId) return;
+  const pushTokens = await getUserPushTokens(providerUserId);
+  if (pushTokens.length === 0) return;
+
+  const datetime = booking.datetime.toDate();
+  const timeStr = datetime.toLocaleTimeString('fr-FR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
+  });
+  const clientName = booking.clientInfo?.name || 'Une cliente';
+  const mins = Math.round(minutesUntil);
+  const timeLabel = mins >= 55 ? 'dans 1 heure' : `dans ${mins} minutes`;
+
+  const result = await sendPushNotifications(pushTokens, {
+    title: `Rendez-vous ${timeLabel}`,
+    body: `${timeStr} — ${clientName} · ${booking.serviceName}`,
+    data: { type: 'provider_booking_soon', bookingId },
+  });
+  if (result.invalidTokens.length > 0) {
+    await removeInvalidTokens(providerUserId, result.invalidTokens);
+  }
+}
+
+/**
+ * Résumé du matin : « Aujourd'hui N rendez-vous, le premier à HH:MM ».
+ * Appelé par le cron sendProviderMorningAgenda. Gate : `dailyAgendaPush`
+ * (absent = activé — envoyé tous les matins par défaut).
+ */
+export async function notifyProviderDailyAgenda(
+  providerId: string,
+  bookingsCount: number,
+  firstTime: string
+): Promise<void> {
+  if (!(await isProviderPushAllowed(providerId, 'dailyAgenda'))) {
+    console.log(`Provider ${providerId} has disabled daily agenda push, skipping`);
+    return;
+  }
+  const providerUserId = await getProviderUserId(providerId);
+  if (!providerUserId) return;
+  const pushTokens = await getUserPushTokens(providerUserId);
+  if (pushTokens.length === 0) return;
+
+  const body =
+    bookingsCount === 1
+      ? `Vous avez 1 rendez-vous, à ${firstTime}.`
+      : `Vous avez ${bookingsCount} rendez-vous. Le premier commence à ${firstTime}.`;
+
+  const result = await sendPushNotifications(pushTokens, {
+    title: "Votre journée d'aujourd'hui",
+    body,
+    data: { type: 'provider_daily_agenda' },
+  });
+  if (result.invalidTokens.length > 0) {
+    await removeInvalidTokens(providerUserId, result.invalidTokens);
   }
 }
 
