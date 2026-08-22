@@ -1660,3 +1660,5 @@ export interface AppNotification {
 export interface NotificationRead {
   readAt: Date;
 }
+
+export * from './sales';

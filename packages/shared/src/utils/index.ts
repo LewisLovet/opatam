@@ -3,6 +3,7 @@
 export * from './zod';
 // Manual "comp" access grant helper (admin-granted access without payment).
 export * from './access';
+export * from './activation';
 // Address-privacy helpers (protected à-domicile addresses revealed ~48h before).
 export * from './address';
 // Service variation/option/info builders + sanitizers (shared web + mobile).

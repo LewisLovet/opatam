@@ -83,6 +83,29 @@ service cloud.firestore {
       }
     }
 
+    // === COMMERCIAL (/sales) ===
+    //
+    // Tout le domaine commercial passe par les ROUTES SERVEUR (requireStaff,
+    // Admin SDK) : aucun accès SDK client, sauf la lecture par le commercial
+    // de sa propre fiche de rôle — l'app en a besoin pour router vers /sales.
+    //
+    // `staffMembers` n'est pas un champ de `users` : le flag isAdmin posé sur
+    // le document utilisateur a produit une escalade de privilège, on ne
+    // recrée pas le piège. Écriture Admin SDK uniquement.
+
+    match /staffMembers/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    match /salesLeads/{leadId} {
+      allow read, write: if false;
+    }
+
+    match /salesActivities/{activityId} {
+      allow read, write: if false;
+    }
+
     // === STORIES ===
     //
     // Un événement par story effectivement partagée. Sert deux choses : le

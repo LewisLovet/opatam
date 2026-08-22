@@ -22,7 +22,7 @@ import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
  * acceptera d'autres rôles serveur sans réécrire les routes.
  */
 
-export type StaffRole = 'admin';
+export type StaffRole = 'admin' | 'sales' | 'sales_manager';
 
 export interface StaffIdentity {
   uid: string;
@@ -62,4 +62,66 @@ export async function requireAdmin(request: NextRequest): Promise<StaffAuthResul
   }
 
   return { ok: true, identity: { uid, role: 'admin' } };
+}
+
+/**
+ * Authentification du personnel COMMERCIAL.
+ *
+ * Le rôle vit dans `staffMembers/{uid}` — une collection à part, inscriptible
+ * uniquement par l'Admin SDK. PAS un champ sur `users` : c'est le piège qui a
+ * produit l'escalade `isAdmin`, on ne le recrée pas.
+ *
+ * Un administrateur passe toujours : il gère l'équipe, il voit ce qu'elle
+ * voit. L'inverse est faux — un commercial n'obtient JAMAIS les routes
+ * admin, qui vérifient `requireAdmin` et ignorent `staffMembers`.
+ *
+ * `roles` restreint aux rôles listés : `requireStaff(req, 'sales_manager')`
+ * pour une vue d'équipe, `requireStaff(req)` pour tout le personnel.
+ */
+export async function requireStaff(
+  request: NextRequest,
+  ...roles: Array<'sales' | 'sales_manager'>
+): Promise<StaffAuthResult> {
+  const header = request.headers.get('authorization') ?? '';
+  if (!header.startsWith('Bearer ')) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Authentification requise' }, { status: 401 }),
+    };
+  }
+
+  let uid: string;
+  try {
+    uid = (await getAdminAuth().verifyIdToken(header.slice(7))).uid;
+  } catch {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Jeton invalide ou expiré' }, { status: 401 }),
+    };
+  }
+
+  const db = getAdminFirestore();
+  const [userSnap, staffSnap] = await Promise.all([
+    db.collection('users').doc(uid).get(),
+    db.collection('staffMembers').doc(uid).get(),
+  ]);
+
+  if (userSnap.data()?.isAdmin === true) {
+    return { ok: true, identity: { uid, role: 'admin' } };
+  }
+
+  const staff = staffSnap.data();
+  if (
+    staffSnap.exists &&
+    staff?.active === true &&
+    (staff.role === 'sales' || staff.role === 'sales_manager') &&
+    (roles.length === 0 || roles.includes(staff.role))
+  ) {
+    return { ok: true, identity: { uid, role: staff.role } };
+  }
+
+  return {
+    ok: false,
+    response: NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 }),
+  };
 }
