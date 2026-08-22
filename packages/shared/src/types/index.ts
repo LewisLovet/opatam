@@ -103,6 +103,13 @@ export interface Provider {
    * renvoie jamais `undefined`, une page ne peut pas se retrouver sans couleur.
    */
   themeId?: string;
+  /**
+   * Langue choisie par le prestataire dans l'application, remontée depuis
+   * l'appareil (AsyncStorage sur mobile, cookie NEXT_LOCALE sur le web).
+   * Sert aux notifications qui lui sont adressées : sans elle, la langue
+   * n'était que DÉDUITE de son pays. Absent = on retombe sur cette déduction.
+   */
+  locale?: 'fr' | 'en' | 'it' | 'pt' | 'de';
   portfolioPhotos: string[];
   socialLinks: SocialLinks;
   rating: Rating;

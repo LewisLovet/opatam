@@ -176,6 +176,13 @@ export const updateProviderSchema = z.object({
       message: 'Thème inconnu',
     })
     .optional(),
+  /**
+   * Langue de l'application, remontée depuis l'appareil pour que les
+   * notifications parlent la langue du prestataire. MÊME PIÈGE que
+   * `themeId` et `affiliateCode` : sans déclaration ici, zod retire la clé
+   * sans rien signaler et le champ n'atteint jamais Firestore.
+   */
+  locale: z.enum(['fr', 'en', 'it', 'pt', 'de']).optional(),
 });
 
 // Export types

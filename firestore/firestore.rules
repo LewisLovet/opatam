@@ -162,6 +162,10 @@ service cloud.firestore {
           'businessName', 'description', 'category', 'photoURL',
           'coverPhotoURL', 'portfolioPhotos', 'socialLinks', 'themeId',
           'slug', 'searchTokens',
+          // Langue de l'application, remontée par l'appareil (valeur
+          // contrainte plus bas) — elle décide de la langue des
+          // notifications adressées au prestataire.
+          'locale',
           // Réglages (horaires, acomptes par défaut, fidélité, promos, notifs)
           'settings',
           // Publication (choix du prestataire — l'accès PUBLIC exige en plus
@@ -171,7 +175,11 @@ service cloud.firestore {
           'cities', 'geopoint', 'region', 'countryCode',
           'minPrice', 'promoSummary',
           'updatedAt'
-        ]);
+        ])
+        && (
+          !('locale' in request.resource.data.diff(resource.data).affectedKeys()) ||
+          request.resource.data.locale in ['fr', 'en', 'it', 'pt', 'de']
+        );
 
       allow delete: if isProviderAdmin(providerId);
 

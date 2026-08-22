@@ -105,9 +105,13 @@ for (const [name, patch] of [
   ['minPrice (dérivé catalogue)', { minPrice: 2500 }],
   ['géographie (cities/région)', { cities: ['paris'], region: 'idf' }],
   ['promoSummary', { promoSummary: null }],
+  ['langue de l’app (valeur servie)', { locale: 'pt' }],
 ]) {
   await test(`${name} → accepté`, () => assertSucceeds(providerRef(authed).update(patch)));
 }
+await test('langue inventée → refusée', () =>
+  assertFails(providerRef(authed).update({ locale: 'xx' })));
+
 await test('un AUTRE utilisateur ne peut pas modifier le doc', () =>
   assertFails(env.authenticatedContext('intrus').firestore().collection('providers').doc(UID).update({ businessName: 'Pwn' })));
 
