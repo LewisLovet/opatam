@@ -1796,7 +1796,11 @@
       "description": "Jeden Morgen die Zahl der heutigen Termine und die Uhrzeit des ersten"
     },
     "warning": "Aktivieren Sie mindestens einen Kanal, um Benachrichtigungen zu erhalten.",
-    "autoSave": "Änderungen werden automatisch gespeichert."
+    "autoSave": "Änderungen werden automatisch gespeichert.",
+    "locale": {
+      "title": "Sprache Ihrer Benachrichtigungen",
+      "description": "Die Sprache der an Sie gerichteten Nachrichten. Unabhängig von der App-Sprache."
+    }
   },
   "proTabs": {
     "home": "Start",

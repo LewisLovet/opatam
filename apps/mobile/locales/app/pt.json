@@ -1796,7 +1796,11 @@
       "description": "Todas as manhãs, o número de marcações do dia e a hora da primeira"
     },
     "warning": "Ative pelo menos um canal para receber notificações.",
-    "autoSave": "As alterações são guardadas automaticamente."
+    "autoSave": "As alterações são guardadas automaticamente.",
+    "locale": {
+      "title": "Idioma das suas notificações",
+      "description": "O idioma das mensagens que lhe são dirigidas. Independente do idioma da aplicação."
+    }
   },
   "proTabs": {
     "home": "Início",

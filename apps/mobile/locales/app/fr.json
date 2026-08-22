@@ -1796,7 +1796,11 @@
       "description": "Chaque matin, le nombre de rendez-vous du jour et l'heure du premier"
     },
     "warning": "Activez au moins un canal pour recevoir des notifications.",
-    "autoSave": "Les modifications sont enregistrées automatiquement."
+    "autoSave": "Les modifications sont enregistrées automatiquement.",
+    "locale": {
+      "title": "Langue de vos notifications",
+      "description": "La langue des messages qui vous sont adressés. Indépendante de la langue de l'app."
+    }
   },
   "proTabs": {
     "home": "Accueil",

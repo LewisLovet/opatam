@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Switch, Button, Checkbox } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
-import { Loader2, Bell, Clock, Info, Mail, Smartphone } from 'lucide-react';
+import { Loader2, Bell, Languages, Clock, Info, Mail, Smartphone } from 'lucide-react';
 import type { ProviderNotificationPreferences } from '@booking-app/shared';
+import { notificationLocale, type NotificationLocale } from '@booking-app/shared';
 
 interface NotificationsFormProps {
   onSuccess?: () => void;
@@ -34,6 +35,10 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
 
   const [reminderTimes, setReminderTimes] = useState<number[]>([24]);
   const [prefs, setPrefs] = useState<ProviderNotificationPreferences>(DEFAULT_PREFS);
+  // Langue des notifications — RÉGLAGE DE COMPTE. Initialisé à la valeur
+  // déduite du pays tant que rien n'a été choisi, pour que le sélecteur
+  // montre l'état réel plutôt qu'un défaut arbitraire.
+  const [locale, setLocale] = useState<NotificationLocale>('fr');
 
   // Initialize form with provider data
   useEffect(() => {
@@ -48,6 +53,7 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
         ...DEFAULT_PREFS,
         ...(provider.settings.notificationPreferences ?? {}),
       });
+      setLocale(notificationLocale(provider));
     }
   }, [provider]);
 
@@ -81,6 +87,10 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
         reminderTimes,
         notificationPreferences: prefs,
       });
+      // `locale` est un champ du document, pas un réglage : écrit à part.
+      if (locale !== provider.locale) {
+        await providerService.updateProvider(provider.id, { locale });
+      }
 
       await refreshProvider();
       setSuccess(true);
@@ -163,6 +173,31 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
             Activez au moins un canal (push ou email) pour recevoir des notifications.
           </p>
         )}
+      </div>
+
+      {/* Langue des notifications */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Languages className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+            Langue de vos notifications
+          </h3>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          La langue des messages qui vous sont adressés. Indépendante de la langue du site, et
+          de celle dans laquelle vos clientes réservent.
+        </p>
+        <select
+          value={locale}
+          onChange={(e) => setLocale(e.target.value as NotificationLocale)}
+          className="w-full sm:w-64 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+        >
+          <option value="fr">Français</option>
+          <option value="en">English</option>
+          <option value="it">Italiano</option>
+          <option value="pt">Português</option>
+          <option value="de">Deutsch</option>
+        </select>
       </div>
 
       {/* Reminder Times */}

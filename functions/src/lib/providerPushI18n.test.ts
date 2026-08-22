@@ -46,3 +46,30 @@ describe('PUSH_TEXTS — les cinq langues sont complètes et distinctes', () => 
     expect(INTL_LOCALE.de).toBe('de-DE');
   });
 });
+
+describe("régression : l'heure du rendez-vous ne doit jamais disparaître", () => {
+  // Reproduit `formatDateProvider` — une version antérieure s'arrêtait au
+  // mois, et les push de réservation, annulation et modification perdaient
+  // l'horaire, c'est-à-dire l'information la plus utile au prestataire.
+  const formatte = (d: Date, intl: string, tz: string) =>
+    d.toLocaleString(intl, {
+      weekday: 'long', day: 'numeric', month: 'long',
+      hour: '2-digit', minute: '2-digit', timeZone: tz,
+    });
+
+  const rdv = new Date('2026-08-22T12:30:00Z'); // 14 h 30 à Paris, 13 h 30 à Lisbonne
+
+  it('français : jour, mois ET heure', () => {
+    expect(formatte(rdv, 'fr-FR', 'Europe/Paris').includes('14:30')).toBe(true);
+  });
+  it("portugais : l'heure est celle de Lisbonne", () => {
+    const out = formatte(rdv, 'pt-PT', 'Europe/Lisbon');
+    expect(out.includes('13:30')).toBe(true);
+    expect(out.includes('14:30')).toBe(false);
+  });
+  it('les cinq langues portent toutes une heure', () => {
+    for (const [intl, tz] of [['fr-FR','Europe/Paris'],['en-GB','Europe/Paris'],['it-IT','Europe/Rome'],['pt-PT','Europe/Lisbon'],['de-DE','Europe/Berlin']]) {
+      expect(/\d{1,2}[:h]\d{2}/.test(formatte(rdv, intl, tz))).toBe(true);
+    }
+  });
+});

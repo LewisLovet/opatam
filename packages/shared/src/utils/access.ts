@@ -260,3 +260,45 @@ export function isPubliclyVisible(
 export function filterPubliclyEntitled<T extends EntitlementsInput>(rows: T[]): T[] {
   return rows.filter((p) => computeEntitlements(p).canPublish);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Langue des notifications
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type NotificationLocale = 'fr' | 'en' | 'it' | 'pt' | 'de';
+
+const NOTIFICATION_LOCALES: readonly NotificationLocale[] = ['fr', 'en', 'it', 'pt', 'de'];
+
+/**
+ * Langue déduite du pays, utilisée tant que le prestataire n'a rien choisi.
+ * Espagne et Pays-Bas retombent sur l'anglais : ni l'espagnol ni le
+ * néerlandais ne font partie des cinq langues servies.
+ *
+ * MIROIR de `functions/src/lib/providerPushI18n.ts` — `functions` ne peut pas
+ * importer `@booking-app/shared`. Toute évolution doit être reportée là-bas.
+ */
+const COUNTRY_NOTIFICATION_LOCALES: Record<string, NotificationLocale> = {
+  FR: 'fr', BE: 'fr', LU: 'fr', CH: 'fr',
+  DE: 'de', IT: 'it', PT: 'pt',
+  ES: 'en', NL: 'en',
+};
+
+/**
+ * La langue dans laquelle le prestataire reçoit ses notifications.
+ *
+ * C'est un RÉGLAGE DE COMPTE, pas un reflet de l'appareil : synchroniser
+ * automatiquement depuis l'application faisait basculer la préférence à
+ * chaque ouverture — un téléphone en portugais puis un navigateur en
+ * français se écrasaient mutuellement, et les notifications suivaient le
+ * dernier appareil ouvert plutôt qu'une décision.
+ *
+ * Tant que rien n'est choisi, la déduction par pays sert de valeur initiale —
+ * ce que le sélecteur affiche, pour que le prestataire voie l'état réel.
+ */
+export function notificationLocale(
+  provider: { locale?: string | null; countryCode?: string | null } | null | undefined,
+): NotificationLocale {
+  const choisie = provider?.locale as NotificationLocale | undefined;
+  if (choisie && NOTIFICATION_LOCALES.includes(choisie)) return choisie;
+  return COUNTRY_NOTIFICATION_LOCALES[(provider?.countryCode ?? '').toUpperCase()] ?? 'fr';
+}

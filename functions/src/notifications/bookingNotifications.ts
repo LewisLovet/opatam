@@ -39,13 +39,22 @@ interface BookingData {
  * Example: "lundi 3 février à 14h30"
  */
 /**
- * Date longue dans la langue ET le fuseau du prestataire.
- * `formatDateFr` reste utilisée pour les notifications CLIENT, qui suivent
- * la langue de réservation.
+ * Date ET HEURE, dans la langue et le fuseau du prestataire.
+ *
+ * L'HEURE EST INDISPENSABLE : `formatDateFr` rendait « vendredi 22 août à
+ * 14h30 » et une première version de ce formateur s'arrêtait au mois — les
+ * push de nouvelle réservation, d'annulation et de modification perdaient
+ * l'horaire, c'est-à-dire l'information la plus utile.
+ *
+ * `toLocaleString` et non `toLocaleDateString` : c'est Intl qui place le
+ * connecteur propre à chaque langue — « à » en français, « às » en portugais,
+ * « um » en allemand, « alle ore » en italien.
  */
 function formatDateProvider(date: Date, intl: string, timeZone: string): string {
-  return date.toLocaleDateString(intl, {
-    weekday: 'long', day: 'numeric', month: 'long', timeZone,
+  return date.toLocaleString(intl, {
+    weekday: 'long', day: 'numeric', month: 'long',
+    hour: '2-digit', minute: '2-digit',
+    timeZone,
   });
 }
 

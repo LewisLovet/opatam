@@ -8,7 +8,6 @@ import { AuthGuard } from '@/components/auth/AuthGuard';
 import { TrialExpiredBanner } from '@/components/auth/TrialExpiredBanner';
 import { Sidebar, MobileSidebar, MobileHeader } from './components/Sidebar';
 import { NotificationsBell } from './components/NotificationsBell';
-import { useSyncProviderLocale } from '@/hooks/useSyncProviderLocale';
 
 export default function ProLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -16,9 +15,6 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const { provider } = useAuth();
-
-  // La langue de l'interface devient celle des notifications qu'il recevra.
-  useSyncProviderLocale(provider);
 
   // Block access when validUntil is in the past — EXCEPT on the pages the
   // pro needs to reactivate: settings and the subscription page itself.

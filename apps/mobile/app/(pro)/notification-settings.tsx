@@ -10,6 +10,7 @@ import {
   StyleSheet,
   ScrollView,
   Switch,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
@@ -19,6 +20,11 @@ import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { providerService } from '@booking-app/firebase';
 import type { ProviderNotificationPreferences } from '@booking-app/shared';
+import { notificationLocale, type NotificationLocale } from '@booking-app/shared';
+
+const LOCALE_LABELS: Record<NotificationLocale, string> = {
+  fr: 'Français', en: 'English', it: 'Italiano', pt: 'Português', de: 'Deutsch',
+};
 
 const DEFAULT_PREFS: ProviderNotificationPreferences = {
   pushEnabled: true,
@@ -84,12 +90,33 @@ export default function ProNotificationSettingsScreen() {
 
   const [prefs, setPrefs] = useState<ProviderNotificationPreferences>(DEFAULT_PREFS);
   const [saving, setSaving] = useState(false);
+  // Langue des notifications — RÉGLAGE DE COMPTE, décidé ici et nulle part
+  // ailleurs. Initialisé à la valeur déduite du pays tant que rien n'a été
+  // choisi, pour que le sélecteur montre l'état réel.
+  const [locale, setLocale] = useState<NotificationLocale>('fr');
 
   useEffect(() => {
     if (provider?.settings?.notificationPreferences) {
       setPrefs({ ...DEFAULT_PREFS, ...provider.settings.notificationPreferences });
     }
+    if (provider) setLocale(notificationLocale(provider));
   }, [provider]);
+
+  const updateLocale = async (next: NotificationLocale) => {
+    if (!providerId || next === locale) return;
+    const previous = locale;
+    setLocale(next);
+    setSaving(true);
+    try {
+      await providerService.updateProvider(providerId, { locale: next });
+      refreshProvider();
+    } catch {
+      setLocale(previous);
+      showToast({ variant: 'error', message: i18n.t('proNotifSettings.updateError') });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const updatePref = async (key: keyof ProviderNotificationPreferences, value: boolean) => {
     if (!providerId) return;
@@ -210,6 +237,41 @@ export default function ProNotificationSettingsScreen() {
               {t('proNotifSettings.warning')}
             </Text>
           )}
+        </View>
+
+        {/* Langue des notifications */}
+        <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
+          <Text
+            variant="caption"
+            style={{ color: colors.textSecondary, textTransform: 'uppercase', fontWeight: '700', marginBottom: spacing.xs }}
+          >
+            {t('proNotifSettings.locale.title')}
+          </Text>
+          <Text variant="caption" style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
+            {t('proNotifSettings.locale.description')}
+          </Text>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, flexDirection: 'row', flexWrap: 'wrap', padding: spacing.sm, gap: spacing.xs }]}>
+            {(['fr', 'en', 'it', 'pt', 'de'] as const).map((l) => (
+              <TouchableOpacity
+                key={l}
+                onPress={() => void updateLocale(l)}
+                disabled={saving}
+                style={{
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderRadius: radius.md,
+                  backgroundColor: locale === l ? colors.primary : 'transparent',
+                }}
+              >
+                <Text
+                  variant="caption"
+                  style={{ color: locale === l ? '#fff' : colors.text, fontWeight: locale === l ? '700' : '400' }}
+                >
+                  {LOCALE_LABELS[l]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Info */}

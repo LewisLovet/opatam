@@ -1796,7 +1796,11 @@
       "description": "Ogni mattina, il numero di appuntamenti del giorno e l'orario del primo"
     },
     "warning": "Attiva almeno un canale per ricevere le notifiche.",
-    "autoSave": "Le modifiche vengono salvate automaticamente."
+    "autoSave": "Le modifiche vengono salvate automaticamente.",
+    "locale": {
+      "title": "Lingua delle tue notifiche",
+      "description": "La lingua dei messaggi a te destinati. Indipendente dalla lingua dell'app."
+    }
   },
   "proTabs": {
     "home": "Home",

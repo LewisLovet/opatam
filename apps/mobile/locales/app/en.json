@@ -1796,7 +1796,11 @@
       "description": "Every morning, the number of appointments for the day and the time of the first one"
     },
     "warning": "Enable at least one channel to receive notifications.",
-    "autoSave": "Changes are saved automatically."
+    "autoSave": "Changes are saved automatically.",
+    "locale": {
+      "title": "Language of your notifications",
+      "description": "The language of messages addressed to you. Independent from the app language."
+    }
   },
   "proTabs": {
     "home": "Home",

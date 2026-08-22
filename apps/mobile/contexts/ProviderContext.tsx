@@ -10,7 +10,6 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { providerService, collections, doc, onSnapshot } from '@booking-app/firebase';
 import type { Provider } from '@booking-app/shared';
 import { computeEntitlements } from '@booking-app/shared';
-import i18n, { getAppLocale, APP_LOCALES } from '../lib/i18n';
 import type { WithId } from '@booking-app/firebase';
 import { useAuth } from './AuthContext';
 
@@ -48,24 +47,6 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, [providerId]);
-
-  /**
-   * Remonte la langue de l'application sur la fiche du prestataire.
-   *
-   * La langue choisie ne vivait que dans AsyncStorage : les notifications qui
-   * lui sont adressées la DÉDUISAIENT de son pays, faute de mieux. Écriture
-   * seulement quand elle diffère — et rejouée à chaque changement de langue,
-   * `i18n.language` faisant partie des dépendances.
-   */
-  useEffect(() => {
-    if (!provider?.id) return;
-    const courante = getAppLocale();
-    if (!APP_LOCALES.includes(courante)) return;
-    if (provider.locale === courante) return;
-    providerService
-      .updateProvider(provider.id, { locale: courante })
-      .catch((e) => console.warn('[locale] synchronisation échouée', e));
-  }, [provider?.id, provider?.locale, i18n.language]);
 
   // Real-time listener: updates provider state when Firestore document changes
   useEffect(() => {
