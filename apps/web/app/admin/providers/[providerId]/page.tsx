@@ -117,7 +117,9 @@ export default function AdminProviderDetailPage() {
           provider: {
             ...d.provider,
             accessOverride: newAO,
-            ...(action === 'grant' ? { isPublished: true, plan: compPlan } : {}),
+            // `plan` n'est plus muté par l'octroi : le tier est calculé à la
+            // lecture depuis l'override. Seule la republication est reflétée.
+            ...(action === 'grant' ? { isPublished: true } : {}),
           } as typeof d.provider,
         };
       });

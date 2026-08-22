@@ -72,16 +72,14 @@ export async function POST(request: NextRequest) {
         );
       }
       const enable = serenity === true;
-      const realSerenity =
-        snap.data()?.serenity?.status === 'active' ||
-        snap.data()?.serenity?.status === 'trialing';
-      const update: Record<string, unknown> = {
+      // On n'écrit QUE l'override : les gates lisent le comp directement
+      // (computeEntitlements.canUseDeposits). Matérialiser
+      // `depositsAddonActive` ici était ce qui faisait survivre l'acompte à
+      // l'expiration du comp — le flag reste réservé aux paiements réels.
+      await ref.update({
         'accessOverride.serenity': enable,
         updatedAt: FieldValue.serverTimestamp(),
-      };
-      if (enable) update.depositsAddonActive = true;
-      else if (!realSerenity) update.depositsAddonActive = false;
-      await ref.update(update);
+      });
 
       // When newly enabling, email the provider the Sérénité info (incl. the
       // "activate Stripe to get paid" step) — they may have been comped before
@@ -113,22 +111,48 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'revoke') {
-      // If Sérénité was comped (no genuine paid add-on), revoking access also
-      // turns the deposits add-on back off. A provider who actually pays for
-      // Sérénité keeps it.
-      const prev = snap.data()?.accessOverride;
+      const d = snap.data()!;
+      const sub = d.subscription ?? {};
+      const paidUnderneath =
+        sub.status === 'active' ||
+        sub.status === 'past_due' ||
+        (sub.status === 'trialing' && !!(sub.stripeSubscriptionId || sub.revenuecatAppUserId));
       const realSerenity =
-        snap.data()?.serenity?.status === 'active' ||
-        snap.data()?.serenity?.status === 'trialing';
+        d.serenity?.status === 'active' || d.serenity?.status === 'trialing';
+
       const revokeUpdate: Record<string, unknown> = {
         accessOverride: null,
         updatedAt: FieldValue.serverTimestamp(),
       };
-      if (prev?.serenity === true && !realSerenity) {
+
+      // Réconciliation de l'HÉRITAGE : l'ancien octroi mutait `plan` et
+      // `depositsAddonActive` pour simuler le tier. On les ramène à ce que la
+      // facturation réelle justifie, sinon un compte compé en `team` puis
+      // révoqué garderait l'interface Studio à vie. Un abonnement payant
+      // encore valide n'est évidemment pas touché.
+      if (!paidUnderneath && d.plan !== 'trial') revokeUpdate.plan = 'trial';
+      if (paidUnderneath && sub.plan && d.plan !== sub.plan) revokeUpdate.plan = sub.plan;
+      if (d.depositsAddonActive === true && !realSerenity) {
         revokeUpdate.depositsAddonActive = false;
       }
+      // Plus aucun droit derrière (ni payant, ni essai en cours) → la page
+      // publique n'a plus de raison d'être servie.
+      const trialStillRunning =
+        sub.status === 'trialing' &&
+        (sub.validUntil?.toDate?.()?.getTime() ?? 0) > Date.now();
+      if (!paidUnderneath && !trialStillRunning && d.isPublished === true) {
+        revokeUpdate.isPublished = false;
+      }
+
       await ref.update(revokeUpdate);
-      return NextResponse.json({ success: true, action: 'revoke' });
+      if (revokeUpdate.isPublished === false) {
+        revalidateProviderPublicPages(d.slug as string | undefined);
+      }
+      return NextResponse.json({
+        success: true,
+        action: 'revoke',
+        reconciled: Object.keys(revokeUpdate).filter((k) => k !== 'accessOverride' && k !== 'updatedAt'),
+      });
     }
 
     // grant
@@ -139,7 +163,16 @@ export async function POST(request: NextRequest) {
     }
 
     const grantSerenity = serenity === true;
-    const grantUpdate: Record<string, unknown> = {
+    // L'octroi n'écrit QUE l'override. Ni `plan`, ni `depositsAddonActive` :
+    // le tier et l'acompte sont calculés à la lecture (computeEntitlements),
+    // donc l'expiration du comp rend les droits sous-jacents toute seule —
+    // aucune écriture ne survit qu'il faudrait nettoyer.
+    //
+    // `isPublished: true` reste : c'est une RECONCILIATION, pas une
+    // simulation — la page a pu être dépubliée par le cron d'expiration
+    // d'essai, et l'octroi la remet en ligne. Ce flag est un état de
+    // publication, pas un droit ; les droits, eux, sont dérivés.
+    await ref.update({
       accessOverride: {
         active: true,
         plan: grantPlan,
@@ -149,16 +182,9 @@ export async function POST(request: NextRequest) {
         grantedAt: Timestamp.now(),
         serenity: grantSerenity,
       },
-      // Align the feature tier + make sure the page is visible.
-      plan: grantPlan,
       isPublished: true,
       updatedAt: FieldValue.serverTimestamp(),
-    };
-    // Comping Sérénité flips the operational flag every gate already reads.
-    // Collecting deposits STILL requires an active Stripe Connect account —
-    // that guardrail lives in the booking service and is never bypassed.
-    if (grantSerenity) grantUpdate.depositsAddonActive = true;
-    await ref.update(grantUpdate);
+    });
 
     // La page vient de repasser publique → purge immédiate du cache public
     // pour ne pas laisser un 404 figé (le filet ISR de 30 s prend le relais).

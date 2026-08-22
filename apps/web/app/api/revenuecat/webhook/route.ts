@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
 import { sendSerenityTrialUpsellEmail } from '@/lib/emails/serenityTrialUpsell';
 import { revalidateProviderPublicPages } from '@/lib/revalidate';
+import { canSystemUnpublish } from '@booking-app/shared';
 
 // ---------------------------------------------------------------------------
 // RevenueCat Webhook Handler
@@ -495,17 +496,24 @@ async function handleCancellation(
     updatedAt: FieldValue.serverTimestamp(),
   };
 
-  // If expiration is in the past, the subscription is effectively expired
+  // If expiration is in the past, the subscription is effectively expired.
+  //
+  // La facturation reste la source de vérité : `subscription.*` est toujours
+  // mis à jour. Mais la dépublication est un retrait de DROIT, et un accès
+  // offert actif l'interdit — même garde que le webhook Stripe, pour que les
+  // deux ne divergent plus.
   const nowExpired = Boolean(event.expiration_at_ms && event.expiration_at_ms < Date.now());
+  const mayUnpublish = canSystemUnpublish(providerDoc.data());
   if (nowExpired) {
     updateData['subscription.status'] = 'cancelled';
-    updateData.isPublished = false;
+    if (mayUnpublish) updateData.isPublished = false;
+    else console.log(`[RC-WEBHOOK] ${providerId}: accès offert actif — dépublication ignorée`);
   }
 
   await providerRef.update(updateData);
 
   // Dépublication effective → purge immédiate du cache public.
-  if (nowExpired) {
+  if (nowExpired && mayUnpublish) {
     revalidateProviderPublicPages(providerDoc.data()?.slug as string | undefined);
   }
 
@@ -543,17 +551,24 @@ async function handleExpiration(
   const providerDoc = await providerRef.get();
   if (!providerDoc.exists) return;
 
+  // Même garde que Stripe : l'expiration met à jour la facturation, mais ne
+  // retire pas la publication à un prestataire dont l'accès offert est actif.
+  const mayUnpublish = canSystemUnpublish(providerDoc.data());
   await providerRef.update({
     'subscription.status': 'cancelled',
     'subscription.cancelAtPeriodEnd': false,
-    isPublished: false,
+    ...(mayUnpublish ? { isPublished: false } : {}),
     updatedAt: FieldValue.serverTimestamp(),
   });
 
   // Dépublication effective → purge immédiate du cache public.
-  revalidateProviderPublicPages(providerDoc.data()?.slug as string | undefined);
+  if (mayUnpublish) {
+    revalidateProviderPublicPages(providerDoc.data()?.slug as string | undefined);
+  }
 
-  console.log(`[RC-WEBHOOK] Provider ${providerId} subscription expired — profile unpublished`);
+  console.log(
+    `[RC-WEBHOOK] Provider ${providerId} subscription expired — ${mayUnpublish ? 'profile unpublished' : 'accès offert actif, publication conservée'}`,
+  );
 }
 
 async function handleBillingIssue(

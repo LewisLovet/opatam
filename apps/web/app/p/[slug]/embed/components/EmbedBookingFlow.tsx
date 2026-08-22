@@ -21,6 +21,7 @@ interface EmbedProvider {
   slug: string;
   photoURL: string | null;
   plan: string;
+  teamTier?: boolean;
   settings: {
     maxBookingAdvance: number;
     requiresConfirmation: boolean;
@@ -116,7 +117,7 @@ export function EmbedBookingFlow({
 }: EmbedBookingFlowProps) {
   const t = useTranslations('booking');
   const locale = useLocale();
-  const isTeam = provider.plan === 'team' && members.length > 1;
+  const isTeam = provider.teamTier && members.length > 1;
 
   // ── State ────────────────────────────────────────────────────────────────
   const initialServiceId = useMemo(() => {

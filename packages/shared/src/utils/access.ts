@@ -88,16 +88,147 @@ export function hasLoyaltyAccess(
   return sub.status === 'trialing' && !!(sub.stripeSubscriptionId || sub.revenuecatAppUserId);
 }
 
-export function hasDepositAccess(
-  provider:
-    | {
-        depositsAddonActive?: boolean | null;
-        subscription?: { status?: string | null; validUntil?: unknown } | null;
-      }
-    | null
-    | undefined,
-): boolean {
-  if (!provider) return false;
-  if (provider.depositsAddonActive) return true;
-  return isBaseTrialActive(provider.subscription);
+export function hasDepositAccess(provider: EntitlementsInput | null | undefined): boolean {
+  // Délègue au calcul central : le comp Sérénité est lu depuis l'override
+  // lui-même, plus depuis le flag `depositsAddonActive` que l'octroi
+  // matérialisait — c'est ce qui faisait survivre l'acompte à l'expiration.
+  return computeEntitlements(provider).canUseDeposits;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Droits effectifs — LE calcul central
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Ce que `computeEntitlements` lit sur un provider. Structurel : accepte le
+ *  document Firestore brut comme l'objet typé. */
+export interface EntitlementsInput {
+  accessOverride?: AccessOverride | null;
+  subscription?: {
+    status?: string | null;
+    plan?: string | null;
+    validUntil?: unknown;
+    stripeSubscriptionId?: string | null;
+    revenuecatAppUserId?: string | null;
+  } | null;
+  serenity?: { status?: string | null } | null;
+  depositsAddonActive?: boolean | null;
+}
+
+export interface Entitlements {
+  /** D'où vient le droit principal. Étiquette d'affichage : les droits
+   *  eux-mêmes sont l'UNION des trois sources, pas la première qui matche. */
+  source: 'paid' | 'trial' | 'comp' | 'none';
+  /** Tier de fonctionnalités. L'essai gratuit donne l'accès complet ('team'),
+   *  comme partout dans l'app. JAMAIS lu depuis `provider.plan` : c'est
+   *  précisément la mutation durable qu'on supprime. */
+  effectivePlan: 'solo' | 'team' | null;
+  canAccessPro: boolean;
+  canPublish: boolean;
+  canReceiveBookings: boolean;
+  canUseDeposits: boolean;
+  canUseLoyalty: boolean;
+  compActive: boolean;
+  compExpiresAt: Date | null;
+  /** Un abonnement réel facture encore derrière : la révocation d'un comp ne
+   *  doit jamais dégrader ce droit-là. `past_due` compte — Stripe réessaie. */
+  paidUnderneath: boolean;
+}
+
+/** 'team' > 'solo'. `trial`/`test` donnent l'accès complet. */
+function planTier(plan: string | null | undefined): 'solo' | 'team' | null {
+  if (plan === 'team' || plan === 'trial' || plan === 'test') return 'team';
+  if (plan === 'solo') return 'solo';
+  return null;
+}
+
+/**
+ * Le modèle de droits : facturation (Stripe/RevenueCat) = source de vérité,
+ * essai local = droit temporaire calculé, comp admin = couche indépendante.
+ * Tout est dérivé À LA LECTURE — aucune de ces réponses n'est matérialisée,
+ * donc une expiration (comp ou essai) rend les droits sous-jacents sans
+ * qu'aucun nettoyage ne soit nécessaire.
+ */
+export function computeEntitlements(
+  provider: EntitlementsInput | null | undefined,
+): Entitlements {
+  const none: Entitlements = {
+    source: 'none', effectivePlan: null,
+    canAccessPro: false, canPublish: false, canReceiveBookings: false,
+    canUseDeposits: false, canUseLoyalty: false,
+    compActive: false, compExpiresAt: null, paidUnderneath: false,
+  };
+  if (!provider) return none;
+
+  const sub = provider.subscription;
+  const override = provider.accessOverride;
+
+  const paidUnderneath =
+    sub?.status === 'active' ||
+    sub?.status === 'past_due' ||
+    (sub?.status === 'trialing' &&
+      !!(sub.stripeSubscriptionId || sub.revenuecatAppUserId));
+  const trialActive = isBaseTrialActive(sub);
+  const compActive = isAccessOverrideActive(override);
+
+  const hasAccess = paidUnderneath || trialActive || compActive;
+
+  // Union des tiers : un comp 'solo' posé sur un abonnement 'team' encore
+  // payant ne rétrograde pas le payant — et inversement le comp 'team'
+  // surclasse un payant 'solo' le temps du comp.
+  const tiers: Array<'solo' | 'team' | null> = [
+    paidUnderneath ? planTier(sub?.plan) : null,
+    trialActive ? 'team' : null,
+    compActive ? planTier(override?.plan) : null,
+  ];
+  const effectivePlan = tiers.includes('team') ? 'team' : tiers.includes('solo') ? 'solo' : null;
+
+  const serenityPaid =
+    provider.serenity?.status === 'active' || provider.serenity?.status === 'trialing';
+
+  // `depositsAddonActive` est un flag matérialisé : fiable quand il vient du
+  // webhook de paiement, suspect quand il est l'empreinte d'un ancien comp
+  // (l'octroi l'écrivait autrefois). Un doc qui porte `override.serenity` sans
+  // Sérénité payée ne compte donc que si le comp est ENCORE actif.
+  const depositsFlagTrustworthy =
+    provider.depositsAddonActive === true && override?.serenity !== true;
+
+  const canUseDeposits =
+    trialActive ||
+    serenityPaid ||
+    (compActive && override?.serenity === true) ||
+    depositsFlagTrustworthy;
+
+  return {
+    source: paidUnderneath ? 'paid' : trialActive ? 'trial' : compActive ? 'comp' : 'none',
+    effectivePlan: hasAccess ? effectivePlan : null,
+    canAccessPro: hasAccess,
+    canPublish: hasAccess,
+    canReceiveBookings: hasAccess,
+    canUseDeposits,
+    canUseLoyalty: compActive || paidUnderneath,
+    compActive,
+    compExpiresAt: override?.until ? toDate(override.until) : null,
+    paidUnderneath,
+  };
+}
+
+/**
+ * Tier d'interface (filtres membres, multi-lieux, onglets Studio…).
+ * Remplace les douze `plan === 'team' || plan === 'trial'` dispersés : eux
+ * lisaient `provider.plan`, que l'octroi d'un accès offert mutait pour
+ * simuler le tier — c'est cette mutation qui disparaît.
+ */
+export function isTeamTier(provider: EntitlementsInput | null | undefined): boolean {
+  return computeEntitlements(provider).effectivePlan === 'team';
+}
+
+/**
+ * Un webhook ou un cron peut-il dépublier ce prestataire ?
+ * NON si un accès offert est actif : la facturation reste la source de vérité
+ * de l'état d'abonnement (le webhook met à jour `subscription.*`), mais elle
+ * ne retire pas un droit que l'admin a accordé à côté. Partagée par les
+ * webhooks Stripe ET RevenueCat pour qu'ils ne divergent plus.
+ */
+export function canSystemUnpublish(provider: EntitlementsInput | null | undefined): boolean {
+  return !computeEntitlements(provider).compActive;
 }

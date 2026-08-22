@@ -67,8 +67,53 @@ service cloud.firestore {
     match /providers/{providerId} {
       // Lecture publique (fiches prestataires, recherche, booking flow)
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isProviderAdmin(providerId);
+
+      // Création : le signup client seed le document entier (plan 'trial',
+      // subscription d'essai, flags Stripe Connect à faux…). On l'autorise,
+      // mais les champs qui donneraient des DROITS sont contraints : pas
+      // d'accès offert auto-attribué, pas de compte pré-publié/vérifié, pas
+      // d'add-on acompte déjà actif.
+      allow create: if isAuthenticated()
+        && request.auth.uid == providerId
+        && !('accessOverride' in request.resource.data)
+        && request.resource.data.get('isPublished', false) == false
+        && request.resource.data.get('isVerified', false) == false
+        && request.resource.data.get('depositsAddonActive', false) == false
+        && request.resource.data.get('plan', 'trial') == 'trial';
+
+      // Mise à jour : ALLOWLIST stricte. Un prestataire modifie son profil,
+      // ses réglages et son contenu — jamais ses droits commerciaux.
+      //
+      // La faille fermée ici : `allow update: if isProviderAdmin(...)` sans
+      // restriction de champ permettait à un prestataire de s'écrire
+      // `accessOverride: { active: true, until: null }` depuis le SDK et de
+      // s'offrir Studio + Sérénité à vie. `accessOverride`, `plan`,
+      // `subscription`, `serenity`, `depositsAddonActive`, `isVerified` et
+      // les identifiants Stripe/RevenueCat ne s'écrivent plus que par
+      // l'Admin SDK (routes serveur, webhooks, crons), qui ignore ces règles.
+      //
+      // `isPublished` reste côté client : publier/dépublier sa page est un
+      // choix du prestataire (publishProvider/unpublishProvider). Se
+      // republier sans droits ne donne rien : les gates serveur refusent la
+      // réservation et le cron d'expiration redépublie.
+      allow update: if isProviderAdmin(providerId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          // Profil et contenu
+          'businessName', 'description', 'category', 'photoURL',
+          'coverPhotoURL', 'portfolioPhotos', 'socialLinks', 'themeId',
+          'slug', 'searchTokens',
+          // Réglages (horaires, acomptes par défaut, fidélité, promos, notifs)
+          'settings',
+          // Publication (choix du prestataire)
+          'isPublished',
+          // Géographie, dérivés catalogue et stats côté client
+          'cities', 'geopoint', 'region', 'countryCode',
+          'minPrice', 'promoSummary', 'stats', 'nextAvailableSlot',
+          // Parrainage saisi à l'inscription
+          'affiliateCode', 'affiliateId',
+          'updatedAt'
+        ]);
+
       allow delete: if isProviderAdmin(providerId);
 
       // --- MEMBERS ---

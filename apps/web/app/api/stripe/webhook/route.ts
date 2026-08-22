@@ -11,7 +11,7 @@ import type Stripe from 'stripe';
 import { generatePlanChangeEmail } from '@/lib/emails/planChange';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
 import { sendSerenityTrialUpsellEmail } from '@/lib/emails/serenityTrialUpsell';
-import { isAccessOverrideActive } from '@booking-app/shared';
+import { isAccessOverrideActive, canSystemUnpublish } from '@booking-app/shared';
 import { revalidateProviderPublicPages } from '@/lib/revalidate';
 
 // ---------------------------------------------------------------------------
@@ -949,7 +949,9 @@ async function handleSubscriptionDeleted(
 
   // A comped provider (manual access grant, independent of Stripe) must NOT be
   // unpublished when their Stripe sub ends — their access doesn't depend on it.
-  const overrideActive = isAccessOverrideActive(providerDoc.data()?.accessOverride);
+  // `canSystemUnpublish` est LA garde partagée avec le webhook RevenueCat :
+  // une seule définition, plus de divergence possible entre les deux.
+  const overrideActive = !canSystemUnpublish(providerDoc.data());
 
   const update: Record<string, unknown> = {
     'subscription.status': 'cancelled',

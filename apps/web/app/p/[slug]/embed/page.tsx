@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { PROVIDER_THEMES } from '@booking-app/shared';
+import { PROVIDER_THEMES, isTeamTier } from '@booking-app/shared';
 import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
 import { NextIntlClientProvider } from 'next-intl';
@@ -167,6 +167,8 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
     slug: provider.slug,
     photoURL: provider.photoURL,
     plan: provider.plan,
+    // Tier effectif calculé côté serveur — même raison que la page publique.
+    teamTier: isTeamTier(provider),
     settings: {
       maxBookingAdvance: provider.settings.maxBookingAdvance,
       requiresConfirmation: provider.settings.requiresConfirmation,

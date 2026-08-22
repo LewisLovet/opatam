@@ -18,7 +18,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { Input, useToast } from '@/components/ui';
 import { canUseDepositsClient } from '@/lib/feature-flags';
-import { isAccessOverrideActive, isBaseTrialActive } from '@booking-app/shared';
+import { isAccessOverrideActive, isBaseTrialActive, hasDepositAccess } from '@booking-app/shared';
 import { auth as firebaseAuth } from '@booking-app/firebase';
 
 interface ConnectStatus {
@@ -250,7 +250,10 @@ export function PaymentsSection() {
   // access drops by itself when the trial ends). Subscribing to the paid
   // add-on stays blocked until the trial converts (server enforces too).
   const trialActive = isBaseTrialActive(provider?.subscription);
-  const depositAccess = addonActive || trialActive;
+  // hasDepositAccess et non le flag brut : la Sérénité offerte par l'admin
+  // se lit désormais depuis l'accès offert lui-même, plus depuis
+  // `depositsAddonActive` (réservé aux paiements réels).
+  const depositAccess = hasDepositAccess(provider);
   // "Résiliation prévue le DD/MM" indicator — read from the
   // dedicated `serenity.*` sub-object (v1.5+). Falls back to the
   // legacy field for an in-flight migration window.

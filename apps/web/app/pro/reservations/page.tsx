@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, memberService } from '@booking-app/firebase';
 import type { Booking, Member, BookingStatus } from '@booking-app/shared';
+import { isTeamTier } from '@booking-app/shared';
 import { BookingDetailModal } from '@/components/booking';
 import { useToast } from '@/components/ui';
 import { BookingFilters, BookingList } from './components';
@@ -52,7 +53,7 @@ export default function ReservationsPage() {
   const [cancelTarget, setCancelTarget] = useState<WithId<Booking> | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
-  const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
+  const isTeamPlan = isTeamTier(provider);
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   // Load initial data (members)

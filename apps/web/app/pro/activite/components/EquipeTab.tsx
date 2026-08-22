@@ -15,7 +15,7 @@ import { Loader2, Users, Plus } from 'lucide-react';
 import { MemberCard } from './MemberCard';
 import { MemberModal, type MemberFormData } from './MemberModal';
 import type { Member, Location, Service } from '@booking-app/shared';
-import { PLAN_LIMITS } from '@booking-app/shared';
+import { PLAN_LIMITS, computeEntitlements } from '@booking-app/shared';
 import { UpgradeTeamModal } from '@/components/modals/UpgradeTeamModal';
 
 type WithId<T> = { id: string } & T;
@@ -34,8 +34,14 @@ export function EquipeTab() {
   const [upcomingBookingsCount, setUpcomingBookingsCount] = useState(0);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
-  // Plan member limit check
-  const plan = provider?.plan || 'trial';
+  // Plan member limit check — tier depuis les droits calculés (un comp `team`
+  // doit avoir les limites Studio même si `provider.plan` dit `trial`) ; le
+  // trial garde ses propres plafonds. Même règle que LieuxTab.
+  const ent = computeEntitlements(provider);
+  const plan =
+    ent.source === 'paid' || ent.source === 'comp'
+      ? (ent.effectivePlan ?? 'trial')
+      : (provider?.plan || 'trial');
   const planLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? null;
   const maxMembers = planLimits?.maxMembers ?? Infinity;
   const activeMembers = members.filter((m) => m.isActive);

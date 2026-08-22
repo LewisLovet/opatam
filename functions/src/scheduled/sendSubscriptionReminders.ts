@@ -23,6 +23,7 @@ import * as admin from 'firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { sendPushNotifications } from '../utils/expoPushService';
 import { sendTemplateEmail } from '../utils/templateEmails';
+import { isAccessOverrideActive } from '../lib/access';
 
 const BATCH_SIZE = 10;
 
@@ -68,6 +69,10 @@ export const sendSubscriptionReminders = onSchedule(
         const validUntil = provider.subscription?.validUntil?.toDate?.();
 
         if (!validUntil) continue;
+        // Accès offert actif : rappeler « votre essai expire » à quelqu'un à
+        // qui l'admin a offert l'accès est faux et anxiogène — c'est
+        // exactement l'e-mail qu'a reçu Grs.hair le lendemain de son octroi.
+        if (isAccessOverrideActive(provider.accessOverride)) continue;
 
         const daysUntilExpiry = Math.ceil((validUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         const remindersSent: string[] = provider.expiryRemindersSent || [];

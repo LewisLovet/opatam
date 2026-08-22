@@ -10,6 +10,7 @@ import {
   memberRepository,
   availabilityRepository,
 } from '@booking-app/firebase';
+import { isTeamTier } from '@booking-app/shared';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { BookingFlow } from './components/BookingFlow';
 import {
@@ -224,7 +225,7 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
   }));
 
   // Check if provider has team plan with multiple members
-  const isTeam = provider.plan === 'team' && members.length > 1;
+  const isTeam = isTeamTier(provider) && members.length > 1;
 
   return (
     <>

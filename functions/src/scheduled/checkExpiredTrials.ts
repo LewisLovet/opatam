@@ -10,6 +10,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { serverTracker } from '../utils/serverTracker';
+import { isAccessOverrideActive } from '../lib/access';
 
 const BATCH_SIZE = 10;
 
@@ -56,6 +57,15 @@ export const checkExpiredTrials = onSchedule(
         await Promise.all(
           batch.map(async (doc) => {
             try {
+              // Un accès offert actif n'est pas un essai expiré : l'admin a
+              // accordé le droit à côté de la facturation, et ce cron n'a pas
+              // à le reprendre. Indispensable depuis que l'octroi ne mute plus
+              // `plan` — les comps restent `plan: 'trial'` et entrent donc
+              // dans la requête ci-dessus.
+              if (isAccessOverrideActive(doc.data().accessOverride)) {
+                console.log(`Skip ${doc.id}: accès offert actif`);
+                return;
+              }
               await doc.ref.update({
                 isPublished: false,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),

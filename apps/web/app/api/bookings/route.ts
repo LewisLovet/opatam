@@ -6,6 +6,7 @@ import { bookingService, providerService } from '@booking-app/firebase';
 import {
   createBookingSchema,
   isAccessOverrideActive,
+  computeEntitlements,
   isLoyaltyConfigValid,
   isLoyaltyRewardArmed,
   hasLoyaltyAccess,
@@ -134,10 +135,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isSubscriptionValid =
-      isAccessOverrideActive(providerData.accessOverride) ||
-      (providerData.plan !== 'trial' && providerData.subscription.status !== 'cancelled' && providerData.subscription.status !== 'incomplete') ||
-      (providerData.plan === 'trial' && new Date() <= providerData.subscription.validUntil);
+    // Droits calculés — LA règle unique (payant, essai en cours, ou accès
+    // offert actif). L'ancien test lisait `plan`, que l'octroi d'un comp
+    // mutait ; il ne mute plus, donc seuls les droits dérivés font foi.
+    const isSubscriptionValid = computeEntitlements(providerData).canReceiveBookings;
 
     if (!isSubscriptionValid) {
       return NextResponse.json(

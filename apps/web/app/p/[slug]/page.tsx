@@ -13,7 +13,7 @@ import {
 } from '@booking-app/firebase';
 import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
-import { getServiceMinPrice } from '@booking-app/shared';
+import { getServiceMinPrice, isTeamTier } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { PageRevealGate } from '@/components/loading/PageRevealGate';
@@ -311,6 +311,10 @@ export default async function ProviderPage({ params }: PageProps) {
   // Serialize dates for client component
   const serializedProvider = {
     ...provider,
+    // Tier calculé ICI, où le document complet est disponible : le client ne
+    // reçoit qu'un booléen — il n'a pas besoin des champs de droits, et le
+    // comp `team` doit donner l'interface équipe sans que `plan` le dise.
+    teamTier: isTeamTier(provider),
     createdAt: provider.createdAt.toISOString(),
     updatedAt: provider.updatedAt.toISOString(),
     subscription: provider.subscription

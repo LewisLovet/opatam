@@ -25,6 +25,7 @@ import {
   validateServiceSelections,
   emptyServiceSelections,
   isAccessOverrideActive,
+  computeEntitlements,
   hasDepositAccess,
   getPublicAreaLabel,
   isLoyaltyConfigValid,
@@ -75,13 +76,9 @@ export class BookingService {
         : (validUntilRaw as any)?.toDate?.()
           || (validUntilRaw ? new Date(validUntilRaw as any) : null);
 
-      const isSubscriptionValid =
-        // Comp/offered access (admin grant) — immune to subscription status.
-        // Must mirror the /api/bookings route gate, otherwise a comped
-        // provider whose Stripe sub is cancelled gets blocked here.
-        isAccessOverrideActive(provider.accessOverride) ||
-        (plan !== 'trial' && subscription.status !== 'cancelled' && subscription.status !== 'incomplete') ||
-        (plan === 'trial' && validDate && new Date() <= validDate);
+      // Droits calculés — même règle unique que la route /api/bookings
+      // (computeEntitlements) : payant, essai en cours, ou accès offert actif.
+      const isSubscriptionValid = computeEntitlements(provider).canReceiveBookings;
 
       if (!isSubscriptionValid) {
         throw new Error('Ce prestataire n\'accepte pas de réservations pour le moment');

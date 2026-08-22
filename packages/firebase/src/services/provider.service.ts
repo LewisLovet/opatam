@@ -9,6 +9,7 @@ import {
 } from '../repositories';
 import type { Provider, ProviderPlan, ProviderNotificationPreferences } from '@booking-app/shared';
 import {
+  computeEntitlements,
   parseOrThrow,
   createProviderSchema,
   updateProviderSchema,
@@ -195,28 +196,11 @@ export class ProviderService {
     }
   }
 
-  /**
-   * Upgrade plan from trial to solo or team
-   * Appele apres le paiement Stripe
-   */
-  async upgradePlan(providerId: string, newPlan: 'solo' | 'team'): Promise<void> {
-    const provider = await providerRepository.getById(providerId);
-    if (!provider) {
-      throw new Error('Prestataire non trouvé');
-    }
-
-    const memberCount = newPlan === 'team' ? 5 : 1;
-
-    await providerRepository.update(providerId, {
-      plan: newPlan,
-      subscription: {
-        ...provider.subscription,
-        plan: newPlan,
-        memberCount,
-        // validUntil sera mis a jour par Stripe webhook
-      },
-    });
-  }
+  // `upgradePlan` supprimé : jamais appelé, et il écrivait `plan` +
+  // `subscription` depuis le SDK CLIENT — exactement ce que les règles
+  // Firestore interdisent désormais. Le changement de plan passe par le
+  // webhook Stripe/RevenueCat, côté serveur, comme le commentaire de la
+  // fonction le promettait déjà.
 
   /**
    * Update provider settings
@@ -363,20 +347,20 @@ export class ProviderService {
       return checkResult; // Retourne les elements manquants sans throw
     }
 
-    // Check subscription status before publishing
+    // Droits CALCULÉS avant de publier : payant, essai en cours ou accès
+    // offert actif. Les deux anciens tests (essai expiré, statut cancelled)
+    // ignoraient l'accès offert : depuis que l'octroi ne mute plus `plan`,
+    // un compé garde `plan: 'trial'` et se serait vu refuser la publication
+    // de sa propre page.
     const provider = await providerRepository.getById(providerId);
-    if (provider && this.isTrialExpired(provider)) {
+    if (provider && !computeEntitlements(provider).canPublish) {
       return {
         canPublish: false,
-        missingItems: ['Votre essai gratuit a expiré. Choisissez un plan pour publier votre page.'],
-        completeness: checkResult.completeness,
-      };
-    }
-
-    if (provider && (provider.subscription.status === 'cancelled' || provider.subscription.status === 'incomplete')) {
-      return {
-        canPublish: false,
-        missingItems: ['Votre abonnement n\'est plus actif. Réabonnez-vous pour publier votre page.'],
+        missingItems: [
+          this.isTrialExpired(provider)
+            ? 'Votre essai gratuit a expiré. Choisissez un plan pour publier votre page.'
+            : 'Votre abonnement n\'est plus actif. Réabonnez-vous pour publier votre page.',
+        ],
         completeness: checkResult.completeness,
       };
     }

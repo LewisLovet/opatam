@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { isTeamTier } from '@booking-app/shared';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
@@ -26,7 +27,7 @@ export default function ActivityPage() {
     [router, searchParams]
   );
 
-  const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
+  const isTeamPlan = isTeamTier(provider);
 
   const tabs = [
     { id: 'prestations', label: 'Prestations', icon: <Tag className="w-4 h-4" /> },

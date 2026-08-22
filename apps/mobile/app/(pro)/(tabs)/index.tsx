@@ -13,8 +13,7 @@ import {
   effectiveLoyaltyCount,
   isLoyaltyRewardArmed,
   type PageViewStats,
-  type TrendPoint,
-} from '@booking-app/shared';
+  type TrendPoint, isTeamTier } from '@booking-app/shared';
 import { Sparkline } from '../../../components/stats/Sparkline';
 import { WelcomeOverlay } from '../../../components/WelcomeOverlay';
 import { Ionicons } from '@expo/vector-icons';
@@ -985,7 +984,7 @@ export default function ProDashboardScreen() {
   const today = new Date();
   const firstName = user?.displayName?.split(' ')[0] || provider?.businessName || t('proHome.defaultName');
   const { todayBookings, pendingBookings, weekBookingsCount, weekBookingsPerDay, locations, services, members, averageRating } = data;
-  const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
+  const isTeamPlan = isTeamTier(provider);
 
   const todayRevenue = todayBookings
     .filter((b) => b.status === 'confirmed')

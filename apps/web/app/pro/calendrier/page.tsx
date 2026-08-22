@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, schedulingService, memberService, locationService, serviceRepository } from '@booking-app/firebase';
 import type { Booking, Member, Location, Availability, BlockedSlot, Service } from '@booking-app/shared';
-import { endTimeToMinutes } from '@booking-app/shared';
+import { endTimeToMinutes, isTeamTier } from '@booking-app/shared';
 import { CalendarHeader } from './components/CalendarHeader';
 import { DayView } from './components/DayView';
 import { WeekView } from './components/WeekView';
@@ -77,7 +77,7 @@ export default function CalendarPage() {
   const [blockModalEndTime, setBlockModalEndTime] = useState<string | undefined>(undefined);
   const [blockModalEditId, setBlockModalEditId] = useState<string | undefined>(undefined);
 
-  const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
+  const isTeamPlan = isTeamTier(provider);
 
   // Calculate date range based on view mode
   const dateRange = useMemo(() => {

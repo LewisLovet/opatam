@@ -16,6 +16,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
+import { isAccessOverrideActive } from '../lib/access';
 import { serverTracker } from '../utils/serverTracker';
 import {
   shouldWarnSerenityTrialEnding,
@@ -126,6 +127,9 @@ export const sendSerenityTrialWarnings = onSchedule(
       let warnedCount = 0;
       for (const doc of snapshot.docs) {
         try {
+          // Un accès offert actif rend l'alerte « fin d'essai Sérénité »
+          // mensongère : l'acompte ne va pas s'arrêter pour ce compte.
+          if (isAccessOverrideActive(doc.data()?.accessOverride)) continue;
           const result = await processSerenityTrialWarning(doc);
           if (result.warned) {
             warnedCount++;

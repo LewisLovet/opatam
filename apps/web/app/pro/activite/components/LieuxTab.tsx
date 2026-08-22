@@ -9,7 +9,7 @@ import { LocationCard } from './LocationCard';
 import { LocationModal, type LocationFormData } from './LocationModal';
 import type { Location, Member } from '@booking-app/shared';
 import { getCountryLabel } from '@booking-app/shared/constants';
-import { PLAN_LIMITS } from '@booking-app/shared';
+import { PLAN_LIMITS, computeEntitlements } from '@booking-app/shared';
 import { UpgradeTeamModal } from '@/components/modals/UpgradeTeamModal';
 
 type WithId<T> = { id: string } & T;
@@ -26,8 +26,19 @@ export function LieuxTab() {
   const [editingLocation, setEditingLocation] = useState<WithId<Location> | null>(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
-  // Plan location limit check
-  const plan = provider?.plan || 'trial';
+  // Plan location limit check.
+  //
+  // Le tier vient des droits CALCULÉS, plus de `provider.plan` : l'octroi d'un
+  // accès offert ne mute plus ce champ, donc un comp `team` doit obtenir ses
+  // limites Studio ici même si le document dit encore `trial`. L'essai local,
+  // lui, garde ses propres plafonds (1 membre, 1 lieu) — c'est pour ça qu'on
+  // ne mappe pas simplement le tier effectif, qui classe l'essai en 'team'
+  // pour l'interface.
+  const ent = computeEntitlements(provider);
+  const plan =
+    ent.source === 'paid' || ent.source === 'comp'
+      ? (ent.effectivePlan ?? 'trial')
+      : (provider?.plan || 'trial');
   const planLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? null;
   const maxLocations = planLimits?.maxLocations ?? Infinity;
   const activeLocations = locations.filter((l) => l.isActive);

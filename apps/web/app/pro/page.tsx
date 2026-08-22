@@ -29,6 +29,7 @@ import {
   analyticsService,
 } from '@booking-app/firebase';
 import type { Booking, Member, Location, Service, PageViewStats } from '@booking-app/shared';
+import { isTeamTier, hasDepositAccess } from '@booking-app/shared';
 import { BookingDetailModal } from '@/components/booking';
 import { CreateBookingModal } from './calendrier/components/CreateBookingModal';
 import {
@@ -88,7 +89,7 @@ export default function DashboardPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 
-  const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
+  const isTeamPlan = isTeamTier(provider);
 
   const bookingUrl = provider?.slug
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${provider.slug}/reserver`
@@ -146,7 +147,11 @@ export default function DashboardPage() {
       // 3. Sérénité upsell — the trial ended (pro converted to a paid plan)
       // while they were using deposits for free. Until they subscribe to the
       // add-on, their bookings no longer collect deposits: keep it visible.
-      if (provider.serenityUpsell?.sentAt && !provider.depositsAddonActive) {
+      // `hasDepositAccess` et non le flag brut : une Sérénité offerte par
+      // l'admin ne doit pas déclencher l'upsell « réactivez l'acompte ».
+      // (Un essai encore actif n'arrive pas ici : l'upsell n'est envoyé
+      // qu'après la fin de l'essai.)
+      if (provider.serenityUpsell?.sentAt && !hasDepositAccess(provider)) {
         alerts.push({
           id: 'serenity-upsell',
           message:

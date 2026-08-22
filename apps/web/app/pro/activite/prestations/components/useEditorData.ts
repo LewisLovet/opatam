@@ -13,7 +13,7 @@ import type {
   Service,
   ServiceCategory,
 } from '@booking-app/shared';
-import { hasDepositAccess } from '@booking-app/shared';
+import { hasDepositAccess, isTeamTier } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -38,7 +38,7 @@ export interface EditorData {
  */
 export function useEditorData(serviceId?: string): EditorData {
   const { provider } = useAuth();
-  const isTeamPlan = provider?.plan === 'team';
+  const isTeamPlan = isTeamTier(provider);
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);

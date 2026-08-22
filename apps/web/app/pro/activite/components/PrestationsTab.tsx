@@ -13,7 +13,7 @@ import { CategoryModal, type CategoryFormData } from './CategoryModal';
 import { GlobalPromoModal } from './GlobalPromoModal';
 import { LoyaltyModal } from './LoyaltyModal';
 import type { Service, ServiceCategory, Member } from '@booking-app/shared';
-import { hasDepositAccess, hasLoyaltyAccess, isLoyaltyConfigValid } from '@booking-app/shared';
+import { hasDepositAccess, hasLoyaltyAccess, isLoyaltyConfigValid, isTeamTier } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -34,7 +34,7 @@ export function PrestationsTab() {
 
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
-  const isTeamPlan = provider?.plan === 'team';
+  const isTeamPlan = isTeamTier(provider);
 
 
   // Fetch data

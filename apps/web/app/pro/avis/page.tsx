@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { reviewRepository, memberService } from '@booking-app/firebase';
 import type { Review, Member, Rating } from '@booking-app/shared';
+import { isTeamTier } from '@booking-app/shared';
 import { Loader2 } from 'lucide-react';
 import {
   ReviewStats,
@@ -38,7 +39,7 @@ export default function AvisPage() {
   // Loading states
   const [loading, setLoading] = useState(true);
 
-  const isTeamPlan = provider?.plan === 'team' || provider?.plan === 'trial';
+  const isTeamPlan = isTeamTier(provider);
 
   // Use provider rating stats (already denormalized)
   const ratingStats: Rating = provider?.rating || DEFAULT_RATING;

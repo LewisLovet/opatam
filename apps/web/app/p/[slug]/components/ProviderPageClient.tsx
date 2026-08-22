@@ -24,6 +24,8 @@ interface SerializedProvider {
   id: string;
   userId: string;
   plan: string;
+  /** Tier effectif calculé côté serveur (payant, essai ou accès offert). */
+  teamTier: boolean;
   businessName: string;
   description: string;
   category: string;
@@ -239,7 +241,7 @@ export function ProviderPageClient({
   const hasSocials = hasSocialLinks(provider.socialLinks);
 
   // Check if provider has team plan (more than 1 member)
-  const isTeam = provider.plan === 'team' && members.length > 1;
+  const isTeam = provider.teamTier && members.length > 1;
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 pb-24">

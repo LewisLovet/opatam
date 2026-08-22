@@ -86,8 +86,7 @@ import {
   hasLoyaltyAccess,
   isServiceLoyaltyEligible,
   applyLoyaltyToLine,
-  getServiceMinDuration,
-} from '@booking-app/shared';
+  getServiceMinDuration, isTeamTier } from '@booking-app/shared';
 import { analyticsService, type WithId } from '@booking-app/firebase';
 import { getServiceText } from '@booking-app/shared';
 import { ProviderAccent } from '../../../components/ProviderAccent';
@@ -302,7 +301,7 @@ function ProviderDetailScreen({
   const armedLoyalty = loyaltyCard?.armed && publicLoyalty ? publicLoyalty : null;
 
   // Team plan: per-member availability
-  const isTeam = provider?.plan === 'team';
+  const isTeam = isTeamTier(provider);
   const {
     memberAvailabilities,
     earliestFormattedDate: teamEarliestFormatted,
