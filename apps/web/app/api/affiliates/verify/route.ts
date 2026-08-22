@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
-import { decideAffiliateLink } from '@/lib/affiliate-link';
-import { FieldValue } from 'firebase-admin/firestore';
+import { runAffiliateLink } from '@/lib/affiliate-link-tx';
 import { getStripe } from '@/lib/stripe';
 
 /**
@@ -149,24 +148,22 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getAdminFirestore();
-    const providerRef = db.collection('providers').doc(providerId);
-    const [providerSnap, affiliateSnap] = await Promise.all([
-      providerRef.get(),
-      db
-        .collection('affiliates')
-        .where('code', '==', String(code).toUpperCase().trim())
-        .where('isActive', '==', true)
-        .limit(1)
-        .get(),
-    ]);
+    const normalizedCode = String(code).toUpperCase().trim();
+    const affiliateSnap = await db
+      .collection('affiliates')
+      .where('code', '==', normalizedCode)
+      .where('isActive', '==', true)
+      .limit(1)
+      .get();
 
-    // Toute la décision (auth, propriété, non-réattribution, code valide)
-    // vit dans decideAffiliateLink — pure et testée, la route ne fait que
-    // lire et écrire.
-    const decision = decideAffiliateLink({
+    // Lecture du provider, contrôle « pas déjà rattaché », écriture du lien
+    // et incrément des stats : UNE transaction (runAffiliateLink). Deux
+    // requêtes simultanées ne peuvent plus rattacher deux fois ni compter
+    // double — le perdant de la course ressort en alreadyLinked.
+    const decision = await runAffiliateLink(db, {
       authUid,
       providerId,
-      provider: providerSnap.exists ? (providerSnap.data() as { userId?: string | null; affiliateId?: string | null }) : null,
+      code: normalizedCode,
       affiliate: affiliateSnap.empty ? null : { id: affiliateSnap.docs[0].id },
     });
 
@@ -176,18 +173,6 @@ export async function POST(request: NextRequest) {
     if (decision.alreadyLinked) {
       return NextResponse.json({ success: true, alreadyLinked: true });
     }
-
-    await providerRef.update({
-      affiliateCode: String(code).toUpperCase().trim(),
-      affiliateId: decision.affiliateId,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    await db.collection('affiliates').doc(decision.affiliateId).update({
-      'stats.totalReferrals': FieldValue.increment(1),
-      'stats.trialReferrals': FieldValue.increment(1),
-      updatedAt: new Date(),
-    });
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
